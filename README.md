@@ -8,6 +8,17 @@ RH2MAS is a research project developing an LLM-based investment research system 
 - Dynamic Risk Analysis
 - Verbal Reinforcement Learning
 
+## Project Structure
+/src
+/core          # Core architecture components
+/models        # Specialized agent implementations
+/utils         # Common utilities
+/docs
+/architecture  # System design documentation
+/research      # Research progress and findings
+/tests          # Test suites
+/experiments    # Research experiments
+
 ## Project Status
 This repository is under active research development. See our [Research Documentation](docs/research/README.md) for current progress.
 
@@ -15,6 +26,12 @@ This repository is under active research development. See our [Research Document
 - Architecture Documentation
 - Research Progress
 - API Documentation
+
+## Research Goals
+1. Efficient hybrid processing for financial data
+2. Scalable multi-agent coordination
+3. Adaptive risk profiling
+4. Verifiable decision-making processes
 
 #Research Papers
 This project builds upon:
