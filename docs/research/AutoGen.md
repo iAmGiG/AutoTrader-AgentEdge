@@ -4,7 +4,6 @@
 
 [AutoGen](https://github.com/microsoft/autogen) is an open-source framework developed by Microsoft for building large-scale, multi-agent AI systems. It provides a structured approach for agent collaboration, leveraging dynamic task delegation and context-awareness for efficient AI workflows.
 [AG2](AG2.ai) is an open-source framework by the founding contributors that forked off form the original msft work on the v0.2 achitecture. The development has gone in a different direction.
-
 - the following dicusses exclusivly the MSFT AutoGen tool, but there might be some unintended overlap.
 
 ### Key Features of AutoGen
