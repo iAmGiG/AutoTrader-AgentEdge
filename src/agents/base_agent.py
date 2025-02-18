@@ -3,85 +3,75 @@
 Base module defining an abstract agent class that all specialized agents inherit from.
 """
 
+from autogen import Agent
+from autogen.config import AgentConfig
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 
-class BaseAgent(ABC):
+class BaseAgent(Agent, ABC):
     """
-    An abstract base class for all agents in the system.
-    Encapsulates common functionalities like:
-      - Configuration handling
-      - Memory system access
-      - Custom tool usage
-      - Basic message handling
+    Abstract base class for AutoGen-based agents.
+    Encapsulates common functionalities such as:
+      - Configuration handling via AutoGen's AgentConfig
+      - Memory system access for knowledge retrieval
+      - Tool registration and usage
     """
 
-    def __init__(self,
-                 name: str,
-                 config: dict,
-                 memory_system: Optional[Any] = None):
+    def __init__(self, name: str, config: dict, memory_system: Optional[Any] = None):
         """
         :param name: Unique name/identifier for this agent.
-        :param config: A dictionary-like object containing agent or system configuration.
-        :param memory_system: A memory interface/class instance used for storing/retrieving data.
+        :param config: A dictionary containing agent settings.
+        :param memory_system: Optional memory interface for knowledge storage and retrieval.
         """
-        self.name = name
-        self.config = config
+        agent_config = AgentConfig(
+            **config)  # Convert config dict to AutoGen's AgentConfig
+        super().__init__(name=name, config=agent_config)
+
         self.memory_system = memory_system
-        self.logger = None  # Optionally, attach a logging mechanism here
-        self.tools = {}  # Custom tools or APIs can be stored here when initialized
+        self.tools = {}
+
+        # Register memory retrieval as a callable tool
+        if self.memory_system:
+            self.register_function(
+                self.retrieve_from_memory, "retrieve_memory")
 
     @abstractmethod
-    def handle_message(self, message: str) -> str:
+    def generate_reply(self, messages, context=None) -> str:
         """
-        Processes an incoming message and returns a response.
-        Specialized agents must implement their own logic for handling messages.
+        AutoGen's required method for handling incoming messages.
 
-        :param message: Incoming message (command, query, etc.).
-        :return: A string response or output from this agent.
+        :param messages: List of messages in the conversation.
+        :param context: Optional context from AutoGen.
+        :return: The agent's response.
         """
         pass
 
     def load_tool(self, tool_name: str, tool_instance: Any) -> None:
         """
-        Adds a custom tool or API handle to this agent's toolset.
-
-        :param tool_name: The name or key for the tool.
-        :param tool_instance: The object/instance providing the tool functionality.
+        Registers a tool for agent use.
         """
         self.tools[tool_name] = tool_instance
+        self.register_function(tool_instance, tool_name)
 
     def use_tool(self, tool_name: str, *args, **kwargs) -> Any:
         """
-        Invokes a previously loaded tool with provided arguments.
-
-        :param tool_name: The name of the tool to invoke.
-        :param args: Positional arguments for the tool call.
-        :param kwargs: Keyword arguments for the tool call.
-        :return: The result or output from the tool.
+        Invokes a registered tool.
         """
         if tool_name not in self.tools:
-            raise ValueError(
-                f"Tool '{tool_name}' not found. Please load it first.")
+            raise ValueError(f"Tool '{tool_name}' not found.")
         return self.tools[tool_name](*args, **kwargs)
 
     def store_in_memory(self, key: str, data: Any) -> None:
         """
         Stores data in the memory system under the specified key.
-
-        :param key: Unique identifier for the memory entry.
-        :param data: The data to store.
         """
         if self.memory_system:
             self.memory_system.store_data(key, data)
 
     def retrieve_from_memory(self, key: str) -> Any:
         """
-        Retrieves data from the memory system using the specified key.
-
-        :param key: The key identifying the stored data.
-        :return: The retrieved data or None if no entry is found.
+        Retrieves data from memory.
         """
         if self.memory_system:
             return self.memory_system.retrieve_data(key)
