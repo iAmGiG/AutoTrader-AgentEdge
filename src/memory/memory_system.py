@@ -21,49 +21,49 @@ logger = logging.getLogger(__name__)
 
 
 class EphemeralMemory:
-    def __init__(self, ttl: float = None, lazy_eviction: bool = True):
+    def __init__(self, ttl: float = None, lazy_eviction: bool = True, refresh_on_access: bool = False):
         """
-        Initialize the in-memory ephemeral storage.
-
-        :param ttl: Optional time-to-live (in seconds) for each entry.
-        :param lazy_eviction: If True, expired entries are evicted upon access.
+        :param ttl: Optional time-to-live (in seconds).
+        :param lazy_eviction: If True, remove expired entries only on access.
+        :param refresh_on_access: If True, any read operation resets the timestamp if data hasn't expired yet.
         """
-        self.data = {}  # Dictionary to store entries.
-        self.ttl = ttl  # Time-to-live in seconds.
+        self.data = {}
+        self.ttl = ttl
         self.lock = threading.Lock()
         self.lazy_eviction = lazy_eviction
+        self.refresh_on_access = refresh_on_access
 
     def store_data(self, key: str, value: any) -> None:
-        """
-        Store a key-value pair with the current timestamp.
-
-        :param key: Unique identifier for the data.
-        :param value: Data to store.
-        """
         with self.lock:
-            entry = {"value": value, "timestamp": time.time()}
+            entry = {
+                "value": value,
+                "timestamp": time.time()
+            }
             self.data[key] = entry
             logger.info(f"EphemeralMemory: Stored key '{key}'.")
 
     def retrieve_data(self, key: str) -> any:
-        """
-        Retrieve data by key with lazy eviction.
-
-        If the data has expired based on TTL, it is removed and None is returned.
-
-        :param key: Unique identifier for the data.
-        :return: The stored value or None if not found/expired.
-        """
         with self.lock:
             entry = self.data.get(key)
-            if entry:
-                if self.ttl is not None and (time.time() - entry["timestamp"]) > self.ttl:
-                    logger.info(
-                        f"EphemeralMemory: Key '{key}' expired on access. Removing entry.")
-                    del self.data[key]
-                    return None
-                return entry["value"]
-            return None
+            if not entry:
+                return None
+
+            # Check TTL
+            elapsed = time.time() - entry["timestamp"]
+            if self.ttl is not None and elapsed > self.ttl:
+                # Expired, remove it
+                logger.info(
+                    f"EphemeralMemory: Key '{key}' expired on access. Removing entry.")
+                del self.data[key]
+                return None
+
+            # Refresh TTL upon read
+            if self.refresh_on_access and self.ttl is not None:
+                entry["timestamp"] = time.time()
+                logger.info(
+                    f"EphemeralMemory: Key '{key}' timestamp refreshed.")
+
+            return entry["value"]
 
     def cleanup(self) -> None:
         """
@@ -156,54 +156,73 @@ class ContextMemory:
 
 class PersistentMemory:
     """
-    A stub for persistent memory storage.
-
-    In a full implementation, integrate with a vector database or another
-    long-term storage solution that supports advanced retrieval.
+    Minimal persistent memory using the same SQLite file (or in-memory DB).
+    This can later be expanded for advanced retrieval.
     """
 
-    def __init__(self):
-        self.data = {}  # For demonstration purposes.
-        self.lock = threading.Lock()
+    def __init__(self, conn: sqlite3.Connection, lock: threading.Lock):
+        self.conn = conn
+        self.lock = lock
+        self._setup_schema()
+
+    def _setup_schema(self):
+        with self.lock:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS persistent_memory (
+                    key TEXT PRIMARY KEY,
+                    value TEXT,
+                    timestamp REAL
+                )
+            """)
+            self.conn.commit()
 
     def store_data(self, key: str, value: any) -> None:
         with self.lock:
-            self.data[key] = {"value": value, "timestamp": time.time()}
+            timestamp = time.time()
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO persistent_memory (key, value, timestamp)
+                VALUES (?, ?, ?)
+            """, (key, str(value), timestamp))
+            self.conn.commit()
             logger.info(f"PersistentMemory: Stored key '{key}'.")
 
     def retrieve_data(self, key: str) -> any:
         with self.lock:
-            entry = self.data.get(key)
-            if entry:
-                return entry["value"]
-            return None
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT value FROM persistent_memory WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            return row[0] if row else None
 
-    # Future extensions: Implement snapshotting, versioning, and semantic search.
+    def cleanup(self):
+        """
+        (Optional) Implement any cleanup if needed for long-term data,
+        such as removing data older than a certain threshold.
+        """
+        pass
 
 
 class MemorySystem:
-    """
-    Unified memory system that aggregates ephemeral, context, and persistent layers.
-    """
-
     def __init__(self, ephemeral_ttl: float = None, context_db_path: str = ":memory:"):
-        self.ephemeral = EphemeralMemory(ttl=ephemeral_ttl)
-        self.ephemeral.start_periodic_cleanup()  # Start background cleanup.
+        self.ephemeral = EphemeralMemory(
+            ttl=ephemeral_ttl, refresh_on_access=True)
+        self.ephemeral.start_periodic_cleanup()
+
+        # Set up a single SQLite connection and lock for both context & persistent
+        self.conn = sqlite3.connect(context_db_path, check_same_thread=False)
+        self.lock = threading.Lock()
+
         self.context = ContextMemory(db_path=context_db_path)
-        self.persistent = PersistentMemory()
+
+        # Reuse the same connection & lock for persistent memory
+        self.persistent = PersistentMemory(conn=self.conn, lock=self.lock)
 
     def store_data(self, key: str, data: any, layer: str = 'ephemeral') -> None:
-        """
-        Store data in the specified memory layer.
-
-        :param key: Unique identifier for the data.
-        :param data: The data to store.
-        :param layer: Memory layer: 'ephemeral', 'context', or 'persistent'.
-        """
         if layer == 'ephemeral':
             self.ephemeral.store_data(key, data)
         elif layer == 'context':
-            # Convert to string for storage; adapt as needed for complex data.
             self.context.store_data(key, str(data))
         elif layer == 'persistent':
             self.persistent.store_data(key, data)
@@ -211,13 +230,6 @@ class MemorySystem:
             raise ValueError(f"Unknown memory layer: {layer}")
 
     def retrieve_data(self, key: str, layer: str = 'ephemeral') -> any:
-        """
-        Retrieve data from the specified memory layer.
-
-        :param key: Unique identifier for the data.
-        :param layer: Memory layer: 'ephemeral', 'context', or 'persistent'.
-        :return: The stored data, or None if not found.
-        """
         if layer == 'ephemeral':
             return self.ephemeral.retrieve_data(key)
         elif layer == 'context':
@@ -228,12 +240,9 @@ class MemorySystem:
             raise ValueError(f"Unknown memory layer: {layer}")
 
     def cleanup_all(self):
-        """
-        Trigger cleanup for all memory layers.
-        """
         self.ephemeral.cleanup()
         self.context.cleanup()
-        # PersistentMemory cleanup can be implemented if needed.
+        # Optional: self.persistent.cleanup() if you want a retention policy for persistent data.
 
 
 # Testing the revised memory system.

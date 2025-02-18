@@ -1,18 +1,20 @@
+# Memory System
+
 1. Ephemeral Memory Layer (Short-Term Storage)
 
 **Purpose**: Handles real-time operations, caching active task states, and storing temporary computations.
 Implementation:
 
-- Utilizes an in-memory key-value store such as Redis for rapid access.
-- Implements TTL (time-to-live) expirations for automatic cleanup.
+    - Utilizes an in-memory key-value store such as Redis for rapid access.
+    - Implements TTL (time-to-live) expirations for automatic cleanup.
 
 2. Context Memory Layer (Mid-Term Storage)
 Purpose: Stores contextual information relevant to ongoing agent interactions.
 
 **Implementation**:
 
-- Structured storage system using SQLite or PostgreSQL for transactional integrity.
-- Indexed tables for session-based memory retrieval.
+    - Structured storage system using SQLite or PostgreSQL for transactional integrity.
+    - Indexed tables for session-based memory retrieval.
 
 3. Persistent Memory Layer (Long-Term Knowledge Base)
 
@@ -34,7 +36,7 @@ Implementation:
 
 - Vector search for semantic queries to find related knowledge quickly.
 
-**Concurrency and Synchronization**
+## Concurrency and Synchronization
 
 - With multiple agents interacting in parallel, the memory system must ensure safe access through:
 
@@ -44,7 +46,7 @@ Implementation:
 
 **Conflict Resolution Policies**: Last-write-wins, vector clocks, or event-driven logging.
 
-**Scalability Considerations**
+## Scalability Considerations
 
 To support system expansion and optimize memory usage:
 
@@ -54,7 +56,7 @@ Tiered Storage Solutions: Moves inactive data to external storage (S3, database 
 
 Differential Snapshotting: Periodic consolidation of memory states.
 
-**Security Measures**
+## Security Measures
 
 To ensure data integrity and access control:
 
@@ -66,7 +68,7 @@ Auditing & Logging: Maintains a record of all memory accesses and modifications.
 
 Implementation Roadmap
 
-**Setup In-Memory Storage**
+## Setup In-Memory Storage
 
 Deploy Redis for caching and active memory management.
 
@@ -84,7 +86,7 @@ Integrate a vector database for long-term knowledge retention.
 
 Implement snapshot-based backup and retrieval.
 
-**Optimize Data Retrieval**
+## Optimize Data Retrieval
 
 Implement indexing and query optimization techniques.
 
