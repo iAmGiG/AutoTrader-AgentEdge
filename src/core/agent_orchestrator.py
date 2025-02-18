@@ -1,0 +1,118 @@
+# agent_orchestrator.py
+
+from typing import List, Dict, Any
+from agents.base_agent import BaseAgent
+from memory.memory_system import MemorySystem
+
+
+class AgentOrchestrator:
+    """
+    A minimal orchestrator that initializes, manages, and coordinates 
+    multiple specialized agents. It routes incoming messages, gathers 
+    responses, and applies a simple decision or aggregation step.
+    """
+
+    def __init__(self,
+                 agent_configs: List[Dict[str, Any]],
+                 memory_system: MemorySystem):
+        """
+        :param agent_configs: List of config dictionaries, each specifying 
+                              'class' (the agent class), 'name', and other 
+                              config keys needed to instantiate the agent.
+        :param memory_system: Shared MemorySystem instance.
+        """
+        self.memory_system = memory_system
+        self.agents = self._initialize_agents(agent_configs)
+
+    def _initialize_agents(self, agent_configs: List[Dict[str, Any]]) -> List[BaseAgent]:
+        agents = []
+        for cfg in agent_configs:
+            # Dynamically load the agent class (passed in via config).
+            agent_class = cfg["class"]
+            name = cfg["name"]
+            config_dict = cfg.get("config", {})
+            agent = agent_class(name=name, config=config_dict,
+                                memory_system=self.memory_system)
+            agents.append(agent)
+        return agents
+
+    def process_message(self, message: str) -> str:
+        """
+        Main entry point for orchestrating agent interactions.
+        1. Pass the message to each agent.
+        2. Collect responses.
+        3. Apply a decision function to produce the final output.
+        """
+        responses = []
+        for agent in self.agents:
+            try:
+                response = agent.handle_message(message)
+                responses.append((agent.name, response))
+            except Exception as e:
+                # Basic error handling/logging
+                fallback = f"[Error from {agent.name}: {str(e)}]"
+                responses.append((agent.name, fallback))
+
+        # Simple decision function: for now, just concatenate
+        # or do a naive "vote."
+        final_response = self._simple_decision_function(responses)
+        return final_response
+
+    def _simple_decision_function(self, agent_responses: List[tuple]) -> str:
+        """
+        Placeholder logic to combine agent outputs. 
+        Right now it just merges them. In a real system, 
+        you might apply risk weighting, majority voting, etc.
+        """
+        combined = "\n".join(
+            [f"{name} => {resp}" for (name, resp) in agent_responses]
+        )
+        return f"Collected Responses:\n{combined}"
+
+    def store_decision(self, key: str, decision_data: Any):
+        """
+        Optionally store the final decision or aggregated result 
+        in the memory system for future reference.
+        """
+        self.memory_system.store_data(key, decision_data, layer="context")
+
+    def retrieve_decision(self, key: str) -> Any:
+        """
+        Retrieve a past decision from the memory system.
+        """
+        return self.memory_system.retrieve_data(key, layer="context")
+
+
+# Example usage (in some main.py):
+if __name__ == "__main__":
+    # Assume we have SentimentAgent, StrategyAgent, etc.
+    from sentiment_agent import SentimentAgent
+    from strategy_agent import StrategyAgent
+
+    memory_sys = MemorySystem(ephemeral_ttl=10)
+    agent_config_list = [
+        {
+            "class": SentimentAgent,
+            "name": "SentimentAgent",
+            "config": {
+                "sentiment_threshold": 0.5
+            }
+        },
+        {
+            "class": StrategyAgent,
+            "name": "StrategyAgent",
+            "config": {
+                "strategy_type": "long_short"
+            }
+        }
+    ]
+
+    orchestrator = AgentOrchestrator(agent_config_list, memory_sys)
+    user_message = "What is the market outlook for next week?"
+    final_result = orchestrator.process_message(user_message)
+
+    print("=== Final Aggregated Response ===")
+    print(final_result)
+
+    # Optionally store the decision in memory
+    orchestrator.store_decision("last_decision", final_result)
