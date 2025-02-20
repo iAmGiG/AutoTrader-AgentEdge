@@ -2,7 +2,8 @@
 
 from typing import List, Dict, Any
 from agents.base_agent import BaseAgent
-from memory.memory_system import MemorySystem
+from core.memory.memory_system import MemorySystem
+from core.decision_engine import DecisionEngine
 
 
 class AgentOrchestrator:
@@ -14,7 +15,8 @@ class AgentOrchestrator:
 
     def __init__(self,
                  agent_configs: List[Dict[str, Any]],
-                 memory_system: MemorySystem):
+                 memory_system: MemorySystem,
+                 decision_engine_config: Dict[str, Any]):
         """
         :param agent_configs: List of config dictionaries, each specifying 
                               'class' (the agent class), 'name', and other 
@@ -23,6 +25,8 @@ class AgentOrchestrator:
         """
         self.memory_system = memory_system
         self.agents = self._initialize_agents(agent_configs)
+        self.decision_engine = DecisionEngine(
+            decision_engine_config, memory_system)
 
     def _initialize_agents(self, agent_configs: List[Dict[str, Any]]) -> List[BaseAgent]:
         agents = []
@@ -43,20 +47,19 @@ class AgentOrchestrator:
         2. Collect responses.
         3. Apply a decision function to produce the final output.
         """
-        responses = []
+        # 1. Collect each agent's response
+        responses = {}
         for agent in self.agents:
             try:
-                response = agent.handle_message(message)
-                responses.append((agent.name, response))
+                agent_response = agent.handle_message(message)
+                responses[agent.name] = agent_response
             except Exception as e:
-                # Basic error handling/logging
-                fallback = f"[Error from {agent.name}: {str(e)}]"
-                responses.append((agent.name, fallback))
+                responses[agent.name] = f"[ERROR: {str(e)}]"
 
-        # Simple decision function: for now, just concatenate
-        # or do a naive "vote."
-        final_response = self._simple_decision_function(responses)
-        return final_response
+        # 2. Use the DecisionEngine to produce a final outcome
+        final_decision = self.decision_engine.decide(responses)
+
+        return final_decision
 
     def _simple_decision_function(self, agent_responses: List[tuple]) -> str:
         """
