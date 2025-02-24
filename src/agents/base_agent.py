@@ -54,6 +54,18 @@ class BaseAgent(Agent, ABC):
         self.tools[tool_name] = tool_instance
         self.register_function(tool_instance, tool_name)
 
+    # def query_market_data(self, symbol: str, start_date: str, end_date: str):
+    #     if "market_data" not in self.tools:
+    #         raise ValueError("MarketDataTool not loaded")
+    #     return self.use_tool("market_data").fetch_options_data(symbol, start_date, end_date)
+
+    # def preprocess_data(self, data: pd.DataFrame) -> dict:
+    #     """
+    #     Convert raw market data into a dictionary of signals
+    #     or features for agent logic.
+    #     """
+    #     return data.to_dict("records")  # Example
+
     def use_tool(self, tool_name: str, *args, **kwargs) -> Any:
         """
         Invokes a registered tool.
@@ -75,6 +87,15 @@ class BaseAgent(Agent, ABC):
         """
         if self.memory_system:
             return self.memory_system.retrieve_data(key)
+        return None
+
+    def store_data_in_context(self, key: str, data: Any):
+        if self.memory_system:
+            self.memory_system.store_data(key, data, layer="context")
+
+    def retrieve_data_from_context(self, key: str):
+        if self.memory_system:
+            return self.memory_system.retrieve_data(key, layer="context")
         return None
 
     def set_logger(self, logger: Any) -> None:
