@@ -1,7 +1,6 @@
 # market_data_tool.py
 
 import pandas as pd
-import os
 import logging
 from typing import Any, Dict, Optional
 
