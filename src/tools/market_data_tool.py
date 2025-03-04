@@ -1,6 +1,7 @@
 # market_data_tool.py
 
 import pandas as pd
+import yfinance as yf
 import logging
 from typing import Any, Dict, Optional
 
@@ -78,3 +79,13 @@ class MarketDataTool:
         else:
             self.logger.error(f"Unsupported data_source: {self.data_source}")
             return pd.DataFrame()  # return empty if unsupported
+
+    def fetch_stock_data(self, ticker, start_date="2023-01-01", end_date="2024-01-01"):
+        stock = yf.Ticker(ticker)
+        df = stock.history(start=start_date, end=end_date)
+        return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+
+    def fetch_vix_data(self, start_date="2023-01-01", end_date="2024-01-01"):
+        vix = yf.Ticker("^VIX")
+        df = vix.history(start=start_date, end=end_date)
+        return df[['Close']]  # VIX represents market volatility

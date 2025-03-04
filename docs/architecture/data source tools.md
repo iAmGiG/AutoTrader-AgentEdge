@@ -262,4 +262,3 @@ Why sec-edgar-downloader?
 
 - Automates SEC retrieval (no manual parsing).
 - Works with batch downloads.
-
