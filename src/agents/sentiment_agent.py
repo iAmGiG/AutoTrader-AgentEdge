@@ -1,7 +1,6 @@
 from base_agent import BaseAgent
 from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
 import pandas as pd
-# from textblob import TextBlob
 
 
 class SentimentAgent(BaseAgent):

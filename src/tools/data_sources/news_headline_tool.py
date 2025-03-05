@@ -14,7 +14,7 @@ class NewsHeadlineTool:
         self.api_key = config_loader.get("newsapi_key")
         self.source = source
 
-    def fetch_news(self, keyword="market", count=5):
+    def fetch_data(self, keyword="market", count=5):
         """
         Fetches news articles based on a keyword.
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # Run the tool normally
     tool = NewsHeadlineTool(source="newsapi")
     try:
-        articles = tool.fetch_news(keyword="investment", count=3)
+        articles = tool.fetch_data(keyword="investment", count=3)
         for idx, article in enumerate(articles, start=1):
             # print(f"Article {idx}: {article.get('title')}") # print article and just title
             print(f"Article {idx}: {article}")  # Print full article dict
