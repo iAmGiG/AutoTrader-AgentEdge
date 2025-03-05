@@ -69,12 +69,12 @@ class MarketDataTool:
         )
 
         # Route to the appropriate retrieval method based on data_source
-        if self.data_source == "csv":
-            return self._fetch_from_csv(symbol, start_date, end_date, filters)
-        elif self.data_source == "sql":
-            return self._fetch_from_sql(symbol, start_date, end_date, filters)
-        elif self.data_source == "api":
-            return self._fetch_from_api(symbol, start_date, end_date, filters)
-        else:
-            self.logger.error(f"Unsupported data_source: {self.data_source}")
-            return pd.DataFrame()  # return empty if unsupported
+        # if self.data_source == "csv":
+        #     return self._fetch_from_csv(symbol, start_date, end_date, filters)
+        # elif self.data_source == "sql":
+        #     return self._fetch_from_sql(symbol, start_date, end_date, filters)
+        # elif self.data_source == "api":
+        #     return self._fetch_from_api(symbol, start_date, end_date, filters)
+        # else:
+        #     self.logger.error(f"Unsupported data_source: {self.data_source}")
+        #     return pd.DataFrame()  # return empty if unsupported
