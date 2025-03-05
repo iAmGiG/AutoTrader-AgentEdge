@@ -8,7 +8,8 @@ class NewsHeadlineTool:
     """gets the latest headlines"""
 
     def __init__(self, source="newsapi"):
-        # Load configuration and API key from config file
+        # Load configuration and API key from config file.
+        # source might be depricated, might just seperate out each tool into their own file.
         config_loader = ConfigLoader()
         self.api_key = config_loader.get("newsapi_key")
         self.source = source
@@ -46,6 +47,7 @@ if __name__ == "__main__":
     try:
         articles = tool.fetch_news(keyword="investment", count=3)
         for idx, article in enumerate(articles, start=1):
-            print(f"Article {idx}: {article.get('title')}")
+            # print(f"Article {idx}: {article.get('title')}") # print article and just title
+            print(f"Article {idx}: {article}")  # Print full article dict
     except Exception as e:
         print("Error fetching news:", e)
