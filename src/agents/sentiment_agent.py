@@ -56,6 +56,11 @@ class SentimentAgent(BaseAgent):
             return f"Processed signals: {signals}"
         except Exception as e:
             return f"Error in handling message: {str(e)}"
+    
+    def generate_reply(self, messages, context=None) -> str:
+    # Fetch and preprocess data
+    # Generate response or sentiment signals
+    # Return the final string response (for LLM prompting)
 
 
 # Standalone tester:
