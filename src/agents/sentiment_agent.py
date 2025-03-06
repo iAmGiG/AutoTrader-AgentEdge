@@ -10,45 +10,55 @@ class SentimentAgent(BaseAgent):
         # load news head line tool into toolset
         self.load_tool("news_api", NewsHeadlineTool(source="newsapi"))
 
-    def fetch_news_data(self, keywords="market", count=5):
+    def fetch_news_data(self, keyword="market", count=5):
         """
-        uses the loaded news headling tool to fetch news articles.
+        Uses the loaded NewsHeadlineTool to fetch news articles.
+        Expects the tool to return a Pandas DataFrame.
         """
-        articles = self.use_tool("news_api", keywords=keywords, count=count)
-        return articles
+        articles_df = self.use_tool("news_api", keyword=keyword, count=count)
+        return articles_df
 
     def preprocess_data(self, news_data) -> dict:
-        # e.g. calculate moving averages, implied vol spreads, etc.
+        """
+        Processes the news data (a DataFrame) to extract sentiment signals.
+        Returns a dictionary with:
+          - article_count: number of articles fetched
+          - headlines: list of headlines
+          - average_sentiment: average sentiment score (if available)
+        """
         signals = {}
-        if not news_data:
-            signals["error"] = "No news data availble"
+        if news_data.empty:
+            signals["error"] = "No news data available"
         else:
             signals["article_count"] = len(news_data)
-            # list comprehensions create their own scope, and article is only used inside the comprehension.
-            signals["headlines"] = [articles.get(
-                "title", "") for article in news_data]
+            # Extract headlines from the DataFrame.
+            signals["headlines"] = news_data["Headline"].tolist()
+            # Compute average sentiment score if the column exists.
+            signals["average_sentiment"] = news_data["Sentiment Score"].mean(
+            ) if "Sentiment Score" in news_data.columns else None
         return signals
 
     def handle_message(self, message: str) -> str:
         """
         Processes an incoming message command.
-        expects messages as "fetch news on <keyword>".
+        Expects messages in the format "Fetch news on <keyword>".
         """
-        # extract keyword from message (default is "market")
+        # Extract keyword from message (default is "market")
         if 'on' in message:
             keyword = message.split('on')[-1].strip()
         else:
             keyword = "market"
         try:
-            # Fetch news data using the news headline tool
-            news_data = self.fetch_news_data(keywords=keyword, count=5)
+            # Fetch news data using the NewsHeadlineTool.
+            news_data = self.fetch_news_data(keyword=keyword, count=5)
+            # Preprocess the fetched news data to generate sentiment signals.
             signals = self.preprocess_data(news_data=news_data)
             return f"Processed signals: {signals}"
         except Exception as e:
             return f"Error in handling message: {str(e)}"
 
 
-# stand alone tester->
+# Standalone tester:
 if __name__ == "__main__":
     agent = SentimentAgent()
     response = agent.handle_message("Fetch news on Technology")
