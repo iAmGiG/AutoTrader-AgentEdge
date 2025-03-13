@@ -3,13 +3,18 @@
 Base module defining an abstract agent class that all specialized agents inherit from.
 """
 
-from autogen import Agent
-from autogen.config import AgentConfig
+from autogen_agentchat.agents._assistant_agent import AssistantAgent, AssistantAgentConfig
+from config.config_loader import ConfigLoader
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
+# Instantiate ConfigLoader once at module-level
+_loader = ConfigLoader()
+model_name = _loader.get("open_model")     # e.g. "gpt-4o-mini"
+open_ai_key = _loader.get("open_ai_key")
 
-class BaseAgent(Agent, ABC):
+
+class BaseAgent(AssistantAgent, ABC):
     """
     Abstract base class for AutoGen-based agents.
     Encapsulates common functionalities such as:
@@ -21,11 +26,25 @@ class BaseAgent(Agent, ABC):
     def __init__(self, name: str, config: dict, memory_system: Optional[Any] = None):
         """
         :param name: Unique name/identifier for this agent.
-        :param config: A dictionary containing agent settings.
+        :param config: A dictionary containing agent settings (model keys, tool config, etc.).
         :param memory_system: Optional memory interface for knowledge storage and retrieval.
         """
-        agent_config = AgentConfig(
-            **config)  # Convert config dict to AutoGen's AgentConfig
+        # Build a dictionary-based model_client recognized by AssistantAgentConfig
+        model_client_dict = {
+            "type": "openai",            # Tells AutoGen to use the OpenAI-based client
+            "model_name": model_name,    # e.g., "gpt-4o-mini"
+            "openai_api_key": open_ai_key
+        }
+        # Build the final AssistantAgentConfig
+        agent_config = AssistantAgentConfig(
+            name=name,
+            model_client=model_client_dict,
+            tools=config.get("tools", []),
+            description=config.get("description", f"{name} agent"),
+            reflect_on_tool_use=config.get("reflect_on_tool_use", False),
+            tool_call_summary_format=config.get(
+                "tool_call_summary_format", "full"),
+        )
         super().__init__(name=name, config=agent_config)
 
         self.memory_system = memory_system
