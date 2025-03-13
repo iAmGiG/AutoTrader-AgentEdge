@@ -31,9 +31,12 @@ class BaseAgent(AssistantAgent, ABC):
         """
         # Build a dictionary-based model_client recognized by AssistantAgentConfig
         model_client_dict = {
-            "type": "openai",            # Tells AutoGen to use the OpenAI-based client
-            "model_name": model_name,    # e.g., "gpt-4o-mini"
-            "openai_api_key": open_ai_key
+            # Provider line: required by current autogen architecture, openai: Tells AutoGen to use the OpenAI-based client
+            "provider": "openai",
+            "config": {
+                "model_name": model_name,    # e.g., "gpt-4o-mini"
+                "openai_api_key": open_ai_key
+            }
         }
         # Build the final AssistantAgentConfig
         agent_config = AssistantAgentConfig(
@@ -45,7 +48,7 @@ class BaseAgent(AssistantAgent, ABC):
             tool_call_summary_format=config.get(
                 "tool_call_summary_format", "full"),
         )
-        super().__init__(name=name, config=agent_config)
+        super().__init__(agent_config=agent_config)
 
         self.memory_system = memory_system
         self.tools = {}
