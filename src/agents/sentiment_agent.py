@@ -1,9 +1,3 @@
-# import sys
-# import os
-
-# # Dynamically add the project root (RH2MAS) to sys.path
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
 from .base_agent import BaseAgent
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
@@ -22,13 +16,16 @@ DEFAULT_SENTIMENT_CONFIG = {
 class SentimentAgent(BaseAgent):
 
     def __init__(self, name="SentimentAgent", config=None, memory_system=None):
-        merged_config = DEFAULT_SENTIMENT_CONFIG.copy()
-        if config is not None:
-            merged_config.update(config)
+        merged_config = {} if config is None else config
+        # Construct your tool instance
+        news_tool = NewsHeadlineTool(source="newsapi")
+
+        # Now pass it to BaseAgent via the "tools" field
+        if "tools" not in merged_config:
+            merged_config["tools"] = []
+        merged_config["tools"].append(news_tool)
+
         super().__init__(name, merged_config, memory_system)
-        # super().__init__(name, config, memory_system)
-        # load news head line tool into toolset
-        self.load_tool("news_api", NewsHeadlineTool(source="newsapi"))
 
     def fetch_news_data(self, keyword="market", count=5):
         """
@@ -112,7 +109,7 @@ class SentimentAgent(BaseAgent):
 
 
 # Standalone tester:
-if __name__ == "__main__":
-    agent = SentimentAgent()
-    response = agent.handle_message("Fetch news on Technology")
-    print(response)
+# if __name__ == "__main__":
+#     agent = SentimentAgent()
+#     response = agent.handle_message("Fetch news on Technology")
+#     print(response)

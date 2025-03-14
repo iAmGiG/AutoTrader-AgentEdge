@@ -3,7 +3,8 @@
 Base module defining an abstract agent class that all specialized agents inherit from.
 """
 
-from autogen_agentchat.agents._assistant_agent import AssistantAgent, AssistantAgentConfig
+from autogen_agentchat.agents._assistant_agent import AssistantAgent
+from autogen_ext.models.openai import OpenAIChatCompletionClient
 from config.config_loader import ConfigLoader
 from abc import ABC, abstractmethod
 from typing import Any, Optional
@@ -29,34 +30,34 @@ class BaseAgent(AssistantAgent, ABC):
         :param config: A dictionary containing agent settings (model keys, tool config, etc.).
         :param memory_system: Optional memory interface for knowledge storage and retrieval.
         """
-        # Build a dictionary-based model_client recognized by AssistantAgentConfig
-        model_client_dict = {
-            # Provider line: required by current autogen architecture, openai: Tells AutoGen to use the OpenAI-based client
-            "provider": "openai",
-            "config": {
-                "model_name": model_name,    # e.g., "gpt-4o-mini"
-                "openai_api_key": open_ai_key
-            }
-        }
-        # Build the final AssistantAgentConfig
-        agent_config = AssistantAgentConfig(
+        # Here we create the actual client instance required by AssistantAgent
+        model_client_instance = OpenAIChatCompletionClient(
+            model=model_name,  # <-- The library specifically needs this 'model' param
+            api_key=open_ai_key,
+            # Add other optional parameters if desired:
+            # organization="...",
+            # temperature=0.7,
+            # max_tokens=2048,
+            # etc.
+        )
+
+        super().__init__(
             name=name,
-            model_client=model_client_dict,
+            model_client=model_client_instance,
             tools=config.get("tools", []),
             description=config.get("description", f"{name} agent"),
             reflect_on_tool_use=config.get("reflect_on_tool_use", False),
             tool_call_summary_format=config.get(
                 "tool_call_summary_format", "full"),
         )
-        super().__init__(agent_config=agent_config)
 
         self.memory_system = memory_system
-        self.tools = {}
+        # self.tools = {}
 
         # Register memory retrieval as a callable tool
-        if self.memory_system:
-            self.register_function(
-                self.retrieve_from_memory, "retrieve_memory")
+        # if self.memory_system:
+        #     self.register_function(
+        #         self.retrieve_from_memory, "retrieve_memory")
 
     @abstractmethod
     def generate_reply(self, messages, context=None) -> str:
@@ -71,10 +72,28 @@ class BaseAgent(AssistantAgent, ABC):
 
     def load_tool(self, tool_name: str, tool_instance: Any) -> None:
         """
-        Registers a tool for agent use.
+        Registers a tool with this agent. 
+        In AutoGen 0.4.9, we can just store it in self._tools 
+        if it's already a BaseTool or wrap it if it's a callable.
         """
+        # Keep a reference to the tool in self.tools
         self.tools[tool_name] = tool_instance
-        self.register_function(tool_instance, tool_name)
+
+        # If tool_instance is already a subclass of BaseTool:
+        if hasattr(tool_instance, "name"):
+            # Assign a name if not set
+            if not tool_instance.name:
+                tool_instance.name = tool_name
+            self._tools.append(tool_instance)
+        # If it's a plain callable, wrap it as a FunctionTool
+        elif callable(tool_instance):
+            new_tool = FunctionTool(
+                tool_instance, description=f"Tool: {tool_name}")
+            self._tools.append(new_tool)
+        else:
+            raise ValueError(
+                f"Tool {tool_name} must be either a BaseTool subclass or a callable."
+            )
 
     # def query_market_data(self, symbol: str, start_date: str, end_date: str):
     #     if "market_data" not in self.tools:
