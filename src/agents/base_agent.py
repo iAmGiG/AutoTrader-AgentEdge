@@ -8,6 +8,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from config.config_loader import ConfigLoader
 from abc import ABC, abstractmethod
 from typing import Any, Optional
+from src.tools.tools import ALL_TOOLS
 
 # Instantiate ConfigLoader once at module-level
 _loader = ConfigLoader()
@@ -41,7 +42,7 @@ class BaseAgent(AssistantAgent, ABC):
             # max_tokens=2048,
             # etc.
         )
-
+        tools = tools or ALL_TOOLS
         # 2. If no tools are provided, default to an empty list
         if tools is None:
             tools = []
