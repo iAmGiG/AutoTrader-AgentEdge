@@ -1,7 +1,6 @@
 from .base_agent import BaseAgent
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
-import pandas as pd
 
 # Instantiate ConfigLoader once at module-level
 _loader = ConfigLoader()
@@ -15,17 +14,10 @@ DEFAULT_SENTIMENT_CONFIG = {
 
 class SentimentAgent(BaseAgent):
 
-    def __init__(self, name="SentimentAgent", config=None, memory_system=None):
-        merged_config = {} if config is None else config
-        # Construct your tool instance
-        news_tool = NewsHeadlineTool(source="newsapi")
-
-        # Now pass it to BaseAgent via the "tools" field
-        if "tools" not in merged_config:
-            merged_config["tools"] = []
-        merged_config["tools"].append(news_tool)
-
-        super().__init__(name, merged_config, memory_system)
+    def __init__(self, name="SentimentAgent", memory_system=None):
+        # Pass the FunctionTool(s) to the BaseAgent's tools parameter
+        super().__init__(name=name, tools=[
+            news_api_tool], memory_system=memory_system)
 
     def fetch_news_data(self, keyword="market", count=5):
         """
