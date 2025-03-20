@@ -24,12 +24,13 @@ class BaseAgent(AssistantAgent, ABC):
       - Tool registration and usage
     """
 
-    def __init__(self, name: str, config: dict, memory_system: Optional[Any] = None):
+    def __init__(self, name: str, tools=None, memory_system: Optional[Any] = None):
         """
         :param name: Unique name/identifier for this agent.
         :param config: A dictionary containing agent settings (model keys, tool config, etc.).
         :param memory_system: Optional memory interface for knowledge storage and retrieval.
         """
+        # 1. Create the actual client instance required by AssistantAgent
         # Here we create the actual client instance required by AssistantAgent
         model_client_instance = OpenAIChatCompletionClient(
             model=model_name,  # <-- The library specifically needs this 'model' param
@@ -41,23 +42,21 @@ class BaseAgent(AssistantAgent, ABC):
             # etc.
         )
 
+        # 2. If no tools are provided, default to an empty list
+        if tools is None:
+            tools = []
+
+        # 3. Call the parent constructor
         super().__init__(
             name=name,
             model_client=model_client_instance,
-            tools=config.get("tools", []),
-            description=config.get("description", f"{name} agent"),
-            reflect_on_tool_use=config.get("reflect_on_tool_use", False),
-            tool_call_summary_format=config.get(
-                "tool_call_summary_format", "full"),
+            tools=tools,  # <--- Tools are passed directly to AssistantAgent
+            description=f"{name} agent",  # or read from config if needed
+            reflect_on_tool_use=True,     # e.g. let the agent reflect on tool calls
+            tool_call_summary_format="{result}",
         )
-
+        # 4. Memory system
         self.memory_system = memory_system
-        # self.tools = {}
-
-        # Register memory retrieval as a callable tool
-        # if self.memory_system:
-        #     self.register_function(
-        #         self.retrieve_from_memory, "retrieve_memory")
 
     @abstractmethod
     def generate_reply(self, messages, context=None) -> str:
@@ -69,51 +68,6 @@ class BaseAgent(AssistantAgent, ABC):
         :return: The agent's response.
         """
         pass
-
-    def load_tool(self, tool_name: str, tool_instance: Any) -> None:
-        """
-        Registers a tool with this agent. 
-        In AutoGen 0.4.9, we can just store it in self._tools 
-        if it's already a BaseTool or wrap it if it's a callable.
-        """
-        # Keep a reference to the tool in self.tools
-        self.tools[tool_name] = tool_instance
-
-        # If tool_instance is already a subclass of BaseTool:
-        if hasattr(tool_instance, "name"):
-            # Assign a name if not set
-            if not tool_instance.name:
-                tool_instance.name = tool_name
-            self._tools.append(tool_instance)
-        # If it's a plain callable, wrap it as a FunctionTool
-        elif callable(tool_instance):
-            new_tool = FunctionTool(
-                tool_instance, description=f"Tool: {tool_name}")
-            self._tools.append(new_tool)
-        else:
-            raise ValueError(
-                f"Tool {tool_name} must be either a BaseTool subclass or a callable."
-            )
-
-    # def query_market_data(self, symbol: str, start_date: str, end_date: str):
-    #     if "market_data" not in self.tools:
-    #         raise ValueError("MarketDataTool not loaded")
-    #     return self.use_tool("market_data").fetch_options_data(symbol, start_date, end_date)
-
-    # def preprocess_data(self, data: pd.DataFrame) -> dict:
-    #     """
-    #     Convert raw market data into a dictionary of signals
-    #     or features for agent logic.
-    #     """
-    #     return data.to_dict("records")  # Example
-
-    def use_tool(self, tool_name: str, *args, **kwargs) -> Any:
-        """
-        Invokes a registered tool.
-        """
-        if tool_name not in self.tools:
-            raise ValueError(f"Tool '{tool_name}' not found.")
-        return self.tools[tool_name](*args, **kwargs)
 
     def store_in_memory(self, key: str, data: Any) -> None:
         """
