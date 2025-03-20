@@ -1,6 +1,6 @@
 from .base_agent import BaseAgent
 from config.config_loader import ConfigLoader
-from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
+from src.tools.tools import news_tool
 
 # Instantiate ConfigLoader once at module-level
 _loader = ConfigLoader()
@@ -17,7 +17,7 @@ class SentimentAgent(BaseAgent):
     def __init__(self, name="SentimentAgent", memory_system=None):
         # Pass the FunctionTool(s) to the BaseAgent's tools parameter
         super().__init__(name=name, tools=[
-            news_api_tool], memory_system=memory_system)
+            news_tool], memory_system=memory_system)
 
     def fetch_news_data(self, keyword="market", count=5):
         """
