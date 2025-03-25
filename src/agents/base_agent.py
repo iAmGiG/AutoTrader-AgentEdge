@@ -3,6 +3,7 @@
 Base module defining an abstract agent class that all specialized agents inherit from.
 """
 
+
 from autogen_agentchat.agents._assistant_agent import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from config.config_loader import ConfigLoader
@@ -17,6 +18,8 @@ open_ai_key = _loader.get("open_ai_key")
 
 
 class BaseAgent(AssistantAgent, ABC):
+
+
     """
     Abstract base class for AutoGen-based agents.
     Encapsulates common functionalities such as:
