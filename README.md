@@ -11,15 +11,14 @@ RH2MAS is a research project developing an LLM-based investment research system 
 
 ## Project Structure
 
+- /docs           # Research notes
+- -/architecture  # System design documentation
+- -/research      # Research progress and findings
 - /src
-- /core          # Core architecture components
-- /models        # Specialized agent implementations
-- /utils         # Common utilities
-- /docs
-- /architecture  # System design documentation
-- /research      # Research progress and findings
-- /tests          # Test suites
-- /experiments    # Research experiments
+- -/agents
+- -/core          # Core architecture components
+- -/tools         # Common utilities and agent tools
+- -/tests          # Test suites
 
 ## Project Status
 
