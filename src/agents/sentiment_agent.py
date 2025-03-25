@@ -100,8 +100,3 @@ class SentimentAgent(BaseAgent):
             return f"Error generating reply: {str(e)}"
 
 
-# Standalone tester:
-# if __name__ == "__main__":
-#     agent = SentimentAgent()
-#     response = agent.handle_message("Fetch news on Technology")
-#     print(response)
