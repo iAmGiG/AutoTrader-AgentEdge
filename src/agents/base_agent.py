@@ -56,8 +56,21 @@ class BaseAgent(AssistantAgent, ABC):
             reflect_on_tool_use=True,     # e.g. let the agent reflect on tool calls
             tool_call_summary_format="{result}",
         )
+        # Store the tools in a local dict for manual calls as needed
+        self._tools_dict = {tool.name: tool for tool in tools}
         # 4. Memory system
         self.memory_system = memory_system
+
+    def use_tool(self, tool_name: str, **kwargs) -> Any:
+        """
+        Here we manually invoke a tool by name with the given keyword arguments
+        If we need to pass position args, we then add them to the kw args or revise the method signature
+        """
+        tool = self._tools_dict.get(tool_name)
+        if not tool:
+            raise ValueError(f"Tool not found {tool_name}")
+        # if we have a tool, then it is call able, then give it the kw args
+        return tool(**kwargs)
 
     @abstractmethod
     def generate_reply(self, messages, context=None) -> str:
