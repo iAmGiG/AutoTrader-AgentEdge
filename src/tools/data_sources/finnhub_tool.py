@@ -6,7 +6,7 @@ class FinnHubTool:
         self.api_key = api_key
         self.source = source
 
-    def fetch_news(self, keyword="market", count=5):
+    def fetch_finn_news(self, keyword="market", count=5):
         if self.source == "finnhub":
             url = f"https://finnhub.io/api/v1/news?category=general&token={self.api_key}"
         elif self.source == "newsapi":
@@ -19,7 +19,7 @@ class FinnHubTool:
 
 
 # Example Usage
-news_tool = NewsHeadlineTool("YOUR_API_KEY", source="finnhub")
+news_tool = FinnHubTool("YOUR_API_KEY", source="finnhub")
 articles = news_tool.fetch_news("inflation", count=3)
 for article in articles:
     print(article["headline"] if "headline" in article else article["title"])
