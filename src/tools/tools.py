@@ -2,7 +2,7 @@ from autogen_core.tools import FunctionTool
 from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
 # from src.tools.data_sources.market_data_tool import MarketDataTool
 from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
-from src.tools.data_sources.finnhub_tool import FinnHubTool
+# from src.tools.data_sources.finnhub_tool import FinnHubTool
 import pandas as pd
 # Import other vendor tools as needed
 
@@ -87,17 +87,17 @@ yahoo_finance_tool = FunctionTool(
 # Need to fix up the finnhub api request and data frame return
 
 
-def fetch_finnhub_data(keyword: str = "Technology", count=5):
-    tool = FinnHubTool()
-    df = tool.fetch_finn_news(keyword=keyword, count=5)
-    return df
+# def fetch_finnhub_data(keyword: str = "Technology", count=5):
+#     tool = FinnHubTool()
+#     df = tool.fetch_finn_news(keyword=keyword, count=5)
+#     return df
 
 
-finnhub = FunctionTool(func=fetch_finnhub_data, name="fetch_finnhub_data",
-                       description="Fetches market data from finnhub, and returns it as a DataFrame.")
+# finnhub = FunctionTool(func=fetch_finnhub_data, name="fetch_finnhub_data",
+#                        description="Fetches market data from finnhub, and returns it as a DataFrame.")
 
 
 ########################################
 # Optionally define a list of all tools
 ########################################
-ALL_TOOLS = [news_tool, finnhub, yahoo_finance_tool]
+ALL_TOOLS = [news_tool, yahoo_finance_tool]
