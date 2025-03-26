@@ -8,7 +8,7 @@ _loader = ConfigLoader()
 DEFAULT_SENTIMENT_CONFIG = {
     "open_model": _loader.get("open_model"),      # This is passed to BaseAgent
     "newsapi_key": _loader.get("newsapi_key"),
-    "finnhub_key": _loader.get("finnhub_key")
+    # "finnhub_key": _loader.get("finnhub_key")
 }
 
 
