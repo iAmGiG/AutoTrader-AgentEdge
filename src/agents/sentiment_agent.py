@@ -24,8 +24,16 @@ class SentimentAgent(BaseAgent):
         Uses the loaded NewsHeadlineTool to fetch news articles.
         Expects the tool to return a Pandas DataFrame.
         """
-        articles_df = self.use_tool("news_api", keyword=keyword, count=count)
+        articles_df = self.use_tool("fetch_news", keyword=keyword, count=count)
         return articles_df
+
+    def fetch_yahoo_data(self, ticker: str = "AAPL", start_date: str = "2025-01-01", end_date: str = "2025-01-02"):
+        """
+        Uses the loaded MarketDataTool to fetch 
+        """
+        market_df = self.use_tool(
+            "yahoo_finance_tool", ticker=ticker, start_date=start_date, end_date=end_date)
+        return market_df
 
     def preprocess_data(self, news_data) -> dict:
         """
@@ -60,9 +68,12 @@ class SentimentAgent(BaseAgent):
         try:
             # Fetch news data using the NewsHeadlineTool.
             news_data = self.fetch_news_data(keyword=keyword, count=5)
-            # Preprocess the fetched news data to generate sentiment signals.
+            if news_data.empty:
+                return f"No news found for {keyword}."
+
+            # if not empty: Preprocess the fetched news data to generate sentiment signals.
             signals = self.preprocess_data(news_data=news_data)
-            return f"Processed signals: {signals}"
+            return f"Fetched and processed signals: {signals}"
         except Exception as e:
             return f"Error in handling message: {str(e)}"
 
@@ -98,5 +109,3 @@ class SentimentAgent(BaseAgent):
             return reply
         except Exception as e:
             return f"Error generating reply: {str(e)}"
-
-

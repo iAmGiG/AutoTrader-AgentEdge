@@ -84,7 +84,7 @@ yahoo_finance_tool = FunctionTool(
 # Other tools to be added
 ########################################
 
-# Need to fix up teh finnhub api request and data frame return
+# Need to fix up the finnhub api request and data frame return
 
 
 def fetch_finnhub_data(keyword: str = "Technology", count=5):
