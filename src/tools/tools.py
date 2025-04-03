@@ -1,9 +1,11 @@
 from autogen_core.tools import FunctionTool
 from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
-# from src.tools.data_sources.market_data_tool import MarketDataTool
+from src.tools.data_sources.market_data_tool import MarketDataTool
 from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
+from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 # from src.tools.data_sources.finnhub_tool import FinnHubTool
 import pandas as pd
+from src.tools.text_processing.data_normalizer import normalize_data_for_sentiment
 # Import other vendor tools as needed
 
 ##################################
@@ -81,8 +83,76 @@ yahoo_finance_tool = FunctionTool(
 )
 
 ########################################
-# Other tools to be added
+# 4) Alpha Vantage Market Data Tool
 ########################################
+
+
+def fetch_alpha_vantage_data(
+    symbol: str = "AAPL",
+    start_date: str = "2024-01-01",
+    end_date: str = "2024-12-31"
+) -> pd.DataFrame:
+    """
+    Fetch stock data from Alpha Vantage API, returning a DataFrame with [open, high, low, close, volume].
+    """
+    tool = AlphaVantageTool()
+    df = tool.fetch_stock_data(symbol, start_date, end_date)
+    return df
+
+
+alpha_vantage_tool = FunctionTool(
+    func=fetch_alpha_vantage_data,
+    name="fetch_alpha_vantage_data",
+    description="Fetch stock data from Alpha Vantage for a given ticker and date range, returning a DataFrame."
+)
+
+
+def fetch_alpha_vantage_news(
+    symbol: str = "AAPL",
+    topics: str = None
+) -> pd.DataFrame:
+    """
+    Fetch news and sentiment data from Alpha Vantage API.
+    """
+    tool = AlphaVantageTool()
+    df = tool.fetch_news_sentiment(symbol, topics)
+    # Normalize for sentiment analysis
+    normalized_df = normalize_data_for_sentiment(
+        df, "alpha_vantage", symbol=symbol)
+    return normalized_df if normalized_df is not None else df
+
+
+alpha_vantage_news_tool = FunctionTool(
+    func=fetch_alpha_vantage_news,
+    name="fetch_alpha_vantage_news",
+    description="Fetch news and sentiment data from Alpha Vantage for a given ticker."
+)
+
+
+########################################
+# 5) Unified Market Data Tool
+########################################
+
+def fetch_market_data(
+    symbol: str = "AAPL",
+    start_date: str = "2024-01-01",
+    end_date: str = "2024-12-31",
+    source: str = "alpha_vantage"
+) -> pd.DataFrame:
+    """
+    Fetch market data from the specified source (alpha_vantage, yahoo, csv).
+    """
+    tool = MarketDataTool({"data_source": source})
+    df = tool.fetch_market_data(symbol, start_date, end_date)
+    return df
+
+
+market_data_tool = FunctionTool(
+    func=fetch_market_data,
+    name="fetch_market_data",
+    description="Fetch market data from specified source for a given ticker and date range."
+)
+
 
 # Need to fix up the finnhub api request and data frame return
 
@@ -100,4 +170,10 @@ yahoo_finance_tool = FunctionTool(
 ########################################
 # Optionally define a list of all tools
 ########################################
-ALL_TOOLS = [news_tool, yahoo_finance_tool]
+ALL_TOOLS = [
+    news_tool,
+    yahoo_finance_tool,
+    alpha_vantage_tool,
+    alpha_vantage_news_tool,
+    market_data_tool
+]
