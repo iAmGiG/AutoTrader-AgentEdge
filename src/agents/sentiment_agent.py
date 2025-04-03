@@ -1,6 +1,7 @@
 from .base_agent import BaseAgent
 from config.config_loader import ConfigLoader
-from src.tools.tools import news_tool
+from src.tools.tools import news_tool, yahoo_finance_tool
+from src.tools.tools import fetch_news, fetch_yahoo_data
 
 # Instantiate ConfigLoader once at module-level
 _loader = ConfigLoader()
@@ -17,22 +18,22 @@ class SentimentAgent(BaseAgent):
     def __init__(self, name="SentimentAgent", memory_system=None):
         # Pass the FunctionTool(s) to the BaseAgent's tools parameter
         super().__init__(name=name, tools=[
-            news_tool], memory_system=memory_system)
+            news_tool, yahoo_finance_tool], memory_system=memory_system)
 
     def fetch_news_data(self, keyword="market", count=5):
         """
-        Uses the loaded NewsHeadlineTool to fetch news articles.
-        Expects the tool to return a Pandas DataFrame.
+        Uses the NewsHeadlineTool to fetch news articles.
+        Expects to return a Pandas DataFrame.
         """
-        articles_df = self.use_tool("fetch_news", keyword=keyword, count=count)
+        articles_df = fetch_news(keyword=keyword, count=count)
         return articles_df
 
     def fetch_yahoo_data(self, ticker: str = "AAPL", start_date: str = "2025-01-01", end_date: str = "2025-01-02"):
         """
-        Uses the loaded MarketDataTool to fetch 
+        Uses the YahooFinanceTool to fetch stock data.
+        Returns a Pandas DataFrame.
         """
-        market_df = self.use_tool(
-            "yahoo_finance_tool", ticker=ticker, start_date=start_date, end_date=end_date)
+        market_df = fetch_yahoo_data(ticker=ticker, start_date=start_date, end_date=end_date)
         return market_df
 
     def preprocess_data(self, news_data) -> dict:
@@ -59,6 +60,9 @@ class SentimentAgent(BaseAgent):
         """
         Processes an incoming message command.
         Expects messages in the format "Fetch news on <keyword>".
+        
+        In AutoGen 0.4.x, we should ideally let the LLM-driven agent decide when to use tools,
+        but for direct testing we'll use the manual approach.
         """
         # Extract keyword from message (default is "market")
         if 'on' in message:
@@ -66,7 +70,8 @@ class SentimentAgent(BaseAgent):
         else:
             keyword = "market"
         try:
-            # Fetch news data using the NewsHeadlineTool.
+                        
+            # Fetch news data using the function directly
             news_data = self.fetch_news_data(keyword=keyword, count=5)
             if news_data.empty:
                 return f"No news found for {keyword}."
