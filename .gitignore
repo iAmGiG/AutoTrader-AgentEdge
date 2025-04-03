@@ -51,6 +51,7 @@ coverage.xml
 .pytest_cache/
 cover/
 /env_test
+test_alpha_vantage.py
 
 # Translations
 *.mo
@@ -138,6 +139,7 @@ env.bak/
 venv.bak/
 config/
 env_test/
+CLAUDE.md
 
 # Spyder project settings
 .spyderproject
@@ -174,4 +176,3 @@ cython_debug/
 .pypirc
 docs/research/notes.md
 package-lock.json
-CLAUDE.md
