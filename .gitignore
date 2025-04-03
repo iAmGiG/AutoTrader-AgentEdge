@@ -173,3 +173,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 docs/research/notes.md
+package-lock.json
+CLAUDE.md
