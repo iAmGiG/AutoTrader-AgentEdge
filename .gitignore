@@ -143,6 +143,8 @@ venv.bak/
 config/
 env_test/
 CLAUDE.md
+package-lock.json
+docs/internalREADME.md
 
 # Spyder project settings
 .spyderproject
@@ -178,5 +180,3 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 docs/research/notes.md
-package-lock.json
-
