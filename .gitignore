@@ -51,6 +51,10 @@ coverage.xml
 .pytest_cache/
 cover/
 /env_test
+test_alpha_vantage.py
+test_sentiment_agent.py
+test_unified_market_data.py
+src/test_sentiment.py
 
 # Translations
 *.mo
@@ -138,6 +142,7 @@ env.bak/
 venv.bak/
 config/
 env_test/
+CLAUDE.md
 
 # Spyder project settings
 .spyderproject
@@ -173,3 +178,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 docs/research/notes.md
+package-lock.json
+

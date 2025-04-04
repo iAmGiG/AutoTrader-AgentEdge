@@ -18,8 +18,6 @@ open_ai_key = _loader.get("open_ai_key")
 
 
 class BaseAgent(AssistantAgent, ABC):
-
-
     """
     Abstract base class for AutoGen-based agents.
     Encapsulates common functionalities such as:

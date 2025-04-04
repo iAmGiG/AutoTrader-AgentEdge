@@ -49,21 +49,17 @@ class NewsHeadlineTool:
         :return: A pandas DataFrame containing news data with sentiment analysis.
         """
         # Create an empty DataFrame with the required columns
-        df = pd.DataFrame(
-            columns=['Timestamp', 'Headline', 'Source', 'Sentiment Score', 'URL', 'Content'])
+        rows = []  # List to accumulate rows
 
         if self.source == "newsapi":
             url = f"https://newsapi.org/v2/everything?q={keyword}&pageSize={count}&apiKey={self.api_key}"
             response = requests.get(url)
 
             if response.status_code == 200:
-                # Get the list of articles from the JSON response
                 data = response.json()
                 articles = data.get("articles", [])
 
-                # Process each article and add it to the DataFrame
                 for article in articles:
-                    # Extract the required fields
                     headline = article.get('title', '')
                     source = article.get('source', {}).get('name', 'Unknown')
                     published_at = article.get('publishedAt', '')
@@ -71,18 +67,15 @@ class NewsHeadlineTool:
                     content = article.get(
                         'content', article.get('description', ''))
 
-                    # Parse the timestamp
                     try:
                         timestamp = datetime.strptime(
                             published_at, "%Y-%m-%dT%H:%M:%SZ")
                     except (ValueError, TypeError):
-                        timestamp = datetime.now()  # Use current time if parsing fails
+                        timestamp = datetime.now()
 
-                    # Calculate sentiment score for headline and content combined
                     sentiment_text = f"{headline} {content}"
                     sentiment_score = self._analyze_sentiment(sentiment_text)
 
-                    # Add the article to the DataFrame
                     new_row = {
                         'Timestamp': timestamp,
                         'Headline': headline,
@@ -91,9 +84,10 @@ class NewsHeadlineTool:
                         'URL': url,
                         'Content': content
                     }
-                    df = pd.concat(
-                        [df, pd.DataFrame([new_row])], ignore_index=True)
+                    rows.append(new_row)
 
+                df = pd.DataFrame(rows, columns=[
+                                  'Timestamp', 'Headline', 'Source', 'Sentiment Score', 'URL', 'Content'])
                 return df
             else:
                 raise Exception(
