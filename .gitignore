@@ -145,6 +145,7 @@ env_test/
 CLAUDE.md
 package-lock.json
 docs/internalREADME.md
+environment.yml
 
 # Spyder project settings
 .spyderproject
