@@ -10,6 +10,7 @@ from datetime import datetime
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
+from src.tools.date_utils import get_processed_date_range
 
 
 class MarketDataTool:
@@ -37,11 +38,16 @@ class MarketDataTool:
         # Load from config if not provided
         if config is None:
             config_loader = ConfigLoader()
+            
+            # Get default date range from config or use dynamic calculation
+            default_days_back = config_loader.get("default_days_back", 5)
+            default_date_range = get_processed_date_range(default_days_back=default_days_back)
+            
             self.config = {
                 "data_source": config_loader.get("market_data_source", "alpha_vantage"),
                 "default_symbol": config_loader.get("default_symbol", "AAPL"),
-                "default_date_range": config_loader.get("default_date_range",
-                                                        ("2024-01-01", "2024-12-31"))
+                "default_date_range": default_date_range,
+                "default_days_back": default_days_back
             }
         else:
             self.config = config
@@ -49,8 +55,9 @@ class MarketDataTool:
         # Set configuration values
         self.data_source = self.config.get("data_source", "alpha_vantage")
         self.default_symbol = self.config.get("default_symbol", "AAPL")
-        self.default_date_range = self.config.get(
-            "default_date_range", ("2024-01-01", "2024-12-31"))
+        self.default_days_back = self.config.get("default_days_back", 5)
+        self.default_date_range = self.config.get("default_date_range", 
+                                                 get_processed_date_range(default_days_back=self.default_days_back))
 
         # Initialize specific data source tools
         self.alpha_vantage_tool = None
@@ -81,8 +88,10 @@ class MarketDataTool:
         # Use defaults if not provided
         if symbol is None:
             symbol = self.default_symbol
-        if not start_date or not end_date:
-            start_date, end_date = self.default_date_range
+            
+        # Process date parameters, applying dynamic date calculation if needed
+        start_date, end_date = get_processed_date_range(
+            start_date, end_date, self.default_days_back)
 
         self.logger.info(
             f"Fetching market data for {symbol} from {start_date} to {end_date} "

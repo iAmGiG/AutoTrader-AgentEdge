@@ -5,9 +5,10 @@ Tool for fetching market data from Alpha Vantage API.
 import requests
 import pandas as pd
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import logging
 from config.config_loader import ConfigLoader
+from src.tools.date_utils import get_processed_date_range
 
 
 class AlphaVantageTool:
@@ -33,19 +34,30 @@ class AlphaVantageTool:
         
         Args:
             symbol: Stock ticker symbol
-            start_date: Optional start date filter (YYYY-MM-DD)
-            end_date: Optional end date filter (YYYY-MM-DD)
+            start_date: Optional start date filter (YYYY-MM-DD) or relative date string ("-30d")
+                        If None, uses dynamic calculation (last 5 trading days)
+            end_date: Optional end date filter (YYYY-MM-DD) or relative date string ("today")
+                      If None, uses today's date
             
         Returns:
             DataFrame with stock price data
         """
         try:
+            # Process date parameters, applying dynamic date calculation if needed
+            processed_start, processed_end = get_processed_date_range(start_date, end_date)
+            
+            self.logger.info(f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}")
+            
+            # Determine outputsize based on date range
+            days_range = (datetime.now() - datetime.strptime(processed_start, "%Y-%m-%d")).days
+            use_full = days_range > 100
+            
             # API parameters for daily time series
             params = {
                 "function": "TIME_SERIES_DAILY",
                 "symbol": symbol,
                 "apikey": self.api_key,
-                "outputsize": "full" if start_date and (datetime.now() - datetime.strptime(start_date, "%Y-%m-%d")).days > 100 else "compact",
+                "outputsize": "full" if use_full else "compact",
                 "datatype": "json"
             }
             
@@ -89,11 +101,9 @@ class AlphaVantageTool:
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col])
             
-            # Apply date filters if provided
-            if start_date:
-                df = df[df.index >= start_date]
-            if end_date:
-                df = df[df.index <= end_date]
+            # Apply date filters using processed dates
+            df = df[df.index >= processed_start]
+            df = df[df.index <= processed_end]
             
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)
@@ -199,10 +209,23 @@ if __name__ == "__main__":
     # Example usage
     tool = AlphaVantageTool()
     
-    # Fetch stock data
-    stock_df = tool.fetch_stock_data("AAPL", "2024-01-01", "2024-01-31")
-    print("\nStock data:")
-    print(stock_df.head())
+    # Example 1: Using default dynamic dates (last 5 trading days)
+    print("\nExample 1: Using default dynamic dates (last 5 trading days)")
+    stock_df1 = tool.fetch_stock_data("AAPL")
+    print("\nStock data with default dates:")
+    print(stock_df1.head())
+    
+    # Example 2: Using explicit dates
+    print("\nExample 2: Using explicit dates")
+    stock_df2 = tool.fetch_stock_data("MSFT", "2024-01-01", "2024-01-31")
+    print("\nStock data with explicit dates:")
+    print(stock_df2.head())
+    
+    # Example 3: Using relative dates
+    print("\nExample 3: Using relative dates")
+    stock_df3 = tool.fetch_stock_data("GOOGL", "-30d", "today")
+    print("\nStock data with relative dates:")
+    print(stock_df3.head())
     
     # Fetch news sentiment
     news_df = tool.fetch_news_sentiment("AAPL")
