@@ -126,15 +126,10 @@ class SentimentAgent(BaseAgent):
                 else:
                     ticker = "AAPL"  # Default ticker
 
-                # Use standard date range
-                start_date = "2024-01-01"
-                end_date = "2024-01-31"
-
-                # Fetch stock data using the unified market data tool
+                # Use dynamic date handling for recent data (last 5 trading days by default)
+                # These will default to dynamic dates in the tool
                 stock_data = fetch_market_data(
                     symbol=ticker,
-                    start_date=start_date,
-                    end_date=end_date,
                     source="alpha_vantage"
                 )
 
