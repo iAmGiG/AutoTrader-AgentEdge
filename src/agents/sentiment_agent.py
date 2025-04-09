@@ -121,15 +121,72 @@ class SentimentAgent(BaseAgent):
 
             elif "stock" in message.lower() or "price" in message.lower():
                 # Extract ticker from message
+                ticker = "AAPL"  # Default ticker
+                start_date = None
+                end_date = None
+                
+                # Parse the message to extract ticker symbol
                 if 'for' in message:
-                    ticker = message.split('for')[-1].strip()
-                else:
-                    ticker = "AAPL"  # Default ticker
-
-                # Use dynamic date handling for recent data (last 5 trading days by default)
-                # These will default to dynamic dates in the tool
+                    parts = message.split('for')
+                    after_for = parts[-1].strip()
+                    
+                    # Special case for "for the last X days/weeks"
+                    if after_for.startswith("the last"):
+                        # Look elsewhere in the message for the ticker
+                        message_without_last = message.replace(after_for, "").replace("for", "")
+                        words = message_without_last.split()
+                        for word in words:
+                            if word.isupper() and 1 <= len(word) <= 5:
+                                ticker = word
+                                break
+                    else:
+                        # Check if we have a ticker symbol (all caps, 1-5 chars)
+                        words = after_for.split()
+                        for word in words:
+                            if word.isupper() and 1 <= len(word) <= 5:
+                                ticker = word
+                                break
+                
+                # Look for date-related keywords
+                if "since" in message:
+                    # Format: "Get stock data for AAPL since -30d"
+                    after_since = message.split("since")[-1].strip()
+                    words = after_since.split()
+                    if words and (words[0].startswith("-") or words[0] in ["yesterday", "today", "ytd"]):
+                        start_date = words[0]
+                
+                if "last" in message:
+                    # Format: "Get stock data for the last 30 days"
+                    after_last = message.split("last")[-1].strip()
+                    words = after_last.split()
+                    if words:
+                        if "day" in after_last or "days" in after_last:
+                            try:
+                                days = int(words[0])
+                                start_date = f"-{days}d"
+                            except ValueError:
+                                # If we can't parse the number, use default
+                                start_date = "-30d"
+                        elif "week" in after_last or "weeks" in after_last:
+                            try:
+                                weeks = int(words[0])
+                                start_date = f"-{weeks}w"
+                            except ValueError:
+                                # If we can't parse the number, use default
+                                start_date = "-1w"
+                        elif "month" in after_last or "months" in after_last:
+                            try:
+                                months = int(words[0])
+                                start_date = f"-{months}m"
+                            except ValueError:
+                                # If we can't parse the number, use default
+                                start_date = "-1m"
+                
+                # Use dynamic date handling with any parsed date parameters
                 stock_data = fetch_market_data(
                     symbol=ticker,
+                    start_date=start_date,
+                    end_date=end_date,
                     source="alpha_vantage"
                 )
 
@@ -157,7 +214,9 @@ class SentimentAgent(BaseAgent):
                 return ("I can help with:\n"
                         "- 'Fetch news on <topic>' to get news and sentiment\n"
                         "- 'Get news for <ticker>' to get stock-specific news\n"
-                        "- 'Get stock data for <ticker>' to get price information")
+                        "- 'Get stock data for <ticker>' to get price information\n"
+                        "- 'Get stock data for <ticker> since <date>' for specific date ranges\n"
+                        "- 'Get stock data for <ticker> for the last <n> days/weeks/months'")
 
         except Exception as e:
             return f"Error processing request: {str(e)}"
