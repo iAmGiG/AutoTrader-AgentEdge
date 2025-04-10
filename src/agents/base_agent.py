@@ -8,13 +8,20 @@ from autogen_agentchat.agents._assistant_agent import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from config.config_loader import ConfigLoader
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, List, Dict
 from src.tools.tools import ALL_TOOLS
 
 # Instantiate ConfigLoader once at module-level
 _loader = ConfigLoader()
 model_name = _loader.get("open_model")     # e.g. "gpt-4o-mini"
 open_ai_key = _loader.get("open_ai_key")
+
+# Default LLM parameters for improved function calling
+DEFAULT_LLM_CONFIG = {
+    "temperature": 0.2,  # Lower temperature for more deterministic function calling
+    "max_tokens": 4096,  # Ensure enough tokens for complex responses
+    "top_p": 0.95,       # Focus on more likely tokens
+}
 
 
 class BaseAgent(AssistantAgent, ABC):
@@ -26,52 +33,79 @@ class BaseAgent(AssistantAgent, ABC):
       - Tool registration and usage
     """
 
-    def __init__(self, name: str, tools=None, memory_system: Optional[Any] = None):
+    def __init__(self, name: str, tools=None, memory_system: Optional[Any] = None, llm_config: Optional[Dict[str, Any]] = None):
         """
+        Initialize the agent with tools, memory system, and LLM configuration.
+        
         :param name: Unique name/identifier for this agent.
-        :param config: A dictionary containing agent settings (model keys, tool config, etc.).
+        :param tools: List of tools the agent can use.
         :param memory_system: Optional memory interface for knowledge storage and retrieval.
+        :param llm_config: Optional dictionary containing LLM settings (temperature, etc).
         """
-        # 1. Create the actual client instance required by AssistantAgent
-        # Here we create the actual client instance required by AssistantAgent
+        # 1. Merge default LLM config with any provided config
+        llm_params = DEFAULT_LLM_CONFIG.copy()
+        if llm_config:
+            llm_params.update(llm_config)
+            
+        # 2. Create the LLM client instance for function calling
         model_client_instance = OpenAIChatCompletionClient(
-            model=model_name,  # <-- The library specifically needs this 'model' param
+            model=model_name,
             api_key=open_ai_key,
-            # Add other optional parameters if desired:
-            # organization="...",
-            # temperature=0.7,
-            # max_tokens=2048,
-            # etc.
+            temperature=llm_params.get("temperature", 0.2),
+            max_tokens=llm_params.get("max_tokens", 4096),
+            top_p=llm_params.get("top_p", 0.95),
         )
+        
+        # 3. Set up tools
         tools = tools or ALL_TOOLS
-        # 2. If no tools are provided, default to an empty list
         if tools is None:
             tools = []
 
-        # 3. Call the parent constructor
+        # 4. Call the parent constructor
         super().__init__(
             name=name,
             model_client=model_client_instance,
-            tools=tools,  # <--- Tools are passed directly to AssistantAgent
-            description=f"{name} agent",  # or read from config if needed
-            reflect_on_tool_use=True,     # e.g. let the agent reflect on tool calls
+            tools=tools,  # Tools are passed directly to AssistantAgent
+            description=f"{name} agent",
+            reflect_on_tool_use=True,     # Let the agent reflect on tool calls
             tool_call_summary_format="{result}",
         )
-        # Store the tools in a local dict for manual calls as needed
+        
+        # 5. Store tools in a local dict for manual calls
         self._tools_dict = {tool.name: tool for tool in tools}
-        # 4. Memory system
+        
+        # 6. Set up memory system
         self.memory_system = memory_system
+        
+        # 7. Store the LLM configuration
+        self.llm_config = llm_params
 
     def use_tool(self, tool_name: str, **kwargs) -> Any:
         """
-        Here we manually invoke a tool by name with the given keyword arguments
-        If we need to pass position args, we then add them to the kw args or revise the method signature
+        Manually invoke a tool by name with the given keyword arguments.
+        
+        :param tool_name: Name of the tool to invoke.
+        :param kwargs: Keyword arguments to pass to the tool.
+        :return: Result of the tool invocation.
         """
         tool = self._tools_dict.get(tool_name)
         if not tool:
             raise ValueError(f"Tool not found {tool_name}")
-        # if we have a tool, then it is call able, then give it the kw args
         return tool(**kwargs)
+    
+    def process_with_llm(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Process a prompt with the LLM directly, without invoking the full AutoGen infrastructure.
+        This is useful for generating narratives or processing structured data into text.
+        
+        :param prompt: The user prompt to process.
+        :param system_prompt: Optional system prompt to provide context.
+        :return: The LLM's response.
+        """
+        # This is a simplified version of what would happen in a real implementation
+        # In a full implementation, we would use the model_client directly to call the LLM
+        # For now, we'll return a placeholder message
+        return f"LLM would process: {prompt[:30]}..."
 
     @abstractmethod
     def generate_reply(self, messages, context=None) -> str:
