@@ -1,4 +1,4 @@
-# Agnet coordination issues and resolutions
+# Agent coordination issues and resolutions
 
 1. We know that a problem comes about when we consider the following.
    - How might you handle contradictory or conflicting commands? For instance, if one agent says “Increase currency weighting by +0.2” and another says “Decrease currency weighting by –0.1” around the same time?
