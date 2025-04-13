@@ -98,31 +98,31 @@ class SentimentAgent(BaseAgent):
         return """You are the Sentiment Agent, a specialized assistant designed to:
 • Retrieve recent market news and stock data,
 • Apply sentiment analysis on news, reports, or stock data,
-• Present a coherent summary that includes both numerical sentiment scores and a missesian-style narrative interpretation.
+• Present a coherent summary that includes both:
+  1) A concise, numerical sentiment assessment, and
+  2) A "Market Behavior Explanation" that interprets key price and sentiment shifts in human-friendly terms.
 
 Your tasks include:
-1. Fetch data:
-   • Use fetch_news(keyword: str, count: int) to retrieve recent news articles about a specific topic.
-   • Use fetch_market_data(symbol: str, start_date?: str, end_date?: str) or fetch_yahoo_data(ticker: str, start_date?: str, end_date?: str) to retrieve stock data.
 
-2. Process data and apply sentiment analysis:
-   • Analyze the textual content of news headlines/articles and compute an average sentiment score.
-   • Use shared utilities (such as data normalization and sentiment analyzer tools) to standardize input data, ensuring consistency across various data sources.
+1. Data Retrieval:
+   - Call fetch_news(keyword: str, count: int) to retrieve recent articles about a specific topic.
+   - Call fetch_market_data(symbol: str, start_date?: str, end_date?: str) or fetch_yahoo_data(ticker: str, start_date?: str, end_date?: str) to retrieve relevant stock data.
 
-3. Provide two layers of output:
-   • A technical summary detailing the number of articles fetched, sample headlines, and the average sentiment score.
-   • A missesian-style narrative explanation that interprets the market situation in human-friendly language. For example, if the news suggests caution in the market, the response might include:
-     "It appears that investors are reacting to significant policy adjustments, reflecting broader human concerns about uncertainty—much like how individuals naturally adjust their behavior in the face of unforeseen challenges."
+2. Data Processing & Sentiment Analysis:
+   - Normalize data using existing data utilities and compute average sentiment scores for news headlines.
+   - If interest rates or other macro signals are mentioned in the data, consider how these might influence capital flows (e.g., shifting from tech stocks to bonds, gold, or cash).
 
-4. Default behaviors:
-   • If no date range is specified, default to a 5-day range.
-   • When a user says "Fetch news on X," invoke fetch_news with the keyword X (and a count of 5 by default), then combine technical sentiment with the missesian narrative.
-   • If a user requests "Get stock data for AAPL," invoke fetch_market_data or fetch_yahoo_data with "AAPL" as the ticker.
+3. Explanation & Narrative:
+   - Provide a "Market Behavior Explanation" in everyday language, focusing on cause-and-effect:
+     - If data suggests capital is moving out of a sector, hypothesize (based on the news or indicators) why that might be happening—e.g., "Higher interest rates have made bonds more attractive, so participants could be exiting high-growth stocks."
+     - Avoid excessive references to 'Austrian' or 'Misesian.' Instead, discuss in plain terms how individual actors react to changes in value or risk.
+     - Keep disclaimers: state that these are plausible market interpretations based on limited data (news items, price changes). Avoid implying omniscience or certitude.
 
-5. Future-Proofing:
-   • The system is designed modularly. As new tools (e.g., SEC data or FRED economic indicators) are integrated, they can be incorporated in the same manner. Their outputs should be normalized by the existing data normalizer so that subsequent sentiment analysis and narrative synthesis remain consistent.
-
-Follow these instructions exactly. Only call a data-fetching tool when the user's request requires it; otherwise, provide a direct answer with both technical details and a missesian-style interpretation of the market."""
+4. Default Behaviors & Flexibility:
+   - If no date is provided, default to the past 5 days.
+   - If the user says "Fetch news on X," do so, and include both technical sentiment (article count, average sentiment) and a short explanation of potential market behaviors.
+   - If asked "Get stock data for Y," retrieve the data, highlight any notable price movements, and produce a short cause-and-effect explanation (e.g., "A drop may reflect shifting investor preferences," "An increase might reflect optimism around new announcements," etc.).
+   - Be ready for users with different knowledge levels. Aim for concise, accessible explanations by default."""
 
     def handle_message(self, message: str) -> str:
         """
@@ -171,7 +171,7 @@ Follow these instructions exactly. Only call a data-fetching tool when the user'
                                 days = int(words[0])
                                 start_date = f"-{days}d"
                             except ValueError:
-                                start_date = "-30d"
+                                start_date = "-5d"  # Default to 5 days if no specific timeframe
                         elif "week" in after_last or "weeks" in after_last:
                             try:
                                 weeks = int(words[0])
@@ -185,19 +185,16 @@ Follow these instructions exactly. Only call a data-fetching tool when the user'
                             except ValueError:
                                 start_date = "-1m"
                 
+                # If no date provided, default to 5 days
+                if not start_date:
+                    start_date = "-5d"
+                
                 return {
                     "ticker": ticker,
                     "topic": topic,
                     "start_date": start_date,
                     "end_date": end_date
                 }
-            
-            # Step 1: Use the LLM to analyze the message directly and decide what to do
-            # This is the new function calling approach where we pass the message to the LLM
-            # and let it decide which tools to call
-            
-            # For now, we'll implement a hybrid approach that will work with the existing
-            # infrastructure while we transition to the full function calling approach
             
             # Based on the message content, we'll prepare data for the LLM
             query_details = extract_query_details(message)
@@ -254,34 +251,34 @@ Follow these instructions exactly. Only call a data-fetching tool when the user'
                         "query_term": query_term
                     }
                     
-                    # Generate a more sophisticated missesian narrative based on sentiment
+                    # Generate a market behavior explanation based on sentiment
                     sentiment_score = context["average_sentiment"]
                     if sentiment_score is None:
                         sentiment_desc = "neutral (no sentiment data available)"
-                        narrative = "Without sentiment data, it's difficult to gauge market perception. In the absence of clear signals, market participants likely rely on their individual knowledge and experience to make decisions, as described in Mises' theory of human action."
+                        narrative = "Without sentiment data, it's difficult to gauge market perception. In the absence of clear signals, market participants likely rely on their individual knowledge and experience to make decisions. This analysis is based on limited data and represents a plausible interpretation rather than certainty."
                     elif sentiment_score > 0.5:
-                        sentiment_desc = "strongly positive (bullish)"
-                        narrative = f"The strongly positive sentiment around {query_term} reflects collective optimism among market participants. From a Misesian perspective, this optimism represents the coordinated actions of individuals making choices based on their unique knowledge and future expectations. Investors appear to be demonstrating confidence in future returns, suggesting a shared perception of value and opportunity."
+                        sentiment_desc = "strongly positive"
+                        narrative = f"The strongly positive sentiment around {query_term} suggests widespread optimism among market participants. Individuals appear to be confident about future returns, possibly reflecting favorable news or economic conditions. This could indicate investors are actively seeking opportunities in this area rather than alternatives like bonds or defensive assets. Remember, this analysis is based on recent news sentiment only and may not capture all market factors."
                     elif sentiment_score > 0.2:
                         sentiment_desc = "moderately positive"
-                        narrative = f"The moderately positive sentiment surrounding {query_term} indicates cautious optimism in the market. According to the Austrian view of human action, this represents a balance where market participants see potential value but remain aware of uncertainty. This measured approach suggests investors are exercising their subjective judgment while maintaining some prudence."
+                        narrative = f"The moderately positive sentiment surrounding {query_term} indicates cautious optimism in the market. Participants seem to see potential value while remaining aware of uncertainty. This balanced approach might reflect a situation where positive developments are being weighed against broader economic concerns. This interpretation is based on limited news data and should be considered alongside other market indicators."
                     elif sentiment_score >= -0.2:
                         sentiment_desc = "neutral"
-                        narrative = f"The neutral sentiment around {query_term} suggests a market in equilibrium, with diverse opinions balancing each other. From a Misesian perspective, this represents a natural state where individual actors have different time preferences and risk tolerances, leading to a steady market with neither excessive optimism nor pessimism driving action."
+                        narrative = f"The neutral sentiment around {query_term} suggests a market with balanced perspectives. This could indicate that investors have differing views on future prospects, with neither bullish nor bearish sentiment dominating. Such equilibrium often occurs when positive and negative factors are simultaneously present in the market. This assessment is based on recent news sentiment and represents one possible interpretation of market behavior."
                     elif sentiment_score >= -0.5:
                         sentiment_desc = "moderately negative"
-                        narrative = f"The moderately negative sentiment surrounding {query_term} reflects heightened caution among market participants. Through a Misesian lens, this represents individuals responding rationally to perceived uncertainty by adjusting their actions to preserve capital. This behavior demonstrates how market actors adapt to changing conditions based on their subjective valuations and expectations."
+                        narrative = f"The moderately negative sentiment surrounding {query_term} reflects heightened caution among market participants. This suggests investors may be responding to perceived risks by adjusting their positions to preserve capital. We might be seeing early signs of capital moving toward safer assets as individuals reassess risk and return expectations. This analysis is based on limited news data and should be considered alongside other market signals."
                     else:
-                        sentiment_desc = "strongly negative (bearish)"
-                        narrative = f"The strongly negative sentiment around {query_term} indicates significant market concern. In Austrian economic terms, this represents a collective reevaluation of time preferences, where market participants are shifting focus from longer-term investments to more immediate security. This defensive positioning reflects the natural human response to uncertainty—a core principle in Mises' theory of human action."
+                        sentiment_desc = "strongly negative"
+                        narrative = f"The strongly negative sentiment around {query_term} indicates significant market concern. This likely represents a shift where participants are prioritizing capital preservation over growth potential. Investors may be moving from this sector toward safer assets like bonds, defensive stocks, or cash. This defensive positioning is a natural response to uncertainty, though the full context would require analysis of additional market data beyond news sentiment."
                     
                     headlines_str = "; ".join(context["headlines"]) if context["headlines"] else "No headlines available"
                     
                     return (f"News Analysis for {query_term}:\n"
                             f"Found {context['article_count']} articles\n"
                             f"Sample headlines: {headlines_str}\n"
-                            f"Sentiment: {sentiment_desc} ({sentiment_score})\n\n"
-                            f"Narrative Interpretation:\n{narrative}")
+                            f"Sentiment: {sentiment_desc} ({sentiment_score:.2f if sentiment_score is not None else 'N/A'})\n\n"
+                            f"Market Behavior Explanation:\n{narrative}")
                 
                 # For stock data, provide price information with context
                 elif "stock_data" in data:
@@ -308,13 +305,13 @@ Follow these instructions exactly. Only call a data-fetching tool when the user'
                         percent_change = ((newest_close - oldest_close) / oldest_close) * 100
                         
                         if percent_change > 5:
-                            price_narrative = f"\n\nMissesian Narrative:\nThe significant {percent_change:.2f}% increase in {ticker} reflects a strong shift in market participants' valuations. From an Austrian perspective, this price movement represents the coordinated actions of individuals expressing their subjective valuations through voluntary exchange. The rising price suggests market actors are anticipating future value creation based on their diverse knowledge and expectations."
+                            price_narrative = f"\n\nMarket Behavior Explanation:\nThe significant {percent_change:.2f}% increase in {ticker} suggests strong market interest and changing valuations. Participants appear to be anticipating positive developments, potentially due to sector-specific news or broader economic signals. This price movement likely represents investors actively shifting capital toward this asset based on favorable expectations. Note that this explanation is based solely on price movements without additional context from news or other market indicators."
                         elif percent_change > 0:
-                            price_narrative = f"\n\nMissesian Narrative:\nThe modest {percent_change:.2f}% increase in {ticker} represents the aggregated decisions of market participants acting on their individual knowledge and expectations. This gradual upward movement suggests a natural market process where actors are expressing cautious optimism while maintaining awareness of future uncertainty."
+                            price_narrative = f"\n\nMarket Behavior Explanation:\nThe modest {percent_change:.2f}% increase in {ticker} indicates cautious positive sentiment. Market participants seem to be expressing moderate confidence while remaining aware of uncertainty. This gradual upward movement suggests a natural process where individual decisions collectively create a slight upward price trend. This interpretation is based on limited price data and represents one possible explanation for the observed behavior."
                         elif percent_change > -5:
-                            price_narrative = f"\n\nMissesian Narrative:\nThe slight {abs(percent_change):.2f}% decrease in {ticker} indicates a subtle shift in market sentiment. From a Misesian perspective, this represents individuals adjusting their actions based on changing expectations and time preferences, demonstrating how market prices emerge from human choices rather than abstract forces."
+                            price_narrative = f"\n\nMarket Behavior Explanation:\nThe slight {abs(percent_change):.2f}% decrease in {ticker} indicates a minor shift in market sentiment. This could reflect small adjustments in investment positions rather than significant concern. Individual traders may be responding to subtle changes in perceived value or redirecting capital to other opportunities. Without additional context from news or broader market trends, this represents a preliminary assessment of the price behavior."
                         else:
-                            price_narrative = f"\n\nMissesian Narrative:\nThe substantial {abs(percent_change):.2f}% decline in {ticker} reflects a significant reevaluation by market participants. Through an Austrian lens, this price movement represents individuals responding to uncertainty by adjusting their time preferences and risk assessments. This natural defensive reaction demonstrates the human element in market dynamics, as actors preserve capital when facing perceived threats to future value."
+                            price_narrative = f"\n\nMarket Behavior Explanation:\nThe substantial {abs(percent_change):.2f}% decline in {ticker} suggests a significant shift in market sentiment. Participants appear to be reassessing risk or future value expectations, potentially causing capital to flow out of this asset toward safer alternatives. This defensive reaction is a natural response when facing perceived threats to value. A complete understanding would require analysis of news, sector trends, and broader market conditions beyond what this price data alone provides."
                     
                     return f"Stock data for {ticker}:\n" + "\n".join(price_info) + price_narrative
             
