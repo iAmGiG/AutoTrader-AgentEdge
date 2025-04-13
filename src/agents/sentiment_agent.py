@@ -2,6 +2,10 @@ from .base_agent import BaseAgent
 from config.config_loader import ConfigLoader
 from typing import Dict, List, Any, Optional
 import pandas as pd
+import json
+import os
+import re
+from collections import Counter
 from src.tools.tools import (
     news_tool, yahoo_finance_tool, alpha_vantage_tool,
     alpha_vantage_news_tool, market_data_tool
@@ -30,6 +34,23 @@ DEFAULT_SENTIMENT_CONFIG = {
     # "finnhub_key": _loader.get("finnhub_key")
 }
 
+# Load market sectors data from external JSON file
+def load_market_sectors():
+    try:
+        # Get the project root directory
+        config_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        sectors_file = os.path.join(config_dir, 'config', 'market_sectors.json')
+        
+        with open(sectors_file, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading market sectors: {e}")
+        # Return a minimal default structure if file can't be loaded
+        return {"sectors": {}}
+
+# Load market sectors once at module level
+MARKET_SECTORS = load_market_sectors().get("sectors", {})
+
 
 class SentimentAgent(BaseAgent):
 
@@ -48,6 +69,104 @@ class SentimentAgent(BaseAgent):
             memory_system=memory_system,
             llm_config=SENTIMENT_LLM_CONFIG  # Use optimized LLM parameters
         )
+    
+    def generate_combined_narrative(self, query_term, ticker, sentiment_score=None, price_change=None, has_etf_data=False):
+        """
+        Generate a comprehensive market behavior explanation that combines news sentiment
+        and price movement data for more sophisticated insights.
+        
+        :param query_term: The topic or keyword being analyzed
+        :param ticker: The stock ticker symbol
+        :param sentiment_score: The sentiment score from news analysis (-1 to 1 scale)
+        :param price_change: The percentage price change for the ticker
+        :param has_etf_data: Whether we have ETF data available for sector context
+        :return: A narrative explanation of market behavior
+        """
+        # Start with a base narrative based on the data we have
+        if sentiment_score is None and price_change is None:
+            return "Insufficient data to provide a comprehensive market behavior explanation."
+        
+        # Determine sentiment trend
+        sentiment_trend = None
+        if sentiment_score is not None:
+            if sentiment_score > 0.3:
+                sentiment_trend = "positive"
+            elif sentiment_score < -0.3:
+                sentiment_trend = "negative"
+            else:
+                sentiment_trend = "neutral"
+        
+        # Determine price trend
+        price_trend = None
+        if price_change is not None:
+            if price_change > 3:
+                price_trend = "strong upward"
+            elif price_change > 0:
+                price_trend = "modest upward"
+            elif price_change > -3:
+                price_trend = "slight downward"
+            else:
+                price_trend = "significant downward"
+        
+        # Analyze alignment between sentiment and price movement
+        alignment = "aligned"
+        if sentiment_trend and price_trend:
+            if (sentiment_trend == "positive" and "downward" in price_trend) or \
+               (sentiment_trend == "negative" and "upward" in price_trend):
+                alignment = "misaligned"
+        
+        # Generate the narrative based on available data and patterns
+        narrative = ""
+        
+        # Format price change safely
+        safe_price_str = f"{price_change:.2f}%" if price_change is not None else "N/A"
+        
+        # Case 1: We have both sentiment and price data
+        if sentiment_trend and price_trend:
+            if alignment == "aligned":
+                if sentiment_trend == "positive" and "upward" in price_trend:
+                    narrative = f"Market sentiment and price movements for {query_term} are aligned in a positive direction. This suggests investors are optimistic about future prospects and are allocating capital accordingly. The {price_trend} price trend of {ticker} ({safe_price_str}) mirrors the positive news sentiment, indicating market participants are acting on the favorable information. This pattern typically reflects a situation where market perception and capital flows are reinforcing each other."
+                
+                elif sentiment_trend == "negative" and "downward" in price_trend:
+                    narrative = f"Market sentiment and price movements for {query_term} are aligned in a cautious direction. The negative news sentiment is reflected in the {price_trend} price trend of {ticker} ({safe_price_str}), suggesting investors are responding to perceived risks by reducing exposure. This behavior often indicates a defensive repositioning where capital is flowing toward safer assets as market participants reassess risk-reward ratios."
+                
+                elif sentiment_trend == "neutral":
+                    narrative = f"While news sentiment for {query_term} appears neutral, price movements for {ticker} show a {price_trend} trend ({safe_price_str}). This suggests that market participants might be reacting to factors beyond what's captured in recent news, such as technical indicators, broader economic trends, or institutional positioning. The market is finding a balance between various positive and negative factors."
+            
+            else:  # misaligned
+                if sentiment_trend == "positive" and "downward" in price_trend:
+                    narrative = f"There's an interesting disconnect between positive news sentiment for {query_term} and the {price_trend} price trend of {ticker} ({safe_price_str}). This misalignment could indicate: 1) a lag between sentiment and price reaction, 2) market skepticism about the positive news, or 3) other factors overwhelming sentiment signals. Such divergences often precede either a price reversal to match sentiment or a sentiment shift to match price action."
+                
+                elif sentiment_trend == "negative" and "upward" in price_trend:
+                    narrative = f"Despite negative news sentiment surrounding {query_term}, {ticker} shows a {price_trend} price trend ({safe_price_str}). This counterintuitive movement might reflect: 1) investors viewing negative news as already priced in, 2) contrarian positioning, or 3) specific market dynamics overriding general sentiment. These divergences can signal either that the market has already anticipated and moved beyond the news or that a correction may be forthcoming."
+        
+        # Case 2: We only have sentiment data
+        elif sentiment_trend:
+            if sentiment_trend == "positive":
+                narrative = f"News sentiment for {query_term} is positive, suggesting favorable market perception. While we don't have sufficient price data to confirm how this sentiment is affecting market prices, positive sentiment typically precedes capital inflows as investors seek exposure to assets perceived to have improving prospects. This sentiment could eventually translate to price appreciation if market conditions remain supportive."
+            
+            elif sentiment_trend == "negative":
+                narrative = f"News sentiment for {query_term} is negative, indicating cautious market perception. Although we lack comprehensive price data to confirm market reaction, negative sentiment often leads to repositioning as investors reduce exposure to perceived risks. If this sentiment persists, it could result in capital outflows from this sector toward safer alternatives."
+            
+            else:  # neutral
+                narrative = f"News sentiment for {query_term} appears balanced, with no strong directional bias. This neutral sentiment suggests market participants have mixed opinions, creating an equilibrium where positive and negative views offset each other. Without price confirmation, it's difficult to determine how this balanced sentiment is affecting market positioning."
+        
+        # Case 3: We only have price data
+        elif price_trend:
+            if "upward" in price_trend:
+                narrative = f"The {price_trend} price trend for {ticker} ({safe_price_str}) suggests positive market sentiment, though we lack specific news sentiment data to confirm this. This price action indicates investors may be responding favorably to developments not captured in our analysis, potentially allocating capital toward this asset based on positive expectations for future value."
+            
+            else:  # downward
+                narrative = f"The {price_trend} price trend for {ticker} ({safe_price_str}) indicates cautious market sentiment, though we don't have news sentiment data to provide additional context. This price movement suggests investors may be reducing exposure in response to perceived risks or shifting capital to more attractive opportunities elsewhere in the market."
+        
+        # Add insights from ETF data if available
+        if has_etf_data:
+            narrative += f"\n\nThe related sector ETF data provides additional context, showing how {ticker}'s performance compares to broader sector trends. These ETFs can reveal whether the observed behavior is stock-specific or part of a larger sector rotation. Leveraged ETF movements may offer early signals of institutional positioning and potential momentum shifts within the sector."
+        
+        # Add a disclaimer about the limitations of the analysis
+        narrative += f"\n\nThis analysis is based on limited data points and represents a plausible interpretation rather than certainty. Market behavior is influenced by numerous factors beyond what our current analysis captures."
+        
+        return narrative
 
     def preprocess_data(self, news_data) -> dict:
         """
@@ -135,35 +254,99 @@ Your tasks include:
                 topic = None
                 start_date = None
                 end_date = None
+                sector = None
                 
                 # Extract ticker if present (uppercase 1-5 chars)
                 words = message.split()
                 for word in words:
-                    if word.isupper() and 1 <= len(word) <= 5:
+                    # Skip common acronyms that aren't tickers
+                    if word.isupper() and 1 <= len(word) <= 5 and word not in ["I", "A", "AI", "US"]:
                         ticker = word
                         break
                 
-                # Extract topic if "about" or "on" or "for" is in the message
-                topic_indicators = ["about", "on", "for"]
-                for indicator in topic_indicators:
-                    if indicator in message.lower():
-                        parts = message.lower().split(indicator)
-                        if len(parts) > 1:
-                            # Skip if what follows is just the ticker we already found
-                            topic_candidate = parts[1].strip()
-                            if not (ticker and ticker.lower() in topic_candidate):
-                                topic = topic_candidate
+                # Check if message contains keywords for specific sectors
+                message_lower = message.lower()
+                
+                # First pass: Check for direct mentions of keywords with higher priority for certain sectors
+                priority_matches = []
+                
+                for sector_name, sector_data in MARKET_SECTORS.items():
+                    keywords = sector_data.get("keywords", [])
+                    
+                    # Check if any primary keyword from this sector appears in the message
+                    for keyword in keywords:
+                        if keyword in message_lower:
+                            # Calculate a match priority score
+                            # Longer matches are more specific and should have higher priority
+                            priority = len(keyword)
+                            
+                            # Exact sector names get higher priority
+                            if sector_name.replace("_", " ") == keyword:
+                                priority += 10
+                                
+                            # "Sector" mentions get higher priority
+                            if keyword.endswith(" sector") or keyword.endswith(" stocks"):
+                                priority += 5
+                            
+                            # Holiday season and retail should have very high priority for retail sector
+                            if sector_name == "retail" and ("holiday season" in message_lower or "shopping" in message_lower):
+                                priority += 15
+                            
+                            priority_matches.append((sector_name, priority, sector_data))
+                
+                # If we have matches, take the highest priority one
+                if priority_matches:
+                    # Sort by priority (highest first)
+                    priority_matches.sort(key=lambda x: x[1], reverse=True)
+                    sector_name, _, sector_data = priority_matches[0]
+                    
+                    sector = sector_name
+                    topic = sector_name.replace("_", " ")
+                    
+                    # If no specific ticker found, use the sector's representative ticker
+                    if not ticker:
+                        ticker = sector_data.get("representative")
+                        
+                # Second pass: If no direct match, try related topics with sector context
+                if not sector:
+                    for sector_name, sector_data in MARKET_SECTORS.items():
+                        related = sector_data.get("related_topics", [])
+                        
+                        # Check for related topics combined with sector context
+                        if any(topic in message_lower for topic in related):
+                            # Check if the sector itself is mentioned
+                            sector_terms = [sector_name.replace("_", " "), "sector", "stocks", "industry"]
+                            if any(term in message_lower for term in sector_terms):
+                                sector = sector_name
+                                topic = sector_name.replace("_", " ")
+                                
+                                # If no specific ticker found, use the sector's representative ticker
+                                if not ticker:
+                                    ticker = sector_data.get("representative")
                                 break
                 
+                # If no sector detected, try to extract topic from standard patterns
+                if not topic:
+                    topic_indicators = ["about", "on", "for", "around", "sentiment on", "sentiment around"]
+                    for indicator in topic_indicators:
+                        if indicator in message_lower:
+                            parts = message_lower.split(indicator)
+                            if len(parts) > 1:
+                                # Grab the part right after the indicator, clean it up
+                                topic_candidate = parts[1].strip().split("?")[0].split(".")[0]
+                                if not (ticker and ticker.lower() in topic_candidate):
+                                    topic = topic_candidate
+                                    break
+                
                 # Look for date-related keywords
-                if "since" in message:
-                    after_since = message.split("since")[-1].strip()
+                if "since" in message_lower:
+                    after_since = message_lower.split("since")[-1].strip()
                     words = after_since.split()
                     if words and (words[0].startswith("-") or words[0] in ["yesterday", "today", "ytd"]):
                         start_date = words[0]
                 
-                if "last" in message:
-                    after_last = message.split("last")[-1].strip()
+                if "last" in message_lower:
+                    after_last = message_lower.split("last")[-1].strip()
                     words = after_last.split()
                     if words:
                         if "day" in after_last or "days" in after_last:
@@ -171,7 +354,7 @@ Your tasks include:
                                 days = int(words[0])
                                 start_date = f"-{days}d"
                             except ValueError:
-                                start_date = "-5d"  # Default to 5 days if no specific timeframe
+                                start_date = "-5d"  # Default to 5 days
                         elif "week" in after_last or "weeks" in after_last:
                             try:
                                 weeks = int(words[0])
@@ -185,13 +368,53 @@ Your tasks include:
                             except ValueError:
                                 start_date = "-1m"
                 
+                # For open-ended queries, extract topic using NLP techniques if needed
+                if not topic and not ticker and len(message.split()) > 3:
+                    # Remove common stopwords and extract likely topic words
+                    stopwords = ['the', 'and', 'to', 'of', 'on', 'in', 'for', 'is', 'are', 'what', 'how', 
+                                'a', 'an', 'this', 'that', 'with', 'by', 'as', 'be', 'it', 'from',
+                                'might', 'affect', 'impact', 'recent', 'sentiment', 'market', 'understand',
+                                'analyze', 'need', 'their', 'behavior', 'reaction', 'perceived', 'future',
+                                'around', 'light', 'being', 'i', 'me', 'my', 'you', 'your']
+                    
+                    # Clean up the message and extract potential topic words
+                    clean_words = [word.lower() for word in re.findall(r'\b\w+\b', message_lower)
+                                  if word.lower() not in stopwords and len(word) > 3]
+                    
+                    # Use word frequency to identify potential topics
+                    word_counts = Counter(clean_words)
+                    common_words = [word for word, count in word_counts.most_common(3)]
+                    
+                    if common_words:
+                        topic = " ".join(common_words)
+                        
+                        # Try to map extracted topic to a sector if possible
+                        for sector_name, sector_data in MARKET_SECTORS.items():
+                            if any(word in sector_data.get("keywords", []) for word in common_words):
+                                sector = sector_name
+                                ticker = sector_data.get("representative")
+                                break
+                
                 # If no date provided, default to 5 days
                 if not start_date:
                     start_date = "-5d"
                 
+                # If we still have no ticker but have a topic, try to find a relevant ticker
+                if not ticker and topic:
+                    # Default to SPY for general market topics
+                    ticker = "SPY"
+                    
+                    # Check if our topic might match any sector
+                    topic_words = topic.lower().split()
+                    for sector_name, sector_data in MARKET_SECTORS.items():
+                        if any(keyword in topic_words for keyword in sector_data.get("keywords", [])):
+                            ticker = sector_data.get("representative")
+                            break
+                
                 return {
                     "ticker": ticker,
                     "topic": topic,
+                    "sector": sector,
                     "start_date": start_date,
                     "end_date": end_date
                 }
@@ -199,10 +422,14 @@ Your tasks include:
             # Based on the message content, we'll prepare data for the LLM
             query_details = extract_query_details(message)
             data = {}
+            print(f"Extracted query details: {query_details}")  # Debug log
             
-            # Determine the type of request
-            if "news" in message.lower() or "sentiment" in message.lower():
-                # News sentiment request
+            # For complex queries, we should fetch both news and stock data
+            # This is particularly important for open-ended questions from the Strategy Agent
+            complex_query = len(message.split()) > 8 and "?" in message
+            
+            # First, handle topic/news aspect if we have a topic or it's a complex query
+            if query_details["topic"] or "news" in message.lower() or "sentiment" in message.lower() or complex_query:
                 if query_details["ticker"]:
                     # Fetch news for a specific ticker
                     news_data = fetch_market_data(
@@ -212,17 +439,22 @@ Your tasks include:
                     if not news_data.empty:
                         data["news_data"] = self.preprocess_data(news_data)
                         data["query_term"] = query_details["ticker"]
-                else:
-                    # Fetch general news
-                    keyword = query_details["topic"] or "market"
+                        
+                # If we have a topic, fetch general news about it
+                if query_details["topic"]:
+                    keyword = query_details["topic"]
                     news_data = fetch_news(keyword=keyword, count=5)
                     if not news_data.empty:
-                        data["news_data"] = self.preprocess_data(news_data)
-                        data["query_term"] = f"'{keyword}'"
+                        # If we already have news data, only replace if this set is non-empty
+                        if "news_data" not in data or "error" in data["news_data"]:
+                            data["news_data"] = self.preprocess_data(news_data)
+                            data["query_term"] = f"'{keyword}'"
             
-            elif "stock" in message.lower() or "price" in message.lower():
-                # Stock price request
-                ticker = query_details["ticker"] or "AAPL"  # Default ticker
+            # Next, handle stock data aspect if relevant or it's a complex query
+            if "stock" in message.lower() or "price" in message.lower() or complex_query or query_details["sector"]:
+                # For complex queries, we want both news sentiment and market data
+                ticker = query_details["ticker"] or "SPY"  # Default to SPY for market
+                
                 stock_data = fetch_market_data(
                     symbol=ticker,
                     start_date=query_details["start_date"],
@@ -233,10 +465,136 @@ Your tasks include:
                     data["stock_data"] = stock_data
                     data["ticker"] = ticker
             
+            # For sector-focused queries, try to gather ETF data as well if available
+            if query_details["sector"] and query_details["sector"] in MARKET_SECTORS:
+                sector_data = MARKET_SECTORS[query_details["sector"]]
+                
+                # Grab a representative ETF if available
+                etfs = sector_data.get("etfs", [])
+                if etfs:
+                    etf_ticker = etfs[0]
+                    etf_data = fetch_market_data(
+                        symbol=etf_ticker,
+                        start_date=query_details["start_date"],
+                        end_date=query_details["end_date"],
+                        source="alpha_vantage"
+                    )
+                    if not etf_data.empty:
+                        data["etf_data"] = etf_data
+                        data["etf_ticker"] = etf_ticker
+                
+                # Also grab leveraged ETF data if available
+                lev_etfs = sector_data.get("leveraged_etfs", [])
+                if lev_etfs:
+                    lev_etf_ticker = lev_etfs[0]
+                    lev_etf_data = fetch_market_data(
+                        symbol=lev_etf_ticker,
+                        start_date=query_details["start_date"],
+                        end_date=query_details["end_date"],
+                        source="alpha_vantage"
+                    )
+                    if not lev_etf_data.empty:
+                        data["leveraged_etf_data"] = lev_etf_data
+                        data["leveraged_etf_ticker"] = lev_etf_ticker
+            
             # If we have data, use the LLM to analyze it and generate a response
             if data:
-                # For news data, we want to generate a narrative response
-                if "news_data" in data:
+                # If we have both news and stock data (for complex queries), combine them
+                if "news_data" in data and "stock_data" in data:
+                    signals = data["news_data"]
+                    query_term = data["query_term"]
+                    ticker = data["ticker"]
+                    stock_data = data["stock_data"]
+                    
+                    if "error" in signals:
+                        # Fall back to just stock data if news has an error
+                        news_part = f"No specific news found for {query_term}."
+                        has_news = False
+                    else:
+                        # Process news data
+                        article_count = signals.get("article_count", 0)
+                        headlines = signals.get("headlines", [])[:3]
+                        sentiment_score = signals.get("average_sentiment", 0)
+                        
+                        # Determine sentiment description
+                        if sentiment_score is None:
+                            sentiment_desc = "neutral (no sentiment data available)"
+                        elif sentiment_score > 0.5:
+                            sentiment_desc = "strongly positive"
+                        elif sentiment_score > 0.2:
+                            sentiment_desc = "moderately positive"
+                        elif sentiment_score >= -0.2:
+                            sentiment_desc = "neutral"
+                        elif sentiment_score >= -0.5:
+                            sentiment_desc = "moderately negative"
+                        else:
+                            sentiment_desc = "strongly negative"
+                        
+                        headlines_str = "; ".join(headlines) if headlines else "No headlines available"
+                        news_part = (f"News Analysis:\n"
+                                    f"Found {article_count} articles\n"
+                                    f"Sample headlines: {headlines_str}\n"
+                                    f"Sentiment: {sentiment_desc} ({sentiment_score:.2f if sentiment_score is not None else 'N/A'})")
+                        has_news = True
+                    
+                    # Process stock data
+                    latest = stock_data.iloc[0]
+                    price_info = []
+                    if 'close' in latest:
+                        price_info.append(f"Latest close: ${latest['close']:.2f}")
+                    if 'low' in latest and 'high' in latest:
+                        price_info.append(f"Range: ${latest['low']:.2f} - ${latest['high']:.2f}")
+                    if 'volume' in latest:
+                        price_info.append(f"Volume: {latest['volume']:,}")
+                    
+                    # Calculate price change
+                    price_change = None
+                    if len(stock_data) > 1 and 'close' in stock_data.columns:
+                        oldest_close = stock_data.iloc[-1]['close']
+                        newest_close = latest['close']
+                        price_change = ((newest_close - oldest_close) / oldest_close) * 100
+                        price_info.append(f"Change: {price_change:.2f}%")
+                    
+                    stock_part = f"Market Data for {ticker}:\n" + "\n".join(price_info)
+                    
+                    # Add ETF information if available
+                    etf_info = []
+                    if "etf_data" in data and "etf_ticker" in data:
+                        etf_ticker = data["etf_ticker"]
+                        etf_data = data["etf_data"]
+                        
+                        if len(etf_data) > 1 and 'close' in etf_data.columns:
+                            etf_latest = etf_data.iloc[0]
+                            etf_oldest = etf_data.iloc[-1]
+                            etf_change = ((etf_latest['close'] - etf_oldest['close']) / etf_oldest['close']) * 100
+                            etf_info.append(f"Sector ETF {etf_ticker}: {etf_change:.2f}%")
+                    
+                    if "leveraged_etf_data" in data and "leveraged_etf_ticker" in data:
+                        lev_etf_ticker = data["leveraged_etf_ticker"]
+                        lev_etf_data = data["leveraged_etf_data"]
+                        
+                        if len(lev_etf_data) > 1 and 'close' in lev_etf_data.columns:
+                            lev_latest = lev_etf_data.iloc[0]
+                            lev_oldest = lev_etf_data.iloc[-1]
+                            lev_change = ((lev_latest['close'] - lev_oldest['close']) / lev_oldest['close']) * 100
+                            etf_info.append(f"Leveraged ETF {lev_etf_ticker}: {lev_change:.2f}%")
+                    
+                    if etf_info:
+                        stock_part += "\n\nRelated Sector ETFs:\n" + "\n".join(etf_info)
+                    
+                    # Generate a comprehensive market behavior explanation combining news sentiment and price movement
+                    narrative = self.generate_combined_narrative(
+                        query_term=query_term,
+                        ticker=ticker,
+                        sentiment_score=sentiment_score if has_news and sentiment_score is not None else None,
+                        price_change=price_change if price_change is not None else None,
+                        has_etf_data=len(etf_info) > 0
+                    )
+                    
+                    return f"{news_part}\n\n{stock_part}\n\nMarket Behavior Explanation:\n{narrative}"
+                
+                # For news data only, generate a narrative response
+                elif "news_data" in data:
                     signals = data["news_data"]
                     query_term = data["query_term"]
                     
@@ -303,6 +661,33 @@ Your tasks include:
                         oldest_close = stock_data.iloc[-1]['close']
                         newest_close = latest['close']
                         percent_change = ((newest_close - oldest_close) / oldest_close) * 100
+                        price_info.append(f"Change: {percent_change:.2f}%")
+                        
+                        # Add ETF information if available
+                        etf_info = []
+                        if "etf_data" in data and "etf_ticker" in data:
+                            etf_ticker = data["etf_ticker"]
+                            etf_data = data["etf_data"]
+                            
+                            if len(etf_data) > 1 and 'close' in etf_data.columns:
+                                etf_latest = etf_data.iloc[0]
+                                etf_oldest = etf_data.iloc[-1]
+                                etf_change = ((etf_latest['close'] - etf_oldest['close']) / etf_oldest['close']) * 100
+                                etf_info.append(f"Sector ETF {etf_ticker}: {etf_change:.2f}%")
+                        
+                        if "leveraged_etf_data" in data and "leveraged_etf_ticker" in data:
+                            lev_etf_ticker = data["leveraged_etf_ticker"]
+                            lev_etf_data = data["leveraged_etf_data"]
+                            
+                            if len(lev_etf_data) > 1 and 'close' in lev_etf_data.columns:
+                                lev_latest = lev_etf_data.iloc[0]
+                                lev_oldest = lev_etf_data.iloc[-1]
+                                lev_change = ((lev_latest['close'] - lev_oldest['close']) / lev_oldest['close']) * 100
+                                etf_info.append(f"Leveraged ETF {lev_etf_ticker}: {lev_change:.2f}%")
+                        
+                        stock_summary = f"Stock data for {ticker}:\n" + "\n".join(price_info)
+                        if etf_info:
+                            stock_summary += "\n\nRelated Sector ETFs:\n" + "\n".join(etf_info)
                         
                         if percent_change > 5:
                             price_narrative = f"\n\nMarket Behavior Explanation:\nThe significant {percent_change:.2f}% increase in {ticker} suggests strong market interest and changing valuations. Participants appear to be anticipating positive developments, potentially due to sector-specific news or broader economic signals. This price movement likely represents investors actively shifting capital toward this asset based on favorable expectations. Note that this explanation is based solely on price movements without additional context from news or other market indicators."
@@ -312,8 +697,10 @@ Your tasks include:
                             price_narrative = f"\n\nMarket Behavior Explanation:\nThe slight {abs(percent_change):.2f}% decrease in {ticker} indicates a minor shift in market sentiment. This could reflect small adjustments in investment positions rather than significant concern. Individual traders may be responding to subtle changes in perceived value or redirecting capital to other opportunities. Without additional context from news or broader market trends, this represents a preliminary assessment of the price behavior."
                         else:
                             price_narrative = f"\n\nMarket Behavior Explanation:\nThe substantial {abs(percent_change):.2f}% decline in {ticker} suggests a significant shift in market sentiment. Participants appear to be reassessing risk or future value expectations, potentially causing capital to flow out of this asset toward safer alternatives. This defensive reaction is a natural response when facing perceived threats to value. A complete understanding would require analysis of news, sector trends, and broader market conditions beyond what this price data alone provides."
-                    
-                    return f"Stock data for {ticker}:\n" + "\n".join(price_info) + price_narrative
+                        
+                        return stock_summary + price_narrative
+                    else:
+                        return f"Stock data for {ticker}:\n" + "\n".join(price_info) + "\n\nInsufficient historical data to analyze price trends."
             
             # If we don't have specific data to analyze, provide help information
             return ("I can help with:\n"
