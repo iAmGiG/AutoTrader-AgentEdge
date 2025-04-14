@@ -42,13 +42,21 @@ def fetch_market_data(
 ) -> pd.DataFrame:
     """
     Fetch historical market data from MarketDataTool, returning a DataFrame.
+    
+    Args:
+        symbol: Stock symbol/ticker to fetch data for.
+        start_date: Start of date range (YYYY-MM-DD or relative like "-7d").
+        end_date: End of date range (YYYY-MM-DD or relative like "-1d").
+    
+    Returns:
+        DataFrame with Open, High, Low, Close and Volume data.
     """
     config = {
-        "data_source": "csv",  # or 'api', 'sql', etc.
+        "data_source": "yahoo",  # Use Yahoo Finance as fallback
         # add other config fields if needed
     }
     tool = MarketDataTool(config)
-    df = tool.fetch_options_data(symbol, start_date, end_date)
+    df = tool.fetch_market_data(symbol, start_date, end_date)
     return df
 
 
