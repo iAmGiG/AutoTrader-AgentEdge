@@ -10,6 +10,7 @@ from config.config_loader import ConfigLoader
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
 from src.tools.tools import ALL_TOOLS
+import pandas as pd
 
 # Instantiate ConfigLoader once at module-level
 _loader = ConfigLoader()
@@ -224,14 +225,58 @@ class BaseAgent(AssistantAgent, ABC):
                             
                             # Execute the tool with proper error handling
                             try:
-                                # Convert parsed_args to a dictionary and pass to the tool
-                                if isinstance(parsed_args, dict):
-                                    # Call the tool with the parsed arguments
-                                    tool_result = tool.func(**parsed_args)
+                                # Import direct function references to bypass the FunctionTool wrapper
+                                from src.tools.tools import fetch_market_data, fetch_news, fetch_yahoo_data, fetch_alpha_vantage_data, fetch_alpha_vantage_news
+                                
+                                # Call the appropriate function directly based on tool name
+                                if tool_name == "fetch_market_data":
+                                    symbol = parsed_args.get("symbol", "AAPL")
+                                    start_date = parsed_args.get("start_date", "-7d")
+                                    end_date = parsed_args.get("end_date", None)
+                                    tool_result = fetch_market_data(symbol=symbol, start_date=start_date, end_date=end_date)
+                                
+                                elif tool_name == "fetch_news":
+                                    keyword = parsed_args.get("keyword", "market")
+                                    count = parsed_args.get("count", 5)
+                                    tool_result = fetch_news(keyword=keyword, count=count)
+                                    
+                                elif tool_name == "fetch_yahoo_data":
+                                    ticker = parsed_args.get("ticker", "AAPL")
+                                    start_date = parsed_args.get("start_date", "-7d")
+                                    end_date = parsed_args.get("end_date", None)
+                                    tool_result = fetch_yahoo_data(ticker=ticker, start_date=start_date, end_date=end_date)
+                                
+                                elif tool_name == "fetch_alpha_vantage_data":
+                                    symbol = parsed_args.get("symbol", "AAPL")
+                                    start_date = parsed_args.get("start_date", "-7d")
+                                    end_date = parsed_args.get("end_date", None)
+                                    tool_result = fetch_alpha_vantage_data(symbol=symbol, start_date=start_date, end_date=end_date)
+                                
+                                elif tool_name == "fetch_alpha_vantage_news":
+                                    symbol = parsed_args.get("symbol", "AAPL")
+                                    topics = parsed_args.get("topics", None)
+                                    tool_result = fetch_alpha_vantage_news(symbol=symbol, topics=topics)
+                                    
                                 else:
-                                    self.log(f"Error: parsed_args is not a dictionary: {type(parsed_args)}")
-                                    tool_result = f"Error: Could not parse tool arguments properly"
+                                    self.log(f"Unknown tool: {tool_name}")
+                                    tool_result = f"Unknown tool: {tool_name}"
+                                
+                                self.log(f"Successfully executed {tool_name}")
+                                
+                                # For debugging
+                                if isinstance(tool_result, pd.DataFrame):
+                                    self.log(f"Result is DataFrame with shape {tool_result.shape}")
+                                    
+                                    # Temporary debug info
+                                    if not tool_result.empty:
+                                        print(f"DataFrame head: {tool_result.head(3)}")
+                                    
+                                else:
+                                    self.log(f"Result is {type(tool_result)}")
+                                    
                             except Exception as e:
+                                import traceback
+                                traceback.print_exc()
                                 self.log(f"Error executing tool {tool_name}: {str(e)}")
                                 tool_result = f"Error executing {tool_name}: {str(e)}"
                             
@@ -243,15 +288,49 @@ class BaseAgent(AssistantAgent, ABC):
                                 # For pandas DataFrames or objects with to_dict method
                                 processed_result = processed_result.to_dict(orient='records')
                             
-                            # Add the result to our list
-                            tool_results.append(
-                                FunctionExecutionResult(
-                                    content=processed_result,
-                                    call_id=tool_id,
-                                    is_error=False,
-                                    name=tool_name
+                            # Convert the processed result to a string if it's not already
+                            if isinstance(processed_result, (dict, pd.DataFrame, list)):
+                                try:
+                                    import json
+                                    
+                                    # Convert DataFrame to dict if needed
+                                    if isinstance(processed_result, pd.DataFrame):
+                                        result_dict = processed_result.to_dict(orient='records')
+                                    else:
+                                        result_dict = processed_result
+                                        
+                                    # Convert to JSON string
+                                    content_str = json.dumps(result_dict)
+                                    
+                                    # Add the result to our list as a string
+                                    tool_results.append(
+                                        FunctionExecutionResult(
+                                            content=content_str,
+                                            call_id=tool_id,
+                                            is_error=False,
+                                            name=tool_name
+                                        )
+                                    )
+                                except Exception as e:
+                                    self.log(f"Error serializing result to JSON: {str(e)}")
+                                    tool_results.append(
+                                        FunctionExecutionResult(
+                                            content=str(processed_result),
+                                            call_id=tool_id,
+                                            is_error=False,
+                                            name=tool_name
+                                        )
+                                    )
+                            else:
+                                # If it's already a string or another simple type, just convert to string
+                                tool_results.append(
+                                    FunctionExecutionResult(
+                                        content=str(processed_result),
+                                        call_id=tool_id,
+                                        is_error=False,
+                                        name=tool_name
+                                    )
                                 )
-                            )
                         except Exception as e:
                             # Handle tool execution errors
                             error_message = f"Error executing {tool_name}: {str(e)}"

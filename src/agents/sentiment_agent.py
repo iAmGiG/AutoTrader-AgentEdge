@@ -55,11 +55,10 @@ class SentimentAgent(BaseAgent):
         self.sentiment_analyzer = SentimentAnalyzer()
         
         # Register available tools for this agent
-        tools = [
-            market_data_tool,  # Unified market data tool
-            news_tool,         # News headlines tool
-            # Additional tools can be added here as they are created
-        ]
+        from src.tools.tools import ALL_TOOLS
+        
+        # Use the pre-defined tools from tools.py
+        tools = ALL_TOOLS
         
         # Initialize BaseAgent with system prompt from config
         super().__init__(
@@ -141,17 +140,103 @@ class SentimentAgent(BaseAgent):
             tool_args: The arguments that were passed to the tool
             
         Returns:
-            Processed result
+            Processed result in a simple, JSON-serializable format
         """
-        # Process the result based on tool type
-        if tool_name == "fetch_news":
-            return self.data_processor.preprocess_news_data(result)
-        elif tool_name in ["fetch_market_data", "fetch_yahoo_data", "fetch_alpha_vantage_data"]:
-            symbol = tool_args.get("symbol", "")
-            return self.data_processor.preprocess_market_data(result, symbol)
-        
-        # For other tools, just return the unprocessed result
-        return result
+        try:
+            # First, ensure tool_args is a dictionary for safe access
+            if isinstance(tool_args, str):
+                try:
+                    import json
+                    parsed_args = json.loads(tool_args)
+                    if isinstance(parsed_args, dict):
+                        tool_args = parsed_args
+                    else:
+                        tool_args = {}
+                except:
+                    tool_args = {}
+            elif not isinstance(tool_args, dict):
+                tool_args = {}
+                
+            # For debugging
+            print(f"Processing tool result for {tool_name}")
+            
+            # Process the result based on tool type
+            if tool_name == "fetch_news":
+                # Simple formatted results for news data
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    # Extract headlines
+                    headlines = []
+                    headline_cols = ["Headline", "title", "Title", "headline"]
+                    for col in headline_cols:
+                        if col in result.columns:
+                            headlines = result[col].tolist()[:5]  # Limit to 5 headlines
+                            break
+                    
+                    # Extract sentiment if available
+                    sentiment = None
+                    sentiment_cols = ["Sentiment Score", "sentiment_score", "overall_sentiment_score", "score"]
+                    for col in sentiment_cols:
+                        if col in result.columns:
+                            sentiment = float(result[col].mean())
+                            break
+                            
+                    # Build a simple news summary
+                    news_summary = {
+                        "headlines": headlines if headlines else ["No headlines available"],
+                        "count": len(result),
+                        "average_sentiment": sentiment,
+                        "sources": result["Source"].tolist()[:5] if "Source" in result.columns else []
+                    }
+                    
+                    return news_summary
+                return {"headlines": [], "count": 0, "message": "No news data available"}
+                
+            elif tool_name in ["fetch_market_data", "fetch_yahoo_data", "fetch_alpha_vantage_data"]:
+                # Simple formatted results for market data
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    # Extract key metrics
+                    if 'Close' in result.columns or 'close' in result.columns:
+                        # Normalize column names
+                        close_col = 'Close' if 'Close' in result.columns else 'close'
+                        
+                        first_price = float(result[close_col].iloc[-1])
+                        last_price = float(result[close_col].iloc[0])
+                        percent_change = ((last_price - first_price) / first_price) * 100
+                        
+                        # Build a simple market summary
+                        ticker = tool_args.get("symbol", "") or tool_args.get("ticker", "")
+                        market_summary = {
+                            "ticker": ticker,
+                            "start_date": result.index[-1].strftime("%Y-%m-%d") if hasattr(result.index[-1], "strftime") else "N/A",
+                            "end_date": result.index[0].strftime("%Y-%m-%d") if hasattr(result.index[0], "strftime") else "N/A",
+                            "days": len(result),
+                            "start_price": round(first_price, 2),
+                            "end_price": round(last_price, 2),
+                            "percent_change": round(percent_change, 2),
+                            "trend": "up" if percent_change > 0 else "down"
+                        }
+                        
+                        return market_summary
+                return {"ticker": tool_args.get("symbol", ""), "days": 0, "message": "No market data available"}
+            
+            # Handle other cases - ensure result is simple and serializable
+            if isinstance(result, pd.DataFrame):
+                # Generic DataFrame handling - convert to simple dict with limited rows
+                if not result.empty:
+                    return {
+                        "summary": f"DataFrame with {len(result)} rows and columns: {', '.join(list(result.columns))}",
+                        "sample_data": result.head(3).to_dict(orient="records")
+                    }
+                return {"summary": "Empty DataFrame"}
+                    
+            # Return the result as is if it's already serializable
+            return result
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error in process_tool_result: {str(e)}")
+            return {"error": f"Failed to process result: {str(e)}"}
     
     def generate_reply(self, messages, context=None) -> str:
         """
