@@ -130,10 +130,33 @@ class SentimentAgent(BaseAgent):
         
         return "\n".join(context)
     
+    def process_tool_result(self, tool_name: str, result: Any, tool_args: dict) -> Any:
+        """
+        Process tool results with sentiment-specific handling.
+        This override adds specialized processing for news and market data.
+        
+        Args:
+            tool_name: The name of the tool that was called
+            result: The raw result from the tool
+            tool_args: The arguments that were passed to the tool
+            
+        Returns:
+            Processed result
+        """
+        # Process the result based on tool type
+        if tool_name == "fetch_news":
+            return self.data_processor.preprocess_news_data(result)
+        elif tool_name in ["fetch_market_data", "fetch_yahoo_data", "fetch_alpha_vantage_data"]:
+            symbol = tool_args.get("symbol", "")
+            return self.data_processor.preprocess_market_data(result, symbol)
+        
+        # For other tools, just return the unprocessed result
+        return result
+    
     def generate_reply(self, messages, context=None) -> str:
         """
         Primary entry point for generating replies to user messages.
-        Uses the LLM to decide which tools to call based on the query.
+        Let's the LLM decide which tools to call based on the query.
         
         Args:
             messages: List of conversation messages
@@ -160,115 +183,34 @@ class SentimentAgent(BaseAgent):
         # Log the extracted information
         print(f"Extracted query details: {query_details}")
         
-        # Instead of using AssistantAgent's generate_reply, which depends on 
-        # specific AutoGen functionality, we'll use the direct process_with_llm method
-        
         # Create a system prompt with supplementary context
         system_prompt = self.config.get("system_prompt", "")
         system_prompt += f"\n\nSupplementary context for this query:\n{supplementary_context}"
         
-        # If we have a specific ticker or topic, use direct tool calls
-        if query_details.get("ticker") or query_details.get("topic"):
-            prompt = f"I need information about "
+        # Add specific guidance based on extracted entities
+        if query_details.get("ticker"):
+            ticker = query_details["ticker"]
+            system_prompt += f"\n\nThis query mentions the stock ticker {ticker}. You should consider using fetch_market_data(symbol=\"{ticker}\", start_date=\"{query_details['start_date']}\") to get relevant market data."
+        
+        if query_details.get("topic"):
+            topic = query_details["topic"]
+            system_prompt += f"\n\nThis query mentions the topic '{topic}'. You should consider using fetch_news(keyword=\"{topic}\", count=5) to get relevant news articles."
+        
+        if query_details.get("sector"):
+            sector = query_details["sector"]
+            system_prompt += f"\n\nThis query relates to the {sector} sector. Consider fetching data for sector ETFs and major companies in this sector."
             
-            if query_details.get("ticker"):
-                ticker = query_details["ticker"]
-                prompt += f"the stock {ticker}. "
-                
-                # Fetch stock data
-                try:
-                    stock_data = self.use_tool("fetch_market_data", 
-                                               symbol=ticker, 
-                                               start_date=query_details["start_date"],
-                                               end_date=query_details.get("end_date"))
-                    
-                    # Format the stock data for the LLM
-                    if isinstance(stock_data, dict) and not stock_data.get("error"):
-                        prompt += f"\n\nStock Data for {ticker}:\n"
-                        prompt += f"Latest Price: ${stock_data.get('latest_close', 'N/A')}\n"
-                        prompt += f"Price Range: ${stock_data.get('range_low', 'N/A')} - ${stock_data.get('range_high', 'N/A')}\n"
-                        prompt += f"Volume: {stock_data.get('volume', 'N/A')}\n"
-                        
-                        if 'price_change' in stock_data:
-                            prompt += f"Price Change: {stock_data['price_change']:.2f}%\n"
-                except Exception as e:
-                    prompt += f"\nError fetching stock data: {str(e)}\n"
+            # Add suggested stocks/ETFs to analyze
+            if query_details.get("etfs") and len(query_details["etfs"]) > 0:
+                system_prompt += f" Consider analyzing these sector ETFs: {', '.join(query_details['etfs'][:3])}"
             
-            if query_details.get("topic"):
-                topic = query_details["topic"]
-                prompt += f"the topic '{topic}'. "
-                
-                # Fetch news
-                try:
-                    news_data = self.use_tool("fetch_news", keyword=topic, count=5)
-                    
-                    # Format the news data for the LLM
-                    if isinstance(news_data, dict) and not news_data.get("error"):
-                        prompt += f"\n\nNews Data for '{topic}':\n"
-                        prompt += f"Article Count: {news_data.get('article_count', 0)}\n"
-                        
-                        headlines = news_data.get("headlines", [])
-                        if headlines:
-                            prompt += "Sample Headlines:\n"
-                            for headline in headlines[:3]:
-                                prompt += f"- {headline}\n"
-                        
-                        if 'average_sentiment' in news_data and news_data['average_sentiment'] is not None:
-                            prompt += f"Average Sentiment Score: {news_data['average_sentiment']:.2f}\n"
-                except Exception as e:
-                    prompt += f"\nError fetching news data: {str(e)}\n"
-            
-            # Add sector context if available
-            if query_details.get("sector") and query_details.get("sector") in self.market_sectors:
-                sector = query_details["sector"]
-                sector_data = self.market_sectors[sector]
-                
-                prompt += f"\n\nSector Context:\n"
-                prompt += f"Sector: {sector}\n"
-                
-                # Add ETFs
-                etfs = sector_data.get("etfs", [])
-                if etfs:
-                    prompt += f"Sector ETFs: {', '.join(etfs[:3])}\n"
-                
-                # Add blue chips
-                blue_chips = sector_data.get("blue_chips", [])
-                if blue_chips:
-                    prompt += f"Major Companies: {', '.join(blue_chips[:5])}\n"
-            
-            # Request for a comprehensive analysis
-            prompt += "\n\nBased on this information, please provide:\n"
-            prompt += "1. A brief technical summary of the data\n"
-            prompt += "2. A 'Market Behavior Explanation' that interprets the sentiment and price movements\n"
-            prompt += "3. Potential implications for investors\n"
-            
-            # Process with the LLM
-            return self.process_with_llm(prompt, system_prompt)
-        else:
-            # For general queries without specific tickers or topics,
-            # process the original query with enhanced context
-            return self.process_with_llm(last_message, system_prompt)
+            if query_details.get("blue_chips") and len(query_details["blue_chips"]) > 0:
+                system_prompt += f" Consider analyzing these major stocks: {', '.join(query_details['blue_chips'][:3])}"
+        
+        # Let the LLM generate a response with tool usage
+        # Use process_with_tools instead of process_with_llm to enable tool calling
+        return self.process_with_tools(last_message, system_prompt)
     
-    def use_tool(self, tool_name: str, **kwargs) -> Any:
-        """
-        Manually invoke a tool and process its results.
-        This is used when we want to bypass the LLM for direct tool calls.
-        
-        Args:
-            tool_name: Name of the tool to call
-            **kwargs: Arguments for the tool
-            
-        Returns:
-            Processed results from the tool
-        """
-        # Call the tool
-        result = super().use_tool(tool_name, **kwargs)
-        
-        # Process the result based on tool type
-        if tool_name == "fetch_news":
-            return self.data_processor.preprocess_news_data(result)
-        elif tool_name in ["fetch_market_data", "fetch_yahoo_data", "fetch_alpha_vantage_data"]:
-            return self.data_processor.preprocess_market_data(result, kwargs.get("symbol", ""))
-        
-        # Return unprocessed result for other tools
-        return result
+    # We no longer need the custom use_tool method as the processing logic
+    # has been moved to the process_tool_result method that's called by 
+    # the BaseAgent's process_with_tools method
