@@ -7,26 +7,20 @@ This agent is designed to:
 3. Present a coherent summary with technical metrics and market behavior explanations
 """
 
+# Standard library imports
+import json
+import traceback
+from typing import Dict, Any, Optional
+
+# Third-party imports
+import pandas as pd
+
+# Project imports
 from .base_agent import BaseAgent
 from config.config_loader import ConfigLoader
-from typing import Dict, List, Any, Optional
-import pandas as pd
-import json
-import os
-
-from src.tools.tools import (
-    news_tool, yahoo_finance_tool, alpha_vantage_tool,
-    alpha_vantage_news_tool, market_data_tool
-)
-from src.tools.tools import (
-    fetch_news, fetch_yahoo_data, fetch_alpha_vantage_data,
-    fetch_alpha_vantage_news, fetch_market_data
-)
+from src.tools.tools import ALL_TOOLS
 from src.tools.text_processing.sentiment_analyzer import SentimentAnalyzer
 from src.tools.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
-
-# Instantiate ConfigLoader for API keys
-_loader = ConfigLoader()
 
 # LLM config optimized for sentiment analysis and narrative generation
 SENTIMENT_LLM_CONFIG = {
@@ -53,9 +47,6 @@ class SentimentAgent(BaseAgent):
         
         # Initialize the sentiment analyzer
         self.sentiment_analyzer = SentimentAnalyzer()
-        
-        # Register available tools for this agent
-        from src.tools.tools import ALL_TOOLS
         
         # Use the pre-defined tools from tools.py
         tools = ALL_TOOLS
@@ -146,13 +137,12 @@ class SentimentAgent(BaseAgent):
             # First, ensure tool_args is a dictionary for safe access
             if isinstance(tool_args, str):
                 try:
-                    import json
                     parsed_args = json.loads(tool_args)
                     if isinstance(parsed_args, dict):
                         tool_args = parsed_args
                     else:
                         tool_args = {}
-                except:
+                except json.JSONDecodeError:
                     tool_args = {}
             elif not isinstance(tool_args, dict):
                 tool_args = {}
@@ -233,7 +223,6 @@ class SentimentAgent(BaseAgent):
             return result
             
         except Exception as e:
-            import traceback
             traceback.print_exc()
             print(f"Error in process_tool_result: {str(e)}")
             return {"error": f"Failed to process result: {str(e)}"}
