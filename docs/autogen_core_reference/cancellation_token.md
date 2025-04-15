@@ -80,7 +80,29 @@ It means you're calling a tool's `run` method without providing the required can
 
 3. **Handle Cancellation Gracefully**: If implementing cancellation logic, ensure your code handles it gracefully, releasing any resources that might otherwise be leaked.
 
-4. **Robust Implementation**: Your tool dispatcher should include proper error handling around cancellation token usage:
+4. **Handle Async Functions Correctly**: Some tools implement `run` as an async function (coroutine), which requires special handling:
+
+```python
+async def execute_tool_async(self, tool_name, tool_args):
+    # Create a fresh cancellation token
+    cancellation_token = CancellationToken()
+    
+    # Define helper to check if function is async and handle accordingly
+    async def call_exec_fn(exec_fn, *args, **kwargs):
+        if asyncio.iscoroutinefunction(exec_fn):
+            # For async functions, await directly
+            return await exec_fn(*args, **kwargs)
+        else:
+            # For sync functions, run in thread pool
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, lambda: exec_fn(*args, **kwargs))
+    
+    # Tool with run method that takes a cancellation token
+    if hasattr(tool, 'run'):
+        return await call_exec_fn(tool.run, tool_args, cancellation_token)
+```
+
+5. **Robust Implementation**: Your tool dispatcher should include proper error handling around cancellation token usage:
 
 ```python
 def execute_tool_by_name(self, tool_name, tool_args):

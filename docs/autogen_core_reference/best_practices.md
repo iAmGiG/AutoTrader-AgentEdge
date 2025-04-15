@@ -96,7 +96,7 @@ def execute_tool_by_name(self, tool_name: str, tool_args: Dict[str, Any]) -> Any
 - Makes adding new tools easier (no code changes in BaseAgent)
 - Improves maintainability, resilience, and cross-version compatibility
 
-### Asynchronous Execution
+### Advanced Asynchronous Execution
 
 ```python
 async def execute_tool_async(self, tool_name: str, tool_args: Dict[str, Any]) -> Any:
@@ -109,39 +109,63 @@ async def execute_tool_async(self, tool_name: str, tool_args: Dict[str, Any]) ->
     from autogen_core._cancellation_token import CancellationToken
     cancellation_token = CancellationToken()
     
-    # Define the function call dispatcher based on the tool interface
-    exec_func = None
+    # Define a helper to execute a function according to its async nature
+    async def call_exec_fn(exec_fn: Callable, *args, **kwargs) -> Any:
+        """Call a function based on whether it's a coroutine or not."""
+        if asyncio.iscoroutinefunction(exec_fn):
+            # If it's already async, just await it
+            return await exec_fn(*args, **kwargs)
+        else:
+            # If it's synchronous, run it in a thread executor
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, lambda: exec_fn(*args, **kwargs))
     
-    # Try to find a suitable execution method
+    # Determine proper execution method
     if hasattr(tool, 'func'):
-        exec_func = lambda: tool.func(**tool_args)
+        exec_fn = tool.func
+        try:
+            return await call_exec_fn(exec_fn, **tool_args)
+        except Exception as e:
+            self.log(f"Error using tool.func: {e}")
+    
     elif callable(tool):
-        exec_func = lambda: tool(**tool_args)
+        try:
+            return await call_exec_fn(tool, **tool_args)
+        except Exception as e:
+            self.log(f"Error calling tool directly: {e}")
+    
     elif hasattr(tool, 'run'):
-        # Pass cancellation_token as required in AutoGen 0.5.1
-        exec_func = lambda: tool.run(tool_args, cancellation_token)
+        exec_fn = tool.run
+        try:
+            # Pass cancellation_token as required in AutoGen 0.5.1
+            return await call_exec_fn(exec_fn, tool_args, cancellation_token)
+        except Exception as e:
+            self.log(f"Error using tool.run: {e}")
+    
     elif tool_name in TOOL_FUNCTION_MAP:
-        exec_func = lambda: TOOL_FUNCTION_MAP[tool_name](**tool_args)
-    else:
-        raise ValueError(f"Could not determine how to execute tool: {tool_name}")
-        
-    # Run the function in a separate thread
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, exec_func)
-    return result
+        exec_fn = TOOL_FUNCTION_MAP[tool_name]
+        try:
+            return await call_exec_fn(exec_fn, **tool_args)
+        except Exception as e:
+            raise ValueError(f"Failed to execute tool: {e}")
+    
+    raise ValueError(f"Could not determine how to execute tool: {tool_name}")
 ```
 
-**Benefits:**
-- Handles different AutoGen Core versions with varying interfaces
+**Advanced Features:**
+- Intelligently handles both synchronous and asynchronous (coroutine) functions
+- Uses `asyncio.iscoroutinefunction()` to detect if a function is a coroutine
+- Awaits coroutine functions directly for optimal performance
+- Runs synchronous functions in thread executor to prevent blocking
 - Provides CancellationToken for tools requiring it (AutoGen 0.5.1 requirement)
-- Allows non-blocking execution
-- Enables potential parallel tool execution
-- Maintains responsiveness during long-running operations
-- Fits with AutoGen's async architecture
-- Provides multiple fallback methods for resilience
+- Logs detailed execution path for better debugging
+- Falls back gracefully through multiple execution methods
+- Compatible with both older and newer versions of AutoGen
 
 **Important Notes:**
 - CancellationToken is imported from `autogen_core._cancellation_token` (not tools)
+- Coroutine functions must be awaited, not run in a thread executor
+- Requires `import inspect` or `import asyncio` to detect coroutines
 - The `run` method in AutoGen 0.5.1 requires a cancellation token as a second parameter
 
 ## Data Handling
