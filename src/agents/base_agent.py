@@ -7,13 +7,19 @@ Base module defining an abstract agent class that all specialized agents inherit
 from autogen_core.models import SystemMessage, UserMessage, AssistantMessage, FunctionExecutionResult, FunctionExecutionResultMessage
 from autogen_agentchat.agents._assistant_agent import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-# Import direct function references to bypass the FunctionTool wrapper
-from src.tools.tools import fetch_market_data, fetch_news, fetch_yahoo_data, fetch_alpha_vantage_data, fetch_alpha_vantage_news
+# Import tool dictionary for dynamic tool access
+from src.tools.tools import ALL_TOOLS, ALL_TOOLS_DICT
+from src.tools.tools import (
+    fetch_market_data, fetch_news, fetch_yahoo_data,
+    fetch_alpha_vantage_data, fetch_alpha_vantage_news
+)
 from config.config_loader import ConfigLoader
 from abc import ABC, abstractmethod
-from typing import Any, Optional, List, Dict
-from src.tools.tools import ALL_TOOLS
+from typing import Any, Optional, List, Dict, Callable
+# Import CancellationToken from autogen_core
+from autogen_core._cancellation_token import CancellationToken
 import asyncio
+import inspect
 import traceback
 import pandas as pd
 
@@ -21,6 +27,15 @@ import pandas as pd
 _loader = ConfigLoader()
 model_name = _loader.get("open_model")     # e.g. "gpt-4o-mini"
 open_ai_key = _loader.get("open_ai_key")
+
+# Fallback map for tool execution when other methods fail
+TOOL_FUNCTION_MAP = {
+    "fetch_market_data": fetch_market_data,
+    "fetch_news": fetch_news,
+    "fetch_yahoo_data": fetch_yahoo_data,
+    "fetch_alpha_vantage_data": fetch_alpha_vantage_data,
+    "fetch_alpha_vantage_news": fetch_alpha_vantage_news
+}
 
 # Default LLM parameters for improved function calling
 DEFAULT_LLM_CONFIG = {
@@ -311,45 +326,178 @@ class BaseAgent(AssistantAgent, ABC):
             self.log(f"Error executing tool {tool_name}: {str(e)}")
             return f"Error executing {tool_name}: {str(e)}"
 
+    def execute_tool_by_name(self, tool_name: str, tool_args: Dict[str, Any]) -> Any:
+        """
+        Execute a tool by name using the tool dispatcher dictionary.
+        
+        This method checks the tool's interface to decide whether to call its
+        'func', directly call the tool (if callable), or use its 'run' method.
+        If a function is a coroutine, it will run it through the async method.
+        
+        :param tool_name: The name of the tool to execute.
+        :param tool_args: The arguments to pass to the tool.
+        :return: The result of the tool execution.
+        """
+        tool = ALL_TOOLS_DICT.get(tool_name)
+        if not tool:
+            self.log(f"Tool '{tool_name}' not found.")
+            raise ValueError(f"Tool '{tool_name}' is not defined.")
+        
+        self.log(f"Executing tool: {tool_name} with arguments: {tool_args}")
+
+        # Create a cancellation token for methods that require it
+        cancellation_token = CancellationToken()
+        
+        # Helper function to handle potentially coroutine functions
+        def exec_fn_sync(fn: Callable, *args, **kwargs) -> Any:
+            """Execute a function, running it through asyncio if it's a coroutine function."""
+            if asyncio.iscoroutinefunction(fn):
+                self.log(f"Function {fn.__name__} is a coroutine, running via asyncio")
+                # We need to run the coroutine function through asyncio
+                return asyncio.run(fn(*args, **kwargs))
+            else:
+                return fn(*args, **kwargs)
+
+        # Attempt different ways to invoke the tool
+        if hasattr(tool, 'func'):
+            try:
+                return exec_fn_sync(tool.func, **tool_args)
+            except Exception as e:
+                self.log(f"Error using tool.func: {e}")
+                traceback.print_exc()
+        
+        if callable(tool):
+            try:
+                return exec_fn_sync(tool, **tool_args)
+            except Exception as e:
+                self.log(f"Error calling tool directly: {e}")
+                traceback.print_exc()
+        
+        if hasattr(tool, 'run'):
+            try:
+                # Pass cancellation_token as required by AutoGen 0.5.1
+                return exec_fn_sync(tool.run, tool_args, cancellation_token)
+            except Exception as e:
+                self.log(f"Error using tool.run with cancellation token: {e}")
+                traceback.print_exc()
+        
+        # Fallback to explicit dispatch from the mapping
+        if tool_name in TOOL_FUNCTION_MAP:
+            try:
+                return exec_fn_sync(TOOL_FUNCTION_MAP[tool_name], **tool_args)
+            except Exception as e:
+                self.log(f"Error using fallback function: {e}")
+                traceback.print_exc()
+                
+                # As a last resort, try to execute the tool asynchronously
+                try:
+                    self.log(f"Attempting to execute {tool_name} asynchronously as a last resort")
+                    return asyncio.run(self.execute_tool_async(tool_name, tool_args))
+                except Exception as e2:
+                    self.log(f"Async execution also failed: {e2}")
+                    raise ValueError(f"Failed to execute tool {tool_name} with all available methods: {e}, {e2}")
+        
+        raise ValueError(f"Could not determine how to execute tool: {tool_name}")
+    
+    async def execute_tool_async(self, tool_name: str, tool_args: Dict[str, Any]) -> Any:
+        """
+        Execute a tool asynchronously using the dispatcher dictionary.
+        
+        This method checks the tool's interface to decide whether to call its
+        'func', directly call the tool (if callable), or use its 'run' method.
+        If a tool returns a coroutine (is async), we await it; otherwise, we run it
+        in an executor.
+        
+        :param tool_name: The name of the tool to execute.
+        :param tool_args: The arguments to pass to the tool.
+        :return: The result of the tool execution.
+        """
+        tool = ALL_TOOLS_DICT.get(tool_name)
+        if not tool:
+            self.log(f"Tool '{tool_name}' not found.")
+            raise ValueError(f"Tool '{tool_name}' is not defined.")
+        
+        self.log(f"Executing tool asynchronously: {tool_name} with arguments: {tool_args}")
+        
+        # Create a cancellation token for methods that require it
+        cancellation_token = CancellationToken()
+        
+        # Define a helper to execute a given function according to its async nature
+        async def call_exec_fn(exec_fn: Callable, *args, **kwargs) -> Any:
+            """Helper function to call the execution function based on whether it's a coroutine or not."""
+            if asyncio.iscoroutinefunction(exec_fn):
+                self.log(f"Executing async function {exec_fn.__name__}")
+                return await exec_fn(*args, **kwargs)
+            else:
+                self.log(f"Executing sync function {exec_fn.__name__} in thread executor")
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(None, lambda: exec_fn(*args, **kwargs))
+        
+        # Determine the proper method to execute the tool
+        if hasattr(tool, 'func'):
+            exec_fn = tool.func
+            try:
+                result = await call_exec_fn(exec_fn, **tool_args)
+                self.log(f"Tool '{tool_name}' execution completed via tool.func.")
+                return result
+            except Exception as e:
+                self.log(f"Error using tool.func for {tool_name}: {e}")
+                traceback.print_exc()
+        
+        elif callable(tool):
+            try:
+                result = await call_exec_fn(tool, **tool_args)
+                self.log(f"Tool '{tool_name}' execution completed via direct call.")
+                return result
+            except Exception as e:
+                self.log(f"Error calling tool directly for {tool_name}: {e}")
+                traceback.print_exc()
+        
+        elif hasattr(tool, 'run'):
+            exec_fn = tool.run
+            try:
+                # Pass cancellation_token to run
+                result = await call_exec_fn(exec_fn, tool_args, cancellation_token)
+                self.log(f"Tool '{tool_name}' execution completed via tool.run.")
+                return result
+            except Exception as e:
+                self.log(f"Error using tool.run for {tool_name}: {e}")
+                traceback.print_exc()
+        
+        elif tool_name in TOOL_FUNCTION_MAP:
+            exec_fn = TOOL_FUNCTION_MAP[tool_name]
+            try:
+                result = await call_exec_fn(exec_fn, **tool_args)
+                self.log(f"Tool '{tool_name}' execution completed via function map.")
+                return result
+            except Exception as e:
+                self.log(f"Error using fallback function for {tool_name}: {e}")
+                traceback.print_exc()
+                raise ValueError(f"Failed to execute tool {tool_name} asynchronously: {e}")
+        
+        else:
+            raise ValueError(f"Could not determine how to execute tool: {tool_name}")
+
     async def _call_specific_tool(self, tool_name: str, parsed_args: Dict[str, Any]) -> Any:
         """
         Call a specific tool by name with parsed arguments.
+        Uses the improved async tool execution with proper coroutine handling.
 
         :param tool_name: The name of the tool to call.
         :param parsed_args: The parsed arguments for the tool.
         :return: The result of the tool call.
         """
-        if tool_name == "fetch_market_data":
-            symbol = parsed_args.get("symbol", "AAPL")
-            start_date = parsed_args.get("start_date", "-7d")
-            end_date = parsed_args.get("end_date", None)
-            return fetch_market_data(symbol=symbol, start_date=start_date, end_date=end_date)
-
-        elif tool_name == "fetch_news":
-            keyword = parsed_args.get("keyword", "market")
-            count = parsed_args.get("count", 5)
-            return fetch_news(keyword=keyword, count=count)
-
-        elif tool_name == "fetch_yahoo_data":
-            ticker = parsed_args.get("ticker", "AAPL")
-            start_date = parsed_args.get("start_date", "-7d")
-            end_date = parsed_args.get("end_date", None)
-            return fetch_yahoo_data(ticker=ticker, start_date=start_date, end_date=end_date)
-
-        elif tool_name == "fetch_alpha_vantage_data":
-            symbol = parsed_args.get("symbol", "AAPL")
-            start_date = parsed_args.get("start_date", "-7d")
-            end_date = parsed_args.get("end_date", None)
-            return fetch_alpha_vantage_data(symbol=symbol, start_date=start_date, end_date=end_date)
-
-        elif tool_name == "fetch_alpha_vantage_news":
-            symbol = parsed_args.get("symbol", "AAPL")
-            topics = parsed_args.get("topics", None)
-            return fetch_alpha_vantage_news(symbol=symbol, topics=topics)
-
-        else:
-            self.log(f"Unknown tool: {tool_name}")
-            return f"Unknown tool: {tool_name}"
+        try:
+            # Use the advanced async dispatcher to execute the tool
+            # This will properly handle both synchronous and asynchronous functions
+            self.log(f"Calling tool {tool_name} with arguments: {parsed_args}")
+            result = await self.execute_tool_async(tool_name, parsed_args)
+            self.log(f"Completed execution of {tool_name}")
+            return result
+        except Exception as e:
+            self.log(f"Error executing tool {tool_name}: {str(e)}")
+            traceback.print_exc()
+            return f"Error executing {tool_name}: {str(e)}"
 
     def _log_tool_result(self, tool_result: Any) -> None:
         """

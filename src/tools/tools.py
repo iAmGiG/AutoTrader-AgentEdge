@@ -185,3 +185,8 @@ ALL_TOOLS = [
     alpha_vantage_news_tool,
     market_data_tool
 ]
+
+########################################
+# Tool dispatcher dictionary for efficient lookup by name
+########################################
+ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS}
