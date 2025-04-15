@@ -167,236 +167,276 @@ class BaseAgent(AssistantAgent, ABC):
         :return: The LLM's response.
         """
         try:
-
-            # Build the messages array with the correct message types
-            messages = []
-            if system_prompt:
-                messages.append(SystemMessage(content=system_prompt))
-
-            # Add the user prompt with the correct message type
-            messages.append(UserMessage(content=prompt, source="user"))
-
-            # Define async function to handle LLM interaction with tool calling
-            async def async_call_llm_with_tools():
-                # Initialize conversation history for this interaction
-                conversation = messages.copy()
-
-                # Set up tools for the LLM to use
-                tools_list = list(self._tools_dict.values())
-
-                # First LLM call - might return tool calls
-                print("- Calling LLM to analyze the query...")
-                response = await self.model_client.create(messages=conversation, tools=tools_list)
-
-                # Check if the response contains tool calls
-                if hasattr(response, 'content') and isinstance(response.content, list):
-                    # We have tool calls to process
-                    tool_calls = response.content
-
-                    # Add the assistant's response with tool calls to the conversation
-                    conversation.append(AssistantMessage(
-                        content=tool_calls, source="assistant"))
-
-                    # Process each tool call
-                    tool_results = []
-                    for tool_call in tool_calls:
-                        tool_name = tool_call.name
-                        tool_args = tool_call.arguments
-                        tool_id = tool_call.id
-
-                        # Print better diagnostic info about the tool call
-                        if isinstance(tool_args, dict):
-                            args_str = ", ".join(
-                                [f"{k}={v}" for k, v in tool_args.items()])
-                        else:
-                            args_str = str(tool_args)
-                        print(f"- LLM is using tool: {tool_name}({args_str})")
-
-                        # Execute the tool
-                        try:
-                            # Get the actual tool from the tools dict
-                            tool = self._tools_dict.get(tool_name)
-                            if not tool:
-                                raise ValueError(
-                                    f"Tool not found: {tool_name}")
-
-                            # Parse the tool arguments in a clean way
-                            parsed_args = self._parse_tool_arguments(tool_args)
-
-                            # Execute the tool with proper error handling
-                            try:
-                                # Call the appropriate function directly based on tool name
-                                if tool_name == "fetch_market_data":
-                                    symbol = parsed_args.get("symbol", "AAPL")
-                                    start_date = parsed_args.get(
-                                        "start_date", "-7d")
-                                    end_date = parsed_args.get(
-                                        "end_date", None)
-                                    tool_result = fetch_market_data(
-                                        symbol=symbol, start_date=start_date, end_date=end_date)
-
-                                elif tool_name == "fetch_news":
-                                    keyword = parsed_args.get(
-                                        "keyword", "market")
-                                    count = parsed_args.get("count", 5)
-                                    tool_result = fetch_news(
-                                        keyword=keyword, count=count)
-
-                                elif tool_name == "fetch_yahoo_data":
-                                    ticker = parsed_args.get("ticker", "AAPL")
-                                    start_date = parsed_args.get(
-                                        "start_date", "-7d")
-                                    end_date = parsed_args.get(
-                                        "end_date", None)
-                                    tool_result = fetch_yahoo_data(
-                                        ticker=ticker, start_date=start_date, end_date=end_date)
-
-                                elif tool_name == "fetch_alpha_vantage_data":
-                                    symbol = parsed_args.get("symbol", "AAPL")
-                                    start_date = parsed_args.get(
-                                        "start_date", "-7d")
-                                    end_date = parsed_args.get(
-                                        "end_date", None)
-                                    tool_result = fetch_alpha_vantage_data(
-                                        symbol=symbol, start_date=start_date, end_date=end_date)
-
-                                elif tool_name == "fetch_alpha_vantage_news":
-                                    symbol = parsed_args.get("symbol", "AAPL")
-                                    topics = parsed_args.get("topics", None)
-                                    tool_result = fetch_alpha_vantage_news(
-                                        symbol=symbol, topics=topics)
-
-                                else:
-                                    self.log(f"Unknown tool: {tool_name}")
-                                    tool_result = f"Unknown tool: {tool_name}"
-
-                                self.log(f"Successfully executed {tool_name}")
-
-                                # For debugging
-                                if isinstance(tool_result, pd.DataFrame):
-                                    self.log(
-                                        f"Result is DataFrame with shape {tool_result.shape}")
-
-                                    # Temporary debug info
-                                    if not tool_result.empty:
-                                        print(
-                                            f"DataFrame head: {tool_result.head(3)}")
-
-                                else:
-                                    self.log(f"Result is {type(tool_result)}")
-
-                            except Exception as e:
-                                import traceback
-                                traceback.print_exc()
-                                self.log(
-                                    f"Error executing tool {tool_name}: {str(e)}")
-                                tool_result = f"Error executing {tool_name}: {str(e)}"
-
-                            # Let the subclass process the result if needed
-                            processed_result = self.process_tool_result(
-                                tool_name, tool_result, parsed_args)
-
-                            # Convert processed result to JSON serializable format if needed
-                            if hasattr(processed_result, 'to_dict'):
-                                # For pandas DataFrames or objects with to_dict method
-                                processed_result = processed_result.to_dict(
-                                    orient='records')
-
-                            # Convert the processed result to a string if it's not already
-                            if isinstance(processed_result, (dict, pd.DataFrame, list)):
-                                try:
-                                    import json
-
-                                    # Convert DataFrame to dict if needed
-                                    if isinstance(processed_result, pd.DataFrame):
-                                        result_dict = processed_result.to_dict(
-                                            orient='records')
-                                    else:
-                                        result_dict = processed_result
-
-                                    # Convert to JSON string
-                                    content_str = json.dumps(result_dict)
-
-                                    # Add the result to our list as a string
-                                    tool_results.append(
-                                        FunctionExecutionResult(
-                                            content=content_str,
-                                            call_id=tool_id,
-                                            is_error=False,
-                                            name=tool_name
-                                        )
-                                    )
-                                except Exception as e:
-                                    self.log(
-                                        f"Error serializing result to JSON: {str(e)}")
-                                    tool_results.append(
-                                        FunctionExecutionResult(
-                                            content=str(processed_result),
-                                            call_id=tool_id,
-                                            is_error=False,
-                                            name=tool_name
-                                        )
-                                    )
-                            else:
-                                # If it's already a string or another simple type, just convert to string
-                                tool_results.append(
-                                    FunctionExecutionResult(
-                                        content=str(processed_result),
-                                        call_id=tool_id,
-                                        is_error=False,
-                                        name=tool_name
-                                    )
-                                )
-                        except Exception as e:
-                            # Handle tool execution errors
-                            error_message = f"Error executing {tool_name}: {str(e)}"
-                            print(error_message)
-                            tool_results.append(
-                                FunctionExecutionResult(
-                                    content=error_message,
-                                    call_id=tool_id,
-                                    is_error=True,
-                                    name=tool_name
-                                )
-                            )
-
-                    # Add the tool results to the conversation
-                    if tool_results:
-                        conversation.append(
-                            FunctionExecutionResultMessage(content=tool_results))
-
-                    # Call the LLM again with the tool results
-                    print(
-                        "- Calling LLM to generate final response with tool results...")
-                    final_response = await self.model_client.create(messages=conversation)
-                    return final_response
-
-                # If no tool calls, just return the initial response
-                return response
-
-            # Run the async function and get the response
-            response = asyncio.run(async_call_llm_with_tools())
-
-            # Extract the response content - in AutoGen 0.5.x, the response structure is different
-            if response:
-                # Check if the response has a content attribute (new AutoGen API)
-                if hasattr(response, 'content'):
-                    if isinstance(response.content, str):
-                        return response.content
-                    else:
-                        # This could be another format, convert to string
-                        return str(response.content)
-                # Fall back to other possible response formats
-                else:
-                    return str(response)
-            else:
-                return "No response generated by the LLM."
-
+            messages = self._build_message_sequence(prompt, system_prompt)
+            response = asyncio.run(self._run_tool_conversation(messages))
+            return self._extract_content(response)
         except Exception as e:
-            import traceback
             error_details = traceback.format_exc()
             print(f"Error details: {error_details}")
             return f"Error processing with LLM: {str(e)}"
+
+    def _build_message_sequence(self, prompt: str, system_prompt: Optional[str] = None) -> List[Any]:
+        """
+        Build a sequence of messages for the conversation with the LLM.
+
+        :param prompt: The user prompt to process.
+        :param system_prompt: Optional system prompt to provide context.
+        :return: A list of message objects.
+        """
+        messages = []
+        if system_prompt:
+            messages.append(SystemMessage(content=system_prompt))
+        messages.append(UserMessage(content=prompt, source="user"))
+        return messages
+
+    async def _run_tool_conversation(self, messages: List[Any]) -> Any:
+        """
+        Run a conversation with the LLM that may involve tool calling.
+
+        :param messages: The initial messages for the conversation.
+        :return: The LLM's response.
+        """
+        # Initialize conversation history for this interaction
+        conversation = messages.copy()
+
+        # Set up tools for the LLM to use
+        tools_list = list(self._tools_dict.values())
+
+        # First LLM call - might return tool calls
+        print("- Calling LLM to analyze the query...")
+        response = await self.model_client.create(messages=conversation, tools=tools_list)
+
+        # Check if the response contains tool calls
+        if hasattr(response, 'content') and isinstance(response.content, list):
+            # We have tool calls to process
+            tool_calls = response.content
+            conversation.append(AssistantMessage(content=tool_calls, source="assistant"))
+            
+            # Process all tool calls and get results
+            tool_results = await self._process_tool_calls(tool_calls)
+            
+            # Add the tool results to the conversation
+            if tool_results:
+                conversation.append(FunctionExecutionResultMessage(content=tool_results))
+
+            # Call the LLM again with the tool results
+            print("- Calling LLM to generate final response with tool results...")
+            final_response = await self.model_client.create(messages=conversation)
+            return final_response
+
+        # If no tool calls, just return the initial response
+        return response
+
+    async def _process_tool_calls(self, tool_calls: List[Any]) -> List[FunctionExecutionResult]:
+        """
+        Process a list of tool calls and return their results.
+
+        :param tool_calls: A list of tool call objects from the LLM.
+        :return: A list of function execution results.
+        """
+        tool_results = []
+        for tool_call in tool_calls:
+            tool_name = tool_call.name
+            tool_args = tool_call.arguments
+            tool_id = tool_call.id
+
+            # Print diagnostic info about the tool call
+            self._log_tool_call(tool_name, tool_args)
+            
+            try:
+                # Execute the tool and get the result
+                tool_result = await self._execute_tool(tool_name, tool_args)
+                
+                # Format the result for the LLM
+                formatted_result = self._format_tool_result(tool_result, tool_name, tool_id)
+                tool_results.append(formatted_result)
+            except Exception as e:
+                # Handle tool execution errors
+                error_message = f"Error executing {tool_name}: {str(e)}"
+                print(error_message)
+                tool_results.append(
+                    FunctionExecutionResult(
+                        content=error_message,
+                        call_id=tool_id,
+                        is_error=True,
+                        name=tool_name
+                    )
+                )
+                
+        return tool_results
+
+    def _log_tool_call(self, tool_name: str, tool_args: Any) -> None:
+        """
+        Log information about a tool call.
+
+        :param tool_name: The name of the tool being called.
+        :param tool_args: The arguments for the tool call.
+        """
+        if isinstance(tool_args, dict):
+            args_str = ", ".join([f"{k}={v}" for k, v in tool_args.items()])
+        else:
+            args_str = str(tool_args)
+        print(f"- LLM is using tool: {tool_name}({args_str})")
+
+    async def _execute_tool(self, tool_name: str, tool_args: Any) -> Any:
+        """
+        Execute a tool with the given arguments.
+
+        :param tool_name: The name of the tool to execute.
+        :param tool_args: The arguments for the tool.
+        :return: The result of the tool execution.
+        """
+        # Get the actual tool from the tools dict
+        tool = self._tools_dict.get(tool_name)
+        if not tool:
+            raise ValueError(f"Tool not found: {tool_name}")
+
+        # Parse the tool arguments in a clean way
+        parsed_args = self._parse_tool_arguments(tool_args)
+
+        try:
+            # Call the appropriate function directly based on tool name
+            tool_result = await self._call_specific_tool(tool_name, parsed_args)
+            self.log(f"Successfully executed {tool_name}")
+            
+            # Log information about the result
+            self._log_tool_result(tool_result)
+            
+            # Let the subclass process the result if needed
+            processed_result = self.process_tool_result(tool_name, tool_result, parsed_args)
+            return processed_result
+            
+        except Exception as e:
+            traceback.print_exc()
+            self.log(f"Error executing tool {tool_name}: {str(e)}")
+            return f"Error executing {tool_name}: {str(e)}"
+
+    async def _call_specific_tool(self, tool_name: str, parsed_args: Dict[str, Any]) -> Any:
+        """
+        Call a specific tool by name with parsed arguments.
+
+        :param tool_name: The name of the tool to call.
+        :param parsed_args: The parsed arguments for the tool.
+        :return: The result of the tool call.
+        """
+        if tool_name == "fetch_market_data":
+            symbol = parsed_args.get("symbol", "AAPL")
+            start_date = parsed_args.get("start_date", "-7d")
+            end_date = parsed_args.get("end_date", None)
+            return fetch_market_data(symbol=symbol, start_date=start_date, end_date=end_date)
+
+        elif tool_name == "fetch_news":
+            keyword = parsed_args.get("keyword", "market")
+            count = parsed_args.get("count", 5)
+            return fetch_news(keyword=keyword, count=count)
+
+        elif tool_name == "fetch_yahoo_data":
+            ticker = parsed_args.get("ticker", "AAPL")
+            start_date = parsed_args.get("start_date", "-7d")
+            end_date = parsed_args.get("end_date", None)
+            return fetch_yahoo_data(ticker=ticker, start_date=start_date, end_date=end_date)
+
+        elif tool_name == "fetch_alpha_vantage_data":
+            symbol = parsed_args.get("symbol", "AAPL")
+            start_date = parsed_args.get("start_date", "-7d")
+            end_date = parsed_args.get("end_date", None)
+            return fetch_alpha_vantage_data(symbol=symbol, start_date=start_date, end_date=end_date)
+
+        elif tool_name == "fetch_alpha_vantage_news":
+            symbol = parsed_args.get("symbol", "AAPL")
+            topics = parsed_args.get("topics", None)
+            return fetch_alpha_vantage_news(symbol=symbol, topics=topics)
+
+        else:
+            self.log(f"Unknown tool: {tool_name}")
+            return f"Unknown tool: {tool_name}"
+
+    def _log_tool_result(self, tool_result: Any) -> None:
+        """
+        Log information about a tool execution result.
+
+        :param tool_result: The result from executing a tool.
+        """
+        if isinstance(tool_result, pd.DataFrame):
+            self.log(f"Result is DataFrame with shape {tool_result.shape}")
+            # Temporary debug info
+            if not tool_result.empty:
+                print(f"DataFrame head: {tool_result.head(3)}")
+        else:
+            self.log(f"Result is {type(tool_result)}")
+
+    def _format_tool_result(self, result: Any, tool_name: str, tool_id: str) -> FunctionExecutionResult:
+        """
+        Format a tool result for use in the conversation.
+
+        :param result: The raw or processed result from a tool.
+        :param tool_name: The name of the tool that was called.
+        :param tool_id: The ID of the tool call.
+        :return: A FunctionExecutionResult object.
+        """
+        # Convert processed result to JSON serializable format if needed
+        if hasattr(result, 'to_dict'):
+            # For pandas DataFrames or objects with to_dict method
+            result = result.to_dict(orient='records')
+
+        # Convert the processed result to a string if it's not already
+        if isinstance(result, (dict, pd.DataFrame, list)):
+            try:
+                import json
+
+                # Convert DataFrame to dict if needed
+                if isinstance(result, pd.DataFrame):
+                    result_dict = result.to_dict(orient='records')
+                else:
+                    result_dict = result
+
+                # Convert to JSON string
+                content_str = json.dumps(result_dict)
+
+                # Return the result as a string
+                return FunctionExecutionResult(
+                    content=content_str,
+                    call_id=tool_id,
+                    is_error=False,
+                    name=tool_name
+                )
+            except Exception as e:
+                self.log(f"Error serializing result to JSON: {str(e)}")
+                return FunctionExecutionResult(
+                    content=str(result),
+                    call_id=tool_id,
+                    is_error=False,
+                    name=tool_name
+                )
+        else:
+            # If it's already a string or another simple type, just convert to string
+            return FunctionExecutionResult(
+                content=str(result),
+                call_id=tool_id,
+                is_error=False,
+                name=tool_name
+            )
+
+    def _extract_content(self, response: Any) -> str:
+        """
+        Extract the content from a response object.
+
+        :param response: The response from the LLM.
+        :return: The content as a string.
+        """
+        if response:
+            # Check if the response has a content attribute (new AutoGen API)
+            if hasattr(response, 'content'):
+                if isinstance(response.content, str):
+                    return response.content
+                else:
+                    # This could be another format, convert to string
+                    return str(response.content)
+            # Fall back to other possible response formats
+            else:
+                return str(response)
+        else:
+            return "No response generated by the LLM."
 
     def _parse_tool_arguments(self, tool_args: Any) -> Dict[str, Any]:
         """
