@@ -7,6 +7,7 @@ This directory contains reference documentation for key AutoGen Core classes and
 - [FunctionTool Reference](function_tool.md) - Documentation for the `FunctionTool` class used to create callable tools
 - [Messaging Reference](messaging.md) - Documentation for message types like `SystemMessage`, `UserMessage`, etc.
 - [OpenAI Client Reference](openai_client.md) - Documentation for the `OpenAIChatCompletionClient` class
+- [CancellationToken Reference](cancellation_token.md) - Documentation for the `CancellationToken` class required for tool execution
 
 ## Purpose
 

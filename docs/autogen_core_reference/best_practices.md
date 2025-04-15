@@ -54,7 +54,7 @@ ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS}
 
 ## Tool Dispatching
 
-### Efficient Dispatcher Pattern
+### Robust Dispatcher Pattern
 
 ```python
 def execute_tool_by_name(self, tool_name: str, tool_args: Dict[str, Any]) -> Any:
@@ -63,14 +63,38 @@ def execute_tool_by_name(self, tool_name: str, tool_args: Dict[str, Any]) -> Any
     if not tool:
         raise ValueError(f"Tool '{tool_name}' is not defined.")
     
-    return tool.func(**tool_args)
+    # Attempt different ways to invoke the tool
+    if hasattr(tool, 'func'):
+        try:
+            return tool.func(**tool_args)
+        except Exception as e:
+            self.log(f"Error using tool.func: {e}")
+    
+    if callable(tool):
+        try:
+            return tool(**tool_args)
+        except Exception as e:
+            self.log(f"Error calling tool directly: {e}")
+    
+    if hasattr(tool, 'run'):
+        try:
+            return tool.run(tool_args)
+        except Exception as e:
+            self.log(f"Error using tool.run: {e}")
+    
+    # Fallback to explicit dispatch from a mapping
+    if tool_name in TOOL_FUNCTION_MAP:
+        return TOOL_FUNCTION_MAP[tool_name](**tool_args)
+    
+    raise ValueError(f"Could not determine how to execute tool: {tool_name}")
 ```
 
 **Benefits:**
-- Eliminates lengthy if-else chains
-- Centralizes tool lookup logic
+- Handles different AutoGen Core versions with varying interfaces
+- Provides multiple fallback methods if one approach fails
+- Centralizes tool lookup and execution logic
 - Makes adding new tools easier (no code changes in BaseAgent)
-- Improves maintainability and testability
+- Improves maintainability, resilience, and cross-version compatibility
 
 ### Asynchronous Execution
 
@@ -81,16 +105,44 @@ async def execute_tool_async(self, tool_name: str, tool_args: Dict[str, Any]) ->
     if not tool:
         raise ValueError(f"Tool '{tool_name}' is not defined.")
     
+    # Create a cancellation token for methods that require it
+    from autogen_core._cancellation_token import CancellationToken
+    cancellation_token = CancellationToken()
+    
+    # Define the function call dispatcher based on the tool interface
+    exec_func = None
+    
+    # Try to find a suitable execution method
+    if hasattr(tool, 'func'):
+        exec_func = lambda: tool.func(**tool_args)
+    elif callable(tool):
+        exec_func = lambda: tool(**tool_args)
+    elif hasattr(tool, 'run'):
+        # Pass cancellation_token as required in AutoGen 0.5.1
+        exec_func = lambda: tool.run(tool_args, cancellation_token)
+    elif tool_name in TOOL_FUNCTION_MAP:
+        exec_func = lambda: TOOL_FUNCTION_MAP[tool_name](**tool_args)
+    else:
+        raise ValueError(f"Could not determine how to execute tool: {tool_name}")
+        
+    # Run the function in a separate thread
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, lambda: tool.func(**tool_args))
+    result = await loop.run_in_executor(None, exec_func)
     return result
 ```
 
 **Benefits:**
+- Handles different AutoGen Core versions with varying interfaces
+- Provides CancellationToken for tools requiring it (AutoGen 0.5.1 requirement)
 - Allows non-blocking execution
 - Enables potential parallel tool execution
 - Maintains responsiveness during long-running operations
 - Fits with AutoGen's async architecture
+- Provides multiple fallback methods for resilience
+
+**Important Notes:**
+- CancellationToken is imported from `autogen_core._cancellation_token` (not tools)
+- The `run` method in AutoGen 0.5.1 requires a cancellation token as a second parameter
 
 ## Data Handling
 

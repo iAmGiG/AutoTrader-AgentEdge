@@ -65,18 +65,25 @@ async def execute_tool_async(tool_name, tool_args):
 
 ## Common Tool Patterns in RH2MAS
 
-### Tool Registration
+### Tool Registration and Dispatching
 
 ```python
-# Central registry of tools
+# Central registry of tools (FunctionTool instances)
 ALL_TOOLS = [
     news_tool,
     market_data_tool,
     # ...other tools
 ]
 
-# Dictionary for efficient lookup
+# Dictionary for efficient lookup by name
 ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS}
+
+# Direct function map for fallback execution
+TOOL_FUNCTION_MAP = {
+    "fetch_news": fetch_news,
+    "fetch_market_data": fetch_market_data,
+    # ...other direct function references
+}
 ```
 
 ### Tool Dispatcher in BaseAgent
