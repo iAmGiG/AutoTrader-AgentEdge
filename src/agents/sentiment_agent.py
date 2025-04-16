@@ -1,182 +1,290 @@
+"""
+SentimentAgent module for sentiment analysis on market data and news.
+
+This agent is designed to:
+1. Retrieve market news and stock data
+2. Apply sentiment analysis on news and price movements
+3. Present a coherent summary with technical metrics and market behavior explanations
+"""
+
+# Standard library imports
+import json
+import traceback
+from typing import Dict, Any, Optional
+
+# Third-party imports
+import pandas as pd
+
+# Project imports
 from .base_agent import BaseAgent
 from config.config_loader import ConfigLoader
-from src.tools.tools import (
-    news_tool, yahoo_finance_tool, alpha_vantage_tool,
-    alpha_vantage_news_tool, market_data_tool
-)
-from src.tools.tools import (
-    fetch_news, fetch_yahoo_data, fetch_alpha_vantage_data,
-    fetch_alpha_vantage_news, fetch_market_data
-)
-from src.tools.text_processing.data_normalizer import normalize_data_for_sentiment
+from src.tools.tools import ALL_TOOLS
+from src.tools.text_processing.sentiment_analyzer import SentimentAnalyzer
+from src.tools.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
 
-# Instantiate ConfigLoader once at module-level
-_loader = ConfigLoader()
-
-DEFAULT_SENTIMENT_CONFIG = {
-    "open_model": _loader.get("open_model"),      # This is passed to BaseAgent
-    "newsapi_key": _loader.get("newsapi_key"),
-    "alpha_vantage_key": _loader.get("alpha_vantage_key"),
-    # "finnhub_key": _loader.get("finnhub_key")
+# LLM config optimized for sentiment analysis and narrative generation
+SENTIMENT_LLM_CONFIG = {
+    "temperature": 0.3,  # Slightly higher for creative narratives
+    "max_tokens": 4096,  # Ensure enough tokens for complex responses
+    "top_p": 0.9,        # Allow for some creative variety
 }
 
-
 class SentimentAgent(BaseAgent):
+    """
+    Agent for sentiment analysis and market behavior explanation.
+    
+    Uses LLM-driven function calling to:
+    - Retrieve news and market data based on user queries
+    - Analyze sentiment in news articles
+    - Generate explanations of market behavior
+    """
 
     def __init__(self, name="SentimentAgent", memory_system=None):
-        # Pass the FunctionTool(s) to the BaseAgent's tools parameter
-        super().__init__(name=name, tools=[
-            market_data_tool  # Only need the unified MarketDataTool
-        ], memory_system=memory_system)
-
-    def preprocess_data(self, news_data) -> dict:
+        # Load configurations and utilities
+        self.config = load_agent_config("sentiment_agent")
+        self.market_sectors = load_market_sectors().get("sectors", {})
+        self.query_parser = QueryParser(self.market_sectors)
+        
+        # Initialize the sentiment analyzer
+        self.sentiment_analyzer = SentimentAnalyzer()
+        
+        # Use the pre-defined tools from tools.py
+        tools = ALL_TOOLS
+        
+        # Initialize BaseAgent with system prompt from config
+        super().__init__(
+            name=name, 
+            tools=tools, 
+            memory_system=memory_system,
+            llm_config=SENTIMENT_LLM_CONFIG
+        )
+        
+        # Store the data processor
+        self.data_processor = DataProcessor()
+    
+    def preprocess_message(self, message: str) -> Dict[str, Any]:
         """
-        Processes the news data (a DataFrame) to extract sentiment signals.
-        Handles different column names from various sources.
-
-        Returns a dictionary with:
-          - article_count: number of articles fetched
-          - headlines: list of headlines
-          - average_sentiment: average sentiment score (if available)
+        Pre-process a user message to extract key information.
+        This helps guide the LLM's tool selection without being overly prescriptive.
+        
+        Args:
+            message: User's query message
+            
+        Returns:
+            Dictionary with extracted query details
         """
-        signals = {}
-        if news_data.empty:
-            signals["error"] = "No news data available"
-            return signals
-
-        # Count articles
-        signals["article_count"] = len(news_data)
-
-        # Extract headlines - handle different column names
-        headline_cols = ["Headline", "title", "Title", "headline"]
-        for col in headline_cols:
-            if col in news_data.columns:
-                signals["headlines"] = news_data[col].tolist()
-                break
-        else:
-            # No recognized headline column
-            signals["headlines"] = ["No headline available"] * len(news_data)
-
-        # Extract sentiment scores - handle different column names
-        sentiment_cols = ["Sentiment Score", "sentiment_score",
-                          "overall_sentiment_score", "score"]
-        for col in sentiment_cols:
-            if col in news_data.columns:
-                signals["average_sentiment"] = news_data[col].mean()
-                break
-        else:
-            # No recognized sentiment column
-            signals["average_sentiment"] = None
-
-        return signals
-
-    def handle_message(self, message: str) -> str:
+        # Extract query details from the message
+        query_details = self.query_parser.extract_query_details(message)
+        
+        # Add sector information if available
+        if query_details["sector"] and query_details["sector"] in self.market_sectors:
+            sector_data = self.market_sectors[query_details["sector"]]
+            query_details["etfs"] = sector_data.get("etfs", [])
+            query_details["blue_chips"] = sector_data.get("blue_chips", [])
+            query_details["leveraged_etfs"] = sector_data.get("leveraged_etfs", [])
+        
+        return query_details
+    
+    def format_supplementary_context(self, query_details: Dict[str, Any]) -> str:
         """
-        Processes an incoming message command using the unified MarketDataTool.
-        Expects messages in formats like:
-        - "Fetch news on <keyword>" or "Get news for <ticker>"
-        - "Get stock data for <ticker>"
+        Format supplementary context for the LLM based on extracted query details.
+        This helps the LLM make better decisions about which tools to call.
+        
+        Args:
+            query_details: Extracted query details
+            
+        Returns:
+            Formatted context string
+        """
+        context = []
+        
+        # Add ticker and sector information
+        if query_details.get("ticker"):
+            context.append(f"Relevant ticker: {query_details['ticker']}")
+        
+        if query_details.get("sector"):
+            context.append(f"Relevant sector: {query_details['sector']}")
+            
+            # Add ETF information if available
+            if query_details.get("etfs"):
+                etfs_str = ", ".join(query_details["etfs"][:3])
+                context.append(f"Sector ETFs: {etfs_str}")
+            
+            # Add blue chip information if available
+            if query_details.get("blue_chips"):
+                blue_chips_str = ", ".join(query_details["blue_chips"][:3])
+                context.append(f"Sector blue chips: {blue_chips_str}")
+        
+        # Add date range
+        context.append(f"Default date range: {query_details.get('start_date')} to {query_details.get('end_date') or 'present'}")
+        
+        return "\n".join(context)
+    
+    def process_tool_result(self, tool_name: str, result: Any, tool_args: dict) -> Any:
+        """
+        Process tool results with sentiment-specific handling.
+        This override adds specialized processing for news and market data.
+        
+        Args:
+            tool_name: The name of the tool that was called
+            result: The raw result from the tool
+            tool_args: The arguments that were passed to the tool
+            
+        Returns:
+            Processed result in a simple, JSON-serializable format
         """
         try:
-            # Determine intent from message
-            if "news" in message.lower():
-                # Extract ticker or topic from message
-                ticker = None
-                topic = None
-
-                if "for" in message:
-                    query = message.split("for")[-1].strip()
-                    # If query looks like a ticker (all caps, 1-5 chars), treat as ticker
-                    if query.isupper() and 1 <= len(query) <= 5:
-                        ticker = query
+            # First, ensure tool_args is a dictionary for safe access
+            if isinstance(tool_args, str):
+                try:
+                    parsed_args = json.loads(tool_args)
+                    if isinstance(parsed_args, dict):
+                        tool_args = parsed_args
                     else:
-                        topic = query
-
-                if ticker:
-                    # Fetch news by ticker
-                    news_data = fetch_market_data(
-                        symbol=ticker, source="alpha_vantage")
-                    if news_data.empty:
-                        return f"No news found for ticker {ticker}."
-                else:
-                    # For non-ticker queries, use the default news source
-                    keyword = topic or "market"
-                    news_data = fetch_news(keyword=keyword, count=5)
-                    if news_data.empty:
-                        return f"No news found for {keyword}."
-
-                # Process the news data to extract sentiment signals
-                signals = self.preprocess_data(news_data)
-
-                # Format a nicer response
-                headlines = "; ".join(
-                    signals["headlines"][:3]) if "headlines" in signals else "No headlines available"
-                sentiment = signals.get("average_sentiment", "N/A")
-
-                query_term = ticker if ticker else f"'{keyword}'"
-                return (f"News for {query_term}:\n"
-                        f"Found {signals.get('article_count', 0)} articles\n"
-                        f"Sample headlines: {headlines}\n"
-                        f"Average sentiment score: {sentiment}")
-
-            elif "stock" in message.lower() or "price" in message.lower():
-                # Extract ticker from message
-                if 'for' in message:
-                    ticker = message.split('for')[-1].strip()
-                else:
-                    ticker = "AAPL"  # Default ticker
-
-                # Use standard date range
-                start_date = "2024-01-01"
-                end_date = "2024-01-31"
-
-                # Fetch stock data using the unified market data tool
-                stock_data = fetch_market_data(
-                    symbol=ticker,
-                    start_date=start_date,
-                    end_date=end_date,
-                    source="alpha_vantage"
-                )
-
-                if stock_data.empty:
-                    return f"No stock data found for {ticker}."
-
-                # Get the most recent price data
-                # Assuming data is sorted with newest first
-                latest = stock_data.iloc[0]
-
-                # Format output based on available columns
-                price_info = []
-                if 'close' in latest:
-                    price_info.append(f"Latest close: ${latest['close']:.2f}")
-                if 'low' in latest and 'high' in latest:
-                    price_info.append(
-                        f"Range: ${latest['low']:.2f} - ${latest['high']:.2f}")
-                if 'volume' in latest:
-                    price_info.append(f"Volume: {latest['volume']:,}")
-
-                return f"Stock data for {ticker}:\n" + "\n".join(price_info)
-
-            else:
-                # Generic fallback for other commands
-                return ("I can help with:\n"
-                        "- 'Fetch news on <topic>' to get news and sentiment\n"
-                        "- 'Get news for <ticker>' to get stock-specific news\n"
-                        "- 'Get stock data for <ticker>' to get price information")
-
+                        tool_args = {}
+                except json.JSONDecodeError:
+                    tool_args = {}
+            elif not isinstance(tool_args, dict):
+                tool_args = {}
+                
+            # For debugging
+            print(f"Processing tool result for {tool_name}")
+            
+            # Process the result based on tool type
+            if tool_name == "fetch_news":
+                # Simple formatted results for news data
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    # Extract headlines
+                    headlines = []
+                    headline_cols = ["Headline", "title", "Title", "headline"]
+                    for col in headline_cols:
+                        if col in result.columns:
+                            headlines = result[col].tolist()[:5]  # Limit to 5 headlines
+                            break
+                    
+                    # Extract sentiment if available
+                    sentiment = None
+                    sentiment_cols = ["Sentiment Score", "sentiment_score", "overall_sentiment_score", "score"]
+                    for col in sentiment_cols:
+                        if col in result.columns:
+                            sentiment = float(result[col].mean())
+                            break
+                            
+                    # Build a simple news summary
+                    news_summary = {
+                        "headlines": headlines if headlines else ["No headlines available"],
+                        "count": len(result),
+                        "average_sentiment": sentiment,
+                        "sources": result["Source"].tolist()[:5] if "Source" in result.columns else []
+                    }
+                    
+                    return news_summary
+                return {"headlines": [], "count": 0, "message": "No news data available"}
+                
+            elif tool_name in ["fetch_market_data", "fetch_yahoo_data", "fetch_alpha_vantage_data"]:
+                # Simple formatted results for market data
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    # Extract key metrics
+                    if 'Close' in result.columns or 'close' in result.columns:
+                        # Normalize column names
+                        close_col = 'Close' if 'Close' in result.columns else 'close'
+                        
+                        first_price = float(result[close_col].iloc[-1])
+                        last_price = float(result[close_col].iloc[0])
+                        percent_change = ((last_price - first_price) / first_price) * 100
+                        
+                        # Build a simple market summary
+                        ticker = tool_args.get("symbol", "") or tool_args.get("ticker", "")
+                        market_summary = {
+                            "ticker": ticker,
+                            "start_date": result.index[-1].strftime("%Y-%m-%d") if hasattr(result.index[-1], "strftime") else "N/A",
+                            "end_date": result.index[0].strftime("%Y-%m-%d") if hasattr(result.index[0], "strftime") else "N/A",
+                            "days": len(result),
+                            "start_price": round(first_price, 2),
+                            "end_price": round(last_price, 2),
+                            "percent_change": round(percent_change, 2),
+                            "trend": "up" if percent_change > 0 else "down"
+                        }
+                        
+                        return market_summary
+                return {"ticker": tool_args.get("symbol", ""), "days": 0, "message": "No market data available"}
+            
+            # Handle other cases - ensure result is simple and serializable
+            if isinstance(result, pd.DataFrame):
+                # Generic DataFrame handling - convert to simple dict with limited rows
+                if not result.empty:
+                    return {
+                        "summary": f"DataFrame with {len(result)} rows and columns: {', '.join(list(result.columns))}",
+                        "sample_data": result.head(3).to_dict(orient="records")
+                    }
+                return {"summary": "Empty DataFrame"}
+                    
+            # Return the result as is if it's already serializable
+            return result
+            
         except Exception as e:
-            return f"Error processing request: {str(e)}"
-
+            traceback.print_exc()
+            print(f"Error in process_tool_result: {str(e)}")
+            return {"error": f"Failed to process result: {str(e)}"}
+    
     def generate_reply(self, messages, context=None) -> str:
         """
-        AutoGen's method for generating replies.
-        Parses the last message to identify intent and generate an appropriate response.
+        Primary entry point for generating replies to user messages.
+        Let's the LLM decide which tools to call based on the query.
+        
+        Args:
+            messages: List of conversation messages
+            context: Optional context information
+            
+        Returns:
+            Generated response
         """
         if not messages:
-            return "I can help with news sentiment analysis and stock data. Try asking about news or stocks."
-
+            return self.config.get("default_response", "I can help with analyzing market sentiment and stock data.")
+        
         # Get the last message
-        last_message = messages[-1]
-
-        # This method just routes to our handle_message method for consistency
-        return self.handle_message(last_message)
+        if isinstance(messages[-1], dict):
+            last_message = messages[-1].get("content", "")
+        else:
+            last_message = str(messages[-1])
+        
+        # Preprocess the message to extract key information
+        query_details = self.preprocess_message(last_message)
+        
+        # Format supplementary context for the LLM
+        supplementary_context = self.format_supplementary_context(query_details)
+        
+        # Log the extracted information
+        print(f"Extracted query details: {query_details}")
+        
+        # Create a system prompt with supplementary context
+        system_prompt = self.config.get("system_prompt", "")
+        system_prompt += f"\n\nSupplementary context for this query:\n{supplementary_context}"
+        
+        # Add specific guidance based on extracted entities
+        if query_details.get("ticker"):
+            ticker = query_details["ticker"]
+            system_prompt += f"\n\nThis query mentions the stock ticker {ticker}. You should consider using fetch_market_data(symbol=\"{ticker}\", start_date=\"{query_details['start_date']}\") to get relevant market data."
+        
+        if query_details.get("topic"):
+            topic = query_details["topic"]
+            system_prompt += f"\n\nThis query mentions the topic '{topic}'. You should consider using fetch_news(keyword=\"{topic}\", count=5) to get relevant news articles."
+        
+        if query_details.get("sector"):
+            sector = query_details["sector"]
+            system_prompt += f"\n\nThis query relates to the {sector} sector. Consider fetching data for sector ETFs and major companies in this sector."
+            
+            # Add suggested stocks/ETFs to analyze
+            if query_details.get("etfs") and len(query_details["etfs"]) > 0:
+                system_prompt += f" Consider analyzing these sector ETFs: {', '.join(query_details['etfs'][:3])}"
+            
+            if query_details.get("blue_chips") and len(query_details["blue_chips"]) > 0:
+                system_prompt += f" Consider analyzing these major stocks: {', '.join(query_details['blue_chips'][:3])}"
+        
+        # Let the LLM generate a response with tool usage
+        # Use process_with_tools instead of process_with_llm to enable tool calling
+        return self.process_with_tools(last_message, system_prompt)
+    
+    # We no longer need the custom use_tool method as the processing logic
+    # has been moved to the process_tool_result method that's called by 
+    # the BaseAgent's process_with_tools method

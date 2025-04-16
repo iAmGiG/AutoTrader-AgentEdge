@@ -143,6 +143,10 @@ venv.bak/
 config/
 env_test/
 CLAUDE.md
+package-lock.json
+docs/internalREADME.md
+environment.yml
+run_sentiment_agent.sh
 
 # Spyder project settings
 .spyderproject
@@ -178,5 +182,8 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 docs/research/notes.md
-package-lock.json
 
+install_dependencies.sh
+run_simple_agent.sh
+test_data_retrieval.py
+docs/original_sentiment_agent.py
