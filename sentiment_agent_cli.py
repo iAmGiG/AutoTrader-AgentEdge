@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Simplified CLI for interacting with the Sentiment Agent.
+Consolidated CLI for interacting with the Sentiment Agent.
 
-This script demonstrates how to use function calling with AutoGen 0.5.x
+This script provides both a direct CLI for testing the SentimentAgent class
+and a simplified interactive mode using function calling with AutoGen 0.5.x
 """
 
 import sys
@@ -18,6 +19,9 @@ sys.path.insert(0, os.path.abspath('.'))
 
 # Import configuration
 from config.config_loader import ConfigLoader
+
+# Import the SentimentAgent class
+from src.agents.sentiment_agent import SentimentAgent
 
 # Import the data fetching functions directly
 from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
@@ -89,29 +93,31 @@ def fetch_news_data(keyword="market", count=5):
     """
     Fetch news headlines for a topic or ticker.
     """
-    # For the demo, we'll use mock data to avoid API calls
-    mock_news = pd.DataFrame({
-        'headline': [
-            f"{keyword} reports strong quarterly results", 
-            f"Analysts upgrade {keyword} to Buy",
-            f"New product line announced by {keyword}",
-            f"{keyword} sees increased competition",
-            f"{keyword} expands international presence"
-        ],
-        'source': ['CNBC', 'Bloomberg', 'Reuters', 'WSJ', 'MarketWatch'],
-        'date': pd.date_range(end=pd.Timestamp.now(), periods=5, freq='D'),
-        'sentiment': [0.6, 0.8, 0.7, -0.2, 0.5]
-    })
-    
-    result = {
-        "status": "success",
-        "keyword": keyword,
-        "article_count": count,
-        "headlines": mock_news.head(count)[['headline', 'source', 'sentiment']].to_dict(orient='records'),
-        "avg_sentiment": round(mock_news.head(count)['sentiment'].mean(), 2)
-    }
-    
-    return result
+    try:
+        tool = NewsHeadlineTool()
+        news_df = tool.fetch_data(keyword=keyword, count=count)
+        
+        if news_df is None or news_df.empty:
+            return {
+                "error": f"No news available for {keyword}",
+                "status": "error"
+            }
+            
+        result = {
+            "status": "success",
+            "keyword": keyword,
+            "article_count": len(news_df),
+            "headlines": news_df[['Headline', 'Source', 'Sentiment Score']].to_dict(orient='records'),
+            "avg_sentiment": round(news_df['Sentiment Score'].mean(), 2) if 'Sentiment Score' in news_df.columns else 0
+        }
+        
+        return result
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "error": f"Error fetching news: {str(e)}",
+            "status": "error"
+        }
 
 def process_with_llm(prompt, system_prompt=None):
     """
@@ -300,9 +306,10 @@ def interactive_mode():
     """
     Run an interactive CLI with the Sentiment Agent.
     """
-    print("\nSentiment Agent CLI")
+    print("\nSentiment Agent CLI - Interactive Mode")
     print("Type 'exit' or 'quit' to close the program.")
     print("Type 'help' to see example queries.")
+    print("Type 'direct' to switch to direct SentimentAgent mode.")
     
     # Default system prompt
     system_prompt = """
@@ -318,9 +325,16 @@ def interactive_mode():
     Be concise but informative, focusing on the most relevant insights.
     """
     
+    # Mode flag
+    use_direct_agent = False
+    agent = None
+    
     while True:
         # Get user input
-        user_input = input("\nEnter your query: ")
+        if use_direct_agent:
+            user_input = input("\nEnter your query (direct mode): ")
+        else:
+            user_input = input("\nEnter your query: ")
         
         # Handle exit commands
         if user_input.lower() in ['exit', 'quit']:
@@ -334,13 +348,33 @@ def interactive_mode():
             print("- What's the latest on MSFT?")
             print("- Show me news about Tesla")
             print("- Analyze NVDA stock for the past week")
+            print("- Tell me about the technology sector")
+            continue
+            
+        # Handle mode switch
+        if user_input.lower() == 'direct':
+            use_direct_agent = not use_direct_agent
+            print(f"\nSwitched to {'direct SentimentAgent' if use_direct_agent else 'function calling'} mode")
+            if use_direct_agent and agent is None:
+                print("Initializing SentimentAgent...")
+                agent = SentimentAgent()
+                print("✅ SentimentAgent initialized")
             continue
         
         print("\nProcessing...")
         print()
         
-        # Process using function calling
-        response = process_with_function_calling(user_input, system_prompt)
+        if use_direct_agent:
+            # Process using the actual SentimentAgent
+            if agent is None:
+                print("Initializing SentimentAgent...")
+                agent = SentimentAgent()
+                print("✅ SentimentAgent initialized")
+            
+            response = agent.generate_reply([user_input])
+        else:
+            # Process using function calling
+            response = process_with_function_calling(user_input, system_prompt)
         
         print("\nResponse:")
         print("=" * 80)
@@ -349,9 +383,10 @@ def interactive_mode():
     
 def main():
     """Main entry point for the CLI."""
-    parser = argparse.ArgumentParser(description="Simplified Sentiment Agent CLI")
+    parser = argparse.ArgumentParser(description="Sentiment Agent CLI")
     parser.add_argument('--query', '-q', type=str, help='Query to process')
     parser.add_argument('--interactive', '-i', action='store_true', help='Run in interactive mode')
+    parser.add_argument('--direct', '-d', action='store_true', help='Use the SentimentAgent class directly')
     
     args = parser.parse_args()
     
@@ -359,7 +394,7 @@ def main():
     if not check_dependencies():
         sys.exit(1)
         
-    print("Initializing Sentiment Agent...")
+    print("Initializing Sentiment Agent CLI...")
     
     # Interactive mode
     if args.interactive:
@@ -369,7 +404,13 @@ def main():
         print("Processing query:", args.query)
         print("-" * 80)
         
-        response = process_with_function_calling(args.query)
+        if args.direct:
+            # Process using the actual SentimentAgent
+            agent = SentimentAgent()
+            response = agent.generate_reply([args.query])
+        else:
+            # Process using function calling
+            response = process_with_function_calling(args.query)
         
         print("\nResponse:")
         print("=" * 80)
