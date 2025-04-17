@@ -26,6 +26,17 @@ from src.agents.sentiment_agent import SentimentAgent
 # Import the data fetching functions directly
 from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
 from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
+from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
+from src.tools.data_sources.market_data_tool import MarketDataTool
+
+# Import all tools from tools.py
+from src.tools.tools import (
+    fetch_market_data, 
+    fetch_news, 
+    fetch_yahoo_data, 
+    fetch_alpha_vantage_data, 
+    fetch_alpha_vantage_news
+)
 
 def check_dependencies():
     """Check if required dependencies are installed."""
@@ -52,24 +63,25 @@ def check_dependencies():
         print("Try: pip install openai yfinance")
         return False
 
-def fetch_stock_data(symbol="AAPL", start_date="-7d", end_date=None):
+def fetch_yahoo_stock_data(ticker="AAPL", start_date="-7d", end_date=None):
     """
     Fetch stock data using Yahoo Finance.
     """
     try:
         tool = YahooFinanceTool()
-        data = tool.fetch_stock_data(symbol, start_date, end_date)
+        data = tool.fetch_stock_data(ticker, start_date, end_date)
         
         if data is None or data.empty:
             return {
-                "error": f"No data available for {symbol}",
+                "error": f"No data available for {ticker}",
                 "status": "error"
             }
             
         # Convert to a simpler format for OpenAI response
         result = {
             "status": "success",
-            "ticker": symbol,
+            "source": "Yahoo Finance",
+            "ticker": ticker,
             "days": len(data),
             "start_date": data.index[0].strftime("%Y-%m-%d"),
             "end_date": data.index[-1].strftime("%Y-%m-%d"),
@@ -85,13 +97,96 @@ def fetch_stock_data(symbol="AAPL", start_date="-7d", end_date=None):
     except Exception as e:
         traceback.print_exc()
         return {
-            "error": f"Error fetching data: {str(e)}",
+            "error": f"Error fetching Yahoo Finance data: {str(e)}",
+            "status": "error"
+        }
+
+def fetch_alpha_vantage_stock_data(symbol="AAPL", start_date="-30d", end_date="today"):
+    """
+    Fetch stock data from Alpha Vantage.
+    """
+    try:
+        data = fetch_alpha_vantage_data(symbol=symbol, start_date=start_date, end_date=end_date)
+        
+        if data is None or data.empty:
+            return {
+                "error": f"No Alpha Vantage data available for {symbol}",
+                "status": "error"
+            }
+
+        # Normalize column names if needed
+        close_col = 'Close' if 'Close' in data.columns else 'close'
+        volume_col = 'Volume' if 'Volume' in data.columns else 'volume'
+            
+        # Convert to a simpler format for OpenAI response
+        result = {
+            "status": "success",
+            "source": "Alpha Vantage",
+            "ticker": symbol,
+            "days": len(data),
+            "start_date": data.index[0].strftime("%Y-%m-%d") if hasattr(data.index[0], 'strftime') else str(data.index[0]),
+            "end_date": data.index[-1].strftime("%Y-%m-%d") if hasattr(data.index[-1], 'strftime') else str(data.index[-1]),
+            "data_sample": data.head(3).to_dict(orient="records"),
+            "summary": {
+                "first_close": round(float(data[close_col].iloc[0]), 2),
+                "last_close": round(float(data[close_col].iloc[-1]), 2),
+                "change_pct": round(((float(data[close_col].iloc[-1]) - float(data[close_col].iloc[0])) / float(data[close_col].iloc[0])) * 100, 2),
+                "avg_volume": int(data[volume_col].mean()) if volume_col in data.columns else 0
+            }
+        }
+        return result
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "error": f"Error fetching Alpha Vantage data: {str(e)}",
+            "status": "error"
+        }
+
+def fetch_market_data_unified(symbol="AAPL", start_date="-30d", end_date="today", source="yahoo"):
+    """
+    Fetch market data using the unified MarketDataTool.
+    """
+    try:
+        tool = MarketDataTool({"data_source": source})
+        data = tool.fetch_market_data(symbol, start_date, end_date)
+        
+        if data is None or data.empty:
+            return {
+                "error": f"No market data available for {symbol} from {source}",
+                "status": "error"
+            }
+            
+        # Normalize column names if needed
+        close_col = 'Close' if 'Close' in data.columns else 'close'
+        volume_col = 'Volume' if 'Volume' in data.columns else 'volume'
+            
+        # Convert to a simpler format for OpenAI response
+        result = {
+            "status": "success",
+            "source": source,
+            "ticker": symbol,
+            "days": len(data),
+            "start_date": data.index[0].strftime("%Y-%m-%d") if hasattr(data.index[0], 'strftime') else str(data.index[0]),
+            "end_date": data.index[-1].strftime("%Y-%m-%d") if hasattr(data.index[-1], 'strftime') else str(data.index[-1]),
+            "data_sample": data.head(3).to_dict(orient="records"),
+            "summary": {
+                "first_close": round(float(data[close_col].iloc[0]), 2),
+                "last_close": round(float(data[close_col].iloc[-1]), 2),
+                "change_pct": round(((float(data[close_col].iloc[-1]) - float(data[close_col].iloc[0])) / float(data[close_col].iloc[0])) * 100, 2),
+                "avg_volume": int(data[volume_col].mean()) if volume_col in data.columns else 0
+            }
+        }
+        return result
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "error": f"Error fetching unified market data: {str(e)}",
             "status": "error"
         }
 
 def fetch_news_data(keyword="market", count=5):
     """
-    Fetch news headlines for a topic or ticker.
+    Fetch news headlines for a topic or ticker using NewsHeadlineTool.
     """
     try:
         tool = NewsHeadlineTool()
@@ -116,6 +211,76 @@ def fetch_news_data(keyword="market", count=5):
         traceback.print_exc()
         return {
             "error": f"Error fetching news: {str(e)}",
+            "status": "error"
+        }
+
+def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
+    """
+    Fetch news and sentiment data from Alpha Vantage API.
+    """
+    try:
+        news_df = fetch_alpha_vantage_news(symbol=symbol, topics=topics)
+        
+        if news_df is None or news_df.empty:
+            return {
+                "error": f"No Alpha Vantage news available for {symbol}",
+                "status": "error"
+            }
+        
+        # Identify title/headline column
+        title_col = None
+        for col in ['title', 'Title', 'headline', 'Headline']:
+            if col in news_df.columns:
+                title_col = col
+                break
+                
+        # Identify source column
+        source_col = None
+        for col in ['source', 'Source', 'provider', 'Provider']:
+            if col in news_df.columns:
+                source_col = col
+                break
+                
+        # Identify sentiment column
+        sentiment_col = None
+        for col in ['sentiment_score', 'Sentiment Score', 'overall_sentiment_score', 'score']:
+            if col in news_df.columns:
+                sentiment_col = col
+                break
+        
+        # If the required columns are found, create the result
+        if title_col and source_col:
+            headlines = []
+            for _, row in news_df.head(count).iterrows():
+                headline_item = {
+                    "headline": row[title_col],
+                    "source": row[source_col]
+                }
+                if sentiment_col:
+                    headline_item["sentiment_score"] = float(row[sentiment_col]) if pd.notnull(row[sentiment_col]) else 0.0
+                headlines.append(headline_item)
+                
+            result = {
+                "status": "success",
+                "source": "Alpha Vantage",
+                "symbol": symbol,
+                "article_count": len(news_df),
+                "headlines": headlines
+            }
+            
+            if sentiment_col:
+                result["avg_sentiment"] = float(news_df[sentiment_col].mean()) if not news_df[sentiment_col].empty else 0.0
+                
+            return result
+        else:
+            return {
+                "error": "Could not identify required columns in Alpha Vantage news data",
+                "status": "error"
+            }
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "error": f"Error fetching Alpha Vantage news: {str(e)}",
             "status": "error"
         }
 
@@ -178,12 +343,12 @@ def process_with_function_calling(prompt, system_prompt=None):
             {
                 "type": "function",
                 "function": {
-                    "name": "fetch_stock_data",
-                    "description": "Fetches historical stock market data for a given symbol and date range.",
+                    "name": "fetch_yahoo_stock_data",
+                    "description": "Fetches historical stock market data from Yahoo Finance for a given ticker symbol and date range.",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "symbol": {
+                            "ticker": {
                                 "type": "string",
                                 "description": "The ticker symbol of the stock (e.g., 'AAPL')"
                             },
@@ -196,6 +361,61 @@ def process_with_function_calling(prompt, system_prompt=None):
                                 "description": "End date for data retrieval (optional)"
                             }
                         },
+                        "required": ["ticker"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "fetch_alpha_vantage_stock_data",
+                    "description": "Fetches historical stock market data from Alpha Vantage API for a given symbol and date range.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {
+                                "type": "string",
+                                "description": "The ticker symbol of the stock (e.g., 'AAPL')"
+                            },
+                            "start_date": {
+                                "type": "string",
+                                "description": "Start date for data retrieval, can be YYYY-MM-DD format or relative like '-30d'"
+                            },
+                            "end_date": {
+                                "type": "string",
+                                "description": "End date for data retrieval (default: 'today')"
+                            }
+                        },
+                        "required": ["symbol"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "fetch_market_data_unified",
+                    "description": "Fetches historical market data from a specified source (alpha_vantage, yahoo, csv) for a given symbol and date range.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {
+                                "type": "string",
+                                "description": "The ticker symbol of the stock (e.g., 'AAPL')"
+                            },
+                            "start_date": {
+                                "type": "string",
+                                "description": "Start date for data retrieval, can be YYYY-MM-DD format or relative like '-30d'"
+                            },
+                            "end_date": {
+                                "type": "string",
+                                "description": "End date for data retrieval (default: 'today')"
+                            },
+                            "source": {
+                                "type": "string",
+                                "description": "Data source to use (alpha_vantage, yahoo, csv)",
+                                "enum": ["alpha_vantage", "yahoo", "csv"]
+                            }
+                        },
                         "required": ["symbol"]
                     }
                 }
@@ -204,7 +424,7 @@ def process_with_function_calling(prompt, system_prompt=None):
                 "type": "function",
                 "function": {
                     "name": "fetch_news_data",
-                    "description": "Fetches news headlines related to a keyword or ticker symbol.",
+                    "description": "Fetches news headlines related to a keyword or ticker symbol using NewsAPI.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -218,6 +438,27 @@ def process_with_function_calling(prompt, system_prompt=None):
                             }
                         },
                         "required": ["keyword"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "fetch_alpha_vantage_news_data",
+                    "description": "Fetches news and sentiment data related to a stock symbol from Alpha Vantage API.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {
+                                "type": "string",
+                                "description": "The ticker symbol to search for (e.g., 'AAPL')"
+                            },
+                            "topics": {
+                                "type": "string",
+                                "description": "Optional topics to filter by (comma separated)"
+                            }
+                        },
+                        "required": ["symbol"]
                     }
                 }
             }
@@ -263,15 +504,34 @@ def process_with_function_calling(prompt, system_prompt=None):
             print(f"- Executing {function_name} with args: {function_args}")
             
             # Execute the function
-            if function_name == "fetch_stock_data":
-                result = fetch_stock_data(
-                    symbol=function_args.get("symbol", "AAPL"),
+            if function_name == "fetch_yahoo_stock_data":
+                result = fetch_yahoo_stock_data(
+                    ticker=function_args.get("ticker", "AAPL"),
                     start_date=function_args.get("start_date", "-7d"),
                     end_date=function_args.get("end_date")
+                )
+            elif function_name == "fetch_alpha_vantage_stock_data":
+                result = fetch_alpha_vantage_stock_data(
+                    symbol=function_args.get("symbol", "AAPL"),
+                    start_date=function_args.get("start_date", "-30d"),
+                    end_date=function_args.get("end_date", "today")
+                )
+            elif function_name == "fetch_market_data_unified":
+                result = fetch_market_data_unified(
+                    symbol=function_args.get("symbol", "AAPL"),
+                    start_date=function_args.get("start_date", "-30d"),
+                    end_date=function_args.get("end_date", "today"),
+                    source=function_args.get("source", "yahoo")
                 )
             elif function_name == "fetch_news_data":
                 result = fetch_news_data(
                     keyword=function_args.get("keyword", "market"),
+                    count=function_args.get("count", 5)
+                )
+            elif function_name == "fetch_alpha_vantage_news_data":
+                result = fetch_alpha_vantage_news_data(
+                    symbol=function_args.get("symbol", "AAPL"),
+                    topics=function_args.get("topics"),
                     count=function_args.get("count", 5)
                 )
             else:
@@ -315,6 +575,23 @@ def interactive_mode():
     system_prompt = """
     You are a financial analyst assistant that helps analyze market data and news.
     Your goal is to provide insightful analysis based on the data available.
+    
+    You have multiple tools available for fetching different types of data:
+    
+    MARKET DATA TOOLS:
+    - fetch_yahoo_stock_data: Fetch stock data from Yahoo Finance
+    - fetch_alpha_vantage_stock_data: Fetch stock data from Alpha Vantage API
+    - fetch_market_data_unified: Unified tool that can fetch from either source
+    
+    NEWS DATA TOOLS:
+    - fetch_news_data: Fetch general news from NewsAPI
+    - fetch_alpha_vantage_news_data: Fetch news with financial sentiment from Alpha Vantage
+    
+    CHOOSING THE RIGHT TOOL:
+    - For the most recent stock data, prefer Yahoo Finance
+    - For specialized financial news and sentiment, prefer Alpha Vantage news
+    - For general news topics, use the regular news_data tool
+    - Always consider using both market data and news data for a complete analysis
     
     When analyzing stock data:
     1. Comment on the overall trend (bullish, bearish, or neutral)
