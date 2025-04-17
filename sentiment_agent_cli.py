@@ -219,8 +219,35 @@ def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
     Fetch news and sentiment data from Alpha Vantage API.
     """
     try:
+        print(f"🔍 Fetching Alpha Vantage news for symbol: {symbol}, topics: {topics}")
+        
+        # First, try directly calling the implementation
+        try:
+            from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
+            alpha_tool = AlphaVantageTool()
+            print("🔍 Direct call to AlphaVantageTool.fetch_news_sentiment")
+            direct_news_df = alpha_tool.fetch_news_sentiment(symbol)
+            if direct_news_df is not None and not direct_news_df.empty:
+                print(f"🔍 Direct call results - shape: {direct_news_df.shape}, columns: {list(direct_news_df.columns)}")
+                if len(direct_news_df) > 0:
+                    print(f"🔍 First row: {direct_news_df.iloc[0].to_dict()}")
+            else:
+                print("🔍 Direct call returned empty dataframe")
+        except Exception as e:
+            print(f"🔍 Direct call error: {str(e)}")
+        
+        # Now call through the function tool
+        print("🔍 Calling fetch_alpha_vantage_news function tool")
         news_df = fetch_alpha_vantage_news(symbol=symbol, topics=topics)
         
+        # Debug info about the news dataframe
+        if news_df is not None:
+            print(f"🔍 Alpha Vantage news dataframe: {news_df.shape}, columns: {list(news_df.columns)}")
+            if len(news_df) > 0:
+                print(f"🔍 Sample data: {news_df.iloc[0].to_dict()}")
+        else:
+            print("🔍 Alpha Vantage news dataframe is None")
+            
         if news_df is None or news_df.empty:
             return {
                 "error": f"No Alpha Vantage news available for {symbol}",
@@ -503,6 +530,13 @@ def process_with_function_calling(prompt, system_prompt=None):
             
             print(f"- Executing {function_name} with args: {function_args}")
             
+            # For debugging purposes, log all available tool calls
+            if function_name != "fetch_alpha_vantage_news_data" and ("AAPL" in str(function_args) or "aapl" in str(function_args).lower() or 
+                                                                    "MSFT" in str(function_args) or "msft" in str(function_args).lower() or
+                                                                    "AMZN" in str(function_args) or "amazon" in str(function_args).lower()):
+                # This is a stock-related query but not using Alpha Vantage news
+                print("⚠️ WARNING: Stock-related query but not using fetch_alpha_vantage_news_data!")
+            
             # Execute the function
             if function_name == "fetch_yahoo_stock_data":
                 result = fetch_yahoo_stock_data(
@@ -576,22 +610,41 @@ def interactive_mode():
     You are a financial analyst assistant that helps analyze market data and news.
     Your goal is to provide insightful analysis based on the data available.
     
-    You have multiple tools available for fetching different types of data:
+    IMPORTANT: You have two specialized news sources available - you MUST use the right one based on the query:
     
-    MARKET DATA TOOLS:
+    1. fetch_alpha_vantage_news_data - REQUIRED for ANY financial, stock, or company news
+       Parameters:
+       - symbol (required): The stock ticker symbol (e.g., "AAPL", "MSFT", "TSLA")
+       - topics (optional): Filter topics
+       - count (optional): Number of articles
+    
+    2. fetch_news_data - ONLY for general non-financial topics
+       Parameters:
+       - keyword: Search term
+       - count: Number of articles
+    
+    WHEN TO USE EACH NEWS SOURCE:
+    - For ANY query about stocks, companies, market sentiment → fetch_alpha_vantage_news_data
+    - For queries about non-financial topics only → fetch_news_data
+    - For queries mentioning ANY ticker symbol → fetch_alpha_vantage_news_data
+    
+    MARKET DATA SOURCES (use with news data for complete analysis):
     - fetch_yahoo_stock_data: Fetch stock data from Yahoo Finance
     - fetch_alpha_vantage_stock_data: Fetch stock data from Alpha Vantage API
-    - fetch_market_data_unified: Unified tool that can fetch from either source
+    - fetch_market_data_unified: Unified interface to fetch from either source
     
-    NEWS DATA TOOLS:
-    - fetch_news_data: Fetch general news from NewsAPI
-    - fetch_alpha_vantage_news_data: Fetch news with financial sentiment from Alpha Vantage
+    CRITICAL RULE: If the query is about ANY company, stock, or financial entity with a ticker symbol, you MUST use fetch_alpha_vantage_news_data with the symbol parameter.
     
-    CHOOSING THE RIGHT TOOL:
-    - For the most recent stock data, prefer Yahoo Finance
-    - For specialized financial news and sentiment, prefer Alpha Vantage news
-    - For general news topics, use the regular news_data tool
-    - Always consider using both market data and news data for a complete analysis
+    EXAMPLE QUERIES AND CORRECT TOOL USAGE:
+    1. "How is Apple stock doing?" → fetch_yahoo_stock_data + fetch_alpha_vantage_news_data(symbol="AAPL")
+    2. "Tell me about MSFT" → fetch_market_data_unified + fetch_alpha_vantage_news_data(symbol="MSFT")
+    3. "What's the market sentiment on Tesla?" → fetch_alpha_vantage_stock_data + fetch_alpha_vantage_news_data(symbol="TSLA")
+    4. "What's happening with climate change?" → fetch_news_data(keyword="climate change")
+    
+    REQUIRED APPROACH FOR STOCK QUERIES:
+    1. Call a market data tool to get stock price information
+    2. Call fetch_alpha_vantage_news_data with the stock symbol
+    3. Analyze both data sources together
     
     When analyzing stock data:
     1. Comment on the overall trend (bullish, bearish, or neutral)
@@ -664,12 +717,18 @@ def main():
     parser.add_argument('--query', '-q', type=str, help='Query to process')
     parser.add_argument('--interactive', '-i', action='store_true', help='Run in interactive mode')
     parser.add_argument('--direct', '-d', action='store_true', help='Use the SentimentAgent class directly')
+    parser.add_argument('--test-alpha-vantage', '-tav', action='store_true', help='Run Alpha Vantage news API test')
     
     args = parser.parse_args()
     
     # Check dependencies
     if not check_dependencies():
         sys.exit(1)
+    
+    # Run Alpha Vantage news test if requested
+    if args.test_alpha_vantage:
+        test_alpha_vantage_news()
+        return
         
     print("Initializing Sentiment Agent CLI...")
     
@@ -696,5 +755,50 @@ def main():
     else:
         parser.print_help()
 
+def test_alpha_vantage_news():
+    """Test function to verify the Alpha Vantage news function works correctly."""
+    print("\n===== Testing Alpha Vantage News API =====")
+    
+    # First, test direct call
+    print("\n1. Testing direct call to AlphaVantageTool.fetch_news_sentiment:")
+    try:
+        from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
+        alpha_tool = AlphaVantageTool()
+        direct_news_df = alpha_tool.fetch_news_sentiment("AAPL")
+        if direct_news_df is not None and not direct_news_df.empty:
+            print(f"✅ Direct call successful! Shape: {direct_news_df.shape}")
+            print(f"   Columns: {list(direct_news_df.columns)}")
+            print(f"   First row: {direct_news_df.iloc[0].to_dict()}")
+        else:
+            print("❌ Direct call returned empty dataframe")
+    except Exception as e:
+        print(f"❌ Direct call error: {str(e)}")
+    
+    # Then, test via function tool
+    print("\n2. Testing via fetch_alpha_vantage_news function:")
+    try:
+        from src.tools.tools import fetch_alpha_vantage_news
+        tool_news_df = fetch_alpha_vantage_news("MSFT")
+        if tool_news_df is not None and not tool_news_df.empty:
+            print(f"✅ Function tool call successful! Shape: {tool_news_df.shape}")
+            print(f"   Columns: {list(tool_news_df.columns)}")
+            print(f"   First row: {tool_news_df.iloc[0].to_dict()}")
+        else:
+            print("❌ Function tool call returned empty dataframe")
+    except Exception as e:
+        print(f"❌ Function tool call error: {str(e)}")
+    
+    # Finally, test via our CLI wrapper function
+    print("\n3. Testing via CLI wrapper function fetch_alpha_vantage_news_data:")
+    try:
+        result = fetch_alpha_vantage_news_data("AMZN")
+        print(f"✅ CLI wrapper returned: {result}")
+    except Exception as e:
+        print(f"❌ CLI wrapper error: {str(e)}")
+    
+    print("\n===== Alpha Vantage News Test Complete =====\n")
+
 if __name__ == "__main__":
+    # Uncomment to run test function
+    # test_alpha_vantage_news()
     main()
