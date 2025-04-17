@@ -52,7 +52,8 @@ class NewsHeadlineTool:
         rows = []  # List to accumulate rows
 
         if self.source == "newsapi":
-            url = f"https://newsapi.org/v2/everything?q={keyword}&pageSize={count}&apiKey={self.api_key}"
+            # Add relevance and filter for financial news and add sortBy parameter
+            url = f"https://newsapi.org/v2/everything?q={keyword}+finance+market&sortBy=relevancy&pageSize={count}&apiKey={self.api_key}"
             response = requests.get(url)
 
             if response.status_code == 200:

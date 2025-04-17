@@ -143,8 +143,8 @@ alpha_vantage_news_tool = FunctionTool(
 
 def fetch_market_data(
     symbol: str = "AAPL",
-    start_date: str = "2024-01-01",
-    end_date: str = "2024-12-31",
+    start_date: str = "-30d",  # Changed to relative date for current data
+    end_date: str = "today",   # Changed to always get current data
     source: str = "alpha_vantage"
 ) -> pd.DataFrame:
     """
