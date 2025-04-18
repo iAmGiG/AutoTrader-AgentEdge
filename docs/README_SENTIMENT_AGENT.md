@@ -55,6 +55,8 @@ python sentiment_agent_cli.py -q "How is Apple stock performing?" -d
 - "What's happening with SPY ETF?"
 - "Compare Alpha Vantage and Yahoo Finance data for MSFT"
 - "Get financial news about Amazon from Alpha Vantage"
+- "Combine news from multiple sources about NVIDIA"
+- "Get comprehensive market and news data for Microsoft"
 
 ## Available Tools
 
@@ -68,8 +70,9 @@ The CLI exposes several tools for data retrieval:
 
 ### News Data Tools
 
-- `fetch_news_data`: Fetches general news from NewsAPI
-- `fetch_alpha_vantage_news_data`: Fetches news with financial sentiment from Alpha Vantage
+- `fetch_news_data`: Fetches general news from NewsAPI (best for non-financial topics)
+- `fetch_alpha_vantage_news_data`: Fetches news with financial sentiment from Alpha Vantage (best for stock-specific news)
+- `fetch_combined_news`: Fetches from both sources, combining results for comprehensive analysis (recommended for financial queries)
 
 ## Requirements
 

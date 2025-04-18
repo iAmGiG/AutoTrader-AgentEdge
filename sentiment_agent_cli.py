@@ -221,21 +221,6 @@ def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
     try:
         print(f"🔍 Fetching Alpha Vantage news for symbol: {symbol}, topics: {topics}")
         
-        # First, try directly calling the implementation
-        try:
-            from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
-            alpha_tool = AlphaVantageTool()
-            print("🔍 Direct call to AlphaVantageTool.fetch_news_sentiment")
-            direct_news_df = alpha_tool.fetch_news_sentiment(symbol)
-            if direct_news_df is not None and not direct_news_df.empty:
-                print(f"🔍 Direct call results - shape: {direct_news_df.shape}, columns: {list(direct_news_df.columns)}")
-                if len(direct_news_df) > 0:
-                    print(f"🔍 First row: {direct_news_df.iloc[0].to_dict()}")
-            else:
-                print("🔍 Direct call returned empty dataframe")
-        except Exception as e:
-            print(f"🔍 Direct call error: {str(e)}")
-        
         # Now call through the function tool
         print("🔍 Calling fetch_alpha_vantage_news function tool")
         news_df = fetch_alpha_vantage_news(symbol=symbol, topics=topics)
@@ -310,6 +295,80 @@ def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
             "error": f"Error fetching Alpha Vantage news: {str(e)}",
             "status": "error"
         }
+
+def fetch_combined_news(keyword: str, symbol: str = None, count: int = 5):
+    """
+    Fetch news from both NewsAPI and Alpha Vantage, combining the results.
+    
+    Args:
+        keyword: General topic or search term for NewsAPI
+        symbol: Stock symbol for Alpha Vantage (optional)
+        count: Number of articles to retrieve from each source
+        
+    Returns:
+        Combined news data from both sources
+    """
+    print(f"🔄 Fetching combined news - keyword: {keyword}, symbol: {symbol}")
+    
+    # Initialize results
+    news_api_headlines = []
+    alpha_vantage_headlines = []
+    total_count = 0
+    avg_sentiment = 0
+    sentiment_values = []
+    
+    # First get general news
+    try:
+        news_result = fetch_news_data(keyword=keyword, count=count)
+        if news_result and news_result.get("status") == "success":
+            news_api_headlines = news_result.get("headlines", [])
+            # Mark the source
+            for headline in news_api_headlines:
+                headline["news_source"] = "NewsAPI"
+                if "sentiment_score" in headline:
+                    sentiment_values.append(headline["sentiment_score"])
+            total_count += len(news_api_headlines)
+            print(f"✅ NewsAPI returned {len(news_api_headlines)} articles")
+        else:
+            print(f"⚠️ NewsAPI returned no articles: {news_result}")
+    except Exception as e:
+        print(f"⚠️ Error fetching from NewsAPI: {str(e)}")
+    
+    # Then get Alpha Vantage news if a symbol is provided
+    if symbol:
+        try:
+            av_result = fetch_alpha_vantage_news_data(symbol=symbol, count=count)
+            if av_result and av_result.get("status") == "success":
+                alpha_vantage_headlines = av_result.get("headlines", [])
+                # Mark the source
+                for headline in alpha_vantage_headlines:
+                    headline["news_source"] = "Alpha Vantage"
+                    if "sentiment_score" in headline:
+                        sentiment_values.append(headline["sentiment_score"])
+                total_count += len(alpha_vantage_headlines)
+                print(f"✅ Alpha Vantage returned {len(alpha_vantage_headlines)} articles")
+            else:
+                print(f"⚠️ Alpha Vantage returned no articles: {av_result}")
+        except Exception as e:
+            print(f"⚠️ Error fetching from Alpha Vantage: {str(e)}")
+    
+    # Combine headlines and calculate average sentiment
+    combined_headlines = news_api_headlines + alpha_vantage_headlines
+    
+    if sentiment_values:
+        avg_sentiment = sum(sentiment_values) / len(sentiment_values)
+    
+    result = {
+        "status": "success",
+        "keyword": keyword,
+        "symbol": symbol,
+        "article_count": total_count,
+        "headlines": combined_headlines,
+        "avg_sentiment": round(avg_sentiment, 2) if sentiment_values else None,
+        "sources_used": ["NewsAPI"] + (["Alpha Vantage"] if symbol else [])
+    }
+    
+    return result
 
 def process_with_llm(prompt, system_prompt=None):
     """
@@ -451,13 +510,13 @@ def process_with_function_calling(prompt, system_prompt=None):
                 "type": "function",
                 "function": {
                     "name": "fetch_news_data",
-                    "description": "Fetches news headlines related to a keyword or ticker symbol using NewsAPI.",
+                    "description": "Fetches general news headlines related to a keyword using NewsAPI (best for general topics, not financial-specific news).",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "keyword": {
                                 "type": "string",
-                                "description": "The keyword or ticker to search for (e.g., 'AAPL' or 'technology')"
+                                "description": "The keyword or topic to search for (e.g., 'technology', 'climate')"
                             },
                             "count": {
                                 "type": "integer",
@@ -472,7 +531,7 @@ def process_with_function_calling(prompt, system_prompt=None):
                 "type": "function",
                 "function": {
                     "name": "fetch_alpha_vantage_news_data",
-                    "description": "Fetches news and sentiment data related to a stock symbol from Alpha Vantage API.",
+                    "description": "Fetches financial news and sentiment data related to a stock symbol from Alpha Vantage API (best for financial sentiment analysis).",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -483,9 +542,38 @@ def process_with_function_calling(prompt, system_prompt=None):
                             "topics": {
                                 "type": "string",
                                 "description": "Optional topics to filter by (comma separated)"
+                            },
+                            "count": {
+                                "type": "integer",
+                                "description": "Number of news articles to retrieve (default: 5)"
                             }
                         },
                         "required": ["symbol"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "fetch_combined_news",
+                    "description": "Fetches news from both NewsAPI and Alpha Vantage, combining the results for the most comprehensive view (RECOMMENDED for financial queries).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "keyword": {
+                                "type": "string",
+                                "description": "General topic keyword for NewsAPI (e.g., 'market', 'technology')"
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Stock symbol for Alpha Vantage financial news (e.g., 'AAPL', 'MSFT')"
+                            },
+                            "count": {
+                                "type": "integer",
+                                "description": "Number of news articles to retrieve from each source (default: 5)"
+                            }
+                        },
+                        "required": ["keyword"]
                     }
                 }
             }
@@ -568,6 +656,12 @@ def process_with_function_calling(prompt, system_prompt=None):
                     topics=function_args.get("topics"),
                     count=function_args.get("count", 5)
                 )
+            elif function_name == "fetch_combined_news":
+                result = fetch_combined_news(
+                    keyword=function_args.get("keyword", "market"),
+                    symbol=function_args.get("symbol"),
+                    count=function_args.get("count", 5)
+                )
             else:
                 result = {"error": f"Unknown function: {function_name}"}
                 
@@ -610,41 +704,45 @@ def interactive_mode():
     You are a financial analyst assistant that helps analyze market data and news.
     Your goal is to provide insightful analysis based on the data available.
     
-    IMPORTANT: You have two specialized news sources available - you MUST use the right one based on the query:
+    IMPORTANT NEWS SOURCES:
     
-    1. fetch_alpha_vantage_news_data - REQUIRED for ANY financial, stock, or company news
+    1. fetch_combined_news - PREFERRED FOR ALL FINANCIAL QUERIES
        Parameters:
-       - symbol (required): The stock ticker symbol (e.g., "AAPL", "MSFT", "TSLA")
+       - keyword: General topic keyword (e.g., "market", "technology")
+       - symbol: Stock ticker for financial sentiment (e.g., "AAPL", "MSFT")
+       - count: Number of articles from each source
+       
+       This tool fetches from BOTH news sources for the most comprehensive view.
+    
+    2. fetch_alpha_vantage_news_data - FOR FINANCIAL SENTIMENT ANALYSIS
+       Parameters:
+       - symbol (required): The stock ticker symbol (e.g., "AAPL", "MSFT")
        - topics (optional): Filter topics
        - count (optional): Number of articles
     
-    2. fetch_news_data - ONLY for general non-financial topics
+    3. fetch_news_data - FOR GENERAL NON-FINANCIAL TOPICS ONLY
        Parameters:
        - keyword: Search term
        - count: Number of articles
     
     WHEN TO USE EACH NEWS SOURCE:
-    - For ANY query about stocks, companies, market sentiment → fetch_alpha_vantage_news_data
-    - For queries about non-financial topics only → fetch_news_data
-    - For queries mentioning ANY ticker symbol → fetch_alpha_vantage_news_data
+    - For MOST queries, use fetch_combined_news with both keyword and symbol
+    - For purely financial queries, use fetch_combined_news or fetch_alpha_vantage_news_data
+    - For non-financial topics only, use fetch_news_data
     
     MARKET DATA SOURCES (use with news data for complete analysis):
     - fetch_yahoo_stock_data: Fetch stock data from Yahoo Finance
     - fetch_alpha_vantage_stock_data: Fetch stock data from Alpha Vantage API
     - fetch_market_data_unified: Unified interface to fetch from either source
     
-    CRITICAL RULE: If the query is about ANY company, stock, or financial entity with a ticker symbol, you MUST use fetch_alpha_vantage_news_data with the symbol parameter.
-    
-    EXAMPLE QUERIES AND CORRECT TOOL USAGE:
-    1. "How is Apple stock doing?" → fetch_yahoo_stock_data + fetch_alpha_vantage_news_data(symbol="AAPL")
-    2. "Tell me about MSFT" → fetch_market_data_unified + fetch_alpha_vantage_news_data(symbol="MSFT")
-    3. "What's the market sentiment on Tesla?" → fetch_alpha_vantage_stock_data + fetch_alpha_vantage_news_data(symbol="TSLA")
+    EXAMPLE QUERIES AND OPTIMAL TOOL USAGE:
+    1. "How is Apple stock doing?" → fetch_yahoo_stock_data + fetch_combined_news(keyword="apple", symbol="AAPL")
+    2. "Tell me about MSFT" → fetch_market_data_unified + fetch_combined_news(keyword="microsoft", symbol="MSFT")
+    3. "What's the market sentiment on Tesla?" → fetch_alpha_vantage_stock_data + fetch_combined_news(keyword="tesla", symbol="TSLA")
     4. "What's happening with climate change?" → fetch_news_data(keyword="climate change")
     
-    REQUIRED APPROACH FOR STOCK QUERIES:
-    1. Call a market data tool to get stock price information
-    2. Call fetch_alpha_vantage_news_data with the stock symbol
-    3. Analyze both data sources together
+    REMEMBER: When the user wants deep financial sentiment context, always use fetch_combined_news with both 
+    a keyword for general news and a symbol for financial sentiment. This ensures the most comprehensive view.
     
     When analyzing stock data:
     1. Comment on the overall trend (bullish, bearish, or neutral)
