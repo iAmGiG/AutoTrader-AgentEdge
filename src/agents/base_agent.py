@@ -19,7 +19,7 @@ from typing import Any, Optional, List, Dict, Callable
 # Import CancellationToken from autogen_core
 from autogen_core._cancellation_token import CancellationToken
 import asyncio
-import inspect
+# import inspect
 import traceback
 import pandas as pd
 
