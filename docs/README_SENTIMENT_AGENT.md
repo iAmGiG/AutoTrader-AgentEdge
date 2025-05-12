@@ -77,7 +77,7 @@ The CLI exposes several tools for data retrieval:
 ## Requirements
 
 - Python 3.10+
-- AutoGen 0.5.1 (conda environment recommended)
+- AutoGen 0.5.6 (conda environment recommended)
 - OpenAI API key (configured in config/config.json)
 - NewsAPI key (configured in config/config.json)
 - Alpha Vantage API key (configured in config/config.json)
