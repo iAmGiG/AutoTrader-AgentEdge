@@ -3,10 +3,26 @@ from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
 from src.tools.data_sources.market_data_tool import MarketDataTool
 from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
+from src.tools.data_sources.FRED_data_tool import FREDDataTool
+from src.tools.data_sources.sec_edgar_tool import SECEdgarTool
 # from src.tools.data_sources.finnhub_tool import FinnHubTool
 import pandas as pd
 from src.tools.text_processing.data_normalizer import normalize_data_for_sentiment
 # Import other vendor tools as needed
+
+##################################
+# Tool Organization by Agent Type
+##################################
+
+# Every tool is tagged with the agent types that should use it
+# This allows for better separation of concerns between agents
+
+# Agent Types
+SENTIMENT_AGENT = "sentiment"
+QUANTITATIVE_AGENT = "quantitative"
+RISK_AGENT = "risk"
+STRATEGY_AGENT = "strategy"
+ALL_AGENTS = [SENTIMENT_AGENT, QUANTITATIVE_AGENT, RISK_AGENT, STRATEGY_AGENT]
 
 ##################################
 # 1) News Headline Tool as a Function
@@ -16,6 +32,13 @@ from src.tools.text_processing.data_normalizer import normalize_data_for_sentime
 def fetch_news(keyword: str = "market", count: int = 5) -> pd.DataFrame:
     """
     Fetch news articles (as a DataFrame) from NewsHeadlineTool.
+    
+    Args:
+        keyword: Topic or keyword to search for
+        count: Number of news articles to retrieve
+        
+    Returns:
+        DataFrame with news headlines, published dates, and sources
     """
     tool = NewsHeadlineTool(source="newsapi")
     df = tool.fetch_data(keyword=keyword, count=count)
@@ -25,94 +48,13 @@ def fetch_news(keyword: str = "market", count: int = 5) -> pd.DataFrame:
 news_tool = FunctionTool(
     func=fetch_news,
     name="fetch_news",
-    description="Fetch news articles for a given keyword, returning a Pandas DataFrame."
+    description="Fetch news articles for a given keyword, returning a Pandas DataFrame with headlines, published dates, and sources."
 )
-
-####################################
-# 2) Market Data Tool as a Function
-####################################
-
-# NOTE: not connected to an API just yet, should be alpha vantage, but skip for now!
-
-
-def fetch_market_data(
-    symbol: str = "AAPL",
-    start_date: str = "2023-01-01",
-    end_date: str = "2023-02-01"
-) -> pd.DataFrame:
-    """
-    Fetch historical market data from MarketDataTool, returning a DataFrame.
-    
-    Args:
-        symbol: Stock symbol/ticker to fetch data for.
-        start_date: Start of date range (YYYY-MM-DD or relative like "-7d").
-        end_date: End of date range (YYYY-MM-DD or relative like "-1d").
-    
-    Returns:
-        DataFrame with Open, High, Low, Close and Volume data.
-    """
-    config = {
-        "data_source": "yahoo",  # Use Yahoo Finance as fallback
-        # add other config fields if needed
-    }
-    tool = MarketDataTool(config)
-    df = tool.fetch_market_data(symbol, start_date, end_date)
-    return df
-
-
-market_data_tool = FunctionTool(
-    func=fetch_market_data,
-    name="fetch_market_data",
-    description="Fetches market data for a given symbol and date range."
-)
+news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]  # Only sentiment and strategy agents should use news
 
 ##################################
-# 3) YAHOO FINANCE DATA
+# 2) Alpha Vantage News Tool
 ##################################
-
-
-def fetch_yahoo_data(
-    ticker: str = "AAPL",
-    start_date: str = "2023-01-01",
-    end_date: str = "2023-02-01"
-) -> pd.DataFrame:
-    """
-    Fetch stock data from YahooFinanceTool, returning a DataFrame with [Open, High, Low, Close, Volume].
-    """
-    tool = YahooFinanceTool()
-    df = tool.fetch_stock_data(ticker, start_date, end_date)
-    return df
-
-
-yahoo_finance_tool = FunctionTool(
-    func=fetch_yahoo_data,
-    name="fetch_yahoo_data",
-    description="Fetch stock data from Yahoo Finance for a given ticker and date range, returning a DataFrame."
-)
-
-########################################
-# 4) Alpha Vantage Market Data Tool
-########################################
-
-
-def fetch_alpha_vantage_data(
-    symbol: str = "AAPL",
-    start_date: str = "2024-01-01",
-    end_date: str = "2024-12-31"
-) -> pd.DataFrame:
-    """
-    Fetch stock data from Alpha Vantage API, returning a DataFrame with [open, high, low, close, volume].
-    """
-    tool = AlphaVantageTool()
-    df = tool.fetch_stock_data(symbol, start_date, end_date)
-    return df
-
-
-alpha_vantage_tool = FunctionTool(
-    func=fetch_alpha_vantage_data,
-    name="fetch_alpha_vantage_data",
-    description="Fetch stock data from Alpha Vantage for a given ticker and date range, returning a DataFrame."
-)
 
 
 def fetch_alpha_vantage_news(
@@ -121,6 +63,13 @@ def fetch_alpha_vantage_news(
 ) -> pd.DataFrame:
     """
     Fetch news and sentiment data from Alpha Vantage API.
+    
+    Args:
+        symbol: Stock symbol to fetch news about
+        topics: Optional topics to filter by
+        
+    Returns:
+        DataFrame with news and pre-calculated sentiment scores
     """
     tool = AlphaVantageTool()
     df = tool.fetch_news_sentiment(symbol, topics)
@@ -133,13 +82,72 @@ def fetch_alpha_vantage_news(
 alpha_vantage_news_tool = FunctionTool(
     func=fetch_alpha_vantage_news,
     name="fetch_alpha_vantage_news",
-    description="Fetch news and sentiment data from Alpha Vantage for a given ticker."
+    description="Fetch news and sentiment data from Alpha Vantage for a given ticker, with pre-calculated sentiment scores."
 )
+alpha_vantage_news_tool.agent_types = [SENTIMENT_AGENT]  # Only sentiment agent should use this
+
+##################################
+# 3) Market Data Tools
+##################################
 
 
-########################################
-# 5) Unified Market Data Tool
-########################################
+def fetch_yahoo_data(
+    ticker: str = "AAPL",
+    start_date: str = "2023-01-01",
+    end_date: str = "2023-02-01"
+) -> pd.DataFrame:
+    """
+    Fetch stock price data from Yahoo Finance.
+    
+    Args:
+        ticker: Stock symbol/ticker to fetch data for
+        start_date: Start of date range (YYYY-MM-DD or relative like "-7d")
+        end_date: End of date range (YYYY-MM-DD or relative like "-1d")
+        
+    Returns:
+        DataFrame with Open, High, Low, Close and Volume data
+    """
+    tool = YahooFinanceTool()
+    df = tool.fetch_stock_data(ticker, start_date, end_date)
+    return df
+
+
+yahoo_finance_tool = FunctionTool(
+    func=fetch_yahoo_data,
+    name="fetch_yahoo_data",
+    description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
+)
+yahoo_finance_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]  # Only quant and strategy agents handle price data
+
+
+def fetch_alpha_vantage_data(
+    symbol: str = "AAPL",
+    start_date: str = "2024-01-01",
+    end_date: str = "2024-12-31"
+) -> pd.DataFrame:
+    """
+    Fetch stock price data from Alpha Vantage API.
+    
+    Args:
+        symbol: Stock symbol/ticker to fetch data for
+        start_date: Start of date range (YYYY-MM-DD or relative like "-7d")
+        end_date: End of date range (YYYY-MM-DD or relative like "-1d")
+        
+    Returns:
+        DataFrame with open, high, low, close, volume data
+    """
+    tool = AlphaVantageTool()
+    df = tool.fetch_stock_data(symbol, start_date, end_date)
+    return df
+
+
+alpha_vantage_tool = FunctionTool(
+    func=fetch_alpha_vantage_data,
+    name="fetch_alpha_vantage_data",
+    description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
+)
+alpha_vantage_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]  # Only quant and strategy agents handle price data
+
 
 def fetch_market_data(
     symbol: str = "AAPL",
@@ -149,6 +157,15 @@ def fetch_market_data(
 ) -> pd.DataFrame:
     """
     Fetch market data from the specified source (alpha_vantage, yahoo, csv).
+    
+    Args:
+        symbol: Stock symbol/ticker to fetch data for
+        start_date: Start of date range (YYYY-MM-DD or relative like "-30d")
+        end_date: End of date range (YYYY-MM-DD or "today")
+        source: Data source to use ("alpha_vantage", "yahoo", "csv")
+        
+    Returns:
+        DataFrame with price and volume data
     """
     tool = MarketDataTool({"data_source": source})
     df = tool.fetch_market_data(symbol, start_date, end_date)
@@ -160,33 +177,271 @@ market_data_tool = FunctionTool(
     name="fetch_market_data",
     description="Fetch market data from specified source for a given ticker and date range."
 )
+market_data_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]  # Only quant and strategy agents handle price data
+
+##################################
+# 4) FRED Economic Data Tool
+##################################
 
 
-# Need to fix up the finnhub api request and data frame return
+def fetch_economic_indicator(
+    indicator: str = "gdp",
+    start_date: str = None,
+    end_date: str = None
+) -> pd.DataFrame:
+    """
+    Fetch economic data from FRED (Federal Reserve Economic Data).
+    
+    Args:
+        indicator: Name of economic indicator (e.g., 'gdp', 'unemployment', 'inflation')
+        start_date: Start date in YYYY-MM-DD format (default: 5 years ago)
+        end_date: End date in YYYY-MM-DD format (default: today)
+        
+    Returns:
+        DataFrame with dates and indicator values
+    """
+    tool = FREDDataTool()
+    df = tool.get_indicator(indicator, start_date, end_date)
+    return df
 
 
-# def fetch_finnhub_data(keyword: str = "Technology", count=5):
-#     tool = FinnHubTool()
-#     df = tool.fetch_finn_news(keyword=keyword, count=5)
-#     return df
+fred_indicator_tool = FunctionTool(
+    func=fetch_economic_indicator,
+    name="fetch_economic_indicator",
+    description="Fetch economic indicator data from FRED (Federal Reserve)."
+)
+fred_indicator_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]  # Relevant for quant and strategy agents
 
 
-# finnhub = FunctionTool(func=fetch_finnhub_data, name="fetch_finnhub_data",
-#                        description="Fetches market data from finnhub, and returns it as a DataFrame.")
+def fetch_interest_rates(
+    rate_type: str = "fed_funds",
+    start_date: str = None,
+    end_date: str = None
+) -> pd.DataFrame:
+    """
+    Fetch interest rate data from FRED.
+    
+    Args:
+        rate_type: Type of interest rate ('fed_funds', 'treasury_10y', 'treasury_2y', 'treasury_3m')
+        start_date: Start date in YYYY-MM-DD format (default: 5 years ago)
+        end_date: End date in YYYY-MM-DD format (default: today)
+        
+    Returns:
+        DataFrame with dates and interest rate values
+    """
+    tool = FREDDataTool()
+    df = tool.get_interest_rates(start_date, end_date, rate_type)
+    return df
 
 
-########################################
-# Optionally define a list of all tools
-########################################
-ALL_TOOLS = [
+fred_rates_tool = FunctionTool(
+    func=fetch_interest_rates,
+    name="fetch_interest_rates",
+    description="Fetch interest rate data from FRED (Federal Reserve)."
+)
+fred_rates_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
+
+
+def fetch_yield_curve(date: str = None) -> pd.DataFrame:
+    """
+    Fetch the yield curve for a specific date.
+    
+    Args:
+        date: Date in YYYY-MM-DD format (default: latest available)
+        
+    Returns:
+        DataFrame with yield curve data for various maturities
+    """
+    tool = FREDDataTool()
+    df = tool.get_yield_curve(date)
+    return df
+
+
+fred_yield_curve_tool = FunctionTool(
+    func=fetch_yield_curve,
+    name="fetch_yield_curve",
+    description="Fetch the Treasury yield curve for a specific date."
+)
+fred_yield_curve_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
+
+##################################
+# 5) SEC EDGAR Filings Tool
+##################################
+
+
+def fetch_sec_filings(
+    ticker: str,
+    form_type: str = "10-K",
+    num_filings: int = 1,
+    extract_sections: list = None
+) -> pd.DataFrame:
+    """
+    Fetch SEC filings for a company.
+    
+    Args:
+        ticker: Company ticker symbol (e.g., 'AAPL')
+        form_type: Type of SEC form ('10-K', '10-Q', '8-K', etc.)
+        num_filings: Number of filings to retrieve
+        extract_sections: List of sections to extract (e.g., ['risk_factors', 'business'])
+        
+    Returns:
+        DataFrame with filing data and extracted sections
+    """
+    if extract_sections is None:
+        extract_sections = ["risk_factors"]
+        
+    tool = SECEdgarTool(use_temp_dir=True)
+    df = tool.fetch_filings(ticker, form_type, num_filings, extract_sections=extract_sections)
+    return df
+
+
+sec_filings_tool = FunctionTool(
+    func=fetch_sec_filings,
+    name="fetch_sec_filings",
+    description="Fetch SEC filings for a company and extract relevant sections."
+)
+sec_filings_tool.agent_types = [RISK_AGENT, STRATEGY_AGENT]  # Primarily for risk assessment
+
+
+def search_sec_filings(
+    ticker: str,
+    search_terms: list,
+    form_type: str = "10-K",
+    section: str = None,
+    num_filings: int = 3
+) -> pd.DataFrame:
+    """
+    Search SEC filings for specific terms.
+    
+    Args:
+        ticker: Company ticker symbol (e.g., 'AAPL')
+        search_terms: List of terms to search for
+        form_type: Type of SEC form ('10-K', '10-Q', '8-K', etc.)
+        section: Specific section to search (e.g., 'risk_factors')
+        num_filings: Number of filings to search
+        
+    Returns:
+        DataFrame with search results and context
+    """
+    tool = SECEdgarTool(use_temp_dir=True)
+    df = tool.search_filings(ticker, search_terms, form_type, section, num_filings)
+    return df
+
+
+sec_search_tool = FunctionTool(
+    func=search_sec_filings,
+    name="search_sec_filings",
+    description="Search SEC filings for specific terms and get context."
+)
+sec_search_tool.agent_types = [RISK_AGENT, SENTIMENT_AGENT]  # Useful for risk and sentiment analysis
+
+
+def compare_sec_filings(
+    ticker: str,
+    form_type: str = "10-K",
+    section: str = "risk_factors",
+    num_filings: int = 3
+) -> pd.DataFrame:
+    """
+    Compare SEC filing sections over time.
+    
+    Args:
+        ticker: Company ticker symbol (e.g., 'AAPL')
+        form_type: Type of SEC form ('10-K', '10-Q')
+        section: Section to compare ('risk_factors', 'business', etc.)
+        num_filings: Number of filings to compare
+        
+    Returns:
+        DataFrame with comparison metrics between filings
+    """
+    tool = SECEdgarTool(use_temp_dir=True)
+    df = tool.compare_filings_over_time(ticker, form_type, section, num_filings)
+    return df
+
+
+sec_compare_tool = FunctionTool(
+    func=compare_sec_filings,
+    name="compare_sec_filings",
+    description="Compare SEC filing sections over time to track changes."
+)
+sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
+
+##################################
+# Tool Collections by Agent Type
+##################################
+
+# SENTIMENT_AGENT tools
+SENTIMENT_TOOLS = [
+    news_tool,
+    alpha_vantage_news_tool,
+    sec_search_tool
+]
+
+# QUANTITATIVE_AGENT tools
+QUANTITATIVE_TOOLS = [
+    yahoo_finance_tool,
+    alpha_vantage_tool, 
+    market_data_tool,
+    fred_indicator_tool,
+    fred_rates_tool,
+    fred_yield_curve_tool
+]
+
+# RISK_AGENT tools
+RISK_TOOLS = [
+    sec_filings_tool,
+    sec_search_tool,
+    sec_compare_tool,
+    fred_rates_tool,
+    fred_yield_curve_tool
+]
+
+# STRATEGY_AGENT tools
+STRATEGY_TOOLS = [
     news_tool,
     yahoo_finance_tool,
     alpha_vantage_tool,
-    alpha_vantage_news_tool,
-    market_data_tool
+    market_data_tool,
+    fred_indicator_tool,
+    fred_rates_tool,
+    fred_yield_curve_tool,
+    sec_filings_tool
 ]
+
+# All tools combined
+ALL_TOOLS = list(set(
+    SENTIMENT_TOOLS + 
+    QUANTITATIVE_TOOLS + 
+    RISK_TOOLS + 
+    STRATEGY_TOOLS
+))
 
 ########################################
 # Tool dispatcher dictionary for efficient lookup by name
 ########################################
 ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS}
+
+########################################
+# Helper function to get tools for a specific agent type
+########################################
+def get_tools_for_agent(agent_type):
+    """
+    Get the list of tools that should be used by a specific agent type.
+    
+    Args:
+        agent_type: Type of agent (e.g., 'sentiment', 'quantitative')
+        
+    Returns:
+        List of FunctionTool objects appropriate for the agent type
+    """
+    if agent_type == SENTIMENT_AGENT:
+        return SENTIMENT_TOOLS
+    elif agent_type == QUANTITATIVE_AGENT:
+        return QUANTITATIVE_TOOLS
+    elif agent_type == RISK_AGENT:
+        return RISK_TOOLS
+    elif agent_type == STRATEGY_AGENT:
+        return STRATEGY_TOOLS
+    else:
+        # Return all tools if agent type is unknown
+        return ALL_TOOLS
