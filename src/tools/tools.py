@@ -98,20 +98,20 @@ def fetch_finnhub_news(
     count: int = 10
 ) -> pd.DataFrame:
     """
-    Fetch financial news articles from Finnhub.
-    
+    Fetch financial news articles from Finnhub using the free tier API.
+
     Args:
-        category: News category ('general', 'forex', 'crypto', 'merger', etc.)
-        tickers: List of ticker symbols to filter by (optional)
+        category: News category ('general', 'forex', 'crypto', 'merger', 'business', 'economic', etc.)
+        tickers: List of ticker symbols to filter by (optional, may not work in free tier)
         count: Number of news articles to retrieve
-        
+
     Returns:
-        DataFrame with news headlines, dates, and sources
+        DataFrame with financial news headlines, dates, and sources
     """
     # Load API key from config
     config_loader = ConfigLoader()
     api_key = config_loader.get("finnhub_key")
-    
+
     tool = FinnHubTool(api_key)
     df = tool.fetch_news(category=category, tickers=tickers, count=count)
     return df
@@ -125,103 +125,65 @@ finnhub_news_tool = FunctionTool(
 finnhub_news_tool.agent_types = [SENTIMENT_AGENT]  # Primarily for sentiment agent
 
 
-def fetch_finnhub_company_news(
-    ticker: str,
-    from_date: str = None,
-    to_date: str = None,
+def fetch_finnhub_financial_headlines(
     count: int = 10
 ) -> pd.DataFrame:
     """
-    Fetch news for a specific company from Finnhub.
-    
+    Fetch a combined set of financial and economic headlines from multiple categories
+    on Finnhub. Combines business, economic, forex, and general news for comprehensive
+    market coverage.
+
     Args:
-        ticker: Company ticker symbol (e.g., 'AAPL')
-        from_date: Start date in YYYY-MM-DD format (default: 30 days ago)
-        to_date: End date in YYYY-MM-DD format (default: today)
-        count: Number of news articles to retrieve
-        
+        count: Number of news headlines to retrieve per category
+
     Returns:
-        DataFrame with company-specific news
+        DataFrame with diverse financial headlines for sentiment analysis
     """
     # Load API key from config
     config_loader = ConfigLoader()
     api_key = config_loader.get("finnhub_key")
-    
+
     tool = FinnHubTool(api_key)
-    df = tool.fetch_company_news(ticker=ticker, from_date=from_date, to_date=to_date, count=count)
+    df = tool.fetch_financial_headlines(count=count)
     return df
 
 
-finnhub_company_news_tool = FunctionTool(
-    func=fetch_finnhub_company_news,
-    name="fetch_finnhub_company_news",
-    description="Fetch company-specific news from Finnhub for a given ticker, returning a DataFrame with headlines and summaries."
+finnhub_financial_headlines_tool = FunctionTool(
+    func=fetch_finnhub_financial_headlines,
+    name="fetch_finnhub_financial_headlines",
+    description="Fetch diverse financial headlines from multiple categories on Finnhub, combining business, economic, and market news."
 )
-finnhub_company_news_tool.agent_types = [SENTIMENT_AGENT]  # Primarily for sentiment agent
+finnhub_financial_headlines_tool.agent_types = [SENTIMENT_AGENT]  # Primarily for sentiment agent
 
 
-def fetch_finnhub_sentiment(
-    ticker: str
-) -> pd.DataFrame:
-    """
-    Fetch sentiment data for a company from Finnhub.
-    
-    Args:
-        ticker: Company ticker symbol (e.g., 'AAPL')
-        
-    Returns:
-        DataFrame with sentiment metrics including bullish/bearish percentages
-    """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
-    
-    tool = FinnHubTool(api_key)
-    df = tool.fetch_sentiment_as_dataframe(ticker)
-    return df
-
-
-finnhub_sentiment_tool = FunctionTool(
-    func=fetch_finnhub_sentiment,
-    name="fetch_finnhub_sentiment",
-    description="Fetch sentiment metrics for a company from Finnhub, including bullish/bearish percentages and news score."
-)
-finnhub_sentiment_tool.agent_types = [SENTIMENT_AGENT]  # Primarily for sentiment agent
-
-
-def fetch_finnhub_news_and_sentiment(
-    ticker: str,
-    from_date: str = None,
-    to_date: str = None,
+def fetch_finnhub_economic_headlines(
     count: int = 10
 ) -> pd.DataFrame:
     """
-    Fetch news with sentiment scores for a company from Finnhub.
-    
+    Fetch headlines specifically from the 'economic' category on Finnhub.
+    This provides economic news focused content for sentiment analysis.
+
     Args:
-        ticker: Company ticker symbol (e.g., 'AAPL')
-        from_date: Start date in YYYY-MM-DD format (default: 30 days ago)
-        to_date: End date in YYYY-MM-DD format (default: today)
-        count: Number of news articles to retrieve
-        
+        count: Number of economic news headlines to retrieve
+
     Returns:
-        DataFrame with news and sentiment scores
+        DataFrame with economic headlines from Finnhub
     """
     # Load API key from config
     config_loader = ConfigLoader()
     api_key = config_loader.get("finnhub_key")
-    
+
     tool = FinnHubTool(api_key)
-    df = tool.fetch_news_and_sentiment(ticker=ticker, from_date=from_date, to_date=to_date, count=count)
+    df = tool.fetch_economic_headlines(count=count)
     return df
 
 
-finnhub_news_sentiment_tool = FunctionTool(
-    func=fetch_finnhub_news_and_sentiment,
-    name="fetch_finnhub_news_and_sentiment",
-    description="Fetch news with sentiment scores for a company from Finnhub, combining news articles with overall sentiment metrics."
+finnhub_economic_headlines_tool = FunctionTool(
+    func=fetch_finnhub_economic_headlines,
+    name="fetch_finnhub_economic_headlines",
+    description="Fetch economic news headlines from Finnhub for analyzing economic sentiment and trends."
 )
-finnhub_news_sentiment_tool.agent_types = [SENTIMENT_AGENT]  # Primarily for sentiment agent
+finnhub_economic_headlines_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]  # Useful for sentiment and strategy agents
 
 ##################################
 # 4) Market Data Tools
@@ -512,9 +474,8 @@ SENTIMENT_TOOLS = [
     news_tool,
     alpha_vantage_news_tool,
     finnhub_news_tool,
-    finnhub_company_news_tool,
-    finnhub_sentiment_tool,
-    finnhub_news_sentiment_tool,
+    finnhub_financial_headlines_tool,
+    finnhub_economic_headlines_tool,
     sec_search_tool
 ]
 
