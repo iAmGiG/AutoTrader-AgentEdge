@@ -55,6 +55,7 @@ test_alpha_vantage.py
 test_sentiment_agent.py
 test_unified_market_data.py
 src/test_sentiment.py
+src/test/test_sentiment.py
 
 # Translations
 *.mo
