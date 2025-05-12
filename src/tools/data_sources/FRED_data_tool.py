@@ -9,9 +9,9 @@ unemployment figures, and more.
 import pandas as pd
 import logging
 from typing import Optional, Dict, Any, List, Union
-from datetime import datetime, timedelta
 from fredapi import Fred
 from config.config_loader import ConfigLoader
+from src.tools.date_utils import process_date_param, get_processed_date_range
 
 
 # Define standard economic indicator series IDs for easy access
@@ -90,24 +90,25 @@ class FREDDataTool:
         
         Args:
             series_id: FRED series ID (e.g., 'GDP', 'UNRATE')
-            start_date: Start date in YYYY-MM-DD format. If None, fetches 5 years of data.
-            end_date: End date in YYYY-MM-DD format. If None, uses current date.
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y".
+                        If None, fetches 5 years of data.
+            end_date: End date in YYYY-MM-DD format or relative date like "today".
+                      If None, uses current date.
             transform: Transformation to apply ('pct_change', 'diff', etc.)
             
         Returns:
             DataFrame with date index and value column
         """
         try:
-            # Set default date range if not provided
-            if not end_date:
-                end_date = datetime.now().strftime('%Y-%m-%d')
-                
-            if not start_date:
-                # Default to 5 years of data if no start date provided
-                start_date = (datetime.now() - timedelta(days=5*365)).strftime('%Y-%m-%d')
+            # Use the date_utils to properly handle date parameters
+            processed_start, processed_end = get_processed_date_range(
+                start_date=start_date,
+                end_date=end_date,
+                default_days_back=365*5  # Default to 5 years of data
+            )
             
             # Fetch data from FRED
-            series = self.fred.get_series(series_id, start_date, end_date, transform=transform)
+            series = self.fred.get_series(series_id, processed_start, processed_end, transform=transform)
             
             if series.empty:
                 self.logger.warning(f"No data returned for series {series_id}")
@@ -156,8 +157,8 @@ class FREDDataTool:
         
         Args:
             indicator: Name of the indicator (e.g., 'gdp', 'unemployment')
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
+            end_date: End date in YYYY-MM-DD format or relative date like "today"
             transform: Transformation to apply
             
         Returns:
@@ -181,8 +182,8 @@ class FREDDataTool:
         Get Gross Domestic Product data.
         
         Args:
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
+            end_date: End date in YYYY-MM-DD format or relative date like "today"
             real: Whether to get real (inflation-adjusted) GDP
             
         Returns:
@@ -198,8 +199,8 @@ class FREDDataTool:
         Get inflation data.
         
         Args:
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
+            end_date: End date in YYYY-MM-DD format or relative date like "today"
             year_over_year: Whether to compute year-over-year percentage change
             
         Returns:
@@ -224,8 +225,8 @@ class FREDDataTool:
         Get unemployment rate data.
         
         Args:
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
+            end_date: End date in YYYY-MM-DD format or relative date like "today"
             
         Returns:
             DataFrame with unemployment rate data
@@ -239,8 +240,8 @@ class FREDDataTool:
         Get interest rate data.
         
         Args:
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
+            end_date: End date in YYYY-MM-DD format or relative date like "today"
             rate_type: Type of interest rate (fed_funds, treasury_10y, treasury_2y, treasury_3m)
             
         Returns:
@@ -259,10 +260,11 @@ class FREDDataTool:
     def get_yield_curve(self, date: Optional[str] = None) -> pd.DataFrame:
         """
         Get the yield curve for a specific date.
-        
+
         Args:
-            date: Date in YYYY-MM-DD format. If None, uses most recent data.
-            
+            date: Date in YYYY-MM-DD format or relative date like "today".
+                 If None, uses most recent data.
+
         Returns:
             DataFrame with yield curve data
         """
@@ -280,20 +282,22 @@ class FREDDataTool:
             "20Y": "DGS20",
             "30Y": "DGS30"
         }
-        
-        # Use current date if not specified
-        if not date:
-            date = datetime.now().strftime('%Y-%m-%d')
-        
-        # Create end date as the day after the specified date
-        end_date = (datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        # Process the date parameter using date_utils
+        processed_date = process_date_param(date) or process_date_param("today")
+
+        # For end date, we use the next day to ensure we get data for the date we want
+        # Using standard datetime to create a date one day after processed_date
+        from datetime import datetime, timedelta
+        date_obj = datetime.strptime(processed_date, '%Y-%m-%d')
+        end_date = (date_obj + timedelta(days=1)).strftime('%Y-%m-%d')
         
         # Fetch data for each maturity
         yield_data = {}
         for maturity, series_id in maturities.items():
             try:
                 # Get a single data point for the date
-                series = self.fred.get_series(series_id, date, end_date)
+                series = self.fred.get_series(series_id, processed_date, end_date)
                 if not series.empty:
                     yield_data[maturity] = series.iloc[0]
                 else:
@@ -304,7 +308,7 @@ class FREDDataTool:
         
         # Create DataFrame
         df = pd.DataFrame([yield_data])
-        df['Date'] = date
+        df['Date'] = processed_date
         
         # Reorder columns to put Date first
         cols = df.columns.tolist()
@@ -321,26 +325,25 @@ class FREDDataTool:
         
         Args:
             series_ids: List of FRED series IDs
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
+            end_date: End date in YYYY-MM-DD format or relative date like "today"
             
         Returns:
             DataFrame with multiple series aligned by date
         """
-        # Set default date range if not provided
-        if not end_date:
-            end_date = datetime.now().strftime('%Y-%m-%d')
-            
-        if not start_date:
-            # Default to 5 years of data if no start date provided
-            start_date = (datetime.now() - timedelta(days=5*365)).strftime('%Y-%m-%d')
+        # Use the date_utils to properly handle date parameters
+        processed_start, processed_end = get_processed_date_range(
+            start_date=start_date,
+            end_date=end_date,
+            default_days_back=365*5  # Default to 5 years of data
+        )
         
         data = {}
         
         # Fetch each series
         for series_id in series_ids:
             try:
-                series = self.fred.get_series(series_id, start_date, end_date)
+                series = self.fred.get_series(series_id, processed_start, processed_end)
                 if not series.empty:
                     data[series_id] = series
                 else:
@@ -416,8 +419,8 @@ class FREDDataTool:
         
         Args:
             indicators: List of indicator names (must be in ECONOMIC_INDICATORS)
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
+            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
+            end_date: End date in YYYY-MM-DD format or relative date like "today"
             
         Returns:
             DataFrame with multiple indicators normalized for comparison
@@ -487,24 +490,24 @@ if __name__ == "__main__":
     # Initialize the tool
     fred_tool = FREDDataTool(verbose=True)
     
-    # Get GDP data
-    gdp_data = fred_tool.get_indicator('gdp', start_date='2020-01-01')
+    # Get GDP data using relative date format
+    gdp_data = fred_tool.get_indicator('gdp', start_date="-5y")
     print("\nGDP Data:")
     print(gdp_data.head())
     
-    # Get unemployment rate
-    unemployment_data = fred_tool.get_unemployment(start_date='2020-01-01')
+    # Get unemployment rate using relative date format
+    unemployment_data = fred_tool.get_unemployment(start_date="-2y")
     print("\nUnemployment Rate:")
     print(unemployment_data.head())
     
-    # Get yield curve
-    yield_curve = fred_tool.get_yield_curve()
+    # Get yield curve for current date
+    yield_curve = fred_tool.get_yield_curve("today")
     print("\nCurrent Yield Curve:")
     print(yield_curve)
     
     # Get multiple indicators for comparison
     comparison = fred_tool.get_indicator_comparison(['gdp_growth', 'unemployment', 'inflation_yoy'], 
-                                                   start_date='2018-01-01')
+                                                   start_date="-3y")
     print("\nEconomic Indicator Comparison:")
     print(comparison.head())
     
