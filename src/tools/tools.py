@@ -285,23 +285,30 @@ market_data_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]  # Only quan
 
 def fetch_economic_indicator(
     indicator: str = "gdp",
-    start_date: str = None,
-    end_date: str = None
+    start_date: str = "-5y",  # Changed to relative date format
+    end_date: str = "today"   # Changed to relative date format
 ) -> pd.DataFrame:
     """
     Fetch economic data from FRED (Federal Reserve Economic Data).
-    
+
     Args:
         indicator: Name of economic indicator (e.g., 'gdp', 'unemployment', 'inflation')
-        start_date: Start date in YYYY-MM-DD format (default: 5 years ago)
-        end_date: End date in YYYY-MM-DD format (default: today)
-        
+        start_date: Start date in YYYY-MM-DD format or relative date like "-5y" (default: 5 years ago)
+        end_date: End date in YYYY-MM-DD format or relative date like "today" (default: today)
+
     Returns:
         DataFrame with dates and indicator values
     """
+    from src.tools.text_processing.data_normalizer import normalize_fred_data
+
     tool = FREDDataTool()
-    df = tool.get_indicator(indicator, start_date, end_date)
-    return df
+    raw_df = tool.get_indicator(indicator, start_date, end_date)
+
+    # Optionally normalize the data (commented out for now as it may not be needed)
+    # normalized_df = normalize_fred_data(raw_df, indicator)
+    # return normalized_df
+
+    return raw_df
 
 
 fred_indicator_tool = FunctionTool(
@@ -314,17 +321,17 @@ fred_indicator_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]  # Releva
 
 def fetch_interest_rates(
     rate_type: str = "fed_funds",
-    start_date: str = None,
-    end_date: str = None
+    start_date: str = "-5y",  # Changed to relative date format
+    end_date: str = "today"   # Changed to relative date format
 ) -> pd.DataFrame:
     """
     Fetch interest rate data from FRED.
-    
+
     Args:
         rate_type: Type of interest rate ('fed_funds', 'treasury_10y', 'treasury_2y', 'treasury_3m')
-        start_date: Start date in YYYY-MM-DD format (default: 5 years ago)
-        end_date: End date in YYYY-MM-DD format (default: today)
-        
+        start_date: Start date in YYYY-MM-DD format or relative date like "-5y" (default: 5 years ago)
+        end_date: End date in YYYY-MM-DD format or relative date like "today" (default: today)
+
     Returns:
         DataFrame with dates and interest rate values
     """
@@ -341,13 +348,13 @@ fred_rates_tool = FunctionTool(
 fred_rates_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
 
 
-def fetch_yield_curve(date: str = None) -> pd.DataFrame:
+def fetch_yield_curve(date: str = "today") -> pd.DataFrame:
     """
     Fetch the yield curve for a specific date.
-    
+
     Args:
-        date: Date in YYYY-MM-DD format (default: latest available)
-        
+        date: Date in YYYY-MM-DD format or relative date like "today" (default: today)
+
     Returns:
         DataFrame with yield curve data for various maturities
     """
