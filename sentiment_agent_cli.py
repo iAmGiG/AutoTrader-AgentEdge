@@ -9,7 +9,6 @@ and a simplified interactive mode using function calling with AutoGen 0.5.x
 import sys
 import os
 import argparse
-import asyncio
 import json
 import pandas as pd
 import traceback
