@@ -18,8 +18,11 @@ def get_default_date_range(days_back: int = 5) -> Tuple[str, str]:
     Returns:
         Tuple of (start_date, end_date) strings in YYYY-MM-DD format
     """
-    # Get today's date
+    # Get today's date, ensuring we use the current system time
     end_date = datetime.datetime.now()
+    
+    # Log the actual date being used (for debugging)
+    print(f"Current date used for calculations: {end_date.strftime('%Y-%m-%d')}")
     
     # Calculate start date (approximately days_back trading days)
     # Add extra days to account for weekends and holidays
@@ -29,6 +32,8 @@ def get_default_date_range(days_back: int = 5) -> Tuple[str, str]:
     # Format dates as strings
     end_date_str = end_date.strftime("%Y-%m-%d")
     start_date_str = start_date.strftime("%Y-%m-%d")
+    
+    print(f"Date range generated: {start_date_str} to {end_date_str}")
     
     return (start_date_str, end_date_str)
 

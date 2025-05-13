@@ -55,6 +55,8 @@ test_alpha_vantage.py
 test_sentiment_agent.py
 test_unified_market_data.py
 src/test_sentiment.py
+src/test/test_sentiment.py
+src/test/
 
 # Translations
 *.mo
@@ -187,3 +189,5 @@ install_dependencies.sh
 run_simple_agent.sh
 test_data_retrieval.py
 docs/original_sentiment_agent.py
+sentiment_agent_cli.py
+sentiment_agent_cli_improved.py

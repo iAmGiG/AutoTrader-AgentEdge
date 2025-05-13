@@ -33,6 +33,17 @@ MARKET_SCHEMA = {
     'source': 'str'                    # Data source (e.g., "Yahoo", "AlphaVantage")
 }
 
+# Schema for economic data (from FRED and similar sources)
+ECONOMIC_SCHEMA = {
+    'timestamp': 'datetime64[ns]',     # Date/time of the data point
+    'indicator': 'str',                # Economic indicator name/code (e.g., "GDP", "UNRATE")
+    'value': 'float',                  # Value of the indicator
+    'units': 'str',                    # Units of measurement (e.g., "Percent", "Billions of Dollars")
+    'frequency': 'str',                # Data frequency (e.g., "Monthly", "Quarterly")
+    'title': 'str',                    # Full title/description of the indicator
+    'source': 'str'                    # Data source (e.g., "FRED", "BEA")
+}
+
 
 def create_empty_news_df() -> pd.DataFrame:
     """Create an empty DataFrame with the standard news schema."""
@@ -43,6 +54,12 @@ def create_empty_news_df() -> pd.DataFrame:
 def create_empty_market_df() -> pd.DataFrame:
     """Create an empty DataFrame with the standard market schema."""
     df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in MARKET_SCHEMA.items()})
+    return df
+
+
+def create_empty_economic_df() -> pd.DataFrame:
+    """Create an empty DataFrame with the standard economic data schema."""
+    df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in ECONOMIC_SCHEMA.items()})
     return df
 
 
@@ -229,21 +246,82 @@ def normalize_market_data_for_sentiment(market_df: pd.DataFrame) -> Optional[pd.
     return None
 
 
+def normalize_fred_data(raw_df: pd.DataFrame, indicator: str = "Unknown") -> pd.DataFrame:
+    """
+    Normalize data from FRED to the common economic schema.
+
+    Args:
+        raw_df: Raw DataFrame returned by FREDDataTool
+        indicator: The economic indicator name or code
+
+    Returns:
+        Normalized DataFrame following the common economic schema
+    """
+    if raw_df.empty:
+        return create_empty_economic_df()
+
+    normalized_df = pd.DataFrame()
+
+    # Check and map columns based on what's available in the raw dataframe
+    if 'Date' in raw_df.columns and 'Value' in raw_df.columns:
+        # Standard FRED format from get_series or get_indicator
+        normalized_df['timestamp'] = pd.to_datetime(raw_df['Date'])
+        normalized_df['value'] = raw_df['Value']
+
+        # Extract metadata if available
+        normalized_df['indicator'] = raw_df.get('Series ID', indicator)
+        normalized_df['title'] = raw_df.get('Title', indicator)
+        normalized_df['units'] = raw_df.get('Units', 'Unknown')
+        normalized_df['frequency'] = raw_df.get('Frequency', 'Unknown')
+
+    elif 'Date' in raw_df.columns:
+        # This could be a yield curve or other multi-column dataset
+        normalized_df['timestamp'] = pd.to_datetime(raw_df['Date'])
+
+        # For yield curve, we'll use a different approach - maintain original columns
+        # but ensure we have the required economic schema columns
+        normalized_df['indicator'] = indicator
+        normalized_df['title'] = f"{indicator} Data"
+        normalized_df['units'] = "Percent"  # Most FRED data are in percent
+        normalized_df['frequency'] = "Daily"  # Most yield curve data are daily
+
+        # Handle the value column specially for yield curve
+        # We'll use the 10Y as a representative value
+        if '10Y' in raw_df.columns:
+            normalized_df['value'] = raw_df['10Y']
+        else:
+            # If there's no 10Y, use the first non-Date column
+            value_cols = [col for col in raw_df.columns if col != 'Date']
+            if value_cols:
+                normalized_df['value'] = raw_df[value_cols[0]]
+            else:
+                normalized_df['value'] = None
+
+    else:
+        # Try to handle other formats or return empty
+        return create_empty_economic_df()
+
+    # Set source to FRED
+    normalized_df['source'] = 'FRED'
+
+    return normalized_df
+
+
 def normalize_data_for_sentiment(df: pd.DataFrame, data_type: str, **kwargs) -> Optional[pd.DataFrame]:
     """
     Main entry point for normalizing any data source for sentiment analysis.
-    
+
     Args:
         df: Raw DataFrame from a data source
-        data_type: Type of data ('news', 'market', etc.)
+        data_type: Type of data ('news', 'market', 'economic', etc.)
         **kwargs: Additional arguments like symbol for market data
-        
+
     Returns:
         Normalized DataFrame or None if data should be skipped
     """
     if df.empty:
         return create_empty_news_df()
-    
+
     if data_type == 'news_api':
         return normalize_newsapi_data(df)
     elif data_type == 'finnhub':
@@ -256,6 +334,10 @@ def normalize_data_for_sentiment(df: pd.DataFrame, data_type: str, **kwargs) -> 
     elif data_type == 'alpha_vantage':
         market_df = normalize_alpha_vantage_data(df, kwargs.get('symbol', 'UNKNOWN'))
         return normalize_market_data_for_sentiment(market_df)
+    elif data_type == 'fred':
+        # FRED economic data isn't directly usable for sentiment without transformation
+        # For now, we'll just return None to skip it
+        return None
     else:
         # Unknown data source
         return None

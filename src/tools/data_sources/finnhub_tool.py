@@ -1,25 +1,305 @@
+"""
+Finnhub data source tool for retrieving financial news headlines.
+
+This tool provides access to the Finnhub API to fetch financial news headlines across
+various categories including general business, economic, and market news. It focuses
+on features available in the free tier API plan, specifically optimized for headline
+retrieval for sentiment analysis.
+"""
+
 import requests
+import logging
+import pandas as pd
+from typing import Optional, List
+from config.config_loader import ConfigLoader
+
+# Define news categories supported by Finnhub
+NEWS_CATEGORIES = {
+    "general": "General news",
+    "forex": "Forex news",
+    "crypto": "Cryptocurrency news",
+    "merger": "Merger & Acquisitions news",
+    "business": "Business news",
+    "technology": "Technology news",
+    "economic": "Economic news",
+    "stock": "Stock-specific news"
+}
 
 
 class FinnHubTool:
-    def __init__(self, api_key, source="finnhub"):
+    """
+    A tool for accessing financial news headlines from Finnhub.
+
+    Designed to work with Finnhub's free tier API to retrieve news headlines
+    across various categories (business, economic, forex, etc.). This tool
+    focuses specifically on headline retrieval for sentiment analysis
+    without requiring premium features.
+    """
+
+    def __init__(self, api_key: Optional[str] = None, verbose: bool = False):
+        """
+        Initialize the Finnhub data tool.
+
+        Args:
+            api_key: Optional API key for Finnhub. If not provided, will load from config.
+            verbose: Whether to enable verbose logging.
+        """
+        # Set up logger
+        self.logger = logging.getLogger(self.__class__.__name__)
+        if verbose:
+            logging.basicConfig(level=logging.INFO)
+
+        # Load API key from config if not provided
+        if api_key is None:
+            config_loader = ConfigLoader()
+            api_key = config_loader.get("finnhub_key")
+
+            if not api_key:
+                self.logger.error("No Finnhub API key provided in config.json")
+                raise ValueError(
+                    "Finnhub API key is required. Add it to config.json under 'finnhub_key' key.")
+
         self.api_key = api_key
-        self.source = source
+        self.base_url = "https://finnhub.io/api/v1"
+        self.logger.info("Finnhub API client initialized successfully")
 
-    def fetch_finn_news(self, keyword="market", count=5):
-        if self.source == "finnhub":
-            url = f"https://finnhub.io/api/v1/news?category=general&token={self.api_key}"
-        elif self.source == "newsapi":
-            url = f"https://newsapi.org/v2/everything?q={keyword}&apiKey={self.api_key}"
+        # Store the news categories for reference
+        self.news_categories = NEWS_CATEGORIES
+
+    def fetch_news(self,
+                   category: str = "general",
+                   tickers: Optional[List[str]] = None,
+                   count: int = 10) -> pd.DataFrame:
+        """
+        Fetch news headlines from Finnhub free tier API.
+
+        Args:
+            category: News category ('general', 'forex', 'crypto', 'business', 'economic', etc.)
+            tickers: List of ticker symbols to filter by (optional, may not work in free tier)
+            count: Number of news articles to retrieve
+
+        Returns:
+            DataFrame with news headlines optimized for sentiment analysis
+        """
+        try:
+            # Validate the category
+            if category not in self.news_categories:
+                self.logger.warning(
+                    f"Unknown category: {category}, defaulting to 'general'")
+                category = "general"
+
+            # Build the URL
+            url = f"{self.base_url}/news?category={category}&token={self.api_key}"
+
+            # Add ticker filter if provided (note: may not work in free tier)
+            if tickers is not None and len(tickers) > 0:
+                tickers_str = ",".join(tickers)
+                url += f"&tickers={tickers_str}"
+
+            # Make the request
+            self.logger.info(
+                f"Fetching news headlines from Finnhub for category: {category}")
+            response = requests.get(url)
+            response.raise_for_status()  # Raise exception for HTTP errors
+
+            # Parse the JSON response
+            data = response.json()
+
+            # Check if we got articles back
+            if not data or not isinstance(data, list):
+                self.logger.warning("No news headlines returned from Finnhub")
+                return pd.DataFrame()
+
+            # Limit to requested count
+            articles = data[:count]
+
+            # Filter only the fields we need (reducing memory footprint)
+            simplified_articles = []
+            for article in articles:
+                simplified_articles.append({
+                    'headline': article.get('headline', ''),
+                    'datetime': article.get('datetime', 0),
+                    'source': article.get('source', ''),
+                    # Limit summary length
+                    'summary': article.get('summary', '')[:200] if article.get('summary') else '',
+                    'url': article.get('url', ''),
+                    'category': article.get('category', '')
+                })
+
+            # Convert to DataFrame
+            df = pd.DataFrame(simplified_articles)
+
+            # Rename columns to standardized format
+            if not df.empty:
+                column_mapping = {
+                    'headline': 'Headline',
+                    'datetime': 'Date',
+                    'source': 'Source',
+                    'summary': 'Summary',
+                    'url': 'URL',
+                    'category': 'Category'
+                }
+                df = df.rename(
+                    columns={k: v for k, v in column_mapping.items() if k in df.columns})
+
+                # Convert epoch timestamp to datetime
+                if 'datetime' in df.columns:
+                    df['Date'] = pd.to_datetime(df['datetime'], unit='s')
+
+                # Add source indicator
+                df['Data Source'] = 'Finnhub'
+
+            return df
+
+        except Exception as e:
+            self.logger.error(f"Error fetching news from Finnhub: {e}")
+            return pd.DataFrame()
+
+    def fetch_financial_headlines(self, count: int = 10) -> pd.DataFrame:
+        """
+        Fetch a combined set of financial and economic headlines from multiple categories.
+        This method is specifically designed for sentiment analysis and combines business,
+        economic, and market news into a single DataFrame.
+
+        Args:
+            count: Number of news headlines to retrieve per category
+
+        Returns:
+            DataFrame with diverse financial headlines for sentiment analysis
+        """
+        try:
+            # Fetch headlines from multiple financial categories
+            self.logger.info(
+                "Fetching diverse financial headlines from Finnhub")
+
+            # These categories are available in the free tier and cover different
+            # aspects of financial markets
+            categories = ["business", "economic", "forex", "general"]
+
+            all_headlines = []
+            for category in categories:
+                # Get headlines for this category
+                category_df = self.fetch_news(
+                    category=category, count=count // len(categories))
+
+                if not category_df.empty:
+                    all_headlines.append(category_df)
+
+            # Combine into a single DataFrame
+            if all_headlines:
+                combined_df = pd.concat(all_headlines, ignore_index=True)
+                combined_df = combined_df.sort_values(
+                    by='Date', ascending=False)
+                return combined_df
+            else:
+                self.logger.warning(
+                    "No financial headlines found from any category")
+                return pd.DataFrame()
+
+        except Exception as e:
+            self.logger.error(
+                f"Error fetching financial headlines from Finnhub: {e}")
+            return pd.DataFrame()
+
+    def fetch_market_headlines(self, count: int = 10) -> pd.DataFrame:
+        """
+        Alias for fetch_financial_headlines that focuses specifically on market-related headlines.
+        This method has the same functionality but uses a more descriptive name for clarity.
+
+        Args:
+            count: Number of news headlines to retrieve
+
+        Returns:
+            DataFrame with market headlines for sentiment analysis
+        """
+        return self.fetch_financial_headlines(count=count)
+
+    def fetch_economic_headlines(self, count: int = 10) -> pd.DataFrame:
+        """
+        Fetch headlines specifically from the 'economic' category.
+        This provides a more targeted set of headlines related to economic news.
+
+        Args:
+            count: Number of economic news headlines to retrieve
+
+        Returns:
+            DataFrame with economic headlines for sentiment analysis
+        """
+        return self.fetch_news(category="economic", count=count)
+
+    def list_news_categories(self) -> pd.DataFrame:
+        """
+        List available news categories.
+
+        Returns:
+            DataFrame with category IDs and descriptions
+        """
+        data = []
+        for category_id, description in self.news_categories.items():
+            data.append({
+                'category_id': category_id,
+                'description': description
+            })
+
+        return pd.DataFrame(data)
+
+
+# Example usage
+if __name__ == "__main__":
+    # Enable logging for example
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Initialize the tool
+    finnhub_tool = FinnHubTool(verbose=True)
+
+    try:
+        # Example 1: Fetch general news
+        print("\nExample 1: Fetch general news")
+        news_df = finnhub_tool.fetch_news(category="general", count=3)
+        if not news_df.empty:
+            print(f"Fetched {len(news_df)} news articles")
+            for _, article in news_df.iterrows():
+                print(f"- {article.get('Headline', 'No headline')}")
+
+        # Example 2: Try fetching news with ticker filter (may not work in free tier)
+        print("\nExample 2: Fetch news with ticker filter")
+        stock_news = finnhub_tool.fetch_news(
+            category="business", tickers=["AAPL", "TSLA"], count=3)
+        if not stock_news.empty:
+            print(
+                f"Fetched {len(stock_news)} news articles related to specified tickers")
+            for _, article in stock_news.iterrows():
+                print(f"- {article.get('Headline', 'No headline')}")
         else:
-            raise ValueError("Unsupported news source")
+            print("No ticker-specific news found (expected with free tier)")
 
-        response = requests.get(url).json()
-        return response[:count] if self.source == "finnhub" else response["articles"][:count]
+        # Example 3: Fetch economic headlines
+        print("\nExample 3: Fetch economic headlines")
+        economic_df = finnhub_tool.fetch_economic_headlines(count=3)
+        if not economic_df.empty:
+            print(f"Fetched {len(economic_df)} economic headlines")
+            for _, article in economic_df.iterrows():
+                print(f"- {article.get('Headline', 'No headline')}")
 
+        # Example 4: Fetch combined financial headlines
+        print("\nExample 4: Fetch combined financial headlines")
+        financial_df = finnhub_tool.fetch_financial_headlines(count=8)
+        if not financial_df.empty:
+            print(
+                f"Fetched {len(financial_df)} financial headlines from multiple categories")
+            print(
+                f"Categories included: {', '.join(financial_df['Category'].unique())}")
+            for _, article in financial_df.head(3).iterrows():
+                print(
+                    f"- {article.get('Headline', 'No headline')} ({article.get('Category', 'unknown')})")
 
-# Example Usage
-news_tool = FinnHubTool("YOUR_API_KEY", source="finnhub")
-articles = news_tool.fetch_news("inflation", count=3)
-for article in articles:
-    print(article["headline"] if "headline" in article else article["title"])
+        # Example 5: List available news categories
+        print("\nExample 5: List available news categories")
+        categories_df = finnhub_tool.list_news_categories()
+        print(f"Available categories:")
+        for _, category in categories_df.iterrows():
+            print(f"- {category['category_id']}: {category['description']}")
+
+    except Exception as e:
+        print(f"Error in example: {e}")

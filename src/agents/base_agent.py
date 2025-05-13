@@ -16,10 +16,8 @@ from src.tools.tools import (
 from config.config_loader import ConfigLoader
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict, Callable
-# Import CancellationToken from autogen_core
 from autogen_core._cancellation_token import CancellationToken
 import asyncio
-import inspect
 import traceback
 import pandas as pd
 
@@ -183,7 +181,30 @@ class BaseAgent(AssistantAgent, ABC):
         """
         try:
             messages = self._build_message_sequence(prompt, system_prompt)
-            response = asyncio.run(self._run_tool_conversation(messages))
+            # If already in an event loop, use the async version directly
+            if asyncio.get_event_loop().is_running():
+                # Return a coroutine that can be awaited by the caller
+                return self.process_with_tools_async(prompt, system_prompt)
+            else:
+                # Not in an event loop, safe to use asyncio.run
+                response = asyncio.run(self._run_tool_conversation(messages))
+                return self._extract_content(response)
+        except Exception as e:
+            error_details = traceback.format_exc()
+            print(f"Error details: {error_details}")
+            return f"Error processing with LLM: {str(e)}"
+            
+    async def process_with_tools_async(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Async version of process_with_tools - for use when already in an event loop.
+        
+        :param prompt: The user prompt to process.
+        :param system_prompt: Optional system prompt to provide context.
+        :return: The LLM's response.
+        """
+        try:
+            messages = self._build_message_sequence(prompt, system_prompt)
+            response = await self._run_tool_conversation(messages)
             return self._extract_content(response)
         except Exception as e:
             error_details = traceback.format_exc()
@@ -225,15 +246,16 @@ class BaseAgent(AssistantAgent, ABC):
         if hasattr(response, 'content') and isinstance(response.content, list):
             # We have tool calls to process
             tool_calls = response.content
-            conversation.append(AssistantMessage(content=tool_calls, source="assistant"))
-            
+            conversation.append(AssistantMessage(
+                content=tool_calls, source="assistant"))
+
             # Process all tool calls and get results
             tool_results = await self._process_tool_calls(tool_calls)
-            
+
             # Add the tool results to the conversation
             if tool_results:
-                conversation.append(FunctionExecutionResultMessage(content=tool_results))
-
+                conversation.append(
+                    FunctionExecutionResultMessage(content=tool_results))
             # Call the LLM again with the tool results
             print("- Calling LLM to generate final response with tool results...")
             final_response = await self.model_client.create(messages=conversation)
@@ -257,13 +279,14 @@ class BaseAgent(AssistantAgent, ABC):
 
             # Print diagnostic info about the tool call
             self._log_tool_call(tool_name, tool_args)
-            
+
             try:
                 # Execute the tool and get the result
                 tool_result = await self._execute_tool(tool_name, tool_args)
-                
+
                 # Format the result for the LLM
-                formatted_result = self._format_tool_result(tool_result, tool_name, tool_id)
+                formatted_result = self._format_tool_result(
+                    tool_result, tool_name, tool_id)
                 tool_results.append(formatted_result)
             except Exception as e:
                 # Handle tool execution errors
@@ -277,7 +300,7 @@ class BaseAgent(AssistantAgent, ABC):
                         name=tool_name
                     )
                 )
-                
+
         return tool_results
 
     def _log_tool_call(self, tool_name: str, tool_args: Any) -> None:
@@ -313,14 +336,15 @@ class BaseAgent(AssistantAgent, ABC):
             # Call the appropriate function directly based on tool name
             tool_result = await self._call_specific_tool(tool_name, parsed_args)
             self.log(f"Successfully executed {tool_name}")
-            
+
             # Log information about the result
             self._log_tool_result(tool_result)
-            
+
             # Let the subclass process the result if needed
-            processed_result = self.process_tool_result(tool_name, tool_result, parsed_args)
+            processed_result = self.process_tool_result(
+                tool_name, tool_result, parsed_args)
             return processed_result
-            
+
         except Exception as e:
             traceback.print_exc()
             self.log(f"Error executing tool {tool_name}: {str(e)}")
@@ -329,11 +353,11 @@ class BaseAgent(AssistantAgent, ABC):
     def execute_tool_by_name(self, tool_name: str, tool_args: Dict[str, Any]) -> Any:
         """
         Execute a tool by name using the tool dispatcher dictionary.
-        
+
         This method checks the tool's interface to decide whether to call its
         'func', directly call the tool (if callable), or use its 'run' method.
         If a function is a coroutine, it will run it through the async method.
-        
+
         :param tool_name: The name of the tool to execute.
         :param tool_args: The arguments to pass to the tool.
         :return: The result of the tool execution.
@@ -342,17 +366,19 @@ class BaseAgent(AssistantAgent, ABC):
         if not tool:
             self.log(f"Tool '{tool_name}' not found.")
             raise ValueError(f"Tool '{tool_name}' is not defined.")
-        
+
         self.log(f"Executing tool: {tool_name} with arguments: {tool_args}")
 
         # Create a cancellation token for methods that require it
         cancellation_token = CancellationToken()
-        
+
         # Helper function to handle potentially coroutine functions
         def exec_fn_sync(fn: Callable, *args, **kwargs) -> Any:
             """Execute a function, running it through asyncio if it's a coroutine function."""
             if asyncio.iscoroutinefunction(fn):
-                self.log(f"Function {fn.__name__} is a coroutine, running via asyncio")
+                self.log(
+                    f"Function {fn.__name__} is a coroutine, running via asyncio")
+
                 # We need to run the coroutine function through asyncio
                 return asyncio.run(fn(*args, **kwargs))
             else:
@@ -365,14 +391,14 @@ class BaseAgent(AssistantAgent, ABC):
             except Exception as e:
                 self.log(f"Error using tool.func: {e}")
                 traceback.print_exc()
-        
+
         if callable(tool):
             try:
                 return exec_fn_sync(tool, **tool_args)
             except Exception as e:
                 self.log(f"Error calling tool directly: {e}")
                 traceback.print_exc()
-        
+
         if hasattr(tool, 'run'):
             try:
                 # Pass cancellation_token as required by AutoGen 0.5.1
@@ -380,7 +406,7 @@ class BaseAgent(AssistantAgent, ABC):
             except Exception as e:
                 self.log(f"Error using tool.run with cancellation token: {e}")
                 traceback.print_exc()
-        
+
         # Fallback to explicit dispatch from the mapping
         if tool_name in TOOL_FUNCTION_MAP:
             try:
@@ -388,26 +414,28 @@ class BaseAgent(AssistantAgent, ABC):
             except Exception as e:
                 self.log(f"Error using fallback function: {e}")
                 traceback.print_exc()
-                
                 # As a last resort, try to execute the tool asynchronously
                 try:
-                    self.log(f"Attempting to execute {tool_name} asynchronously as a last resort")
+                    self.log(
+                        f"Attempting to execute {tool_name} asynchronously as a last resort")
                     return asyncio.run(self.execute_tool_async(tool_name, tool_args))
                 except Exception as e2:
                     self.log(f"Async execution also failed: {e2}")
-                    raise ValueError(f"Failed to execute tool {tool_name} with all available methods: {e}, {e2}")
-        
-        raise ValueError(f"Could not determine how to execute tool: {tool_name}")
-    
+                    raise ValueError(
+                        f"Failed to execute tool {tool_name} with all available methods: {e}, {e2}")
+
+        raise ValueError(
+            f"Could not determine how to execute tool: {tool_name}")
+
     async def execute_tool_async(self, tool_name: str, tool_args: Dict[str, Any]) -> Any:
         """
         Execute a tool asynchronously using the dispatcher dictionary.
-        
+
         This method checks the tool's interface to decide whether to call its
         'func', directly call the tool (if callable), or use its 'run' method.
         If a tool returns a coroutine (is async), we await it; otherwise, we run it
         in an executor.
-        
+
         :param tool_name: The name of the tool to execute.
         :param tool_args: The arguments to pass to the tool.
         :return: The result of the tool execution.
@@ -416,12 +444,13 @@ class BaseAgent(AssistantAgent, ABC):
         if not tool:
             self.log(f"Tool '{tool_name}' not found.")
             raise ValueError(f"Tool '{tool_name}' is not defined.")
-        
-        self.log(f"Executing tool asynchronously: {tool_name} with arguments: {tool_args}")
-        
+
+        self.log(
+            f"Executing tool asynchronously: {tool_name} with arguments: {tool_args}")
+
         # Create a cancellation token for methods that require it
         cancellation_token = CancellationToken()
-        
+
         # Define a helper to execute a given function according to its async nature
         async def call_exec_fn(exec_fn: Callable, *args, **kwargs) -> Any:
             """Helper function to call the execution function based on whether it's a coroutine or not."""
@@ -429,54 +458,65 @@ class BaseAgent(AssistantAgent, ABC):
                 self.log(f"Executing async function {exec_fn.__name__}")
                 return await exec_fn(*args, **kwargs)
             else:
-                self.log(f"Executing sync function {exec_fn.__name__} in thread executor")
+
+                self.log(
+                    f"Executing sync function {exec_fn.__name__} in thread executor")
                 loop = asyncio.get_event_loop()
                 return await loop.run_in_executor(None, lambda: exec_fn(*args, **kwargs))
-        
+
         # Determine the proper method to execute the tool
         if hasattr(tool, 'func'):
             exec_fn = tool.func
             try:
                 result = await call_exec_fn(exec_fn, **tool_args)
-                self.log(f"Tool '{tool_name}' execution completed via tool.func.")
+                self.log(
+                    f"Tool '{tool_name}' execution completed via tool.func.")
                 return result
             except Exception as e:
                 self.log(f"Error using tool.func for {tool_name}: {e}")
                 traceback.print_exc()
-        
+
         elif callable(tool):
             try:
                 result = await call_exec_fn(tool, **tool_args)
-                self.log(f"Tool '{tool_name}' execution completed via direct call.")
+                self.log(
+                    f"Tool '{tool_name}' execution completed via direct call.")
                 return result
             except Exception as e:
                 self.log(f"Error calling tool directly for {tool_name}: {e}")
                 traceback.print_exc()
-        
+
         elif hasattr(tool, 'run'):
             exec_fn = tool.run
             try:
                 # Pass cancellation_token to run
                 result = await call_exec_fn(exec_fn, tool_args, cancellation_token)
-                self.log(f"Tool '{tool_name}' execution completed via tool.run.")
+
+                self.log(
+                    f"Tool '{tool_name}' execution completed via tool.run.")
+
                 return result
             except Exception as e:
                 self.log(f"Error using tool.run for {tool_name}: {e}")
                 traceback.print_exc()
-        
+
         elif tool_name in TOOL_FUNCTION_MAP:
             exec_fn = TOOL_FUNCTION_MAP[tool_name]
             try:
                 result = await call_exec_fn(exec_fn, **tool_args)
-                self.log(f"Tool '{tool_name}' execution completed via function map.")
+
+                self.log(
+                    f"Tool '{tool_name}' execution completed via function map.")
+
                 return result
             except Exception as e:
                 self.log(f"Error using fallback function for {tool_name}: {e}")
                 traceback.print_exc()
-                raise ValueError(f"Failed to execute tool {tool_name} asynchronously: {e}")
-        
+                raise ValueError(
+                    f"Failed to execute tool {tool_name} asynchronously: {e}")
         else:
-            raise ValueError(f"Could not determine how to execute tool: {tool_name}")
+            raise ValueError(
+                f"Could not determine how to execute tool: {tool_name}")
 
     async def _call_specific_tool(self, tool_name: str, parsed_args: Dict[str, Any]) -> Any:
         """
