@@ -10,7 +10,7 @@ This agent is designed to:
 # Standard library imports
 import json
 import traceback
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 # Third-party imports
 import pandas as pd
@@ -28,10 +28,10 @@ SENTIMENT_LLM_CONFIG = {
     "top_p": 0.9,        # Allow for some creative variety
 }
 
-
 class SentimentAgent(BaseAgent):
     """
     Agent for sentiment analysis and market behavior explanation.
+
 
     Uses LLM-driven function calling to:
     - Retrieve news and analyze sentiment
@@ -173,16 +173,15 @@ class SentimentAgent(BaseAgent):
                             # Limit to 5 headlines
                             headlines = result[col].tolist()[:5]
                             break
-
                     # Extract sentiment if available
                     sentiment = None
                     sentiment_cols = [
                         "Sentiment Score", "sentiment_score", "overall_sentiment_score", "score"]
+
                     for col in sentiment_cols:
                         if col in result.columns:
                             sentiment = float(result[col].mean())
                             break
-
                     # Build a simple news summary
                     news_summary = {
                         "headlines": headlines if headlines else ["No headlines available"],
@@ -190,7 +189,6 @@ class SentimentAgent(BaseAgent):
                         "average_sentiment": sentiment,
                         "sources": result["Source"].tolist()[:5] if "Source" in result.columns else []
                     }
-
                     return news_summary
                 return {"headlines": [], "count": 0, "message": "No news data available"}
 
@@ -275,10 +273,8 @@ class SentimentAgent(BaseAgent):
                         "sample_data": result.head(3).to_dict(orient="records")
                     }
                 return {"summary": "Empty DataFrame"}
-
             # Return the result as is if it's already serializable
             return result
-
         except Exception as e:
             traceback.print_exc()
             print(f"Error in process_tool_result: {str(e)}")

@@ -256,7 +256,6 @@ class BaseAgent(AssistantAgent, ABC):
             if tool_results:
                 conversation.append(
                     FunctionExecutionResultMessage(content=tool_results))
-
             # Call the LLM again with the tool results
             print("- Calling LLM to generate final response with tool results...")
             final_response = await self.model_client.create(messages=conversation)
@@ -379,6 +378,7 @@ class BaseAgent(AssistantAgent, ABC):
             if asyncio.iscoroutinefunction(fn):
                 self.log(
                     f"Function {fn.__name__} is a coroutine, running via asyncio")
+
                 # We need to run the coroutine function through asyncio
                 return asyncio.run(fn(*args, **kwargs))
             else:
@@ -414,7 +414,6 @@ class BaseAgent(AssistantAgent, ABC):
             except Exception as e:
                 self.log(f"Error using fallback function: {e}")
                 traceback.print_exc()
-
                 # As a last resort, try to execute the tool asynchronously
                 try:
                     self.log(
@@ -459,6 +458,7 @@ class BaseAgent(AssistantAgent, ABC):
                 self.log(f"Executing async function {exec_fn.__name__}")
                 return await exec_fn(*args, **kwargs)
             else:
+
                 self.log(
                     f"Executing sync function {exec_fn.__name__} in thread executor")
                 loop = asyncio.get_event_loop()
@@ -491,8 +491,10 @@ class BaseAgent(AssistantAgent, ABC):
             try:
                 # Pass cancellation_token to run
                 result = await call_exec_fn(exec_fn, tool_args, cancellation_token)
+
                 self.log(
                     f"Tool '{tool_name}' execution completed via tool.run.")
+
                 return result
             except Exception as e:
                 self.log(f"Error using tool.run for {tool_name}: {e}")
@@ -502,15 +504,16 @@ class BaseAgent(AssistantAgent, ABC):
             exec_fn = TOOL_FUNCTION_MAP[tool_name]
             try:
                 result = await call_exec_fn(exec_fn, **tool_args)
+
                 self.log(
                     f"Tool '{tool_name}' execution completed via function map.")
+
                 return result
             except Exception as e:
                 self.log(f"Error using fallback function for {tool_name}: {e}")
                 traceback.print_exc()
                 raise ValueError(
                     f"Failed to execute tool {tool_name} asynchronously: {e}")
-
         else:
             raise ValueError(
                 f"Could not determine how to execute tool: {tool_name}")

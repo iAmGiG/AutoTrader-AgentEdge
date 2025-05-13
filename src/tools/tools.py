@@ -517,6 +517,7 @@ STRATEGY_TOOLS = [
     sec_filings_tool
 ]
 
+
 # All tools combined
 ALL_TOOLS = list(set(
     SENTIMENT_TOOLS + 
@@ -525,10 +526,12 @@ ALL_TOOLS = list(set(
     STRATEGY_TOOLS
 ))
 
+
 ########################################
 # Tool dispatcher dictionary for efficient lookup by name
 ########################################
 ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS}
+
 
 ########################################
 # Helper function to get tools for a specific agent type
