@@ -1,9 +1,11 @@
 # Sentiment Agent Documentation
 
 ## 1. Overview
+
 The Sentiment Agent analyzes market data and news sentiment to provide insights about market behavior. It uses LLM-driven function calling to decide which data sources to query based on the user's question.
 
 ### Key Capabilities
+
 - Fetches and analyzes news articles and their sentiment
 - Retrieves market data for stocks and sectors
 - Generates explanatory narratives about market behavior
@@ -12,11 +14,14 @@ The Sentiment Agent analyzes market data and news sentiment to provide insights 
 ## 2. Architecture
 
 ### Component Diagram
+
 For detailed component diagrams, see the UML diagrams in:
+
 - [docs/UML/SentimentAgent/sentimentAgentSystemDataFlow.svg](./UML/SentimentAgent/sentimentAgentSystemDataFlow.svg)
 - [docs/UML/SentimentAgent/sentimentAgentSystemSequenceDiagram.svg](./UML/SentimentAgent/sentimentAgentSystemSequenceDiagram.svg)
 
 ### Data Flow
+
 1. User query is received by the agent
 2. Query is parsed to extract key information (ticker, sector, date range)
 3. LLM decides which tools to call based on the query context
@@ -25,6 +30,7 @@ For detailed component diagrams, see the UML diagrams in:
 6. LLM generates a narrative response synthesizing the data
 
 ### Tool Registration and Usage
+
 The Sentiment Agent follows AutoGen 0.5.x patterns for tool registration and usage:
 
 ```python
@@ -41,7 +47,9 @@ response = agent.process_with_tools(query, system_prompt)
 ## 3. Implementation Details
 
 ### AutoGen 0.5.x Integration
+
 The Sentiment Agent uses AutoGen 0.5.x's function calling capabilities through:
+
 - `FunctionTool` for tool definition (see `tools.py`)
 - `model_client` for LLM integration
 - AutoGen's messaging system for conversation management
@@ -63,10 +71,12 @@ The system supports two different implementation approaches:
    - Useful for testing and development
 
 The CLI supports switching between these modes:
+
 - Default: Direct OpenAI API Mode (for simplicity)
 - Toggle with "direct" command: Switches to AutoGen Framework Mode
 
 ### LLM Function Calling Implementation
+
 ```python
 # Example of the AutoGen implementation in SentimentAgent:
 def generate_reply(self, messages, context=None):
@@ -81,21 +91,27 @@ async def process_with_llm_function_calling(prompt, system_prompt):
 ## 4. Usage Guide
 
 ### CLI Interface
+
 The sentiment_agent_cli_improved.py provides an interactive interface:
+
 ```bash
 python sentiment_agent_cli_improved.py
 ```
 
 ### Switching Between Modes
+
 Type "direct" in the CLI to toggle between:
+
 - Function calling mode (default): Uses OpenAI API directly
 - Direct agent mode: Uses SentimentAgent class with AutoGen
 
 ### When to Use Each Mode
+
 - **Direct OpenAI API Mode**: For quick testing, simplified tool set
 - **AutoGen Framework Mode**: For full access to all tools, proper framework usage
 
 ### Adding New Tools
+
 To add a new tool to the Sentiment Agent:
 
 1. Define the tool function in tools.py
@@ -104,6 +120,7 @@ To add a new tool to the Sentiment Agent:
 4. Tag with agent_types = [SENTIMENT_AGENT]
 
 Example:
+
 ```python
 def my_new_tool(param1: str, param2: int) -> dict:
     """Tool documentation"""
@@ -124,14 +141,17 @@ SENTIMENT_TOOLS.append(new_tool)
 ## 5. Testing
 
 ### Unit Testing
+
 - Test individual components (QueryParser, tool functions)
 - Mock API responses for deterministic testing
 
 ### Integration Testing
+
 - Test complete agent workflow with mock LLM responses
 - Verify tool selection logic
 
 ### Example Test Cases
+
 - News sentiment analysis for specific ticker
 - Market data retrieval and processing
 - Error handling for missing data sources
@@ -139,35 +159,41 @@ SENTIMENT_TOOLS.append(new_tool)
 ## 6. Future Work
 
 ### Planned Improvements
+
 - Enhanced natural language understanding
 - Additional data sources integration
 - Performance optimizations
 - Integration with other agents
 
 ### Enhanced Query Understanding
+
 - Implement a proper NLP pipeline for entity extraction
 - Add more sophisticated date parsing for complex time ranges
 - Support for comparison queries (e.g., "Compare tech vs energy sentiment")
 
 ### Additional Data Sources
+
 - Integrate FRED economic indicators for macro context
 - Add SEC filings for fundamental analysis
 - Support bond yield and dollar index for cross-asset correlation
 - Add options data to incorporate market expectations
 
 ### Performance Optimization
+
 - Cache frequently accessed sector/ticker data
 - Implement parallel data fetching for multiple sources
 - Add request debouncing to manage API rate limits
 - Cache recent API responses for common queries
 
 ### Response Quality
+
 - Fine-tune the LLM system prompt for better narratives
 - Add visual representations (charts, tables) of sentiment/price data
 - Include customizable response detail levels
 - Support for time series sentiment analysis
 
 ### Integration with Other Agents
+
 - Standardize interfaces for Strategy and Risk agents
 - Implement a structured output format for agent consumption
 - Add metadata to responses for machine readability
@@ -176,6 +202,7 @@ SENTIMENT_TOOLS.append(new_tool)
 ## 7. Technical Details
 
 ### Key Improvements from Refactoring
+
 1. **Modular Architecture**
    - Separated concerns into distinct modules:
      - SentimentAgent class (coordination and LLM integration)
@@ -205,6 +232,7 @@ SENTIMENT_TOOLS.append(new_tool)
    - Format data for optimal LLM consumption
 
 ### Technical Debt to Address
+
 1. **Code Structure**
    - Review circular import issues in data tools
    - Separate data fetching from processing logic

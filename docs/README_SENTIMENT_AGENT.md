@@ -5,7 +5,6 @@ This CLI provides an interface to the Sentiment Agent, which analyzes market dat
 ## Features
 
 - Interactive mode with command history
-- Direct execution mode for one-off queries
 - Ability to switch between:
   - Direct SentimentAgent mode (using the full AutoGen agent with all tools)
   - Function calling mode (simplified implementation with OpenAI function calling)
@@ -36,10 +35,10 @@ Switch between modes by typing `direct` at the CLI prompt.
 
 ### Interactive Mode
 
-Run the CLI in interactive mode:
+Run the CLI:
 
 ```bash
-python sentiment_agent_cli.py -i
+python sentiment_agent_cli_improved.py
 ```
 
 This starts an interactive session where you can enter queries and get responses. You can:
@@ -47,20 +46,6 @@ This starts an interactive session where you can enter queries and get responses
 - Type `help` to see example queries
 - Type `direct` to toggle between direct SentimentAgent mode and function calling mode
 - Type `exit` or `quit` to close the program
-
-### Query Mode
-
-Run the CLI with a specific query:
-
-```bash
-python sentiment_agent_cli.py -q "How is Apple stock performing?"
-```
-
-To use the direct SentimentAgent implementation (with AutoGen):
-
-```bash
-python sentiment_agent_cli.py -q "How is Apple stock performing?" -d
-```
 
 ## Example Queries
 
@@ -80,15 +65,21 @@ The CLI exposes several tools for data retrieval:
 
 ### Market Data Tools
 
-- `fetch_yahoo_stock_data`: Fetches stock data from Yahoo Finance
-- `fetch_alpha_vantage_stock_data`: Fetches stock data from Alpha Vantage API
-- `fetch_market_data_unified`: Unified interface to fetch from different sources
+- `fetch_yahoo_data`: Fetches stock data from Yahoo Finance
+- `fetch_alpha_vantage_data`: Fetches stock data from Alpha Vantage API
+- `fetch_market_data`: Unified interface to fetch from different sources
 
 ### News Data Tools
 
-- `fetch_news_data`: Fetches general news from NewsAPI (best for non-financial topics)
-- `fetch_alpha_vantage_news_data`: Fetches news with financial sentiment from Alpha Vantage (best for stock-specific news)
-- `fetch_combined_news`: Fetches from both sources, combining results for comprehensive analysis (recommended for financial queries)
+- `fetch_news`: Fetches general news from NewsAPI (best for non-financial topics)
+- `fetch_alpha_vantage_news`: Fetches news with financial sentiment from Alpha Vantage (best for stock-specific news)
+- `fetch_finnhub_news`: Fetches financial news from Finnhub
+- `fetch_finnhub_financial_headlines`: Fetches combined financial headlines from multiple categories
+- `fetch_finnhub_economic_headlines`: Fetches headlines specifically from the 'economic' category
+
+### SEC Data Tools
+
+- `search_sec_filings`: Search SEC filings for specific terms to get context
 
 ## Requirements
 
@@ -97,8 +88,9 @@ The CLI exposes several tools for data retrieval:
 - OpenAI API key (configured in config/config.json)
 - NewsAPI key (configured in config/config.json)
 - Alpha Vantage API key (configured in config/config.json)
+- Finnhub API key (configured in config/config.json)
 
-> NOTE: API KEYS ARE NOTE PRESENT AT THE REPO LEVEL SEE LOCAL SYSTEM. if **missing** API KEYS, SELF PROCUREMENT ***WILL*** BE REQURIED.
+> NOTE: API KEYS ARE NOT PRESENT AT THE REPO LEVEL SEE LOCAL SYSTEM. if **missing** API KEYS, SELF PROCUREMENT ***WILL*** BE REQUIRED.
 
 ## Technical Notes
 
