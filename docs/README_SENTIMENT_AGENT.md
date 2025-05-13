@@ -16,6 +16,22 @@ This CLI provides an interface to the Sentiment Agent, which analyzes market dat
   - Unified market data interface with source selection
 - Full access to all tools defined in tools.py through function calling
 
+## Implementation Modes
+
+The CLI supports two different implementation approaches:
+
+1. **Function Calling Mode (Default)**
+   - Uses OpenAI API directly with function calling
+   - Simplified tool schemas defined directly in the CLI
+   - Easier to understand for new developers
+
+2. **AutoGen Framework Mode**
+   - Uses the full SentimentAgent class with proper AutoGen integration
+   - Access to all tools defined for the sentiment agent
+   - Follows the project's architectural patterns
+
+Switch between modes by typing `direct` at the CLI prompt.
+
 ## Usage
 
 ### Interactive Mode
@@ -88,3 +104,7 @@ The CLI exposes several tools for data retrieval:
 
 This CLI consolidates functionality that was previously split across multiple test files.
 All functionality is now available through a single unified interface with access to the full range of tools defined in tools.py.
+
+## Documentation
+
+For detailed information about the Sentiment Agent's architecture, implementation, and development, see the complete [Sentiment Agent Documentation](./sentiment_agent.md).
