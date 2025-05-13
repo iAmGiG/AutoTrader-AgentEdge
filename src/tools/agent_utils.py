@@ -84,12 +84,18 @@ class QueryParser:
         end_date = None
         sector = None
         
+        # List of common financial terms and abbreviations that aren't tickers
+        common_terms = ["I", "A", "AI", "US", "ER", "GDP", "CPI", "IPO", "P/E", "EPS", "ROI", "YOY"]
+        
         # Extract ticker if present (uppercase 1-5 chars)
         words = message.split()
         for word in words:
-            # Skip common acronyms that aren't tickers
-            if word.isupper() and 1 <= len(word) <= 5 and word not in ["I", "A", "AI", "US"]:
-                ticker = word
+            # Filter out punctuation from the word
+            clean_word = ''.join(c for c in word if c.isalnum())
+            
+            # Skip common terms/acronyms that aren't tickers
+            if clean_word.isupper() and 1 <= len(clean_word) <= 5 and clean_word not in common_terms:
+                ticker = clean_word
                 break
         
         # Check if message contains keywords for specific sectors
