@@ -284,7 +284,7 @@ class SentimentAgent(BaseAgent):
             print(f"Error in process_tool_result: {str(e)}")
             return {"error": f"Failed to process result: {str(e)}"}
 
-    def generate_reply(self, messages, context=None) -> str:
+    def generate_reply(self, messages, context=None):
         """
         Primary entry point for generating replies to user messages.
         Let's the LLM decide which tools to call based on the query.
@@ -294,7 +294,7 @@ class SentimentAgent(BaseAgent):
             context: Optional context information
 
         Returns:
-            Generated response
+            Generated response or coroutine to be awaited
         """
         if not messages:
             return self.config.get("default_response", "I can help with analyzing market sentiment from news and SEC filings.")
@@ -319,20 +319,30 @@ class SentimentAgent(BaseAgent):
         system_prompt = self.config.get("system_prompt", "")
         system_prompt += f"\n\nSupplementary context for this query:\n{supplementary_context}"
 
+        # Add guidance to use multiple tools
+        system_prompt += "\n\nIMPORTANT: For comprehensive analysis, you should use MULTIPLE relevant tools rather than just one. Use multiple data sources for cross-validation and deeper insights."
+        
         # Add specific guidance based on extracted entities
         if query_details.get("ticker"):
             ticker = query_details["ticker"]
-            system_prompt += f"\n\nThis query mentions the stock ticker {ticker}. Consider getting news specific to this ticker using fetch_alpha_vantage_news(symbol=\"{ticker}\")."
+            system_prompt += f"\n\nThis query mentions the stock ticker {ticker}. For comprehensive analysis, use BOTH of these tools:"
+            system_prompt += f"\n1. fetch_alpha_vantage_news(symbol=\"{ticker}\") - For ticker-specific news and sentiment"
+            system_prompt += f"\n2. fetch_market_data(ticker=\"{ticker}\", start_date=\"{query_details.get('start_date')}\") - For price and volume data"
+            system_prompt += f"\n3. fetch_finnhub_news(tickers=['{ticker}']) - For additional financial news"
 
         if query_details.get("topic"):
             topic = query_details["topic"]
-            system_prompt += f"\n\nThis query mentions the topic '{topic}'. Consider using fetch_news(keyword=\"{topic}\", count=5) to get relevant news articles."
+            system_prompt += f"\n\nThis query mentions the topic '{topic}'. Use multiple news sources for comprehensive coverage:"
+            system_prompt += f"\n1. fetch_news(keyword=\"{topic}\", count=5) - For general news"
+            system_prompt += f"\n2. fetch_finnhub_financial_headlines() - For financial market headlines that may relate to {topic}"
+            system_prompt += f"\n3. fetch_finnhub_economic_headlines() - For economic news that may impact {topic}"
 
         # Add guidance for SEC filings search if appropriate
-        if query_details.get("ticker") and any(term in last_message.lower() for term in ["risk", "sec", "filing", "10-k", "10k", "report"]):
+        if query_details.get("ticker") and any(term in last_message.lower() for term in ["risk", "sec", "filing", "10-k", "10k", "report", "risk", "earnings", "er"]):
             ticker = query_details["ticker"]
-            system_prompt += f"\n\nThis query appears to be asking about SEC filings or risk factors. Consider using search_sec_filings(ticker=\"{ticker}\", search_terms=[\"risk\", \"uncertainty\"], form_type=\"10-K\")."
+            system_prompt += f"\n\nThis query appears to be asking about SEC filings or earnings. Include regulatory information with:"
+            system_prompt += f"\n1. search_sec_filings(ticker=\"{ticker}\", search_terms=[\"risk\", \"earnings\"], form_type=\"10-K\") - For risk disclosures"
 
         # Let the LLM generate a response with tool usage
-        # Use process_with_tools instead of process_with_llm to enable tool calling
+        # process_with_tools may return a coroutine if in an async context
         return self.process_with_tools(last_message, system_prompt)
