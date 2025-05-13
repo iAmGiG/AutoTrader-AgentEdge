@@ -6,6 +6,18 @@ This script provides both a direct CLI for testing the SentimentAgent class
 and a simplified interactive mode using function calling with AutoGen 0.5.x
 """
 
+from src.tools.tools import (
+    fetch_market_data,
+    fetch_news,
+    fetch_yahoo_data,
+    fetch_alpha_vantage_data,
+    fetch_alpha_vantage_news
+)
+from src.tools.data_sources.market_data_tool import MarketDataTool
+from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
+from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
+from src.agents.sentiment_agent import SentimentAgent
+from config.config_loader import ConfigLoader
 import sys
 import os
 import argparse
@@ -17,32 +29,20 @@ import traceback
 sys.path.insert(0, os.path.abspath('.'))
 
 # Import configuration
-from config.config_loader import ConfigLoader
 
 # Import the SentimentAgent class
-from src.agents.sentiment_agent import SentimentAgent
 
 # Import the data fetching functions directly
-from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
-from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
-from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
-from src.tools.data_sources.market_data_tool import MarketDataTool
 
 # Import all tools from tools.py
-from src.tools.tools import (
-    fetch_market_data, 
-    fetch_news, 
-    fetch_yahoo_data, 
-    fetch_alpha_vantage_data, 
-    fetch_alpha_vantage_news
-)
+
 
 def check_dependencies():
     """Check if required dependencies are installed."""
     try:
         import openai
         import yfinance
-        
+
         # Test AutoGen core imports
         try:
             import autogen_core
@@ -56,11 +56,12 @@ def check_dependencies():
             print("Make sure you're using the correct conda environment.")
             print("Try: conda activate AutoGen")
             return False
-            
+
     except ImportError as e:
         print(f"Missing dependency: {e}")
         print("Try: pip install openai yfinance")
         return False
+
 
 def fetch_yahoo_stock_data(ticker="AAPL", start_date="-7d", end_date=None):
     """
@@ -69,13 +70,13 @@ def fetch_yahoo_stock_data(ticker="AAPL", start_date="-7d", end_date=None):
     try:
         tool = YahooFinanceTool()
         data = tool.fetch_stock_data(ticker, start_date, end_date)
-        
+
         if data is None or data.empty:
             return {
                 "error": f"No data available for {ticker}",
                 "status": "error"
             }
-            
+
         # Convert to a simpler format for OpenAI response
         result = {
             "status": "success",
@@ -100,13 +101,15 @@ def fetch_yahoo_stock_data(ticker="AAPL", start_date="-7d", end_date=None):
             "status": "error"
         }
 
+
 def fetch_alpha_vantage_stock_data(symbol="AAPL", start_date="-30d", end_date="today"):
     """
     Fetch stock data from Alpha Vantage.
     """
     try:
-        data = fetch_alpha_vantage_data(symbol=symbol, start_date=start_date, end_date=end_date)
-        
+        data = fetch_alpha_vantage_data(
+            symbol=symbol, start_date=start_date, end_date=end_date)
+
         if data is None or data.empty:
             return {
                 "error": f"No Alpha Vantage data available for {symbol}",
@@ -116,7 +119,7 @@ def fetch_alpha_vantage_stock_data(symbol="AAPL", start_date="-30d", end_date="t
         # Normalize column names if needed
         close_col = 'Close' if 'Close' in data.columns else 'close'
         volume_col = 'Volume' if 'Volume' in data.columns else 'volume'
-            
+
         # Convert to a simpler format for OpenAI response
         result = {
             "status": "success",
@@ -141,6 +144,7 @@ def fetch_alpha_vantage_stock_data(symbol="AAPL", start_date="-30d", end_date="t
             "status": "error"
         }
 
+
 def fetch_market_data_unified(symbol="AAPL", start_date="-30d", end_date="today", source="yahoo"):
     """
     Fetch market data using the unified MarketDataTool.
@@ -148,17 +152,17 @@ def fetch_market_data_unified(symbol="AAPL", start_date="-30d", end_date="today"
     try:
         tool = MarketDataTool({"data_source": source})
         data = tool.fetch_market_data(symbol, start_date, end_date)
-        
+
         if data is None or data.empty:
             return {
                 "error": f"No market data available for {symbol} from {source}",
                 "status": "error"
             }
-            
+
         # Normalize column names if needed
         close_col = 'Close' if 'Close' in data.columns else 'close'
         volume_col = 'Volume' if 'Volume' in data.columns else 'volume'
-            
+
         # Convert to a simpler format for OpenAI response
         result = {
             "status": "success",
@@ -183,6 +187,7 @@ def fetch_market_data_unified(symbol="AAPL", start_date="-30d", end_date="today"
             "status": "error"
         }
 
+
 def fetch_news_data(keyword="market", count=5):
     """
     Fetch news headlines for a topic or ticker using NewsHeadlineTool.
@@ -190,13 +195,13 @@ def fetch_news_data(keyword="market", count=5):
     try:
         tool = NewsHeadlineTool()
         news_df = tool.fetch_data(keyword=keyword, count=count)
-        
+
         if news_df is None or news_df.empty:
             return {
                 "error": f"No news available for {keyword}",
                 "status": "error"
             }
-            
+
         result = {
             "status": "success",
             "keyword": keyword,
@@ -204,7 +209,7 @@ def fetch_news_data(keyword="market", count=5):
             "headlines": news_df[['Headline', 'Source', 'Sentiment Score']].to_dict(orient='records'),
             "avg_sentiment": round(news_df['Sentiment Score'].mean(), 2) if 'Sentiment Score' in news_df.columns else 0
         }
-        
+
         return result
     except Exception as e:
         traceback.print_exc()
@@ -213,52 +218,55 @@ def fetch_news_data(keyword="market", count=5):
             "status": "error"
         }
 
+
 def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
     """
     Fetch news and sentiment data from Alpha Vantage API.
     """
     try:
-        print(f"🔍 Fetching Alpha Vantage news for symbol: {symbol}, topics: {topics}")
-        
+        print(
+            f"🔍 Fetching Alpha Vantage news for symbol: {symbol}, topics: {topics}")
+
         # Now call through the function tool
         print("🔍 Calling fetch_alpha_vantage_news function tool")
         news_df = fetch_alpha_vantage_news(symbol=symbol, topics=topics)
-        
+
         # Debug info about the news dataframe
         if news_df is not None:
-            print(f"🔍 Alpha Vantage news dataframe: {news_df.shape}, columns: {list(news_df.columns)}")
+            print(
+                f"🔍 Alpha Vantage news dataframe: {news_df.shape}, columns: {list(news_df.columns)}")
             if len(news_df) > 0:
                 print(f"🔍 Sample data: {news_df.iloc[0].to_dict()}")
         else:
             print("🔍 Alpha Vantage news dataframe is None")
-            
+
         if news_df is None or news_df.empty:
             return {
                 "error": f"No Alpha Vantage news available for {symbol}",
                 "status": "error"
             }
-        
+
         # Identify title/headline column
         title_col = None
         for col in ['title', 'Title', 'headline', 'Headline']:
             if col in news_df.columns:
                 title_col = col
                 break
-                
+
         # Identify source column
         source_col = None
         for col in ['source', 'Source', 'provider', 'Provider']:
             if col in news_df.columns:
                 source_col = col
                 break
-                
+
         # Identify sentiment column
         sentiment_col = None
         for col in ['sentiment_score', 'Sentiment Score', 'overall_sentiment_score', 'score']:
             if col in news_df.columns:
                 sentiment_col = col
                 break
-        
+
         # If the required columns are found, create the result
         if title_col and source_col:
             headlines = []
@@ -268,9 +276,10 @@ def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
                     "source": row[source_col]
                 }
                 if sentiment_col:
-                    headline_item["sentiment_score"] = float(row[sentiment_col]) if pd.notnull(row[sentiment_col]) else 0.0
+                    headline_item["sentiment_score"] = float(
+                        row[sentiment_col]) if pd.notnull(row[sentiment_col]) else 0.0
                 headlines.append(headline_item)
-                
+
             result = {
                 "status": "success",
                 "source": "Alpha Vantage",
@@ -278,10 +287,11 @@ def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
                 "article_count": len(news_df),
                 "headlines": headlines
             }
-            
+
             if sentiment_col:
-                result["avg_sentiment"] = float(news_df[sentiment_col].mean()) if not news_df[sentiment_col].empty else 0.0
-                
+                result["avg_sentiment"] = float(
+                    news_df[sentiment_col].mean()) if not news_df[sentiment_col].empty else 0.0
+
             return result
         else:
             return {
@@ -295,27 +305,28 @@ def fetch_alpha_vantage_news_data(symbol="AAPL", topics=None, count=5):
             "status": "error"
         }
 
+
 def fetch_combined_news(keyword: str, symbol: str = None, count: int = 5):
     """
     Fetch news from both NewsAPI and Alpha Vantage, combining the results.
-    
+
     Args:
         keyword: General topic or search term for NewsAPI
         symbol: Stock symbol for Alpha Vantage (optional)
         count: Number of articles to retrieve from each source
-        
+
     Returns:
         Combined news data from both sources
     """
-    print(f"🔄 Fetching combined news - keyword: {keyword}, symbol: {symbol}")
-    
+    print(f"Fetching combined news - keyword: {keyword}, symbol: {symbol}")
+
     # Initialize results
     news_api_headlines = []
     alpha_vantage_headlines = []
     total_count = 0
     avg_sentiment = 0
     sentiment_values = []
-    
+
     # First get general news
     try:
         news_result = fetch_news_data(keyword=keyword, count=count)
@@ -329,14 +340,15 @@ def fetch_combined_news(keyword: str, symbol: str = None, count: int = 5):
             total_count += len(news_api_headlines)
             print(f"✅ NewsAPI returned {len(news_api_headlines)} articles")
         else:
-            print(f"⚠️ NewsAPI returned no articles: {news_result}")
+            print(f" NewsAPI returned no articles: {news_result}")
     except Exception as e:
-        print(f"⚠️ Error fetching from NewsAPI: {str(e)}")
-    
+        print(f" Error fetching from NewsAPI: {str(e)}")
+
     # Then get Alpha Vantage news if a symbol is provided
     if symbol:
         try:
-            av_result = fetch_alpha_vantage_news_data(symbol=symbol, count=count)
+            av_result = fetch_alpha_vantage_news_data(
+                symbol=symbol, count=count)
             if av_result and av_result.get("status") == "success":
                 alpha_vantage_headlines = av_result.get("headlines", [])
                 # Mark the source
@@ -345,18 +357,19 @@ def fetch_combined_news(keyword: str, symbol: str = None, count: int = 5):
                     if "sentiment_score" in headline:
                         sentiment_values.append(headline["sentiment_score"])
                 total_count += len(alpha_vantage_headlines)
-                print(f"✅ Alpha Vantage returned {len(alpha_vantage_headlines)} articles")
+                print(
+                    f"✅ Alpha Vantage returned {len(alpha_vantage_headlines)} articles")
             else:
                 print(f"⚠️ Alpha Vantage returned no articles: {av_result}")
         except Exception as e:
             print(f"⚠️ Error fetching from Alpha Vantage: {str(e)}")
-    
+
     # Combine headlines and calculate average sentiment
     combined_headlines = news_api_headlines + alpha_vantage_headlines
-    
+
     if sentiment_values:
         avg_sentiment = sum(sentiment_values) / len(sentiment_values)
-    
+
     result = {
         "status": "success",
         "keyword": keyword,
@@ -366,8 +379,9 @@ def fetch_combined_news(keyword: str, symbol: str = None, count: int = 5):
         "avg_sentiment": round(avg_sentiment, 2) if sentiment_values else None,
         "sources_used": ["NewsAPI"] + (["Alpha Vantage"] if symbol else [])
     }
-    
+
     return result
+
 
 def process_with_llm(prompt, system_prompt=None):
     """
@@ -378,11 +392,11 @@ def process_with_llm(prompt, system_prompt=None):
         loader = ConfigLoader()
         openai_key = loader.get("open_ai_key")
         model_name = loader.get("open_model") or "gpt-4o"
-        
+
         # Import OpenAI
         import openai
         client = openai.OpenAI(api_key=openai_key)
-        
+
         # Build messages
         messages = []
         if system_prompt:
@@ -390,12 +404,12 @@ def process_with_llm(prompt, system_prompt=None):
                 "role": "system",
                 "content": system_prompt
             })
-        
+
         messages.append({
             "role": "user",
             "content": prompt
         })
-        
+
         # Call OpenAI API
         completion = client.chat.completions.create(
             model=model_name,
@@ -403,11 +417,12 @@ def process_with_llm(prompt, system_prompt=None):
             temperature=0.3,
             max_tokens=1000
         )
-        
+
         return completion.choices[0].message.content
     except Exception as e:
         traceback.print_exc()
         return f"Error processing with LLM: {str(e)}"
+
 
 def process_with_function_calling(prompt, system_prompt=None):
     """
@@ -418,11 +433,11 @@ def process_with_function_calling(prompt, system_prompt=None):
         loader = ConfigLoader()
         openai_key = loader.get("open_ai_key")
         model_name = loader.get("open_model") or "gpt-4o"
-        
+
         # Import OpenAI
         import openai
         client = openai.OpenAI(api_key=openai_key)
-        
+
         # Define the tools schemas
         tools = [
             {
@@ -577,7 +592,7 @@ def process_with_function_calling(prompt, system_prompt=None):
                 }
             }
         ]
-        
+
         # Build messages
         messages = []
         if system_prompt:
@@ -585,12 +600,12 @@ def process_with_function_calling(prompt, system_prompt=None):
                 "role": "system",
                 "content": system_prompt
             })
-        
+
         messages.append({
             "role": "user",
             "content": prompt
         })
-        
+
         # First call to get tool requests
         print("- Calling LLM to analyze the query...")
         completion = client.chat.completions.create(
@@ -600,30 +615,31 @@ def process_with_function_calling(prompt, system_prompt=None):
             tool_choice="auto",
             temperature=0.3
         )
-        
+
         response = completion.choices[0].message
         messages.append(response)
-        
+
         # Check if there are tool calls
         if not response.tool_calls:
             return response.content
-            
+
         print(f"- LLM requested {len(response.tool_calls)} tool calls")
-        
+
         # Process each tool call
         for tool_call in response.tool_calls:
             function_name = tool_call.function.name
             function_args = json.loads(tool_call.function.arguments)
-            
+
             print(f"- Executing {function_name} with args: {function_args}")
-            
+
             # For debugging purposes, log all available tool calls
-            if function_name != "fetch_alpha_vantage_news_data" and ("AAPL" in str(function_args) or "aapl" in str(function_args).lower() or 
-                                                                    "MSFT" in str(function_args) or "msft" in str(function_args).lower() or
-                                                                    "AMZN" in str(function_args) or "amazon" in str(function_args).lower()):
+            if function_name != "fetch_alpha_vantage_news_data" and ("AAPL" in str(function_args) or "aapl" in str(function_args).lower() or
+                                                                     "MSFT" in str(function_args) or "msft" in str(function_args).lower() or
+                                                                     "AMZN" in str(function_args) or "amazon" in str(function_args).lower()):
                 # This is a stock-related query but not using Alpha Vantage news
-                print("⚠️ WARNING: Stock-related query but not using fetch_alpha_vantage_news_data!")
-            
+                print(
+                    "⚠️ WARNING: Stock-related query but not using fetch_alpha_vantage_news_data!")
+
             # Execute the function
             if function_name == "fetch_yahoo_stock_data":
                 result = fetch_yahoo_stock_data(
@@ -663,10 +679,10 @@ def process_with_function_calling(prompt, system_prompt=None):
                 )
             else:
                 result = {"error": f"Unknown function: {function_name}"}
-                
+
             # Convert result to string (important!)
             result_str = json.dumps(result)
-            
+
             # Add the result to messages
             messages.append({
                 "role": "tool",
@@ -674,7 +690,7 @@ def process_with_function_calling(prompt, system_prompt=None):
                 "name": function_name,
                 "content": result_str
             })
-        
+
         # Final call to get response
         print("- Calling LLM to generate final response with tool results...")
         final_completion = client.chat.completions.create(
@@ -682,12 +698,13 @@ def process_with_function_calling(prompt, system_prompt=None):
             messages=messages,
             temperature=0.3
         )
-        
+
         return final_completion.choices[0].message.content
-        
+
     except Exception as e:
         traceback.print_exc()
         return f"Error processing with function calling: {str(e)}"
+
 
 def interactive_mode():
     """
@@ -697,7 +714,7 @@ def interactive_mode():
     print("Type 'exit' or 'quit' to close the program.")
     print("Type 'help' to see example queries.")
     print("Type 'direct' to switch to direct SentimentAgent mode.")
-    
+
     # Default system prompt
     system_prompt = """
     You are a financial analyst assistant that helps analyze market data and news.
@@ -751,23 +768,23 @@ def interactive_mode():
     
     Be concise but informative, focusing on the most relevant insights.
     """
-    
+
     # Mode flag
     use_direct_agent = False
     agent = None
-    
+
     while True:
         # Get user input
         if use_direct_agent:
             user_input = input("\nEnter your query (direct mode): ")
         else:
             user_input = input("\nEnter your query: ")
-        
+
         # Handle exit commands
         if user_input.lower() in ['exit', 'quit']:
             print("Exiting Sentiment Agent CLI.")
             break
-            
+
         # Handle help command
         if user_input.lower() in ['help', '?']:
             print("\nExample queries:")
@@ -777,58 +794,63 @@ def interactive_mode():
             print("- Analyze NVDA stock for the past week")
             print("- Tell me about the technology sector")
             continue
-            
+
         # Handle mode switch
         if user_input.lower() == 'direct':
             use_direct_agent = not use_direct_agent
-            print(f"\nSwitched to {'direct SentimentAgent' if use_direct_agent else 'function calling'} mode")
+            print(
+                f"\nSwitched to {'direct SentimentAgent' if use_direct_agent else 'function calling'} mode")
             if use_direct_agent and agent is None:
                 print("Initializing SentimentAgent...")
                 agent = SentimentAgent()
                 print("✅ SentimentAgent initialized")
             continue
-        
+
         print("\nProcessing...")
         print()
-        
+
         if use_direct_agent:
             # Process using the actual SentimentAgent
             if agent is None:
                 print("Initializing SentimentAgent...")
                 agent = SentimentAgent()
                 print("✅ SentimentAgent initialized")
-            
+
             response = agent.generate_reply([user_input])
         else:
             # Process using function calling
             response = process_with_function_calling(user_input, system_prompt)
-        
+
         print("\nResponse:")
         print("=" * 80)
         print(response)
         print("=" * 80)
-    
+
+
 def main():
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(description="Sentiment Agent CLI")
     parser.add_argument('--query', '-q', type=str, help='Query to process')
-    parser.add_argument('--interactive', '-i', action='store_true', help='Run in interactive mode')
-    parser.add_argument('--direct', '-d', action='store_true', help='Use the SentimentAgent class directly')
-    parser.add_argument('--test-alpha-vantage', '-tav', action='store_true', help='Run Alpha Vantage news API test')
-    
+    parser.add_argument('--interactive', '-i',
+                        action='store_true', help='Run in interactive mode')
+    parser.add_argument('--direct', '-d', action='store_true',
+                        help='Use the SentimentAgent class directly')
+    parser.add_argument('--test-alpha-vantage', '-tav',
+                        action='store_true', help='Run Alpha Vantage news API test')
+
     args = parser.parse_args()
-    
+
     # Check dependencies
     if not check_dependencies():
         sys.exit(1)
-    
+
     # Run Alpha Vantage news test if requested
     if args.test_alpha_vantage:
         test_alpha_vantage_news()
         return
-        
+
     print("Initializing Sentiment Agent CLI...")
-    
+
     # Interactive mode
     if args.interactive:
         interactive_mode()
@@ -836,7 +858,7 @@ def main():
     elif args.query:
         print("Processing query:", args.query)
         print("-" * 80)
-        
+
         if args.direct:
             # Process using the actual SentimentAgent
             agent = SentimentAgent()
@@ -844,7 +866,7 @@ def main():
         else:
             # Process using function calling
             response = process_with_function_calling(args.query)
-        
+
         print("\nResponse:")
         print("=" * 80)
         print(response)
@@ -852,10 +874,11 @@ def main():
     else:
         parser.print_help()
 
+
 def test_alpha_vantage_news():
     """Test function to verify the Alpha Vantage news function works correctly."""
     print("\n===== Testing Alpha Vantage News API =====")
-    
+
     # First, test direct call
     print("\n1. Testing direct call to AlphaVantageTool.fetch_news_sentiment:")
     try:
@@ -870,21 +893,22 @@ def test_alpha_vantage_news():
             print("❌ Direct call returned empty dataframe")
     except Exception as e:
         print(f"❌ Direct call error: {str(e)}")
-    
+
     # Then, test via function tool
     print("\n2. Testing via fetch_alpha_vantage_news function:")
     try:
         from src.tools.tools import fetch_alpha_vantage_news
         tool_news_df = fetch_alpha_vantage_news("MSFT")
         if tool_news_df is not None and not tool_news_df.empty:
-            print(f"✅ Function tool call successful! Shape: {tool_news_df.shape}")
+            print(
+                f"✅ Function tool call successful! Shape: {tool_news_df.shape}")
             print(f"   Columns: {list(tool_news_df.columns)}")
             print(f"   First row: {tool_news_df.iloc[0].to_dict()}")
         else:
             print("❌ Function tool call returned empty dataframe")
     except Exception as e:
         print(f"❌ Function tool call error: {str(e)}")
-    
+
     # Finally, test via our CLI wrapper function
     print("\n3. Testing via CLI wrapper function fetch_alpha_vantage_news_data:")
     try:
@@ -892,8 +916,9 @@ def test_alpha_vantage_news():
         print(f"✅ CLI wrapper returned: {result}")
     except Exception as e:
         print(f"❌ CLI wrapper error: {str(e)}")
-    
+
     print("\n===== Alpha Vantage News Test Complete =====\n")
+
 
 if __name__ == "__main__":
     # Uncomment to run test function
