@@ -6,9 +6,9 @@ allowing retrieval of various economic indicators such as GDP, inflation rates,
 unemployment figures, and more.
 """
 
-import pandas as pd
 import logging
 from typing import Optional, Dict, Any, List
+import pandas as pd
 from fredapi import Fred
 from config.config_loader import ConfigLoader
 from src.tools.date_utils import process_date_param, get_processed_date_range

@@ -2,14 +2,40 @@
 
 - Focusing on individual tools for integrating financial data sources, we will define the essential tools, their responsibilities, and the libraries required for efficient data retrieval and processing.
 
-1. Overview of Data Source Tools
+## 1. Overview of Data Source Tools
+
 Each tool is responsible for fetching, processing, and formatting data from different financial sources (SEC filings, market data, volatility indices, news sentiment, etc.). These tools should provide:
 
-    - A standardized interface (fetch_data(params) -> DataFrame)
-    - Efficient API handling (batch processing where applicable)
-    - Caching or persistence support (when necessary)
+- A standardized interface (fetch_data(params) -> DataFrame)
+- Efficient API handling (batch processing where applicable)
+- Caching or persistence support (when necessary)
 
-Tools Required:
+## Directory Structure
+
+The tools are organized into a hierarchical structure based on their domain:
+
+```bash
+src/tools/
+  |-- data_sources/        # External data access layer
+  |   |-- market/          # Market price data tools
+  |   |   |-- alpha_vantage_market.py
+  |   |   |-- yahoo_finance_tool.py
+  |   |   |-- market_data_tool.py  # Unified interface
+  |   |
+  |   |-- news/            # News and sentiment tools
+  |   |   |-- alpha_vantage_news.py
+  |   |   |-- finnhub_tool.py
+  |   |   |-- news_headline_tool.py
+  |   |   |-- unified_news_tool.py  # Unified interface
+  |   |
+  |   |-- government/      # Government data sources
+  |       |-- sec_edgar_tool.py
+  |       |-- FRED_data_tool.py
+  |
+  |-- processors/          # Data processing utilities
+      |-- data_normalizer.py
+      |-- sentiment_analyzer.py
+```
 
 ## Tools Required
 
@@ -17,248 +43,283 @@ Tools Required:
 |----------------------|--------------------------------|------------------------------------------------------|--------------------------------------------------------------|
 | **SECEdgarTool**     | Risk filings (10-K, 8-K, etc.) | `requests`, `beautifulsoup4`, `sec-edgar-downloader` | Extract company risk disclosures for sentiment/risk profiling |
 | **MarketDataTool**   | Market prices, VIX, indices    | `yfinance`, `alpha_vantage`, `twelvedata`           | Fetch stock/index data for trend analysis                   |
+| **AlphaVantageMarketTool** | Stock prices, fundamentals | `alpha_vantage` | Specialized market data from Alpha Vantage API |
+| **YahooFinanceTool** | Stock prices, options data | `yfinance` | Historical data and option chains from Yahoo Finance |
+| **AlphaVantageNewsTool** | News sentiment | `alpha_vantage` | Financial news with sentiment scores |
 | **NewsHeadlineTool** | News headlines, sentiment      | `newsapi`, `finnhub`, `mediastack`                   | Monitor news events and rank impact                         |
-| **MacroDataTool**    | GDP, inflation, rates          | `fredapi`, `pandas-datareader`                       | Extract macro indicators to assess economic climate        |
+| **FinnHubTool** | Financial headlines | `finnhub` | Financial and economic headlines |
+| **UnifiedNewsTool** | Comprehensive news | Multiple sources | Unified interface for all news sources with deduplication |
+| **FREDDataTool**    | GDP, inflation, rates          | `fredapi`, `pandas-datareader`                       | Extract macro indicators to assess economic climate        |
 | **OptionsDataTool** (Optional) | Implied volatility, options chains | `cboe`, `quandl` (limited free data) | Analyze options market for risk sentiment |
 
-2. Detailed Breakdown of Each Tool
-A. SECEdgarTool – Extracting Risk Disclosures from SEC Filings
-Purpose:
+## 2. Detailed Breakdown of Each Tool
 
-    - Retrieve company disclosures from EDGAR (10-K, 8-K, 10-Q reports).
-    - Extract and summarize risk factors.
-Libraries Needed:
+### Government Data Sources
 
-    - requests – To send HTTP requests to the SEC API.
-    - beautifulsoup4 – For parsing HTML filings.
-    - sec-edgar-downloader – Prebuilt package for downloading structured filings.
-Why?
+#### A. SECEdgarTool – Extracting Risk Disclosures from SEC Filings
 
-    - sec-edgar-downloader simplifies structured retrieval, avoiding manual parsing.
-    - beautifulsoup4 helps extract relevant text from HTML documents.
-    - requests allows direct API calls for faster metadata retrieval.
+**Purpose:**
 
-3. MarketDataTool – Stock Prices, Volatility Indices
-Purpose:
+- Retrieve company disclosures from EDGAR (10-K, 8-K, 10-Q reports)
+- Extract and summarize risk factors
 
-    - Fetch historical & real-time stock/index data.
-    - Track market sentiment via VIX.
-Libraries Needed:
+**Libraries:**
 
-    - yfinance – Free API for stock & index data.
-    - alpha_vantage – Alternative free API (rate-limited).
-    - twelvedata – Provides alternative market data if needed.
-Why?
+- `requests` – To send HTTP requests to the SEC API
+- `beautifulsoup4` – For parsing HTML filings
+- `sec-edgar-downloader` – Prebuilt package for downloading structured filings
 
-    - yfinance offers free, efficient access to stock prices.
-    - alpha_vantage has fundamental indicators but limits requests.
-    - twelvedata supports additional data types like futures & crypto.
+**Why:**
 
-4. NewsHeadlineTool – Fetching and Analyzing Market News
-Purpose:
+- sec-edgar-downloader simplifies structured retrieval, avoiding manual parsing
+- beautifulsoup4 helps extract relevant text from HTML documents
+- requests allows direct API calls for faster metadata retrieval
 
-    - Retrieve headlines related to financial markets.
-    - Apply sentiment analysis to assess impact.
-Libraries Needed:
+#### B. FREDDataTool – Fetching Economic Indicators
 
-    - requests – To make API calls.
-    - newsapi – Free news aggregator API.
-    - finnhub – Real-time financial news feed.
-    - mediastack – Low-cost news alternative.
-Why?
+**Purpose:**
 
-    - newsapi has broad news coverage but limited financial filtering.
-    - finnhub specializes in finance-related news with sentiment scores.
-    - mediastack is cheaper than Finnhub but requires manual processing.
+- Retrieve economic indicators like inflation, GDP, interest rates
+- Fetch yield curve data and interest rate indicators
 
-5. MacroDataTool – Fetching Economic Indicators
-Purpose:
+**Libraries:**
 
-    - Retrieve economic indicators like inflation, GDP, interest rates.
-Libraries Needed:
+- `fredapi` – Fetches economic data from FRED (Federal Reserve)
+- `pandas-datareader` – Alternative source for macro data
 
-    - fredapi – Fetches economic data from FRED (Federal Reserve).
-    - pandas-datareader – Alternative source for macro data.
-Why?
+**Why:**
 
-    - fredapi allows direct querying of macroeconomic indicators.
-    - pandas-datareader integrates well with Pandas for historical analysis.
+- fredapi allows direct querying of macroeconomic indicators
+- pandas-datareader integrates well with Pandas for historical analysis
 
-6. OptionsDataTool – Tracking Market Sentiment via Options
+### Market Data Sources
 
-Purpose:
+#### C. AlphaVantageMarketTool – Stock Prices and Fundamentals
 
-    - Analyze implied volatility and option chain data.
-    - Determine risk sentiment from options positioning.
-Libraries Needed:
+**Purpose:**
 
-    - cboe – CBOE market data (limited free access).
-    - quandl – Historical options data (some free datasets).
+- Fetch historical & real-time stock price data
+- Retrieve company fundamental data and overview
+- Access forex and crypto data (with paid tier)
 
-Why?
+**Advantages:**
 
-    - cboe offers live market data but with limited free tiers.
-    - quandl provides structured datasets with limited historical options data.
+- Higher rate limits with paid tier
+- Reliable official API
+- Provides fundamental data (balance sheets, income statements)
+- Offers forex and crypto support
+- Provides economic indicators
 
-### sentiment and strategy agent tools in focus
+#### D. YahooFinanceTool – Stock Prices and Options
+
+**Purpose:**
+
+- Fetch historical stock data with long backtesting periods
+- Access options chain data
+- Get data without API key requirements
+
+**Advantages:**
+
+- No API key required
+- Often provides more historical data
+- Includes options chain data
+- Free and reliable for most use cases
+
+#### E. MarketDataTool – Unified Market Data Access
+
+**Purpose:**
+
+- Provide a single interface for all market data sources
+- Intelligently route requests to the appropriate provider
+- Handle fallbacks if primary source fails
+
+**Features:**
+
+- Smart routing based on data type requested
+- API limit awareness and management
+- Consistent DataFrame output format
+- Fallback capabilities between providers
+
+### News Data Sources
+
+#### F. AlphaVantageNewsTool – Financial News with Sentiment
+
+**Purpose:**
+
+- Fetch financial news with pre-calculated sentiment scores
+- Filter news by ticker symbols or topics
+- Access top gainers/losers market data
+
+**Features:**
+
+- News includes sentiment scores out of the box
+- Company-specific news filtering
+- Sector-based news filtering
+
+#### G. FinnHubTool – Financial and Economic Headlines
+
+**Purpose:**
+
+- Fetch specialized financial news headlines
+- Access economic news and market updates
+- Category-based news filtering
+
+**Features:**
+
+- Specialized financial focus
+- Multiple categories (general, forex, crypto, merger)
+- Company-specific filtering
+
+#### H. NewsHeadlineTool – General News Access
+
+**Purpose:**
+
+- Retrieve headlines related to broader topics
+- Access non-financial news that may impact markets
+- General keyword-based searching
+
+**Sources:**
+
+- NewsAPI – Broad news coverage across many publications
+- Mediastack – Alternative news aggregation
+
+#### I. UnifiedNewsTool – Comprehensive News Aggregation
+
+**Purpose:**
+
+- Fetch news from multiple providers with one interface
+- Deduplicate similar articles across sources
+- Provide standardized formatting and sentiment analysis
+
+**Features:**
+
+- Fetches from all available news sources in parallel
+- Uses async processing for performance
+- Deduplicates similar headlines
+- Adds sentiment analysis to all articles
+- Provides consistent output format regardless of source
+
+### Optional Tools
+
+#### J. OptionsDataTool – Tracking Market Sentiment via Options
+
+**Purpose:**
+
+- Analyze implied volatility and option chain data
+- Determine risk sentiment from options positioning
+
+**Libraries:**
+
+- cboe – CBOE market data (limited free access)
+- quandl – Historical options data (some free datasets)
+
+**Why:**
+
+- Provides advanced indicators of market sentiment and risk
+- Options data often precedes price movements
+
+## 3. Agent Requirements and Tool Organization
 
 Since the SentimentAgent and StrategyAgent are the simplest to implement first, the priority should be on the tools that these agents require for effective operation. This will ensure that they can produce meaningful outputs before expanding the agent ecosystem.
 
-1. Tools Needed for Sentiment & Strategy Agents
+### Agent Tool Requirements
 
-# Tools Overview
+| Agent Type        | Required Tools                                                                                   |
+|-------------------|--------------------------------------------------------------------------------------------------|
+| **SentimentAgent** | UnifiedNewsTool, AlphaVantageNewsTool, FinnHubTool, NewsHeadlineTool, SECEdgarTool              |
+| **StrategyAgent**  | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, UnifiedNewsTool, FREDDataTool         |
+| **QuantitativeAgent** | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, FREDDataTool                         |
+| **RiskAgent**      | SECEdgarTool, FREDDataTool, MarketDataTool                                                       |
 
-| Tool               | Purpose                                      | Required By       | API/Library                               |
-|--------------------|----------------------------------------------|-------------------|-------------------------------------------|
-| **NewsHeadlineTool** | Retrieve financial news & assess sentiment | Sentiment Agent  | `newsapi`, `finnhub`, `mediastack`       |
-| **MarketDataTool**  | Fetch stock/index/VIX data for trend analysis | Strategy Agent   | `yfinance`, `alpha_vantage`              |
-| **SECEdgarTool**    | Extract company risk factors from SEC filings | Sentiment Agent  | `sec-edgar-downloader`, `beautifulsoup4` |
+### Unified Tool Access
 
-These three tools will allow the SentimentAgent to analyze textual market signals (news & risk disclosures) and the StrategyAgent to derive insights from historical & real-time market trends.
+The tools are registered in the central `tools.py` file, where they are:
 
-2. Priority 1: NewsHeadlineTool (Market Sentiment Extraction)
+1. Wrapped with `FunctionTool` from `autogen_core.tools`
+2. Tagged with appropriate agent types
+3. Made available through the `get_tools_for_agent()` function
 
-Purpose:
-
-- Fetches news headlines from financial news sources.
-- Processes text sentiment using NLP models.
-- Identifies market-moving events (earnings, economic reports, geopolitical events).
-
-## Libraries Needed
-
-| Library      | Purpose                                                       |
-|-------------|---------------------------------------------------------------|
-| `requests`  | To call APIs (NewsAPI, Finnhub, Mediastack)                   |
-| `newsapi`   | General news headlines (but limited financial focus)          |
-| `finnhub`   | Financial news with sentiment scoring (preferred)             |
-| `nltk` or `TextBlob` | Basic sentiment analysis if API lacks built-in scores |
-
-example:
+Example registration:
 
 ```python
-import requests
-
-class NewsHeadlineTool:
-    def __init__(self, api_key, source="finnhub"):
-        self.api_key = api_key
-        self.source = source
-
-    def fetch_news(self, keyword="market", count=5):
-        if self.source == "finnhub":
-            url = f"https://finnhub.io/api/v1/news?category=general&token={self.api_key}"
-        elif self.source == "newsapi":
-            url = f"https://newsapi.org/v2/everything?q={keyword}&apiKey={self.api_key}"
-        else:
-            raise ValueError("Unsupported news source")
-        
-        response = requests.get(url).json()
-        return response[:count] if self.source == "finnhub" else response["articles"][:count]
-
-# Example Usage
-news_tool = NewsHeadlineTool("YOUR_API_KEY", source="finnhub")
-articles = news_tool.fetch_news("inflation", count=3)
-for article in articles:
-    print(article["headline"] if "headline" in article else article["title"])
+unified_news_tool = FunctionTool(
+    func=fetch_unified_news,
+    name="fetch_unified_news",
+    description="Fetch news from multiple sources with deduplication and sentiment analysis"
+)
+unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 ```
 
-Why Finnhub?
+### Tool Extension Pattern
 
-- Provides pre-scored sentiment for articles.
-- Focuses on financial news, unlike newsapi, which requires filtering.
+To add new tools to the system:
 
-3. Priority 2: MarketDataTool (Market Trends & Volatility)
+1. Create the tool implementation in the appropriate subdirectory
+2. Add any internal dependencies in the tool's own directory
+3. Export the tool implementation via the directory's `__init__.py`
+4. Register the tool functions in `tools.py` with appropriate agent types
+5. Update documentation in this file to reflect the new capability
 
-Purpose:
+### Specialized vs Unified Tool Interfaces
 
-- Retrieves historical and real-time stock/index prices.
-- Fetches volatility indicators (VIX) for trend confirmation.
-- Essential for StrategyAgent to adjust market positioning.
+We maintain two levels of tool interfaces:
 
-# Libraries Needed
+1. **Specialized Tools**: Direct access to specific data sources
+   - Example: `AlphaVantageMarketTool` for specific Alpha Vantage features
+   - Example: `YahooFinanceTool` for Yahoo Finance-specific capabilities
 
-| Library         | Purpose                                      |
-|---------------|----------------------------------------------|
-| `yfinance`    | Free, fast stock/index data (incl. VIX)     |
-| `alpha_vantage` | Alternative API for stock/indicator data  |
-| `pandas`      | For time-series manipulation                |
+2. **Unified Interfaces**: High-level abstractions over multiple sources
+   - Example: `MarketDataTool` integrates multiple market data sources
+   - Example: `UnifiedNewsTool` provides a single interface to all news sources
 
-example:
+This two-level approach allows both specialized control when needed and simplified, consistent interfaces for most use cases.
+
+### Specialized Tools Examples
+
+#### Market Data
 
 ```python
-import yfinance as yf
-import pandas as pd
+# Direct Alpha Vantage access for fundamentals
+alpha_tool = AlphaVantageMarketTool()
+fundamentals = alpha_tool.fetch_company_overview("AAPL")
 
-class MarketDataTool:
-    def fetch_stock_data(self, ticker, start_date="2023-01-01", end_date="2024-01-01"):
-        stock = yf.Ticker(ticker)
-        df = stock.history(start=start_date, end=end_date)
-        return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+# Direct Yahoo Finance access for options
+yahoo_tool = YahooFinanceTool()
+options_chain = yahoo_tool.fetch_options_data("MSFT")
+```
 
-    def fetch_vix_data(self, start_date="2023-01-01", end_date="2024-01-01"):
-        vix = yf.Ticker("^VIX")
-        df = vix.history(start=start_date, end=end_date)
-        return df[['Close']]  # VIX represents market volatility
+#### News Data
 
-# Example Usage
+```python
+# Direct Alpha Vantage news with sentiment
+av_news = AlphaVantageNewsTool()
+sentiment_news = av_news.fetch_news_sentiment("AAPL")
+
+# FinnHub specialized economic news
+finnhub = FinnHubTool()
+economic_news = finnhub.fetch_economic_headlines()
+```
+
+### Unified Interfaces Examples
+
+#### Market Data
+
+```python
+# Smart market data routing
 market_tool = MarketDataTool()
-spy_data = market_tool.fetch_stock_data("SPY")
-vix_data = market_tool.fetch_vix_data()
-print(spy_data.head(), vix_data.head())
+market_data = market_tool.fetch_market_data("AAPL", data_type="price")
+fundamental_data = market_tool.fetch_market_data("TSLA", data_type="fundamentals")
 ```
 
-Why yfinance?
-
-- Free & reliable API for stock and index data.
-- Direct support for VIX, which is critical for risk sentiment.
-
-4. Priority 3: SECEdgarTool (Extracting Risk Disclosures)
-
-Purpose
-
-- Scrapes SEC filings (10-K, 8-K reports) for risk disclosures.
-- Helps SentimentAgent evaluate risk-related language.
-- Converts raw text into structured risk scores.
-
-# Libraries Needed
-
-| Library                 | Purpose                                      |
-|-------------------------|----------------------------------------------|
-| `sec-edgar-downloader`  | Simplifies SEC filing retrieval             |
-| `beautifulsoup4`        | Parses HTML reports for relevant text       |
-| `nltk` or `TextBlob`    | Processes text for risk factor detection    |
-
-example:
+#### News Data
 
 ```python
-from sec_edgar_downloader import Downloader
-from bs4 import BeautifulSoup
-import os
-
-class SECEdgarTool:
-    def __init__(self, download_dir="sec_filings"):
-        self.downloader = Downloader(download_dir)
-
-    def fetch_filings(self, ticker, form_type="10-K", num_filings=1):
-        self.downloader.get(form_type, ticker, amount=num_filings)
-        file_path = os.path.join("sec_filings", ticker, form_type)
-        return self.extract_risk_factors(file_path)
-
-    def extract_risk_factors(self, file_path):
-        risk_sections = []
-        for filename in os.listdir(file_path):
-            if filename.endswith(".txt"):  # SEC filings are text-heavy
-                with open(os.path.join(file_path, filename), "r", encoding="utf-8") as f:
-                    soup = BeautifulSoup(f.read(), "html.parser")
-                    risk_sections.append(soup.get_text())
-        return risk_sections
-
-# Example Usage
-edgar_tool = SECEdgarTool()
-risks = edgar_tool.fetch_filings("AAPL", "10-K")
-print(risks[0][:500])  # Show first 500 characters of the risk section
+# Comprehensive news from all sources
+all_news = fetch_unified_news(
+    ticker="AAPL",
+    keywords="earnings",
+    sources="alpha_vantage,finnhub,newsapi"
+)
 ```
 
-Why sec-edgar-downloader?
-
-- Automates SEC retrieval (no manual parsing).
-- Works with batch downloads.
+This unified approach maximizes both flexibility and consistency across the multi-agent system.

@@ -2,13 +2,13 @@
 Enhanced market data tool that uses Alpha Vantage or other sources based on configuration.
 """
 
-import pandas as pd
 import os
 import logging
 from typing import Any, Dict, Optional
+import pandas as pd
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
-from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
+from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
 from src.tools.date_utils import get_processed_date_range
 
 
@@ -239,21 +239,3 @@ class MarketDataTool:
             self.logger.warning(
                 f"News sentiment not supported for data source: {self.data_source}")
             return pd.DataFrame()
-
-
-if __name__ == "__main__":
-    # Example usage
-    tool = MarketDataTool({"data_source": "alpha_vantage"})
-
-    # Fetch market data
-    market_df = tool.fetch_market_data("AAPL", "2023-01-01", "2023-01-31")
-    print("\nMarket data:")
-    print(market_df.head())
-
-    # Fetch news sentiment
-    news_df = tool.fetch_news_sentiment("AAPL")
-    print("\nNews sentiment data:")
-    if not news_df.empty:
-        print(news_df.head())
-    else:
-        print("No news data returned")
