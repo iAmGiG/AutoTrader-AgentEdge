@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict, Optional
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
-from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
+from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
 from src.tools.date_utils import get_processed_date_range
 
 

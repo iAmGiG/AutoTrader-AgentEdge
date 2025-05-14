@@ -18,7 +18,7 @@ import pandas as pd
 # Project imports
 from .base_agent import BaseAgent
 from src.tools.tools import SENTIMENT_AGENT, get_tools_for_agent
-from src.tools.text_processing.sentiment_analyzer import SentimentAnalyzer
+from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
 from src.tools.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
 
 # LLM config optimized for sentiment analysis and narrative generation
@@ -27,6 +27,7 @@ SENTIMENT_LLM_CONFIG = {
     "max_tokens": 4096,  # Ensure enough tokens for complex responses
     "top_p": 0.9,        # Allow for some creative variety
 }
+
 
 class SentimentAgent(BaseAgent):
     """
@@ -317,7 +318,7 @@ class SentimentAgent(BaseAgent):
 
         # Add guidance to use multiple tools
         system_prompt += "\n\nIMPORTANT: For comprehensive analysis, you should use MULTIPLE relevant tools rather than just one. Use multiple data sources for cross-validation and deeper insights."
-        
+
         # Add specific guidance based on extracted entities
         if query_details.get("ticker"):
             ticker = query_details["ticker"]
