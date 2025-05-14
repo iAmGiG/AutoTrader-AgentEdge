@@ -2,7 +2,8 @@ from autogen_core.tools import FunctionTool
 from src.tools.data_sources.news.news_headline_tool import NewsHeadlineTool
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
-from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
+from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
+from src.tools.data_sources.news.alpha_vantage_news import AlphaVantageNewsTool
 from src.tools.data_sources.government.FRED_data_tool import FREDDataTool
 from src.tools.data_sources.government.sec_edgar_tool import SECEdgarTool
 from src.tools.data_sources.news.finnhub_tool import FinnHubTool
@@ -74,7 +75,7 @@ def fetch_alpha_vantage_news(
     Returns:
         DataFrame with news and pre-calculated sentiment scores
     """
-    tool = AlphaVantageTool()
+    tool = AlphaVantageNewsTool()
     df = tool.fetch_news_sentiment(symbol, topics)
     # Normalize for sentiment analysis
     normalized_df = normalize_data_for_sentiment(
@@ -293,7 +294,7 @@ def fetch_alpha_vantage_data(
     Returns:
         DataFrame with open, high, low, close, volume data
     """
-    tool = AlphaVantageTool()
+    tool = AlphaVantageMarketTool()
     df = tool.fetch_stock_data(symbol, start_date, end_date)
     return df
 
