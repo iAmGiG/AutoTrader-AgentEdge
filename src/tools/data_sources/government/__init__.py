@@ -6,7 +6,7 @@ This package contains tools for retrieving data from government sources:
 - FRED (Federal Reserve Economic Data)
 """
 
-from .sec_edgar_tool import SECEdgarTool, search_sec_filings
+from .sec_edgar_tool import SECEdgarTool
 from .FRED_data_tool import FREDDataTool
 
-__all__ = ["SECEdgarTool", "search_sec_filings", "FREDDataTool"]
+__all__ = ["SECEdgarTool", "FREDDataTool"]
