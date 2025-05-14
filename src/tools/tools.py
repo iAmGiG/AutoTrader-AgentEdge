@@ -6,6 +6,7 @@ from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.FRED_data_tool import FREDDataTool
 from src.tools.data_sources.sec_edgar_tool import SECEdgarTool
 from src.tools.data_sources.finnhub_tool import FinnHubTool
+from src.tools.data_sources.unified_news_tool import fetch_unified_news
 import pandas as pd
 from src.tools.text_processing.data_normalizer import normalize_data_for_sentiment
 from config.config_loader import ConfigLoader
@@ -88,7 +89,55 @@ alpha_vantage_news_tool = FunctionTool(
 alpha_vantage_news_tool.agent_types = [SENTIMENT_AGENT]  # Only sentiment agent should use this
 
 ##################################
-# 3) Finnhub News and Sentiment Tool
+# 3) Unified News Tool
+##################################
+
+def fetch_all_news(
+    keywords: str = None,
+    ticker: str = None,
+    start_date: str = "-7d",
+    end_date: str = "today",
+    category: str = None,
+    sources: str = None,
+    count: int = 10
+) -> dict:
+    """
+    Unified news fetching from multiple sources (AlphaVantage, Finnhub, NewsAPI) with
+    standardized output format, sentiment analysis, and deduplication.
+    
+    Args:
+        keywords: Keywords to search for (comma-separated)
+        ticker: Stock ticker to get news about
+        start_date: Start date for news (YYYY-MM-DD or relative date like "-7d")
+        end_date: End date for news (YYYY-MM-DD or "today")
+        category: Type of news to fetch ("financial", "economic", "general")
+        sources: Comma-separated list of sources to use (default: all available sources)
+        count: Maximum number of news articles to return
+        
+    Returns:
+        Dictionary with news articles and metadata including sentiment analysis
+    """
+    result = fetch_unified_news(
+        keywords=keywords,
+        ticker=ticker,
+        start_date=start_date,
+        end_date=end_date,
+        category=category,
+        sources=sources,
+        count=count,
+        include_sentiment=True
+    )
+    return result
+
+unified_news_tool = FunctionTool(
+    func=fetch_all_news,
+    name="fetch_all_news",
+    description="Fetch news from multiple sources (AlphaVantage, Finnhub, NewsAPI) with unified output, sentiment analysis, and deduplication."
+)
+unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]  # Useful for sentiment and strategy agents
+
+##################################
+# 4) Finnhub News and Sentiment Tool
 ##################################
 
 
@@ -478,6 +527,7 @@ sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
 
 # SENTIMENT_AGENT tools
 SENTIMENT_TOOLS = [
+    unified_news_tool,  # Add the unified news tool as the primary news source
     news_tool,
     alpha_vantage_news_tool,
     finnhub_news_tool,

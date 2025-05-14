@@ -1,0 +1,775 @@
+"""
+Unified News Data Tool for fetching from multiple news sources with a consistent interface.
+
+This tool provides a unified abstraction layer for retrieving financial news data 
+from multiple sources (AlphaVantage, Finnhub, NewsAPI, etc.) with standardized output
+and configurable source selection.
+
+Features:
+- Fetch news from multiple sources with a single call
+- Consistent output format regardless of source
+- Configurable sources and priorities
+- Easy addition of new sources
+- Async fetching for improved performance
+"""
+
+import os
+import json
+import asyncio
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional, Union, Literal
+from abc import ABC, abstractmethod
+
+import pandas as pd
+from pydantic import BaseModel, Field
+
+# Import individual news data sources
+from src.tools.data_sources.news_headline_tool import NewsHeadlineTool
+from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
+from src.tools.data_sources.finnhub_tool import FinnHubTool
+from src.tools.text_processing.data_normalizer import normalize_data_for_sentiment
+from src.tools.text_processing.sentiment_analyzer import SentimentAnalyzer
+from config.config_loader import ConfigLoader
+
+
+# =====================
+# Pydantic data models
+# =====================
+
+class NewsSource(BaseModel):
+    """Configuration for a news data source"""
+    name: str
+    enabled: bool = True
+    priority: int = 1
+    api_key_config_name: Optional[str] = None
+    
+    # Source-specific configuration
+    config: Dict[str, Any] = {}
+
+
+class NewsArticle(BaseModel):
+    """Standardized news article schema"""
+    source_id: str
+    title: str
+    url: Optional[str] = None
+    published_date: datetime
+    summary: Optional[str] = None
+    content: Optional[str] = None
+    tickers: List[str] = []
+    sentiment_score: Optional[float] = None
+    sentiment_label: Optional[str] = None
+    categories: List[str] = []
+    
+    # Original data (for debugging/reference)
+    raw_data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class NewsQueryParams(BaseModel):
+    """Parameters for news query"""
+    ticker: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    start_date: Optional[str] = "-7d"  # Default 7 days ago
+    end_date: Optional[str] = "today"
+    sources: Optional[List[str]] = None  # None means "all enabled sources"
+    category: Optional[Literal["financial", "economic", "general"]] = None
+    count: Optional[int] = 10
+    include_sentiment: bool = True
+
+
+# =====================
+# Source providers
+# =====================
+
+class NewsSourceProvider(ABC):
+    """Abstract base class for news source providers"""
+    
+    def __init__(self, config: NewsSource):
+        self.config = config
+        self.sentiment_analyzer = SentimentAnalyzer()
+        self._load_api_key()
+        
+    def _load_api_key(self):
+        """Load API key from config if needed"""
+        if self.config.api_key_config_name:
+            config_loader = ConfigLoader()
+            self.api_key = config_loader.get(self.config.api_key_config_name)
+        else:
+            self.api_key = None
+    
+    @property
+    @abstractmethod
+    def source_id(self) -> str:
+        """Unique identifier for this news source"""
+        pass
+    
+    @property
+    def supported_query_params(self) -> List[str]:
+        """List of query parameters this source supports"""
+        return ["keywords", "start_date", "end_date", "count"]
+    
+    @abstractmethod
+    def fetch_news(self, params: NewsQueryParams) -> List[NewsArticle]:
+        """Fetch news from this source using provided parameters"""
+        pass
+    
+    def add_sentiment(self, articles: List[NewsArticle]) -> List[NewsArticle]:
+        """Add sentiment analysis to articles if not already present"""
+        for article in articles:
+            if article.sentiment_score is None:
+                # Use title + summary if available, otherwise just title
+                text = article.title
+                if article.summary:
+                    text += " " + article.summary
+                
+                # Calculate sentiment
+                article.sentiment_score = self.sentiment_analyzer.analyze_text(text)
+                
+                # Add label based on score
+                if article.sentiment_score > 0.2:
+                    article.sentiment_label = "positive"
+                elif article.sentiment_score < -0.2:
+                    article.sentiment_label = "negative"
+                else:
+                    article.sentiment_label = "neutral"
+                
+        return articles
+
+
+class AlphaVantageNewsProvider(NewsSourceProvider):
+    """AlphaVantage news provider implementation"""
+    
+    def __init__(self, config: NewsSource):
+        super().__init__(config)
+        self._alpha_vantage_tool = AlphaVantageTool()
+    
+    @property
+    def source_id(self) -> str:
+        return "alpha_vantage"
+    
+    @property
+    def supported_query_params(self) -> List[str]:
+        return ["ticker", "start_date", "end_date"]
+    
+    def fetch_news(self, params: NewsQueryParams) -> List[NewsArticle]:
+        """Fetch news from AlphaVantage"""
+        if not params.ticker:
+            return []
+        
+        try:
+            # Get news from AlphaVantage
+            df = self._alpha_vantage_tool.fetch_news_sentiment(params.ticker)
+            
+            # Exit early if no results
+            if df is None or df.empty:
+                return []
+            
+            # Normalize the data
+            normalized_df = normalize_data_for_sentiment(df, "alpha_vantage", symbol=params.ticker)
+            if normalized_df is None or normalized_df.empty:
+                normalized_df = df
+            
+            # Convert to standardized articles
+            articles = []
+            for _, row in normalized_df.iterrows():
+                # Create article object
+                article = NewsArticle(
+                    source_id=self.source_id,
+                    title=row.get('title', ''),
+                    url=row.get('url', None),
+                    published_date=pd.to_datetime(row.get('time_published', row.get('timestamp', datetime.now()))),
+                    summary=row.get('summary', None),
+                    tickers=[params.ticker] + row.get('ticker_sentiment', []),
+                    # Use pre-calculated sentiment if available
+                    sentiment_score=row.get('sentiment_score', None),
+                    sentiment_label=row.get('sentiment', None),
+                    categories=row.get('categories', []),
+                    raw_data=row.to_dict() if hasattr(row, 'to_dict') else dict(row)
+                )
+                articles.append(article)
+            
+            # Limit to requested count
+            articles = articles[:params.count]
+            
+            # Add sentiment if needed
+            if params.include_sentiment:
+                articles = self.add_sentiment(articles)
+            
+            return articles
+            
+        except Exception as e:
+            print(f"Error in AlphaVantageNewsProvider: {e}")
+            return []
+
+
+class FinnhubNewsProvider(NewsSourceProvider):
+    """Finnhub news provider implementation"""
+    
+    def __init__(self, config: NewsSource):
+        super().__init__(config)
+        self._finnhub_tool = FinnHubTool(self.api_key)
+    
+    @property
+    def source_id(self) -> str:
+        return "finnhub"
+    
+    @property
+    def supported_query_params(self) -> List[str]:
+        return ["ticker", "keywords", "category", "count"]
+    
+    def fetch_news(self, params: NewsQueryParams) -> List[NewsArticle]:
+        """Fetch news from Finnhub"""
+        try:
+            df = None
+            
+            # Determine which method to call based on parameters
+            if params.ticker:
+                # Ticker-specific news
+                df = self._finnhub_tool.fetch_news(
+                    category="general", 
+                    tickers=[params.ticker], 
+                    count=params.count or 10
+                )
+            elif params.category == "economic":
+                # Economic headlines
+                df = self._finnhub_tool.fetch_economic_headlines(
+                    count=params.count or 10
+                )
+            elif params.category == "financial" or params.category is None:
+                # Financial headlines (default)
+                df = self._finnhub_tool.fetch_financial_headlines(
+                    count=params.count or 10
+                )
+            else:
+                # General category
+                df = self._finnhub_tool.fetch_news(
+                    category=params.category or "general",
+                    count=params.count or 10
+                )
+            
+            # Exit early if no results
+            if df is None or df.empty:
+                return []
+            
+            # Convert to standardized articles
+            articles = []
+            for _, row in df.iterrows():
+                # Skip if doesn't match keywords
+                if params.keywords and not any(kw.lower() in row.get('headline', '').lower() 
+                                              for kw in params.keywords):
+                    continue
+                
+                # Create article object
+                article = NewsArticle(
+                    source_id=self.source_id,
+                    title=row.get('headline', ''),
+                    url=row.get('url', None),
+                    published_date=pd.to_datetime(row.get('datetime', datetime.now()), unit='s'),
+                    summary=row.get('summary', None),
+                    tickers=row.get('related', []),
+                    categories=[row.get('category', 'general')],
+                    raw_data=row.to_dict() if hasattr(row, 'to_dict') else dict(row)
+                )
+                articles.append(article)
+            
+            # Limit to requested count
+            articles = articles[:params.count]
+            
+            # Add sentiment if needed
+            if params.include_sentiment:
+                articles = self.add_sentiment(articles)
+            
+            return articles
+            
+        except Exception as e:
+            print(f"Error in FinnhubNewsProvider: {e}")
+            return []
+
+
+class NewsAPIProvider(NewsSourceProvider):
+    """NewsAPI provider implementation"""
+    
+    def __init__(self, config: NewsSource):
+        super().__init__(config)
+        self._news_headline_tool = NewsHeadlineTool(source="newsapi")
+    
+    @property
+    def source_id(self) -> str:
+        return "newsapi"
+    
+    @property
+    def supported_query_params(self) -> List[str]:
+        return ["keywords", "count"]
+    
+    def fetch_news(self, params: NewsQueryParams) -> List[NewsArticle]:
+        """Fetch news from NewsAPI"""
+        try:
+            # Use ticker as keyword if no keywords provided
+            keyword = params.ticker
+            if params.keywords:
+                keyword = " ".join(params.keywords)
+            
+            if not keyword:
+                # Default to general market news
+                keyword = "market"
+            
+            # Get news from NewsAPI
+            df = self._news_headline_tool.fetch_data(
+                keyword=keyword,
+                count=params.count or 10
+            )
+            
+            # Exit early if no results
+            if df is None or df.empty:
+                return []
+            
+            # Convert to standardized articles
+            articles = []
+            for _, row in df.iterrows():
+                # Skip if doesn't match ticker
+                if params.ticker and params.ticker.lower() not in row.get('Content', '').lower():
+                    continue
+                    
+                # Create article object
+                article = NewsArticle(
+                    source_id=self.source_id,
+                    title=row.get('Headline', ''),
+                    url=row.get('URL', None),
+                    published_date=pd.to_datetime(row.get('Timestamp', datetime.now())),
+                    content=row.get('Content', None),
+                    categories=[],
+                    raw_data=row.to_dict() if hasattr(row, 'to_dict') else dict(row)
+                )
+                articles.append(article)
+            
+            # Limit to requested count
+            articles = articles[:params.count]
+            
+            # Add sentiment if needed
+            if params.include_sentiment:
+                articles = self.add_sentiment(articles)
+            
+            return articles
+            
+        except Exception as e:
+            print(f"Error in NewsAPIProvider: {e}")
+            return []
+
+
+# =====================
+# Source registry
+# =====================
+
+class NewsSourceRegistry:
+    """Registry of available news sources"""
+    
+    def __init__(self):
+        """Initialize the registry with default sources"""
+        self._sources = {}
+        self._load_sources_from_config()
+    
+    def _load_sources_from_config(self):
+        """Load news sources from configuration file"""
+        # Default source configurations
+        default_sources = [
+            NewsSource(
+                name="alpha_vantage",
+                enabled=True,
+                priority=2,
+                api_key_config_name="alpha_vantage_key",
+                config={"sentiment_included": True}
+            ),
+            NewsSource(
+                name="finnhub",
+                enabled=True,
+                priority=1,
+                api_key_config_name="finnhub_key",
+                config={"categories": ["general", "forex", "crypto", "merger"]}
+            ),
+            NewsSource(
+                name="newsapi",
+                enabled=True,
+                priority=3,
+                api_key_config_name="newsapi_key",
+                config={"default_language": "en"}
+            )
+        ]
+        
+        # Try to load from config file if it exists
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))))), "config")
+        config_path = os.path.join(config_dir, "news_sources.json")
+        
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r") as f:
+                    sources_config = json.load(f)
+                    
+                # Create sources from config
+                sources = [NewsSource(**source_config) for source_config in sources_config]
+            except Exception as e:
+                print(f"Error loading news sources config: {e}")
+                sources = default_sources
+        else:
+            sources = default_sources
+        
+        # Create provider instances
+        for source in sources:
+            if not source.enabled:
+                continue
+                
+            # Create appropriate provider based on source name
+            if source.name == "alpha_vantage":
+                provider = AlphaVantageNewsProvider(source)
+            elif source.name == "finnhub":
+                provider = FinnhubNewsProvider(source)
+            elif source.name == "newsapi":
+                provider = NewsAPIProvider(source)
+            else:
+                print(f"Unknown news source: {source.name}")
+                continue
+                
+            self._sources[source.name] = provider
+    
+    def get_provider(self, name: str) -> Optional[NewsSourceProvider]:
+        """Get a specific provider by name"""
+        return self._sources.get(name)
+    
+    def get_all_providers(self) -> List[NewsSourceProvider]:
+        """Get all registered providers"""
+        return list(self._sources.values())
+    
+    def get_enabled_providers(self, sources: Optional[List[str]] = None) -> List[NewsSourceProvider]:
+        """
+        Get enabled providers, optionally filtered by source names
+        
+        Args:
+            sources: List of source names to include, or None for all
+        
+        Returns:
+            List of enabled provider instances
+        """
+        if sources:
+            return [self._sources[name] for name in sources if name in self._sources]
+        else:
+            return self.get_all_providers()
+
+
+# =====================
+# Unified news controller
+# =====================
+
+class UnifiedNewsController:
+    """Controller for unified news fetching"""
+    
+    def __init__(self):
+        """Initialize with source registry"""
+        self.registry = NewsSourceRegistry()
+        self.sentiment_analyzer = SentimentAnalyzer()
+    
+    async def fetch_unified_news(self, params: NewsQueryParams) -> pd.DataFrame:
+        """
+        Fetch news from multiple sources based on parameters
+        
+        Args:
+            params: Query parameters for fetching news
+            
+        Returns:
+            DataFrame with unified news data
+        """
+        # Get enabled providers
+        providers = self.registry.get_enabled_providers(params.sources)
+        
+        # Filter providers based on supported parameters
+        filtered_providers = []
+        for provider in providers:
+            # Skip if provider doesn't support ticker queries when ticker is specified
+            if params.ticker and "ticker" not in provider.supported_query_params:
+                continue
+            filtered_providers.append(provider)
+        
+        # Fetch from all filtered providers (run in parallel)
+        all_articles = []
+        tasks = []
+        
+        for provider in filtered_providers:
+            # Create async task for each provider
+            task = asyncio.create_task(
+                self._fetch_from_provider(provider, params)
+            )
+            tasks.append(task)
+            
+        # Wait for all tasks to complete
+        results = await asyncio.gather(*tasks)
+        
+        # Flatten results
+        for articles in results:
+            all_articles.extend(articles)
+        
+        # Deduplicate articles
+        deduplicated = self._deduplicate_articles(all_articles)
+        
+        # Limit to requested count
+        limited_articles = deduplicated[:params.count] if params.count else deduplicated
+        
+        # Convert to DataFrame
+        if not limited_articles:
+            return pd.DataFrame()
+        
+        # Convert to dictionary records
+        articles_dicts = [article.dict(exclude={"raw_data"}) for article in limited_articles]
+        
+        # Create DataFrame
+        df = pd.DataFrame(articles_dicts)
+        
+        # Add convenience columns
+        if 'sentiment_score' in df.columns:
+            # Map sentiment score to readable labels if not already present
+            if 'sentiment_label' not in df.columns:
+                df['sentiment_label'] = df['sentiment_score'].apply(
+                    lambda x: 'positive' if x > 0.2 else ('negative' if x < -0.2 else 'neutral'))
+        
+        return df
+    
+    async def _fetch_from_provider(self, provider: NewsSourceProvider, 
+                                  params: NewsQueryParams) -> List[NewsArticle]:
+        """
+        Fetch articles from a specific provider
+        
+        Args:
+            provider: The news source provider
+            params: Query parameters
+            
+        Returns:
+            List of news articles
+        """
+        try:
+            # Run provider's fetch_news in a thread pool
+            loop = asyncio.get_event_loop()
+            articles = await loop.run_in_executor(
+                None, lambda: provider.fetch_news(params)
+            )
+            return articles
+        except Exception as e:
+            print(f"Error fetching from {provider.source_id}: {e}")
+            return []
+    
+    def _deduplicate_articles(self, articles: List[NewsArticle]) -> List[NewsArticle]:
+        """
+        Remove duplicate articles based on title similarity
+        
+        Args:
+            articles: List of articles to deduplicate
+            
+        Returns:
+            Deduplicated list of articles
+        """
+        # Simple deduplication by title
+        seen_titles = set()
+        unique_articles = []
+        
+        for article in articles:
+            # Normalize title for comparison (lowercase, remove punctuation)
+            norm_title = "".join(c.lower() for c in article.title if c.isalnum())
+            
+            # Skip if we've seen this title before
+            if norm_title in seen_titles:
+                continue
+                
+            seen_titles.add(norm_title)
+            unique_articles.append(article)
+        
+        return unique_articles
+
+
+# =====================
+# Helper functions for tool interface
+# =====================
+
+def create_query_params(
+    keywords: Optional[Union[str, List[str]]] = None,
+    ticker: Optional[str] = None,
+    start_date: str = "-7d",
+    end_date: str = "today",
+    category: Optional[str] = None,
+    sources: Optional[Union[str, List[str]]] = None,
+    count: int = 10,
+    include_sentiment: bool = True
+) -> NewsQueryParams:
+    """
+    Create query parameters from function arguments
+    
+    Args:
+        keywords: Keywords to search for (string or list)
+        ticker: Stock ticker to get news about
+        start_date: Start date for news
+        end_date: End date for news
+        category: Type of news to fetch
+        sources: News sources to use (comma-separated string or list)
+        count: Maximum number of news articles to return
+        include_sentiment: Whether to include sentiment analysis
+        
+    Returns:
+        NewsQueryParams object
+    """
+    # Convert string keywords to list
+    if isinstance(keywords, str):
+        keywords_list = [kw.strip() for kw in keywords.split(",")]
+    else:
+        keywords_list = keywords
+    
+    # Convert string sources to list
+    if isinstance(sources, str):
+        sources_list = [s.strip() for s in sources.split(",")]
+    else:
+        sources_list = sources
+    
+    # Create params object
+    return NewsQueryParams(
+        ticker=ticker,
+        keywords=keywords_list,
+        start_date=start_date,
+        end_date=end_date,
+        category=category,
+        sources=sources_list,
+        count=count,
+        include_sentiment=include_sentiment
+    )
+
+
+async def fetch_unified_news_async(
+    keywords: Optional[str] = None,
+    ticker: Optional[str] = None,
+    start_date: str = "-7d",
+    end_date: str = "today",
+    category: Optional[str] = None,
+    sources: Optional[str] = None,
+    count: int = 10,
+    include_sentiment: bool = True
+) -> Dict[str, Any]:
+    """
+    Async function to fetch unified news
+    
+    Args:
+        keywords: Keywords to search for (comma-separated)
+        ticker: Stock ticker to get news about
+        start_date: Start date for news (YYYY-MM-DD or relative like "-7d")
+        end_date: End date for news (YYYY-MM-DD or "today")
+        category: Type of news to fetch ("financial", "economic", "general")
+        sources: Comma-separated list of sources to use
+        count: Maximum number of news articles to return
+        include_sentiment: Whether to include sentiment analysis
+        
+    Returns:
+        Dictionary with news articles and metadata
+    """
+    # Create controller
+    controller = UnifiedNewsController()
+    
+    # Create query parameters
+    params = create_query_params(
+        keywords=keywords,
+        ticker=ticker,
+        start_date=start_date,
+        end_date=end_date,
+        category=category,
+        sources=sources,
+        count=count,
+        include_sentiment=include_sentiment
+    )
+    
+    # Execute query
+    df = await controller.fetch_unified_news(params)
+    
+    # Handle empty results
+    if df.empty:
+        return {
+            "articles": [],
+            "count": 0,
+            "sources_used": [],
+            "message": "No news articles found matching the criteria"
+        }
+    
+    # Convert dates to strings for serialization
+    if 'published_date' in df.columns:
+        df['published_date'] = df['published_date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Format the result
+    return {
+        "articles": df.to_dict(orient="records"),
+        "count": len(df),
+        "sources_used": df['source_id'].unique().tolist(),
+        "ticker": ticker,
+        "keywords": keywords,
+        "date_range": f"{start_date} to {end_date}"
+    }
+
+
+def fetch_unified_news(
+    keywords: Optional[str] = None,
+    ticker: Optional[str] = None,
+    start_date: str = "-7d",
+    end_date: str = "today",
+    category: Optional[str] = None,
+    sources: Optional[str] = None,
+    count: int = 10,
+    include_sentiment: bool = True
+) -> Dict[str, Any]:
+    """
+    Fetch news from multiple sources with unified output format.
+    
+    Args:
+        keywords: Keywords to search for (comma-separated)
+        ticker: Stock ticker to get news about
+        start_date: Start date for news (YYYY-MM-DD or relative like "-7d")
+        end_date: End date for news (YYYY-MM-DD or "today")
+        category: Type of news to fetch ("financial", "economic", "general")
+        sources: Comma-separated list of sources to use (default: all sources)
+        count: Maximum number of news articles to return
+        include_sentiment: Whether to include sentiment analysis
+        
+    Returns:
+        Dictionary with news articles and metadata
+    """
+    # Execute the async function using asyncio.run
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        result = loop.run_until_complete(
+            fetch_unified_news_async(
+                keywords=keywords,
+                ticker=ticker,
+                start_date=start_date,
+                end_date=end_date,
+                category=category,
+                sources=sources,
+                count=count,
+                include_sentiment=include_sentiment
+            )
+        )
+        return result
+    finally:
+        loop.close()
+
+
+# Example usage
+if __name__ == "__main__":
+    # Test the unified news tool
+    try:
+        # Run a test query
+        result = fetch_unified_news(
+            ticker="AAPL",
+            keywords="earnings",
+            count=5
+        )
+        
+        # Print results
+        print(f"Found {result['count']} articles from {result['sources_used']}")
+        for i, article in enumerate(result['articles']):
+            print(f"\nArticle {i+1}:")
+            print(f"Title: {article['title']}")
+            print(f"Source: {article['source_id']}")
+            print(f"Date: {article['published_date']}")
+            print(f"Sentiment: {article.get('sentiment_label', 'N/A')} ({article.get('sentiment_score', 'N/A')})")
+            
+    except Exception as e:
+        print(f"Error in test: {e}")
