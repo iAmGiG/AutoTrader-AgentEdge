@@ -137,7 +137,7 @@ def fetch_all_news(
 unified_news_tool = FunctionTool(
     func=fetch_all_news,
     name="fetch_all_news",
-    description="Fetch news from multiple sources (AlphaVantage, Finnhub, NewsAPI) with unified output, sentiment analysis, and deduplication."
+    description="Fetch news from multiple sources (AlphaVantage, Finnhub, NewsAPI) with unified output, sentiment analysis, relevance scoring, and deduplication. Articles are sorted by relevance to your query, with higher scores for more relevant content. The tool also provides search guidance if results are inadequate."
 )
 # Useful for sentiment and strategy agents
 unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]

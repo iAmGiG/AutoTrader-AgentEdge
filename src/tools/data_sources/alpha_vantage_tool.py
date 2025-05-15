@@ -1,5 +1,10 @@
 """
-Tool for fetching market data from Alpha Vantage API.
+[DEPRECATED] Tool for fetching market data from Alpha Vantage API.
+
+This file is maintained for backward compatibility but will be removed in a future version.
+Please use the specialized versions instead:
+- src.tools.data_sources.market.alpha_vantage_market
+- src.tools.data_sources.news.alpha_vantage_news
 """
 
 import requests
@@ -13,10 +18,21 @@ from src.tools.date_utils import get_processed_date_range
 
 class AlphaVantageTool:
     """
-    Tool for retrieving market data from Alpha Vantage API.
+    [DEPRECATED] Tool for retrieving market data from Alpha Vantage API.
+    
+    This class has been split into specialized components:
+    - AlphaVantageMarketTool - for market data and fundamentals
+    - AlphaVantageNewsTool - for news and sentiment data
     """
-
+    
     def __init__(self):
+        import warnings
+        warnings.warn(
+            "AlphaVantageTool is deprecated. Use AlphaVantageMarketTool or AlphaVantageNewsTool instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        
         # Load API key from config
         config_loader = ConfigLoader()
         self.api_key = config_loader.get("alpha_vantage_key")

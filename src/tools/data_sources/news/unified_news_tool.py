@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 
 # Import individual news data sources
 from src.tools.data_sources.news.news_headline_tool import NewsHeadlineTool
-from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
+from src.tools.data_sources.news.alpha_vantage_news import AlphaVantageNewsTool
 from src.tools.data_sources.news.finnhub_tool import FinnHubTool
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
@@ -141,7 +141,7 @@ class AlphaVantageNewsProvider(NewsSourceProvider):
 
     def __init__(self, config: NewsSource):
         super().__init__(config)
-        self._alpha_vantage_tool = AlphaVantageTool()
+        self._alpha_vantage_tool = AlphaVantageNewsTool()
 
     @property
     def source_id(self) -> str:
@@ -174,6 +174,17 @@ class AlphaVantageNewsProvider(NewsSourceProvider):
             articles = []
             for _, row in normalized_df.iterrows():
                 # Create article object
+                # Handle ticker_sentiment - it may be a list of dicts instead of strings
+                ticker_list = [params.ticker]
+                ticker_sentiment = row.get('ticker_sentiment', [])
+                if ticker_sentiment and isinstance(ticker_sentiment, list):
+                    # If it's a list of dicts, extract the ticker strings
+                    if ticker_sentiment and isinstance(ticker_sentiment[0], dict):
+                        extra_tickers = [item.get('ticker', '') for item in ticker_sentiment if isinstance(item, dict) and 'ticker' in item]
+                    else:
+                        extra_tickers = ticker_sentiment
+                    ticker_list.extend([t for t in extra_tickers if t])
+                
                 article = NewsArticle(
                     source_id=self.source_id,
                     title=row.get('title', ''),
@@ -181,7 +192,7 @@ class AlphaVantageNewsProvider(NewsSourceProvider):
                     published_date=pd.to_datetime(
                         row.get('time_published', row.get('timestamp', datetime.now()))),
                     summary=row.get('summary', None),
-                    tickers=[params.ticker] + row.get('ticker_sentiment', []),
+                    tickers=ticker_list,
                     # Use pre-calculated sentiment if available
                     sentiment_score=row.get('sentiment_score', None),
                     sentiment_label=row.get('sentiment', None),
@@ -702,15 +713,67 @@ async def fetch_unified_news_async(
         df['published_date'] = df['published_date'].dt.strftime(
             '%Y-%m-%d %H:%M:%S')
 
-    # Format the result
-    return {
+    # Calculate relevance scores
+    if keywords or ticker:
+        df['relevance_score'] = 0.0
+        
+        # Calculate keyword matches in title and summary/content
+        if keywords and 'title' in df.columns:
+            keyword_list = keywords.lower().split(',') if isinstance(keywords, str) else [k.lower() for k in keywords]
+            for keyword in keyword_list:
+                # Check title matches
+                if 'title' in df.columns:
+                    df['title_match'] = df['title'].str.lower().str.contains(keyword, na=False).astype(float) * 2.0
+                    df['relevance_score'] += df['title_match']
+                
+                # Check summary/content matches
+                if 'summary' in df.columns:
+                    df['summary_match'] = df['summary'].str.lower().str.contains(keyword, na=False).astype(float)
+                    df['relevance_score'] += df['summary_match']
+                elif 'content' in df.columns:
+                    df['content_match'] = df['content'].str.lower().str.contains(keyword, na=False).astype(float)
+                    df['relevance_score'] += df['content_match']
+        
+        # Add ticker relevance
+        if ticker and 'tickers' in df.columns:
+            df['ticker_match'] = df['tickers'].apply(
+                lambda x: 3.0 if ticker.upper() in [t.upper() for t in x] else 0.0)
+            df['relevance_score'] += df['ticker_match']
+        
+        # Sort by relevance score
+        df = df.sort_values(by='relevance_score', ascending=False)
+        
+        # Drop helper columns
+        for col in ['title_match', 'summary_match', 'content_match', 'ticker_match']:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+    
+    # Find very low relevance articles
+    low_relevance_count = 0
+    if 'relevance_score' in df.columns:
+        low_relevance_count = (df['relevance_score'] < 0.5).sum()
+    
+    # Format the result with search guidance
+    result = {
         "articles": df.to_dict(orient="records"),
         "count": len(df),
-        "sources_used": df['source_id'].unique().tolist(),
+        "sources_used": df['source_id'].unique().tolist() if not df.empty else [],
         "ticker": ticker,
         "keywords": keywords,
         "date_range": f"{start_date} to {end_date}"
     }
+    
+    # Add search guidance
+    if len(df) == 0:
+        result["search_guidance"] = "No articles found. Try broader keywords, a different ticker, or a wider date range."
+    elif low_relevance_count > 0 and low_relevance_count >= len(df) / 2:
+        result["search_guidance"] = f"{low_relevance_count} of {len(df)} articles have low relevance. Consider refining keywords for more specific results."
+    elif len(df) < 3 and (keywords or ticker):
+        result["search_guidance"] = f"Only {len(df)} articles found. Try broader keywords or a wider date range."
+    else:
+        result["search_guidance"] = f"Found {len(df)} relevant articles from {len(result['sources_used'])} source(s)."
+    
+    return result
 
 
 def fetch_unified_news(
