@@ -3,15 +3,14 @@
 Simplified interactive CLI for the Sentiment Agent using AutoGen 0.5.x.
 """
 
-from src.tools.tools import get_tools_for_agent, SENTIMENT_AGENT
-from src.agents.sentiment_agent import SentimentAgent
-from config.config_loader import ConfigLoader
 import sys
 import os
 import json
 import asyncio
 import traceback
 from typing import Dict, Any
+from src.agents.sentiment_agent import SentimentAgent
+from config.config_loader import ConfigLoader
 
 # Ensure the src directory is in the path
 sys.path.insert(0, os.path.abspath('.'))
