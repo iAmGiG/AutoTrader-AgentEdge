@@ -1,58 +1,44 @@
 """
-[DEPRECATED] Tool for fetching market data from Alpha Vantage API.
+Tool for fetching market data from Alpha Vantage API.
 
-This file is maintained for backward compatibility but will be removed in a future version.
-Please use the specialized versions instead:
-- src.tools.data_sources.market.alpha_vantage_market
-- src.tools.data_sources.news.alpha_vantage_news
+This module specializes in retrieving market data (stock prices, company overviews)
+from Alpha Vantage. It's part of the specialized data sources organization that
+separates different types of financial data.
 """
 
-import requests
-import pandas as pd
 from datetime import datetime
 from typing import Dict, Any, Optional
 import logging
+import requests
+import pandas as pd
 from config.config_loader import ConfigLoader
 from src.tools.date_utils import get_processed_date_range
 
 
-class AlphaVantageTool:
+class AlphaVantageMarketTool:
     """
-    [DEPRECATED] Tool for retrieving market data from Alpha Vantage API.
-    
-    This class has been split into specialized components:
-    - AlphaVantageMarketTool - for market data and fundamentals
-    - AlphaVantageNewsTool - for news and sentiment data
-    """
+    Tool for retrieving market data from Alpha Vantage API.
 
+    This class focuses on market-specific data including:
+    - Stock price history
+    - Company overview/fundamentals
+    """
 
     def __init__(self):
-        import warnings
-        warnings.warn(
-            "AlphaVantageTool is deprecated. Use AlphaVantageMarketTool or AlphaVantageNewsTool instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        
         # Load API key from config
         config_loader = ConfigLoader()
         self.api_key = config_loader.get("alpha_vantage_key")
 
-
         if not self.api_key:
             logging.warning("Alpha Vantage API key not found in config.")
-
 
         self.base_url = "https://www.alphavantage.co/query"
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def fetch_stock_data(self, symbol: str, start_date: Optional[str] = None,
-
-    def fetch_stock_data(self, symbol: str, start_date: Optional[str] = None,
                          end_date: Optional[str] = None) -> pd.DataFrame:
         """
         Fetch daily stock data for a given symbol.
-
 
         Args:
             symbol: Stock ticker symbol
@@ -60,7 +46,6 @@ class AlphaVantageTool:
                         If None, uses dynamic calculation (last 5 trading days)
             end_date: Optional end date filter (YYYY-MM-DD) or relative date string ("today")
                       If None, uses today's date
-
 
         Returns:
             DataFrame with stock price data
@@ -73,15 +58,8 @@ class AlphaVantageTool:
             self.logger.info(
                 f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}")
 
-            processed_start, processed_end = get_processed_date_range(
-                start_date, end_date)
-
-            self.logger.info(
-                f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}")
-
             # Determine outputsize based on date range
             days_range = (datetime.now() -
-                         
                           datetime.strptime(processed_start, "%Y-%m-%d")).days
             use_full = days_range > 100
 
@@ -94,41 +72,31 @@ class AlphaVantageTool:
                 "datatype": "json"
             }
 
-
             # Make API request
             response = requests.get(self.base_url, params=params)
 
-
             if response.status_code != 200:
                 self.logger.error(
-                    
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return pd.DataFrame()
 
-
             data = response.json()
-
 
             # Check for errors in the response
             if "Error Message" in data:
                 self.logger.error(
-                    
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
-
 
             # Extract time series data
             if "Time Series (Daily)" not in data:
                 self.logger.warning(f"No time series data found for {symbol}")
                 return pd.DataFrame()
 
-
             time_series = data["Time Series (Daily)"]
-
 
             # Convert to DataFrame
             df = pd.DataFrame.from_dict(time_series, orient="index")
-
 
             # Fix column names (removing number prefixes)
             df = df.rename(columns={
@@ -139,41 +107,32 @@ class AlphaVantageTool:
                 "5. volume": "volume"
             })
 
-
             # Convert index to datetime
             df.index = pd.to_datetime(df.index)
-
 
             # Convert values to numeric
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col])
 
-
             # Apply date filters using processed dates
             df = df[df.index >= processed_start]
             df = df[df.index <= processed_end]
 
-
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)
 
-
             return df
-
 
         except Exception as e:
             self.logger.error(f"Error fetching Alpha Vantage data: {e}")
             return pd.DataFrame()
 
-
     def fetch_company_overview(self, symbol: str) -> Dict[str, Any]:
         """
         Fetch company overview data with fundamentals.
 
-
         Args:
             symbol: Stock ticker symbol
-
 
         Returns:
             Dictionary with company overview data
@@ -185,144 +144,146 @@ class AlphaVantageTool:
                 "apikey": self.api_key
             }
 
-
             response = requests.get(self.base_url, params=params)
-
 
             if response.status_code != 200:
                 self.logger.error(
-                    
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return {}
 
-
             data = response.json()
-
 
             # Check for errors
             if "Error Message" in data:
                 self.logger.error(
-                    
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return {}
 
-
             return data
-
 
         except Exception as e:
             self.logger.error(f"Error fetching company overview: {e}")
             return {}
 
-
-    def fetch_news_sentiment(self, symbol: Optional[str] = None, topics: Optional[str] = None) -> pd.DataFrame:
+    def fetch_intraday_data(self, symbol: str, interval: str = "15min") -> pd.DataFrame:
         """
-        Fetch news sentiment data from Alpha Vantage.
-
+        Fetch intraday stock data for a given symbol.
 
         Args:
-            symbol: Optional stock ticker symbol to filter news by
-            topics: Optional topics to filter by (comma separated)
-
+            symbol: Stock ticker symbol
+            interval: Time interval between data points (1min, 5min, 15min, 30min, 60min)
 
         Returns:
-            DataFrame with news and sentiment data
+            DataFrame with intraday price data
         """
         try:
             params = {
-                "function": "NEWS_SENTIMENT",
+                "function": "TIME_SERIES_INTRADAY",
+                "symbol": symbol,
+                "interval": interval,
                 "apikey": self.api_key,
+                "outputsize": "compact",
+                "datatype": "json"
             }
-
-
-            if symbol:
-                params["tickers"] = symbol
-            if topics:
-                params["topics"] = topics
-
 
             response = requests.get(self.base_url, params=params)
 
-
             if response.status_code != 200:
                 self.logger.error(
-                    
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return pd.DataFrame()
 
-
             data = response.json()
 
-
+            # Check for errors
             if "Error Message" in data:
                 self.logger.error(
-                    
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
-
-            if "feed" not in data:
-                self.logger.warning(
-                    
-                    "No news feed found in Alpha Vantage response")
+            # Extract time series data
+            time_series_key = f"Time Series ({interval})"
+            if time_series_key not in data:
+                self.logger.warning(f"No intraday data found for {symbol}")
                 return pd.DataFrame()
 
+            time_series = data[time_series_key]
 
-            # Extract feed items and convert to DataFrame
-            news_items = data.get("feed", [])
+            # Convert to DataFrame
+            df = pd.DataFrame.from_dict(time_series, orient="index")
 
+            # Fix column names
+            df = df.rename(columns={
+                "1. open": "open",
+                "2. high": "high",
+                "3. low": "low",
+                "4. close": "close",
+                "5. volume": "volume"
+            })
 
-            # Convert news items to DataFrame
-            news_df = pd.DataFrame(news_items)
+            # Convert index to datetime
+            df.index = pd.to_datetime(df.index)
 
+            # Convert values to numeric
+            for col in df.columns:
+                df[col] = pd.to_numeric(df[col])
 
-            # Add timestamp column
-            if "time_published" in news_df.columns:
-                news_df["timestamp"] = pd.to_datetime(
-                    news_df["time_published"], format="%Y%m%dT%H%M%S")
+            # Sort by date (newest first)
+            df = df.sort_index(ascending=False)
 
-                news_df["timestamp"] = pd.to_datetime(
-                    news_df["time_published"], format="%Y%m%dT%H%M%S")
-
-            return news_df
-
+            return df
 
         except Exception as e:
-            self.logger.error(f"Error fetching news sentiment: {e}")
+            self.logger.error(f"Error fetching intraday data: {e}")
             return pd.DataFrame()
 
+    def fetch_fx_data(self, from_currency: str, to_currency: str) -> pd.DataFrame:
+        """
+        Fetch foreign exchange rate data.
 
-if __name__ == "__main__":
-    # Example usage
-    tool = AlphaVantageTool()
+        Args:
+            from_currency: From currency code (e.g., USD)
+            to_currency: To currency code (e.g., EUR)
 
+        Returns:
+            DataFrame with exchange rate data
+        """
+        try:
+            params = {
+                "function": "CURRENCY_EXCHANGE_RATE",
+                "from_currency": from_currency,
+                "to_currency": to_currency,
+                "apikey": self.api_key
+            }
 
-    # Example 1: Using default dynamic dates (last 5 trading days)
-    print("\nExample 1: Using default dynamic dates (last 5 trading days)")
-    stock_df1 = tool.fetch_stock_data("AAPL")
-    print("\nStock data with default dates:")
-    print(stock_df1.head())
+            response = requests.get(self.base_url, params=params)
 
+            if response.status_code != 200:
+                self.logger.error(
+                    f"Alpha Vantage API error: {response.status_code} - {response.text}")
+                return pd.DataFrame()
 
-    # Example 2: Using explicit dates
-    print("\nExample 2: Using explicit dates")
-    stock_df2 = tool.fetch_stock_data("MSFT", "2024-01-01", "2024-01-31")
-    print("\nStock data with explicit dates:")
-    print(stock_df2.head())
+            data = response.json()
 
+            # Check for errors
+            if "Error Message" in data:
+                self.logger.error(
+                    f"Alpha Vantage API error: {data['Error Message']}")
+                return pd.DataFrame()
 
-    # Example 3: Using relative dates
-    print("\nExample 3: Using relative dates")
-    stock_df3 = tool.fetch_stock_data("GOOGL", "-30d", "today")
-    print("\nStock data with relative dates:")
-    print(stock_df3.head())
+            # Extract exchange rate data
+            if "Realtime Currency Exchange Rate" not in data:
+                self.logger.warning(
+                    f"No exchange rate data found for {from_currency}/{to_currency}")
+                return pd.DataFrame()
 
+            exchange_data = data["Realtime Currency Exchange Rate"]
 
-    # Fetch news sentiment
-    news_df = tool.fetch_news_sentiment("AAPL")
-    print("\nNews sentiment data:")
-    if not news_df.empty:
-        print(news_df[["title", "source", "overall_sentiment_score"]].head())
-    else:
-        print("No news data returned")
+            # Create DataFrame with a single row
+            df = pd.DataFrame([exchange_data])
 
+            return df
+
+        except Exception as e:
+            self.logger.error(f"Error fetching exchange rate data: {e}")
+            return pd.DataFrame()

@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
+import pandas as pd
 from bs4 import BeautifulSoup
 from sec_edgar_downloader import Downloader
 from src.tools.date_utils import process_date_param
@@ -391,94 +392,6 @@ class SECEdgarTool:
 
         return metrics
 
-    def search_filings(self,
-                    ticker: str,
-                    search_terms: list,
-                    form_type: str = "10-K",
-                    section: str = None,
-                    num_filings: int = 3) -> pd.DataFrame:
-        """
-        Search SEC filings for specific terms and return matches with context.
-        
-        Args:
-            ticker: Company ticker symbol
-            search_terms: List of terms to search for
-            form_type: Type of SEC form
-            section: Specific section to search (if None, searches entire document)
-            num_filings: Number of filings to search
-            
-        Returns:
-            DataFrame with search results and context
-        """
-        try:
-            # Get the filings
-            if section:
-                extract_sections = [section]
-            else:
-                # If no specific section, use all standard sections
-                extract_sections = list(self.report_sections.keys())
-                
-            filings_df = self.fetch_filings(
-                ticker=ticker,
-                form_type=form_type,
-                num_filings=num_filings,
-                extract_sections=extract_sections
-            )
-            
-            if filings_df.empty:
-                self.logger.warning(f"No filings found for {ticker} ({form_type})")
-                return pd.DataFrame()
-                
-            # Prepare results dataframe
-            results = []
-            
-            # Search through each filing and section
-            for _, filing in filings_df.iterrows():
-                for sec in extract_sections:
-                    content_col = f"{sec}_content"
-                    
-                    # Skip if the section content is not available
-                    if content_col not in filing or pd.isna(filing[content_col]) or not filing[content_col]:
-                        continue
-                        
-                    content = filing[content_col]
-                    
-                    # Search for each term
-                    for term in search_terms:
-                        # Case-insensitive search
-                        occurrences = re.finditer(re.escape(term), content, re.IGNORECASE)
-                        
-                        for match in occurrences:
-                            # Get context around the match
-                            start = max(0, match.start() - 100)
-                            end = min(len(content), match.end() + 100)
-                            
-                            context = content[start:end]
-                            
-                            # Add to results
-                            results.append({
-                                'ticker': ticker,
-                                'form_type': form_type,
-                                'filing_date': filing['filing_date'],
-                                'section': sec,
-                                'search_term': term,
-                                'context': context,
-                                'file_path': filing.get('file_path', '')
-                            })
-            
-            # Convert to DataFrame
-            results_df = pd.DataFrame(results)
-            
-            # Sort by filing date (newest first)
-            if not results_df.empty and 'filing_date' in results_df.columns:
-                results_df = results_df.sort_values('filing_date', ascending=False)
-                
-            return results_df
-            
-        except Exception as e:
-            self.logger.error(f"Error searching SEC filings: {e}")
-            return pd.DataFrame()
-            
     def compare_filings_over_time(self,
                                   ticker: str,
                                   form_type: str = "10-K",

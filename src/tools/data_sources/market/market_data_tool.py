@@ -2,13 +2,12 @@
 Enhanced market data tool that uses Alpha Vantage or other sources based on configuration.
 """
 
-import pandas as pd
 import os
 import logging
 from typing import Any, Dict, Optional
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
-from src.tools.data_sources.yahoo_finance_tool import YahooFinanceTool
+from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
 from src.tools.date_utils import get_processed_date_range
 
 
@@ -38,8 +37,12 @@ class MarketDataTool:
         if config is None:
             config_loader = ConfigLoader()
 
+
             # Get default date range from config or use dynamic calculation
             default_days_back = config_loader.get("default_days_back", 5)
+            default_date_range = get_processed_date_range(
+                default_days_back=default_days_back)
+
             default_date_range = get_processed_date_range(
                 default_days_back=default_days_back)
 
@@ -58,6 +61,7 @@ class MarketDataTool:
         self.default_days_back = self.config.get("default_days_back", 5)
         self.default_date_range = self.config.get("default_date_range",
                                                   get_processed_date_range(default_days_back=self.default_days_back))
+
         # Initialize specific data source tools
         self.alpha_vantage_tool = None
         self.yahoo_finance_tool = None
@@ -87,6 +91,7 @@ class MarketDataTool:
         # Use defaults if not provided
         if symbol is None:
             symbol = self.default_symbol
+
         # Process date parameters, applying dynamic date calculation if needed
         start_date, end_date = get_processed_date_range(
             start_date, end_date, self.default_days_back)
@@ -239,21 +244,3 @@ class MarketDataTool:
             self.logger.warning(
                 f"News sentiment not supported for data source: {self.data_source}")
             return pd.DataFrame()
-
-
-if __name__ == "__main__":
-    # Example usage
-    tool = MarketDataTool({"data_source": "alpha_vantage"})
-
-    # Fetch market data
-    market_df = tool.fetch_market_data("AAPL", "2023-01-01", "2023-01-31")
-    print("\nMarket data:")
-    print(market_df.head())
-
-    # Fetch news sentiment
-    news_df = tool.fetch_news_sentiment("AAPL")
-    print("\nNews sentiment data:")
-    if not news_df.empty:
-        print(news_df.head())
-    else:
-        print("No news data returned")
