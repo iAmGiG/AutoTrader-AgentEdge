@@ -10,7 +10,7 @@ Please use the specialized versions instead:
 import requests
 import pandas as pd
 from datetime import datetime
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 import logging
 from config.config_loader import ConfigLoader
 from src.tools.date_utils import get_processed_date_range
@@ -24,7 +24,7 @@ class AlphaVantageTool:
     - AlphaVantageMarketTool - for market data and fundamentals
     - AlphaVantageNewsTool - for news and sentiment data
     """
-    
+
     def __init__(self):
         import warnings
         warnings.warn(
@@ -70,7 +70,6 @@ class AlphaVantageTool:
             days_range = (datetime.now() -
                           datetime.strptime(processed_start, "%Y-%m-%d")).days
             use_full = days_range > 100
-
 
             # API parameters for daily time series
             params = {

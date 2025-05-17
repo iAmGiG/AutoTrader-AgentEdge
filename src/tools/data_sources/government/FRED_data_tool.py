@@ -9,6 +9,8 @@ unemployment figures, and more.
 import logging
 from typing import Optional, Dict, Any, List
 import pandas as pd
+import logging
+from typing import Optional, Dict, Any, List
 from fredapi import Fred
 from config.config_loader import ConfigLoader
 from src.tools.date_utils import process_date_param, get_processed_date_range
@@ -526,4 +528,3 @@ if __name__ == "__main__":
 
     # Print the attribution notice required by FRED
     print("\nThis product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.")
-

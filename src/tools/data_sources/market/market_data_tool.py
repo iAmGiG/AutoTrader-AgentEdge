@@ -5,7 +5,6 @@ Enhanced market data tool that uses Alpha Vantage or other sources based on conf
 import os
 import logging
 from typing import Any, Dict, Optional
-import pandas as pd
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
@@ -58,6 +57,7 @@ class MarketDataTool:
         self.default_days_back = self.config.get("default_days_back", 5)
         self.default_date_range = self.config.get("default_date_range",
                                                   get_processed_date_range(default_days_back=self.default_days_back))
+
         # Initialize specific data source tools
         self.alpha_vantage_tool = None
         self.yahoo_finance_tool = None
@@ -87,6 +87,7 @@ class MarketDataTool:
         # Use defaults if not provided
         if symbol is None:
             symbol = self.default_symbol
+
         # Process date parameters, applying dynamic date calculation if needed
         start_date, end_date = get_processed_date_range(
             start_date, end_date, self.default_days_back)
