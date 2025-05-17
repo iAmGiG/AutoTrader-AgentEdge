@@ -6,11 +6,11 @@ from Alpha Vantage. It's part of the specialized data sources organization that
 separates different types of financial data.
 """
 
+from datetime import datetime
+from typing import Dict, Any, Optional
+import logging
 import requests
 import pandas as pd
-from datetime import datetime
-from typing import Dict, Any, Optional, Tuple
-import logging
 from config.config_loader import ConfigLoader
 from src.tools.date_utils import get_processed_date_range
 
@@ -18,7 +18,7 @@ from src.tools.date_utils import get_processed_date_range
 class AlphaVantageMarketTool:
     """
     Tool for retrieving market data from Alpha Vantage API.
-    
+
     This class focuses on market-specific data including:
     - Stock price history
     - Company overview/fundamentals
@@ -62,7 +62,6 @@ class AlphaVantageMarketTool:
             days_range = (datetime.now() -
                           datetime.strptime(processed_start, "%Y-%m-%d")).days
             use_full = days_range > 100
-
 
             # API parameters for daily time series
             params = {
@@ -165,15 +164,15 @@ class AlphaVantageMarketTool:
         except Exception as e:
             self.logger.error(f"Error fetching company overview: {e}")
             return {}
-            
+
     def fetch_intraday_data(self, symbol: str, interval: str = "15min") -> pd.DataFrame:
         """
         Fetch intraday stock data for a given symbol.
-        
+
         Args:
             symbol: Stock ticker symbol
             interval: Time interval between data points (1min, 5min, 15min, 30min, 60min)
-            
+
         Returns:
             DataFrame with intraday price data
         """
@@ -186,33 +185,33 @@ class AlphaVantageMarketTool:
                 "outputsize": "compact",
                 "datatype": "json"
             }
-            
+
             response = requests.get(self.base_url, params=params)
-            
+
             if response.status_code != 200:
                 self.logger.error(
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return pd.DataFrame()
-                
+
             data = response.json()
-            
+
             # Check for errors
             if "Error Message" in data:
                 self.logger.error(
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
-                
+
             # Extract time series data
             time_series_key = f"Time Series ({interval})"
             if time_series_key not in data:
                 self.logger.warning(f"No intraday data found for {symbol}")
                 return pd.DataFrame()
-                
+
             time_series = data[time_series_key]
-            
+
             # Convert to DataFrame
             df = pd.DataFrame.from_dict(time_series, orient="index")
-            
+
             # Fix column names
             df = df.rename(columns={
                 "1. open": "open",
@@ -221,31 +220,31 @@ class AlphaVantageMarketTool:
                 "4. close": "close",
                 "5. volume": "volume"
             })
-            
+
             # Convert index to datetime
             df.index = pd.to_datetime(df.index)
-            
+
             # Convert values to numeric
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col])
-                
+
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)
-            
+
             return df
-            
+
         except Exception as e:
             self.logger.error(f"Error fetching intraday data: {e}")
             return pd.DataFrame()
-            
+
     def fetch_fx_data(self, from_currency: str, to_currency: str) -> pd.DataFrame:
         """
         Fetch foreign exchange rate data.
-        
+
         Args:
             from_currency: From currency code (e.g., USD)
             to_currency: To currency code (e.g., EUR)
-            
+
         Returns:
             DataFrame with exchange rate data
         """
@@ -256,57 +255,35 @@ class AlphaVantageMarketTool:
                 "to_currency": to_currency,
                 "apikey": self.api_key
             }
-            
+
             response = requests.get(self.base_url, params=params)
-            
+
             if response.status_code != 200:
                 self.logger.error(
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return pd.DataFrame()
-                
+
             data = response.json()
-            
+
             # Check for errors
             if "Error Message" in data:
                 self.logger.error(
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
-                
+
             # Extract exchange rate data
             if "Realtime Currency Exchange Rate" not in data:
-                self.logger.warning(f"No exchange rate data found for {from_currency}/{to_currency}")
+                self.logger.warning(
+                    f"No exchange rate data found for {from_currency}/{to_currency}")
                 return pd.DataFrame()
-                
+
             exchange_data = data["Realtime Currency Exchange Rate"]
-            
+
             # Create DataFrame with a single row
             df = pd.DataFrame([exchange_data])
-            
+
             return df
-            
+
         except Exception as e:
             self.logger.error(f"Error fetching exchange rate data: {e}")
             return pd.DataFrame()
-
-
-if __name__ == "__main__":
-    # Example usage
-    tool = AlphaVantageMarketTool()
-
-    # Example 1: Using default dynamic dates (last 5 trading days)
-    print("\nExample 1: Using default dynamic dates (last 5 trading days)")
-    stock_df1 = tool.fetch_stock_data("AAPL")
-    print("\nStock data with default dates:")
-    print(stock_df1.head())
-
-    # Example 2: Using explicit dates
-    print("\nExample 2: Using explicit dates")
-    stock_df2 = tool.fetch_stock_data("MSFT", "2024-01-01", "2024-01-31")
-    print("\nStock data with explicit dates:")
-    print(stock_df2.head())
-
-    # Example 3: Using relative dates
-    print("\nExample 3: Using relative dates")
-    stock_df3 = tool.fetch_stock_data("GOOGL", "-30d", "today")
-    print("\nStock data with relative dates:")
-    print(stock_df3.head())

@@ -16,7 +16,7 @@ Features:
 import os
 import json
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any, Optional, Union, Literal
 from abc import ABC, abstractmethod
 
@@ -180,11 +180,12 @@ class AlphaVantageNewsProvider(NewsSourceProvider):
                 if ticker_sentiment and isinstance(ticker_sentiment, list):
                     # If it's a list of dicts, extract the ticker strings
                     if ticker_sentiment and isinstance(ticker_sentiment[0], dict):
-                        extra_tickers = [item.get('ticker', '') for item in ticker_sentiment if isinstance(item, dict) and 'ticker' in item]
+                        extra_tickers = [item.get('ticker', '') for item in ticker_sentiment if isinstance(
+                            item, dict) and 'ticker' in item]
                     else:
                         extra_tickers = ticker_sentiment
                     ticker_list.extend([t for t in extra_tickers if t])
-                
+
                 article = NewsArticle(
                     source_id=self.source_id,
                     title=row.get('title', ''),
@@ -716,43 +717,47 @@ async def fetch_unified_news_async(
     # Calculate relevance scores
     if keywords or ticker:
         df['relevance_score'] = 0.0
-        
+
         # Calculate keyword matches in title and summary/content
         if keywords and 'title' in df.columns:
-            keyword_list = keywords.lower().split(',') if isinstance(keywords, str) else [k.lower() for k in keywords]
+            keyword_list = keywords.lower().split(',') if isinstance(
+                keywords, str) else [k.lower() for k in keywords]
             for keyword in keyword_list:
                 # Check title matches
                 if 'title' in df.columns:
-                    df['title_match'] = df['title'].str.lower().str.contains(keyword, na=False).astype(float) * 2.0
+                    df['title_match'] = df['title'].str.lower().str.contains(
+                        keyword, na=False).astype(float) * 2.0
                     df['relevance_score'] += df['title_match']
-                
+
                 # Check summary/content matches
                 if 'summary' in df.columns:
-                    df['summary_match'] = df['summary'].str.lower().str.contains(keyword, na=False).astype(float)
+                    df['summary_match'] = df['summary'].str.lower(
+                    ).str.contains(keyword, na=False).astype(float)
                     df['relevance_score'] += df['summary_match']
                 elif 'content' in df.columns:
-                    df['content_match'] = df['content'].str.lower().str.contains(keyword, na=False).astype(float)
+                    df['content_match'] = df['content'].str.lower(
+                    ).str.contains(keyword, na=False).astype(float)
                     df['relevance_score'] += df['content_match']
-        
+
         # Add ticker relevance
         if ticker and 'tickers' in df.columns:
             df['ticker_match'] = df['tickers'].apply(
                 lambda x: 3.0 if ticker.upper() in [t.upper() for t in x] else 0.0)
             df['relevance_score'] += df['ticker_match']
-        
+
         # Sort by relevance score
         df = df.sort_values(by='relevance_score', ascending=False)
-        
+
         # Drop helper columns
         for col in ['title_match', 'summary_match', 'content_match', 'ticker_match']:
             if col in df.columns:
                 df = df.drop(columns=[col])
-    
+
     # Find very low relevance articles
     low_relevance_count = 0
     if 'relevance_score' in df.columns:
         low_relevance_count = (df['relevance_score'] < 0.5).sum()
-    
+
     # Format the result with search guidance
     result = {
         "articles": df.to_dict(orient="records"),
@@ -762,7 +767,7 @@ async def fetch_unified_news_async(
         "keywords": keywords,
         "date_range": f"{start_date} to {end_date}"
     }
-    
+
     # Add search guidance
     if len(df) == 0:
         result["search_guidance"] = "No articles found. Try broader keywords, a different ticker, or a wider date range."
@@ -772,7 +777,7 @@ async def fetch_unified_news_async(
         result["search_guidance"] = f"Only {len(df)} articles found. Try broader keywords or a wider date range."
     else:
         result["search_guidance"] = f"Found {len(df)} relevant articles from {len(result['sources_used'])} source(s)."
-    
+
     return result
 
 
@@ -821,29 +826,3 @@ def fetch_unified_news(
         return result
     finally:
         loop.close()
-
-
-# Example usage
-if __name__ == "__main__":
-    # Test the unified news tool
-    try:
-        # Run a test query
-        result = fetch_unified_news(
-            ticker="AAPL",
-            keywords="earnings",
-            count=5
-        )
-
-        # Print results
-        print(
-            f"Found {result['count']} articles from {result['sources_used']}")
-        for i, article in enumerate(result['articles']):
-            print(f"\nArticle {i+1}:")
-            print(f"Title: {article['title']}")
-            print(f"Source: {article['source_id']}")
-            print(f"Date: {article['published_date']}")
-            print(
-                f"Sentiment: {article.get('sentiment_label', 'N/A')} ({article.get('sentiment_score', 'N/A')})")
-
-    except Exception as e:
-        print(f"Error in test: {e}")
