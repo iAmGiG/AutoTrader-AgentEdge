@@ -11,7 +11,22 @@ from src.tools.data_sources.news.unified_news_tool import fetch_unified_news
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 from config.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 # Import other vendor tools as needed
+
+##################################
+# Tool Organization by Agent Type
+##################################
+
+# Every tool is tagged with the agent types that should use it
+# This allows for better separation of concerns between agents
+
+# Agent Types
+SENTIMENT_AGENT = "sentiment"
+QUANTITATIVE_AGENT = "quantitative"
+RISK_AGENT = "risk"
+STRATEGY_AGENT = "strategy"
+ALL_AGENTS = [SENTIMENT_AGENT, QUANTITATIVE_AGENT, RISK_AGENT, STRATEGY_AGENT]
 
 ##################################
 # Tool Organization by Agent Type
@@ -42,6 +57,13 @@ def fetch_news(keyword: str = "market", count: int = 5) -> pd.DataFrame:
 
     Returns:
         DataFrame with news headlines, published dates, and sources
+    
+    Args:
+        keyword: Topic or keyword to search for
+        count: Number of news articles to retrieve
+        
+    Returns:
+        DataFrame with news headlines, published dates, and sources
     """
     tool = NewsHeadlineTool(source="newsapi")
     df = tool.fetch_data(keyword=keyword, count=count)
@@ -51,7 +73,7 @@ def fetch_news(keyword: str = "market", count: int = 5) -> pd.DataFrame:
 news_tool = FunctionTool(
     func=fetch_news,
     name="fetch_news",
-    description="Fetch news articles for a given keyword, returning a Pandas DataFrame with headlines, published dates, and sources."
+    description="Fetch news articles for a given keyword, returning a Pandas DataFrame with headlines, published dates, and sources with headlines, published dates, and sources."
 )
 # Only sentiment and strategy agents should use news
 news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
@@ -225,7 +247,14 @@ def fetch_finnhub_economic_headlines(
 
     Returns:
         DataFrame with economic headlines from Finnhub
+        DataFrame with economic headlines from Finnhub
     """
+    # Load API key from config
+    config_loader = ConfigLoader()
+    api_key = config_loader.get("finnhub_key")
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_economic_headlines(count=count)
     # Load API key from config
     config_loader = ConfigLoader()
     api_key = config_loader.get("finnhub_key")
@@ -244,6 +273,7 @@ finnhub_economic_headlines_tool.agent_types = [
     SENTIMENT_AGENT, STRATEGY_AGENT]  # Useful for sentiment and strategy agents
 
 ##################################
+# 4) Market Data Tools
 # 4) Market Data Tools
 ##################################
 
@@ -272,6 +302,7 @@ def fetch_yahoo_data(
 yahoo_finance_tool = FunctionTool(
     func=fetch_yahoo_data,
     name="fetch_yahoo_data",
+    description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
     description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
@@ -303,6 +334,7 @@ alpha_vantage_tool = FunctionTool(
     func=fetch_alpha_vantage_data,
     name="fetch_alpha_vantage_data",
     description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
+    description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
 alpha_vantage_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
@@ -310,6 +342,8 @@ alpha_vantage_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
 
 def fetch_market_data(
     symbol: str = "AAPL",
+    start_date: str = "-30d",  # Changed to relative date for current data
+    end_date: str = "today",   # Changed to always get current data
     start_date: str = "-30d",  # Changed to relative date for current data
     end_date: str = "today",   # Changed to always get current data
     source: str = "alpha_vantage"
@@ -323,6 +357,15 @@ def fetch_market_data(
         end_date: End of date range (YYYY-MM-DD or "today")
         source: Data source to use ("alpha_vantage", "yahoo", "csv")
 
+    Returns:
+        DataFrame with price and volume data
+    
+    Args:
+        symbol: Stock symbol/ticker to fetch data for
+        start_date: Start of date range (YYYY-MM-DD or relative like "-30d")
+        end_date: End of date range (YYYY-MM-DD or "today")
+        source: Data source to use ("alpha_vantage", "yahoo", "csv")
+        
     Returns:
         DataFrame with price and volume data
     """
@@ -612,6 +655,32 @@ def get_tools_for_agent(agent_type):
     Args:
         agent_type: Type of agent (e.g., 'sentiment', 'quantitative')
 
+    Returns:
+        List of FunctionTool objects appropriate for the agent type
+    """
+    if agent_type == SENTIMENT_AGENT:
+        return SENTIMENT_TOOLS
+    elif agent_type == QUANTITATIVE_AGENT:
+        return QUANTITATIVE_TOOLS
+    elif agent_type == RISK_AGENT:
+        return RISK_TOOLS
+    elif agent_type == STRATEGY_AGENT:
+        return STRATEGY_TOOLS
+    else:
+        # Return all tools if agent type is unknown
+        return ALL_TOOLS
+
+
+########################################
+# Helper function to get tools for a specific agent type
+########################################
+def get_tools_for_agent(agent_type):
+    """
+    Get the list of tools that should be used by a specific agent type.
+    
+    Args:
+        agent_type: Type of agent (e.g., 'sentiment', 'quantitative')
+        
     Returns:
         List of FunctionTool objects appropriate for the agent type
     """

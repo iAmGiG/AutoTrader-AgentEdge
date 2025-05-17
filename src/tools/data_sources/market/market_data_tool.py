@@ -37,8 +37,12 @@ class MarketDataTool:
         if config is None:
             config_loader = ConfigLoader()
 
+
             # Get default date range from config or use dynamic calculation
             default_days_back = config_loader.get("default_days_back", 5)
+            default_date_range = get_processed_date_range(
+                default_days_back=default_days_back)
+
             default_date_range = get_processed_date_range(
                 default_days_back=default_days_back)
 
