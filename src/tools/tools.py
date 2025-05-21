@@ -11,7 +11,6 @@ from src.tools.data_sources.news.unified_news_tool import fetch_unified_news
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 from config.config_loader import ConfigLoader
-from config.config_loader import ConfigLoader
 # Import other vendor tools as needed
 
 ##################################
@@ -55,13 +54,6 @@ def fetch_news(keyword: str = "market", count: int = 5) -> pd.DataFrame:
         keyword: Topic or keyword to search for
         count: Number of news articles to retrieve
 
-    Returns:
-        DataFrame with news headlines, published dates, and sources
-    
-    Args:
-        keyword: Topic or keyword to search for
-        count: Number of news articles to retrieve
-        
     Returns:
         DataFrame with news headlines, published dates, and sources
     """
@@ -303,7 +295,6 @@ yahoo_finance_tool = FunctionTool(
     func=fetch_yahoo_data,
     name="fetch_yahoo_data",
     description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
-    description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
 yahoo_finance_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
@@ -334,7 +325,6 @@ alpha_vantage_tool = FunctionTool(
     func=fetch_alpha_vantage_data,
     name="fetch_alpha_vantage_data",
     description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
-    description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
 alpha_vantage_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
@@ -342,8 +332,6 @@ alpha_vantage_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
 
 def fetch_market_data(
     symbol: str = "AAPL",
-    start_date: str = "-30d",  # Changed to relative date for current data
-    end_date: str = "today",   # Changed to always get current data
     start_date: str = "-30d",  # Changed to relative date for current data
     end_date: str = "today",   # Changed to always get current data
     source: str = "alpha_vantage"
@@ -357,15 +345,6 @@ def fetch_market_data(
         end_date: End of date range (YYYY-MM-DD or "today")
         source: Data source to use ("alpha_vantage", "yahoo", "csv")
 
-    Returns:
-        DataFrame with price and volume data
-    
-    Args:
-        symbol: Stock symbol/ticker to fetch data for
-        start_date: Start of date range (YYYY-MM-DD or relative like "-30d")
-        end_date: End of date range (YYYY-MM-DD or "today")
-        source: Data source to use ("alpha_vantage", "yahoo", "csv")
-        
     Returns:
         DataFrame with price and volume data
     """
@@ -529,7 +508,7 @@ def search_sec_filings(
 
     Args:
         ticker: Company ticker symbol (e.g., 'AAPL')
-        search_terms: List of terms to search for
+        search_terms: List of terms to search for (must not be empty)
         form_type: Type of SEC form ('10-K', '10-Q', '8-K', etc.)
         section: Specific section to search (e.g., 'risk_factors')
         num_filings: Number of filings to search
@@ -537,6 +516,12 @@ def search_sec_filings(
     Returns:
         DataFrame with search results and context
     """
+    # Guard against empty search terms
+    if not search_terms or len(search_terms) == 0:
+        print(f"WARNING: search_sec_filings called with empty search_terms. Returning empty DataFrame.")
+        return pd.DataFrame(columns=["ticker", "form_type", "filing_date", "search_term", "section", "context", 
+                                    "message"])
+    
     tool = SECEdgarTool(use_temp_dir=True)
     df = tool.search_filings(ticker, search_terms,
                              form_type, section, num_filings)
@@ -546,7 +531,7 @@ def search_sec_filings(
 sec_search_tool = FunctionTool(
     func=search_sec_filings,
     name="search_sec_filings",
-    description="Search SEC filings for specific terms and get context."
+    description="Search SEC filings for specific terms and get context. Note: search_terms must be a non-empty list of keywords to search for in the filings."
 )
 # Useful for risk and sentiment analysis
 sec_search_tool.agent_types = [RISK_AGENT, SENTIMENT_AGENT]
@@ -589,13 +574,8 @@ sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
 
 # SENTIMENT_AGENT tools
 SENTIMENT_TOOLS = [
-    unified_news_tool,  # Add the unified news tool as the primary news source
-    news_tool,
-    alpha_vantage_news_tool,
-    finnhub_news_tool,
-    finnhub_financial_headlines_tool,
-    finnhub_economic_headlines_tool,
-    sec_search_tool
+    unified_news_tool,  # The unified news tool as the only news source
+    sec_search_tool     # SEC search tool for regulatory information
 ]
 
 # QUANTITATIVE_AGENT tools
@@ -655,32 +635,6 @@ def get_tools_for_agent(agent_type):
     Args:
         agent_type: Type of agent (e.g., 'sentiment', 'quantitative')
 
-    Returns:
-        List of FunctionTool objects appropriate for the agent type
-    """
-    if agent_type == SENTIMENT_AGENT:
-        return SENTIMENT_TOOLS
-    elif agent_type == QUANTITATIVE_AGENT:
-        return QUANTITATIVE_TOOLS
-    elif agent_type == RISK_AGENT:
-        return RISK_TOOLS
-    elif agent_type == STRATEGY_AGENT:
-        return STRATEGY_TOOLS
-    else:
-        # Return all tools if agent type is unknown
-        return ALL_TOOLS
-
-
-########################################
-# Helper function to get tools for a specific agent type
-########################################
-def get_tools_for_agent(agent_type):
-    """
-    Get the list of tools that should be used by a specific agent type.
-    
-    Args:
-        agent_type: Type of agent (e.g., 'sentiment', 'quantitative')
-        
     Returns:
         List of FunctionTool objects appropriate for the agent type
     """

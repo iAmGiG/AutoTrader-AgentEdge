@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from bs4 import BeautifulSoup
 from sec_edgar_downloader import Downloader
+from config.config_loader import ConfigLoader
 from src.tools.date_utils import process_date_param
 
 # Define common form types for reference
@@ -41,6 +42,9 @@ REPORT_SECTIONS = {
     "controls_procedures": ["controls and procedures", "item 9a", "item9a"],
     "executive_compensation": ["executive compensation", "item 11", "item11"]
 }
+
+_loader = ConfigLoader()
+email = _loader.get("validEmail")
 
 
 class SECEdgarTool:
@@ -75,7 +79,7 @@ class SECEdgarTool:
             os.makedirs(self.download_dir, exist_ok=True)
 
         # Create a downloader instance
-        self.downloader = Downloader(self.download_dir)
+        self.downloader = Downloader(self.download_dir, email_address=email)
 
         # Store the form types and section definitions
         self.form_types = FORM_TYPES
@@ -125,7 +129,7 @@ class SECEdgarTool:
             self.logger.info(
                 f"Downloading {num_filings} {form_type} filings for {ticker}")
             result = self.downloader.get(
-                form_type, ticker, amount=num_filings, **date_kwargs)
+                form_type, ticker, limit=num_filings, **date_kwargs)
 
             # Get the path where filings were saved
             filing_path = os.path.join(self.download_dir, ticker, form_type)
