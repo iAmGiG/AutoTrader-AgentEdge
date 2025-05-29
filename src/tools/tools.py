@@ -29,13 +29,13 @@ STRATEGY_AGENT = "strategy"
 ALL_AGENTS = [SENTIMENT_AGENT, QUANTITATIVE_AGENT, RISK_AGENT, STRATEGY_AGENT]
 
 # CORPORATE ACTIONS TOOL HIERARCHY:
-# 1. PRIMARY: FMP tools (use first) - Free tier access, comprehensive corporate actions data
-#    - fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar
-#    - fetch_fmp_historical_earnings, fetch_fmp_historical_dividends
-# 2. SECONDARY: Finnhub tools (premium locked) - Comprehensive but requires subscription
-#    - fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions
-# 3. BACKUP: Yahoo Finance tools (use as last resort) - Subject to rate limiting
-#    - fetch_yahoo_corporate_events
+# 1. PRIMARY: Yahoo Finance tools - Free but rate limited, enhanced with caching/throttling
+#    - fetch_yahoo_corporate_events (with historical support via days_back parameter)
+# 2. UNOBTAINIUM: Premium-locked corporate actions (both require paid subscriptions)
+#    - FMP tools: fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar (EXPERIMENTAL)
+#    - Finnhub tools: fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions
+# 3. NOTE: Corporate actions data is largely premium-only across major financial APIs
+#    - Consider web scraping alternatives for comprehensive free corporate actions data
 
 ##################################
 # 1) News Headline Tool as a Function
@@ -153,7 +153,7 @@ unified_news_tool = FunctionTool(
 unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
 ##################################
-# 4) FMP Corporate Actions Tools (PRIMARY)
+# 4) FMP Corporate Actions Tools (EXPERIMENTAL - PREMIUM LOCKED)
 ##################################
 
 
@@ -179,7 +179,7 @@ def fetch_fmp_earnings_calendar(
 fmp_earnings_calendar_tool = FunctionTool(
     func=fetch_fmp_earnings_calendar,
     name="fetch_fmp_earnings_calendar",
-    description="PRIMARY: Fetch earnings calendar from FMP with EPS estimates and actuals. Free tier access with good rate limits. Use this tool FIRST for earnings dates."
+    description="EXPERIMENTAL: Fetch earnings calendar from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative to Finnhub for corporate actions. Will return 403 errors with free tier."
 )
 fmp_earnings_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -206,7 +206,7 @@ def fetch_fmp_dividend_calendar(
 fmp_dividend_calendar_tool = FunctionTool(
     func=fetch_fmp_dividend_calendar,
     name="fetch_fmp_dividend_calendar",
-    description="PRIMARY: Fetch dividend calendar from FMP including ex-dividend dates and amounts. Free tier access. Use this tool FIRST for dividend dates."
+    description="EXPERIMENTAL: Fetch dividend calendar from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative to Finnhub for dividend data. Will return 403 errors with free tier."
 )
 fmp_dividend_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -233,7 +233,7 @@ def fetch_fmp_historical_earnings(
 fmp_historical_earnings_tool = FunctionTool(
     func=fetch_fmp_historical_earnings,
     name="fetch_fmp_historical_earnings",
-    description="PRIMARY: Fetch historical earnings data from FMP for analyzing past earnings announcements and surprises. Free tier access. Requires symbol parameter."
+    description="EXPERIMENTAL: Fetch historical earnings data from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative for historical earnings analysis. Requires symbol parameter."
 )
 fmp_historical_earnings_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -262,7 +262,7 @@ def fetch_fmp_historical_dividends(
 fmp_historical_dividends_tool = FunctionTool(
     func=fetch_fmp_historical_dividends,
     name="fetch_fmp_historical_dividends",
-    description="PRIMARY: Fetch historical dividend data from FMP for analyzing past dividend payments. Free tier access. Requires symbol parameter."
+    description="EXPERIMENTAL: Fetch historical dividend data from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative for dividend analysis. Requires symbol parameter."
 )
 fmp_historical_dividends_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -289,7 +289,7 @@ def fetch_fmp_stock_split_calendar(
 fmp_stock_split_calendar_tool = FunctionTool(
     func=fetch_fmp_stock_split_calendar,
     name="fetch_fmp_stock_split_calendar",
-    description="PRIMARY: Fetch stock split calendar from FMP for upcoming and recent stock splits. Free tier access."
+    description="EXPERIMENTAL: Fetch stock split calendar from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative for stock split data."
 )
 fmp_stock_split_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -876,19 +876,18 @@ sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
 SENTIMENT_TOOLS = [
     unified_news_tool,  # The unified news tool as the only news source
     sec_search_tool,    # SEC search tool for regulatory information
-    # PRIMARY corporate actions tools (use first) - FMP tools with free tier access
-    fmp_earnings_calendar_tool,      # FMP earnings calendar
-    fmp_dividend_calendar_tool,      # FMP dividend calendar
-    fmp_historical_earnings_tool,    # FMP historical earnings
-    fmp_historical_dividends_tool,   # FMP historical dividends
-    fmp_stock_split_calendar_tool,   # FMP stock splits
-    # SECONDARY corporate actions tools (premium locked)
-    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar
-    finnhub_insider_transactions_tool,  # Finnhub insider transactions
-    finnhub_dividends_tool,          # Finnhub dividend data
-    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates
-    # BACKUP corporate actions tool (use as last resort)
-    yahoo_corporate_events_tool      # Yahoo Finance corporate events
+    # PRIMARY corporate actions tool (free but rate limited)
+    yahoo_corporate_events_tool,     # Yahoo Finance corporate events (enhanced with caching)
+    # EXPERIMENTAL corporate actions tools (premium subscription required)
+    fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
+    fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
+    fmp_historical_earnings_tool,    # FMP historical earnings (EXPERIMENTAL)
+    fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
+    fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
+    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
+    finnhub_insider_transactions_tool,  # Finnhub insider transactions (PREMIUM)
+    finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
+    finnhub_earnings_estimates_tool, # Finnhub earnings estimates (PREMIUM)
 ]
 
 # QUANTITATIVE_AGENT tools
@@ -920,19 +919,18 @@ STRATEGY_TOOLS = [
     fred_rates_tool,
     fred_yield_curve_tool,
     sec_filings_tool,
-    # PRIMARY corporate actions tools (use first) - FMP tools with free tier access
-    fmp_earnings_calendar_tool,      # FMP earnings calendar
-    fmp_dividend_calendar_tool,      # FMP dividend calendar
-    fmp_historical_earnings_tool,    # FMP historical earnings
-    fmp_historical_dividends_tool,   # FMP historical dividends
-    fmp_stock_split_calendar_tool,   # FMP stock splits
-    # SECONDARY corporate actions tools (premium locked)
-    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar
-    finnhub_insider_transactions_tool,  # Finnhub insider transactions
-    finnhub_dividends_tool,          # Finnhub dividend data
-    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates
-    # BACKUP corporate actions tool (use as last resort)
-    yahoo_corporate_events_tool      # Yahoo Finance corporate events
+    # PRIMARY corporate actions tool (free but rate limited)
+    yahoo_corporate_events_tool,     # Yahoo Finance corporate events (enhanced with caching)
+    # EXPERIMENTAL corporate actions tools (premium subscription required)
+    fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
+    fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
+    fmp_historical_earnings_tool,    # FMP historical earnings (EXPERIMENTAL)
+    fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
+    fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
+    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
+    finnhub_insider_transactions_tool,  # Finnhub insider transactions (PREMIUM)
+    finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
+    finnhub_earnings_estimates_tool, # Finnhub earnings estimates (PREMIUM)
 ]
 
 
