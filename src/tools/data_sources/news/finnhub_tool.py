@@ -268,8 +268,12 @@ class FinnHubTool:
             return df
 
         except Exception as e:
-            self.logger.error(f"Error fetching earnings calendar from Finnhub: {e}")
-            return pd.DataFrame()
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Earnings calendar requires premium Finnhub subscription (403 Forbidden)")
+                return pd.DataFrame(columns=['Symbol', 'Earnings_Date', 'EPS_Actual', 'EPS_Estimate', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching earnings calendar from Finnhub: {e}")
+                return pd.DataFrame()
 
     def fetch_insider_transactions(self, symbol: str, start_date: str = "-90d", end_date: str = "today") -> pd.DataFrame:
         """
@@ -326,8 +330,12 @@ class FinnHubTool:
             return df
 
         except Exception as e:
-            self.logger.error(f"Error fetching insider transactions for {symbol}: {e}")
-            return pd.DataFrame()
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Insider transactions for {symbol} require premium Finnhub subscription (403 Forbidden)")
+                return pd.DataFrame(columns=['Symbol', 'Transaction_Date', 'Insider_Name', 'Shares', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching insider transactions for {symbol}: {e}")
+                return pd.DataFrame()
 
     def fetch_dividends(self, symbol: str, start_date: str = "-1y", end_date: str = "today") -> pd.DataFrame:
         """
@@ -384,8 +392,13 @@ class FinnHubTool:
             return df
 
         except Exception as e:
-            self.logger.error(f"Error fetching dividend data for {symbol}: {e}")
-            return pd.DataFrame()
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Dividend data for {symbol} requires premium Finnhub subscription (403 Forbidden)")
+                # Return empty DataFrame with proper structure for consistency
+                return pd.DataFrame(columns=['Symbol', 'Ex_Dividend_Date', 'Dividend_Amount', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching dividend data for {symbol}: {e}")
+                return pd.DataFrame()
 
     def fetch_earnings_estimates(self, symbol: str) -> pd.DataFrame:
         """
@@ -433,8 +446,12 @@ class FinnHubTool:
             return df
 
         except Exception as e:
-            self.logger.error(f"Error fetching earnings estimates for {symbol}: {e}")
-            return pd.DataFrame()
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Earnings estimates for {symbol} require premium Finnhub subscription (403 Forbidden)")
+                return pd.DataFrame(columns=['Symbol', 'Period', 'EPS_Actual', 'EPS_Estimate', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching earnings estimates for {symbol}: {e}")
+                return pd.DataFrame()
 
     def fetch_economic_headlines(self, count: int = 10) -> pd.DataFrame:
         """

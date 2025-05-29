@@ -104,6 +104,8 @@ def process_date_param(date_param: Optional[str]) -> Optional[str]:
                 
                 # Create new date with same day but adjusted month/year
                 result_date = today.replace(year=year, month=month)
+            elif unit == "y":  # Years
+                result_date = today.replace(year=today.year + (sign * value))
             else:
                 # Unrecognized unit, return None
                 return None

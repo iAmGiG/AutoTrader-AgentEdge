@@ -29,7 +29,7 @@ def main():
 
     while True:
         try:
-            user_input = input()
+            user_input = input("Agent is ready:\n")
         except (KeyboardInterrupt, EOFError):
             print("\nExiting")
             break
@@ -56,6 +56,7 @@ def main():
         print("=" * 70)
         print(response)
         print("=" * 70)
+
 
 if __name__ == "__main__":
     main()

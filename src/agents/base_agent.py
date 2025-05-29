@@ -41,7 +41,10 @@ from src.tools.tools import (
     fetch_alpha_vantage_data, fetch_alpha_vantage_news,
     search_sec_filings, fetch_yahoo_corporate_events,
     fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions,
-    fetch_finnhub_dividends, fetch_finnhub_earnings_estimates
+    fetch_finnhub_dividends, fetch_finnhub_earnings_estimates,
+    fetch_all_news, fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar,
+    fetch_fmp_historical_earnings, fetch_fmp_historical_dividends,
+    fetch_fmp_stock_split_calendar
 )
 from config.config_loader import ConfigLoader
 
@@ -62,7 +65,13 @@ TOOL_FUNCTION_MAP = {
     "fetch_finnhub_earnings_calendar": fetch_finnhub_earnings_calendar,
     "fetch_finnhub_insider_transactions": fetch_finnhub_insider_transactions,
     "fetch_finnhub_dividends": fetch_finnhub_dividends,
-    "fetch_finnhub_earnings_estimates": fetch_finnhub_earnings_estimates
+    "fetch_finnhub_earnings_estimates": fetch_finnhub_earnings_estimates,
+    "fetch_all_news": fetch_all_news,
+    "fetch_fmp_earnings_calendar": fetch_fmp_earnings_calendar,
+    "fetch_fmp_dividend_calendar": fetch_fmp_dividend_calendar,
+    "fetch_fmp_historical_earnings": fetch_fmp_historical_earnings,
+    "fetch_fmp_historical_dividends": fetch_fmp_historical_dividends,
+    "fetch_fmp_stock_split_calendar": fetch_fmp_stock_split_calendar
 }
 
 # Default LLM parameters
@@ -261,7 +270,7 @@ class BaseAgent(AssistantAgent, ABC):
         :return: The result of the tool execution
         """
         cancellation_token = CancellationToken()
-        
+
         # Helper for executing a function
         async def call_exec_fn(exec_fn: Callable, *args, **kwargs) -> Any:
             """Execute a function, handling both sync and async cases."""
@@ -274,7 +283,18 @@ class BaseAgent(AssistantAgent, ABC):
                 loop = asyncio.get_event_loop()
                 return await loop.run_in_executor(None, lambda: exec_fn(*args, **kwargs))
 
-        # Strategy 1: Direct function call if available (most reliable)
+        # Strategy 1: Use function map if available (most reliable fallback)
+        if tool_name in TOOL_FUNCTION_MAP:
+            try:
+                exec_fn = TOOL_FUNCTION_MAP[tool_name]
+                self.log(f"Executing {tool_name} via function map")
+                result = await call_exec_fn(exec_fn, **tool_args)
+                return result
+            except Exception as e:
+                self.log(f"Error executing via function map: {e}")
+                # Continue to next strategy
+
+        # Strategy 2: Direct function call if available
         if hasattr(tool, 'func') and callable(tool.func):
             try:
                 self.log(f"Executing {tool_name} directly via func attribute")
@@ -284,7 +304,7 @@ class BaseAgent(AssistantAgent, ABC):
                 self.log(f"Error executing via func attribute: {e}")
                 # Continue to next strategy
 
-        # Strategy 2: Call the tool directly if it's callable
+        # Strategy 3: Call the tool directly if it's callable
         if callable(tool):
             try:
                 self.log(f"Executing {tool_name} via direct call")
@@ -294,12 +314,9 @@ class BaseAgent(AssistantAgent, ABC):
                 self.log(f"Error executing via direct call: {e}")
                 # Continue to next strategy
 
-        # Strategy 3: Use run method with proper handling for FunctionTool
+        # Strategy 4: Use run method with proper handling for FunctionTool (last resort)
         if hasattr(tool, 'run'):
             try:
-                # No special case needed anymore since email handling was fixed and empty search terms
-                # are now properly handled in the tool itself
-
                 # Standard path for other tools
                 if ARGUMENT_INFO_AVAILABLE:
                     # Convert args dict to ArgumentInfo list
@@ -309,25 +326,16 @@ class BaseAgent(AssistantAgent, ABC):
                         f"Executing {tool_name} via run method with ArgumentInfo")
                     return await tool.run(args_list, cancellation_token)
                 else:
-                    # Try direct run call
+                    # For backwards compatibility, try calling run with args directly
+                    # Note: This path may not work with all AutoGen versions
                     self.log(
-                        f"Executing {tool_name} via run method with direct args")
-                    return await call_exec_fn(tool.run, tool_args, cancellation_token)
+                        f"Executing {tool_name} via run method (fallback)")
+                    # Don't pass kwargs to run(), instead rely on other strategies
+                    raise Exception(
+                        "ArgumentInfo not available, skipping run method")
             except Exception as e:
                 self.log(f"Error executing via run method: {e}")
-                # Continue to next strategy
-
-        # Strategy 4: Use function map if available
-        if tool_name in TOOL_FUNCTION_MAP:
-            try:
-                exec_fn = TOOL_FUNCTION_MAP[tool_name]
-                self.log(f"Executing {tool_name} via function map")
-                result = await call_exec_fn(exec_fn, **tool_args)
-                return result
-            except Exception as e:
-                self.log(f"Error executing via function map: {e}")
-                # This was our last strategy, so re-raise
-                raise
+                # This was our last strategy for run method
 
         # If we've tried all strategies and none worked
         raise ValueError(
@@ -375,7 +383,22 @@ class BaseAgent(AssistantAgent, ABC):
             # Handle DataFrame conversion
             try:
                 result_dict = result.to_dict(orient='records')
-                content_str = json.dumps(result_dict)
+                # Add context for empty DataFrames to help LLM provide better responses
+                if len(result_dict) == 0:
+                    if 'Error' in result.columns and not result.empty:
+                        # If we have error information, include it
+                        content_str = json.dumps({
+                            "data": result_dict,
+                            "message": f"No data returned. DataFrame columns: {list(result.columns)}",
+                            "error_info": result.to_dict('records') if not result.empty else None
+                        })
+                    else:
+                        content_str = json.dumps({
+                            "data": result_dict,
+                            "message": f"No data found. Expected columns: {list(result.columns)}"
+                        })
+                else:
+                    content_str = json.dumps(result_dict)
             except Exception as e:
                 self.log(f"Error converting DataFrame to JSON: {e}")
                 content_str = str(result)

@@ -8,6 +8,7 @@ from src.tools.data_sources.government.FRED_data_tool import FREDDataTool
 from src.tools.data_sources.government.sec_edgar_tool import SECEdgarTool
 from src.tools.data_sources.news.finnhub_tool import FinnHubTool
 from src.tools.data_sources.news.unified_news_tool import fetch_unified_news
+from src.tools.data_sources.market.fmp_tool import FMPTool
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 from config.config_loader import ConfigLoader
@@ -27,19 +28,14 @@ RISK_AGENT = "risk"
 STRATEGY_AGENT = "strategy"
 ALL_AGENTS = [SENTIMENT_AGENT, QUANTITATIVE_AGENT, RISK_AGENT, STRATEGY_AGENT]
 
-##################################
-# Tool Organization by Agent Type
-##################################
-
-# Every tool is tagged with the agent types that should use it
-# This allows for better separation of concerns between agents
-
-# Agent Types
-SENTIMENT_AGENT = "sentiment"
-QUANTITATIVE_AGENT = "quantitative"
-RISK_AGENT = "risk"
-STRATEGY_AGENT = "strategy"
-ALL_AGENTS = [SENTIMENT_AGENT, QUANTITATIVE_AGENT, RISK_AGENT, STRATEGY_AGENT]
+# CORPORATE ACTIONS TOOL HIERARCHY:
+# 1. PRIMARY: FMP tools (use first) - Free tier access, comprehensive corporate actions data
+#    - fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar
+#    - fetch_fmp_historical_earnings, fetch_fmp_historical_dividends
+# 2. SECONDARY: Finnhub tools (premium locked) - Comprehensive but requires subscription
+#    - fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions
+# 3. BACKUP: Yahoo Finance tools (use as last resort) - Subject to rate limiting
+#    - fetch_yahoo_corporate_events
 
 ##################################
 # 1) News Headline Tool as a Function
@@ -157,7 +153,149 @@ unified_news_tool = FunctionTool(
 unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
 ##################################
-# 4) Finnhub News and Sentiment Tool
+# 4) FMP Corporate Actions Tools (PRIMARY)
+##################################
+
+
+def fetch_fmp_earnings_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch earnings calendar from FMP API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with earnings calendar data
+    """
+    tool = FMPTool()
+    df = tool.fetch_earnings_calendar(start_date, end_date)
+    return df
+
+
+fmp_earnings_calendar_tool = FunctionTool(
+    func=fetch_fmp_earnings_calendar,
+    name="fetch_fmp_earnings_calendar",
+    description="PRIMARY: Fetch earnings calendar from FMP with EPS estimates and actuals. Free tier access with good rate limits. Use this tool FIRST for earnings dates."
+)
+fmp_earnings_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_dividend_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch dividend calendar from FMP API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with dividend calendar data
+    """
+    tool = FMPTool()
+    df = tool.fetch_dividend_calendar(start_date, end_date)
+    return df
+
+
+fmp_dividend_calendar_tool = FunctionTool(
+    func=fetch_fmp_dividend_calendar,
+    name="fetch_fmp_dividend_calendar",
+    description="PRIMARY: Fetch dividend calendar from FMP including ex-dividend dates and amounts. Free tier access. Use this tool FIRST for dividend dates."
+)
+fmp_dividend_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_historical_earnings(
+    symbol: str,
+    limit: int = 80
+) -> pd.DataFrame:
+    """
+    Fetch historical earnings data for a specific symbol from FMP API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        limit: Maximum number of earnings records to retrieve
+
+    Returns:
+        DataFrame with historical earnings data
+    """
+    tool = FMPTool()
+    df = tool.fetch_historical_earnings(symbol, limit)
+    return df
+
+
+fmp_historical_earnings_tool = FunctionTool(
+    func=fetch_fmp_historical_earnings,
+    name="fetch_fmp_historical_earnings",
+    description="PRIMARY: Fetch historical earnings data from FMP for analyzing past earnings announcements and surprises. Free tier access. Requires symbol parameter."
+)
+fmp_historical_earnings_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_historical_dividends(
+    symbol: str,
+    start_date: str = "-1y",
+    end_date: str = "today"
+) -> pd.DataFrame:
+    """
+    Fetch historical dividend data for a specific symbol from FMP API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        start_date: Start date (YYYY-MM-DD or relative like "-1y")
+        end_date: End date (YYYY-MM-DD or relative like "today")
+
+    Returns:
+        DataFrame with historical dividend data
+    """
+    tool = FMPTool()
+    df = tool.fetch_historical_dividends(symbol, start_date, end_date)
+    return df
+
+
+fmp_historical_dividends_tool = FunctionTool(
+    func=fetch_fmp_historical_dividends,
+    name="fetch_fmp_historical_dividends",
+    description="PRIMARY: Fetch historical dividend data from FMP for analyzing past dividend payments. Free tier access. Requires symbol parameter."
+)
+fmp_historical_dividends_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_stock_split_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch stock split calendar from FMP API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with stock split calendar data
+    """
+    tool = FMPTool()
+    df = tool.fetch_stock_split_calendar(start_date, end_date)
+    return df
+
+
+fmp_stock_split_calendar_tool = FunctionTool(
+    func=fetch_fmp_stock_split_calendar,
+    name="fetch_fmp_stock_split_calendar",
+    description="PRIMARY: Fetch stock split calendar from FMP for upcoming and recent stock splits. Free tier access."
+)
+fmp_stock_split_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+##################################
+# 5) Finnhub News and Sentiment Tool (SECONDARY - Premium locked)
 ##################################
 
 
@@ -291,7 +429,7 @@ def fetch_finnhub_earnings_calendar(
 finnhub_earnings_calendar_tool = FunctionTool(
     func=fetch_finnhub_earnings_calendar,
     name="fetch_finnhub_earnings_calendar",
-    description="Fetch earnings calendar from Finnhub with EPS estimates and actuals for upcoming earnings announcements."
+    description="SECONDARY: Fetch earnings calendar from Finnhub with EPS estimates and actuals. Requires premium subscription. Use only if FMP tools fail or are unavailable."
 )
 finnhub_earnings_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -324,7 +462,7 @@ def fetch_finnhub_insider_transactions(
 finnhub_insider_transactions_tool = FunctionTool(
     func=fetch_finnhub_insider_transactions,
     name="fetch_finnhub_insider_transactions",
-    description="Fetch insider transaction data from Finnhub for analyzing insider buying and selling activity."
+    description="SECONDARY: Fetch insider transaction data from Finnhub. Requires premium subscription. Use only if other tools are unavailable."
 )
 finnhub_insider_transactions_tool.agent_types = [
     SENTIMENT_AGENT, STRATEGY_AGENT]
@@ -358,7 +496,7 @@ def fetch_finnhub_dividends(
 finnhub_dividends_tool = FunctionTool(
     func=fetch_finnhub_dividends,
     name="fetch_finnhub_dividends",
-    description="Fetch dividend data from Finnhub including ex-dividend dates, amounts, and payment schedules. Requires symbol parameter (stock ticker)."
+    description="SECONDARY: Fetch dividend data from Finnhub. Requires premium subscription. Use only if FMP tools fail. Requires symbol parameter."
 )
 finnhub_dividends_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -387,7 +525,7 @@ def fetch_finnhub_earnings_estimates(
 finnhub_earnings_estimates_tool = FunctionTool(
     func=fetch_finnhub_earnings_estimates,
     name="fetch_finnhub_earnings_estimates",
-    description="Fetch earnings estimates and historical EPS data from Finnhub for analyzing earnings surprises and trends."
+    description="SECONDARY: Fetch earnings estimates from Finnhub. Requires premium subscription. Use only if FMP tools fail."
 )
 finnhub_earnings_estimates_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
@@ -428,28 +566,31 @@ yahoo_finance_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
 
 def fetch_yahoo_corporate_events(
     ticker: str,
-    days_ahead: int = 30
-) -> dict:
+    days_ahead: int = 30,
+    days_back: int = 0
+) -> pd.DataFrame:
     """
-    Fetch upcoming corporate events (earnings dates, dividend dates) from Yahoo Finance.
+    Fetch corporate events (earnings dates, dividend dates) from Yahoo Finance.
+    Can fetch both upcoming events and recent historical events.
 
     Args:
         ticker: Stock symbol to fetch events for
-        days_ahead: Number of days ahead to look for events (default: 30)
-                   This helps control token usage by limiting event scope
+        days_ahead: Number of days ahead to look for upcoming events (default: 30)
+        days_back: Number of days back to look for historical events (default: 0)
+                  Set to 30 for last month, 7 for last week, etc.
 
     Returns:
-        Dictionary containing upcoming events within the specified timeframe
+        DataFrame containing events within the specified timeframe
     """
     tool = YahooFinanceTool()
-    events = tool.fetch_corporate_events(ticker, days_ahead)
-    return events
+    events_df = tool.fetch_corporate_events(ticker, days_ahead, days_back)
+    return events_df
 
 
 yahoo_corporate_events_tool = FunctionTool(
     func=fetch_yahoo_corporate_events,
     name="fetch_yahoo_corporate_events",
-    description="Fetch upcoming corporate events (earnings dates, dividend dates) from Yahoo Finance. Requires ticker symbol as input. Optional days_ahead parameter (default: 30) controls time window."
+    description="BACKUP: Fetch corporate events from Yahoo Finance as DataFrame. Can get both upcoming events (days_ahead) and historical events (days_back). For 'last month' queries, use days_back=30. For upcoming events, use days_ahead=30. Use when Finnhub tools return empty results. Note: Subject to rate limiting."
 )
 # Useful for sentiment and strategy agents for event-driven analysis
 yahoo_corporate_events_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
@@ -735,11 +876,19 @@ sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
 SENTIMENT_TOOLS = [
     unified_news_tool,  # The unified news tool as the only news source
     sec_search_tool,    # SEC search tool for regulatory information
-    yahoo_corporate_events_tool,  # Yahoo Finance corporate events
+    # PRIMARY corporate actions tools (use first) - FMP tools with free tier access
+    fmp_earnings_calendar_tool,      # FMP earnings calendar
+    fmp_dividend_calendar_tool,      # FMP dividend calendar
+    fmp_historical_earnings_tool,    # FMP historical earnings
+    fmp_historical_dividends_tool,   # FMP historical dividends
+    fmp_stock_split_calendar_tool,   # FMP stock splits
+    # SECONDARY corporate actions tools (premium locked)
     finnhub_earnings_calendar_tool,  # Finnhub earnings calendar
     finnhub_insider_transactions_tool,  # Finnhub insider transactions
-    finnhub_dividends_tool,  # Finnhub dividend data
-    finnhub_earnings_estimates_tool  # Finnhub earnings estimates
+    finnhub_dividends_tool,          # Finnhub dividend data
+    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates
+    # BACKUP corporate actions tool (use as last resort)
+    yahoo_corporate_events_tool      # Yahoo Finance corporate events
 ]
 
 # QUANTITATIVE_AGENT tools
@@ -771,11 +920,19 @@ STRATEGY_TOOLS = [
     fred_rates_tool,
     fred_yield_curve_tool,
     sec_filings_tool,
-    yahoo_corporate_events_tool,  # Yahoo Finance corporate events
+    # PRIMARY corporate actions tools (use first) - FMP tools with free tier access
+    fmp_earnings_calendar_tool,      # FMP earnings calendar
+    fmp_dividend_calendar_tool,      # FMP dividend calendar
+    fmp_historical_earnings_tool,    # FMP historical earnings
+    fmp_historical_dividends_tool,   # FMP historical dividends
+    fmp_stock_split_calendar_tool,   # FMP stock splits
+    # SECONDARY corporate actions tools (premium locked)
     finnhub_earnings_calendar_tool,  # Finnhub earnings calendar
     finnhub_insider_transactions_tool,  # Finnhub insider transactions
-    finnhub_dividends_tool,  # Finnhub dividend data
-    finnhub_earnings_estimates_tool  # Finnhub earnings estimates
+    finnhub_dividends_tool,          # Finnhub dividend data
+    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates
+    # BACKUP corporate actions tool (use as last resort)
+    yahoo_corporate_events_tool      # Yahoo Finance corporate events
 ]
 
 
