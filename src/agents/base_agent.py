@@ -39,7 +39,9 @@ from src.tools.tools import ALL_TOOLS
 from src.tools.tools import (
     fetch_market_data, fetch_news, fetch_yahoo_data,
     fetch_alpha_vantage_data, fetch_alpha_vantage_news,
-    search_sec_filings
+    search_sec_filings, fetch_yahoo_corporate_events,
+    fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions,
+    fetch_finnhub_dividends, fetch_finnhub_earnings_estimates
 )
 from config.config_loader import ConfigLoader
 
@@ -55,7 +57,12 @@ TOOL_FUNCTION_MAP = {
     "fetch_yahoo_data": fetch_yahoo_data,
     "fetch_alpha_vantage_data": fetch_alpha_vantage_data,
     "fetch_alpha_vantage_news": fetch_alpha_vantage_news,
-    "search_sec_filings": search_sec_filings
+    "search_sec_filings": search_sec_filings,
+    "fetch_yahoo_corporate_events": fetch_yahoo_corporate_events,
+    "fetch_finnhub_earnings_calendar": fetch_finnhub_earnings_calendar,
+    "fetch_finnhub_insider_transactions": fetch_finnhub_insider_transactions,
+    "fetch_finnhub_dividends": fetch_finnhub_dividends,
+    "fetch_finnhub_earnings_estimates": fetch_finnhub_earnings_estimates
 }
 
 # Default LLM parameters

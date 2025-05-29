@@ -264,9 +264,135 @@ finnhub_economic_headlines_tool = FunctionTool(
 finnhub_economic_headlines_tool.agent_types = [
     SENTIMENT_AGENT, STRATEGY_AGENT]  # Useful for sentiment and strategy agents
 
+
+def fetch_finnhub_earnings_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch earnings calendar from Finnhub free tier API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with earnings calendar data including EPS estimates and actuals
+    """
+    # Load API key from config
+    config_loader = ConfigLoader()
+    api_key = config_loader.get("finnhub_key")
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_earnings_calendar(start_date, end_date)
+    return df
+
+
+finnhub_earnings_calendar_tool = FunctionTool(
+    func=fetch_finnhub_earnings_calendar,
+    name="fetch_finnhub_earnings_calendar",
+    description="Fetch earnings calendar from Finnhub with EPS estimates and actuals for upcoming earnings announcements."
+)
+finnhub_earnings_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_finnhub_insider_transactions(
+    symbol: str,
+    start_date: str = "-90d",
+    end_date: str = "today"
+) -> pd.DataFrame:
+    """
+    Fetch insider transaction data from Finnhub free tier API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        start_date: Start date (YYYY-MM-DD or relative like "-90d")
+        end_date: End date (YYYY-MM-DD or relative like "today")
+
+    Returns:
+        DataFrame with insider transaction data
+    """
+    # Load API key from config
+    config_loader = ConfigLoader()
+    api_key = config_loader.get("finnhub_key")
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_insider_transactions(symbol, start_date, end_date)
+    return df
+
+
+finnhub_insider_transactions_tool = FunctionTool(
+    func=fetch_finnhub_insider_transactions,
+    name="fetch_finnhub_insider_transactions",
+    description="Fetch insider transaction data from Finnhub for analyzing insider buying and selling activity."
+)
+finnhub_insider_transactions_tool.agent_types = [
+    SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_finnhub_dividends(
+    symbol: str,
+    start_date: str = "-1y",
+    end_date: str = "today"
+) -> pd.DataFrame:
+    """
+    Fetch dividend data from Finnhub free tier API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        start_date: Start date (YYYY-MM-DD or relative like "-1y")
+        end_date: End date (YYYY-MM-DD or relative like "today")
+
+    Returns:
+        DataFrame with dividend data including ex-dividend dates and amounts
+    """
+    # Load API key from config
+    config_loader = ConfigLoader()
+    api_key = config_loader.get("finnhub_key")
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_dividends(symbol, start_date, end_date)
+    return df
+
+
+finnhub_dividends_tool = FunctionTool(
+    func=fetch_finnhub_dividends,
+    name="fetch_finnhub_dividends",
+    description="Fetch dividend data from Finnhub including ex-dividend dates, amounts, and payment schedules. Requires symbol parameter (stock ticker)."
+)
+finnhub_dividends_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_finnhub_earnings_estimates(
+    symbol: str
+) -> pd.DataFrame:
+    """
+    Fetch earnings estimates from Finnhub free tier API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+
+    Returns:
+        DataFrame with EPS estimates and historical earnings surprises
+    """
+    # Load API key from config
+    config_loader = ConfigLoader()
+    api_key = config_loader.get("finnhub_key")
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_earnings_estimates(symbol)
+    return df
+
+
+finnhub_earnings_estimates_tool = FunctionTool(
+    func=fetch_finnhub_earnings_estimates,
+    name="fetch_finnhub_earnings_estimates",
+    description="Fetch earnings estimates and historical EPS data from Finnhub for analyzing earnings surprises and trends."
+)
+finnhub_earnings_estimates_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
 ##################################
-# 4) Market Data Tools
-# 4) Market Data Tools
+# 5) Market Data Tools
 ##################################
 
 
@@ -298,6 +424,35 @@ yahoo_finance_tool = FunctionTool(
 )
 # Only quant and strategy agents handle price data
 yahoo_finance_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+
+
+def fetch_yahoo_corporate_events(
+    ticker: str,
+    days_ahead: int = 30
+) -> dict:
+    """
+    Fetch upcoming corporate events (earnings dates, dividend dates) from Yahoo Finance.
+
+    Args:
+        ticker: Stock symbol to fetch events for
+        days_ahead: Number of days ahead to look for events (default: 30)
+                   This helps control token usage by limiting event scope
+
+    Returns:
+        Dictionary containing upcoming events within the specified timeframe
+    """
+    tool = YahooFinanceTool()
+    events = tool.fetch_corporate_events(ticker, days_ahead)
+    return events
+
+
+yahoo_corporate_events_tool = FunctionTool(
+    func=fetch_yahoo_corporate_events,
+    name="fetch_yahoo_corporate_events",
+    description="Fetch upcoming corporate events (earnings dates, dividend dates) from Yahoo Finance. Requires ticker symbol as input. Optional days_ahead parameter (default: 30) controls time window."
+)
+# Useful for sentiment and strategy agents for event-driven analysis
+yahoo_corporate_events_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
 
 def fetch_alpha_vantage_data(
@@ -362,7 +517,7 @@ market_data_tool = FunctionTool(
 market_data_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
 
 ##################################
-# 5) FRED Economic Data Tool
+# 6) FRED Economic Data Tool
 ##################################
 
 
@@ -456,8 +611,12 @@ fred_yield_curve_tool.agent_types = [
     QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
 
 ##################################
-# 6) SEC EDGAR Filings Tool
+# 7) SEC EDGAR Filings Tool (EXPERIMENTAL)
 ##################################
+# NOTE: SEC Edgar tools are now considered EXPERIMENTAL features.
+# Use Yahoo Finance and Finnhub corporate action tools as primary sources
+# for earnings dates, dividend information, and insider transactions.
+# SEC tools remain available for detailed regulatory filings analysis when needed.
 
 
 def fetch_sec_filings(
@@ -519,9 +678,9 @@ def search_sec_filings(
     # Guard against empty search terms
     if not search_terms or len(search_terms) == 0:
         print(f"WARNING: search_sec_filings called with empty search_terms. Returning empty DataFrame.")
-        return pd.DataFrame(columns=["ticker", "form_type", "filing_date", "search_term", "section", "context", 
-                                    "message"])
-    
+        return pd.DataFrame(columns=["ticker", "form_type", "filing_date", "search_term", "section", "context",
+                                     "message"])
+
     tool = SECEdgarTool(use_temp_dir=True)
     df = tool.search_filings(ticker, search_terms,
                              form_type, section, num_filings)
@@ -575,7 +734,12 @@ sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
 # SENTIMENT_AGENT tools
 SENTIMENT_TOOLS = [
     unified_news_tool,  # The unified news tool as the only news source
-    sec_search_tool     # SEC search tool for regulatory information
+    sec_search_tool,    # SEC search tool for regulatory information
+    yahoo_corporate_events_tool,  # Yahoo Finance corporate events
+    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar
+    finnhub_insider_transactions_tool,  # Finnhub insider transactions
+    finnhub_dividends_tool,  # Finnhub dividend data
+    finnhub_earnings_estimates_tool  # Finnhub earnings estimates
 ]
 
 # QUANTITATIVE_AGENT tools
@@ -606,7 +770,12 @@ STRATEGY_TOOLS = [
     fred_indicator_tool,
     fred_rates_tool,
     fred_yield_curve_tool,
-    sec_filings_tool
+    sec_filings_tool,
+    yahoo_corporate_events_tool,  # Yahoo Finance corporate events
+    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar
+    finnhub_insider_transactions_tool,  # Finnhub insider transactions
+    finnhub_dividends_tool,  # Finnhub dividend data
+    finnhub_earnings_estimates_tool  # Finnhub earnings estimates
 ]
 
 

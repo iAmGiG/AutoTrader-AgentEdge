@@ -2,7 +2,8 @@ import yfinance as yf
 import pandas as pd
 import logging
 from typing import Optional
-from src.tools.date_utils import get_processed_date_range
+from datetime import datetime, timedelta
+from src.tools.date_utils import get_processed_date_range, process_date_param
 
 
 class YahooFinanceTool:
@@ -42,3 +43,57 @@ class YahooFinanceTool:
         except Exception as e:
             self.logger.error(f"Error fetching Yahoo Finance data: {e}")
             return pd.DataFrame()
+
+    def fetch_corporate_events(self, ticker: str, days_ahead: int = 30):
+        """
+        Fetch upcoming corporate events (earnings dates, dividend dates) from Yahoo Finance.
+        
+        Args:
+            ticker: Stock symbol to fetch events for
+            days_ahead: Number of days ahead to look for events (default: 30)
+                       This helps control token usage by limiting event scope
+        
+        Returns:
+            dict: Dictionary containing upcoming events within the specified timeframe
+                 Keys: 'next_earnings_date', 'next_ex_dividend', etc.
+                 Values: datetime objects or None if no events found
+        """
+        try:
+            self.logger.info(f"Fetching corporate events for {ticker} (looking {days_ahead} days ahead)")
+            
+            stock = yf.Ticker(ticker)
+            events = {}
+            
+            # Calculate cutoff date for filtering events
+            cutoff_date = datetime.now() + timedelta(days=days_ahead)
+            
+            try:
+                cal = stock.calendar.T  # easier to read as rows
+                
+                # Process earnings date
+                if "Earnings Date" in cal.index:
+                    earnings_date = cal.loc["Earnings Date"].iloc[0]
+                    # Only include if within our time window
+                    if earnings_date <= cutoff_date:
+                        events["next_earnings_date"] = earnings_date
+                        self.logger.info(f"Found earnings date for {ticker}: {earnings_date}")
+                
+                # Process ex-dividend date  
+                if "Ex-Dividend Date" in cal.index:
+                    ex_div_date = cal.loc["Ex-Dividend Date"].iloc[0]
+                    # Only include if within our time window
+                    if ex_div_date <= cutoff_date:
+                        events["next_ex_dividend"] = ex_div_date
+                        self.logger.info(f"Found ex-dividend date for {ticker}: {ex_div_date}")
+                        
+                self.logger.info(f"Found {len(events)} upcoming events for {ticker} within {days_ahead} days")
+                
+            except Exception as cal_error:
+                self.logger.warning(f"Could not fetch calendar data for {ticker}: {cal_error}")
+                # Return empty events dict if calendar unavailable
+            
+            return events
+
+        except Exception as e:
+            self.logger.error(f"Error fetching corporate events for {ticker}: {e}")
+            return {}

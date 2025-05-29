@@ -187,22 +187,22 @@ class SentimentAgent(BaseAgent):
                     # Extract arguments in a more robust way
                     ticker = None
                     search_terms = []
-                    
+
                     # Try different possible locations for the ticker and search_terms
                     if isinstance(tool_args, dict):
                         ticker = tool_args.get("ticker", "")
                         search_terms = tool_args.get("search_terms", [])
-                        
+
                         # Check if arguments were nested one level deeper
                         if not ticker and "arguments" in tool_args and isinstance(tool_args["arguments"], dict):
                             args_dict = tool_args["arguments"]
                             ticker = args_dict.get("ticker", "")
                             search_terms = args_dict.get("search_terms", [])
-                    
+
                     # If we still couldn't extract the ticker, try to infer from the result
                     if not ticker and "ticker" in result.columns:
                         ticker = result["ticker"].iloc[0]
-                    
+
                     # If search_terms is a string, convert to list
                     if isinstance(search_terms, str):
                         try:
@@ -215,11 +215,11 @@ class SentimentAgent(BaseAgent):
                         except json.JSONDecodeError:
                             # Just use as a single term
                             search_terms = [search_terms]
-                    
+
                     # If we still don't have search terms, try to extract from results
                     if not search_terms and "search_term" in result.columns:
                         search_terms = list(result["search_term"].unique())
-                    
+
                     search_summary = {
                         "ticker": ticker,
                         "search_terms": search_terms,
@@ -234,24 +234,25 @@ class SentimentAgent(BaseAgent):
                         term_matches = result
                         if "search_term" in result.columns:
                             term_matches = result[result["search_term"] == term]
-                        
+
                         if not term_matches.empty:
                             contexts = []
                             if "context" in term_matches.columns:
-                                contexts = term_matches["context"].tolist()[:3]  # Increased from 2 to 3
-                            
+                                # Increased from 2 to 3
+                                contexts = term_matches["context"].tolist()[:3]
+
                             for context in contexts:
                                 search_summary["sample_contexts"].append({
                                     "term": term,
                                     "context": context
                                 })
-                    
+
                     return search_summary
 
                 # No matches found or empty DataFrame
                 ticker = tool_args.get("ticker", "")
                 search_terms = tool_args.get("search_terms", [])
-                
+
                 # Handle case where the result is a string error message
                 if isinstance(result, str) and "error" in result.lower():
                     return {
@@ -261,7 +262,7 @@ class SentimentAgent(BaseAgent):
                         "error": result,
                         "message": "Error occurred while searching SEC filings"
                     }
-                
+
                 # Standard empty result
                 return {
                     "ticker": ticker,
