@@ -2,10 +2,9 @@ import yfinance as yf
 import pandas as pd
 import logging
 import time
-import functools
 from typing import Optional
 from datetime import datetime, timedelta
-from src.tools.date_utils import get_processed_date_range, process_date_param
+from src.tools.date_utils import get_processed_date_range
 
 # Global cache and throttling variables
 _last_request_time = {}

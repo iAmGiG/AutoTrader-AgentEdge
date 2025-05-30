@@ -877,7 +877,8 @@ SENTIMENT_TOOLS = [
     unified_news_tool,  # The unified news tool as the only news source
     sec_search_tool,    # SEC search tool for regulatory information
     # PRIMARY corporate actions tool (free but rate limited)
-    yahoo_corporate_events_tool,     # Yahoo Finance corporate events (enhanced with caching)
+    # Yahoo Finance corporate events (enhanced with caching)
+    yahoo_corporate_events_tool,
     # EXPERIMENTAL corporate actions tools (premium subscription required)
     fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
     fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
@@ -885,9 +886,10 @@ SENTIMENT_TOOLS = [
     fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
     fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
     finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
-    finnhub_insider_transactions_tool,  # Finnhub insider transactions (PREMIUM)
+    # Finnhub insider transactions (PREMIUM)
+    finnhub_insider_transactions_tool,
     finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
-    finnhub_earnings_estimates_tool, # Finnhub earnings estimates (PREMIUM)
+    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
 
 # QUANTITATIVE_AGENT tools
@@ -920,7 +922,8 @@ STRATEGY_TOOLS = [
     fred_yield_curve_tool,
     sec_filings_tool,
     # PRIMARY corporate actions tool (free but rate limited)
-    yahoo_corporate_events_tool,     # Yahoo Finance corporate events (enhanced with caching)
+    # Yahoo Finance corporate events (enhanced with caching)
+    yahoo_corporate_events_tool,
     # EXPERIMENTAL corporate actions tools (premium subscription required)
     fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
     fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
@@ -928,9 +931,10 @@ STRATEGY_TOOLS = [
     fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
     fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
     finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
-    finnhub_insider_transactions_tool,  # Finnhub insider transactions (PREMIUM)
+    # Finnhub insider transactions (PREMIUM)
+    finnhub_insider_transactions_tool,
     finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
-    finnhub_earnings_estimates_tool, # Finnhub earnings estimates (PREMIUM)
+    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
 
 

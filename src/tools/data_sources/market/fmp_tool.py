@@ -8,8 +8,7 @@ and other corporate actions. FMP offers good free tier access to corporate event
 import requests
 import logging
 import pandas as pd
-from typing import Optional, List
-from datetime import datetime, timedelta
+from typing import Optional
 from config.config_loader import ConfigLoader
 from src.tools.date_utils import process_date_param
 
@@ -463,62 +462,66 @@ class FMPTool:
     def fetch_stock_data(self, symbol: str, start_date: str = "-1y", end_date: str = "today") -> pd.DataFrame:
         """
         Fetch basic stock price data from FMP API (alternative to Yahoo/Alpha Vantage).
-        
+
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
             start_date: Start date (YYYY-MM-DD or relative like "-1y") 
             end_date: End date (YYYY-MM-DD or relative like "today")
-            
+
         Returns:
             DataFrame with basic stock price data (Open, High, Low, Close, Volume)
         """
         try:
-            # Process date parameters  
-            processed_start = process_date_param(start_date) or process_date_param("-1y")
-            processed_end = process_date_param(end_date) or process_date_param("today")
-            
+            # Process date parameters
+            processed_start = process_date_param(
+                start_date) or process_date_param("-1y")
+            processed_end = process_date_param(
+                end_date) or process_date_param("today")
+
             url = f"{self.base_url}/historical-price-full/{symbol}"
             params = {
                 'from': processed_start,
                 'to': processed_end,
                 'apikey': self.api_key
             }
-            
-            self.logger.info(f"Fetching stock data for {symbol} from {processed_start} to {processed_end}")
+
+            self.logger.info(
+                f"Fetching stock data for {symbol} from {processed_start} to {processed_end}")
             response = requests.get(url, params=params)
             response.raise_for_status()
 
             data = response.json()
-            
+
             if not data or 'historical' not in data:
                 self.logger.warning(f"No stock data returned for {symbol}")
                 return pd.DataFrame()
 
             # Convert to DataFrame
             df = pd.DataFrame(data['historical'])
-            
+
             if not df.empty:
                 # Standardize column names to match other market data tools
                 column_mapping = {
                     'date': 'Date',
-                    'open': 'Open', 
+                    'open': 'Open',
                     'high': 'High',
                     'low': 'Low',
                     'close': 'Close',
                     'volume': 'Volume'
                 }
-                
+
                 # Rename existing columns
-                df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
-                
+                df = df.rename(
+                    columns={k: v for k, v in column_mapping.items() if k in df.columns})
+
                 # Convert date to datetime and set as index
                 if 'Date' in df.columns:
                     df['Date'] = pd.to_datetime(df['Date'])
                     df.set_index('Date', inplace=True)
-                
+
                 # Sort by date (oldest to newest)
                 df = df.sort_index()
-                
+
                 # Keep only OHLCV columns
                 ohlcv_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
                 df = df[[col for col in ohlcv_columns if col in df.columns]]

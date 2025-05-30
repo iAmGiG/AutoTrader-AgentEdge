@@ -88,9 +88,10 @@ class QueryParser:
         start_date = None
         end_date = None
         sector = None
-        
+
         # List of common financial terms and abbreviations that aren't tickers
-        common_terms = ["I", "A", "AI", "US", "ER", "GDP", "CPI", "IPO", "P/E", "EPS", "ROI", "YOY"]
+        common_terms = ["I", "A", "AI", "US", "ER", "GDP",
+                        "CPI", "IPO", "P/E", "EPS", "ROI", "YOY"]
 
         # List of common financial terms and abbreviations that aren't tickers
         common_terms = ["I", "A", "AI", "US", "ER", "GDP",
