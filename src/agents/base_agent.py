@@ -449,12 +449,17 @@ class BaseAgent(AssistantAgent, ABC):
             conversation.append(AssistantMessage(
                 content=tool_calls, source="assistant"))
 
+            conversation.append(AssistantMessage(
+                content=tool_calls, source="assistant"))
+
             # Process all tool calls and get results
             tool_results = await self._process_tool_calls(tool_calls)
+
 
             # Add the tool results to the conversation
             if tool_results:
                 conversation.append(
+                    
                     FunctionExecutionResultMessage(content=tool_results))
 
             # Call the LLM again with the tool results
@@ -481,12 +486,15 @@ class BaseAgent(AssistantAgent, ABC):
             # Log the tool call
             self._log_tool_call(tool_name, tool_args)
 
+
             try:
                 # Execute the tool and get the result
                 tool_result = await self._execute_tool(tool_name, tool_args)
 
+
                 # Format the result for the LLM
                 formatted_result = self._format_tool_result(
+                    
                     tool_result, tool_name, tool_id)
                 tool_results.append(formatted_result)
             except Exception as e:
@@ -501,6 +509,7 @@ class BaseAgent(AssistantAgent, ABC):
                         name=tool_name
                     )
                 )
+
 
         return tool_results
 

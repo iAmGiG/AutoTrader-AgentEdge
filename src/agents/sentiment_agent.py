@@ -19,6 +19,7 @@ import pandas as pd
 from .base_agent import BaseAgent
 from src.tools.tools import SENTIMENT_AGENT, get_tools_for_agent
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
+from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
 from src.tools.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
 
 # LLM config optimized for sentiment analysis and narrative generation
@@ -27,6 +28,7 @@ SENTIMENT_LLM_CONFIG = {
     "max_tokens": 4096,  # Ensure enough tokens for complex responses
     "top_p": 0.9,        # Allow for some creative variety
 }
+
 
 
 class SentimentAgent(BaseAgent):
@@ -283,11 +285,13 @@ class SentimentAgent(BaseAgent):
             # Final fallback: just return the result as-is
             return result
 
+
         except Exception as e:
             traceback.print_exc()
             print(f"Error in process_tool_result: {str(e)}")
             return {"error": f"Failed to process result: {str(e)}"}
 
+    def generate_reply(self, messages, context=None) -> str:
     def generate_reply(self, messages, context=None) -> str:
         """
         Primary entry point for generating replies to user messages.
@@ -322,6 +326,7 @@ class SentimentAgent(BaseAgent):
         # Create a system prompt with supplementary context
         system_prompt = self.config.get("system_prompt", "")
         system_prompt += f"\n\nSupplementary context for this query:\n{supplementary_context}"
+
 
         # Add specific guidance based on extracted entities
         if query_details.get("ticker"):
