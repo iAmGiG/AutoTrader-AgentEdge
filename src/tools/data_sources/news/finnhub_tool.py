@@ -12,6 +12,7 @@ import logging
 import pandas as pd
 from typing import Optional, List
 from config.config_loader import ConfigLoader
+from src.tools.date_utils import process_date_param, get_processed_date_range
 
 # Define news categories supported by Finnhub
 NEWS_CATEGORIES = {
@@ -213,6 +214,244 @@ class FinnHubTool:
             DataFrame with market headlines for sentiment analysis
         """
         return self.fetch_financial_headlines(count=count)
+
+    def fetch_earnings_calendar(self, start_date: str = "today", end_date: str = "+30d") -> pd.DataFrame:
+        """
+        Fetch earnings calendar from Finnhub free tier API.
+
+        Args:
+            start_date: Start date (YYYY-MM-DD or relative like "today")
+            end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+        Returns:
+            DataFrame with earnings calendar data
+        """
+        try:
+            # Process date parameters using date_utils
+            processed_start = process_date_param(start_date) or process_date_param("today")
+            processed_end = process_date_param(end_date) or process_date_param("+30d")
+
+            url = f"{self.base_url}/calendar/earnings?from={processed_start}&to={processed_end}&token={self.api_key}"
+            
+            self.logger.info(f"Fetching earnings calendar from {processed_start} to {processed_end}")
+            response = requests.get(url)
+            response.raise_for_status()
+
+            data = response.json()
+            
+            if not data or 'earningsCalendar' not in data:
+                self.logger.warning("No earnings calendar data returned from Finnhub")
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            df = pd.DataFrame(data['earningsCalendar'])
+            
+            if not df.empty:
+                # Standardize column names
+                df = df.rename(columns={
+                    'symbol': 'Symbol',
+                    'date': 'Earnings_Date',
+                    'epsActual': 'EPS_Actual',
+                    'epsEstimate': 'EPS_Estimate',
+                    'revenueActual': 'Revenue_Actual',
+                    'revenueEstimate': 'Revenue_Estimate',
+                    'quarter': 'Quarter',
+                    'year': 'Year'
+                })
+                
+                # Convert date to datetime
+                if 'Earnings_Date' in df.columns:
+                    df['Earnings_Date'] = pd.to_datetime(df['Earnings_Date'])
+                
+                df['Data Source'] = 'Finnhub'
+
+            return df
+
+        except Exception as e:
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Earnings calendar requires premium Finnhub subscription (403 Forbidden)")
+                return pd.DataFrame(columns=['Symbol', 'Earnings_Date', 'EPS_Actual', 'EPS_Estimate', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching earnings calendar from Finnhub: {e}")
+                return pd.DataFrame()
+
+    def fetch_insider_transactions(self, symbol: str, start_date: str = "-90d", end_date: str = "today") -> pd.DataFrame:
+        """
+        Fetch insider transaction data from Finnhub free tier API.
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            start_date: Start date (YYYY-MM-DD or relative like "-90d")
+            end_date: End date (YYYY-MM-DD or relative like "today")
+
+        Returns:
+            DataFrame with insider transaction data
+        """
+        try:
+            # Process date parameters using date_utils
+            processed_start = process_date_param(start_date) or process_date_param("-90d")
+            processed_end = process_date_param(end_date) or process_date_param("today")
+
+            url = f"{self.base_url}/stock/insider-transactions?symbol={symbol}&from={processed_start}&to={processed_end}&token={self.api_key}"
+            
+            self.logger.info(f"Fetching insider transactions for {symbol} from {processed_start} to {processed_end}")
+            response = requests.get(url)
+            response.raise_for_status()
+
+            data = response.json()
+            
+            if not data or 'data' not in data:
+                self.logger.warning(f"No insider transaction data returned for {symbol}")
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            df = pd.DataFrame(data['data'])
+            
+            if not df.empty:
+                # Standardize column names
+                df = df.rename(columns={
+                    'symbol': 'Symbol',
+                    'transactionDate': 'Transaction_Date',
+                    'name': 'Insider_Name',
+                    'share': 'Shares',
+                    'change': 'Share_Change',
+                    'filingDate': 'Filing_Date',
+                    'transactionCode': 'Transaction_Code'
+                })
+                
+                # Convert dates to datetime
+                if 'Transaction_Date' in df.columns:
+                    df['Transaction_Date'] = pd.to_datetime(df['Transaction_Date'])
+                if 'Filing_Date' in df.columns:
+                    df['Filing_Date'] = pd.to_datetime(df['Filing_Date'])
+                
+                df['Data Source'] = 'Finnhub'
+
+            return df
+
+        except Exception as e:
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Insider transactions for {symbol} require premium Finnhub subscription (403 Forbidden)")
+                return pd.DataFrame(columns=['Symbol', 'Transaction_Date', 'Insider_Name', 'Shares', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching insider transactions for {symbol}: {e}")
+                return pd.DataFrame()
+
+    def fetch_dividends(self, symbol: str, start_date: str = "-1y", end_date: str = "today") -> pd.DataFrame:
+        """
+        Fetch dividend data from Finnhub free tier API.
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            start_date: Start date (YYYY-MM-DD or relative like "-1y")
+            end_date: End date (YYYY-MM-DD or relative like "today")
+
+        Returns:
+            DataFrame with dividend data
+        """
+        try:
+            # Process date parameters using date_utils
+            processed_start = process_date_param(start_date) or process_date_param("-1y")
+            processed_end = process_date_param(end_date) or process_date_param("today")
+
+            url = f"{self.base_url}/stock/dividend?symbol={symbol}&from={processed_start}&to={processed_end}&token={self.api_key}"
+            
+            self.logger.info(f"Fetching dividend data for {symbol} from {processed_start} to {processed_end}")
+            response = requests.get(url)
+            response.raise_for_status()
+
+            data = response.json()
+            
+            if not data:
+                self.logger.warning(f"No dividend data returned for {symbol}")
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            df = pd.DataFrame(data)
+            
+            if not df.empty:
+                # Standardize column names
+                df = df.rename(columns={
+                    'symbol': 'Symbol',
+                    'date': 'Ex_Dividend_Date',
+                    'amount': 'Dividend_Amount',
+                    'adjustedAmount': 'Adjusted_Amount',
+                    'payDate': 'Pay_Date',
+                    'recordDate': 'Record_Date',
+                    'declarationDate': 'Declaration_Date'
+                })
+                
+                # Convert dates to datetime
+                date_columns = ['Ex_Dividend_Date', 'Pay_Date', 'Record_Date', 'Declaration_Date']
+                for col in date_columns:
+                    if col in df.columns:
+                        df[col] = pd.to_datetime(df[col])
+                
+                df['Data Source'] = 'Finnhub'
+
+            return df
+
+        except Exception as e:
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Dividend data for {symbol} requires premium Finnhub subscription (403 Forbidden)")
+                # Return empty DataFrame with proper structure for consistency
+                return pd.DataFrame(columns=['Symbol', 'Ex_Dividend_Date', 'Dividend_Amount', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching dividend data for {symbol}: {e}")
+                return pd.DataFrame()
+
+    def fetch_earnings_estimates(self, symbol: str) -> pd.DataFrame:
+        """
+        Fetch earnings estimates from Finnhub free tier API.
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            DataFrame with EPS estimates and historical earnings
+        """
+        try:
+            url = f"{self.base_url}/stock/earnings?symbol={symbol}&token={self.api_key}"
+            
+            self.logger.info(f"Fetching earnings estimates for {symbol}")
+            response = requests.get(url)
+            response.raise_for_status()
+
+            data = response.json()
+            
+            if not data:
+                self.logger.warning(f"No earnings estimates returned for {symbol}")
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            df = pd.DataFrame(data)
+            
+            if not df.empty:
+                # Standardize column names
+                df = df.rename(columns={
+                    'symbol': 'Symbol',
+                    'period': 'Period',
+                    'actual': 'EPS_Actual',
+                    'estimate': 'EPS_Estimate',
+                    'surprise': 'Surprise',
+                    'surprisePercent': 'Surprise_Percent'
+                })
+                
+                # Convert period to datetime if possible
+                if 'Period' in df.columns:
+                    df['Period'] = pd.to_datetime(df['Period'])
+                
+                df['Data Source'] = 'Finnhub'
+
+            return df
+
+        except Exception as e:
+            if "403" in str(e) or "Forbidden" in str(e):
+                self.logger.warning(f"Earnings estimates for {symbol} require premium Finnhub subscription (403 Forbidden)")
+                return pd.DataFrame(columns=['Symbol', 'Period', 'EPS_Actual', 'EPS_Estimate', 'Data Source'])
+            else:
+                self.logger.error(f"Error fetching earnings estimates for {symbol}: {e}")
+                return pd.DataFrame()
 
     def fetch_economic_headlines(self, count: int = 10) -> pd.DataFrame:
         """

@@ -5,11 +5,18 @@ This file is maintained for backward compatibility but will be removed in a futu
 Please use the specialized versions instead:
 - src.tools.data_sources.market.alpha_vantage_market
 - src.tools.data_sources.news.alpha_vantage_news
+[DEPRECATED] Tool for fetching market data from Alpha Vantage API.
+
+This file is maintained for backward compatibility but will be removed in a future version.
+Please use the specialized versions instead:
+- src.tools.data_sources.market.alpha_vantage_market
+- src.tools.data_sources.news.alpha_vantage_news
 """
 
 import requests
 import pandas as pd
 from datetime import datetime
+from typing import Dict, Any, Optional
 from typing import Dict, Any, Optional
 import logging
 from config.config_loader import ConfigLoader
@@ -19,7 +26,7 @@ from src.tools.date_utils import get_processed_date_range
 class AlphaVantageTool:
     """
     [DEPRECATED] Tool for retrieving market data from Alpha Vantage API.
-    
+
     This class has been split into specialized components:
     - AlphaVantageMarketTool - for market data and fundamentals
     - AlphaVantageNewsTool - for news and sentiment data
@@ -33,7 +40,7 @@ class AlphaVantageTool:
             DeprecationWarning,
             stacklevel=2
         )
-        
+
         # Load API key from config
         config_loader = ConfigLoader()
         self.api_key = config_loader.get("alpha_vantage_key")
@@ -54,12 +61,14 @@ class AlphaVantageTool:
         Fetch daily stock data for a given symbol.
 
 
+
         Args:
             symbol: Stock ticker symbol
             start_date: Optional start date filter (YYYY-MM-DD) or relative date string ("-30d")
                         If None, uses dynamic calculation (last 5 trading days)
             end_date: Optional end date filter (YYYY-MM-DD) or relative date string ("today")
                       If None, uses today's date
+
 
 
         Returns:
@@ -79,9 +88,15 @@ class AlphaVantageTool:
             self.logger.info(
                 f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}")
 
+            processed_start, processed_end = get_processed_date_range(
+                start_date, end_date)
+
+            self.logger.info(
+                f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}")
+
             # Determine outputsize based on date range
             days_range = (datetime.now() -
-                         
+
                           datetime.strptime(processed_start, "%Y-%m-%d")).days
             use_full = days_range > 100
 
@@ -101,7 +116,7 @@ class AlphaVantageTool:
 
             if response.status_code != 200:
                 self.logger.error(
-                    
+
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return pd.DataFrame()
 
@@ -112,7 +127,7 @@ class AlphaVantageTool:
             # Check for errors in the response
             if "Error Message" in data:
                 self.logger.error(
-                    
+
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
@@ -171,8 +186,10 @@ class AlphaVantageTool:
         Fetch company overview data with fundamentals.
 
 
+
         Args:
             symbol: Stock ticker symbol
+
 
 
         Returns:
@@ -191,7 +208,7 @@ class AlphaVantageTool:
 
             if response.status_code != 200:
                 self.logger.error(
-                    
+
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return {}
 
@@ -202,7 +219,7 @@ class AlphaVantageTool:
             # Check for errors
             if "Error Message" in data:
                 self.logger.error(
-                    
+
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return {}
 
@@ -220,9 +237,11 @@ class AlphaVantageTool:
         Fetch news sentiment data from Alpha Vantage.
 
 
+
         Args:
             symbol: Optional stock ticker symbol to filter news by
             topics: Optional topics to filter by (comma separated)
+
 
 
         Returns:
@@ -246,7 +265,7 @@ class AlphaVantageTool:
 
             if response.status_code != 200:
                 self.logger.error(
-                    
+
                     f"Alpha Vantage API error: {response.status_code} - {response.text}")
                 return pd.DataFrame()
 
@@ -256,14 +275,14 @@ class AlphaVantageTool:
 
             if "Error Message" in data:
                 self.logger.error(
-                    
+
                     f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
 
             if "feed" not in data:
                 self.logger.warning(
-                    
+
                     "No news feed found in Alpha Vantage response")
                 return pd.DataFrame()
 
@@ -278,6 +297,9 @@ class AlphaVantageTool:
 
             # Add timestamp column
             if "time_published" in news_df.columns:
+                news_df["timestamp"] = pd.to_datetime(
+                    news_df["time_published"], format="%Y%m%dT%H%M%S")
+
                 news_df["timestamp"] = pd.to_datetime(
                     news_df["time_published"], format="%Y%m%dT%H%M%S")
 

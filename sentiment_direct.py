@@ -2,6 +2,7 @@
 Direct mode only - Sentiment Agent online.
 """
 import asyncio
+import traceback
 from src.agents.sentiment_agent import SentimentAgent
 
 
@@ -28,7 +29,7 @@ def main():
 
     while True:
         try:
-            user_input = input()
+            user_input = input("Agent is ready:\n")
         except (KeyboardInterrupt, EOFError):
             print("\nExiting")
             break
@@ -55,3 +56,7 @@ def main():
         print("=" * 70)
         print(response)
         print("=" * 70)
+
+
+if __name__ == "__main__":
+    main()

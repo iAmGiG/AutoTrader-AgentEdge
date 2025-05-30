@@ -77,29 +77,35 @@ def process_date_param(date_param: Optional[str]) -> Optional[str]:
         start_of_year = datetime.datetime(today.year, 1, 1)
         return start_of_year.strftime("%Y-%m-%d")
     
-    # Handle relative formats like "-7d", "-4w", "-2m"
-    if isinstance(date_param, str) and date_param.startswith("-"):
+    # Handle relative formats like "-7d", "-4w", "-2m", "+30d"
+    if isinstance(date_param, str) and (date_param.startswith("-") or date_param.startswith("+")):
         try:
             # Extract the numeric part and unit
+            sign = 1 if date_param.startswith("+") else -1
             value = int(date_param[1:-1])
             unit = date_param[-1].lower()
             
             if unit == "d":  # Days
-                result_date = today - datetime.timedelta(days=value)
+                result_date = today + datetime.timedelta(days=sign * value)
             elif unit == "w":  # Weeks
-                result_date = today - datetime.timedelta(weeks=value)
+                result_date = today + datetime.timedelta(weeks=sign * value)
             elif unit == "m":  # Months (approximate)
-                # Create a date with months subtracted
-                month = today.month - value
+                # Create a date with months added/subtracted
+                month = today.month + (sign * value)
                 year = today.year
                 
                 # Handle month/year rollover
                 while month <= 0:
                     month += 12
                     year -= 1
+                while month > 12:
+                    month -= 12
+                    year += 1
                 
                 # Create new date with same day but adjusted month/year
                 result_date = today.replace(year=year, month=month)
+            elif unit == "y":  # Years
+                result_date = today.replace(year=today.year + (sign * value))
             else:
                 # Unrecognized unit, return None
                 return None

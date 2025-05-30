@@ -34,6 +34,7 @@ Create two new configuration files:
 - `config/agent_templates.json`: Store any reusable message templates
 
 Example `agent_prompts.json`:
+
 ```json
 {
   "sentiment_agent": {
@@ -50,6 +51,7 @@ Example `agent_prompts.json`:
 ### 2. Simplified Agent Structure
 
 Refactor the SentimentAgent to focus on:
+
 - Loading configuration
 - Registering tools with AutoGen
 - Routing messages to and from the LLM

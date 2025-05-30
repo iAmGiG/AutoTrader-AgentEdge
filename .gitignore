@@ -57,6 +57,8 @@ test_unified_market_data.py
 src/test_sentiment.py
 src/test/test_sentiment.py
 src/test/
+sentiment feature testing.md
+sec-edgar-filings/
 
 # Translations
 *.mo

@@ -5,6 +5,7 @@ Enhanced market data tool that uses Alpha Vantage or other sources based on conf
 import os
 import logging
 from typing import Any, Dict, Optional
+import pandas as pd
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
