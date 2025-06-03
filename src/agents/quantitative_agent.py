@@ -4,11 +4,15 @@ from typing import Any, Dict, List
 
 # 3rd-party libs
 import pandas as pd
+# TODO numpy usage coming
 import numpy as np
 
 # project imports
 from src.agents.base_agent import BaseAgent
 from src.tools.tools import QUANTITATIVE_AGENT, get_tools_for_agent
+from src.tools.processors.indicator_library import (
+    sma, ema, rsi, atr, supertrend, avwap
+)
 
 QUANT_LLM_CONFIG = {
     "temperature": 0.15,      # deterministic outputs
@@ -88,28 +92,49 @@ class QuantitativeAgent(BaseAgent):
         tool_args: Dict[str, Any]
     ) -> Any:
         """
-        Convert raw DataFrames into lightweight dict summaries, and/or
+        Convert raw DataFrames into lightweight dict summaries and/or
         compute requested indicators.
         """
         if isinstance(result, pd.DataFrame) and not result.empty:
             if tool_name in {"fetch_market_data", "fetch_yahoo_data"}:
-                # Example: compute SMA / RSI if asked
                 df = result.copy()
-                if "sma(50)" in tool_args.get("indicators", []):
-                    df["SMA50"] = sma(df["Close"], 50)
-                if "rsi(14)" in tool_args.get("indicators", []):
-                    df["RSI14"] = rsi(df["Close"], 14)
-                # Return only the last row as JSON to keep token usage low
+
+                # ------- core indicators (always computed) -------------------
+                df["EMA50"] = ema(df["Close"], 50)
+                df["RSI14"] = rsi(df["Close"], 14)
+                df["ATR14"] = atr(df["High"], df["Low"], df["Close"], 14)
+                df["ST"] = supertrend(df["High"], df["Low"], df["Close"],
+                                      period=10, mult=3)
+
+                # ------- optional AVWAP (needs volume + explicit ask) --------
+                if (
+                    "Volume" in df.columns
+                    and "avwap" in tool_args.get("indicators", [])
+                ):
+                    df["AVWAP"] = avwap(df["Close"], df["Volume"])
+
+                # ------- Go/NoGo one-liner -----------------------------------
+                go_flag = (
+                    (df["Close"].iloc[-1] > df["EMA50"].iloc[-1])
+                    and (df["RSI14"].iloc[-1] > 55)
+                    and (df["Close"].iloc[-1] > df["ST"].iloc[-1])
+                )
+
                 return {
                     "latest_row": df.tail(1).to_dict(orient="records")[0],
                     "columns": list(df.columns),
+                    "go_flag": "Go" if go_flag else "NoGo",
                 }
-        # default passthrough
+
+        # ---------------------------------------------------------------
+        # default passthrough (macro tools etc.)
         return result
 
     def generate_reply(self, messages, context=None):
         """
         Primary entry-point required by AutoGen-assistant agents.
+        NOTE: once we bolt in the memory system, BaseAgent.process_with_tools() 
+            can merge context (e.g. prior trades, user preferences) into the system prompt.
         """
         # --------------- Extract last user message -------------------------
         last_msg = messages[-1]["content"] if messages else ""
