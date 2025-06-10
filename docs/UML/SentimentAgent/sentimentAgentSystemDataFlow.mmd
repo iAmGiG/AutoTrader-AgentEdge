@@ -18,7 +18,7 @@ classDiagram
     SentimentAgent --|> BaseAgent
 
     %% Tools and Utilities
-    class ConfigLoader {
+    class EnvConfig {
       +get(key, default) : any
     }
 
@@ -57,7 +57,7 @@ classDiagram
     }
 
     %% Relationships
-    SentimentAgent --> ConfigLoader : uses
+    SentimentAgent --> EnvConfig : uses
     SentimentAgent --> MarketDataTool : calls
     SentimentAgent --> NewsHeadlineTool : calls indirectly via fetch_news()
     SentimentAgent --> YahooFinanceTool : calls indirectly via fetch_yahoo_data()

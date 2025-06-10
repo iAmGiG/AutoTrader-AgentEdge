@@ -30,6 +30,14 @@ This repository is under active research development. See our [Research Document
 - Research Progress
 - API Documentation
 
+## Configuration
+
+Secrets such as API keys are no longer loaded from `config/config.json`. Instead
+the project reads configuration values from environment variables. You can store
+these secrets using the [Codex CLI](https://github.com/openai/codex) and set the
+`envKey` field in `~/.codex/config.json` to match the variable names used by the
+code (e.g. `OPEN_AI_KEY`, `NEWSAPI_KEY`).
+
 ## Research Goals
 
 1. Efficient hybrid processing for financial data

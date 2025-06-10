@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from bs4 import BeautifulSoup
 from sec_edgar_downloader import Downloader
-from config.config_loader import ConfigLoader
+
 from src.tools.date_utils import process_date_param
 
 # Define common form types for reference
@@ -42,8 +42,7 @@ REPORT_SECTIONS = {
     "executive_compensation": ["executive compensation", "item 11", "item11"]
 }
 
-_loader = ConfigLoader()
-email = _loader.get("validEmail")
+email = os.getenv("VALIDEMAIL")
 
 
 class SECEdgarTool:
