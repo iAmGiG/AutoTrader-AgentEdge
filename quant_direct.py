@@ -13,7 +13,11 @@ async def process_with_agent(prompt: str, agent: QuantitativeAgent):
     Handles both synchronous and coroutine returns (process_with_tools_async).
     """
     try:
-        result = agent.generate_reply([prompt])
+        # generate_reply expects a list of message dicts similar to
+        # AutoGen's conversation format. Provide the prompt as a single
+        # user message.
+        messages = [{"role": "user", "content": prompt}]
+        result = agent.generate_reply(messages)
         if asyncio.iscoroutine(result):
             response = await result
             return response
