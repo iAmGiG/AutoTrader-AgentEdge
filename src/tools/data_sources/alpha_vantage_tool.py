@@ -34,7 +34,7 @@ class AlphaVantageTool:
         )
 
         # Load API key from environment
-        self.api_key = os.getenv("ALPHA_VANTAGE_KEY")
+        self.api_key = os.getenv("alpha_vantage_key")
 
         if not self.api_key:
             logging.warning("Alpha Vantage API key not found in config.")
@@ -252,34 +252,3 @@ class AlphaVantageTool:
         except Exception as e:
             self.logger.error(f"Error fetching news sentiment: {e}")
             return pd.DataFrame()
-
-
-if __name__ == "__main__":
-    # Example usage
-    tool = AlphaVantageTool()
-
-    # Example 1: Using default dynamic dates (last 5 trading days)
-    print("\nExample 1: Using default dynamic dates (last 5 trading days)")
-    stock_df1 = tool.fetch_stock_data("AAPL")
-    print("\nStock data with default dates:")
-    print(stock_df1.head())
-
-    # Example 2: Using explicit dates
-    print("\nExample 2: Using explicit dates")
-    stock_df2 = tool.fetch_stock_data("MSFT", "2024-01-01", "2024-01-31")
-    print("\nStock data with explicit dates:")
-    print(stock_df2.head())
-
-    # Example 3: Using relative dates
-    print("\nExample 3: Using relative dates")
-    stock_df3 = tool.fetch_stock_data("GOOGL", "-30d", "today")
-    print("\nStock data with relative dates:")
-    print(stock_df3.head())
-
-    # Fetch news sentiment
-    news_df = tool.fetch_news_sentiment("AAPL")
-    print("\nNews sentiment data:")
-    if not news_df.empty:
-        print(news_df[["title", "source", "overall_sentiment_score"]].head())
-    else:
-        print("No news data returned")

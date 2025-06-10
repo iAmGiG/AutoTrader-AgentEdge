@@ -52,7 +52,7 @@ class FinnHubTool:
 
         # Load API key from environment if not provided
         if api_key is None:
-            api_key = os.getenv("FINNHUB_KEY")
+            api_key = os.getenv("finnhub_key")
 
             if not api_key:
                 self.logger.error("No Finnhub API key provided in environment")
