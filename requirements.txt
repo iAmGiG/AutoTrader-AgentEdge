@@ -35,7 +35,7 @@ joblib
 jsonref==1.1.0
 lightgbm==4.6.0
 lxml 
-mkl-service==2.4.0
+mkl-service
 mkl_fft 
 mkl_random 
 multitasking 
