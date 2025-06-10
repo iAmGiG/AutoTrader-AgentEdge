@@ -92,12 +92,12 @@ The CLI exposes several tools for data retrieval:
 
 Environment variables are now used instead of `config/config.json`. Secrets can
 be managed with the [Codex](https://github.com/openai/codex) CLI by storing them
-and setting `envKey` fields to match the variable names below:
+and setting `envKey` fields to match the lowercase variable names below:
 
-- `OPEN_AI_KEY`
-- `NEWSAPI_KEY`
-- `ALPHA_VANTAGE_KEY`
-- `FINNHUB_KEY`
+- `open_ai_key`
+- `newsapi_key`
+- `alpha_vantage_key`
+- `finnhub_key`
 
 > NOTE: API KEYS ARE NOT PRESENT AT THE REPO LEVEL SEE LOCAL SYSTEM. if **missing** API KEYS, SELF PROCUREMENT ***WILL*** BE REQUIRED.
 
