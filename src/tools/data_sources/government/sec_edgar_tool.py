@@ -42,7 +42,7 @@ REPORT_SECTIONS = {
     "executive_compensation": ["executive compensation", "item 11", "item11"]
 }
 
-email = os.getenv("VALIDEMAIL")
+email = os.getenv("validEmail")
 
 
 class SECEdgarTool:
