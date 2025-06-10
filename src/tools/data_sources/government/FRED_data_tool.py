@@ -12,7 +12,7 @@ import pandas as pd
 import logging
 from typing import Optional, Dict, Any, List
 from fredapi import Fred
-from config.config_loader import ConfigLoader
+import os
 from src.tools.date_utils import process_date_param, get_processed_date_range
 
 
@@ -63,16 +63,15 @@ class FREDDataTool:
         if verbose:
             logging.basicConfig(level=logging.INFO)
 
-        # Load API key from config if not provided
+        # Load API key from environment if not provided
         if api_key is None:
-            config_loader = ConfigLoader()
-            api_key = config_loader.get("fredapi")
+            api_key = os.getenv("FREDAPI")
 
             if not api_key:
-                self.logger.error("No FRED API key provided in config.json")
+                self.logger.error("No FRED API key provided in environment")
                 raise ValueError(
-                    "FRED API key is required. Add it to config.json under 'fredapi' key.")
-
+                    "FRED API key is required. Set the FREDAPI environment variable."
+                )
         # Initialize FRED API client
         try:
             self.fred = Fred(api_key=api_key)

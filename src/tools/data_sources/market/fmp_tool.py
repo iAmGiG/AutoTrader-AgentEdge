@@ -9,7 +9,7 @@ import requests
 import logging
 import pandas as pd
 from typing import Optional
-from config.config_loader import ConfigLoader
+import os
 from src.tools.date_utils import process_date_param
 
 
@@ -34,15 +34,15 @@ class FMPTool:
         if verbose:
             logging.basicConfig(level=logging.INFO)
 
-        # Load API key from config if not provided
+        # Load API key from environment if not provided
         if api_key is None:
-            config_loader = ConfigLoader()
-            api_key = config_loader.get("FMP")
+            api_key = os.getenv("FMP")
 
             if not api_key:
-                self.logger.error("No FMP API key provided in config.json")
+                self.logger.error("No FMP API key provided in environment")
                 raise ValueError(
-                    "FMP API key is required. Add it to config.json under 'FMP' key.")
+                    "FMP API key is required. Set the FMP environment variable."
+                )
 
         self.api_key = api_key
         self.base_url = "https://financialmodelingprep.com/api/v3"

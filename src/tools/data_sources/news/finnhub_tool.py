@@ -11,7 +11,7 @@ import requests
 import logging
 import pandas as pd
 from typing import Optional, List
-from config.config_loader import ConfigLoader
+import os
 from src.tools.date_utils import process_date_param, get_processed_date_range
 
 # Define news categories supported by Finnhub
@@ -50,15 +50,15 @@ class FinnHubTool:
         if verbose:
             logging.basicConfig(level=logging.INFO)
 
-        # Load API key from config if not provided
+        # Load API key from environment if not provided
         if api_key is None:
-            config_loader = ConfigLoader()
-            api_key = config_loader.get("finnhub_key")
+            api_key = os.getenv("FINNHUB_KEY")
 
             if not api_key:
-                self.logger.error("No Finnhub API key provided in config.json")
+                self.logger.error("No Finnhub API key provided in environment")
                 raise ValueError(
-                    "Finnhub API key is required. Add it to config.json under 'finnhub_key' key.")
+                    "Finnhub API key is required. Set the FINNHUB_KEY environment variable."
+                )
 
         self.api_key = api_key
         self.base_url = "https://finnhub.io/api/v1"

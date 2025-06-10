@@ -1,7 +1,7 @@
 """api request and news feed tool with DataFrame output and sentiment analysis"""
 import sys
 from datetime import datetime
-from config.config_loader import ConfigLoader
+import os
 import requests
 import pandas as pd
 import nltk
@@ -12,9 +12,8 @@ class NewsHeadlineTool:
     """gets the latest headlines and returns them as a DataFrame with sentiment analysis"""
 
     def __init__(self, source="newsapi"):
-        # Load configuration and API key from config file
-        config_loader = ConfigLoader()
-        self.api_key = config_loader.get("newsapi_key")
+        # Load configuration and API key from environment
+        self.api_key = os.getenv("NEWSAPI_KEY")
         self.source = source
 
         # Initialize sentiment analyzer

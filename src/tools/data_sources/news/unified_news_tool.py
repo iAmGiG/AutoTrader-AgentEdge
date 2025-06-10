@@ -29,7 +29,6 @@ from src.tools.data_sources.news.alpha_vantage_news import AlphaVantageNewsTool
 from src.tools.data_sources.news.finnhub_tool import FinnHubTool
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
-from config.config_loader import ConfigLoader
 
 
 # =====================
@@ -89,10 +88,9 @@ class NewsSourceProvider(ABC):
         self._load_api_key()
 
     def _load_api_key(self):
-        """Load API key from config if needed"""
+        """Load API key from environment if configured"""
         if self.config.api_key_config_name:
-            config_loader = ConfigLoader()
-            self.api_key = config_loader.get(self.config.api_key_config_name)
+            self.api_key = os.getenv(self.config.api_key_config_name.upper())
         else:
             self.api_key = None
 
