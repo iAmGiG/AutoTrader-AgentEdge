@@ -34,7 +34,7 @@ class AlphaVantageTool:
         )
 
         # Load API key from environment
-        self.api_key = os.getenv("alpha_vantage_key")
+        self.api_key = os.getenv("ALPHA_VANTAGE_KEY")
 
         if not self.api_key:
             logging.warning("Alpha Vantage API key not found in config.")
