@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 
-__all__ = ["eam", "sma", "rsi", "atr", "supertrend", "avwap"]
+# Exported indicator functions
+__all__ = ["ema", "sma", "rsi", "atr", "supertrend", "avwap"]
 
 
 # --- Trend ---
