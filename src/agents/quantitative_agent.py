@@ -348,6 +348,22 @@ class QuantitativeAgent(BaseAgent):
             if tool_name in {"fetch_market_data", "fetch_yahoo_data"}:
                 df = result.copy()
 
+                # ------- normalize column names --------------------------------
+                standard_cols = {
+                    "open": "Open",
+                    "high": "High",
+                    "low": "Low",
+                    "close": "Close",
+                    "volume": "Volume",
+                }
+                rename_map = {
+                    col: standard_cols[col.lower()]
+                    for col in df.columns
+                    if col.lower() in standard_cols
+                }
+                if rename_map:
+                    df = df.rename(columns=rename_map)
+
                 # ------- core indicators (always computed) -------------------
                 df["EMA50"] = ema(df["Close"], 50)
                 df["RSI14"] = rsi(df["Close"], 14)
