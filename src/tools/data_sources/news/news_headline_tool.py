@@ -13,7 +13,7 @@ class NewsHeadlineTool:
 
     def __init__(self, source="newsapi"):
         # Load configuration and API key from environment
-        self.api_key = os.getenv("newsapi_key")
+        self.api_key = os.getenv("NEWSAPI_KEY")
         self.source = source
 
         # Initialize sentiment analyzer

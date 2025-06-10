@@ -65,7 +65,7 @@ class FREDDataTool:
 
         # Load API key from environment if not provided
         if api_key is None:
-            api_key = os.getenv("fredapi")
+            api_key = os.getenv("FREDAPI")
 
             if not api_key:
                 self.logger.error("No FRED API key provided in environment")

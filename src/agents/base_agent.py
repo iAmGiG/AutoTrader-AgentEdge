@@ -50,7 +50,7 @@ import os
 
 # Read configuration from environment variables
 model_name = os.getenv("open_model")  # e.g. "gpt-4o-mini"
-open_ai_key = os.getenv("open_ai_key")
+open_ai_key = os.getenv("OPEN_AI_KEY")
 
 # Fallback map for tool execution
 TOOL_FUNCTION_MAP = {
