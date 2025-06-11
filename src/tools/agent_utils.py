@@ -267,6 +267,42 @@ class QueryParser:
             "end_date": end_date
         }
 
+    @staticmethod
+    def _lookback_to_days(lookback: str) -> int:
+        """Convert lookback strings like '90d' or '2w' to day counts."""
+        if not lookback:
+            return 0
+        m = re.match(r"(\d+)([dwmy])", lookback)
+        if not m:
+            return 0
+        value = int(m.group(1))
+        unit = m.group(2)
+        factors = {"d": 1, "w": 7, "m": 30, "y": 365}
+        return value * factors.get(unit, 1)
+
+    @classmethod
+    def validate_interval_lookback(cls, interval: str, lookback: str) -> None:
+        """Validate that the requested lookback is allowed for the interval."""
+        limits = {
+            "1m": 60,
+            "5m": 60,
+            "15m": 60,
+            "30m": 60,
+            "1h": 730,
+            "4h": 730,
+            "1d": 3650,
+            "1w": 3650,
+            "1M": 3650,
+        }
+
+        days = cls._lookback_to_days(lookback)
+        max_days = limits.get(interval)
+        if max_days is not None and days > max_days:
+            raise ValueError(
+                f"Lookback {lookback} exceeds {max_days}d limit for {interval}. "
+                f"Try max {max_days}d for {interval} or use a larger interval like 1h."
+            )
+
 
 class DataProcessor:
     """
