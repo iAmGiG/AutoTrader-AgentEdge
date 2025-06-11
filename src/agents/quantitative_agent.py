@@ -407,9 +407,16 @@ class QuantitativeAgent(BaseAgent):
     def process_tool_result(
         self, tool_name: str, result: Any, tool_args: Dict[str, Any]
     ) -> Any:
-        """
-        Convert raw DataFrames into lightweight dict summaries and/or
-        compute requested indicators.
+        """Process and enrich raw tool results.
+
+        Returns a dictionary with:
+            - ``latest_row``: OHLCV + indicators for the most recent row
+            - ``go_flag``: ``bool`` bullish/bearish signal
+            - ``go_rationale``: list of bullet point reasons for ``go_flag``
+            - ``risk``: dict with ``sharpe`` and ``drawdown`` (if calculable)
+            - ``events``: e.g. upcoming earnings date
+            - ``spark``: miniature sparkline of recent closes
+            - ``timestamp``: ISO timestamp with timezone
         """
         if isinstance(result, pd.DataFrame) and not result.empty:
             if tool_name in {"fetch_market_data", "fetch_yahoo_data"}:
@@ -473,14 +480,52 @@ class QuantitativeAgent(BaseAgent):
                     and (df["Close"].iloc[-1] > df["ST"].iloc[-1])
                 )
 
+                go_rationale = [
+                    "Close above EMA_50"
+                    if df["Close"].iloc[-1] > df["EMA_50"].iloc[-1]
+                    else "Close below EMA_50",
+                    "RSI above 55"
+                    if df["RSI_14"].iloc[-1] > 55
+                    else "RSI at or below 55",
+                    "Close above Supertrend"
+                    if df["Close"].iloc[-1] > df["ST"].iloc[-1]
+                    else "Close below Supertrend",
+                ]
+
+                # ------- Risk metrics ---------------------------------------
+                risk = {"sharpe": None, "drawdown": None}
+                if len(df["Close"]) > 1:
+                    returns = df["Close"].pct_change().dropna()
+                    if not returns.empty and returns.std() != 0:
+                        sharpe = (returns.mean() / returns.std()) * np.sqrt(252)
+                    else:
+                        sharpe = np.nan
+                    roll_max = df["Close"].cummax()
+                    drawdown = (df["Close"] / roll_max - 1.0).min()
+                    risk = {
+                        "sharpe": float(sharpe) if pd.notna(sharpe) else None,
+                        "drawdown": float(drawdown) if pd.notna(drawdown) else None,
+                    }
+
+                # ------- Events ---------------------------------------------
+                events: Dict[str, Any] = {}
+                if "Earnings_Date" in df.columns and not df["Earnings_Date"].dropna().empty:
+                    last_event = df["Earnings_Date"].dropna().iloc[-1]
+                    events["earnings_date"] = pd.to_datetime(last_event).isoformat()
+
                 n = min(len(df), 20)
                 spark = _sparklines(df["Close"].tail(n).tolist())[0]
 
+                timestamp = pd.Timestamp.utcnow().isoformat()
+
                 return {
                     "latest_row": df.tail(1).to_dict(orient="records")[0],
-                    "columns": list(df.columns),
-                    "go_flag": "Go" if go_flag else "NoGo",
+                    "go_flag": bool(go_flag),
+                    "go_rationale": go_rationale,
+                    "risk": risk,
+                    "events": events,
                     "spark": spark,
+                    "timestamp": timestamp,
                 }
 
         # ---------------------------------------------------------------
@@ -498,6 +543,7 @@ class QuantitativeAgent(BaseAgent):
         query = self.preprocess_message(last_msg)
 
         # --------------- Compose system prompt ----------------------------
+        # Example system prompt instructing the LLM about returned fields
         sys_prompt = (
             "You are a quantitative research assistant. "
             "When useful, call tools to fetch data, then compute indicators "
@@ -505,6 +551,7 @@ class QuantitativeAgent(BaseAgent):
             "\nSupplementary context:\n"
             + self.format_supplementary_context(query)
             + "\n\nIMPORTANT: Use multiple tools if it improves the answer."
+            + "\nTool outputs include: latest_row, go_flag, go_rationale, risk, events, spark, timestamp."
         )
 
         # --------------- Forward to BaseAgent’s tool-aware pipeline -------
