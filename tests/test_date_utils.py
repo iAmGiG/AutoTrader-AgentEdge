@@ -1,8 +1,3 @@
-from src.tools.date_utils import (
-    get_default_date_range,
-    process_date_param,
-    get_processed_date_range
-)
 import unittest
 import sys
 import os
@@ -10,7 +5,13 @@ from datetime import datetime, timedelta
 
 # Add src to Python path so imports work
 sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../..')))
+    os.path.join(os.path.dirname(__file__), '..')))
+
+from src.tools.date_utils import (
+    get_default_date_range,
+    process_date_param,
+    get_processed_date_range,
+)
 
 
 class TestDateUtils(unittest.TestCase):

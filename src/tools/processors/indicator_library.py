@@ -18,7 +18,7 @@ def sma(series: pd.Series, window: int) -> pd.Series:
 def rsi(series: pd.Series, period: int = 14) -> pd.Series:
     delta = series.diff()
     gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=9)
+    loss = -delta.clip(upper=0)
     roll_up = gain.rolling(period).mean()
     roll_down = loss.rolling(period).mean()
     rs = roll_up / roll_down
