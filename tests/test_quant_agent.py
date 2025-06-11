@@ -24,3 +24,18 @@ def test_process_tool_result_macd():
         "fetch_market_data", df, {"indicators": ["macd"]}
     )
     assert "MACD_line" in result["latest_row"]
+
+
+def test_process_tool_result_spark():
+    agent = QuantitativeAgent()
+    df = pd.DataFrame(
+        {
+            "Open": range(1, 9),
+            "High": range(1, 9),
+            "Low": range(1, 9),
+            "Close": range(1, 9),
+            "Volume": [100] * 8,
+        }
+    )
+    result = agent.process_tool_result("fetch_market_data", df, {})
+    assert result["spark"] == "▁▂▃▄▅▆▇█"
