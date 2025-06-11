@@ -28,4 +28,5 @@ requests
 scikit-learn==1.6.1
 scipy 
 sec-edgar-downloader==5.0.3
+tiktoken
 yfinance 
