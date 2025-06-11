@@ -39,3 +39,25 @@ def test_process_tool_result_spark():
     )
     result = agent.process_tool_result("fetch_market_data", df, {})
     assert result["spark"] == "▁▂▃▄▅▆▇█"
+
+
+def test_process_tool_result_rich_dict():
+    agent = QuantitativeAgent()
+    df = pd.DataFrame(
+        {
+            "Open": [1, 2, 3, 4],
+            "High": [1, 2, 3, 4],
+            "Low": [1, 1, 2, 3],
+            "Close": [1, 2, 3, 4],
+            "Volume": [100] * 4,
+        }
+    )
+    result = agent.process_tool_result("fetch_market_data", df, {})
+    assert isinstance(result["latest_row"], dict)
+    assert isinstance(result["go_flag"], bool)
+    assert isinstance(result["go_rationale"], list)
+    assert isinstance(result["risk"], dict)
+    assert "sharpe" in result["risk"] and "drawdown" in result["risk"]
+    assert isinstance(result["events"], dict)
+    assert isinstance(result["spark"], str)
+    assert isinstance(result["timestamp"], str)
