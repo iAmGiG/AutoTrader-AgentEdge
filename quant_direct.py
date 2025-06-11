@@ -3,6 +3,7 @@ Direct mode only - Quantitative Agent online.
 """
 
 import asyncio
+import os
 import traceback
 from src.agents.quantitative_agent import QuantitativeAgent
 
@@ -30,6 +31,9 @@ async def process_with_agent(prompt: str, agent: QuantitativeAgent):
 
 def main():
     """Console entry-point for quick, ad-hoc testing."""
+    if not os.environ.get("OPEN_AI_KEY"):
+        raise RuntimeError("OPEN_AI_KEY environment variable not set")
+
     print("Starting Quantitative Agent CLI...")
     agent = QuantitativeAgent()
 
