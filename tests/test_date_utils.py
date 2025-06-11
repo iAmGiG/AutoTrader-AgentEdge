@@ -137,6 +137,21 @@ class TestDateUtils(unittest.TestCase):
         res = align_interval(df, "30m")
         self.assertEqual(len(res), 3)
 
+    def test_localize_df_naive_and_aware(self):
+        tz = "America/New_York"
+        rng_naive = pd.date_range("2024-01-01", periods=3, freq="D")
+        df_naive = pd.DataFrame({"Close": [1, 2, 3]}, index=rng_naive)
+
+        from src.tools.date_utils import localize_df
+        localized = localize_df(df_naive.copy(), tz)
+        self.assertIsNotNone(localized.index.tz)
+        self.assertEqual(localized.index.tz.zone, tz)
+
+        rng_aware = pd.date_range("2024-01-01", periods=3, freq="D", tz="UTC")
+        df_aware = pd.DataFrame({"Close": [1, 2, 3]}, index=rng_aware)
+        localized2 = localize_df(df_aware.copy(), tz)
+        self.assertEqual(localized2.index.tz.zone, tz)
+
 
 if __name__ == '__main__':
     unittest.main()

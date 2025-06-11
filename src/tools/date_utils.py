@@ -3,7 +3,37 @@ Utilities for dynamic date handling in data tools.
 """
 
 import datetime
+import os
 from typing import Tuple, Optional
+
+
+DEFAULT_TIMEZONE = "America/New_York"
+
+
+def get_default_timezone() -> str:
+    """Return the configured default timezone."""
+    return os.getenv("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE)
+
+
+def localize_df(df, tz: str):
+    """Ensure a DataFrame index is timezone-aware using the provided timezone."""
+    import pandas as pd
+
+    if df.empty:
+        return df
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        for col in ["timestamp", "date", "datetime", "Date", "Timestamp"]:
+            if col in df.columns:
+                df = df.set_index(pd.to_datetime(df[col]))
+                break
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame must have a datetime index or column")
+
+    if df.index.tz is None:
+        df.index = df.index.tz_localize("UTC")
+    df.index = df.index.tz_convert(tz)
+    return df
 
 
 def get_default_date_range(days_back: int = 5) -> Tuple[str, str]:

@@ -5,7 +5,10 @@ Direct mode only - Quantitative Agent online.
 import asyncio
 import os
 import traceback
+from datetime import datetime
+import pandas as pd
 from src.agents.quantitative_agent import QuantitativeAgent
+from src.tools.date_utils import get_default_timezone
 
 
 async def process_with_agent(prompt: str, agent: QuantitativeAgent):
@@ -35,6 +38,9 @@ def main():
         raise RuntimeError("OPEN_AI_KEY environment variable not set")
 
     print("Starting Quantitative Agent CLI...")
+    tz = get_default_timezone()
+    ts = pd.Timestamp.utcnow().tz_localize("UTC").tz_convert(tz)
+    print(f"Current time ({tz}): {ts.isoformat()}")
     agent = QuantitativeAgent()
 
     while True:

@@ -12,7 +12,11 @@ import logging
 import requests
 import pandas as pd
 import os
-from src.tools.date_utils import get_processed_date_range
+from src.tools.date_utils import (
+    get_processed_date_range,
+    localize_df,
+    get_default_timezone,
+)
 
 
 class AlphaVantageMarketTool:
@@ -119,6 +123,8 @@ class AlphaVantageMarketTool:
 
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)
+
+            df = localize_df(df, get_default_timezone())
 
             return df
 
