@@ -11,7 +11,10 @@ from src.tools.date_utils import (
     get_default_date_range,
     process_date_param,
     get_processed_date_range,
+    align_interval,
 )
+from src.tools.agent_utils import QueryParser
+import pandas as pd
 
 
 class TestDateUtils(unittest.TestCase):
@@ -105,6 +108,34 @@ class TestDateUtils(unittest.TestCase):
         start, end = get_processed_date_range("-30d", "today")
         self.assertEqual(start, days_ago_30)
         self.assertEqual(end, datetime.now().strftime("%Y-%m-%d"))
+
+    def test_validate_interval_lookback_invalid(self):
+        with self.assertRaises(ValueError):
+            QueryParser.validate_interval_lookback("1m", "180d")
+
+    def test_validate_interval_lookback_valid(self):
+        QueryParser.validate_interval_lookback("1m", "60d")
+
+    def test_align_interval_downsample(self):
+        rng = pd.date_range("2024-01-01", periods=120, freq="T")
+        df = pd.DataFrame(
+            {
+                "Open": range(120),
+                "High": range(120),
+                "Low": range(120),
+                "Close": range(120),
+                "Volume": [1] * 120,
+            },
+            index=rng,
+        )
+        res = align_interval(df, "1h")
+        self.assertEqual(len(res), 2)
+
+    def test_align_interval_upsample(self):
+        rng = pd.date_range("2024-01-01", periods=2, freq="H")
+        df = pd.DataFrame({"Close": [1, 2]}, index=rng)
+        res = align_interval(df, "30m")
+        self.assertEqual(len(res), 3)
 
 
 if __name__ == '__main__':

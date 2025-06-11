@@ -157,3 +157,55 @@ def get_processed_date_range(
 
     # If neither is provided, use default range
     return get_default_date_range(default_days_back)
+
+
+def align_interval(df, interval):
+    """Resample DataFrame to match the desired interval."""
+    import pandas as pd
+
+    if df.empty:
+        return df
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        for col in ["timestamp", "date", "datetime", "Date", "Timestamp"]:
+            if col in df.columns:
+                df = df.set_index(pd.to_datetime(df[col]))
+                break
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame must have a datetime index or column")
+
+    freq_map = {
+        "1m": "1T",
+        "5m": "5T",
+        "15m": "15T",
+        "30m": "30T",
+        "1h": "1H",
+        "4h": "4H",
+        "1d": "1D",
+        "1w": "1W",
+        "1M": "1M",
+    }
+
+    if interval not in freq_map:
+        raise ValueError(f"Unsupported interval: {interval}")
+
+    agg = {}
+    for c in df.columns:
+        lc = c.lower()
+        if lc == "open":
+            agg[c] = "first"
+        elif lc == "high":
+            agg[c] = "max"
+        elif lc == "low":
+            agg[c] = "min"
+        elif lc == "close":
+            agg[c] = "last"
+        elif lc == "volume":
+            agg[c] = "sum"
+        else:
+            agg[c] = "last"
+
+    result = df.resample(freq_map[interval]).agg(agg)
+    result = result.ffill().dropna(how="all")
+    result.index.name = df.index.name
+    return result

@@ -33,6 +33,7 @@ from src.tools.date_utils import (
     get_processed_date_range,
     get_default_date_range,
 )
+from src.tools.agent_utils import QueryParser
 
 QUANT_LLM_CONFIG = {
     "temperature": 0.15,  # deterministic outputs
@@ -312,6 +313,11 @@ class QuantitativeAgent(BaseAgent):
                 parsed["lookback"] = f"{days_diff}d"
             except Exception:
                 parsed["lookback"] = "90d"
+
+        # Validate interval/lookback combo against API constraints
+        QueryParser.validate_interval_lookback(
+            parsed["interval"], parsed.get("lookback", "0d")
+        )
 
         # 5. Detect macro/economic data needs (phrase-level)
         macro_phrases = [
