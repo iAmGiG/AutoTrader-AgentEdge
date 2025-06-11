@@ -28,6 +28,7 @@ from src.tools.processors.indicator_library import (
     cci,
 )
 from src.tools.processors.data_normalizer import standardize_indicator_columns
+from sparklines import sparklines as _sparklines
 from src.tools.date_utils import (
     process_date_param,
     get_processed_date_range,
@@ -472,10 +473,14 @@ class QuantitativeAgent(BaseAgent):
                     and (df["Close"].iloc[-1] > df["ST"].iloc[-1])
                 )
 
+                n = min(len(df), 20)
+                spark = _sparklines(df["Close"].tail(n).tolist())[0]
+
                 return {
                     "latest_row": df.tail(1).to_dict(orient="records")[0],
                     "columns": list(df.columns),
                     "go_flag": "Go" if go_flag else "NoGo",
+                    "spark": spark,
                 }
 
         # ---------------------------------------------------------------
