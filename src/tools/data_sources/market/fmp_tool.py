@@ -10,7 +10,7 @@ import logging
 import pandas as pd
 from typing import Optional
 import os
-from src.tools.date_utils import process_date_param
+from src.tools.date_utils import process_date_param, localize_df, get_default_timezone
 
 
 class FMPTool:
@@ -525,6 +525,8 @@ class FMPTool:
                 # Keep only OHLCV columns
                 ohlcv_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
                 df = df[[col for col in ohlcv_columns if col in df.columns]]
+
+                df = localize_df(df, get_default_timezone())
 
             return df
 

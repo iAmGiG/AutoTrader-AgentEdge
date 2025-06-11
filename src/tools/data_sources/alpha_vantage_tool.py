@@ -13,7 +13,11 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import logging
 import os
-from src.tools.date_utils import get_processed_date_range
+from src.tools.date_utils import (
+    get_processed_date_range,
+    localize_df,
+    get_default_timezone,
+)
 
 
 class AlphaVantageTool:
@@ -138,6 +142,8 @@ class AlphaVantageTool:
 
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)
+
+            df = localize_df(df, get_default_timezone())
 
             return df
 

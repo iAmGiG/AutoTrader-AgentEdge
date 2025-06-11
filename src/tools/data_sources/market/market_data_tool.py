@@ -9,7 +9,11 @@ import pandas as pd
 import os
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
-from src.tools.date_utils import get_processed_date_range
+from src.tools.date_utils import (
+    get_processed_date_range,
+    localize_df,
+    get_default_timezone,
+)
 
 
 class MarketDataTool:
@@ -97,14 +101,18 @@ class MarketDataTool:
 
         # Route to the appropriate data source
         if self.data_source == "alpha_vantage":
-            return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+            df = self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
         elif self.data_source == "yahoo":
-            return self._fetch_from_yahoo(symbol, start_date, end_date, filters)
+            df = self._fetch_from_yahoo(symbol, start_date, end_date, filters)
         elif self.data_source == "csv":
-            return self._fetch_from_csv(symbol, start_date, end_date, filters)
+            df = self._fetch_from_csv(symbol, start_date, end_date, filters)
         else:
             self.logger.error(f"Unsupported data_source: {self.data_source}")
             return pd.DataFrame()
+
+        if not df.empty:
+            df = localize_df(df, get_default_timezone())
+        return df
 
     def _fetch_from_alpha_vantage(
         self,
@@ -201,6 +209,8 @@ class MarketDataTool:
                 df = df[df.index >= start_date]
             if end_date:
                 df = df[df.index <= end_date]
+
+            df = localize_df(df, get_default_timezone())
 
             return df
 
