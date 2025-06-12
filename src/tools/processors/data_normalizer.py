@@ -4,7 +4,7 @@ Data normalization utilities for standardizing data from different sources into 
 
 import pandas as pd
 from datetime import datetime
-from typing import Optional, Dict, Any, Union
+from typing import Optional
 import re
 
 
@@ -19,7 +19,8 @@ NEWS_SCHEMA = {
     "url": "str",  # URL to the original content
     "sentiment_score": "float",  # Pre-calculated sentiment score if available
     "keywords": "object",  # List of keywords or tags
-    "category": "str",  # News category (e.g., "Economy", "Markets", "Technology")
+    # News category (e.g., "Economy", "Markets", "Technology")
+    "category": "str",
 }
 
 # Schema for market data
@@ -39,7 +40,8 @@ ECONOMIC_SCHEMA = {
     "timestamp": "datetime64[ns]",  # Date/time of the data point
     "indicator": "str",  # Economic indicator name/code (e.g., "GDP", "UNRATE")
     "value": "float",  # Value of the indicator
-    "units": "str",  # Units of measurement (e.g., "Percent", "Billions of Dollars")
+    # Units of measurement (e.g., "Percent", "Billions of Dollars")
+    "units": "str",
     "frequency": "str",  # Data frequency (e.g., "Monthly", "Quarterly")
     "title": "str",  # Full title/description of the indicator
     "source": "str",  # Data source (e.g., "FRED", "BEA")
@@ -360,10 +362,12 @@ def normalize_data_for_sentiment(
     elif data_type == "yahoo_finance":
         # Market data isn't directly usable for sentiment, so skip it
         # or we could transform it if needed
-        market_df = normalize_yahoo_finance_data(df, kwargs.get("symbol", "UNKNOWN"))
+        market_df = normalize_yahoo_finance_data(
+            df, kwargs.get("symbol", "UNKNOWN"))
         return normalize_market_data_for_sentiment(market_df)
     elif data_type == "alpha_vantage":
-        market_df = normalize_alpha_vantage_data(df, kwargs.get("symbol", "UNKNOWN"))
+        market_df = normalize_alpha_vantage_data(
+            df, kwargs.get("symbol", "UNKNOWN"))
         return normalize_market_data_for_sentiment(market_df)
     elif data_type == "fred":
         # FRED economic data isn't directly usable for sentiment without transformation

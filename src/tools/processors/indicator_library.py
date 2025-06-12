@@ -95,7 +95,8 @@ def avwap(
       • pd.Timestamp.
     """
     if isinstance(anchor_idx, (str, pd.Timestamp)):
-        anchor_idx = close.index.get_loc(pd.Timestamp(anchor_idx), method="nearest")
+        anchor_idx = close.index.get_loc(
+            pd.Timestamp(anchor_idx), method="nearest")
     pv = (close * volume).cumsum()
     vol = volume.cumsum()
     if anchor_idx > 0:
@@ -147,7 +148,8 @@ def adx(
     up_move = high.diff()
     down_move = low.diff().abs()
     plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
-    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+    minus_dm = np.where((down_move > up_move) &
+                        (down_move > 0), down_move, 0.0)
 
     tr = pd.concat(
         [
@@ -160,7 +162,8 @@ def adx(
 
     atr_vals = tr.rolling(window=period).sum()
     plus_di = 100 * pd.Series(plus_dm).rolling(window=period).sum() / atr_vals
-    minus_di = 100 * pd.Series(minus_dm).rolling(window=period).sum() / atr_vals
+    minus_di = 100 * \
+        pd.Series(minus_dm).rolling(window=period).sum() / atr_vals
     dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
     adx_val = dx.rolling(window=period).mean()
 
@@ -182,8 +185,10 @@ def ichimoku(
     base_period: int = 26,
     span_b_period: int = 52,
 ) -> pd.DataFrame:
-    tenkan = (high.rolling(conv_period).max() + low.rolling(conv_period).min()) / 2
-    kijun = (high.rolling(base_period).max() + low.rolling(base_period).min()) / 2
+    tenkan = (high.rolling(conv_period).max() +
+              low.rolling(conv_period).min()) / 2
+    kijun = (high.rolling(base_period).max() +
+             low.rolling(base_period).min()) / 2
     span_a = ((tenkan + kijun) / 2).shift(base_period)
     span_b = (
         (high.rolling(span_b_period).max() + low.rolling(span_b_period).min()) / 2

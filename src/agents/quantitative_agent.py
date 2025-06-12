@@ -439,7 +439,8 @@ class QuantitativeAgent(BaseAgent):
             snippets.append(f"Focus ticker: {query['ticker']}")
 
         if query.get("indicators"):
-            snippets.append("Requested indicators: " + ", ".join(query["indicators"]))
+            snippets.append("Requested indicators: " +
+                            ", ".join(query["indicators"]))
 
         snippets.append(
             "Available quantitative tools: fetch_market_data, fetch_yahoo_data, "
@@ -490,7 +491,8 @@ class QuantitativeAgent(BaseAgent):
                     df["High"], df["Low"], df["Close"], period=10, mult=3
                 )
 
-                req = [ind.split("(")[0] for ind in tool_args.get("indicators", [])]
+                req = [ind.split("(")[0]
+                       for ind in tool_args.get("indicators", [])]
 
                 if "macd" in req:
                     df = pd.concat([df, macd(df["Close"])], axis=1)
@@ -541,7 +543,8 @@ class QuantitativeAgent(BaseAgent):
                 if len(df["Close"]) > 1:
                     returns = df["Close"].pct_change().dropna()
                     if not returns.empty and returns.std() != 0:
-                        sharpe = (returns.mean() / returns.std()) * np.sqrt(252)
+                        sharpe = (returns.mean() / returns.std()) * \
+                            np.sqrt(252)
                     else:
                         sharpe = np.nan
                     roll_max = df["Close"].cummax()
@@ -555,7 +558,8 @@ class QuantitativeAgent(BaseAgent):
                 events: Dict[str, Any] = {}
                 if "Earnings_Date" in df.columns and not df["Earnings_Date"].dropna().empty:
                     last_event = df["Earnings_Date"].dropna().iloc[-1]
-                    events["earnings_date"] = pd.to_datetime(last_event).isoformat()
+                    events["earnings_date"] = pd.to_datetime(
+                        last_event).isoformat()
 
                 n = min(len(df), 20)
                 spark = _sparklines(df["Close"].tail(n).tolist())[0]

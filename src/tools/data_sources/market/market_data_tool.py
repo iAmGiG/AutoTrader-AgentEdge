@@ -101,7 +101,8 @@ class MarketDataTool:
 
         # Route to the appropriate data source
         if self.data_source == "alpha_vantage":
-            df = self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+            df = self._fetch_from_alpha_vantage(
+                symbol, start_date, end_date, filters)
         elif self.data_source == "yahoo":
             df = self._fetch_from_yahoo(symbol, start_date, end_date, filters)
         elif self.data_source == "csv":
