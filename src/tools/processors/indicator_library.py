@@ -86,17 +86,29 @@ def supertrend(
 
 # --- AVWAP ---
 def avwap(
-    close: pd.Series, volume: pd.Series, anchor_idx: int | str | pd.Timestamp = 0
+    close: pd.Series,
+    volume: pd.Series,
+    anchor_ts: int | str | pd.Timestamp = 0,
 ) -> pd.Series:
+    """Anchored VWAP.
+
+    Parameters
+    ----------
+    close : pd.Series
+        Close prices.
+    volume : pd.Series
+        Volume series.
+    anchor_ts : int | str | pd.Timestamp, optional
+        Anchor position (index value, ISO date string, or integer index).
+        Defaults to the first row when ``0``.
     """
-    Anchored VWAP.  `anchor_idx` can be
-      • int  - positional index (0 = first row in frame),
-      • str  - e.g. "2025-05-20 09:30",
-      • pd.Timestamp.
-    """
-    if isinstance(anchor_idx, (str, pd.Timestamp)):
-        anchor_idx = close.index.get_loc(
-            pd.Timestamp(anchor_idx), method="nearest")
+    anchor_idx = 0
+    if anchor_ts is not None:
+        if isinstance(anchor_ts, (str, pd.Timestamp)):
+            anchor_idx = close.index.get_indexer(
+                [pd.Timestamp(anchor_ts)], method="nearest")[0]
+        elif isinstance(anchor_ts, int):
+            anchor_idx = anchor_ts
     pv = (close * volume).cumsum()
     vol = volume.cumsum()
     if anchor_idx > 0:

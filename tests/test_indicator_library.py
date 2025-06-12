@@ -43,8 +43,16 @@ class TestIndicatorLibrary(unittest.TestCase):
     def test_avwap(self):
         close = pd.Series([1, 2, 3])
         volume = pd.Series([1, 1, 1])
-        result = avwap(close, volume, anchor_idx=0)
+        result = avwap(close, volume, anchor_ts=0)
         expected = pd.Series([1.0, 1.5, 2.0])
+        pd.testing.assert_series_equal(result, expected)
+
+    def test_avwap_anchor_ts_date(self):
+        idx = pd.date_range("2025-05-01", periods=3, freq="D")
+        close = pd.Series([1, 2, 3], index=idx)
+        volume = pd.Series([1, 1, 1], index=idx)
+        result = avwap(close, volume, anchor_ts="2025-05-02")
+        expected = pd.Series([float('nan'), 2.0, 2.5], index=idx)
         pd.testing.assert_series_equal(result, expected)
 
     def test_atr(self):

@@ -33,6 +33,7 @@ from src.tools.date_utils import (
     process_date_param,
     get_processed_date_range,
     get_default_date_range,
+    resolve_anchor,
 )
 from src.tools.agent_utils import QueryParser
 
@@ -68,6 +69,7 @@ class QuantitativeAgent(BaseAgent):
 
         # Optional: attach a logger
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.last_query: Dict[str, Any] = {}
 
     @staticmethod
     def _get_max_indicator_window(indicators: List[str]) -> int:
@@ -124,6 +126,14 @@ class QuantitativeAgent(BaseAgent):
         lower_text = message.lower()
 
         parsed: Dict[str, Any] = {}
+        anchor = None
+
+        anchor_match = re.search(
+            r"(?:from|since)\s+(\d{4}-\d{2}-\d{2}|earnings|fomc|year[_ ]?open)",
+            lower_text,
+        )
+        if anchor_match:
+            anchor = anchor_match.group(1).replace(" ", "_")
 
         # 1. Extract ticker symbols (2-5 uppercase letters)
         ticker_patterns = [
@@ -426,6 +436,8 @@ class QuantitativeAgent(BaseAgent):
                     comparison_tickers.append(comp_ticker)
         parsed["comparison_tickers"] = comparison_tickers
 
+        parsed["anchor"] = anchor
+
         return parsed
 
     def format_supplementary_context(self, query: Dict[str, Any]) -> str:
@@ -511,11 +523,19 @@ class QuantitativeAgent(BaseAgent):
                 if "cci" in req:
                     df["CCI"] = cci(df["High"], df["Low"], df["Close"])
 
+                anchor_ts = None
+                anchor_warning = None
+
                 # ------- optional AVWAP (needs volume + explicit ask) --------
                 if "Volume" in df.columns and "avwap" in tool_args.get(
                     "indicators", []
                 ):
-                    df["AVWAP"] = avwap(df["Close"], df["Volume"])
+                    anchor_token = self.last_query.get("anchor") if hasattr(self, "last_query") else None
+                    anchor_ts = None
+                    anchor_warning = None
+                    if anchor_token:
+                        anchor_ts, anchor_warning = resolve_anchor(df, anchor_token)
+                    df["AVWAP"] = avwap(df["Close"], df["Volume"], anchor_ts=anchor_ts)
 
                 df = standardize_indicator_columns(df)
 
@@ -574,6 +594,8 @@ class QuantitativeAgent(BaseAgent):
                     "events": events,
                     "spark": spark,
                     "timestamp": timestamp,
+                    "anchor_ts": anchor_ts.isoformat() if anchor_ts is not None else None,
+                    "anchor_warning": anchor_warning,
                 }
 
         # ---------------------------------------------------------------
@@ -589,6 +611,7 @@ class QuantitativeAgent(BaseAgent):
         # --------------- Extract last user message -------------------------
         last_msg = messages[-1]["content"] if messages else ""
         query = self.preprocess_message(last_msg)
+        self.last_query = query
 
         # --------------- Compose system prompt ----------------------------
         # Example system prompt instructing the LLM about returned fields
