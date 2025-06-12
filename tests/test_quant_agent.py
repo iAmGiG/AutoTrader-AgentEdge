@@ -61,3 +61,12 @@ def test_process_tool_result_rich_dict():
     assert isinstance(result["events"], dict)
     assert isinstance(result["spark"], str)
     assert isinstance(result["timestamp"], str)
+
+
+def test_preprocess_extends_for_indicators():
+    agent = QuantitativeAgent()
+    parsed = agent.preprocess_message("AAPL last 5 days with rsi(14)")
+    start = pd.to_datetime(parsed["start_date"])
+    end = pd.to_datetime(parsed["end_date"])
+    diff = (end - start).days
+    assert diff >= 14

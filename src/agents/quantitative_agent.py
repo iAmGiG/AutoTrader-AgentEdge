@@ -69,6 +69,34 @@ class QuantitativeAgent(BaseAgent):
         # Optional: attach a logger
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    @staticmethod
+    def _get_max_indicator_window(indicators: List[str]) -> int:
+        """Return the maximum lookback window required by the indicators."""
+        defaults = {
+            "sma": 20,
+            "ema": 20,
+            "rsi": 14,
+            "atr": 14,
+            "macd": 26,
+            "bollinger": 20,
+            "adx": 14,
+            "ichimoku": 52,
+            "stochrsi": 14,
+            "cci": 20,
+            "supertrend": 10,
+        }
+        max_win = 0
+        for ind in indicators:
+            base = ind.split("(")[0].lower()
+            m = re.search(r"(\d+)", ind)
+            if m:
+                win = int(m.group(1))
+            else:
+                win = defaults.get(base, 0)
+            if win > max_win:
+                max_win = win
+        return max_win
+
     def preprocess_message(self, message: str) -> Dict[str, Any]:
         """
         Parse financial queries to extract tickers, indicators, timeframes, and other parameters.
@@ -300,6 +328,22 @@ class QuantitativeAgent(BaseAgent):
         )
         parsed["start_date"] = processed_start
         parsed["end_date"] = processed_end
+
+        # Extend lookback if indicators need more history
+        max_period = self._get_max_indicator_window(indicators)
+        if max_period:
+            try:
+                s_dt = pd.to_datetime(parsed["start_date"])
+                e_dt = pd.to_datetime(parsed["end_date"])
+                current_days = (e_dt - s_dt).days
+                if current_days < max_period:
+                    extra = int(max_period * 1.5)
+                    new_start = e_dt - pd.Timedelta(days=extra)
+                    parsed["start_date"] = new_start.strftime("%Y-%m-%d")
+                    lookback_days = (e_dt - new_start).days
+                    parsed["lookback"] = f"{lookback_days}d"
+            except Exception:
+                pass
 
         # 4e. Compute lookback string if not already set
         if lookback_days:
