@@ -19,3 +19,7 @@ All indicator output columns follow the pattern `INDICATOR_component`.
 | CCI | `CCI` |
 
 These names are returned in the QuantitativeAgent's `latest_row` dictionary so downstream tools can rely on a consistent schema.
+
+The `avwap` function accepts an optional `anchor_ts` parameter which can be an
+ISO date or event token (e.g. `earnings`). When provided, the AVWAP calculation
+starts from that timestamp.

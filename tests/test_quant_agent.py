@@ -63,6 +63,26 @@ def test_process_tool_result_rich_dict():
     assert isinstance(result["timestamp"], str)
 
 
+def test_avwap_anchor_in_result():
+    agent = QuantitativeAgent()
+    agent.last_query = {"anchor": "2025-01-02"}
+    idx = pd.date_range("2025-01-01", periods=3, freq="D")
+    df = pd.DataFrame(
+        {
+            "Open": [1, 2, 3],
+            "High": [1, 2, 3],
+            "Low": [1, 1, 2],
+            "Close": [1, 2, 3],
+            "Volume": [100, 100, 100],
+        },
+        index=idx,
+    )
+    result = agent.process_tool_result(
+        "fetch_market_data", df, {"indicators": ["avwap"]}
+    )
+    assert result["anchor_ts"].startswith("2025-01-02")
+
+
 def test_preprocess_extends_for_indicators():
     agent = QuantitativeAgent()
     parsed = agent.preprocess_message("AAPL last 5 days with rsi(14)")

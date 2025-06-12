@@ -4,6 +4,7 @@ Utilities for dynamic date handling in data tools.
 
 import datetime
 import os
+import re
 from typing import Tuple, Optional
 
 
@@ -239,3 +240,66 @@ def align_interval(df, interval):
     result = result.ffill().dropna(how="all")
     result.index.name = df.index.name
     return result
+
+
+def resolve_anchor(df, anchor_token):
+    """Resolve an anchor token to a timestamp within ``df``.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with a ``DatetimeIndex`` and optional event columns like
+        ``Earnings_Date`` or ``FOMC_Date``.
+    anchor_token : str | None
+        ISO date string (``YYYY-MM-DD``) or one of ``earnings``, ``fomc`` or
+        ``year_open``.
+
+    Returns
+    -------
+    tuple[pd.Timestamp, Optional[str]]
+        The resolved timestamp and an optional warning message when the token
+        could not be matched.  If ``anchor_token`` is ``None`` the first index
+        value is returned.
+    """
+    import pandas as pd
+    warning = None
+
+    if df.empty or not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame must be non-empty with a DatetimeIndex")
+
+    anchor_ts = df.index[0]
+
+    if not anchor_token:
+        return pd.Timestamp(anchor_ts), warning
+
+    try:
+        # ISO date pattern
+        if re.match(r"\d{4}-\d{2}-\d{2}", str(anchor_token)):
+            ts = pd.Timestamp(anchor_token)
+            idx = df.index.get_indexer([ts], method="nearest")[0]
+            anchor_ts = df.index[idx]
+        else:
+            token = str(anchor_token).lower()
+            if token == "year_open":
+                year_start = pd.Timestamp(df.index[-1].year, 1, 1,
+                                          tz=df.index.tz)
+                idx = df.index.get_indexer([year_start], method="bfill")[0]
+                anchor_ts = df.index[idx]
+            elif token in {"earnings", "fomc"}:
+                col_match = None
+                for c in df.columns:
+                    if token in c.lower():
+                        col_match = c
+                        break
+                if col_match:
+                    series = pd.to_datetime(df[col_match]).dropna()
+                    if not series.empty:
+                        anchor_ts = series.iloc[-1]
+                    else:
+                        warning = f"No {token} date found"
+                else:
+                    warning = f"No {token} date found"
+    except Exception as e:  # pragma: no cover - unexpected edge cases
+        warning = str(e)
+
+    return pd.Timestamp(anchor_ts), warning

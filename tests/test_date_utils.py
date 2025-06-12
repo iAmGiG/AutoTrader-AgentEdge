@@ -12,6 +12,7 @@ from src.tools.date_utils import (
     process_date_param,
     get_processed_date_range,
     align_interval,
+    resolve_anchor,
 )
 from src.tools.agent_utils import QueryParser
 import pandas as pd
@@ -151,6 +152,27 @@ class TestDateUtils(unittest.TestCase):
         df_aware = pd.DataFrame({"Close": [1, 2, 3]}, index=rng_aware)
         localized2 = localize_df(df_aware.copy(), tz)
         self.assertEqual(localized2.index.tz.zone, tz)
+
+    def test_resolve_anchor_iso(self):
+        rng = pd.date_range("2025-05-01", periods=3, freq="D")
+        df = pd.DataFrame({"Close": [1, 2, 3]}, index=rng)
+        ts, warn = resolve_anchor(df, "2025-05-02")
+        self.assertEqual(ts, pd.Timestamp("2025-05-02"))
+        self.assertIsNone(warn)
+
+    def test_resolve_anchor_missing_event(self):
+        rng = pd.date_range("2025-05-01", periods=2, freq="D")
+        df = pd.DataFrame({"Close": [1, 2]}, index=rng)
+        ts, warn = resolve_anchor(df, "earnings")
+        self.assertEqual(ts, df.index[0])
+        self.assertIsNotNone(warn)
+
+    def test_resolve_anchor_year_open(self):
+        rng = pd.date_range("2025-05-01", periods=3, freq="D")
+        df = pd.DataFrame({"Close": [1, 2, 3]}, index=rng)
+        ts, warn = resolve_anchor(df, "year_open")
+        self.assertEqual(ts, df.index[0])
+        self.assertIsNone(warn)
 
 
 if __name__ == '__main__':

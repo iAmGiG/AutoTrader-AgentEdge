@@ -88,6 +88,7 @@ class QueryParser:
         start_date = None
         end_date = None
         sector = None
+        anchor = None
 
         # List of common financial terms and abbreviations that aren't tickers
         common_terms = ["I", "A", "AI", "US", "ER", "GDP",
@@ -190,8 +191,13 @@ class QueryParser:
         if "since" in message_lower:
             after_since = message_lower.split("since")[-1].strip()
             words = after_since.split()
-            if words and (words[0].startswith("-") or words[0] in ["yesterday", "today", "ytd"]):
-                start_date = words[0]
+            if words:
+                if re.match(r"\d{4}-\d{2}-\d{2}", words[0]):
+                    anchor = words[0]
+                elif words[0] in ["earnings", "fomc", "year_open"]:
+                    anchor = words[0]
+                elif words[0].startswith("-") or words[0] in ["yesterday", "today", "ytd"]:
+                    start_date = words[0]
 
         if "last" in message_lower:
             after_last = message_lower.split("last")[-1].strip()
@@ -215,6 +221,17 @@ class QueryParser:
                         start_date = f"-{months}m"
                     except ValueError:
                         start_date = "-1m"
+
+        if not anchor:
+            match = re.search(
+                r"(?:from|since)\s+(earnings|fomc|year[_ ]?open)", message_lower
+            )
+            if match:
+                anchor = match.group(1).replace(" ", "_")
+        if not anchor:
+            match = re.search(r"(?:from|since)\s+(\d{4}-\d{2}-\d{2})", message_lower)
+            if match:
+                anchor = match.group(1)
 
         # For open-ended queries, extract topic using NLP techniques if needed
         if not topic and not ticker and len(message.split()) > 3:
@@ -264,7 +281,8 @@ class QueryParser:
             "topic": topic,
             "sector": sector,
             "start_date": start_date,
-            "end_date": end_date
+            "end_date": end_date,
+            "anchor": anchor,
         }
 
     @staticmethod
