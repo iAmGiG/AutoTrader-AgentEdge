@@ -1,16 +1,16 @@
 import pandas as pd
-from src.agents.quantitative_agent import QuantitativeAgent
+from src.agents.tech_agent import TechAgent
 
 
 def test_preprocess_macd():
-    agent = QuantitativeAgent()
+    agent = TechAgent()
     parsed = agent.preprocess_message("Show me MACD for TSLA")
     names = [i.split("(")[0] for i in parsed["indicators"]]
     assert "macd" in names
 
 
 def test_process_tool_result_macd():
-    agent = QuantitativeAgent()
+    agent = TechAgent()
     df = pd.DataFrame(
         {
             "Open": [1, 2, 3, 4, 5, 6],
@@ -27,7 +27,7 @@ def test_process_tool_result_macd():
 
 
 def test_process_tool_result_spark():
-    agent = QuantitativeAgent()
+    agent = TechAgent()
     df = pd.DataFrame(
         {
             "Open": range(1, 9),
@@ -42,7 +42,7 @@ def test_process_tool_result_spark():
 
 
 def test_process_tool_result_rich_dict():
-    agent = QuantitativeAgent()
+    agent = TechAgent()
     df = pd.DataFrame(
         {
             "Open": [1, 2, 3, 4],
@@ -64,7 +64,7 @@ def test_process_tool_result_rich_dict():
 
 
 def test_avwap_anchor_in_result():
-    agent = QuantitativeAgent()
+    agent = TechAgent()
     agent.last_query = {"anchor": "2025-01-02"}
     idx = pd.date_range("2025-01-01", periods=3, freq="D")
     df = pd.DataFrame(
@@ -84,7 +84,7 @@ def test_avwap_anchor_in_result():
 
 
 def test_preprocess_extends_for_indicators():
-    agent = QuantitativeAgent()
+    agent = TechAgent()
     parsed = agent.preprocess_message("AAPL last 5 days with rsi(14)")
     start = pd.to_datetime(parsed["start_date"])
     end = pd.to_datetime(parsed["end_date"])

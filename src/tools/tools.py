@@ -23,10 +23,10 @@ import os
 
 # Agent Types
 SENTIMENT_AGENT = "sentiment"
-QUANTITATIVE_AGENT = "quantitative"
+TECH_AGENT = "tech"
 RISK_AGENT = "risk"
 STRATEGY_AGENT = "strategy"
-ALL_AGENTS = [SENTIMENT_AGENT, QUANTITATIVE_AGENT, RISK_AGENT, STRATEGY_AGENT]
+ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, RISK_AGENT, STRATEGY_AGENT]
 
 # CORPORATE ACTIONS TOOL HIERARCHY:
 # 1. PRIMARY: Yahoo Finance tools - Free but rate limited, enhanced with caching/throttling
@@ -553,7 +553,7 @@ yahoo_finance_tool = FunctionTool(
     description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
-yahoo_finance_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+yahoo_finance_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 
 def fetch_yahoo_corporate_events(
@@ -615,7 +615,7 @@ alpha_vantage_tool = FunctionTool(
     description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
-alpha_vantage_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+alpha_vantage_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 
 def fetch_market_data(
@@ -647,7 +647,7 @@ market_data_tool = FunctionTool(
     description="Fetch market data from specified source for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
-market_data_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+market_data_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 ##################################
 # 6) FRED Economic Data Tool
@@ -687,7 +687,7 @@ fred_indicator_tool = FunctionTool(
     description="Fetch economic indicator data from FRED (Federal Reserve)."
 )
 # Relevant for quant and strategy agents
-fred_indicator_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+fred_indicator_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 
 def fetch_interest_rates(
@@ -717,7 +717,7 @@ fred_rates_tool = FunctionTool(
     description="Fetch interest rate data from FRED (Federal Reserve)."
 )
 # Relevant for multiple agents
-fred_rates_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]
+fred_rates_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, RISK_AGENT]
 
 
 def fetch_yield_curve(date: str = "today") -> pd.DataFrame:
@@ -741,7 +741,7 @@ fred_yield_curve_tool = FunctionTool(
     description="Fetch the Treasury yield curve for a specific date."
 )
 fred_yield_curve_tool.agent_types = [
-    QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
+    TECH_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
 
 ##################################
 # 7) SEC EDGAR Filings Tool (EXPERIMENTAL)
@@ -884,8 +884,8 @@ SENTIMENT_TOOLS = [
     finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
 
-# QUANTITATIVE_AGENT tools
-QUANTITATIVE_TOOLS = [
+# TECH_AGENT tools
+TECH_TOOLS = [
     yahoo_finance_tool,
     alpha_vantage_tool,
     market_data_tool,
@@ -933,7 +933,7 @@ STRATEGY_TOOLS = [
 # All tools combined
 ALL_TOOLS = list(set(
     SENTIMENT_TOOLS +
-    QUANTITATIVE_TOOLS +
+    TECH_TOOLS +
     RISK_TOOLS +
     STRATEGY_TOOLS
 ))
@@ -953,15 +953,15 @@ def get_tools_for_agent(agent_type):
     Get the list of tools that should be used by a specific agent type.
 
     Args:
-        agent_type: Type of agent (e.g., 'sentiment', 'quantitative')
+        agent_type: Type of agent (e.g., 'sentiment', 'tech')
 
     Returns:
         List of FunctionTool objects appropriate for the agent type
     """
     if agent_type == SENTIMENT_AGENT:
         return SENTIMENT_TOOLS
-    elif agent_type == QUANTITATIVE_AGENT:
-        return QUANTITATIVE_TOOLS
+    elif agent_type == TECH_AGENT:
+        return TECH_TOOLS
     elif agent_type == RISK_AGENT:
         return RISK_TOOLS
     elif agent_type == STRATEGY_AGENT:
