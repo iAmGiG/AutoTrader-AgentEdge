@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List
 import logging
 import requests
 import pandas as pd
-from config.config_loader import ConfigLoader
+import os
 
 
 class AlphaVantageNewsTool:
@@ -23,9 +23,8 @@ class AlphaVantageNewsTool:
     """
 
     def __init__(self):
-        # Load API key from config
-        config_loader = ConfigLoader()
-        self.api_key = config_loader.get("alpha_vantage_key")
+        # Load API key from environment
+        self.api_key = os.getenv("ALPHA_VANTAGE_KEY")
 
         if not self.api_key:
             logging.warning("Alpha Vantage API key not found in config.")

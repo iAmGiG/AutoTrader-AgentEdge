@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Optional
 from datetime import datetime, timedelta
-from src.tools.date_utils import get_processed_date_range
+from src.tools.date_utils import get_processed_date_range, localize_df, get_default_timezone
 
 # Global cache and throttling variables
 _last_request_time = {}
@@ -197,6 +197,7 @@ class YahooFinanceTool:
                 result = pd.DataFrame()
             else:
                 result = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+                result = localize_df(result, get_default_timezone())
 
             # Cache the result
             _store_in_cache(cache_key, result)

@@ -6,10 +6,14 @@ import os
 import logging
 from typing import Any, Dict, Optional
 import pandas as pd
-from config.config_loader import ConfigLoader
+import os
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
-from src.tools.date_utils import get_processed_date_range
+from src.tools.date_utils import (
+    get_processed_date_range,
+    localize_df,
+    get_default_timezone,
+)
 
 
 class MarketDataTool:
@@ -34,23 +38,17 @@ class MarketDataTool:
         # Set up logger
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        # Load from config if not provided
+        # Load from environment if config not provided
         if config is None:
-            config_loader = ConfigLoader()
-
-            # Get default date range from config or use dynamic calculation
-            default_days_back = config_loader.get("default_days_back", 5)
-            default_date_range = get_processed_date_range(
-                default_days_back=default_days_back)
-
+            default_days_back = int(os.getenv("DEFAULT_DAYS_BACK", 5))
             default_date_range = get_processed_date_range(
                 default_days_back=default_days_back)
 
             self.config = {
-                "data_source": config_loader.get("market_data_source", "alpha_vantage"),
-                "default_symbol": config_loader.get("default_symbol", "AAPL"),
+                "data_source": os.getenv("MARKET_DATA_SOURCE", "alpha_vantage"),
+                "default_symbol": os.getenv("DEFAULT_SYMBOL", "AAPL"),
                 "default_date_range": default_date_range,
-                "default_days_back": default_days_back
+                "default_days_back": default_days_back,
             }
         else:
             self.config = config
@@ -103,14 +101,19 @@ class MarketDataTool:
 
         # Route to the appropriate data source
         if self.data_source == "alpha_vantage":
-            return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+            df = self._fetch_from_alpha_vantage(
+                symbol, start_date, end_date, filters)
         elif self.data_source == "yahoo":
-            return self._fetch_from_yahoo(symbol, start_date, end_date, filters)
+            df = self._fetch_from_yahoo(symbol, start_date, end_date, filters)
         elif self.data_source == "csv":
-            return self._fetch_from_csv(symbol, start_date, end_date, filters)
+            df = self._fetch_from_csv(symbol, start_date, end_date, filters)
         else:
             self.logger.error(f"Unsupported data_source: {self.data_source}")
             return pd.DataFrame()
+
+        if not df.empty:
+            df = localize_df(df, get_default_timezone())
+        return df
 
     def _fetch_from_alpha_vantage(
         self,
@@ -207,6 +210,8 @@ class MarketDataTool:
                 df = df[df.index >= start_date]
             if end_date:
                 df = df[df.index <= end_date]
+
+            df = localize_df(df, get_default_timezone())
 
             return df
 

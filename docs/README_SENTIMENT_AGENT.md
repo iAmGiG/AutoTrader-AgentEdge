@@ -85,10 +85,19 @@ The CLI exposes several tools for data retrieval:
 
 - Python 3.10+
 - AutoGen 0.5.6 (conda environment recommended)
-- OpenAI API key (configured in config/config.json)
-- NewsAPI key (configured in config/config.json)
-- Alpha Vantage API key (configured in config/config.json)
-- Finnhub API key (configured in config/config.json)
+- OpenAI API key
+- NewsAPI key
+- Alpha Vantage API key
+- Finnhub API key
+
+Environment variables are now used instead of `config/config.json`. Secrets can
+be managed with the [Codex](https://github.com/openai/codex) CLI by storing them
+and setting `envKey` fields to match the lowercase variable names below:
+
+- `open_ai_key`
+- `newsapi_key`
+- `alpha_vantage_key`
+- `finnhub_key`
 
 > NOTE: API KEYS ARE NOT PRESENT AT THE REPO LEVEL SEE LOCAL SYSTEM. if **missing** API KEYS, SELF PROCUREMENT ***WILL*** BE REQUIRED.
 

@@ -18,7 +18,7 @@ Inter-Agent Communication
 Leverage AutoGen’s orchestration to streamline RH2MAS agent hierarchy:
 
   - **Sentiment Agent**: Use AutoGen’s LLM fine-tuning capabilities to process textual market sentiment.
-  - **Quantitative Agent**: Implement technical analysis modules (e.g., moving averages, Bollinger Bands) using custom templates.
+  - **Tech Agent**: Implement technical analysis modules (e.g., moving averages, Bollinger Bands) using custom templates.
   - **Market Agent**: Aggregate macroeconomic signals and apply AutoGen’s API chaining for real-time updates.
   - **Strategy Agent**: Integrate AutoGen’s debate and reflection capabilities for decision synthesis based on agent input​Reflective_Hybrid_Head_….
 - **Step 2**: Adapt Communication and Coordination

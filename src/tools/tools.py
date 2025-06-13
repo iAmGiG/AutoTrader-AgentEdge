@@ -11,7 +11,7 @@ from src.tools.data_sources.news.unified_news_tool import fetch_unified_news
 from src.tools.data_sources.market.fmp_tool import FMPTool
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
-from config.config_loader import ConfigLoader
+import os
 # Import other vendor tools as needed
 
 ##################################
@@ -23,10 +23,10 @@ from config.config_loader import ConfigLoader
 
 # Agent Types
 SENTIMENT_AGENT = "sentiment"
-QUANTITATIVE_AGENT = "quantitative"
+TECH_AGENT = "tech"
 RISK_AGENT = "risk"
 STRATEGY_AGENT = "strategy"
-ALL_AGENTS = [SENTIMENT_AGENT, QUANTITATIVE_AGENT, RISK_AGENT, STRATEGY_AGENT]
+ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, RISK_AGENT, STRATEGY_AGENT]
 
 # CORPORATE ACTIONS TOOL HIERARCHY:
 # 1. PRIMARY: Yahoo Finance tools - Free but rate limited, enhanced with caching/throttling
@@ -315,9 +315,8 @@ def fetch_finnhub_news(
     Returns:
         DataFrame with financial news headlines, dates, and sources
     """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_news(category=category, tickers=tickers, count=count)
@@ -347,9 +346,8 @@ def fetch_finnhub_financial_headlines(
     Returns:
         DataFrame with diverse financial headlines for sentiment analysis
     """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_financial_headlines(count=count)
@@ -379,15 +377,13 @@ def fetch_finnhub_economic_headlines(
         DataFrame with economic headlines from Finnhub
         DataFrame with economic headlines from Finnhub
     """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_economic_headlines(count=count)
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_economic_headlines(count=count)
@@ -417,9 +413,8 @@ def fetch_finnhub_earnings_calendar(
     Returns:
         DataFrame with earnings calendar data including EPS estimates and actuals
     """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_earnings_calendar(start_date, end_date)
@@ -450,9 +445,8 @@ def fetch_finnhub_insider_transactions(
     Returns:
         DataFrame with insider transaction data
     """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_insider_transactions(symbol, start_date, end_date)
@@ -484,9 +478,8 @@ def fetch_finnhub_dividends(
     Returns:
         DataFrame with dividend data including ex-dividend dates and amounts
     """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_dividends(symbol, start_date, end_date)
@@ -513,9 +506,8 @@ def fetch_finnhub_earnings_estimates(
     Returns:
         DataFrame with EPS estimates and historical earnings surprises
     """
-    # Load API key from config
-    config_loader = ConfigLoader()
-    api_key = config_loader.get("finnhub_key")
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY")
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_earnings_estimates(symbol)
@@ -561,7 +553,7 @@ yahoo_finance_tool = FunctionTool(
     description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
-yahoo_finance_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+yahoo_finance_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 
 def fetch_yahoo_corporate_events(
@@ -623,7 +615,7 @@ alpha_vantage_tool = FunctionTool(
     description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
-alpha_vantage_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+alpha_vantage_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 
 def fetch_market_data(
@@ -655,7 +647,7 @@ market_data_tool = FunctionTool(
     description="Fetch market data from specified source for a given ticker and date range."
 )
 # Only quant and strategy agents handle price data
-market_data_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+market_data_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 ##################################
 # 6) FRED Economic Data Tool
@@ -695,7 +687,7 @@ fred_indicator_tool = FunctionTool(
     description="Fetch economic indicator data from FRED (Federal Reserve)."
 )
 # Relevant for quant and strategy agents
-fred_indicator_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT]
+fred_indicator_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
 
 
 def fetch_interest_rates(
@@ -725,7 +717,7 @@ fred_rates_tool = FunctionTool(
     description="Fetch interest rate data from FRED (Federal Reserve)."
 )
 # Relevant for multiple agents
-fred_rates_tool.agent_types = [QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]
+fred_rates_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, RISK_AGENT]
 
 
 def fetch_yield_curve(date: str = "today") -> pd.DataFrame:
@@ -749,7 +741,7 @@ fred_yield_curve_tool = FunctionTool(
     description="Fetch the Treasury yield curve for a specific date."
 )
 fred_yield_curve_tool.agent_types = [
-    QUANTITATIVE_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
+    TECH_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
 
 ##################################
 # 7) SEC EDGAR Filings Tool (EXPERIMENTAL)
@@ -892,8 +884,8 @@ SENTIMENT_TOOLS = [
     finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
 
-# QUANTITATIVE_AGENT tools
-QUANTITATIVE_TOOLS = [
+# TECH_AGENT tools
+TECH_TOOLS = [
     yahoo_finance_tool,
     alpha_vantage_tool,
     market_data_tool,
@@ -941,7 +933,7 @@ STRATEGY_TOOLS = [
 # All tools combined
 ALL_TOOLS = list(set(
     SENTIMENT_TOOLS +
-    QUANTITATIVE_TOOLS +
+    TECH_TOOLS +
     RISK_TOOLS +
     STRATEGY_TOOLS
 ))
@@ -961,15 +953,15 @@ def get_tools_for_agent(agent_type):
     Get the list of tools that should be used by a specific agent type.
 
     Args:
-        agent_type: Type of agent (e.g., 'sentiment', 'quantitative')
+        agent_type: Type of agent (e.g., 'sentiment', 'tech')
 
     Returns:
         List of FunctionTool objects appropriate for the agent type
     """
     if agent_type == SENTIMENT_AGENT:
         return SENTIMENT_TOOLS
-    elif agent_type == QUANTITATIVE_AGENT:
-        return QUANTITATIVE_TOOLS
+    elif agent_type == TECH_AGENT:
+        return TECH_TOOLS
     elif agent_type == RISK_AGENT:
         return RISK_TOOLS
     elif agent_type == STRATEGY_AGENT:

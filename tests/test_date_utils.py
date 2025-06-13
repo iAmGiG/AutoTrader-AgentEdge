@@ -1,8 +1,3 @@
-from src.tools.date_utils import (
-    get_default_date_range,
-    process_date_param,
-    get_processed_date_range
-)
 import unittest
 import sys
 import os
@@ -10,7 +5,17 @@ from datetime import datetime, timedelta
 
 # Add src to Python path so imports work
 sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../..')))
+    os.path.join(os.path.dirname(__file__), '..')))
+
+from src.tools.date_utils import (
+    get_default_date_range,
+    process_date_param,
+    get_processed_date_range,
+    align_interval,
+    resolve_anchor,
+)
+from src.tools.agent_utils import QueryParser
+import pandas as pd
 
 
 class TestDateUtils(unittest.TestCase):
@@ -104,6 +109,70 @@ class TestDateUtils(unittest.TestCase):
         start, end = get_processed_date_range("-30d", "today")
         self.assertEqual(start, days_ago_30)
         self.assertEqual(end, datetime.now().strftime("%Y-%m-%d"))
+
+    def test_validate_interval_lookback_invalid(self):
+        with self.assertRaises(ValueError):
+            QueryParser.validate_interval_lookback("1m", "180d")
+
+    def test_validate_interval_lookback_valid(self):
+        QueryParser.validate_interval_lookback("1m", "60d")
+
+    def test_align_interval_downsample(self):
+        rng = pd.date_range("2024-01-01", periods=120, freq="T")
+        df = pd.DataFrame(
+            {
+                "Open": range(120),
+                "High": range(120),
+                "Low": range(120),
+                "Close": range(120),
+                "Volume": [1] * 120,
+            },
+            index=rng,
+        )
+        res = align_interval(df, "1h")
+        self.assertEqual(len(res), 2)
+
+    def test_align_interval_upsample(self):
+        rng = pd.date_range("2024-01-01", periods=2, freq="H")
+        df = pd.DataFrame({"Close": [1, 2]}, index=rng)
+        res = align_interval(df, "30m")
+        self.assertEqual(len(res), 3)
+
+    def test_localize_df_naive_and_aware(self):
+        tz = "America/New_York"
+        rng_naive = pd.date_range("2024-01-01", periods=3, freq="D")
+        df_naive = pd.DataFrame({"Close": [1, 2, 3]}, index=rng_naive)
+
+        from src.tools.date_utils import localize_df
+        localized = localize_df(df_naive.copy(), tz)
+        self.assertIsNotNone(localized.index.tz)
+        self.assertEqual(localized.index.tz.zone, tz)
+
+        rng_aware = pd.date_range("2024-01-01", periods=3, freq="D", tz="UTC")
+        df_aware = pd.DataFrame({"Close": [1, 2, 3]}, index=rng_aware)
+        localized2 = localize_df(df_aware.copy(), tz)
+        self.assertEqual(localized2.index.tz.zone, tz)
+
+    def test_resolve_anchor_iso(self):
+        rng = pd.date_range("2025-05-01", periods=3, freq="D")
+        df = pd.DataFrame({"Close": [1, 2, 3]}, index=rng)
+        ts, warn = resolve_anchor(df, "2025-05-02")
+        self.assertEqual(ts, pd.Timestamp("2025-05-02"))
+        self.assertIsNone(warn)
+
+    def test_resolve_anchor_missing_event(self):
+        rng = pd.date_range("2025-05-01", periods=2, freq="D")
+        df = pd.DataFrame({"Close": [1, 2]}, index=rng)
+        ts, warn = resolve_anchor(df, "earnings")
+        self.assertEqual(ts, df.index[0])
+        self.assertIsNotNone(warn)
+
+    def test_resolve_anchor_year_open(self):
+        rng = pd.date_range("2025-05-01", periods=3, freq="D")
+        df = pd.DataFrame({"Close": [1, 2, 3]}, index=rng)
+        ts, warn = resolve_anchor(df, "year_open")
+        self.assertEqual(ts, df.index[0])
+        self.assertIsNone(warn)
 
 
 if __name__ == '__main__':

@@ -3,7 +3,38 @@ Utilities for dynamic date handling in data tools.
 """
 
 import datetime
+import os
+import re
 from typing import Tuple, Optional
+
+
+DEFAULT_TIMEZONE = "America/New_York"
+
+
+def get_default_timezone() -> str:
+    """Return the configured default timezone."""
+    return os.getenv("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE)
+
+
+def localize_df(df, tz: str):
+    """Ensure a DataFrame index is timezone-aware using the provided timezone."""
+    import pandas as pd
+
+    if df.empty:
+        return df
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        for col in ["timestamp", "date", "datetime", "Date", "Timestamp"]:
+            if col in df.columns:
+                df = df.set_index(pd.to_datetime(df[col]))
+                break
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame must have a datetime index or column")
+
+    if df.index.tz is None:
+        df.index = df.index.tz_localize("UTC")
+    df.index = df.index.tz_convert(tz)
+    return df
 
 
 def get_default_date_range(days_back: int = 5) -> Tuple[str, str]:
@@ -157,3 +188,118 @@ def get_processed_date_range(
 
     # If neither is provided, use default range
     return get_default_date_range(default_days_back)
+
+
+def align_interval(df, interval):
+    """Resample DataFrame to match the desired interval."""
+    import pandas as pd
+
+    if df.empty:
+        return df
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        for col in ["timestamp", "date", "datetime", "Date", "Timestamp"]:
+            if col in df.columns:
+                df = df.set_index(pd.to_datetime(df[col]))
+                break
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame must have a datetime index or column")
+
+    freq_map = {
+        "1m": "1T",
+        "5m": "5T",
+        "15m": "15T",
+        "30m": "30T",
+        "1h": "1H",
+        "4h": "4H",
+        "1d": "1D",
+        "1w": "1W",
+        "1M": "1M",
+    }
+
+    if interval not in freq_map:
+        raise ValueError(f"Unsupported interval: {interval}")
+
+    agg = {}
+    for c in df.columns:
+        lc = c.lower()
+        if lc == "open":
+            agg[c] = "first"
+        elif lc == "high":
+            agg[c] = "max"
+        elif lc == "low":
+            agg[c] = "min"
+        elif lc == "close":
+            agg[c] = "last"
+        elif lc == "volume":
+            agg[c] = "sum"
+        else:
+            agg[c] = "last"
+
+    result = df.resample(freq_map[interval]).agg(agg)
+    result = result.ffill().dropna(how="all")
+    result.index.name = df.index.name
+    return result
+
+
+def resolve_anchor(df, anchor_token):
+    """Resolve an anchor token to a timestamp within ``df``.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with a ``DatetimeIndex`` and optional event columns like
+        ``Earnings_Date`` or ``FOMC_Date``.
+    anchor_token : str | None
+        ISO date string (``YYYY-MM-DD``) or one of ``earnings``, ``fomc`` or
+        ``year_open``.
+
+    Returns
+    -------
+    tuple[pd.Timestamp, Optional[str]]
+        The resolved timestamp and an optional warning message when the token
+        could not be matched.  If ``anchor_token`` is ``None`` the first index
+        value is returned.
+    """
+    import pandas as pd
+    warning = None
+
+    if df.empty or not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame must be non-empty with a DatetimeIndex")
+
+    anchor_ts = df.index[0]
+
+    if not anchor_token:
+        return pd.Timestamp(anchor_ts), warning
+
+    try:
+        # ISO date pattern
+        if re.match(r"\d{4}-\d{2}-\d{2}", str(anchor_token)):
+            ts = pd.Timestamp(anchor_token)
+            idx = df.index.get_indexer([ts], method="nearest")[0]
+            anchor_ts = df.index[idx]
+        else:
+            token = str(anchor_token).lower()
+            if token == "year_open":
+                year_start = pd.Timestamp(df.index[-1].year, 1, 1,
+                                          tz=df.index.tz)
+                idx = df.index.get_indexer([year_start], method="bfill")[0]
+                anchor_ts = df.index[idx]
+            elif token in {"earnings", "fomc"}:
+                col_match = None
+                for c in df.columns:
+                    if token in c.lower():
+                        col_match = c
+                        break
+                if col_match:
+                    series = pd.to_datetime(df[col_match]).dropna()
+                    if not series.empty:
+                        anchor_ts = series.iloc[-1]
+                    else:
+                        warning = f"No {token} date found"
+                else:
+                    warning = f"No {token} date found"
+    except Exception as e:  # pragma: no cover - unexpected edge cases
+        warning = str(e)
+
+    return pd.Timestamp(anchor_ts), warning

@@ -15,7 +15,7 @@
 ## Agent System
 
 - Sentiment analysis
-- Quantitative processing
+- Technical analysis
 - Market analysis
 - Strategy coordination
 

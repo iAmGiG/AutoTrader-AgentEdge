@@ -139,34 +139,3 @@ class SentimentAnalyzer:
         )
 
         return result_df
-
-
-if __name__ == "__main__":
-    # Example usage
-    analyzer = SentimentAnalyzer()
-
-    # Test with individual texts
-    texts = [
-        "The company reported strong earnings, beating market expectations.",
-        "The stock plummeted after the earnings miss and revised guidance.",
-        "Analysts maintain a neutral outlook on the sector.",
-        "The market rallied despite ongoing economic concerns."
-    ]
-
-    for text in texts:
-        score = analyzer.analyze_text(text)
-        print(f"Text: \"{text}\"\nSentiment Score: {score:.2f}\n")
-
-    # Test with a DataFrame
-    data = {
-        'headline': [
-            "Tech company exceeds Q4 revenue targets",
-            "Bank announces job cuts amid restructuring",
-            "Oil prices remain stable as production holds steady"
-        ]
-    }
-
-    df = pd.DataFrame(data)
-    result = analyzer.analyze_dataframe(df, 'headline')
-    print("DataFrame with sentiment scores:")
-    print(result)

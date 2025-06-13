@@ -46,12 +46,11 @@ from src.tools.tools import (
     fetch_fmp_historical_earnings, fetch_fmp_historical_dividends,
     fetch_fmp_stock_split_calendar
 )
-from config.config_loader import ConfigLoader
+import os
 
-# Instantiate ConfigLoader once at module-level
-_loader = ConfigLoader()
-model_name = _loader.get("open_model")     # e.g. "gpt-4o-mini"
-open_ai_key = _loader.get("open_ai_key")
+# Read configuration from environment variables
+model_name = os.getenv("OPEN_MODEL")  # e.g. "gpt-4o-mini"
+open_ai_key = os.getenv("OPEN_AI_KEY")
 
 # Fallback map for tool execution
 TOOL_FUNCTION_MAP = {
@@ -106,6 +105,11 @@ class BaseAgent(AssistantAgent, ABC):
             llm_params.update(llm_config)
 
         # 2. Create the LLM client instance for function calling
+        if not open_ai_key:
+            raise ValueError(
+                "OpenAI API key not found. Set the OPEN_AI_KEY environment variable or update your Codex config."
+            )
+
         client_config = {
             "model": model_name,
             "api_key": open_ai_key,

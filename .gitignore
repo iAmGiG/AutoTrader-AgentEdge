@@ -193,3 +193,4 @@ test_data_retrieval.py
 docs/original_sentiment_agent.py
 sentiment_agent_cli.py
 sentiment_agent_cli_improved.py
+conda_requirements.txt
