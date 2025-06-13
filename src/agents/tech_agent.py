@@ -12,7 +12,7 @@ import numpy as np
 
 # project imports
 from src.agents.base_agent import BaseAgent
-from src.tools.tools import QUANTITATIVE_AGENT, get_tools_for_agent
+from src.tools.tools import TECH_AGENT, get_tools_for_agent
 from src.tools.processors.indicator_library import (
     sma,
     ema,
@@ -37,7 +37,7 @@ from src.tools.date_utils import (
 )
 from src.tools.agent_utils import QueryParser
 
-QUANT_LLM_CONFIG = {
+TECH_LLM_CONFIG = {
     "temperature": 0.15,  # deterministic outputs
     "max_tokens": 4096,
     "top_p": 0.9,
@@ -45,9 +45,9 @@ QUANT_LLM_CONFIG = {
 }
 
 
-class QuantitativeAgent(BaseAgent):
+class TechAgent(BaseAgent):
     """
-    Agent that answers quantitative / technical-analysis questions.
+    Agent that answers technical-analysis questions.
 
     Responsibilities
     ----------------
@@ -56,15 +56,15 @@ class QuantitativeAgent(BaseAgent):
     • Generate concise, data-driven explanations for the user.
     """
 
-    def __init__(self, name: str = "QuantitativeAgent", memory_system=None):
-        # Select only the quantitative-tagged tools
-        tools = get_tools_for_agent(QUANTITATIVE_AGENT)
+    def __init__(self, name: str = "TechAgent", memory_system=None):
+        # Select only the tech-agent-tagged tools
+        tools = get_tools_for_agent(TECH_AGENT)
 
         super().__init__(
             name=name,
             tools=tools,
             memory_system=memory_system,
-            llm_config=QUANT_LLM_CONFIG,
+            llm_config=TECH_LLM_CONFIG,
         )
 
         # Optional: attach a logger
@@ -455,7 +455,7 @@ class QuantitativeAgent(BaseAgent):
                             ", ".join(query["indicators"]))
 
         snippets.append(
-            "Available quantitative tools: fetch_market_data, fetch_yahoo_data, "
+            "Available technical tools: fetch_market_data, fetch_yahoo_data, "
             "fetch_economic_indicator, fetch_interest_rates, fetch_yield_curve"
         )
 
@@ -616,7 +616,7 @@ class QuantitativeAgent(BaseAgent):
         # --------------- Compose system prompt ----------------------------
         # Example system prompt instructing the LLM about returned fields
         sys_prompt = (
-            "You are a quantitative research assistant. "
+            "You are a technical research assistant. "
             "When useful, call tools to fetch data, then compute indicators "
             "locally before you answer.\n"
             "\nSupplementary context:\n"

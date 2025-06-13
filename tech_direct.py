@@ -1,5 +1,5 @@
 """
-Direct mode only - Quantitative Agent online.
+Direct mode only - Tech Agent online.
 """
 
 import asyncio
@@ -7,13 +7,13 @@ import os
 import traceback
 from datetime import datetime
 import pandas as pd
-from src.agents.quantitative_agent import QuantitativeAgent
+from src.agents.tech_agent import TechAgent
 from src.tools.date_utils import get_default_timezone
 
 
-async def process_with_agent(prompt: str, agent: QuantitativeAgent):
+async def process_with_agent(prompt: str, agent: TechAgent):
     """
-    Send a single prompt to the QuantitativeAgent and return the response.
+    Send a single prompt to the TechAgent and return the response.
     Handles both synchronous and coroutine returns (process_with_tools_async).
     """
     try:
@@ -37,11 +37,11 @@ def main():
     if not os.environ.get("OPEN_AI_KEY"):
         raise RuntimeError("OPEN_AI_KEY environment variable not set")
 
-    print("Starting Quantitative Agent CLI...")
+    print("Starting Tech Agent CLI...")
     tz = get_default_timezone()
-    ts = pd.Timestamp.utcnow().tz_localize("UTC").tz_convert(tz)
+    ts = pd.Timestamp.utcnow().tz_convert(tz)
     print(f"Current time ({tz}): {ts.isoformat()}")
-    agent = QuantitativeAgent()
+    agent = TechAgent()
 
     while True:
         try:

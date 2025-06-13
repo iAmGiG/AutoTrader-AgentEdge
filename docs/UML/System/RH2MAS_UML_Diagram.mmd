@@ -53,7 +53,7 @@ classDiagram
         +reportConfidenceMetrics()
     }
     
-    class QuantitativeAnalysisAgent {
+    class TechAnalysisAgent {
         -technicalIndicators: Indicator[]
         -volatilityModels: Model[]
         +analyzeMarketStructure(data: TimeSeries)
@@ -152,12 +152,12 @@ classDiagram
     
     StrategyAgent --> DecisionEngine : "coordinates decisions"
     StrategyAgent --> SentimentAnalysisAgent : "delegates sentiment analysis"
-    StrategyAgent --> QuantitativeAnalysisAgent : "delegates quant analysis"
+    StrategyAgent --> TechAnalysisAgent : "delegates technical analysis"
     StrategyAgent --> MarketAnalysisAgent : "delegates market analysis"
     
     %% All agent signals routed via MetaTokenSystem
     SentimentAnalysisAgent --> MetaTokenSystem : "sends sentiment signals"
-    QuantitativeAnalysisAgent --> MetaTokenSystem : "sends technical signals"
+    TechAnalysisAgent --> MetaTokenSystem : "sends technical signals"
     MarketAnalysisAgent --> MetaTokenSystem : "sends market signals"
     
     MetaTokenSystem --> DecisionEngine : "synthesizes agent signals"
@@ -185,7 +185,7 @@ classDiagram
     
     %% Memory interactions
     SentimentAnalysisAgent --> LayeredMemorySystem : "stores/retrieves patterns"
-    QuantitativeAnalysisAgent --> LayeredMemorySystem : "stores/retrieves patterns"
+    TechAnalysisAgent --> LayeredMemorySystem : "stores/retrieves patterns"
     MarketAnalysisAgent --> LayeredMemorySystem : "stores/retrieves patterns"
     DecisionEngine --> LayeredMemorySystem : "Stores risk constraints and decision logs"
     PerformanceMonitor --> LayeredMemorySystem : "logs performance data"
@@ -198,7 +198,7 @@ classDiagram
     
     %% Custom Tools usage
     SentimentAnalysisAgent --> CustomTools : "utilizes sentiment API"
-    QuantitativeAnalysisAgent --> CustomTools : "utilizes technical analysis API"
+    TechAnalysisAgent --> CustomTools : "utilizes technical analysis API"
     MarketAnalysisAgent --> CustomTools : "utilizes market data API"
     DecisionEngine --> CustomTools : "fetches external financial data"
     R_MCTS_Module --> CustomTools : "retrieves training data for self-learning"

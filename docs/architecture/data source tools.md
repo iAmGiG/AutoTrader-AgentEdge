@@ -228,7 +228,7 @@ Since the SentimentAgent and StrategyAgent are the simplest to implement first, 
 |-------------------|--------------------------------------------------------------------------------------------------|
 | **SentimentAgent** | UnifiedNewsTool, AlphaVantageNewsTool, FinnHubTool, NewsHeadlineTool, SECEdgarTool              |
 | **StrategyAgent**  | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, UnifiedNewsTool, FREDDataTool         |
-| **QuantitativeAgent** | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, FREDDataTool                         |
+| **TechAgent** | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, FREDDataTool                         |
 | **RiskAgent**      | SECEdgarTool, FREDDataTool, MarketDataTool                                                       |
 
 ### Unified Tool Access
