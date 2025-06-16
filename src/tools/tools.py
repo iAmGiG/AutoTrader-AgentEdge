@@ -872,16 +872,16 @@ SENTIMENT_TOOLS = [
     # Yahoo Finance corporate events (enhanced with caching)
     yahoo_corporate_events_tool,
     # EXPERIMENTAL corporate actions tools (premium subscription required)
-    fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
-    fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
-    fmp_historical_earnings_tool,    # FMP historical earnings (EXPERIMENTAL)
-    fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
-    fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
-    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
+    # fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
+    # fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
+    # fmp_historical_earnings_tool,    # FMP historical earnings (EXPERIMENTAL)
+    # fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
+    # fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
+    # finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
     # Finnhub insider transactions (PREMIUM)
-    finnhub_insider_transactions_tool,
-    finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
-    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
+    # finnhub_insider_transactions_tool,
+    # finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
+    # finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
 
 # TECH_AGENT tools
