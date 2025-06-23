@@ -1,3 +1,5 @@
+from typing import Dict
+
 from .base_agent import BaseAgent
 
 
@@ -9,6 +11,9 @@ class StrategyAgent(BaseAgent):
     analysis indicates a "go" signal, it returns a BUY order. Otherwise it
     returns a HOLD order.
     """
+
+    def __init__(self, name: str = "StrategyAgent", memory_system=None):
+        super().__init__(name=name, tools=[], memory_system=memory_system)
 
     def decide_trade(self, aggregated: Dict) -> Dict:
         """Return a trading decision based on aggregated signals.
@@ -26,6 +31,14 @@ class StrategyAgent(BaseAgent):
             a reason string.
         """
         sent = aggregated.get("sentiment", {})
+        if isinstance(sent, str):
+            sent = {}
         tech = aggregated.get("technical", {})
+        if isinstance(tech, str):
+            tech = {}
         action = "BUY" if sent.get("score", 0) > 0 and tech.get("go") else "HOLD"
         return {"action": action, "qty": 100, "reason": "rule_v0"}
+
+    def generate_reply(self, messages, context=None):
+        """Placeholder to satisfy the BaseAgent interface."""
+        raise NotImplementedError("StrategyAgent does not implement dialogue responses")

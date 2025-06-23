@@ -20,17 +20,21 @@ class CoordinatorAgent(BaseAgent):
         self.sentiment = SentimentAgent()
         self.technical = TechAgent()
 
-    async def get_signals(self, date: str, symbol: str) -> Dict[str, Any]:
+    def generate_reply(self, messages, context=None):
+        """Placeholder to satisfy the BaseAgent interface."""
+        raise NotImplementedError("CoordinatorAgent does not implement dialogue responses")
+
+    def get_signals(self, date: str, symbol: str) -> Dict[str, Any]:
         """Return sentiment and technical signals for a symbol on a date."""
         prompt = f"analyse {symbol} on {date}"
         try:
             sentiment_resp = self.sentiment.generate_reply([{"role": "user", "content": prompt}])
             if asyncio.iscoroutine(sentiment_resp):
-                sentiment_resp = await sentiment_resp
+                sentiment_resp = asyncio.run(sentiment_resp)
 
             tech_resp = self.technical.generate_reply([{"role": "user", "content": prompt}])
             if asyncio.iscoroutine(tech_resp):
-                tech_resp = await tech_resp
+                tech_resp = asyncio.run(tech_resp)
 
             return {"ok": True, "sentiment": sentiment_resp, "technical": tech_resp}
         except Exception as e:
