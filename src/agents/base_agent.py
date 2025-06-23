@@ -309,28 +309,14 @@ class BaseAgent(AssistantAgent, ABC):
                 self.log(f"Error executing via direct call: {e}")
                 # Continue to next strategy
 
-        # Strategy 4: Use run method with proper handling for FunctionTool (last resort)
-        if hasattr(tool, 'run'):
+        # Strategy 4: Use the standard run_json method (last resort)
+        if hasattr(tool, 'run_json'):
             try:
-                # Standard path for other tools
-                if ARGUMENT_INFO_AVAILABLE:
-                    # Convert args dict to ArgumentInfo list
-                    args_list = [ArgumentInfo(name=k, value=v)
-                                 for k, v in tool_args.items()]
-                    self.log(
-                        f"Executing {tool_name} via run method with ArgumentInfo")
-                    return await tool.run(args_list, cancellation_token)
-                else:
-                    # For backwards compatibility, try calling run with args directly
-                    # Note: This path may not work with all AutoGen versions
-                    self.log(
-                        f"Executing {tool_name} via run method (fallback)")
-                    # Don't pass kwargs to run(), instead rely on other strategies
-                    raise Exception(
-                        "ArgumentInfo not available, skipping run method")
+                self.log(f"Executing {tool_name} via run_json")
+                return await tool.run_json(tool_args, cancellation_token)
             except Exception as e:
-                self.log(f"Error executing via run method: {e}")
-                # This was our last strategy for run method
+                self.log(f"Error executing via run_json: {e}")
+                # Continue to next strategy
 
         # If we've tried all strategies and none worked
         raise ValueError(
