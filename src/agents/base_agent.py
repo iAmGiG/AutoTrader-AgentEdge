@@ -24,15 +24,6 @@ from autogen_core.models import (
 from autogen_agentchat.agents._assistant_agent import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core._cancellation_token import CancellationToken
-from autogen_core.tools import FunctionTool
-
-# Optional imports for improved FunctionTool handling
-try:
-    from autogen_core.tools.function_tool import ArgumentInfo
-    ARGUMENT_INFO_AVAILABLE = True
-except ImportError:
-    ARGUMENT_INFO_AVAILABLE = False
-    # We'll handle fallbacks when needed
 
 # Import tool dictionary for dynamic tool access
 from src.tools.tools import ALL_TOOLS
