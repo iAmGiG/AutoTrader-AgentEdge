@@ -164,8 +164,19 @@ class MarketDataTool:
         if self.yahoo_finance_tool is None:
             self.yahoo_finance_tool = YahooFinanceTool()
 
-        # Fetch data
-        return self.yahoo_finance_tool.fetch_stock_data(symbol, start_date, end_date)
+        # Fetch data with fallback to Alpha Vantage on failure or empty result
+        try:
+            df = self.yahoo_finance_tool.fetch_stock_data(symbol, start_date, end_date)
+            if df is None or df.empty:
+                self.logger.warning(
+                    "Yahoo Finance returned no data, attempting Alpha Vantage fallback")
+                return self._fetch_from_alpha_vantage(
+                    symbol, start_date, end_date, filters)
+            return df
+        except Exception as e:
+            self.logger.warning(
+                f"Yahoo Finance error for {symbol}: {e}. Using Alpha Vantage fallback")
+            return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
 
     def _fetch_from_csv(
         self,
