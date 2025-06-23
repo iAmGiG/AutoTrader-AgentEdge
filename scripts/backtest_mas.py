@@ -10,23 +10,26 @@ Usage:
 Example:
     python backtest_mas.py NVDA 2023-01-01 2024-12-31
 """
-
-import asyncio
-import sys
-from typing import List, Dict
-
-import pandas as pd
-
-from src.agents.coordinator_agent import CoordinatorAgent
-from src.agents.strategy_agent import StrategyAgent
-from src.tools.tools import YahooFinanceTool
 from src.tools.date_utils import process_date_param
+from src.tools.tools import YahooFinanceTool
+from src.agents.strategy_agent import StrategyAgent
+from src.agents.coordinator_agent import CoordinatorAgent
+import pandas as pd
+from typing import List, Dict
+import sys
+import asyncio
+import os
+# Add src to Python path so imports work
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..')))
 
 
 def main() -> None:
-    symbol = sys.argv[1] if len(sys.argv) > 1 else "NVDA"
-    start = process_date_param(sys.argv[2]) if len(sys.argv) > 2 else "2023-01-01"
-    end = process_date_param(sys.argv[3]) if len(sys.argv) > 3 else "2024-12-31"
+    symbol = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
+    start = process_date_param(sys.argv[2]) if len(
+        sys.argv) > 2 else "2023-01-01"
+    end = process_date_param(sys.argv[3]) if len(
+        sys.argv) > 3 else "2024-12-31"
 
     yf = YahooFinanceTool()
     prices = yf.fetch_stock_data(symbol, start, end)
@@ -46,19 +49,23 @@ def main() -> None:
     for ts, price in prices.items():
         date_str = ts.date().isoformat()
         sigs = asyncio.run(coord.get_signals(date_str, symbol))
-        decision = strat.decide_trade(sigs)
+        decision = strat.decide_trade(
+            sigs, price=float(price), trade_date=date_str)
         qty = decision.get("qty", 100)
 
         if decision.get("action") == "BUY" and equity >= price * qty:
             equity -= price * qty
             shares += qty
-            trades.append({"date": date_str, "action": "BUY", "price": price, "qty": qty})
+            trades.append({"date": date_str, "action": "BUY",
+                          "price": price, "qty": qty})
         elif decision.get("action") == "SELL" and shares > 0:
             equity += price * shares
-            trades.append({"date": date_str, "action": "SELL", "price": price, "qty": shares})
+            trades.append({"date": date_str, "action": "SELL",
+                          "price": price, "qty": shares})
             shares = 0
 
-        equity_curve.append({"date": date_str, "equity": equity + shares * price})
+        equity_curve.append(
+            {"date": date_str, "equity": equity + shares * price})
 
     final_value = equity + shares * prices.iloc[-1]
     print(f"Back-test {symbol}: start={start} end={end}")
