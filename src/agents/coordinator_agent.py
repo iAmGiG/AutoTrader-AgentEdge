@@ -28,7 +28,7 @@ class CoordinatorAgent(BaseAgent):
         """Return sentiment and technical signals for a symbol on a date."""
         prompt = f"analyse {symbol} on {date}"
         try:
-            # Call sentiment agent (may be sync or async)
+            # Call sentiment agent
             sentiment_resp = self.sentiment.generate_reply(
                 [{"role": "user", "content": prompt}]
             )
@@ -42,7 +42,7 @@ class CoordinatorAgent(BaseAgent):
             if asyncio.iscoroutine(tech_resp):
                 tech_resp = await tech_resp
 
-            # Expect each to return a dict
+            # Both responses expected as dicts
             return {"ok": True, "sentiment": sentiment_resp, "technical": tech_resp}
 
         except Exception as e:

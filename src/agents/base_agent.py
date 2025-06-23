@@ -523,12 +523,15 @@ class BaseAgent(AssistantAgent, ABC):
         """
         try:
             messages = self._build_message_sequence(prompt, system_prompt)
-            # If already in an event loop, use the async version directly
-            if asyncio.get_event_loop().is_running():
-                # Return a coroutine that can be awaited by the caller
+            try:
+                asyncio.get_running_loop()
+                in_loop = True
+            except RuntimeError:
+                in_loop = False
+
+            if in_loop:
                 return self.process_with_tools_async(prompt, system_prompt)
             else:
-                # Not in an event loop, safe to use asyncio.run
                 response = asyncio.run(self._run_tool_conversation(messages))
                 return self._extract_content(response)
         except Exception as e:
