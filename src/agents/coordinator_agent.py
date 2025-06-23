@@ -35,4 +35,3 @@ class CoordinatorAgent(BaseAgent):
             return {"ok": True, "sentiment": sentiment_resp, "technical": tech_resp}
         except Exception as e:
             return {"ok": False, "error": str(e)}
-
