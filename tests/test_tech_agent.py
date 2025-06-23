@@ -24,6 +24,7 @@ def test_process_tool_result_macd():
         "fetch_market_data", df, {"indicators": ["macd"]}
     )
     assert "MACD_line" in result["latest_row"]
+    assert "macd_today" in result and "macd_yest" in result
 
 
 def test_process_tool_result_spark():
@@ -61,6 +62,7 @@ def test_process_tool_result_rich_dict():
     assert isinstance(result["events"], dict)
     assert isinstance(result["spark"], str)
     assert isinstance(result["timestamp"], str)
+    assert "macd_today" in result and "macd_yest" in result
 
 
 def test_avwap_anchor_in_result():
