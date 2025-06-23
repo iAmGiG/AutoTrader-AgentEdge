@@ -24,14 +24,26 @@ class CoordinatorAgent(BaseAgent):
         """Trivial implementation to satisfy BaseAgent abstract method."""
         return ""
 
-    def get_signals(self, date: str, symbol: str) -> Dict[str, Any]:
+    async def get_signals(self, date: str, symbol: str) -> Dict[str, Any]:
         """Return sentiment and technical signals for a symbol on a date."""
-        # In the unit-test environment the underlying agents may rely on LLM
-        # calls which are unavailable. Return simple mock signals instead of
-        # invoking them.
+        prompt = f"analyse {symbol} on {date}"
         try:
-            sentiment_resp = {"score": 1}
-            tech_resp = {"go": True}
+            # Call sentiment agent (may be sync or async)
+            sentiment_resp = self.sentiment.generate_reply(
+                [{"role": "user", "content": prompt}]
+            )
+            if asyncio.iscoroutine(sentiment_resp):
+                sentiment_resp = await sentiment_resp
+
+            # Call technical agent
+            tech_resp = self.technical.generate_reply(
+                [{"role": "user", "content": prompt}]
+            )
+            if asyncio.iscoroutine(tech_resp):
+                tech_resp = await tech_resp
+
+            # Expect each to return a dict
             return {"ok": True, "sentiment": sentiment_resp, "technical": tech_resp}
-        except Exception as e:  # pragma: no cover - unexpected errors
+
+        except Exception as e:
             return {"ok": False, "error": str(e)}
