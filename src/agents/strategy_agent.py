@@ -24,7 +24,7 @@ class StrategyAgent(BaseAgent):
         self.trade_log = []
 
     def generate_reply(self, messages, context=None):
-        """Stub required by BaseAgent; this agent does not chat."""
+        """Stub required by BaseAgent; this agent does not support chat."""
         raise NotImplementedError("StrategyAgent does not support chat-based interactions")
 
     def decide_trade(self, aggregated: Dict, price: float, trade_date: str) -> Dict:
