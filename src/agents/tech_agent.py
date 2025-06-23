@@ -506,8 +506,10 @@ class TechAgent(BaseAgent):
                 req = [ind.split("(")[0]
                        for ind in tool_args.get("indicators", [])]
 
-                if "macd" in req:
-                    df = pd.concat([df, macd(df["Close"])], axis=1)
+                # Always compute MACD so downstream logic can rely on it
+                macd_df = macd(df["Close"])
+                macd_df["MACD"] = macd_df["MACD_line"] - macd_df["MACD_signal"]
+                df = pd.concat([df, macd_df], axis=1)
                 if "bollinger" in req:
                     df = pd.concat([df, bollinger_bands(df["Close"])], axis=1)
                 if "adx" in req:
@@ -538,6 +540,10 @@ class TechAgent(BaseAgent):
                     df["AVWAP"] = avwap(df["Close"], df["Volume"], anchor_ts=anchor_ts)
 
                 df = standardize_indicator_columns(df)
+
+                # ------- MACD CROSS helpers ----------------------------------
+                if "MACD" in df.columns:
+                    df["MACD_prev"] = df["MACD"].shift(1)
 
                 # ------- Go/NoGo one-liner -----------------------------------
                 go_flag = (
@@ -594,6 +600,8 @@ class TechAgent(BaseAgent):
                     "events": events,
                     "spark": spark,
                     "timestamp": timestamp,
+                    "macd_today": float(df["MACD"].iloc[-1]) if "MACD" in df.columns else None,
+                    "macd_yest": float(df["MACD_prev"].iloc[-1]) if "MACD_prev" in df.columns else None,
                     "anchor_ts": anchor_ts.isoformat() if anchor_ts is not None else None,
                     "anchor_warning": anchor_warning,
                 }
