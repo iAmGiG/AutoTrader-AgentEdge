@@ -7,6 +7,7 @@ import logging
 from typing import Any, Dict, Optional
 import pandas as pd
 import os
+from src.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
 from src.tools.date_utils import (
@@ -40,13 +41,21 @@ class MarketDataTool:
 
         # Load from environment if config not provided
         if config is None:
-            default_days_back = int(os.getenv("DEFAULT_DAYS_BACK", 5))
+            config_loader = ConfigLoader()
+            default_days_back = int(
+                os.getenv("DEFAULT_DAYS_BACK", config_loader.get("DEFAULT_DAYS_BACK", 5))
+            )
             default_date_range = get_processed_date_range(
                 default_days_back=default_days_back)
 
             self.config = {
-                "data_source": os.getenv("MARKET_DATA_SOURCE", "alpha_vantage"),
-                "default_symbol": os.getenv("DEFAULT_SYMBOL", "AAPL"),
+                "data_source": os.getenv(
+                    "MARKET_DATA_SOURCE",
+                    config_loader.get("MARKET_DATA_SOURCE", "alpha_vantage"),
+                ),
+                "default_symbol": os.getenv(
+                    "DEFAULT_SYMBOL", config_loader.get("DEFAULT_SYMBOL", "AAPL")
+                ),
                 "default_date_range": default_date_range,
                 "default_days_back": default_days_back,
             }

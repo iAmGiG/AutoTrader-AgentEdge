@@ -7,6 +7,9 @@ and analyzing the content. It works primarily with 10-K, 10-Q, 8-K and other fil
 """
 
 import os
+from src.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 import re
 import logging
 import tempfile
@@ -42,7 +45,7 @@ REPORT_SECTIONS = {
     "executive_compensation": ["executive compensation", "item 11", "item11"]
 }
 
-email = os.getenv("validEmail")
+email = os.getenv("validEmail", config_loader.get("validEmail"))
 
 
 class SECEdgarTool:

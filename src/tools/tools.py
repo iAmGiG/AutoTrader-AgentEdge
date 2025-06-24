@@ -12,6 +12,9 @@ from src.tools.data_sources.market.fmp_tool import FMPTool
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 import os
+from src.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 # Import other vendor tools as needed
 
 ##################################
@@ -316,7 +319,7 @@ def fetch_finnhub_news(
         DataFrame with financial news headlines, dates, and sources
     """
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_news(category=category, tickers=tickers, count=count)
@@ -347,7 +350,7 @@ def fetch_finnhub_financial_headlines(
         DataFrame with diverse financial headlines for sentiment analysis
     """
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_financial_headlines(count=count)
@@ -378,12 +381,12 @@ def fetch_finnhub_economic_headlines(
         DataFrame with economic headlines from Finnhub
     """
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_economic_headlines(count=count)
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_economic_headlines(count=count)
@@ -414,7 +417,7 @@ def fetch_finnhub_earnings_calendar(
         DataFrame with earnings calendar data including EPS estimates and actuals
     """
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_earnings_calendar(start_date, end_date)
@@ -446,7 +449,7 @@ def fetch_finnhub_insider_transactions(
         DataFrame with insider transaction data
     """
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_insider_transactions(symbol, start_date, end_date)
@@ -479,7 +482,7 @@ def fetch_finnhub_dividends(
         DataFrame with dividend data including ex-dividend dates and amounts
     """
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_dividends(symbol, start_date, end_date)
@@ -507,7 +510,7 @@ def fetch_finnhub_earnings_estimates(
         DataFrame with EPS estimates and historical earnings surprises
     """
     # Load API key from environment
-    api_key = os.getenv("FINNHUB_KEY")
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
     tool = FinnHubTool(api_key)
     df = tool.fetch_earnings_estimates(symbol)

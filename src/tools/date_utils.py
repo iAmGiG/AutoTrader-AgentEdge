@@ -4,6 +4,9 @@ Utilities for dynamic date handling in data tools.
 
 import datetime
 import os
+from src.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 import re
 from typing import Tuple, Optional
 
@@ -13,7 +16,10 @@ DEFAULT_TIMEZONE = "America/New_York"
 
 def get_default_timezone() -> str:
     """Return the configured default timezone."""
-    return os.getenv("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE)
+    return os.getenv(
+        "DEFAULT_TIMEZONE",
+        config_loader.get("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE),
+    )
 
 
 def localize_df(df, tz: str):
