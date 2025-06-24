@@ -11,7 +11,7 @@ import logging
 import requests
 import pandas as pd
 import os
-from src.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 
 
 class AlphaVantageNewsTool:

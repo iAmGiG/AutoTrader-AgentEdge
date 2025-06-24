@@ -10,7 +10,7 @@ import logging
 import pandas as pd
 from typing import Optional
 import os
-from src.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 from src.tools.date_utils import process_date_param, localize_df, get_default_timezone
 
 

@@ -38,7 +38,7 @@ from src.tools.tools import (
     fetch_fmp_stock_split_calendar
 )
 import os
-from src.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 
 # Load configuration file for fallback values
 config_loader = ConfigLoader()

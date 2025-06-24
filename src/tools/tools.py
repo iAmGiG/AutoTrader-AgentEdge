@@ -12,7 +12,7 @@ from src.tools.data_sources.market.fmp_tool import FMPTool
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 import os
-from src.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 
 config_loader = ConfigLoader()
 # Import other vendor tools as needed

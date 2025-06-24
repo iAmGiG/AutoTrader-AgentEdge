@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, Optional
 import pandas as pd
 import os
-from src.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
 from src.tools.date_utils import (
@@ -43,7 +43,8 @@ class MarketDataTool:
         if config is None:
             config_loader = ConfigLoader()
             default_days_back = int(
-                os.getenv("DEFAULT_DAYS_BACK", config_loader.get("DEFAULT_DAYS_BACK", 5))
+                os.getenv("DEFAULT_DAYS_BACK", config_loader.get(
+                    "DEFAULT_DAYS_BACK", 5))
             )
             default_date_range = get_processed_date_range(
                 default_days_back=default_days_back)
@@ -54,7 +55,8 @@ class MarketDataTool:
                     config_loader.get("MARKET_DATA_SOURCE", "alpha_vantage"),
                 ),
                 "default_symbol": os.getenv(
-                    "DEFAULT_SYMBOL", config_loader.get("DEFAULT_SYMBOL", "AAPL")
+                    "DEFAULT_SYMBOL", config_loader.get(
+                        "DEFAULT_SYMBOL", "AAPL")
                 ),
                 "default_date_range": default_date_range,
                 "default_days_back": default_days_back,
@@ -175,7 +177,8 @@ class MarketDataTool:
 
         # Fetch data with fallback to Alpha Vantage on failure or empty result
         try:
-            df = self.yahoo_finance_tool.fetch_stock_data(symbol, start_date, end_date)
+            df = self.yahoo_finance_tool.fetch_stock_data(
+                symbol, start_date, end_date)
             if df is None or df.empty:
                 self.logger.warning(
                     "Yahoo Finance returned no data, attempting Alpha Vantage fallback")

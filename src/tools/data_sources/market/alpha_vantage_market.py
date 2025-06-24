@@ -12,7 +12,7 @@ import logging
 import requests
 import pandas as pd
 import os
-from src.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 from src.tools.date_utils import (
     get_processed_date_range,
     localize_df,

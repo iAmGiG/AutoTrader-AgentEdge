@@ -9,7 +9,7 @@ retrieval for sentiment analysis.
 
 import requests
 import logging
-from src.config_loader import ConfigLoader
+from config.config_loader import ConfigLoader
 import pandas as pd
 from typing import Optional, List
 import os
@@ -54,7 +54,8 @@ class FinnHubTool:
         # Load API key from environment if not provided
         if api_key is None:
             config_loader = ConfigLoader()
-            api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+            api_key = os.getenv(
+                "FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
             if not api_key:
                 self.logger.error("No Finnhub API key provided in environment")
