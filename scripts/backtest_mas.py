@@ -11,7 +11,7 @@ Example:
     python backtest_mas.py NVDA 2023-01-01 2024-12-31
 """
 from src.tools.date_utils import process_date_param
-from src.tools.tools import YahooFinanceTool
+from src.tools.data_sources.market.market_data_tool import MarketDataTool
 from src.agents.strategy_agent import StrategyAgent
 from src.agents.coordinator_agent import CoordinatorAgent
 import pandas as pd
@@ -31,11 +31,15 @@ def main() -> None:
     end = process_date_param(sys.argv[3]) if len(
         sys.argv) > 3 else "2024-12-31"
 
-    yf = YahooFinanceTool()
-    prices = yf.fetch_stock_data(symbol, start, end)
+    # Use MarketDataTool with Yahoo as the preferred source so we can
+    # automatically fall back to Alpha Vantage if Yahoo Finance is
+    # unavailable or rate limited.
+    market_tool = MarketDataTool({"data_source": "yahoo"})
+    prices = market_tool.fetch_market_data(symbol, start, end)
     if prices.empty:
-        print("No price data found")
+        print("No price data found from Yahoo or Alpha Vantage")
         return
+    # Work with the close prices only
     prices = prices["Close"].dropna()
 
     coord = CoordinatorAgent()
