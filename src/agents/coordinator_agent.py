@@ -6,6 +6,7 @@ and exposes an API to fetch combined signals.
 
 from typing import Any, Dict
 import asyncio
+import json
 
 from .base_agent import BaseAgent
 from .sentiment_agent import SentimentAgent
@@ -42,8 +43,22 @@ class CoordinatorAgent(BaseAgent):
             if asyncio.iscoroutine(tech_resp):
                 tech_resp = await tech_resp
 
-            # Both responses expected as dicts
-            return {"ok": True, "sentiment": sentiment_resp, "technical": tech_resp}
+            def _ensure_dict(val: Any) -> Dict[str, Any]:
+                    if isinstance(val, dict):
+                        return val
+                    if isinstance(val, str):
+                        try:
+                            parsed = json.loads(val)
+                            if isinstance(parsed, dict):
+                                return parsed
+                        except json.JSONDecodeError:
+                            pass
+                    return {}
+
+            sentiment_dict = _ensure_dict(sentiment_resp)
+            tech_dict = _ensure_dict(tech_resp)
+
+            return {"ok": True, "sentiment": sentiment_dict, "technical": tech_dict}
 
         except Exception as e:
             return {"ok": False, "error": str(e)}

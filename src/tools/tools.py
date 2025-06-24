@@ -144,6 +144,15 @@ def fetch_all_news(
         count=count,
         include_sentiment=True
     )
+    articles = result.get("articles", []) if isinstance(result, dict) else []
+    if not articles:
+        return {
+            "status": "EMPTY",
+            "reason": "No headlines matched that date/keyword",
+            "ticker": ticker,
+            "keywords": keywords,
+            "articles": [],
+        }
     return result
 
 

@@ -150,7 +150,23 @@ class MarketDataTool:
             self.alpha_vantage_tool = AlphaVantageTool()
 
         # Fetch data
-        return self.alpha_vantage_tool.fetch_stock_data(symbol, start_date, end_date)
+        df = self.alpha_vantage_tool.fetch_stock_data(
+            symbol, start_date, end_date)
+
+        # Normalize column names to match Yahoo Finance format so downstream
+        # consumers can reliably use capitalized OHLCV columns.
+        if not df.empty:
+            col_map = {
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "volume": "Volume",
+            }
+            df = df.rename(
+                columns={k: v for k, v in col_map.items() if k in df.columns})
+
+        return df
 
     def _fetch_from_yahoo(
         self,

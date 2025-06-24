@@ -410,45 +410,38 @@ class BaseAgent(AssistantAgent, ABC):
     # Core Conversation Methods
     #############################
 
-    async def _run_tool_conversation(self, messages: List[Any]) -> Any:
-        """
-        Run a conversation with the LLM that may involve tool calling.
-
-        :param messages: The initial messages for the conversation.
-        :return: The LLM's response.
-        """
-        # Initialize conversation history
-        conversation = messages.copy()
-
-        # Set up tools for the LLM to use
+    async def _run_tool_conversation(self, messages: List[Any], max_rounds: int = 2) -> Any:
+        """Run a conversation with optional tool calling, capped by ``max_rounds``."""
+        rounds = 0
+        conversation = list(messages)
         tools_list = list(self._tools_dict.values())
 
-        # First LLM call - might return tool calls
-        print("- Calling LLM to analyze the query...")
-        response = await self.model_client.create(messages=conversation, tools=tools_list)
+        while True:
+            rounds += 1
+            self.log(f"Calling LLM (tool round {rounds})...")
+            response = await self.model_client.create(messages=conversation, tools=tools_list)
 
-        # Check if the response contains tool calls
-        if hasattr(response, 'content') and isinstance(response.content, list):
-            # We have tool calls to process
-            tool_calls = response.content
-            conversation.append(AssistantMessage(
-                content=tool_calls, source="assistant"))
-
-            # Process all tool calls and get results
-            tool_results = await self._process_tool_calls(tool_calls)
-
-            # Add the tool results to the conversation
-            if tool_results:
+            if hasattr(response, 'content') and isinstance(response.content, list):
+                if rounds >= max_rounds:
+                    self.log(
+                        "Max tool rounds reached; stopping further tool calls.")
+                    break
+                conversation.append(AssistantMessage(
+                    content=response.content, source="assistant"))
+                tool_results = await self._process_tool_calls(response.content)
                 conversation.append(
                     FunctionExecutionResultMessage(content=tool_results))
+                continue
 
-            # Call the LLM again with the tool results
-            print("- Calling LLM to generate final response with tool results...")
-            final_response = await self.model_client.create(messages=conversation)
-            return final_response
+            return response
 
-        # If no tool calls, just return the initial response
-        return response
+        summary = await self.model_client.create(
+            messages=conversation + [
+                AssistantMessage(
+                    content="Please summarize these findings in a final answer.", source="assistant")
+            ]
+        )
+        return summary
 
     async def _process_tool_calls(self, tool_calls: List[Any]) -> List[FunctionExecutionResult]:
         """
