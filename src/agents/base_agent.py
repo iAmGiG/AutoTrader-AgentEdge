@@ -411,36 +411,58 @@ class BaseAgent(AssistantAgent, ABC):
     #############################
 
     async def _run_tool_conversation(self, messages: List[Any]) -> Any:
-        """Run a conversation with optional tool calling."""
-        rounds = 0
+        """
+        Run a conversation that may involve tool calls, but bail out after
+        `self.max_tool_rounds` (default 2).  The final turn is a plain-text
+        summary request with *no* tools supplied, so the model cannot call
+        another function.
+        """
+        max_rounds = getattr(self, "max_tool_rounds", 2)
+        rounds     = 0
         conversation = list(messages)
-        tools_list = list(self._tools_dict.values())
+        tools_list   = list(self._tools_dict.values())
 
         while True:
             rounds += 1
             self.log(f"Calling LLM (tool round {rounds})...")
-            response = await self.model_client.create(messages=conversation, tools=tools_list)
+            response = await self.model_client.create(
+                messages=conversation,
+                tools=tools_list,
+            )
 
-            if hasattr(response, 'content') and isinstance(response.content, list):
-                # decide max rounds per-agent (default = 2)
-                max_rounds = getattr(self, 'max_tool_rounds', 2)
+            # ── If the model wants to call tools ──────────────────────
+            if hasattr(response, "content") and isinstance(response.content, list):
                 if rounds >= max_rounds:
-                    self.log(f"{self.name}: reached max_tool_rounds={max_rounds}, stopping tool loop.")
+                    self.log(
+                        f"{self.name}: reached max_tool_rounds={max_rounds}; "
+                        "stopping further tool calls."
+                    )
                     break
-                conversation.append(AssistantMessage(
-                    content=response.content, source="assistant"))
-                tool_results = await self._process_tool_calls(response.content)
-                conversation.append(
-                    FunctionExecutionResultMessage(content=tool_results))
-                continue
 
+                # record the tool call then execute it
+                tool_calls = response.content
+                conversation.append(
+                    AssistantMessage(content=tool_calls, source="assistant")
+                )
+                tool_results = await self._process_tool_calls(tool_calls)
+                conversation.append(
+                    FunctionExecutionResultMessage(content=tool_results)
+                )
+                continue  # go to next round
+
+            # ── No tool call → return assistant answer ─────────────
             return response
 
+        # ── Ask for a text-only summary (no tools param!) ─────────────
         summary = await self.model_client.create(
-            messages=conversation + [
+            messages=conversation
+            + [
                 AssistantMessage(
-                    content="Summarize these findings in a final answer; do not call any more tools.",
-                    source="assistant"
+                    content=(
+                        "Summarize these findings in a final answer. "
+                        "Do NOT call any more tools."
+                    ),
+                    source="assistant",
                 )
             ]
         )

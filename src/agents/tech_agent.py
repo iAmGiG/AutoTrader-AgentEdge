@@ -67,6 +67,9 @@ class TechAgent(BaseAgent):
             llm_config=TECH_LLM_CONFIG,
         )
 
+        # Limit tool recursion
+        self.max_tool_rounds = 1
+
         # Optional: attach a logger
         self.logger = logging.getLogger(self.__class__.__name__)
         self.last_query: Dict[str, Any] = {}
