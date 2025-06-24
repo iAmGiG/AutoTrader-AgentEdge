@@ -322,6 +322,10 @@ class SentimentAgent(BaseAgent):
         # Create a system prompt with supplementary context
         system_prompt = self.config.get("system_prompt", "")
         system_prompt += f"\n\nSupplementary context for this query:\n{supplementary_context}"
+        system_prompt += (
+            "\n\nAfter you have executed ONE tool call and received its result, "
+            "STOP CALLING TOOLS and give your final answer."
+        )
 
         # Add specific guidance based on extracted entities
         if query_details.get("ticker"):

@@ -632,6 +632,10 @@ class TechAgent(BaseAgent):
             + "\n\nIMPORTANT: Use multiple tools if it improves the answer."
             + "\nTool outputs include: latest_row, go_flag, go_rationale, risk, events, spark, timestamp."
         )
+        sys_prompt += (
+            "\n\nAfter you have executed ONE tool call and received its result, "
+            "STOP CALLING TOOLS and give your final answer."
+        )
 
         # --------------- Forward to BaseAgent’s tool-aware pipeline -------
         return self.process_with_tools(last_msg, sys_prompt)
