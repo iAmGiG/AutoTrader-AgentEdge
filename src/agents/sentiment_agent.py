@@ -42,6 +42,8 @@ class SentimentAgent(BaseAgent):
     def __init__(self, name="SentimentAgent", memory_system=None):
         # Load configurations and utilities
         self.config = load_agent_config("sentiment_agent")
+        # limit to one tool round
+        self.max_tool_rounds = 1
         self.market_sectors = load_market_sectors().get("sectors", {})
         self.query_parser = QueryParser(self.market_sectors)
 

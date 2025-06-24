@@ -410,8 +410,8 @@ class BaseAgent(AssistantAgent, ABC):
     # Core Conversation Methods
     #############################
 
-    async def _run_tool_conversation(self, messages: List[Any], max_rounds: int = 2) -> Any:
-        """Run a conversation with optional tool calling, capped by ``max_rounds``."""
+    async def _run_tool_conversation(self, messages: List[Any]) -> Any:
+        """Run a conversation with optional tool calling."""
         rounds = 0
         conversation = list(messages)
         tools_list = list(self._tools_dict.values())
@@ -422,9 +422,10 @@ class BaseAgent(AssistantAgent, ABC):
             response = await self.model_client.create(messages=conversation, tools=tools_list)
 
             if hasattr(response, 'content') and isinstance(response.content, list):
+                # decide max rounds per-agent (default = 2)
+                max_rounds = getattr(self, 'max_tool_rounds', 2)
                 if rounds >= max_rounds:
-                    self.log(
-                        "Max tool rounds reached; stopping further tool calls.")
+                    self.log(f"{self.name}: reached max_tool_rounds={max_rounds}, stopping tool loop.")
                     break
                 conversation.append(AssistantMessage(
                     content=response.content, source="assistant"))
@@ -438,7 +439,9 @@ class BaseAgent(AssistantAgent, ABC):
         summary = await self.model_client.create(
             messages=conversation + [
                 AssistantMessage(
-                    content="Please summarize these findings in a final answer.", source="assistant")
+                    content="Summarize these findings in a final answer; do not call any more tools.",
+                    source="assistant"
+                )
             ]
         )
         return summary
