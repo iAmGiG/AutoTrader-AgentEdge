@@ -1,7 +1,7 @@
 # base_agent.py
 """
 Base module defining an abstract agent class that all specialized agents inherit from.
-This implementation is designed for AutoGen 0.5.x and provides common functionality
+This implementation is designed for AutoGen 0.6.x and provides common functionality
 for all agents in the system.
 """
 
