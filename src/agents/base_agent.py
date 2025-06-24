@@ -38,10 +38,14 @@ from src.tools.tools import (
     fetch_fmp_stock_split_calendar
 )
 import os
+from src.config_loader import ConfigLoader
 
-# Read configuration from environment variables
-model_name = os.getenv("OPEN_MODEL")  # e.g. "gpt-4o-mini"
-open_ai_key = os.getenv("OPEN_AI_KEY")
+# Load configuration file for fallback values
+config_loader = ConfigLoader()
+
+# Read configuration from environment variables or fallback to config
+model_name = os.getenv("OPEN_MODEL", config_loader.get("OPEN_MODEL"))
+open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
 
 # Fallback map for tool execution
 TOOL_FUNCTION_MAP = {

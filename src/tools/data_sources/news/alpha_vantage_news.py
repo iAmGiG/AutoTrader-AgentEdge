@@ -11,6 +11,7 @@ import logging
 import requests
 import pandas as pd
 import os
+from src.config_loader import ConfigLoader
 
 
 class AlphaVantageNewsTool:
@@ -23,8 +24,11 @@ class AlphaVantageNewsTool:
     """
 
     def __init__(self):
-        # Load API key from environment
-        self.api_key = os.getenv("ALPHA_VANTAGE_KEY")
+        # Load API key from environment or config
+        config_loader = ConfigLoader()
+        self.api_key = os.getenv(
+            "ALPHA_VANTAGE_KEY", config_loader.get("ALPHA_VANTAGE_KEY")
+        )
 
         if not self.api_key:
             logging.warning("Alpha Vantage API key not found in config.")

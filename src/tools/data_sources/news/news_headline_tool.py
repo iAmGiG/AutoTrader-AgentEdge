@@ -2,6 +2,9 @@
 import sys
 from datetime import datetime
 import os
+from src.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 import requests
 import pandas as pd
 import nltk
@@ -13,7 +16,7 @@ class NewsHeadlineTool:
 
     def __init__(self, source="newsapi"):
         # Load configuration and API key from environment
-        self.api_key = os.getenv("NEWSAPI_KEY")
+        self.api_key = os.getenv("NEWSAPI_KEY", config_loader.get("NEWSAPI_KEY"))
         self.source = source
 
         # Initialize sentiment analyzer

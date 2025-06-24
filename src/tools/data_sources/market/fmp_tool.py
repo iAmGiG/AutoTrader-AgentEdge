@@ -10,6 +10,7 @@ import logging
 import pandas as pd
 from typing import Optional
 import os
+from src.config_loader import ConfigLoader
 from src.tools.date_utils import process_date_param, localize_df, get_default_timezone
 
 
@@ -36,7 +37,8 @@ class FMPTool:
 
         # Load API key from environment if not provided
         if api_key is None:
-            api_key = os.getenv("FMP")
+            config_loader = ConfigLoader()
+            api_key = os.getenv("FMP", config_loader.get("FMP"))
 
             if not api_key:
                 self.logger.error("No FMP API key provided in environment")

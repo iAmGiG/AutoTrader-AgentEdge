@@ -16,6 +16,9 @@ Features:
 import os
 import json
 import asyncio
+from src.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Union, Literal
 from abc import ABC, abstractmethod
@@ -90,7 +93,10 @@ class NewsSourceProvider(ABC):
     def _load_api_key(self):
         """Load API key from environment if configured"""
         if self.config.api_key_config_name:
-            self.api_key = os.getenv(self.config.api_key_config_name.upper())
+            self.api_key = os.getenv(
+                self.config.api_key_config_name.upper(),
+                config_loader.get(self.config.api_key_config_name.upper()),
+            )
         else:
             self.api_key = None
 

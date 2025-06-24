@@ -13,6 +13,9 @@ import logging
 from typing import Optional, Dict, Any, List
 from fredapi import Fred
 import os
+from src.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 from src.tools.date_utils import process_date_param, get_processed_date_range
 
 
@@ -65,7 +68,7 @@ class FREDDataTool:
 
         # Load API key from environment if not provided
         if api_key is None:
-            api_key = os.getenv("FREDAPI")
+            api_key = os.getenv("FREDAPI", config_loader.get("FREDAPI"))
 
             if not api_key:
                 self.logger.error("No FRED API key provided in environment")
