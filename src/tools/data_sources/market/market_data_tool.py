@@ -10,6 +10,8 @@ import os
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
 from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
+from src.tools.data_sources.market.fmp_tool import FMPTool
+from src.tools.data_sources.market.nasdaq_data_link_tool import NasdaqDataLinkTool
 from src.tools.date_utils import (
     get_processed_date_range,
     localize_df,
@@ -74,6 +76,8 @@ class MarketDataTool:
         # Initialize specific data source tools
         self.alpha_vantage_tool = None
         self.yahoo_finance_tool = None
+        self.fmp_tool = None
+        self.nasdaq_dl_tool = None
 
         self.logger.info(
             f"MarketDataTool initialized with data_source={self.data_source}")
@@ -149,22 +153,26 @@ class MarketDataTool:
         if self.alpha_vantage_tool is None:
             self.alpha_vantage_tool = AlphaVantageTool()
 
-        # Fetch data
-        df = self.alpha_vantage_tool.fetch_stock_data(
-            symbol, start_date, end_date)
+        try:
+            df = self.alpha_vantage_tool.fetch_stock_data(
+                symbol, start_date, end_date)
+            if df is None or df.empty:
+                self.logger.warning(
+                    "Alpha Vantage returned no data, attempting FMP fallback")
+                return self._fetch_from_fmp(symbol, start_date, end_date, filters)
+        except Exception as e:
+            self.logger.warning(
+                f"Alpha Vantage error for {symbol}: {e}. Using FMP fallback")
+            return self._fetch_from_fmp(symbol, start_date, end_date, filters)
 
-        # Normalize column names to match Yahoo Finance format so downstream
-        # consumers can reliably use capitalized OHLCV columns.
-        if not df.empty:
-            col_map = {
-                "open": "Open",
-                "high": "High",
-                "low": "Low",
-                "close": "Close",
-                "volume": "Volume",
-            }
-            df = df.rename(
-                columns={k: v for k, v in col_map.items() if k in df.columns})
+        col_map = {
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "volume": "Volume",
+        }
+        df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
 
         return df
 
@@ -205,6 +213,46 @@ class MarketDataTool:
             self.logger.warning(
                 f"Yahoo Finance error for {symbol}: {e}. Using Alpha Vantage fallback")
             return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+
+    def _fetch_from_fmp(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> pd.DataFrame:
+        """Fetch market data from Financial Modeling Prep."""
+        if self.fmp_tool is None:
+            self.fmp_tool = FMPTool()
+
+        try:
+            df = self.fmp_tool.fetch_stock_data(symbol, start_date, end_date)
+            if df is None or df.empty:
+                self.logger.warning(
+                    "FMP returned no data, attempting Nasdaq Data Link fallback")
+                return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
+            return df
+        except Exception as e:
+            self.logger.warning(
+                f"FMP error for {symbol}: {e}. Using Nasdaq Data Link fallback")
+            return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
+
+    def _fetch_from_nasdaq_dl(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> pd.DataFrame:
+        """Fetch market data from Nasdaq Data Link."""
+        if self.nasdaq_dl_tool is None:
+            self.nasdaq_dl_tool = NasdaqDataLinkTool()
+
+        try:
+            return self.nasdaq_dl_tool.fetch_stock_data(symbol, start_date, end_date)
+        except Exception as e:
+            self.logger.error(f"Nasdaq Data Link error for {symbol}: {e}")
+            return pd.DataFrame()
 
     def _fetch_from_csv(
         self,
