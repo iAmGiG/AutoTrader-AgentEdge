@@ -27,16 +27,24 @@ from autogen_core._cancellation_token import CancellationToken
 
 # Import tool dictionary for dynamic tool access
 from src.tools.tools import ALL_TOOLS
+# Import only functions that don't depend on optional packages
 from src.tools.tools import (
-    fetch_market_data, fetch_news, fetch_yahoo_data,
+    fetch_market_data, fetch_news,
     fetch_alpha_vantage_data, fetch_alpha_vantage_news,
-    search_sec_filings, fetch_yahoo_corporate_events,
+    search_sec_filings,
     fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions,
     fetch_finnhub_dividends, fetch_finnhub_earnings_estimates,
     fetch_all_news, fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar,
     fetch_fmp_historical_earnings, fetch_fmp_historical_dividends,
     fetch_fmp_stock_split_calendar
 )
+
+# Try to import yahoo-dependent functions
+try:
+    from src.tools.tools import fetch_yahoo_data, fetch_yahoo_corporate_events
+except ImportError:
+    fetch_yahoo_data = None
+    fetch_yahoo_corporate_events = None
 import os
 from config.config_loader import ConfigLoader
 
@@ -47,15 +55,13 @@ config_loader = ConfigLoader()
 model_name = os.getenv("OPEN_MODEL", config_loader.get("OPEN_MODEL"))
 open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
 
-# Fallback map for tool execution
+# Fallback map for tool execution (build dynamically to handle conditional imports)
 TOOL_FUNCTION_MAP = {
     "fetch_market_data": fetch_market_data,
     "fetch_news": fetch_news,
-    "fetch_yahoo_data": fetch_yahoo_data,
     "fetch_alpha_vantage_data": fetch_alpha_vantage_data,
     "fetch_alpha_vantage_news": fetch_alpha_vantage_news,
     "search_sec_filings": search_sec_filings,
-    "fetch_yahoo_corporate_events": fetch_yahoo_corporate_events,
     "fetch_finnhub_earnings_calendar": fetch_finnhub_earnings_calendar,
     "fetch_finnhub_insider_transactions": fetch_finnhub_insider_transactions,
     "fetch_finnhub_dividends": fetch_finnhub_dividends,
@@ -67,6 +73,12 @@ TOOL_FUNCTION_MAP = {
     "fetch_fmp_historical_dividends": fetch_fmp_historical_dividends,
     "fetch_fmp_stock_split_calendar": fetch_fmp_stock_split_calendar
 }
+
+# Add yahoo functions if available
+if fetch_yahoo_data is not None:
+    TOOL_FUNCTION_MAP["fetch_yahoo_data"] = fetch_yahoo_data
+if fetch_yahoo_corporate_events is not None:
+    TOOL_FUNCTION_MAP["fetch_yahoo_corporate_events"] = fetch_yahoo_corporate_events
 
 # Default LLM parameters
 DEFAULT_LLM_CONFIG = {

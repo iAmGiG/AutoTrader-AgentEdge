@@ -43,7 +43,8 @@ class SentimentAgent(BaseAgent):
         # Load configurations and utilities
         self.config = load_agent_config("sentiment_agent")
         # Limit this agent to a single tool round
-        self.max_tool_rounds = 1
+        # Temporarily increased for debugging
+        self.max_tool_rounds = 2
         self.market_sectors = load_market_sectors().get("sectors", {})
         self.query_parser = QueryParser(self.market_sectors)
 

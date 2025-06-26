@@ -28,7 +28,10 @@ from src.tools.processors.indicator_library import (
     cci,
 )
 from src.tools.processors.data_normalizer import standardize_indicator_columns
-from sparklines import sparklines as _sparklines
+try:
+    from sparklines import sparklines as _sparklines
+except ImportError:
+    _sparklines = None
 from src.tools.date_utils import (
     process_date_param,
     get_processed_date_range,
@@ -68,7 +71,8 @@ class TechAgent(BaseAgent):
         )
 
         # Limit tool recursion
-        self.max_tool_rounds = 1
+        # Temporarily increased for debugging
+        self.max_tool_rounds = 2
 
         # Optional: attach a logger
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -591,7 +595,10 @@ class TechAgent(BaseAgent):
                         last_event).isoformat()
 
                 n = min(len(df), 20)
-                spark = _sparklines(df["Close"].tail(n).tolist())[0]
+                if _sparklines is not None:
+                    spark = _sparklines(df["Close"].tail(n).tolist())[0]
+                else:
+                    spark = "Sparklines not available"
 
                 timestamp = pd.Timestamp.utcnow().isoformat()
 

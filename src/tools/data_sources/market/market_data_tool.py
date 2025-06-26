@@ -9,14 +9,31 @@ import pandas as pd
 import os
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
-from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
-from src.tools.data_sources.market.fmp_tool import FMPTool
-from src.tools.data_sources.market.nasdaq_data_link_tool import NasdaqDataLinkTool
 from src.tools.date_utils import (
     get_processed_date_range,
     localize_df,
     get_default_timezone,
 )
+
+# Lazy imports for optional dependencies
+YahooFinanceTool = None
+FMPTool = None
+NasdaqDataLinkTool = None
+
+try:
+    from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
+except ImportError:
+    pass
+
+try:
+    from src.tools.data_sources.market.fmp_tool import FMPTool
+except ImportError:
+    pass
+
+try:
+    from src.tools.data_sources.market.nasdaq_data_link_tool import NasdaqDataLinkTool
+except ImportError:
+    pass
 
 
 class MarketDataTool:
@@ -120,6 +137,10 @@ class MarketDataTool:
                 symbol, start_date, end_date, filters)
         elif self.data_source == "yahoo":
             df = self._fetch_from_yahoo(symbol, start_date, end_date, filters)
+        elif self.data_source == "fmp":
+            df = self._fetch_from_fmp(symbol, start_date, end_date, filters)
+        elif self.data_source == "nasdaq":
+            df = self._fetch_from_nasdaq(symbol, start_date, end_date, filters)
         elif self.data_source == "csv":
             df = self._fetch_from_csv(symbol, start_date, end_date, filters)
         else:
@@ -195,6 +216,12 @@ class MarketDataTool:
         Returns:
             DataFrame with market data
         """
+        # Check if Yahoo Finance is available
+        if YahooFinanceTool is None:
+            self.logger.warning(
+                "YahooFinanceTool not available (missing yfinance), falling back to Alpha Vantage")
+            return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+            
         # Initialize Yahoo Finance tool if needed
         if self.yahoo_finance_tool is None:
             self.yahoo_finance_tool = YahooFinanceTool()
@@ -222,6 +249,12 @@ class MarketDataTool:
         filters: Optional[Dict[str, Any]] = None,
     ) -> pd.DataFrame:
         """Fetch market data from Financial Modeling Prep."""
+        # Check if FMP is available
+        if FMPTool is None:
+            self.logger.warning(
+                "FMPTool not available, falling back to Nasdaq Data Link")
+            return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
+            
         if self.fmp_tool is None:
             self.fmp_tool = FMPTool()
 
@@ -245,6 +278,12 @@ class MarketDataTool:
         filters: Optional[Dict[str, Any]] = None,
     ) -> pd.DataFrame:
         """Fetch market data from Nasdaq Data Link."""
+        # Check if Nasdaq Data Link is available
+        if NasdaqDataLinkTool is None:
+            self.logger.error(
+                "NasdaqDataLinkTool not available, no more fallbacks")
+            return pd.DataFrame()
+            
         if self.nasdaq_dl_tool is None:
             self.nasdaq_dl_tool = NasdaqDataLinkTool()
 
@@ -253,6 +292,16 @@ class MarketDataTool:
         except Exception as e:
             self.logger.error(f"Nasdaq Data Link error for {symbol}: {e}")
             return pd.DataFrame()
+            
+    def _fetch_from_nasdaq(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> pd.DataFrame:
+        """Alias for _fetch_from_nasdaq_dl for consistency."""
+        return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
 
     def _fetch_from_csv(
         self,

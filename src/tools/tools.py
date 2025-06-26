@@ -1,18 +1,36 @@
 from autogen_core.tools import FunctionTool
 from src.tools.data_sources.news.news_headline_tool import NewsHeadlineTool
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
-from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
 from src.tools.data_sources.news.alpha_vantage_news import AlphaVantageNewsTool
-from src.tools.data_sources.government.FRED_data_tool import FREDDataTool
-from src.tools.data_sources.government.sec_edgar_tool import SECEdgarTool
+try:
+    from src.tools.data_sources.government.FRED_data_tool import FREDDataTool
+except ImportError:
+    FREDDataTool = None
+try:
+    from src.tools.data_sources.government.sec_edgar_tool import SECEdgarTool
+except ImportError:
+    SECEdgarTool = None
 from src.tools.data_sources.news.finnhub_tool import FinnHubTool
 from src.tools.data_sources.news.unified_news_tool import fetch_unified_news
-from src.tools.data_sources.market.fmp_tool import FMPTool
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 import os
 from config.config_loader import ConfigLoader
+
+# Lazy imports for optional dependencies
+YahooFinanceTool = None
+FMPTool = None
+
+try:
+    from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
+except ImportError:
+    pass
+
+try:
+    from src.tools.data_sources.market.fmp_tool import FMPTool
+except ImportError:
+    pass
 
 config_loader = ConfigLoader()
 # Import other vendor tools as needed
@@ -554,18 +572,23 @@ def fetch_yahoo_data(
     Returns:
         DataFrame with Open, High, Low, Close and Volume data
     """
+    if YahooFinanceTool is None:
+        return pd.DataFrame()  # Return empty if not available
     tool = YahooFinanceTool()
     df = tool.fetch_stock_data(ticker, start_date, end_date)
     return df
 
-
-yahoo_finance_tool = FunctionTool(
-    func=fetch_yahoo_data,
-    name="fetch_yahoo_data",
-    description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
-)
-# Only quant and strategy agents handle price data
-yahoo_finance_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+# Only create tool if Yahoo is available
+if YahooFinanceTool is not None:
+    yahoo_finance_tool = FunctionTool(
+        func=fetch_yahoo_data,
+        name="fetch_yahoo_data",
+        description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
+    )
+    # Only quant and strategy agents handle price data
+    yahoo_finance_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+else:
+    yahoo_finance_tool = None
 
 
 def fetch_yahoo_corporate_events(
@@ -586,18 +609,23 @@ def fetch_yahoo_corporate_events(
     Returns:
         DataFrame containing events within the specified timeframe
     """
+    if YahooFinanceTool is None:
+        return pd.DataFrame()  # Return empty if not available
     tool = YahooFinanceTool()
     events_df = tool.fetch_corporate_events(ticker, days_ahead, days_back)
     return events_df
 
-
-yahoo_corporate_events_tool = FunctionTool(
-    func=fetch_yahoo_corporate_events,
-    name="fetch_yahoo_corporate_events",
-    description="BACKUP: Fetch corporate events from Yahoo Finance as DataFrame. Can get both upcoming events (days_ahead) and historical events (days_back). For 'last month' queries, use days_back=30. For upcoming events, use days_ahead=30. Use when Finnhub tools return empty results. Note: Subject to rate limiting."
-)
-# Useful for sentiment and strategy agents for event-driven analysis
-yahoo_corporate_events_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+# Only create tool if Yahoo is available
+if YahooFinanceTool is not None:
+    yahoo_corporate_events_tool = FunctionTool(
+        func=fetch_yahoo_corporate_events,
+        name="fetch_yahoo_corporate_events",
+        description="BACKUP: Fetch corporate events from Yahoo Finance as DataFrame. Can get both upcoming events (days_ahead) and historical events (days_back). For 'last month' queries, use days_back=30. For upcoming events, use days_ahead=30. Use when Finnhub tools return empty results. Note: Subject to rate limiting."
+    )
+    # Useful for sentiment and strategy agents for event-driven analysis
+    yahoo_corporate_events_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+else:
+    yahoo_corporate_events_tool = None
 
 
 def fetch_alpha_vantage_data(
@@ -683,6 +711,10 @@ def fetch_economic_indicator(
         DataFrame with dates and indicator values
     """
 
+    if FREDDataTool is None:
+        print("WARNING: FREDDataTool not available (missing fredapi). Returning empty DataFrame.")
+        return pd.DataFrame()
+        
     tool = FREDDataTool()
     raw_df = tool.get_indicator(indicator, start_date, end_date)
 
@@ -693,13 +725,16 @@ def fetch_economic_indicator(
     return raw_df
 
 
-fred_indicator_tool = FunctionTool(
-    func=fetch_economic_indicator,
-    name="fetch_economic_indicator",
-    description="Fetch economic indicator data from FRED (Federal Reserve)."
-)
-# Relevant for quant and strategy agents
-fred_indicator_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+if FREDDataTool is not None:
+    fred_indicator_tool = FunctionTool(
+        func=fetch_economic_indicator,
+        name="fetch_economic_indicator",
+        description="Fetch economic indicator data from FRED (Federal Reserve)."
+    )
+    # Relevant for quant and strategy agents
+    fred_indicator_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+else:
+    fred_indicator_tool = None
 
 
 def fetch_interest_rates(
@@ -742,18 +777,25 @@ def fetch_yield_curve(date: str = "today") -> pd.DataFrame:
     Returns:
         DataFrame with yield curve data for various maturities
     """
+    if FREDDataTool is None:
+        print("WARNING: FREDDataTool not available (missing fredapi). Returning empty DataFrame.")
+        return pd.DataFrame()
+        
     tool = FREDDataTool()
     df = tool.get_yield_curve(date)
     return df
 
 
-fred_yield_curve_tool = FunctionTool(
-    func=fetch_yield_curve,
-    name="fetch_yield_curve",
-    description="Fetch the Treasury yield curve for a specific date."
-)
-fred_yield_curve_tool.agent_types = [
-    TECH_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
+if FREDDataTool is not None:
+    fred_yield_curve_tool = FunctionTool(
+        func=fetch_yield_curve,
+        name="fetch_yield_curve",
+        description="Fetch the Treasury yield curve for a specific date."
+    )
+    fred_yield_curve_tool.agent_types = [
+        TECH_AGENT, STRATEGY_AGENT, RISK_AGENT]  # Relevant for multiple agents
+else:
+    fred_yield_curve_tool = None
 
 ##################################
 # 7) SEC EDGAR Filings Tool (EXPERIMENTAL)
@@ -785,19 +827,26 @@ def fetch_sec_filings(
     if extract_sections is None:
         extract_sections = ["risk_factors"]
 
+    if SECEdgarTool is None:
+        print("WARNING: SECEdgarTool not available (missing beautifulsoup4). Returning empty DataFrame.")
+        return pd.DataFrame()
+        
     tool = SECEdgarTool(use_temp_dir=True)
     df = tool.fetch_filings(ticker, form_type, num_filings,
                             extract_sections=extract_sections)
     return df
 
 
-sec_filings_tool = FunctionTool(
-    func=fetch_sec_filings,
-    name="fetch_sec_filings",
-    description="Fetch SEC filings for a company and extract relevant sections."
-)
-# Primarily for risk assessment
-sec_filings_tool.agent_types = [RISK_AGENT, STRATEGY_AGENT]
+if SECEdgarTool is not None:
+    sec_filings_tool = FunctionTool(
+        func=fetch_sec_filings,
+        name="fetch_sec_filings",
+        description="Fetch SEC filings for a company and extract relevant sections."
+    )
+    # Primarily for risk assessment
+    sec_filings_tool.agent_types = [RISK_AGENT, STRATEGY_AGENT]
+else:
+    sec_filings_tool = None
 
 
 def search_sec_filings(
@@ -826,19 +875,27 @@ def search_sec_filings(
         return pd.DataFrame(columns=["ticker", "form_type", "filing_date", "search_term", "section", "context",
                                      "message"])
 
+    if SECEdgarTool is None:
+        print("WARNING: SECEdgarTool not available (missing beautifulsoup4). Returning empty DataFrame.")
+        return pd.DataFrame(columns=["ticker", "form_type", "filing_date", "search_term", "section", "context",
+                                     "message"])
+
     tool = SECEdgarTool(use_temp_dir=True)
     df = tool.search_filings(ticker, search_terms,
                              form_type, section, num_filings)
     return df
 
 
-sec_search_tool = FunctionTool(
-    func=search_sec_filings,
-    name="search_sec_filings",
-    description="Search SEC filings for specific terms and get context. Note: search_terms must be a non-empty list of keywords to search for in the filings."
-)
-# Useful for risk and sentiment analysis
-sec_search_tool.agent_types = [RISK_AGENT, SENTIMENT_AGENT]
+if SECEdgarTool is not None:
+    sec_search_tool = FunctionTool(
+        func=search_sec_filings,
+        name="search_sec_filings",
+        description="Search SEC filings for specific terms and get context. Note: search_terms must be a non-empty list of keywords to search for in the filings."
+    )
+    # Useful for risk and sentiment analysis
+    sec_search_tool.agent_types = [RISK_AGENT, SENTIMENT_AGENT]
+else:
+    sec_search_tool = None
 
 
 def compare_sec_filings(
@@ -859,25 +916,33 @@ def compare_sec_filings(
     Returns:
         DataFrame with comparison metrics between filings
     """
+    if SECEdgarTool is None:
+        print("WARNING: SECEdgarTool not available (missing beautifulsoup4). Returning empty DataFrame.")
+        return pd.DataFrame()
+        
     tool = SECEdgarTool(use_temp_dir=True)
     df = tool.compare_filings_over_time(
         ticker, form_type, section, num_filings)
     return df
 
 
-sec_compare_tool = FunctionTool(
-    func=compare_sec_filings,
-    name="compare_sec_filings",
-    description="Compare SEC filing sections over time to track changes."
-)
-sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
+if SECEdgarTool is not None:
+    sec_compare_tool = FunctionTool(
+        func=compare_sec_filings,
+        name="compare_sec_filings",
+        description="Compare SEC filing sections over time to track changes."
+    )
+    sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
+else:
+    sec_compare_tool = None
 
 ##################################
 # Tool Collections by Agent Type
 ##################################
 
 # SENTIMENT_AGENT tools
-SENTIMENT_TOOLS = [
+# Build sentiment tools list (filtering out None values)
+_sentiment_tools_raw = [
     unified_news_tool,  # The unified news tool as the only news source
     sec_search_tool,    # SEC search tool for regulatory information
     # PRIMARY corporate actions tool (free but rate limited)
@@ -895,9 +960,11 @@ SENTIMENT_TOOLS = [
     # finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
     # finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
+# Filter out None values from conditional imports
+SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
 
 # TECH_AGENT tools
-TECH_TOOLS = [
+_tech_tools_raw = [
     yahoo_finance_tool,
     alpha_vantage_tool,
     market_data_tool,
@@ -905,18 +972,22 @@ TECH_TOOLS = [
     fred_rates_tool,
     fred_yield_curve_tool
 ]
+# Filter out None values from conditional imports
+TECH_TOOLS = [tool for tool in _tech_tools_raw if tool is not None]
 
 # RISK_AGENT tools
-RISK_TOOLS = [
+_risk_tools_raw = [
     sec_filings_tool,
     sec_search_tool,
     sec_compare_tool,
     fred_rates_tool,
     fred_yield_curve_tool
 ]
+# Filter out None values from conditional imports
+RISK_TOOLS = [tool for tool in _risk_tools_raw if tool is not None]
 
 # STRATEGY_AGENT tools
-STRATEGY_TOOLS = [
+_strategy_tools_raw = [
     news_tool,
     yahoo_finance_tool,
     alpha_vantage_tool,
@@ -940,21 +1011,25 @@ STRATEGY_TOOLS = [
     finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
     finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
+# Filter out None values from conditional imports
+STRATEGY_TOOLS = [tool for tool in _strategy_tools_raw if tool is not None]
 
 
-# All tools combined
+# All tools combined (filter out None values from conditional imports)
 ALL_TOOLS = list(set(
-    SENTIMENT_TOOLS +
-    TECH_TOOLS +
-    RISK_TOOLS +
-    STRATEGY_TOOLS
+    tool for tool in (
+        SENTIMENT_TOOLS +
+        TECH_TOOLS +
+        RISK_TOOLS +
+        STRATEGY_TOOLS
+    ) if tool is not None
 ))
 
 
 ########################################
 # Tool dispatcher dictionary for efficient lookup by name
 ########################################
-ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS}
+ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS if tool is not None}
 
 
 ########################################

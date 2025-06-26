@@ -278,15 +278,23 @@ class FinnhubNewsProvider(NewsSourceProvider):
                     continue
 
                 # Create article object
+                # Get published date - Finnhub tool already converts datetime to Date column
+                pub_date = row.get('Date', None)
+                if pub_date is None and 'datetime' in row:
+                    # If we have raw datetime timestamp, convert it
+                    pub_date = pd.to_datetime(row['datetime'], unit='s')
+                elif pub_date is None:
+                    # Fallback to current time
+                    pub_date = datetime.now()
+                
                 article = NewsArticle(
                     source_id=self.source_id,
-                    title=row.get('headline', ''),
-                    url=row.get('url', None),
-                    published_date=pd.to_datetime(
-                        row.get('datetime', datetime.now()), unit='s'),
-                    summary=row.get('summary', None),
+                    title=row.get('Headline', row.get('headline', '')),
+                    url=row.get('URL', row.get('url', None)),
+                    published_date=pub_date,
+                    summary=row.get('Summary', row.get('summary', None)),
                     tickers=row.get('related', []),
-                    categories=[row.get('category', 'general')],
+                    categories=[row.get('Category', row.get('category', 'general'))],
                     raw_data=row.to_dict() if hasattr(row, 'to_dict') else dict(row)
                 )
                 articles.append(article)
