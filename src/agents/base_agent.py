@@ -430,9 +430,9 @@ class BaseAgent(AssistantAgent, ABC):
         another function.
         """
         max_rounds = getattr(self, "max_tool_rounds", 2)
-        rounds     = 0
+        rounds = 0
         conversation = list(messages)
-        tools_list   = list(self._tools_dict.values())
+        tools_list = list(self._tools_dict.values())
 
         while True:
             rounds += 1

@@ -193,7 +193,8 @@ class MarketDataTool:
             "close": "Close",
             "volume": "Volume",
         }
-        df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
+        df = df.rename(
+            columns={k: v for k, v in col_map.items() if k in df.columns})
 
         return df
 
@@ -221,7 +222,7 @@ class MarketDataTool:
             self.logger.warning(
                 "YahooFinanceTool not available (missing yfinance), falling back to Alpha Vantage")
             return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
-            
+
         # Initialize Yahoo Finance tool if needed
         if self.yahoo_finance_tool is None:
             self.yahoo_finance_tool = YahooFinanceTool()
@@ -254,7 +255,7 @@ class MarketDataTool:
             self.logger.warning(
                 "FMPTool not available, falling back to Nasdaq Data Link")
             return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
-            
+
         if self.fmp_tool is None:
             self.fmp_tool = FMPTool()
 
@@ -283,7 +284,7 @@ class MarketDataTool:
             self.logger.error(
                 "NasdaqDataLinkTool not available, no more fallbacks")
             return pd.DataFrame()
-            
+
         if self.nasdaq_dl_tool is None:
             self.nasdaq_dl_tool = NasdaqDataLinkTool()
 
@@ -292,7 +293,7 @@ class MarketDataTool:
         except Exception as e:
             self.logger.error(f"Nasdaq Data Link error for {symbol}: {e}")
             return pd.DataFrame()
-            
+
     def _fetch_from_nasdaq(
         self,
         symbol: str,

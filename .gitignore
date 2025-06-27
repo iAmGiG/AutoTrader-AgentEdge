@@ -88,6 +88,12 @@ ipython_config.py
 # Project-specific
 # ================
 
+# Cache directory (contains backtest results and market data)
+.cache/
+
+# CSV files (data outputs)
+*.csv
+
 # Configuration files (contain API keys)
 config/
 
@@ -115,8 +121,6 @@ src/test/
 sentiment_agent_cli.py
 sentiment_agent_cli_improved.py
 test_data_retrieval.py
-scripts/batch_backtest.py
-scripts/test_single_backtest.py
 tests/batch_backtest_report.md
 tests/test_agents.py
 
@@ -125,6 +129,9 @@ install_dependencies.sh
 run_simple_agent.sh
 run_sentiment_agent.sh
 package-lock.json
+
+# Deprecated backtest scripts backup
+scripts/deprecated_backtest_scripts/
 
 # SEC Edgar data
 sec-edgar-filings/

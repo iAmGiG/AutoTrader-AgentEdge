@@ -578,6 +578,7 @@ def fetch_yahoo_data(
     df = tool.fetch_stock_data(ticker, start_date, end_date)
     return df
 
+
 # Only create tool if Yahoo is available
 if YahooFinanceTool is not None:
     yahoo_finance_tool = FunctionTool(
@@ -614,6 +615,7 @@ def fetch_yahoo_corporate_events(
     tool = YahooFinanceTool()
     events_df = tool.fetch_corporate_events(ticker, days_ahead, days_back)
     return events_df
+
 
 # Only create tool if Yahoo is available
 if YahooFinanceTool is not None:
@@ -714,7 +716,7 @@ def fetch_economic_indicator(
     if FREDDataTool is None:
         print("WARNING: FREDDataTool not available (missing fredapi). Returning empty DataFrame.")
         return pd.DataFrame()
-        
+
     tool = FREDDataTool()
     raw_df = tool.get_indicator(indicator, start_date, end_date)
 
@@ -780,7 +782,7 @@ def fetch_yield_curve(date: str = "today") -> pd.DataFrame:
     if FREDDataTool is None:
         print("WARNING: FREDDataTool not available (missing fredapi). Returning empty DataFrame.")
         return pd.DataFrame()
-        
+
     tool = FREDDataTool()
     df = tool.get_yield_curve(date)
     return df
@@ -830,7 +832,7 @@ def fetch_sec_filings(
     if SECEdgarTool is None:
         print("WARNING: SECEdgarTool not available (missing beautifulsoup4). Returning empty DataFrame.")
         return pd.DataFrame()
-        
+
     tool = SECEdgarTool(use_temp_dir=True)
     df = tool.fetch_filings(ticker, form_type, num_filings,
                             extract_sections=extract_sections)
@@ -919,7 +921,7 @@ def compare_sec_filings(
     if SECEdgarTool is None:
         print("WARNING: SECEdgarTool not available (missing beautifulsoup4). Returning empty DataFrame.")
         return pd.DataFrame()
-        
+
     tool = SECEdgarTool(use_temp_dir=True)
     df = tool.compare_filings_over_time(
         ticker, form_type, section, num_filings)
@@ -932,7 +934,8 @@ if SECEdgarTool is not None:
         name="compare_sec_filings",
         description="Compare SEC filing sections over time to track changes."
     )
-    sec_compare_tool.agent_types = [RISK_AGENT]  # Primarily for risk assessment
+    # Primarily for risk assessment
+    sec_compare_tool.agent_types = [RISK_AGENT]
 else:
     sec_compare_tool = None
 
