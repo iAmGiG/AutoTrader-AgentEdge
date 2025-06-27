@@ -46,6 +46,7 @@ class CoordinatorAgent(BaseAgent):
                 tech_resp = await tech_resp
 
             def _ensure_dict(val: Any) -> Dict[str, Any]:
+                    """Simple JSON parsing with error handling."""
                     if isinstance(val, dict):
                         return val
                     if isinstance(val, str):
@@ -53,57 +54,10 @@ class CoordinatorAgent(BaseAgent):
                             parsed = json.loads(val)
                             if isinstance(parsed, dict):
                                 return parsed
-                        except json.JSONDecodeError:
-                            # If it's a string response, try to extract data from the text
-                            import re
-                            result = {}
-                            
-                            # Extract sentiment score
-                            score_patterns = [
-                                r'(?:Average Sentiment Score:|sentiment score:|Overall Sentiment Assessment:.*?)\s*([-.\d]+)',
-                                r'"score":\s*([-.\d]+)',
-                                r'sentiment.*?([-.\d]+)'
-                            ]
-                            for pattern in score_patterns:
-                                score_match = re.search(pattern, val, re.IGNORECASE)
-                                if score_match:
-                                    result["score"] = float(score_match.group(1))
-                                    break
-                            
-                            # Extract MACD values - handle both plain and JSON formats
-                            macd_today_patterns = [
-                                r'"macd_today":\s*([-.\d]+)',
-                                r'macd_today[:"]\s*([-.\d]+)',
-                                r'(?:MACD today|current MACD)[:"]\s*([-.\d]+)'
-                            ]
-                            macd_yest_patterns = [
-                                r'"macd_yest":\s*([-.\d]+|null)',
-                                r'macd_yest[:"]\s*([-.\d]+|null)',
-                                r'(?:MACD yesterday|previous MACD)[:"]\s*([-.\d]+|null)'
-                            ]
-                            
-                            for pattern in macd_today_patterns:
-                                macd_today_match = re.search(pattern, val, re.IGNORECASE)
-                                if macd_today_match:
-                                    try:
-                                        result["macd_today"] = float(macd_today_match.group(1))
-                                    except ValueError:
-                                        pass
-                                    break
-                                    
-                            for pattern in macd_yest_patterns:
-                                macd_yest_match = re.search(pattern, val, re.IGNORECASE)
-                                if macd_yest_match and macd_yest_match.group(1) != 'null':
-                                    try:
-                                        result["macd_yest"] = float(macd_yest_match.group(1))
-                                    except ValueError:
-                                        pass
-                                    break
-                                
-                            # Store raw response for debugging
-                            result["raw_response"] = val
-                            return result
-                    # Return empty dict if we can't parse anything
+                        except json.JSONDecodeError as e:
+                            print(f"JSON parsing failed: {e}")
+                            print(f"Actual response: {val}")
+                    # Return empty dict on any parsing error
                     return {}
 
             sentiment_dict = _ensure_dict(sentiment_resp)

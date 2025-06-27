@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List
 import re
 from datetime import datetime
+import json
 
 # 3rd-party libs
 import pandas as pd
@@ -646,6 +647,75 @@ class TechAgent(BaseAgent):
             "\n\nAfter you have executed ONE tool call and received its result, "
             "STOP CALLING TOOLS and give your final answer."
         )
+        
+        # Add JSON format requirement for MACD responses
+        sys_prompt += (
+            "\n\nIMPORTANT: Your final response MUST be in valid JSON format with exactly these fields:"
+            "\n{\"macd_today\": <float or null>, \"macd_yest\": <float or null>}"
+            "\n\nExample response: {\"macd_today\": 1.23, \"macd_yest\": 0.98}"
+            "\nIf MACD values cannot be calculated, use: {\"macd_today\": null, \"macd_yest\": null}"
+            "\n\nDo NOT include any text before or after the JSON. Return ONLY the JSON object."
+        )
 
         # --------------- Forward to BaseAgent’s tool-aware pipeline -------
-        return self.process_with_tools(last_msg, sys_prompt)
+        raw_response = self.process_with_tools(last_msg, sys_prompt)
+        
+        # Extract and validate MACD JSON response
+        try:
+            # If it's already a dict, check for MACD values
+            if isinstance(raw_response, dict):
+                if 'macd_today' in raw_response and 'macd_yest' in raw_response:
+                    return json.dumps(raw_response)
+                else:
+                    # Try to extract MACD from tool results
+                    macd_today = raw_response.get('macd_today')
+                    macd_yest = raw_response.get('macd_yest')
+                    result = {
+                        "macd_today": float(macd_today) if macd_today is not None else None,
+                        "macd_yest": float(macd_yest) if macd_yest is not None else None
+                    }
+                    print(f"\nTechnical Analysis Result:")
+                    print(f"  MACD Today: {result['macd_today']:.4f}" if result['macd_today'] is not None else "  MACD Today: Not available")
+                    print(f"  MACD Yesterday: {result['macd_yest']:.4f}" if result['macd_yest'] is not None else "  MACD Yesterday: Not available")
+                    return json.dumps(result)
+            
+            # Try to parse as JSON string
+            response_str = str(raw_response).strip()
+            
+            # Remove any text before the first '{' and after the last '}'
+            start_idx = response_str.find('{')
+            end_idx = response_str.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1:
+                json_str = response_str[start_idx:end_idx+1]
+                parsed = json.loads(json_str)
+                
+                # Validate required fields
+                if 'macd_today' in parsed and 'macd_yest' in parsed:
+                    # Ensure proper types
+                    result = {
+                        "macd_today": float(parsed['macd_today']) if parsed['macd_today'] is not None else None,
+                        "macd_yest": float(parsed['macd_yest']) if parsed['macd_yest'] is not None else None
+                    }
+                    
+                    print(f"\nTechnical Analysis Result:")
+                    print(f"  MACD Today: {result['macd_today']:.4f}" if result['macd_today'] is not None else "  MACD Today: Not available")
+                    print(f"  MACD Yesterday: {result['macd_yest']:.4f}" if result['macd_yest'] is not None else "  MACD Yesterday: Not available")
+                    
+                    return json.dumps(result)
+            
+            # If parsing fails, return default
+            print(f"Warning: Failed to parse MACD values from response, returning null values")
+            default_response = {"macd_today": None, "macd_yest": None}
+            print(f"\nDefault Technical Result:")
+            print(f"  MACD Today: Not available")
+            print(f"  MACD Yesterday: Not available")
+            return json.dumps(default_response)
+            
+        except Exception as e:
+            print(f"Error processing response: {str(e)}")
+            default_response = {"macd_today": None, "macd_yest": None}
+            print(f"\nDefault Technical Result (due to error):")
+            print(f"  MACD Today: Not available")
+            print(f"  MACD Yesterday: Not available")
+            return json.dumps(default_response)

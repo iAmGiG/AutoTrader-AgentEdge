@@ -115,6 +115,10 @@ src/test/
 sentiment_agent_cli.py
 sentiment_agent_cli_improved.py
 test_data_retrieval.py
+scripts/batch_backtest.py
+scripts/test_single_backtest.py
+tests/batch_backtest_report.md
+tests/test_agents.py
 
 # Scripts
 install_dependencies.sh
