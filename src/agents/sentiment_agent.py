@@ -19,7 +19,7 @@ import pandas as pd
 from .base_agent import BaseAgent
 from src.tools.tools import SENTIMENT_AGENT, get_tools_for_agent
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
-from src.tools.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
+from src.utils.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
 
 # LLM config optimized for sentiment analysis and narrative generation
 SENTIMENT_LLM_CONFIG = {

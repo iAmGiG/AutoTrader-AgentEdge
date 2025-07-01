@@ -34,10 +34,12 @@ python scripts/run_backtest_suite.py --resume
 
 ### 1. Primary Scripts (Keep These)
 
-- **`backtest_mas.py`** - Core backtesting engine
+- **`backtest_mas.py`** - Core backtesting engine (ENHANCED)
   - Implements MACD crossover strategy with sentiment filtering
   - Integrates with multi-agent system
-  - Saves results to CSV files
+  - Captures LLM reasoning and analysis
+  - Creates organized output directory structure
+  - Generates executive summaries and reports
   - Usage: `python backtest_mas.py SYMBOL START END`
 
 - **`aggregate_results.py`** - Results analyzer
@@ -74,15 +76,17 @@ test_suites:
     description: "Quick validation tests"
 ```
 
-### 3. Deprecated Scripts (To Be Removed)
+### 3. Testing Tools
 
-The following scripts are now redundant and should be removed:
+Additional scripts for development and testing:
 
-- `batch_backtest.py` - Basic batch runner → Use `run_backtest_suite.py`
-- `run_comprehensive_backtest.py` - Volatile period tests → Use `comprehensive` suite
-- `run_extended_backtest.py` - Long duration tests → Use `extended` suite
-- `test_single_backtest.py` - Single test runner → Use `backtest_mas.py` directly
-- `create_sample_extended_results.py` - Demo data generator → Not needed
+- **`sentiment_direct.py`** - Direct testing of SentimentAgent
+  - Interactive CLI for sentiment analysis queries
+  - Useful for testing agent functionality in isolation
+  
+- **`tech_direct.py`** - Direct testing of TechAgent  
+  - Interactive CLI for technical analysis queries
+  - Tests technical indicators and market data fetching
 
 ## Test Suites
 
@@ -151,12 +155,22 @@ All results are saved to `.cache/backtests/`:
 
 ```
 .cache/backtests/
-├── SYMBOL_trades_START_END.csv      # Individual trade records
-├── SYMBOL_equity_START_END.csv      # Equity curve data
-├── SYMBOL_metrics_START_END.csv     # Performance metrics
-├── suite_summary_*.json             # Test suite execution summary
-├── aggregate_summary.md             # Comprehensive analysis report
-└── aggregate_summary.json           # Machine-readable aggregate data
+├── runs/                             # Organized output (NEW)
+│   └── SYMBOL_START_END_TIMESTAMP/   # Individual run directory
+│       ├── data/                     # Raw CSV outputs
+│       │   ├── trades.csv            # Trade records with reasoning
+│       │   ├── equity.csv            # Daily portfolio values
+│       │   └── metrics.csv           # Performance statistics
+│       ├── analysis/                 # LLM reasoning capture
+│       │   ├── daily_reasoning/      # Day-by-day agent analysis
+│       │   ├── agent_responses/      # Individual agent outputs
+│       │   └── best_insights.json    # Curated best examples
+│       ├── reports/                  # Human-readable reports
+│       │   └── executive_summary.md  # High-level overview
+│       └── metadata.json             # Run configuration
+├── suite_summary_*.json              # Test suite execution summary
+├── aggregate_summary.md              # Cross-run analysis report
+└── aggregate_summary.json            # Machine-readable aggregate data
 ```
 
 ## Adding New Tests

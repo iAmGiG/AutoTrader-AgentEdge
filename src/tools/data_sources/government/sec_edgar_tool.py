@@ -6,7 +6,7 @@ system for retrieving various types of SEC filings, extracting relevant sections
 and analyzing the content. It works primarily with 10-K, 10-Q, 8-K and other filing types.
 """
 
-from src.tools.date_utils import process_date_param
+from src.utils.date_utils import process_date_param
 from sec_edgar_downloader import Downloader
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
