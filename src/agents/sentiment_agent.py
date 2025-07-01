@@ -206,7 +206,8 @@ class SentimentAgent(BaseAgent):
                             "form_type": str(row.get('form_type', 'N/A')),
                             "search_term": str(row.get('search_term', 'N/A')),
                             "section": str(row.get('section', 'N/A')),
-                            "context": str(row.get('context', 'N/A'))[:300]  # Limit context
+                            # Limit context
+                            "context": str(row.get('context', 'N/A'))[:300]
                         })
 
                     return {
