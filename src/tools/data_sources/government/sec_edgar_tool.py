@@ -20,7 +20,6 @@ from config.config_loader import ConfigLoader
 
 config_loader = ConfigLoader()
 
-
 # Define common form types for reference
 FORM_TYPES = {
     "10-K": "Annual report",
@@ -78,682 +77,472 @@ class SECEdgarTool:
             # Ensure the directory exists
             os.makedirs(self.download_dir, exist_ok=True)
 
-        # Create a downloader instance
-        self.downloader = Downloader(self.download_dir, email_address=email)
+        # Initialize the downloader
+        # The email is required by SEC EDGAR for tracking purposes
+        self.downloader = Downloader(
+            company_name="RH2MAS Research",
+            email_address=email,  # Your email for EDGAR tracking
+            download_folder=self.download_dir
+        )
 
-        # Store the form types and section definitions
+        # Store form types and sections for reference
         self.form_types = FORM_TYPES
         self.report_sections = REPORT_SECTIONS
 
-    def fetch_filings(self,
-                      ticker: str,
-                      form_type: str = "10-K",
-                      num_filings: int = 1,
-                      before_date: Optional[str] = None,
-                      after_date: Optional[str] = None,
-                      extract_sections: Optional[List[str]] = None) -> pd.DataFrame:
+    def download_filing(self, ticker: str, form_type: str = "10-K",
+                        limit: int = 1, after: Optional[str] = None, before: Optional[str] = None) -> List[str]:
         """
-        Fetch SEC filings for a company and extract relevant data.
+        Download SEC filings for a specific company.
 
         Args:
-            ticker: Company ticker symbol (e.g., 'AAPL')
-            form_type: Type of SEC form to retrieve (e.g., '10-K', '10-Q', '8-K')
-            num_filings: Number of filings to retrieve
-            before_date: Get filings before this date (YYYY-MM-DD or relative date like "today")
-            after_date: Get filings after this date (YYYY-MM-DD or relative date like "-1y")
-            extract_sections: List of sections to extract (e.g., ['risk_factors', 'business'])
+            ticker: Stock ticker symbol
+            form_type: Type of SEC form (e.g., '10-K', '10-Q', '8-K')
+            limit: Maximum number of filings to download
+            after: Only download filings after this date (YYYY-MM-DD)
+            before: Only download filings before this date (YYYY-MM-DD)
 
         Returns:
-            DataFrame with filing data including dates, sections, and metrics
+            List of paths to downloaded filings
         """
         try:
-            # Validate input
-            ticker = ticker.upper()  # Ensure ticker is uppercase
-            if form_type not in FORM_TYPES and form_type not in FORM_TYPES.values():
-                self.logger.warning(
-                    f"Form type '{form_type}' is not in the standard list.")
-
-            # Process date parameters using date_utils
-            date_kwargs = {}
-            if before_date:
-                processed_before = process_date_param(before_date)
-                if processed_before:
-                    date_kwargs['before_date'] = processed_before
-
-            if after_date:
-                processed_after = process_date_param(after_date)
-                if processed_after:
-                    date_kwargs['after_date'] = processed_after
-
-            # Download the filings
             self.logger.info(
-                f"Downloading {num_filings} {form_type} filings for {ticker}")
-            result = self.downloader.get(
-                form_type, ticker, limit=num_filings, **date_kwargs)
+                f"Downloading {form_type} filings for {ticker}...")
 
-            # Get the path where filings were saved
-            filing_path = os.path.join(self.download_dir, ticker, form_type)
+            # Process date parameters
+            if after:
+                after = process_date_param(after)
+            if before:
+                before = process_date_param(before)
 
-            if not os.path.exists(filing_path):
-                self.logger.error(f"Filing path not found: {filing_path}")
-                return pd.DataFrame()
+            # Download filings
+            self.downloader.get(
+                ticker=ticker.upper(),
+                filing_type=form_type,
+                limit=limit,
+                after=after,
+                before=before
+            )
 
-            # Process the downloaded filings
-            return self._process_filings(filing_path, ticker, form_type, extract_sections)
+            # Find downloaded files
+            company_dir = os.path.join(
+                self.download_dir, f"sec_edgar_filings/{ticker.upper()}/{form_type}")
+            filing_paths = []
 
-        except Exception as e:
-            self.logger.error(
-                f"Error fetching {form_type} filings for {ticker}: {e}")
-            return pd.DataFrame()
+            if os.path.exists(company_dir):
+                for root, dirs, files in os.walk(company_dir):
+                    for file in files:
+                        if file.endswith(".txt") or file.endswith(".html"):
+                            filing_paths.append(os.path.join(root, file))
 
-    def _process_filings(self,
-                         filing_path: str,
-                         ticker: str,
-                         form_type: str,
-                         extract_sections: Optional[List[str]] = None) -> pd.DataFrame:
-        """
-        Process downloaded filings and extract relevant information.
-
-        Args:
-            filing_path: Path to the downloaded filings
-            ticker: Company ticker symbol
-            form_type: Type of SEC form
-            extract_sections: List of sections to extract
-
-        Returns:
-            DataFrame with processed filing data
-        """
-        data = []
-
-        # Default to extracting risk factors if not specified
-        sections_to_extract = extract_sections or ["risk_factors"]
-
-        # List files in the filing directory
-        try:
-            files = [f for f in os.listdir(filing_path) if f.endswith('.txt')]
-            self.logger.info(f"Found {len(files)} filing files to process")
-
-            for file in files:
-                file_path = os.path.join(filing_path, file)
-
-                # Parse the filing date from the filename or file content
-                filing_date = self._extract_filing_date(file_path, file)
-
-                # Extract content for each requested section
-                section_contents = {}
-                for section in sections_to_extract:
-                    if section in self.report_sections:
-                        content = self._extract_section(file_path, section)
-                        section_contents[section] = content
-                    else:
-                        self.logger.warning(f"Unknown section: {section}")
-                        section_contents[section] = ""
-
-                # Create the data record
-                record = {
-                    'ticker': ticker,
-                    'form_type': form_type,
-                    'filing_date': filing_date,
-                    'file_name': file,
-                    'file_path': file_path
-                }
-
-                # Add section contents
-                for section, content in section_contents.items():
-                    record[f'{section}_content'] = content
-                    record[f'{section}_length'] = len(
-                        content) if content else 0
-
-                # Calculate metrics if we have risk factors
-                if 'risk_factors_content' in record and record['risk_factors_content']:
-                    metrics = self._calculate_metrics(
-                        record['risk_factors_content'])
-                    record.update(metrics)
-
-                data.append(record)
-
-            # Create DataFrame
-            df = pd.DataFrame(data)
-
-            # Convert filing_date to datetime if it's not already
-            if 'filing_date' in df.columns and not pd.api.types.is_datetime64_dtype(df['filing_date']):
-                df['filing_date'] = pd.to_datetime(
-                    df['filing_date'], errors='coerce')
-
-            # Sort by filing date descending
-            if 'filing_date' in df.columns:
-                df = df.sort_values('filing_date', ascending=False)
-
-            return df
+            self.logger.info(f"Downloaded {len(filing_paths)} filings")
+            return filing_paths
 
         except Exception as e:
-            self.logger.error(f"Error processing filings: {e}")
-            return pd.DataFrame()
+            self.logger.error(f"Error downloading filings: {e}")
+            return []
 
-    def _extract_filing_date(self, file_path: str, file_name: str) -> str:
-        """
-        Extract the filing date from either the filename or content.
-
-        Args:
-            file_path: Path to the filing file
-            file_name: Name of the filing file
-
-        Returns:
-            Filing date as string in YYYY-MM-DD format
-        """
-        # Try to extract from filename first (SEC format often includes date)
-        date_match = re.search(r'(\d{8})', file_name)
-        if date_match:
-            date_str = date_match.group(1)
-            try:
-                # Convert from YYYYMMDD to YYYY-MM-DD
-                return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-            except Exception:
-                pass
-
-        # If that fails, try to extract from content
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                # Read just the beginning to look for date
-                content = f.read(10000)
-
-                # Look for common date patterns
-                # Format: YYYY-MM-DD
-                date_match = re.search(r'(\d{4}-\d{2}-\d{2})', content)
-                if date_match:
-                    return date_match.group(1)
-
-                # Format: MM/DD/YYYY
-                date_match = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', content)
-                if date_match:
-                    date_parts = date_match.group(1).split('/')
-                    if len(date_parts) == 3:
-                        month, day, year = date_parts
-                        return f"{year}-{int(month):02d}-{int(day):02d}"
-        except Exception as e:
-            self.logger.warning(f"Error extracting date from content: {e}")
-
-        # Default to file modification date if all else fails
-        try:
-            mod_time = os.path.getmtime(file_path)
-            dt = datetime.fromtimestamp(mod_time)
-            return dt.strftime("%Y-%m-%d")
-        except Exception as e:
-            self.logger.warning(f"Error getting file modification date: {e}")
-
-        # Last resort, use today's date from date_utils
-        return process_date_param("today")
-
-    def _extract_section(self, file_path: str, section_name: str) -> str:
+    def extract_section(self, filing_path: str, section_name: str) -> str:
         """
         Extract a specific section from a filing.
 
         Args:
-            file_path: Path to the filing file
-            section_name: Name of the section to extract (e.g., 'risk_factors')
+            filing_path: Path to the filing file
+            section_name: Name of section to extract (e.g., 'risk_factors', 'management_discussion')
 
         Returns:
-            Text content of the extracted section
+            Extracted text content
         """
-        if section_name not in self.report_sections:
-            self.logger.warning(f"Unknown section: {section_name}")
-            return ""
-
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            # Read the filing
+            with open(filing_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
-            # Parse with BeautifulSoup to handle HTML structure
+            # Parse with BeautifulSoup
             soup = BeautifulSoup(content, 'html.parser')
-            text_content = soup.get_text(separator=' ')
-
-            # Normalize whitespace
-            text_content = re.sub(r'\s+', ' ', text_content).strip()
+            text = soup.get_text()
 
             # Look for section markers
-            section_markers = self.report_sections[section_name]
-            for marker in section_markers:
-                pattern = re.compile(
-                    rf'(item\s*{marker.replace("item", "")}[\s.:]+.*?)(item\s*\d)', re.IGNORECASE | re.DOTALL)
-                match = pattern.search(text_content)
-                if match:
-                    return match.group(1).strip()
+            if section_name in self.report_sections:
+                markers = self.report_sections[section_name]
 
-            # Try more general pattern for finding the section
-            for marker in section_markers:
-                pattern = rf'{marker}'
-                index = text_content.lower().find(pattern)
-                if index >= 0:
-                    # Extract from this position to the next likely section
-                    next_section_match = re.search(
-                        r'item\s*\d', text_content.lower()[index+len(pattern):])
-                    if next_section_match:
-                        end_pos = index + len(pattern) + \
-                            next_section_match.start()
-                        return text_content[index:end_pos].strip()
-                    else:
-                        # If no next section, take a reasonable chunk
-                        chunk_size = min(20000, len(text_content) - index)
-                        return text_content[index:index+chunk_size].strip()
+                # Find section start
+                section_start = -1
+                for marker in markers:
+                    pattern = re.compile(
+                        rf"(?i)(?:^|\n)\s*{re.escape(marker)}", re.MULTILINE)
+                    match = pattern.search(text)
+                    if match:
+                        section_start = match.end()
+                        break
 
-            return ""
+                if section_start == -1:
+                    self.logger.warning(
+                        f"Section '{section_name}' not found in filing")
+                    return ""
+
+                # Find next section (approximate end)
+                # Look for common section markers
+                next_section_markers = [
+                    r"(?i)(?:^|\n)\s*item\s+\d+[a-z]?\.?\s*",
+                    r"(?i)(?:^|\n)\s*part\s+[IVX]+",
+                    r"(?i)(?:^|\n)\s*signatures"
+                ]
+
+                section_end = len(text)
+                for marker in next_section_markers:
+                    pattern = re.compile(marker)
+                    matches = list(pattern.finditer(text[section_start:]))
+                    if matches:
+                        # Find the closest next section
+                        closest_end = min(match.start() for match in matches)
+                        section_end = section_start + closest_end
+                        break
+
+                # Extract section text
+                section_text = text[section_start:section_end].strip()
+
+                # Clean up the text
+                section_text = re.sub(r'\s+', ' ', section_text)  # Normalize whitespace
+                section_text = re.sub(
+                    r'[-=]{3,}', '', section_text)  # Remove dividers
+
+                return section_text[:50000]  # Limit length for processing
+
+            else:
+                self.logger.error(f"Unknown section name: {section_name}")
+                return ""
 
         except Exception as e:
-            self.logger.error(
-                f"Error extracting {section_name} from {file_path}: {e}")
+            self.logger.error(f"Error extracting section: {e}")
             return ""
 
-    def _calculate_metrics(self, text: str) -> Dict[str, float]:
+    def analyze_filing(self, ticker: str, form_type: str = "10-K",
+                       sections: Optional[List[str]] = None) -> Dict[str, Any]:
         """
-        Calculate text-based metrics for analysis.
+        Download and analyze the most recent filing for a company.
 
         Args:
-            text: Text content to analyze
-
-        Returns:
-            Dictionary of calculated metrics
-        """
-        metrics = {}
-
-        if not text:
-            return {
-                'word_count': 0,
-                'avg_sentence_length': 0,
-                'complexity_score': 0
-            }
-
-        try:
-            # Calculate word count
-            words = re.findall(r'\b\w+\b', text)
-            metrics['word_count'] = len(words)
-
-            # Estimate average sentence length
-            sentences = re.split(r'[.!?]+', text)
-            valid_sentences = [s for s in sentences if len(s.strip()) > 0]
-            if valid_sentences:
-                total_words = sum(len(re.findall(r'\b\w+\b', s))
-                                  for s in valid_sentences)
-                metrics['avg_sentence_length'] = total_words / \
-                    len(valid_sentences)
-            else:
-                metrics['avg_sentence_length'] = 0
-
-            # Simple complexity score (based on word length)
-            if words:
-                avg_word_length = sum(len(word) for word in words) / len(words)
-                metrics['complexity_score'] = avg_word_length * \
-                    metrics['avg_sentence_length'] / 10
-            else:
-                metrics['complexity_score'] = 0
-
-        except Exception as e:
-            self.logger.error(f"Error calculating metrics: {e}")
-            metrics = {
-                'word_count': 0,
-                'avg_sentence_length': 0,
-                'complexity_score': 0
-            }
-
-        return metrics
-
-    def compare_filings_over_time(self,
-                                  ticker: str,
-                                  form_type: str = "10-K",
-                                  section: str = "risk_factors",
-                                  num_filings: int = 5) -> pd.DataFrame:
-        """
-        Compare filing sections over time to identify changes.
-
-        Args:
-            ticker: Company ticker symbol
+            ticker: Stock ticker symbol
             form_type: Type of SEC form
-            section: Section to compare
-            num_filings: Number of filings to compare
+            sections: List of sections to extract. If None, extracts all standard sections
 
         Returns:
-            DataFrame with comparison metrics between filings
+            Dictionary with analysis results
         """
         try:
-            # Get the filings
-            filings_df = self.fetch_filings(
-                ticker=ticker,
-                form_type=form_type,
-                num_filings=num_filings,
-                extract_sections=[section]
-            )
+            # Download the most recent filing
+            filing_paths = self.download_filing(ticker, form_type, limit=1)
 
-            if filings_df.empty:
+            if not filing_paths:
+                self.logger.warning(f"No {form_type} filing found for {ticker}")
+                return {}
+
+            filing_path = filing_paths[0]
+
+            # Determine which sections to extract
+            if sections is None:
+                sections = list(self.report_sections.keys())
+
+            # Extract sections
+            results = {
+                "ticker": ticker.upper(),
+                "form_type": form_type,
+                "filing_path": filing_path,
+                "sections": {}
+            }
+
+            for section in sections:
+                if section in self.report_sections:
+                    content = self.extract_section(filing_path, section)
+                    if content:
+                        results["sections"][section] = {
+                            "content": content,
+                            "length": len(content),
+                            "preview": content[:500] + "..." if len(content) > 500 else content
+                        }
+
+            return results
+
+        except Exception as e:
+            self.logger.error(f"Error analyzing filing: {e}")
+            return {}
+
+    def get_filing_trends(self, ticker: str, form_type: str = "10-K",
+                          section: str = "risk_factors", limit: int = 3) -> pd.DataFrame:
+        """
+        Analyze trends in a specific section across multiple filings.
+
+        Args:
+            ticker: Stock ticker symbol
+            form_type: Type of SEC form
+            section: Section to analyze
+            limit: Number of filings to analyze
+
+        Returns:
+            DataFrame with trend analysis
+        """
+        try:
+            # Download multiple filings
+            filing_paths = self.download_filing(ticker, form_type, limit=limit)
+
+            if not filing_paths:
                 self.logger.warning(
-                    f"No filings found for {ticker} ({form_type})")
+                    f"No {form_type} filings found for {ticker}")
                 return pd.DataFrame()
 
-            # If we have at least 2 filings, calculate changes
-            if len(filings_df) >= 2:
-                # Sort by filing date
-                filings_df = filings_df.sort_values('filing_date')
+            trend_data = []
 
-                # Calculate year-over-year changes for metrics
-                for metric in ['word_count', 'avg_sentence_length', 'complexity_score']:
-                    if metric in filings_df.columns:
-                        filings_df[f'{metric}_change'] = filings_df[metric].pct_change(
-                        ) * 100
+            for filing_path in filing_paths:
+                # Extract filing date from path
+                date_match = re.search(r'/(\d{4}-\d{2}-\d{2})/', filing_path)
+                filing_date = date_match.group(
+                    1) if date_match else "Unknown"
 
-                # Add percentage growth in text length
-                content_col = f'{section}_length'
-                if content_col in filings_df.columns:
-                    filings_df[f'{section}_length_change'] = filings_df[content_col].pct_change(
-                    ) * 100
+                # Extract section
+                content = self.extract_section(filing_path, section)
 
-            return filings_df
+                if content:
+                    # Basic analysis
+                    word_count = len(content.split())
+                    sentence_count = len(
+                        re.split(r'[.!?]+', content)) - 1  # Subtract 1 for empty split
+
+                    # Look for specific keywords (example for risk factors)
+                    risk_keywords = ['risk', 'uncertainty', 'volatility',
+                                     'competition', 'regulation', 'cyber', 'pandemic']
+                    keyword_counts = {
+                        kw: len(re.findall(rf'\b{kw}\b', content, re.IGNORECASE))
+                        for kw in risk_keywords
+                    }
+
+                    trend_data.append({
+                        'filing_date': filing_date,
+                        'word_count': word_count,
+                        'sentence_count': sentence_count,
+                        'avg_sentence_length': word_count / sentence_count if sentence_count > 0 else 0,
+                        **keyword_counts,
+                        'total_risk_mentions': sum(keyword_counts.values())
+                    })
+
+            if trend_data:
+                df = pd.DataFrame(trend_data)
+                df['filing_date'] = pd.to_datetime(df['filing_date'])
+                df = df.sort_values('filing_date')
+                return df
+            else:
+                return pd.DataFrame()
 
         except Exception as e:
-            self.logger.error(f"Error comparing filings: {e}")
+            self.logger.error(f"Error analyzing filing trends: {e}")
             return pd.DataFrame()
 
-    def search_filings(self,
-                       ticker: str,
-                       search_terms: List[str],
-                       form_type: str = "10-K",
-                       section: Optional[str] = None,
-                       num_filings: int = 3) -> pd.DataFrame:
+    def search_filings(self, ticker: str, search_terms: List[str],
+                       form_type: str = "8-K", limit: int = 5) -> pd.DataFrame:
         """
-        Search SEC filings for specific terms and return results.
+        Search for specific terms across multiple filings.
 
         Args:
-            ticker: Company ticker symbol
+            ticker: Stock ticker symbol
             search_terms: List of terms to search for
-            form_type: Type of SEC form
-            section: Specific section to search within (if None, searches entire filing)
-            num_filings: Number of filings to search
+            form_type: Type of SEC form to search
+            limit: Maximum number of filings to search
 
         Returns:
-            DataFrame with search results and context
+            DataFrame with search results
         """
         try:
-            # Extract sections if specified
-            sections_to_extract = [section] if section else list(
-                self.report_sections.keys())
+            # Download filings
+            filing_paths = self.download_filing(ticker, form_type, limit=limit)
 
-            # Get the filings - use date_utils for default date handling
-            filings_df = self.fetch_filings(
-                ticker=ticker,
-                form_type=form_type,
-                num_filings=num_filings,
-                extract_sections=sections_to_extract
-            )
-
-            if filings_df.empty:
+            if not filing_paths:
                 self.logger.warning(
-                    f"No filings found for {ticker} ({form_type})")
+                    f"No {form_type} filings found for {ticker}")
                 return pd.DataFrame()
 
-            # Initialize results
             search_results = []
 
-            # For each filing
-            for _, filing in filings_df.iterrows():
-                # Determine which content to search
-                if section:
-                    content_col = f'{section}_content'
-                    content = filing.get(content_col, "")
-                    sections_to_search = [section]
-                else:
-                    # Combine all section contents
-                    sections_to_search = []
-                    content = ""
-                    for s in self.report_sections:
-                        content_col = f'{s}_content'
-                        if content_col in filing and filing[content_col]:
-                            content += filing[content_col] + " "
-                            sections_to_search.append(s)
+            for filing_path in filing_paths:
+                # Extract filing date
+                date_match = re.search(r'/(\d{4}-\d{2}-\d{2})/', filing_path)
+                filing_date = date_match.group(
+                    1) if date_match else "Unknown"
 
-                # Search for each term
+                # Read filing content
+                with open(filing_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                # Parse and get text
+                soup = BeautifulSoup(content, 'html.parser')
+                text = soup.get_text().lower()
+
+                # Search for terms
                 for term in search_terms:
-                    # Compile regex pattern for word boundaries
                     pattern = re.compile(
-                        rf'\b{re.escape(term)}\b', re.IGNORECASE)
-                    matches = pattern.finditer(content)
+                        rf'\b{re.escape(term.lower())}\b')
+                    matches = list(pattern.finditer(text))
 
-                    # Process each match
-                    for match in matches:
-                        # Get context around the match (100 chars before and after)
-                        start = max(0, match.start() - 100)
-                        end = min(len(content), match.end() + 100)
-                        context = content[start:end]
+                    if matches:
+                        # Extract context around matches
+                        contexts = []
+                        for match in matches[:3]:  # Limit to first 3 matches
+                            start = max(0, match.start() - 100)
+                            end = min(len(text), match.end() + 100)
+                            context = text[start:end].strip()
+                            context = re.sub(r'\s+', ' ', context)
+                            contexts.append(context)
 
-                        # Highlight the match in context
-                        match_start = match.start() - start
-                        match_end = match.end() - start
-                        highlighted = (
-                            context[:match_start] +
-                            "**" + context[match_start:match_end] + "**" +
-                            context[match_end:]
-                        )
-
-                        # Determine which section this match is from
-                        match_section = section if section else self._identify_section(
-                            content, match.start(), sections_to_search)
-
-                        # Add to results
                         search_results.append({
-                            'ticker': ticker,
+                            'filing_date': filing_date,
                             'form_type': form_type,
-                            'filing_date': filing.get('filing_date', ''),
                             'search_term': term,
-                            'section': match_section,
-                            'context': highlighted
+                            'match_count': len(matches),
+                            'contexts': contexts[:2]  # Limit contexts
                         })
 
-            # Create DataFrame from results
-            results_df = pd.DataFrame(search_results)
-
-            # Sort by filing date and then by section
-            if not results_df.empty and 'filing_date' in results_df.columns:
-                results_df = results_df.sort_values(
-                    ['filing_date', 'section'], ascending=[False, True])
-
-            return results_df
+            if search_results:
+                return pd.DataFrame(search_results)
+            else:
+                return pd.DataFrame()
 
         except Exception as e:
             self.logger.error(f"Error searching filings: {e}")
             return pd.DataFrame()
 
-    def _identify_section(self, content: str, position: int, sections: List[str]) -> str:
+    def get_recent_8k_events(self, ticker: str, days_back: int = 30) -> pd.DataFrame:
         """
-        Identify which section a matched position belongs to.
+        Get recent 8-K filings to identify significant events.
 
         Args:
-            content: Full content text
-            position: Match position within the content
-            sections: List of sections to check
+            ticker: Stock ticker symbol
+            days_back: Number of days to look back
 
         Returns:
-            Name of the section containing the position
-        """
-        # Simple approach: Each section is calculated to start after the previous
-        # one ended, so we use section name and its position in the list to infer
-        curr_pos = 0
-        for section in sections:
-            content_col = f'{section}_content'
-            section_length = len(content_col)
-            if curr_pos <= position < curr_pos + section_length:
-                return section
-            curr_pos += section_length
-
-        return "unknown"
-
-    def get_key_facts(self, ticker: str) -> Dict[str, Any]:
-        """
-        Extract key facts about a company from its latest annual report.
-
-        Args:
-            ticker: Company ticker symbol
-
-        Returns:
-            Dictionary containing key facts about the company
+            DataFrame with recent 8-K events
         """
         try:
-            # Get the latest 10-K using current date handling
-            filings_df = self.fetch_filings(
-                ticker=ticker,
-                form_type="10-K",
-                num_filings=1,
-                before_date="today",
-                extract_sections=["business", "risk_factors"]
+            # Calculate date range
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
+
+            # Download 8-K filings
+            filing_paths = self.download_filing(
+                ticker, "8-K",
+                limit=10,  # Get multiple 8-Ks
+                after=start_date.strftime('%Y-%m-%d')
             )
 
-            if filings_df.empty:
-                self.logger.warning(f"No 10-K filings found for {ticker}")
-                return {}
+            if not filing_paths:
+                self.logger.warning(f"No recent 8-K filings found for {ticker}")
+                return pd.DataFrame()
 
-            # Extract the first row (latest filing)
-            filing = filings_df.iloc[0]
+            events = []
 
-            # Initialize key facts
-            facts = {
-                'ticker': ticker,
-                'filing_date': filing.get('filing_date', ''),
-                'form_type': '10-K',
-                'company_profile': self._extract_company_profile(filing.get('business_content', '')),
-                'risk_count': filing.get('word_count', 0),
-                'risk_complexity': filing.get('complexity_score', 0)
+            # Common 8-K item numbers and their meanings
+            item_descriptions = {
+                "1.01": "Entry into a Material Definitive Agreement",
+                "1.02": "Termination of a Material Definitive Agreement",
+                "2.01": "Completion of Acquisition or Disposition of Assets",
+                "2.02": "Results of Operations and Financial Condition",
+                "2.03": "Creation of a Direct Financial Obligation",
+                "3.01": "Notice of Delisting or Transfer of Listing",
+                "4.01": "Changes in Registrant's Certifying Accountant",
+                "5.01": "Changes in Control of Registrant",
+                "5.02": "Departure/Election of Directors or Officers",
+                "7.01": "Regulation FD Disclosure",
+                "8.01": "Other Events"
             }
 
-            return facts
+            for filing_path in filing_paths:
+                # Extract filing date
+                date_match = re.search(r'/(\d{4}-\d{2}-\d{2})/', filing_path)
+                filing_date = date_match.group(
+                    1) if date_match else "Unknown"
+
+                # Read filing
+                with open(filing_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                # Parse and extract text
+                soup = BeautifulSoup(content, 'html.parser')
+                text = soup.get_text()
+
+                # Look for item numbers
+                item_pattern = re.compile(
+                    r'item\s+(\d+\.\d+)', re.IGNORECASE)
+                items_found = item_pattern.findall(text)
+
+                if items_found:
+                    for item in set(items_found):  # Unique items
+                        events.append({
+                            'filing_date': filing_date,
+                            'item_number': item,
+                            'item_description': item_descriptions.get(item, "Other"),
+                            'filing_path': filing_path
+                        })
+
+            if events:
+                df = pd.DataFrame(events)
+                df['filing_date'] = pd.to_datetime(df['filing_date'])
+                df = df.sort_values('filing_date', ascending=False)
+                return df
+            else:
+                return pd.DataFrame()
 
         except Exception as e:
-            self.logger.error(f"Error getting key facts for {ticker}: {e}")
-            return {}
+            self.logger.error(f"Error getting recent 8-K events: {e}")
+            return pd.DataFrame()
 
-    def _extract_company_profile(self, business_section: str) -> str:
+    def test_connection(self) -> bool:
         """
-        Extract a concise company profile from the business section.
-
-        Args:
-            business_section: Business section text from a 10-K
+        Test the SEC EDGAR connection by attempting a small download.
 
         Returns:
-            Concise company profile text
-        """
-        if not business_section:
-            return ""
-
-        # Take first 1000 characters as a simple approach
-        # (In a more sophisticated implementation, we'd use NLP to summarize)
-        profile = business_section[:1000].strip()
-
-        # Clean up the profile
-        profile = re.sub(r'\s+', ' ', profile)
-
-        return profile
-
-    def clean_up(self, days_old: int = 7):
-        """
-        Clean up old downloaded files to save disk space.
-
-        Args:
-            days_old: Remove files older than this many days
+            True if connection is successful, False otherwise
         """
         try:
-            # Don't clean up temporary directories
-            if '/tmp/' in self.download_dir or 'temp' in self.download_dir:
-                return
-
-            # Use date_utils for date calculations
-            current_date = process_date_param("today")
-            current_datetime = datetime.strptime(current_date, '%Y-%m-%d')
-            cutoff_time = current_datetime - timedelta(days=days_old)
-            count = 0
-
-            # Walk through the download directory
-            for root, dirs, files in os.walk(self.download_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    modified_time = os.path.getmtime(file_path)
-                    file_datetime = datetime.fromtimestamp(modified_time)
-
-                    # Remove if older than cutoff
-                    if file_datetime < cutoff_time:
-                        os.remove(file_path)
-                        count += 1
-
-            self.logger.info(
-                f"Cleaned up {count} files older than {days_old} days")
-
+            # Try to download one Apple 8-K as a test
+            test_paths = self.download_filing("AAPL", "8-K", limit=1)
+            return len(test_paths) > 0
         except Exception as e:
-            self.logger.error(f"Error cleaning up old files: {e}")
-
-    def list_available_forms(self) -> pd.DataFrame:
-        """
-        List available SEC form types with descriptions.
-
-        Returns:
-            DataFrame of available form types and descriptions
-        """
-        data = []
-        for form_id, description in self.form_types.items():
-            data.append({
-                'form_id': form_id,
-                'description': description
-            })
-
-        return pd.DataFrame(data)
+            self.logger.error(f"Connection test failed: {e}")
+            return False
 
 
-# Example usage
 if __name__ == "__main__":
-    # Enable logging for example
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Example usage
+    tool = SECEdgarTool(use_temp_dir=True)
 
-    # Initialize the tool with a temporary directory
-    edgar_tool = SECEdgarTool(use_temp_dir=True)
+    # Test connection
+    print("Testing SEC EDGAR connection...")
+    if tool.test_connection():
+        print("✓ Connection successful!")
+    else:
+        print("✗ Connection failed!")
 
-    try:
-        # Example 1: Fetch risk factors from latest 10-K using relative dates
-        print("\nExample 1: Fetch risk factors from latest 10-K")
-        risk_factors = edgar_tool.fetch_filings(
-            "AAPL",
-            "10-K",
-            num_filings=1,
-            before_date="today",
-            after_date="-1y",
-            extract_sections=["risk_factors"]
-        )
+    # Analyze Apple's latest 10-K
+    print("\nAnalyzing Apple's latest 10-K...")
+    analysis = tool.analyze_filing("AAPL", "10-K", sections=["risk_factors"])
+    if analysis and "sections" in analysis:
+        for section, data in analysis["sections"].items():
+            print(f"\n{section.upper()}:")
+            print(f"Length: {data['length']} characters")
+            print(f"Preview: {data['preview']}")
 
-        if not risk_factors.empty:
-            print(f"Found {len(risk_factors)} filings")
-            risk_text = risk_factors['risk_factors_content'].iloc[0]
-            print(f"Risk factors excerpt: {risk_text[:200]}...")
-            print(f"Word count: {risk_factors['word_count'].iloc[0]}")
+    # Get trend analysis
+    print("\nAnalyzing risk factor trends...")
+    trends = tool.get_filing_trends("AAPL", "10-K", "risk_factors", limit=3)
+    if not trends.empty:
+        print(trends[['filing_date', 'word_count', 'total_risk_mentions']])
 
-        # Example 2: Compare risk factors over time
-        print("\nExample 2: Compare risk factors over time")
-        risk_comparison = edgar_tool.compare_filings_over_time("MSFT",
-                                                               form_type="10-K",
-                                                               section="risk_factors",
-                                                               num_filings=2)
-        if not risk_comparison.empty:
-            print(f"Comparing {len(risk_comparison)} filings")
-            print(risk_comparison[['filing_date',
-                  'word_count', 'word_count_change']])
+    # Search for specific terms
+    print("\nSearching for AI mentions in recent filings...")
+    search_results = tool.search_filings(
+        "MSFT", ["artificial intelligence", "AI", "machine learning"], "10-K", limit=1)
+    if not search_results.empty:
+        print(search_results[['filing_date', 'search_term', 'match_count']])
 
-        # Example 3: Search for specific terms
-        print("\nExample 3: Search for specific terms")
-        search_results = edgar_tool.search_filings("GOOGL",
-                                                   search_terms=[
-                                                       "artificial intelligence", "AI"],
-                                                   form_type="10-K",
-                                                   num_filings=1)
-        if not search_results.empty:
-            print(f"Found {len(search_results)} matches")
-            for i, result in search_results.head(2).iterrows():
-                print(
-                    f"Match in {result['section']} section: {result['context'][:100]}...")
-
-    except Exception as e:
-        print(f"Error in example: {e}")
-
-    finally:
-        # Clean up temporary files
-        edgar_tool.clean_up(days_old=0)  # Clean up all files in temp dir
+    # Get recent 8-K events
+    print("\nGetting recent 8-K events for Tesla...")
+    events = tool.get_recent_8k_events("TSLA", days_back=60)
+    if not events.empty:
+        print(events[['filing_date', 'item_number', 'item_description']])

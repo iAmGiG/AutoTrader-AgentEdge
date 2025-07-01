@@ -93,477 +93,220 @@ class FinnHubTool:
                 category = "general"
 
             # Build the URL
-            url = f"{self.base_url}/news?category={category}&token={self.api_key}"
+            url = f"{self.base_url}/news"
+            params = {
+                "category": category,
+                "token": self.api_key
+            }
 
-            # Add ticker filter if provided (note: may not work in free tier)
-            if tickers is not None and len(tickers) > 0:
-                tickers_str = ",".join(tickers)
-                url += f"&tickers={tickers_str}"
+            # Note: The minId parameter can be used to paginate, but we'll just fetch latest
+            # Note: Ticker filtering may not work in free tier
+
+            self.logger.info(
+                f"Fetching {category} news headlines from Finnhub...")
 
             # Make the request
-            self.logger.info(
-                f"Fetching news headlines from Finnhub for category: {category}")
-            response = requests.get(url)
-            response.raise_for_status()  # Raise exception for HTTP errors
+            response = requests.get(url, params=params)
 
-            # Parse the JSON response
-            data = response.json()
+            if response.status_code == 200:
+                news_data = response.json()
 
-            # Check if we got articles back
-            if not data or not isinstance(data, list):
-                self.logger.warning("No news headlines returned from Finnhub")
-                return pd.DataFrame()
+                if not news_data:
+                    self.logger.warning(
+                        f"No news data returned for category: {category}")
+                    return pd.DataFrame()
 
-            # Limit to requested count
-            articles = data[:count]
+                # Convert to DataFrame
+                df = pd.DataFrame(news_data[:count])
 
-            # Filter only the fields we need (reducing memory footprint)
-            simplified_articles = []
-            for article in articles:
-                simplified_articles.append({
-                    'headline': article.get('headline', ''),
-                    'datetime': article.get('datetime', 0),
-                    'source': article.get('source', ''),
-                    # Limit summary length
-                    'summary': article.get('summary', '')[:200] if article.get('summary') else '',
-                    'url': article.get('url', ''),
-                    'category': article.get('category', '')
+                # Ensure we have the necessary columns for sentiment analysis
+                if 'headline' not in df.columns:
+                    self.logger.error(
+                        "Response missing 'headline' field required for sentiment analysis")
+                    return pd.DataFrame()
+
+                # Rename columns to match expected format
+                df = df.rename(columns={
+                    'headline': 'title',
+                    'summary': 'content',
+                    'datetime': 'published_at'
                 })
 
-            # Convert to DataFrame
-            df = pd.DataFrame(simplified_articles)
+                # Convert datetime if present
+                if 'published_at' in df.columns:
+                    df['published_at'] = pd.to_datetime(
+                        df['published_at'], unit='s')
+                    df['published_at'] = df['published_at'].dt.strftime(
+                        '%Y-%m-%d %H:%M:%S')
 
-            # Rename columns to standardized format
-            if not df.empty:
-                column_mapping = {
-                    'headline': 'Headline',
-                    'datetime': 'Date',
-                    'source': 'Source',
-                    'summary': 'Summary',
-                    'url': 'URL',
-                    'category': 'Category'
-                }
-                df = df.rename(
-                    columns={k: v for k, v in column_mapping.items() if k in df.columns})
+                # Add category column
+                df['category'] = category
 
-                # Convert epoch timestamp to datetime
-                if 'datetime' in df.columns:
-                    df['Date'] = pd.to_datetime(df['datetime'], unit='s')
+                # Ensure we have required columns
+                if 'content' not in df.columns:
+                    df['content'] = df['title']  # Use title as content if no summary
 
-                # Add source indicator
-                df['Data Source'] = 'Finnhub'
+                self.logger.info(
+                    f"Successfully fetched {len(df)} news headlines")
+                return df
 
-            return df
+            else:
+                self.logger.error(
+                    f"Finnhub API error: {response.status_code} - {response.text}")
+                return pd.DataFrame()
 
         except Exception as e:
             self.logger.error(f"Error fetching news from Finnhub: {e}")
             return pd.DataFrame()
 
-    def fetch_financial_headlines(self, count: int = 10) -> pd.DataFrame:
+    def fetch_company_news(self,
+                           symbol: str,
+                           start_date: Optional[str] = None,
+                           end_date: Optional[str] = None) -> pd.DataFrame:
         """
-        Fetch a combined set of financial and economic headlines from multiple categories.
-        This method is specifically designed for sentiment analysis and combines business,
-        economic, and market news into a single DataFrame.
+        Fetch company-specific news headlines from Finnhub.
 
         Args:
-            count: Number of news headlines to retrieve per category
+            symbol: Stock ticker symbol
+            start_date: Start date (YYYY-MM-DD format or relative like '-7d')
+            end_date: End date (YYYY-MM-DD format or 'today')
 
         Returns:
-            DataFrame with diverse financial headlines for sentiment analysis
+            DataFrame with company news headlines
         """
         try:
-            # Fetch headlines from multiple financial categories
+            # Process date parameters
+            start_date, end_date = get_processed_date_range(
+                start_date, end_date)
+
+            # Build the URL for company news
+            url = f"{self.base_url}/company-news"
+            params = {
+                "symbol": symbol.upper(),
+                "from": start_date,
+                "to": end_date,
+                "token": self.api_key
+            }
+
             self.logger.info(
-                "Fetching diverse financial headlines from Finnhub")
+                f"Fetching news for {symbol} from {start_date} to {end_date}...")
 
-            # These categories are available in the free tier and cover different
-            # aspects of financial markets
-            categories = ["business", "economic", "forex", "general"]
+            # Make the request
+            response = requests.get(url, params=params)
 
-            all_headlines = []
-            for category in categories:
-                # Get headlines for this category
-                category_df = self.fetch_news(
-                    category=category, count=count // len(categories))
+            if response.status_code == 200:
+                news_data = response.json()
 
-                if not category_df.empty:
-                    all_headlines.append(category_df)
+                if not news_data:
+                    self.logger.warning(f"No news data returned for {symbol}")
+                    return pd.DataFrame()
 
-            # Combine into a single DataFrame
-            if all_headlines:
-                combined_df = pd.concat(all_headlines, ignore_index=True)
-                combined_df = combined_df.sort_values(
-                    by='Date', ascending=False)
-                return combined_df
+                # Convert to DataFrame
+                df = pd.DataFrame(news_data)
+
+                # Rename columns to match expected format
+                df = df.rename(columns={
+                    'headline': 'title',
+                    'summary': 'content',
+                    'datetime': 'published_at'
+                })
+
+                # Convert datetime
+                if 'published_at' in df.columns:
+                    df['published_at'] = pd.to_datetime(
+                        df['published_at'], unit='s')
+                    df['published_at'] = df['published_at'].dt.strftime(
+                        '%Y-%m-%d %H:%M:%S')
+
+                # Add metadata
+                df['symbol'] = symbol.upper()
+                df['category'] = 'company'
+
+                # Ensure we have content
+                if 'content' not in df.columns:
+                    df['content'] = df['title']
+
+                self.logger.info(
+                    f"Successfully fetched {len(df)} news items for {symbol}")
+                return df
+
             else:
-                self.logger.warning(
-                    "No financial headlines found from any category")
+                self.logger.error(
+                    f"Finnhub API error: {response.status_code} - {response.text}")
                 return pd.DataFrame()
 
         except Exception as e:
             self.logger.error(
-                f"Error fetching financial headlines from Finnhub: {e}")
+                f"Error fetching company news from Finnhub: {e}")
             return pd.DataFrame()
 
-    def fetch_market_headlines(self, count: int = 10) -> pd.DataFrame:
+    def fetch_market_news(self, category: str = "general") -> pd.DataFrame:
         """
-        Alias for fetch_financial_headlines that focuses specifically on market-related headlines.
-        This method has the same functionality but uses a more descriptive name for clarity.
+        Convenience method that wraps fetch_news for backward compatibility.
 
         Args:
-            count: Number of news headlines to retrieve
+            category: News category to fetch
 
         Returns:
-            DataFrame with market headlines for sentiment analysis
+            DataFrame with market news headlines
         """
-        return self.fetch_financial_headlines(count=count)
+        return self.fetch_news(category=category, count=20)
 
-    def fetch_earnings_calendar(self, start_date: str = "today", end_date: str = "+30d") -> pd.DataFrame:
+    def test_connection(self) -> bool:
         """
-        Fetch earnings calendar from Finnhub free tier API.
-
-        Args:
-            start_date: Start date (YYYY-MM-DD or relative like "today")
-            end_date: End date (YYYY-MM-DD or relative like "+30d")
+        Test the Finnhub API connection.
 
         Returns:
-            DataFrame with earnings calendar data
+            True if connection is successful, False otherwise
         """
         try:
-            # Process date parameters using date_utils
-            processed_start = process_date_param(
-                start_date) or process_date_param("today")
-            processed_end = process_date_param(
-                end_date) or process_date_param("+30d")
-
-            url = f"{self.base_url}/calendar/earnings?from={processed_start}&to={processed_end}&token={self.api_key}"
-
-            self.logger.info(
-                f"Fetching earnings calendar from {processed_start} to {processed_end}")
-            response = requests.get(url)
-            response.raise_for_status()
-
-            data = response.json()
-
-            if not data or 'earningsCalendar' not in data:
-                self.logger.warning(
-                    "No earnings calendar data returned from Finnhub")
-                return pd.DataFrame()
-
-            # Convert to DataFrame
-            df = pd.DataFrame(data['earningsCalendar'])
-
-            if not df.empty:
-                # Standardize column names
-                df = df.rename(columns={
-                    'symbol': 'Symbol',
-                    'date': 'Earnings_Date',
-                    'epsActual': 'EPS_Actual',
-                    'epsEstimate': 'EPS_Estimate',
-                    'revenueActual': 'Revenue_Actual',
-                    'revenueEstimate': 'Revenue_Estimate',
-                    'quarter': 'Quarter',
-                    'year': 'Year'
-                })
-
-                # Convert date to datetime
-                if 'Earnings_Date' in df.columns:
-                    df['Earnings_Date'] = pd.to_datetime(df['Earnings_Date'])
-
-                df['Data Source'] = 'Finnhub'
-
-            return df
-
+            # Try to fetch a small amount of general news
+            df = self.fetch_news(category="general", count=1)
+            return not df.empty
         except Exception as e:
-            if "403" in str(e) or "Forbidden" in str(e):
-                self.logger.warning(
-                    f"Earnings calendar requires premium Finnhub subscription (403 Forbidden)")
-                return pd.DataFrame(columns=['Symbol', 'Earnings_Date', 'EPS_Actual', 'EPS_Estimate', 'Data Source'])
-            else:
-                self.logger.error(
-                    f"Error fetching earnings calendar from Finnhub: {e}")
-                return pd.DataFrame()
-
-    def fetch_insider_transactions(self, symbol: str, start_date: str = "-90d", end_date: str = "today") -> pd.DataFrame:
-        """
-        Fetch insider transaction data from Finnhub free tier API.
-
-        Args:
-            symbol: Stock symbol (e.g., 'AAPL')
-            start_date: Start date (YYYY-MM-DD or relative like "-90d")
-            end_date: End date (YYYY-MM-DD or relative like "today")
-
-        Returns:
-            DataFrame with insider transaction data
-        """
-        try:
-            # Process date parameters using date_utils
-            processed_start = process_date_param(
-                start_date) or process_date_param("-90d")
-            processed_end = process_date_param(
-                end_date) or process_date_param("today")
-
-            url = f"{self.base_url}/stock/insider-transactions?symbol={symbol}&from={processed_start}&to={processed_end}&token={self.api_key}"
-
-            self.logger.info(
-                f"Fetching insider transactions for {symbol} from {processed_start} to {processed_end}")
-            response = requests.get(url)
-            response.raise_for_status()
-
-            data = response.json()
-
-            if not data or 'data' not in data:
-                self.logger.warning(
-                    f"No insider transaction data returned for {symbol}")
-                return pd.DataFrame()
-
-            # Convert to DataFrame
-            df = pd.DataFrame(data['data'])
-
-            if not df.empty:
-                # Standardize column names
-                df = df.rename(columns={
-                    'symbol': 'Symbol',
-                    'transactionDate': 'Transaction_Date',
-                    'name': 'Insider_Name',
-                    'share': 'Shares',
-                    'change': 'Share_Change',
-                    'filingDate': 'Filing_Date',
-                    'transactionCode': 'Transaction_Code'
-                })
-
-                # Convert dates to datetime
-                if 'Transaction_Date' in df.columns:
-                    df['Transaction_Date'] = pd.to_datetime(
-                        df['Transaction_Date'])
-                if 'Filing_Date' in df.columns:
-                    df['Filing_Date'] = pd.to_datetime(df['Filing_Date'])
-
-                df['Data Source'] = 'Finnhub'
-
-            return df
-
-        except Exception as e:
-            if "403" in str(e) or "Forbidden" in str(e):
-                self.logger.warning(
-                    f"Insider transactions for {symbol} require premium Finnhub subscription (403 Forbidden)")
-                return pd.DataFrame(columns=['Symbol', 'Transaction_Date', 'Insider_Name', 'Shares', 'Data Source'])
-            else:
-                self.logger.error(
-                    f"Error fetching insider transactions for {symbol}: {e}")
-                return pd.DataFrame()
-
-    def fetch_dividends(self, symbol: str, start_date: str = "-1y", end_date: str = "today") -> pd.DataFrame:
-        """
-        Fetch dividend data from Finnhub free tier API.
-
-        Args:
-            symbol: Stock symbol (e.g., 'AAPL')
-            start_date: Start date (YYYY-MM-DD or relative like "-1y")
-            end_date: End date (YYYY-MM-DD or relative like "today")
-
-        Returns:
-            DataFrame with dividend data
-        """
-        try:
-            # Process date parameters using date_utils
-            processed_start = process_date_param(
-                start_date) or process_date_param("-1y")
-            processed_end = process_date_param(
-                end_date) or process_date_param("today")
-
-            url = f"{self.base_url}/stock/dividend?symbol={symbol}&from={processed_start}&to={processed_end}&token={self.api_key}"
-
-            self.logger.info(
-                f"Fetching dividend data for {symbol} from {processed_start} to {processed_end}")
-            response = requests.get(url)
-            response.raise_for_status()
-
-            data = response.json()
-
-            if not data:
-                self.logger.warning(f"No dividend data returned for {symbol}")
-                return pd.DataFrame()
-
-            # Convert to DataFrame
-            df = pd.DataFrame(data)
-
-            if not df.empty:
-                # Standardize column names
-                df = df.rename(columns={
-                    'symbol': 'Symbol',
-                    'date': 'Ex_Dividend_Date',
-                    'amount': 'Dividend_Amount',
-                    'adjustedAmount': 'Adjusted_Amount',
-                    'payDate': 'Pay_Date',
-                    'recordDate': 'Record_Date',
-                    'declarationDate': 'Declaration_Date'
-                })
-
-                # Convert dates to datetime
-                date_columns = ['Ex_Dividend_Date', 'Pay_Date',
-                                'Record_Date', 'Declaration_Date']
-                for col in date_columns:
-                    if col in df.columns:
-                        df[col] = pd.to_datetime(df[col])
-
-                df['Data Source'] = 'Finnhub'
-
-            return df
-
-        except Exception as e:
-            if "403" in str(e) or "Forbidden" in str(e):
-                self.logger.warning(
-                    f"Dividend data for {symbol} requires premium Finnhub subscription (403 Forbidden)")
-                # Return empty DataFrame with proper structure for consistency
-                return pd.DataFrame(columns=['Symbol', 'Ex_Dividend_Date', 'Dividend_Amount', 'Data Source'])
-            else:
-                self.logger.error(
-                    f"Error fetching dividend data for {symbol}: {e}")
-                return pd.DataFrame()
-
-    def fetch_earnings_estimates(self, symbol: str) -> pd.DataFrame:
-        """
-        Fetch earnings estimates from Finnhub free tier API.
-
-        Args:
-            symbol: Stock symbol (e.g., 'AAPL')
-
-        Returns:
-            DataFrame with EPS estimates and historical earnings
-        """
-        try:
-            url = f"{self.base_url}/stock/earnings?symbol={symbol}&token={self.api_key}"
-
-            self.logger.info(f"Fetching earnings estimates for {symbol}")
-            response = requests.get(url)
-            response.raise_for_status()
-
-            data = response.json()
-
-            if not data:
-                self.logger.warning(
-                    f"No earnings estimates returned for {symbol}")
-                return pd.DataFrame()
-
-            # Convert to DataFrame
-            df = pd.DataFrame(data)
-
-            if not df.empty:
-                # Standardize column names
-                df = df.rename(columns={
-                    'symbol': 'Symbol',
-                    'period': 'Period',
-                    'actual': 'EPS_Actual',
-                    'estimate': 'EPS_Estimate',
-                    'surprise': 'Surprise',
-                    'surprisePercent': 'Surprise_Percent'
-                })
-
-                # Convert period to datetime if possible
-                if 'Period' in df.columns:
-                    df['Period'] = pd.to_datetime(df['Period'])
-
-                df['Data Source'] = 'Finnhub'
-
-            return df
-
-        except Exception as e:
-            if "403" in str(e) or "Forbidden" in str(e):
-                self.logger.warning(
-                    f"Earnings estimates for {symbol} require premium Finnhub subscription (403 Forbidden)")
-                return pd.DataFrame(columns=['Symbol', 'Period', 'EPS_Actual', 'EPS_Estimate', 'Data Source'])
-            else:
-                self.logger.error(
-                    f"Error fetching earnings estimates for {symbol}: {e}")
-                return pd.DataFrame()
-
-    def fetch_economic_headlines(self, count: int = 10) -> pd.DataFrame:
-        """
-        Fetch headlines specifically from the 'economic' category.
-        This provides a more targeted set of headlines related to economic news.
-
-        Args:
-            count: Number of economic news headlines to retrieve
-
-        Returns:
-            DataFrame with economic headlines for sentiment analysis
-        """
-        return self.fetch_news(category="economic", count=count)
-
-    def list_news_categories(self) -> pd.DataFrame:
-        """
-        List available news categories.
-
-        Returns:
-            DataFrame with category IDs and descriptions
-        """
-        data = []
-        for category_id, description in self.news_categories.items():
-            data.append({
-                'category_id': category_id,
-                'description': description
-            })
-
-        return pd.DataFrame(data)
+            self.logger.error(f"Connection test failed: {e}")
+            return False
 
 
-# Example usage
 if __name__ == "__main__":
-    # Enable logging for example
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Example usage
+    tool = FinnHubTool()
 
-    # Initialize the tool
-    finnhub_tool = FinnHubTool(verbose=True)
+    # Test connection
+    print("Testing Finnhub connection...")
+    if tool.test_connection():
+        print("✓ Connection successful!")
+    else:
+        print("✗ Connection failed!")
 
-    try:
-        # Example 1: Fetch general news
-        print("\nExample 1: Fetch general news")
-        news_df = finnhub_tool.fetch_news(category="general", count=3)
-        if not news_df.empty:
-            print(f"Fetched {len(news_df)} news articles")
-            for _, article in news_df.iterrows():
-                print(f"- {article.get('Headline', 'No headline')}")
+    # Fetch general news
+    print("\nFetching general market news...")
+    general_news = tool.fetch_news(category="general", count=5)
+    if not general_news.empty:
+        print(f"Found {len(general_news)} articles")
+        print(general_news[['title', 'published_at']].head())
+    else:
+        print("No general news found")
 
-        # Example 2: Try fetching news with ticker filter (may not work in free tier)
-        print("\nExample 2: Fetch news with ticker filter")
-        stock_news = finnhub_tool.fetch_news(
-            category="business", tickers=["AAPL", "TSLA"], count=3)
-        if not stock_news.empty:
-            print(
-                f"Fetched {len(stock_news)} news articles related to specified tickers")
-            for _, article in stock_news.iterrows():
-                print(f"- {article.get('Headline', 'No headline')}")
-        else:
-            print("No ticker-specific news found (expected with free tier)")
+    # Fetch business news
+    print("\nFetching business news...")
+    business_news = tool.fetch_news(category="business", count=5)
+    if not business_news.empty:
+        print(f"Found {len(business_news)} articles")
+        print(business_news[['title', 'published_at']].head())
+    else:
+        print("No business news found")
 
-        # Example 3: Fetch economic headlines
-        print("\nExample 3: Fetch economic headlines")
-        economic_df = finnhub_tool.fetch_economic_headlines(count=3)
-        if not economic_df.empty:
-            print(f"Fetched {len(economic_df)} economic headlines")
-            for _, article in economic_df.iterrows():
-                print(f"- {article.get('Headline', 'No headline')}")
+    # Fetch company-specific news
+    print("\nFetching Apple news...")
+    apple_news = tool.fetch_company_news("AAPL", "-7d", "today")
+    if not apple_news.empty:
+        print(f"Found {len(apple_news)} articles")
+        print(apple_news[['title', 'published_at']].head())
+    else:
+        print("No Apple news found")
 
-        # Example 4: Fetch combined financial headlines
-        print("\nExample 4: Fetch combined financial headlines")
-        financial_df = finnhub_tool.fetch_financial_headlines(count=8)
-        if not financial_df.empty:
-            print(
-                f"Fetched {len(financial_df)} financial headlines from multiple categories")
-            print(
-                f"Categories included: {', '.join(financial_df['Category'].unique())}")
-            for _, article in financial_df.head(3).iterrows():
-                print(
-                    f"- {article.get('Headline', 'No headline')} ({article.get('Category', 'unknown')})")
-
-        # Example 5: List available news categories
-        print("\nExample 5: List available news categories")
-        categories_df = finnhub_tool.list_news_categories()
-        print(f"Available categories:")
-        for _, category in categories_df.iterrows():
-            print(f"- {category['category_id']}: {category['description']}")
-
-    except Exception as e:
-        print(f"Error in example: {e}")
+    # Print available categories
+    print("\nAvailable news categories:")
+    for key, description in tool.news_categories.items():
+        print(f"  - {key}: {description}")
