@@ -31,3 +31,4 @@ sec-edgar-downloader==5.0.3
 tiktoken
 yfinance
 sparklines
+nasdaq-data-link==1.0.3

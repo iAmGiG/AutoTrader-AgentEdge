@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List
 import re
 from datetime import datetime
+import json
 
 # 3rd-party libs
 import pandas as pd
@@ -28,14 +29,17 @@ from src.tools.processors.indicator_library import (
     cci,
 )
 from src.tools.processors.data_normalizer import standardize_indicator_columns
-from sparklines import sparklines as _sparklines
-from src.tools.date_utils import (
+try:
+    from sparklines import sparklines as _sparklines
+except ImportError:
+    _sparklines = None
+from src.utils.date_utils import (
     process_date_param,
     get_processed_date_range,
     get_default_date_range,
     resolve_anchor,
 )
-from src.tools.agent_utils import QueryParser
+from src.utils.agent_utils import QueryParser
 
 TECH_LLM_CONFIG = {
     "temperature": 0.15,  # deterministic outputs
@@ -66,6 +70,10 @@ class TechAgent(BaseAgent):
             memory_system=memory_system,
             llm_config=TECH_LLM_CONFIG,
         )
+
+        # Limit tool recursion
+        # Temporarily increased for debugging
+        self.max_tool_rounds = 2
 
         # Optional: attach a logger
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -506,8 +514,10 @@ class TechAgent(BaseAgent):
                 req = [ind.split("(")[0]
                        for ind in tool_args.get("indicators", [])]
 
-                if "macd" in req:
-                    df = pd.concat([df, macd(df["Close"])], axis=1)
+                # Always compute MACD so downstream logic can rely on it
+                macd_df = macd(df["Close"])
+                macd_df["MACD"] = macd_df["MACD_line"] - macd_df["MACD_signal"]
+                df = pd.concat([df, macd_df], axis=1)
                 if "bollinger" in req:
                     df = pd.concat([df, bollinger_bands(df["Close"])], axis=1)
                 if "adx" in req:
@@ -538,6 +548,10 @@ class TechAgent(BaseAgent):
                     df["AVWAP"] = avwap(df["Close"], df["Volume"], anchor_ts=anchor_ts)
 
                 df = standardize_indicator_columns(df)
+
+                # ------- MACD CROSS helpers ----------------------------------
+                if "MACD" in df.columns:
+                    df["MACD_prev"] = df["MACD"].shift(1)
 
                 # ------- Go/NoGo one-liner -----------------------------------
                 go_flag = (
@@ -582,7 +596,10 @@ class TechAgent(BaseAgent):
                         last_event).isoformat()
 
                 n = min(len(df), 20)
-                spark = _sparklines(df["Close"].tail(n).tolist())[0]
+                if _sparklines is not None:
+                    spark = _sparklines(df["Close"].tail(n).tolist())[0]
+                else:
+                    spark = "Sparklines not available"
 
                 timestamp = pd.Timestamp.utcnow().isoformat()
 
@@ -594,6 +611,8 @@ class TechAgent(BaseAgent):
                     "events": events,
                     "spark": spark,
                     "timestamp": timestamp,
+                    "macd_today": float(df["MACD"].iloc[-1]) if "MACD" in df.columns else None,
+                    "macd_yest": float(df["MACD_prev"].iloc[-1]) if "MACD_prev" in df.columns else None,
                     "anchor_ts": anchor_ts.isoformat() if anchor_ts is not None else None,
                     "anchor_warning": anchor_warning,
                 }
@@ -624,6 +643,79 @@ class TechAgent(BaseAgent):
             + "\n\nIMPORTANT: Use multiple tools if it improves the answer."
             + "\nTool outputs include: latest_row, go_flag, go_rationale, risk, events, spark, timestamp."
         )
+        sys_prompt += (
+            "\n\nAfter you have executed ONE tool call and received its result, "
+            "STOP CALLING TOOLS and give your final answer."
+        )
+        
+        # Add JSON format requirement for MACD responses
+        sys_prompt += (
+            "\n\nIMPORTANT: Your final response MUST be in valid JSON format with exactly these fields:"
+            "\n{\"macd_today\": <float or null>, \"macd_yest\": <float or null>}"
+            "\n\nExample response: {\"macd_today\": 1.23, \"macd_yest\": 0.98}"
+            "\nIf MACD values cannot be calculated, use: {\"macd_today\": null, \"macd_yest\": null}"
+            "\n\nDo NOT include any text before or after the JSON. Return ONLY the JSON object."
+        )
 
         # --------------- Forward to BaseAgent’s tool-aware pipeline -------
-        return self.process_with_tools(last_msg, sys_prompt)
+        raw_response = self.process_with_tools(last_msg, sys_prompt)
+        
+        # Extract and validate MACD JSON response
+        try:
+            # If it's already a dict, check for MACD values
+            if isinstance(raw_response, dict):
+                if 'macd_today' in raw_response and 'macd_yest' in raw_response:
+                    return json.dumps(raw_response)
+                else:
+                    # Try to extract MACD from tool results
+                    macd_today = raw_response.get('macd_today')
+                    macd_yest = raw_response.get('macd_yest')
+                    result = {
+                        "macd_today": float(macd_today) if macd_today is not None else None,
+                        "macd_yest": float(macd_yest) if macd_yest is not None else None
+                    }
+                    print(f"\nTechnical Analysis Result:")
+                    print(f"  MACD Today: {result['macd_today']:.4f}" if result['macd_today'] is not None else "  MACD Today: Not available")
+                    print(f"  MACD Yesterday: {result['macd_yest']:.4f}" if result['macd_yest'] is not None else "  MACD Yesterday: Not available")
+                    return json.dumps(result)
+            
+            # Try to parse as JSON string
+            response_str = str(raw_response).strip()
+            
+            # Remove any text before the first '{' and after the last '}'
+            start_idx = response_str.find('{')
+            end_idx = response_str.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1:
+                json_str = response_str[start_idx:end_idx+1]
+                parsed = json.loads(json_str)
+                
+                # Validate required fields
+                if 'macd_today' in parsed and 'macd_yest' in parsed:
+                    # Ensure proper types
+                    result = {
+                        "macd_today": float(parsed['macd_today']) if parsed['macd_today'] is not None else None,
+                        "macd_yest": float(parsed['macd_yest']) if parsed['macd_yest'] is not None else None
+                    }
+                    
+                    print(f"\nTechnical Analysis Result:")
+                    print(f"  MACD Today: {result['macd_today']:.4f}" if result['macd_today'] is not None else "  MACD Today: Not available")
+                    print(f"  MACD Yesterday: {result['macd_yest']:.4f}" if result['macd_yest'] is not None else "  MACD Yesterday: Not available")
+                    
+                    return json.dumps(result)
+            
+            # If parsing fails, return default
+            print(f"Warning: Failed to parse MACD values from response, returning null values")
+            default_response = {"macd_today": None, "macd_yest": None}
+            print(f"\nDefault Technical Result:")
+            print(f"  MACD Today: Not available")
+            print(f"  MACD Yesterday: Not available")
+            return json.dumps(default_response)
+            
+        except Exception as e:
+            print(f"Error processing response: {str(e)}")
+            default_response = {"macd_today": None, "macd_yest": None}
+            print(f"\nDefault Technical Result (due to error):")
+            print(f"  MACD Today: Not available")
+            print(f"  MACD Yesterday: Not available")
+            return json.dumps(default_response)

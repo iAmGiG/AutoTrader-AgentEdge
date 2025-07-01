@@ -139,6 +139,9 @@ src/tools/
 - API limit awareness and management
 - Consistent DataFrame output format
 - Fallback capabilities between providers
+  - If Yahoo Finance is rate limited, the tool automatically retries using Alpha Vantage
+  - If both fail, it falls back to FMP and finally Nasdaq Data Link
+  - FMP's free tier only supports basic historical price endpoints
 
 ### News Data Sources
 

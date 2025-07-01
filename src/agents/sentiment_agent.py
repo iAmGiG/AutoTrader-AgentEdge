@@ -19,7 +19,7 @@ import pandas as pd
 from .base_agent import BaseAgent
 from src.tools.tools import SENTIMENT_AGENT, get_tools_for_agent
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
-from src.tools.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
+from src.utils.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
 
 # LLM config optimized for sentiment analysis and narrative generation
 SENTIMENT_LLM_CONFIG = {
@@ -42,6 +42,9 @@ class SentimentAgent(BaseAgent):
     def __init__(self, name="SentimentAgent", memory_system=None):
         # Load configurations and utilities
         self.config = load_agent_config("sentiment_agent")
+        # Limit this agent to a single tool round
+        # Temporarily increased for debugging
+        self.max_tool_rounds = 2
         self.market_sectors = load_market_sectors().get("sectors", {})
         self.query_parser = QueryParser(self.market_sectors)
 
@@ -322,6 +325,18 @@ class SentimentAgent(BaseAgent):
         # Create a system prompt with supplementary context
         system_prompt = self.config.get("system_prompt", "")
         system_prompt += f"\n\nSupplementary context for this query:\n{supplementary_context}"
+        system_prompt += (
+            "\n\nAfter you have executed ONE tool call and received its result, "
+            "STOP CALLING TOOLS and give your final answer."
+        )
+        
+        # Add JSON format requirement
+        system_prompt += (
+            "\n\nIMPORTANT: Your final response MUST be in valid JSON format with exactly these fields:"
+            "\n{\"score\": <float between -1 and 1>, \"confidence\": <float between 0 and 1>, \"sources\": <int>}"
+            "\n\nExample response: {\"score\": 0.65, \"confidence\": 0.8, \"sources\": 3}"
+            "\n\nDo NOT include any text before or after the JSON. Return ONLY the JSON object."
+        )
 
         # Add specific guidance based on extracted entities
         if query_details.get("ticker"):
@@ -344,4 +359,53 @@ class SentimentAgent(BaseAgent):
         system_prompt += f"\n\nIMPORTANT: Use only ONE tool call to get all needed information. The fetch_all_news tool is designed to get comprehensive news data in a single call."
 
         # Let the LLM generate a response with tool usage
-        return self.process_with_tools(last_message, system_prompt)
+        raw_response = self.process_with_tools(last_message, system_prompt)
+        
+        # Validate and clean the JSON response
+        try:
+            # If it's already a dict, convert to JSON string
+            if isinstance(raw_response, dict):
+                return json.dumps(raw_response)
+            
+            # Try to parse as JSON
+            response_str = str(raw_response).strip()
+            
+            # Remove any text before the first '{' and after the last '}'
+            start_idx = response_str.find('{')
+            end_idx = response_str.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1:
+                json_str = response_str[start_idx:end_idx+1]
+                parsed = json.loads(json_str)
+                
+                # Validate required fields
+                if all(key in parsed for key in ['score', 'confidence', 'sources']):
+                    # Ensure proper types
+                    parsed['score'] = float(parsed['score'])
+                    parsed['confidence'] = float(parsed['confidence'])
+                    parsed['sources'] = int(parsed['sources'])
+                    
+                    print(f"\nSentiment Analysis Result:")
+                    print(f"  Score: {parsed['score']:.2f} (range: -1 to 1)")
+                    print(f"  Confidence: {parsed['confidence']:.2f} (range: 0 to 1)")
+                    print(f"  Sources analyzed: {parsed['sources']}")
+                    
+                    return json.dumps(parsed)
+            
+            # If parsing fails, return default
+            print(f"Warning: Failed to parse JSON from response, returning default values")
+            default_response = {"score": 0.0, "confidence": 0.0, "sources": 0}
+            print(f"\nDefault Sentiment Result:")
+            print(f"  Score: {default_response['score']}")
+            print(f"  Confidence: {default_response['confidence']}")
+            print(f"  Sources analyzed: {default_response['sources']}")
+            return json.dumps(default_response)
+            
+        except Exception as e:
+            print(f"Error processing response: {str(e)}")
+            default_response = {"score": 0.0, "confidence": 0.0, "sources": 0}
+            print(f"\nDefault Sentiment Result (due to error):")
+            print(f"  Score: {default_response['score']}")
+            print(f"  Confidence: {default_response['confidence']}")
+            print(f"  Sources analyzed: {default_response['sources']}")
+            return json.dumps(default_response)

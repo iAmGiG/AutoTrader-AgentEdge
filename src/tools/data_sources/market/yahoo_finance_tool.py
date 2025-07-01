@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Optional
 from datetime import datetime, timedelta
-from src.tools.date_utils import get_processed_date_range, localize_df, get_default_timezone
+from src.utils.date_utils import get_processed_date_range, localize_df, get_default_timezone
 
 # Global cache and throttling variables
 _last_request_time = {}
@@ -78,7 +78,7 @@ def _retry_on_rate_limit(func, *args, max_retries=3, **kwargs):
         except Exception as e:
             if "Too Many Requests" in str(e) or "Rate limited" in str(e):
                 if attempt < max_retries - 1:
-                    wait_time = (2 ** attempt) * 5  # 5, 10, 20 seconds
+                    wait_time = (2 ** attempt) * 0.5  # 0.5, 1, 2 seconds
                     logging.warning(
                         f"Rate limited, waiting {wait_time} seconds before retry {attempt + 1}")
                     time.sleep(wait_time)

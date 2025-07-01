@@ -6,6 +6,7 @@ allowing retrieval of various economic indicators such as GDP, inflation rates,
 unemployment figures, and more.
 """
 
+from src.utils.date_utils import process_date_param, get_processed_date_range
 import logging
 from typing import Optional, Dict, Any, List
 import pandas as pd
@@ -13,7 +14,9 @@ import logging
 from typing import Optional, Dict, Any, List
 from fredapi import Fred
 import os
-from src.tools.date_utils import process_date_param, get_processed_date_range
+from config.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 
 
 # Define standard economic indicator series IDs for easy access
@@ -65,7 +68,7 @@ class FREDDataTool:
 
         # Load API key from environment if not provided
         if api_key is None:
-            api_key = os.getenv("FREDAPI")
+            api_key = os.getenv("FREDAPI", config_loader.get("FREDAPI"))
 
             if not api_key:
                 self.logger.error("No FRED API key provided in environment")

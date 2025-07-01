@@ -6,18 +6,20 @@ system for retrieving various types of SEC filings, extracting relevant sections
 and analyzing the content. It works primarily with 10-K, 10-Q, 8-K and other filing types.
 """
 
-import os
-import re
-import logging
-import tempfile
-import pandas as pd
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
-import pandas as pd
-from bs4 import BeautifulSoup
+from src.utils.date_utils import process_date_param
 from sec_edgar_downloader import Downloader
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List
+import pandas as pd
+import tempfile
+import logging
+import re
+import os
+from config.config_loader import ConfigLoader
 
-from src.tools.date_utils import process_date_param
+config_loader = ConfigLoader()
+
 
 # Define common form types for reference
 FORM_TYPES = {
@@ -42,7 +44,7 @@ REPORT_SECTIONS = {
     "executive_compensation": ["executive compensation", "item 11", "item11"]
 }
 
-email = os.getenv("validEmail")
+email = os.getenv("validEmail", config_loader.get("validEmail"))
 
 
 class SECEdgarTool:

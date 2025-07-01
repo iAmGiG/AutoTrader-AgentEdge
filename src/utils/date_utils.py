@@ -2,10 +2,13 @@
 Utilities for dynamic date handling in data tools.
 """
 
+from typing import Tuple, Optional
+import re
 import datetime
 import os
-import re
-from typing import Tuple, Optional
+from config.config_loader import ConfigLoader
+
+config_loader = ConfigLoader()
 
 
 DEFAULT_TIMEZONE = "America/New_York"
@@ -13,7 +16,10 @@ DEFAULT_TIMEZONE = "America/New_York"
 
 def get_default_timezone() -> str:
     """Return the configured default timezone."""
-    return os.getenv("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE)
+    return os.getenv(
+        "DEFAULT_TIMEZONE",
+        config_loader.get("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE),
+    )
 
 
 def localize_df(df, tz: str):

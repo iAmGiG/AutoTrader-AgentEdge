@@ -9,10 +9,11 @@ retrieval for sentiment analysis.
 
 import requests
 import logging
+from config.config_loader import ConfigLoader
 import pandas as pd
 from typing import Optional, List
 import os
-from src.tools.date_utils import process_date_param, get_processed_date_range
+from src.utils.date_utils import process_date_param, get_processed_date_range
 
 # Define news categories supported by Finnhub
 NEWS_CATEGORIES = {
@@ -52,7 +53,9 @@ class FinnHubTool:
 
         # Load API key from environment if not provided
         if api_key is None:
-            api_key = os.getenv("FINNHUB_KEY")
+            config_loader = ConfigLoader()
+            api_key = os.getenv(
+                "FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
 
             if not api_key:
                 self.logger.error("No Finnhub API key provided in environment")
