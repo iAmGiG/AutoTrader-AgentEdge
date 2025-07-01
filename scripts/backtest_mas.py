@@ -31,18 +31,18 @@ sys.path.insert(0, os.path.abspath(
 
 def setup_output_directory(symbol: str, start_date: str, end_date: str) -> Dict[str, str]:
     """Create organized output directory structure and return paths.
-    
+
     Args:
         symbol: Stock symbol
         start_date: Start date of backtest
         end_date: End date of backtest
-        
+
     Returns:
         Dictionary of output paths
     """
     output_manager = OutputManager()
     run_dir = output_manager.create_run_directory(symbol, start_date, end_date)
-    
+
     return {
         'run_dir': str(run_dir),
         'data_dir': str(run_dir / 'data'),
@@ -56,14 +56,14 @@ def setup_output_directory(symbol: str, start_date: str, end_date: str) -> Dict[
 
 def save_llm_reasoning(daily_reasoning: List[Dict], output_path: str) -> None:
     """Save LLM reasoning with proper formatting and sample analysis.
-    
+
     Args:
         daily_reasoning: List of daily reasoning dictionaries
         output_path: Path to save the reasoning file
     """
     import json
     from pathlib import Path
-    
+
     # Extract sample analysis text from first few days
     sample_analyses = []
     for day_data in daily_reasoning[:3]:  # First 3 days as samples
@@ -75,28 +75,28 @@ def save_llm_reasoning(daily_reasoning: List[Dict], output_path: str) -> None:
                 'coordinator_synthesis': day_data.get('coordinator_summary', {}).get('synthesis', 'N/A')
             }
             sample_analyses.append(sample)
-    
+
     # Create formatted output
     formatted_output = {
         'total_days_analyzed': len(daily_reasoning),
         'sample_analyses': sample_analyses,
         'full_reasoning': daily_reasoning
     }
-    
+
     # Save with proper JSON formatting
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(output_file, 'w') as f:
         json.dump(formatted_output, f, indent=2, default=str)
-    
+
     print(f"✅ Saved LLM reasoning to: {output_file}")
 
 
-def save_run_summary(symbol: str, metrics: Dict, trades: List[Dict], 
-                    best_insights: Dict, output_dir: str) -> None:
+def save_run_summary(symbol: str, metrics: Dict, trades: List[Dict],
+                     best_insights: Dict, output_dir: str) -> None:
     """Generate and save markdown report for individual run.
-    
+
     Args:
         symbol: Stock symbol
         metrics: Performance metrics dictionary
@@ -106,9 +106,9 @@ def save_run_summary(symbol: str, metrics: Dict, trades: List[Dict],
     """
     from pathlib import Path
     from datetime import datetime
-    
+
     output_path = Path(output_dir) / 'run_summary.md'
-    
+
     # Build markdown report
     summary = f"""# Backtest Run Summary: {symbol}
 
@@ -127,7 +127,7 @@ def save_run_summary(symbol: str, metrics: Dict, trades: List[Dict],
 ## Example Trading Decisions
 
 """
-    
+
     # Add first 3 trades as examples
     if trades:
         summary += "### Sample Trades\n\n"
@@ -140,25 +140,25 @@ def save_run_summary(symbol: str, metrics: Dict, trades: List[Dict],
 - Reasoning: {trade.get('reasoning', 'No reasoning captured')[:200]}...
 
 """
-    
+
     # Add best insights
     if best_insights:
         summary += "## Key Insights\n\n"
-        
+
         if best_insights.get('sentiment_analysis'):
             summary += "### Top Sentiment Findings\n"
             for insight in best_insights['sentiment_analysis'][:2]:
                 summary += f"- **{insight['date']}**: {insight.get('insight', {}).get('summary', 'N/A')}\n"
-        
+
         if best_insights.get('technical_patterns'):
             summary += "\n### Notable Technical Patterns\n"
             for pattern in best_insights['technical_patterns'][:2]:
                 summary += f"- **{pattern['date']}**: {pattern['pattern']} (Significance: {pattern['significance']})\n"
-    
+
     # Save the summary
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(summary)
-    
+
     print(f"✅ Saved run summary to: {output_path}")
 
 
@@ -200,7 +200,7 @@ async def get_signals_with_reasoning(coord: CoordinatorAgent, date: str, symbol:
             'aggregated_signals': signals,
             'raw_responses': raw_responses,
             'synthesis': f"Sentiment: {signals.get('sentiment', {}).get('score', 'N/A')}, " +
-                        f"MACD Today: {signals.get('technical', {}).get('macd_today', 'N/A')}",
+            f"MACD Today: {signals.get('technical', {}).get('macd_today', 'N/A')}",
             'timestamp': raw_responses.get('timestamp', ''),
             'symbol': symbol
         })
@@ -230,11 +230,10 @@ def main() -> None:
     if prices is None or prices.empty:
         # Use MarketDataTool with Alpha Vantage as the preferred source
         tool = MarketDataTool()
-        result = tool.fetch_stock_data(
-            ticker=symbol,
-            date_from=start,
-            date_to=end,
-            data_source="alpha_vantage"
+        result = tool.fetch_market_data(
+            symbol=symbol,
+            start_date=start,
+            end_date=end
         )
 
         if result is None or result.empty:
@@ -244,7 +243,7 @@ def main() -> None:
 
         prices = result
         # Cache the data
-        cache.save(symbol, start, end, "alpha_vantage", prices)
+        cache.set(symbol, start, end, "alpha_vantage", prices)
         print(f"Cached {len(prices)} days of data")
     else:
         print(f"Found {len(prices)} days in cache")
@@ -479,8 +478,9 @@ def main() -> None:
 
     # Generate run summary using the new helper function
     print("\n📝 Generating run summary...")
-    save_run_summary(symbol, metrics, trades, best_insights, str(run_dir / 'reports'))
-    
+    save_run_summary(symbol, metrics, trades, best_insights,
+                     str(run_dir / 'reports'))
+
     # Generate enhanced executive summary using ReportGenerator
     print("\n🎯 Generating enhanced executive summary...")
     report_gen = ReportGenerator()
@@ -488,7 +488,7 @@ def main() -> None:
     enhanced_summary_path = run_dir / 'reports' / 'executive_summary_enhanced.md'
     enhanced_summary_path.write_text(enhanced_summary)
     print(f"✅ Enhanced executive summary saved to: {enhanced_summary_path}")
-    
+
     # Extract best LLM examples
     print("\n🏆 Extracting best LLM analysis examples...")
     llm_examples = report_gen.extract_llm_examples(run_dir, num_examples=5)
@@ -496,11 +496,12 @@ def main() -> None:
     with open(examples_path, 'w') as f:
         json.dump(llm_examples, f, indent=2, default=str)
     print(f"✅ Best LLM examples saved to: {examples_path}")
-    
+
     # Print summary of examples found
     for category, examples in llm_examples.items():
         if examples:
-            print(f"  - {category}: {len(examples)} high-quality examples extracted")
+            print(
+                f"  - {category}: {len(examples)} high-quality examples extracted")
 
     # Finalize run
     output_manager.finalize_run("completed")
