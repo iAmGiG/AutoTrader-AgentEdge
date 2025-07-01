@@ -32,7 +32,7 @@ class CoordinatorAgent(BaseAgent):
 
     async def get_signals_with_reasoning(self, date: str, symbol: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Return both extracted signals and raw LLM responses with full reasoning.
-        
+
         Returns:
             tuple: (signals_dict, raw_responses_dict)
                 - signals_dict: Processed signals with ok/error status
@@ -135,8 +135,9 @@ Return a JSON object with:
                     tech_dict["macd_yest"] = latest["MACD_prev"]
 
             # Prepare signals dictionary (same as before)
-            signals = {"ok": True, "sentiment": sentiment_dict, "technical": tech_dict}
-            
+            signals = {"ok": True, "sentiment": sentiment_dict,
+                       "technical": tech_dict}
+
             # Prepare raw responses with full LLM reasoning
             raw_responses = {
                 "timestamp": datetime.now().isoformat(),
@@ -155,7 +156,7 @@ Return a JSON object with:
                     "analysis": tech_dict.get("analysis", "No detailed analysis captured")
                 }
             }
-            
+
             return signals, raw_responses
 
         except Exception as e:
@@ -167,10 +168,10 @@ Return a JSON object with:
                 "error": str(e)
             }
             return error_response, empty_raw
-    
+
     async def _call_agent_with_full_response(self, agent: BaseAgent, prompt: str, system_prompt: str) -> Tuple[str, Dict[str, Any]]:
         """Call an agent and return both the processed response and full details.
-        
+
         Returns:
             tuple: (processed_response, full_details)
                 - processed_response: The extracted/processed response string
@@ -181,7 +182,7 @@ Return a JSON object with:
             prompt,
             system_prompt
         )
-        
+
         # For now, we'll create a structure for the full response
         # In a full implementation, we'd modify BaseAgent to expose more details
         full_details = {
@@ -192,9 +193,9 @@ Return a JSON object with:
             "prompt": prompt,
             "system_prompt": system_prompt
         }
-        
+
         # Note: To fully capture tool calls and intermediate reasoning,
         # we would need to enhance BaseAgent.process_with_tools_async
         # to return more detailed information about the LLM interaction
-        
+
         return processed_response, full_details

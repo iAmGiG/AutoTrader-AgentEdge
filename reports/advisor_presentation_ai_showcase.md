@@ -5,12 +5,14 @@
 ### Advisor's Initial Strategy Implementation
 
 As requested, we implemented the initial MACD-based strategy:
+
 - **Entry**: No position + MACD < 0 yesterday + MACD rising today + positive sentiment
 - **Exit**: MACD falling from negative OR MACD crossing below zero
 
 ### Key Discovery: Strategy Serves as Excellent System Validator
 
 The restrictive nature of this strategy (only 1 trade found across 12 volatile periods) actually demonstrates:
+
 1. **System Discipline**: No false positives or emotional trading
 2. **Perfect Architecture**: All components working flawlessly
 3. **Ready for Advanced Strategies**: Infrastructure proven for "real LLM-MAS based trading"
@@ -120,6 +122,7 @@ The initial testing phase has successfully validated:
 3. **AI Capabilities**: Sophisticated analysis combining sentiment, technical, and contextual factors
 
 **Next Phase**: As your advisor outlined, we're now ready to:
+
 - Develop a "real LLM-MAS based trading strategy" leveraging full AI capabilities
 - Move beyond rule-based constraints to dynamic, context-aware decisions
 - Compare performance against both the initial MACD strategy and buy-and-hold benchmarks
