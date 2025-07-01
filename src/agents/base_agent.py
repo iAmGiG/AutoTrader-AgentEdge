@@ -1,7 +1,7 @@
 # base_agent.py
 """
 Base module defining an abstract agent class that all specialized agents inherit from.
-This implementation is designed for AutoGen 0.5.x and provides common functionality
+This implementation is designed for AutoGen 0.6.x and provides common functionality
 for all agents in the system.
 """
 
@@ -24,44 +24,44 @@ from autogen_core.models import (
 from autogen_agentchat.agents._assistant_agent import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core._cancellation_token import CancellationToken
-from autogen_core.tools import FunctionTool
-
-# Optional imports for improved FunctionTool handling
-try:
-    from autogen_core.tools.function_tool import ArgumentInfo
-    ARGUMENT_INFO_AVAILABLE = True
-except ImportError:
-    ARGUMENT_INFO_AVAILABLE = False
-    # We'll handle fallbacks when needed
 
 # Import tool dictionary for dynamic tool access
 from src.tools.tools import ALL_TOOLS
+# Import only functions that don't depend on optional packages
 from src.tools.tools import (
-    fetch_market_data, fetch_news, fetch_yahoo_data,
+    fetch_market_data, fetch_news,
     fetch_alpha_vantage_data, fetch_alpha_vantage_news,
-    search_sec_filings, fetch_yahoo_corporate_events,
+    search_sec_filings,
     fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions,
     fetch_finnhub_dividends, fetch_finnhub_earnings_estimates,
     fetch_all_news, fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar,
     fetch_fmp_historical_earnings, fetch_fmp_historical_dividends,
     fetch_fmp_stock_split_calendar
 )
+
+# Try to import yahoo-dependent functions
+try:
+    from src.tools.tools import fetch_yahoo_data, fetch_yahoo_corporate_events
+except ImportError:
+    fetch_yahoo_data = None
+    fetch_yahoo_corporate_events = None
+import os
 from config.config_loader import ConfigLoader
 
-# Instantiate ConfigLoader once at module-level
-_loader = ConfigLoader()
-model_name = _loader.get("open_model")     # e.g. "gpt-4o-mini"
-open_ai_key = _loader.get("open_ai_key")
+# Load configuration file for fallback values
+config_loader = ConfigLoader()
 
-# Fallback map for tool execution
+# Read configuration from environment variables or fallback to config
+model_name = os.getenv("OPEN_MODEL", config_loader.get("OPEN_MODEL"))
+open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
+
+# Fallback map for tool execution (build dynamically to handle conditional imports)
 TOOL_FUNCTION_MAP = {
     "fetch_market_data": fetch_market_data,
     "fetch_news": fetch_news,
-    "fetch_yahoo_data": fetch_yahoo_data,
     "fetch_alpha_vantage_data": fetch_alpha_vantage_data,
     "fetch_alpha_vantage_news": fetch_alpha_vantage_news,
     "search_sec_filings": search_sec_filings,
-    "fetch_yahoo_corporate_events": fetch_yahoo_corporate_events,
     "fetch_finnhub_earnings_calendar": fetch_finnhub_earnings_calendar,
     "fetch_finnhub_insider_transactions": fetch_finnhub_insider_transactions,
     "fetch_finnhub_dividends": fetch_finnhub_dividends,
@@ -73,6 +73,12 @@ TOOL_FUNCTION_MAP = {
     "fetch_fmp_historical_dividends": fetch_fmp_historical_dividends,
     "fetch_fmp_stock_split_calendar": fetch_fmp_stock_split_calendar
 }
+
+# Add yahoo functions if available
+if fetch_yahoo_data is not None:
+    TOOL_FUNCTION_MAP["fetch_yahoo_data"] = fetch_yahoo_data
+if fetch_yahoo_corporate_events is not None:
+    TOOL_FUNCTION_MAP["fetch_yahoo_corporate_events"] = fetch_yahoo_corporate_events
 
 # Default LLM parameters
 DEFAULT_LLM_CONFIG = {
@@ -106,6 +112,11 @@ class BaseAgent(AssistantAgent, ABC):
             llm_params.update(llm_config)
 
         # 2. Create the LLM client instance for function calling
+        if not open_ai_key:
+            raise ValueError(
+                "OpenAI API key not found. Set the OPEN_AI_KEY environment variable or update your Codex config."
+            )
+
         client_config = {
             "model": model_name,
             "api_key": open_ai_key,
@@ -314,28 +325,14 @@ class BaseAgent(AssistantAgent, ABC):
                 self.log(f"Error executing via direct call: {e}")
                 # Continue to next strategy
 
-        # Strategy 4: Use run method with proper handling for FunctionTool (last resort)
-        if hasattr(tool, 'run'):
+        # Strategy 4: Use the standard run_json method (last resort)
+        if hasattr(tool, 'run_json'):
             try:
-                # Standard path for other tools
-                if ARGUMENT_INFO_AVAILABLE:
-                    # Convert args dict to ArgumentInfo list
-                    args_list = [ArgumentInfo(name=k, value=v)
-                                 for k, v in tool_args.items()]
-                    self.log(
-                        f"Executing {tool_name} via run method with ArgumentInfo")
-                    return await tool.run(args_list, cancellation_token)
-                else:
-                    # For backwards compatibility, try calling run with args directly
-                    # Note: This path may not work with all AutoGen versions
-                    self.log(
-                        f"Executing {tool_name} via run method (fallback)")
-                    # Don't pass kwargs to run(), instead rely on other strategies
-                    raise Exception(
-                        "ArgumentInfo not available, skipping run method")
+                self.log(f"Executing {tool_name} via run_json")
+                return await tool.run_json(tool_args, cancellation_token)
             except Exception as e:
-                self.log(f"Error executing via run method: {e}")
-                # This was our last strategy for run method
+                self.log(f"Error executing via run_json: {e}")
+                # Continue to next strategy
 
         # If we've tried all strategies and none worked
         raise ValueError(
@@ -427,48 +424,61 @@ class BaseAgent(AssistantAgent, ABC):
 
     async def _run_tool_conversation(self, messages: List[Any]) -> Any:
         """
-        Run a conversation with the LLM that may involve tool calling.
-
-        :param messages: The initial messages for the conversation.
-        :return: The LLM's response.
+        Run a conversation that may involve tool calls, but bail out after
+        `self.max_tool_rounds` (default 2).  The final turn is a plain-text
+        summary request with *no* tools supplied, so the model cannot call
+        another function.
         """
-        # Initialize conversation history
-        conversation = messages.copy()
-
-        # Set up tools for the LLM to use
+        max_rounds = getattr(self, "max_tool_rounds", 2)
+        rounds = 0
+        conversation = list(messages)
         tools_list = list(self._tools_dict.values())
 
-        # First LLM call - might return tool calls
-        print("- Calling LLM to analyze the query...")
-        response = await self.model_client.create(messages=conversation, tools=tools_list)
+        while True:
+            rounds += 1
+            self.log(f"Calling LLM (tool round {rounds})...")
+            response = await self.model_client.create(
+                messages=conversation,
+                tools=tools_list,
+            )
 
-        # Check if the response contains tool calls
-        if hasattr(response, 'content') and isinstance(response.content, list):
-            # We have tool calls to process
-            tool_calls = response.content
-            conversation.append(AssistantMessage(
-                content=tool_calls, source="assistant"))
+            # ── If the model wants to call tools ──────────────────────
+            if hasattr(response, "content") and isinstance(response.content, list):
+                if rounds >= max_rounds:
+                    self.log(
+                        f"{self.name}: reached max_tool_rounds={max_rounds}; "
+                        "stopping further tool calls."
+                    )
+                    break
 
-            conversation.append(AssistantMessage(
-                content=tool_calls, source="assistant"))
-
-            # Process all tool calls and get results
-            tool_results = await self._process_tool_calls(tool_calls)
-
-
-            # Add the tool results to the conversation
-            if tool_results:
+                # record the tool call then execute it
+                tool_calls = response.content
                 conversation.append(
-                    
-                    FunctionExecutionResultMessage(content=tool_results))
+                    AssistantMessage(content=tool_calls, source="assistant")
+                )
+                tool_results = await self._process_tool_calls(tool_calls)
+                conversation.append(
+                    FunctionExecutionResultMessage(content=tool_results)
+                )
+                continue  # go to next round
 
-            # Call the LLM again with the tool results
-            print("- Calling LLM to generate final response with tool results...")
-            final_response = await self.model_client.create(messages=conversation)
-            return final_response
+            # ── No tool call → return assistant answer ─────────────
+            return response
 
-        # If no tool calls, just return the initial response
-        return response
+        # ── Ask for a text-only summary (no tools param!) ─────────────
+        summary = await self.model_client.create(
+            messages=conversation
+            + [
+                AssistantMessage(
+                    content=(
+                        "Summarize these findings in a final answer. "
+                        "Do NOT call any more tools."
+                    ),
+                    source="assistant",
+                )
+            ]
+        )
+        return summary
 
     async def _process_tool_calls(self, tool_calls: List[Any]) -> List[FunctionExecutionResult]:
         """
@@ -486,15 +496,12 @@ class BaseAgent(AssistantAgent, ABC):
             # Log the tool call
             self._log_tool_call(tool_name, tool_args)
 
-
             try:
                 # Execute the tool and get the result
                 tool_result = await self._execute_tool(tool_name, tool_args)
 
-
                 # Format the result for the LLM
                 formatted_result = self._format_tool_result(
-                    
                     tool_result, tool_name, tool_id)
                 tool_results.append(formatted_result)
             except Exception as e:
@@ -509,7 +516,6 @@ class BaseAgent(AssistantAgent, ABC):
                         name=tool_name
                     )
                 )
-
 
         return tool_results
 
@@ -528,12 +534,15 @@ class BaseAgent(AssistantAgent, ABC):
         """
         try:
             messages = self._build_message_sequence(prompt, system_prompt)
-            # If already in an event loop, use the async version directly
-            if asyncio.get_event_loop().is_running():
-                # Return a coroutine that can be awaited by the caller
+            try:
+                asyncio.get_running_loop()
+                in_loop = True
+            except RuntimeError:
+                in_loop = False
+
+            if in_loop:
                 return self.process_with_tools_async(prompt, system_prompt)
             else:
-                # Not in an event loop, safe to use asyncio.run
                 response = asyncio.run(self._run_tool_conversation(messages))
                 return self._extract_content(response)
         except Exception as e:

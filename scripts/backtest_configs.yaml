@@ -1,0 +1,167 @@
+# Backtest Configuration File
+# Define test scenarios for the RH2MAS backtesting system
+
+# Quick tests for development/debugging
+quick_tests:
+  - name: "AAPL Recent Week"
+    symbol: "AAPL"
+    start: "2025-06-20"
+    end: "2025-06-25"
+    description: "Quick test with recent data"
+  
+  - name: "NVDA Recent Week"
+    symbol: "NVDA"
+    start: "2025-06-20"
+    end: "2025-06-25"
+    description: "Quick test with volatile stock"
+
+# Comprehensive tests for market stress periods
+comprehensive_tests:
+  # COVID-19 Crash and Recovery (March-May 2020)
+  - name: "COVID Crash - SPY"
+    symbol: "SPY"
+    start: "2020-02-15"
+    end: "2020-05-15"
+    description: "S&P 500 during COVID crash and initial recovery"
+  
+  - name: "COVID Crash - AAPL"
+    symbol: "AAPL"
+    start: "2020-02-15"
+    end: "2020-05-15"
+    description: "Apple during COVID crash"
+  
+  - name: "COVID Crash - MSFT"
+    symbol: "MSFT"
+    start: "2020-02-15"
+    end: "2020-05-15"
+    description: "Microsoft during COVID crash"
+
+  # December 2018 Correction
+  - name: "2018 Q4 Correction - SPY"
+    symbol: "SPY"
+    start: "2018-10-01"
+    end: "2019-01-31"
+    description: "Q4 2018 market correction"
+  
+  - name: "2018 Q4 Correction - AAPL"
+    symbol: "AAPL"
+    start: "2018-10-01"
+    end: "2019-01-31"
+    description: "Apple during Q4 2018 correction"
+
+  # February 2018 Volatility Spike
+  - name: "2018 Feb Vol Spike - SPY"
+    symbol: "SPY"
+    start: "2018-01-15"
+    end: "2018-04-15"
+    description: "February 2018 volatility spike"
+
+  # March 2022 Fed Rate Hike Period
+  - name: "2022 Rate Hikes - SPY"
+    symbol: "SPY"
+    start: "2022-01-01"
+    end: "2022-06-30"
+    description: "Fed rate hike period"
+  
+  - name: "2022 Rate Hikes - QQQ"
+    symbol: "QQQ"
+    start: "2022-01-01"
+    end: "2022-06-30"
+    description: "Tech sector during rate hikes"
+
+  # September 2022 Market Bottom
+  - name: "2022 Market Bottom - SPY"
+    symbol: "SPY"
+    start: "2022-08-01"
+    end: "2022-11-30"
+    description: "Market bottom formation"
+
+  # Bank Crisis March 2023
+  - name: "2023 Bank Crisis - XLF"
+    symbol: "XLF"
+    start: "2023-02-15"
+    end: "2023-05-15"
+    description: "Financial sector during SVB crisis"
+
+# Extended period tests
+extended_tests:
+  # Full Year Tests
+  - name: "2020 Full Year - SPY"
+    symbol: "SPY"
+    start: "2020-01-01"
+    end: "2020-12-31"
+    description: "Full COVID year performance"
+  
+  - name: "2022 Full Year - SPY"
+    symbol: "SPY"
+    start: "2022-01-01"
+    end: "2022-12-31"
+    description: "Bear market year"
+  
+  - name: "2023 Full Year - NVDA"
+    symbol: "NVDA"
+    start: "2023-01-01"
+    end: "2023-12-31"
+    description: "AI boom year"
+
+  # Six Month Periods
+  - name: "2021 H1 - AAPL"
+    symbol: "AAPL"
+    start: "2021-01-01"
+    end: "2021-06-30"
+    description: "First half 2021"
+  
+  - name: "2021 H2 - MSFT"
+    symbol: "MSFT"
+    start: "2021-07-01"
+    end: "2021-12-31"
+    description: "Second half 2021"
+
+  # Recent Extended Periods
+  - name: "2024 H1 - SPY"
+    symbol: "SPY"
+    start: "2024-01-01"
+    end: "2024-06-30"
+    description: "Recent 6-month period"
+  
+  - name: "2024 Full Year - AAPL"
+    symbol: "AAPL"
+    start: "2024-01-01"
+    end: "2024-12-31"
+    description: "Recent full year"
+
+# Test suite configurations
+test_suites:
+  quick:
+    tests: ["quick_tests"]
+    timeout_minutes: 2
+    parallel: false
+    description: "Quick validation tests"
+  
+  comprehensive:
+    tests: ["comprehensive_tests"]
+    timeout_minutes: 5
+    parallel: true
+    max_parallel: 4
+    description: "Market stress period tests"
+  
+  extended:
+    tests: ["extended_tests"]
+    timeout_minutes: 10
+    parallel: true
+    max_parallel: 2
+    description: "Long duration tests"
+  
+  all:
+    tests: ["quick_tests", "comprehensive_tests", "extended_tests"]
+    timeout_minutes: 10
+    parallel: true
+    max_parallel: 4
+    description: "Complete test suite"
+
+# Default settings
+defaults:
+  output_dir: ".cache/backtests"
+  log_level: "INFO"
+  save_plots: true
+  aggregate_on_completion: true

@@ -1,6 +1,12 @@
 import yfinance as yf
 import pandas as pd
 import logging
+<<<<<<< HEAD
+import time
+from typing import Optional
+from datetime import datetime, timedelta
+from src.utils.date_utils import get_processed_date_range, localize_df, get_default_timezone
+=======
 from typing import Optional
 from src.tools.date_utils import get_processed_date_range
 
@@ -51,6 +57,7 @@ import functools
 from typing import Optional
 from datetime import datetime, timedelta
 from src.tools.date_utils import get_processed_date_range, process_date_param
+>>>>>>> origin/development
 
 # Global cache and throttling variables
 _last_request_time = {}
@@ -124,7 +131,11 @@ def _retry_on_rate_limit(func, *args, max_retries=3, **kwargs):
         except Exception as e:
             if "Too Many Requests" in str(e) or "Rate limited" in str(e):
                 if attempt < max_retries - 1:
+<<<<<<< HEAD
+                    wait_time = (2 ** attempt) * 0.5  # 0.5, 1, 2 seconds
+=======
                     wait_time = (2 ** attempt) * 5  # 5, 10, 20 seconds
+>>>>>>> origin/development
                     logging.warning(
                         f"Rate limited, waiting {wait_time} seconds before retry {attempt + 1}")
                     time.sleep(wait_time)
@@ -243,6 +254,10 @@ class YahooFinanceTool:
                 result = pd.DataFrame()
             else:
                 result = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+<<<<<<< HEAD
+                result = localize_df(result, get_default_timezone())
+=======
+>>>>>>> origin/development
 
             # Cache the result
             _store_in_cache(cache_key, result)

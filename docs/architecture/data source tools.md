@@ -98,47 +98,48 @@ src/tools/
 
 **Purpose:**
 
-- Fetch historical & real-time stock price data
-- Retrieve company fundamental data and overview
-- Access forex and crypto data (with paid tier)
-
-**Advantages:**
-
-- Higher rate limits with paid tier
-- Reliable official API
-- Provides fundamental data (balance sheets, income statements)
-- Offers forex and crypto support
-- Provides economic indicators
-
-#### D. YahooFinanceTool – Stock Prices and Options
-
-**Purpose:**
-
-- Fetch historical stock data with long backtesting periods
-- Access options chain data
-- Get data without API key requirements
-
-**Advantages:**
-
-- No API key required
-- Often provides more historical data
-- Includes options chain data
-- Free and reliable for most use cases
-
-#### E. MarketDataTool – Unified Market Data Access
-
-**Purpose:**
-
-- Provide a single interface for all market data sources
-- Intelligently route requests to the appropriate provider
-- Handle fallbacks if primary source fails
+- Fetch historical stock data
+- Access company fundamentals
+- Specialized interface for Alpha Vantage API
 
 **Features:**
 
-- Smart routing based on data type requested
-- API limit awareness and management
+- Dynamic date processing (supports relative dates like "-30d")
+- Automatic timezone localization
+- Column name standardization
+- Split from original AlphaVantageTool for better separation of concerns
+
+#### D. YahooFinanceTool – Free Stock Data with Rate Limiting
+
+**Purpose:**
+
+- Fetch historical OHLCV data
+- Get company info and financials
+- Handle rate limiting gracefully
+
+**Features:**
+
+- Built-in rate limiting protection
+- Comprehensive data including splits and dividends
+- Free tier with reasonable limits
+
+#### E. MarketDataTool – Unified Market Data Interface
+
+**Purpose:**
+
+- Provide a single interface for multiple data providers
+- Automatic fallback between sources
+- Handle API failures gracefully
+
+**Features:**
+
+- Supports Alpha Vantage, Yahoo Finance, FMP, and Nasdaq Data Link
+- Environment variable configuration
 - Consistent DataFrame output format
 - Fallback capabilities between providers
+  - If Yahoo Finance is rate limited, the tool automatically retries using Alpha Vantage
+  - If both fail, it falls back to FMP and finally Nasdaq Data Link
+  - FMP's free tier only supports basic historical price endpoints
 
 ### News Data Sources
 
@@ -152,83 +153,98 @@ src/tools/
 
 **Features:**
 
-- News includes sentiment scores out of the box
-- Company-specific news filtering
-- Sector-based news filtering
+- Split from original AlphaVantageTool for better organization
+- Pre-calculated sentiment scores from Alpha Vantage
+- Support for topic filtering
+- Market movers data (top gainers/losers)
 
-#### G. FinnHubTool – Financial and Economic Headlines
+#### G. FinnHubTool – Financial Headlines for Sentiment Analysis
 
 **Purpose:**
 
-- Fetch specialized financial news headlines
-- Access economic news and market updates
-- Category-based news filtering
+- Fetch financial news headlines from various categories
+- Optimized for free tier API usage
+- Company-specific news retrieval
 
 **Features:**
 
-- Specialized financial focus
-- Multiple categories (general, forex, crypto, merger)
-- Company-specific filtering
+- Multiple news categories (general, forex, crypto, economic, etc.)
+- Company news endpoint for ticker-specific headlines
+- Designed for headline sentiment analysis
+- Free tier friendly with reasonable rate limits
 
-#### H. NewsHeadlineTool – General News Access
+#### H. NewsHeadlineTool – General News API Integration
 
 **Purpose:**
 
-- Retrieve headlines related to broader topics
-- Access non-financial news that may impact markets
-- General keyword-based searching
+- Fetch general market news from NewsAPI
+- Keyword-based searching
+- Date range filtering
 
-**Sources:**
+**Features:**
 
-- NewsAPI – Broad news coverage across many publications
-- Mediastack – Alternative news aggregation
+- NewsAPI integration for broad news coverage
+- Keyword and source filtering
+- Historical news search capabilities
 
 #### I. UnifiedNewsTool – Comprehensive News Aggregation
 
 **Purpose:**
 
-- Fetch news from multiple providers with one interface
-- Deduplicate similar articles across sources
-- Provide standardized formatting and sentiment analysis
+- Unified interface for all news sources
+- Deduplication across providers
+- Sentiment analysis integration
+- Relevance scoring for better filtering
 
 **Features:**
 
-- Fetches from all available news sources in parallel
-- Uses async processing for performance
-- Deduplicates similar headlines
-- Adds sentiment analysis to all articles
-- Provides consistent output format regardless of source
+- Fetches from AlphaVantage, Finnhub, and NewsAPI
+- Unified output format with standardized fields
+- Built-in sentiment analysis using TextBlob
+- Relevance scoring based on keyword and ticker matches
+- Smart deduplication to avoid duplicate articles
+- Search guidance when results are inadequate
+- MVC architecture with Pydantic models for data validation
 
-### Optional Tools
+## 3. Processing Utilities
 
-#### J. OptionsDataTool – Tracking Market Sentiment via Options
+### Data Normalizer
 
 **Purpose:**
 
-- Analyze implied volatility and option chain data
-- Determine risk sentiment from options positioning
+- Standardize data formats across different sources
+- Ensure consistent column naming
+- Handle timezone conversions
 
-**Libraries:**
+**Features:**
 
-- cboe – CBOE market data (limited free access)
-- quandl – Historical options data (some free datasets)
+- Normalize market data to common schema
+- Normalize news data for sentiment analysis
+- Support for various data source formats
 
-**Why:**
+### Sentiment Analyzer
 
-- Provides advanced indicators of market sentiment and risk
-- Options data often precedes price movements
+**Purpose:**
 
-## 3. Agent Requirements and Tool Organization
+- Analyze text sentiment using TextBlob
+- Support for financial-specific sentiment analysis
+- Batch processing capabilities
 
-Since the SentimentAgent and StrategyAgent are the simplest to implement first, the priority should be on the tools that these agents require for effective operation. This will ensure that they can produce meaningful outputs before expanding the agent ecosystem.
+**Features:**
 
-### Agent Tool Requirements
+- TextBlob integration for basic sentiment
+- Financial lexicon support
+- Relevance scoring for news articles
 
-| Agent Type        | Required Tools                                                                                   |
-|-------------------|--------------------------------------------------------------------------------------------------|
+## 4. Tool Integration in the Multi-Agent System
+
+### Agent-Tool Assignments
+
+| Agent Type        | Tools Used                                                                                          |
+|-------------------|-----------------------------------------------------------------------------------------------------|
 | **SentimentAgent** | UnifiedNewsTool, AlphaVantageNewsTool, FinnHubTool, NewsHeadlineTool, SECEdgarTool              |
 | **StrategyAgent**  | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, UnifiedNewsTool, FREDDataTool         |
-| **QuantitativeAgent** | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, FREDDataTool                         |
+| **TechAgent** | MarketDataTool, AlphaVantageMarketTool, YahooFinanceTool, FREDDataTool                         |
 | **RiskAgent**      | SECEdgarTool, FREDDataTool, MarketDataTool                                                       |
 
 ### Unified Tool Access
@@ -237,89 +253,11 @@ The tools are registered in the central `tools.py` file, where they are:
 
 1. Wrapped with `FunctionTool` from `autogen_core.tools`
 2. Tagged with appropriate agent types
-3. Made available through the `get_tools_for_agent()` function
+3. Organized into collections for each agent type
 
-Example registration:
+This architecture ensures:
 
-```python
-unified_news_tool = FunctionTool(
-    func=fetch_unified_news,
-    name="fetch_unified_news",
-    description="Fetch news from multiple sources with deduplication and sentiment analysis"
-)
-unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
-```
-
-### Tool Extension Pattern
-
-To add new tools to the system:
-
-1. Create the tool implementation in the appropriate subdirectory
-2. Add any internal dependencies in the tool's own directory
-3. Export the tool implementation via the directory's `__init__.py`
-4. Register the tool functions in `tools.py` with appropriate agent types
-5. Update documentation in this file to reflect the new capability
-
-### Specialized vs Unified Tool Interfaces
-
-We maintain two levels of tool interfaces:
-
-1. **Specialized Tools**: Direct access to specific data sources
-   - Example: `AlphaVantageMarketTool` for specific Alpha Vantage features
-   - Example: `YahooFinanceTool` for Yahoo Finance-specific capabilities
-
-2. **Unified Interfaces**: High-level abstractions over multiple sources
-   - Example: `MarketDataTool` integrates multiple market data sources
-   - Example: `UnifiedNewsTool` provides a single interface to all news sources
-
-This two-level approach allows both specialized control when needed and simplified, consistent interfaces for most use cases.
-
-### Specialized Tools Examples
-
-#### Market Data
-
-```python
-# Direct Alpha Vantage access for fundamentals
-alpha_tool = AlphaVantageMarketTool()
-fundamentals = alpha_tool.fetch_company_overview("AAPL")
-
-# Direct Yahoo Finance access for options
-yahoo_tool = YahooFinanceTool()
-options_chain = yahoo_tool.fetch_options_data("MSFT")
-```
-
-#### News Data
-
-```python
-# Direct Alpha Vantage news with sentiment
-av_news = AlphaVantageNewsTool()
-sentiment_news = av_news.fetch_news_sentiment("AAPL")
-
-# FinnHub specialized economic news
-finnhub = FinnHubTool()
-economic_news = finnhub.fetch_economic_headlines()
-```
-
-### Unified Interfaces Examples
-
-#### Market Data
-
-```python
-# Smart market data routing
-market_tool = MarketDataTool()
-market_data = market_tool.fetch_market_data("AAPL", data_type="price")
-fundamental_data = market_tool.fetch_market_data("TSLA", data_type="fundamentals")
-```
-
-#### News Data
-
-```python
-# Comprehensive news from all sources
-all_news = fetch_unified_news(
-    ticker="AAPL",
-    keywords="earnings",
-    sources="alpha_vantage,finnhub,newsapi"
-)
-```
-
-This unified approach maximizes both flexibility and consistency across the multi-agent system.
+- Clear separation of concerns
+- Easy addition of new data sources
+- Consistent data formatting across agents
+- Efficient resource usage through proper tool allocation

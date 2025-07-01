@@ -8,8 +8,31 @@ from typing import Any, Dict, Optional
 import pandas as pd
 from config.config_loader import ConfigLoader
 from src.tools.data_sources.alpha_vantage_tool import AlphaVantageTool
-from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
-from src.tools.date_utils import get_processed_date_range
+from src.utils.date_utils import (
+    get_processed_date_range,
+    localize_df,
+    get_default_timezone,
+)
+
+# Lazy imports for optional dependencies
+YahooFinanceTool = None
+FMPTool = None
+NasdaqDataLinkTool = None
+
+try:
+    from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
+except ImportError:
+    pass
+
+try:
+    from src.tools.data_sources.market.fmp_tool import FMPTool
+except ImportError:
+    pass
+
+try:
+    from src.tools.data_sources.market.nasdaq_data_link_tool import NasdaqDataLinkTool
+except ImportError:
+    pass
 
 
 class MarketDataTool:
@@ -34,24 +57,27 @@ class MarketDataTool:
         # Set up logger
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        # Load from config if not provided
+        # Load from environment if config not provided
         if config is None:
             config_loader = ConfigLoader()
-
-
-            # Get default date range from config or use dynamic calculation
-            default_days_back = config_loader.get("default_days_back", 5)
-            default_date_range = get_processed_date_range(
-                default_days_back=default_days_back)
-
+            default_days_back = int(
+                os.getenv("DEFAULT_DAYS_BACK", config_loader.get(
+                    "DEFAULT_DAYS_BACK", 5))
+            )
             default_date_range = get_processed_date_range(
                 default_days_back=default_days_back)
 
             self.config = {
-                "data_source": config_loader.get("market_data_source", "alpha_vantage"),
-                "default_symbol": config_loader.get("default_symbol", "AAPL"),
+                "data_source": os.getenv(
+                    "MARKET_DATA_SOURCE",
+                    config_loader.get("MARKET_DATA_SOURCE", "alpha_vantage"),
+                ),
+                "default_symbol": os.getenv(
+                    "DEFAULT_SYMBOL", config_loader.get(
+                        "DEFAULT_SYMBOL", "AAPL")
+                ),
                 "default_date_range": default_date_range,
-                "default_days_back": default_days_back
+                "default_days_back": default_days_back,
             }
         else:
             self.config = config
@@ -66,6 +92,8 @@ class MarketDataTool:
         # Initialize specific data source tools
         self.alpha_vantage_tool = None
         self.yahoo_finance_tool = None
+        self.fmp_tool = None
+        self.nasdaq_dl_tool = None
 
         self.logger.info(
             f"MarketDataTool initialized with data_source={self.data_source}")
@@ -104,14 +132,23 @@ class MarketDataTool:
 
         # Route to the appropriate data source
         if self.data_source == "alpha_vantage":
-            return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+            df = self._fetch_from_alpha_vantage(
+                symbol, start_date, end_date, filters)
         elif self.data_source == "yahoo":
-            return self._fetch_from_yahoo(symbol, start_date, end_date, filters)
+            df = self._fetch_from_yahoo(symbol, start_date, end_date, filters)
+        elif self.data_source == "fmp":
+            df = self._fetch_from_fmp(symbol, start_date, end_date, filters)
+        elif self.data_source == "nasdaq":
+            df = self._fetch_from_nasdaq(symbol, start_date, end_date, filters)
         elif self.data_source == "csv":
-            return self._fetch_from_csv(symbol, start_date, end_date, filters)
+            df = self._fetch_from_csv(symbol, start_date, end_date, filters)
         else:
             self.logger.error(f"Unsupported data_source: {self.data_source}")
             return pd.DataFrame()
+
+        if not df.empty:
+            df = localize_df(df, get_default_timezone())
+        return df
 
     def _fetch_from_alpha_vantage(
         self,
@@ -136,8 +173,29 @@ class MarketDataTool:
         if self.alpha_vantage_tool is None:
             self.alpha_vantage_tool = AlphaVantageTool()
 
-        # Fetch data
-        return self.alpha_vantage_tool.fetch_stock_data(symbol, start_date, end_date)
+        try:
+            df = self.alpha_vantage_tool.fetch_stock_data(
+                symbol, start_date, end_date)
+            if df is None or df.empty:
+                self.logger.warning(
+                    "Alpha Vantage returned no data, attempting FMP fallback")
+                return self._fetch_from_fmp(symbol, start_date, end_date, filters)
+        except Exception as e:
+            self.logger.warning(
+                f"Alpha Vantage error for {symbol}: {e}. Using FMP fallback")
+            return self._fetch_from_fmp(symbol, start_date, end_date, filters)
+
+        col_map = {
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "volume": "Volume",
+        }
+        df = df.rename(
+            columns={k: v for k, v in col_map.items() if k in df.columns})
+
+        return df
 
     def _fetch_from_yahoo(
         self,
@@ -158,12 +216,95 @@ class MarketDataTool:
         Returns:
             DataFrame with market data
         """
+        # Check if Yahoo Finance is available
+        if YahooFinanceTool is None:
+            self.logger.warning(
+                "YahooFinanceTool not available (missing yfinance), falling back to Alpha Vantage")
+            return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+
         # Initialize Yahoo Finance tool if needed
         if self.yahoo_finance_tool is None:
             self.yahoo_finance_tool = YahooFinanceTool()
 
-        # Fetch data
-        return self.yahoo_finance_tool.fetch_stock_data(symbol, start_date, end_date)
+        # Fetch data with fallback to Alpha Vantage on failure or empty result
+        try:
+            df = self.yahoo_finance_tool.fetch_stock_data(
+                symbol, start_date, end_date)
+            if df is None or df.empty:
+                self.logger.warning(
+                    "Yahoo Finance returned no data, attempting Alpha Vantage fallback")
+                return self._fetch_from_alpha_vantage(
+                    symbol, start_date, end_date, filters)
+            return df
+        except Exception as e:
+            self.logger.warning(
+                f"Yahoo Finance error for {symbol}: {e}. Using Alpha Vantage fallback")
+            return self._fetch_from_alpha_vantage(symbol, start_date, end_date, filters)
+
+    def _fetch_from_fmp(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> pd.DataFrame:
+        """Fetch market data from Financial Modeling Prep."""
+        # Check if FMP is available
+        if FMPTool is None:
+            self.logger.warning(
+                "FMPTool not available, falling back to Nasdaq Data Link")
+            return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
+
+        if self.fmp_tool is None:
+            self.fmp_tool = FMPTool()
+
+        try:
+            df = self.fmp_tool.fetch_stock_data(symbol, start_date, end_date)
+            if df is None or df.empty:
+                self.logger.warning(
+                    "FMP returned no data, attempting Nasdaq Data Link fallback")
+                return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
+            return df
+        except Exception as e:
+            self.logger.warning(
+                f"FMP error for {symbol}: {e}. Using Nasdaq Data Link fallback")
+            return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
+
+    def _fetch_from_nasdaq_dl(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> pd.DataFrame:
+        """Fetch market data from Nasdaq Data Link."""
+        # Check if Nasdaq Data Link is available
+        if NasdaqDataLinkTool is None:
+            self.logger.warning("Nasdaq Data Link not available (missing nasdaqdatalink)")
+            return pd.DataFrame()
+
+        if self.nasdaq_dl_tool is None:
+            self.nasdaq_dl_tool = NasdaqDataLinkTool()
+
+        try:
+            df = self.nasdaq_dl_tool.fetch_stock_data(symbol, start_date, end_date)
+            if df is None or df.empty:
+                self.logger.warning("Nasdaq Data Link returned no data")
+                return pd.DataFrame()
+            return df
+        except Exception as e:
+            self.logger.error(f"Nasdaq Data Link error for {symbol}: {e}")
+            return pd.DataFrame()
+
+    def _fetch_from_nasdaq(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> pd.DataFrame:
+        """Alias for _fetch_from_nasdaq_dl for backward compatibility."""
+        return self._fetch_from_nasdaq_dl(symbol, start_date, end_date, filters)
 
     def _fetch_from_csv(
         self,
@@ -173,7 +314,7 @@ class MarketDataTool:
         filters: Optional[Dict[str, Any]] = None
     ) -> pd.DataFrame:
         """
-        Fetch market data from a local CSV file.
+        Fetch market data from local CSV files.
 
         Args:
             symbol: Stock symbol
@@ -184,64 +325,133 @@ class MarketDataTool:
         Returns:
             DataFrame with market data
         """
-        # Get CSV directory from config
-        csv_dir = self.config.get("csv_dir", "./data")
+        csv_dir = self.config.get("csv_dir", "./data/csv/")
+        csv_path = os.path.join(csv_dir, f"{symbol}.csv")
 
-        # Construct CSV file path
-        file_path = os.path.join(csv_dir, f"{symbol}.csv")
-
-        # Check if file exists
-        if not os.path.exists(file_path):
-            self.logger.error(f"CSV file not found: {file_path}")
+        if not os.path.exists(csv_path):
+            self.logger.error(f"CSV file not found: {csv_path}")
             return pd.DataFrame()
 
         try:
-            # Read CSV file
-            df = pd.read_csv(file_path, parse_dates=['Date'])
+            df = pd.read_csv(csv_path, index_col="Date", parse_dates=True)
 
-            # Set date as index if it's a column
-            if 'Date' in df.columns:
-                df.set_index('Date', inplace=True)
-
-            # Apply date filters
-            if start_date:
-                df = df[df.index >= start_date]
-            if end_date:
-                df = df[df.index <= end_date]
+            # Filter by date range
+            df = df[(df.index >= start_date) & (df.index <= end_date)]
 
             return df
-
         except Exception as e:
             self.logger.error(f"Error reading CSV file: {e}")
             return pd.DataFrame()
 
-    def fetch_news_sentiment(
-        self,
-        symbol: Optional[str] = None,
-        topics: Optional[str] = None
-    ) -> pd.DataFrame:
+    def test_all_sources(self, symbol: str = "AAPL") -> Dict[str, Any]:
         """
-        Fetch news and sentiment data.
+        Test connectivity and availability of all data sources.
 
         Args:
-            symbol: Optional stock symbol to filter news by
-            topics: Optional topics to filter by
+            symbol: Test symbol to use
 
         Returns:
-            DataFrame with news and sentiment data
+            Dictionary with test results for each source
         """
-        # Use default symbol if not provided
-        if symbol is None:
-            symbol = self.default_symbol
+        results = {}
 
-        # Route to the appropriate data source for news
-        if self.data_source == "alpha_vantage":
-            # Initialize Alpha Vantage tool if needed
+        # Test Alpha Vantage
+        try:
             if self.alpha_vantage_tool is None:
                 self.alpha_vantage_tool = AlphaVantageTool()
+            df = self.alpha_vantage_tool.fetch_stock_data(symbol, "-5d", "today")
+            results["alpha_vantage"] = {
+                "status": "available" if not df.empty else "no_data",
+                "rows": len(df) if not df.empty else 0
+            }
+        except Exception as e:
+            results["alpha_vantage"] = {"status": "error", "error": str(e)}
 
-            return self.alpha_vantage_tool.fetch_news_sentiment(symbol, topics)
+        # Test Yahoo Finance
+        if YahooFinanceTool is not None:
+            try:
+                if self.yahoo_finance_tool is None:
+                    self.yahoo_finance_tool = YahooFinanceTool()
+                df = self.yahoo_finance_tool.fetch_stock_data(
+                    symbol, "-5d", "today")
+                results["yahoo"] = {
+                    "status": "available" if not df.empty else "no_data",
+                    "rows": len(df) if not df.empty else 0
+                }
+            except Exception as e:
+                results["yahoo"] = {"status": "error", "error": str(e)}
         else:
-            self.logger.warning(
-                f"News sentiment not supported for data source: {self.data_source}")
-            return pd.DataFrame()
+            results["yahoo"] = {"status": "not_installed"}
+
+        # Test FMP
+        if FMPTool is not None:
+            try:
+                if self.fmp_tool is None:
+                    self.fmp_tool = FMPTool()
+                df = self.fmp_tool.fetch_stock_data(symbol, "-5d", "today")
+                results["fmp"] = {
+                    "status": "available" if not df.empty else "no_data",
+                    "rows": len(df) if not df.empty else 0
+                }
+            except Exception as e:
+                results["fmp"] = {"status": "error", "error": str(e)}
+        else:
+            results["fmp"] = {"status": "not_installed"}
+
+        # Test Nasdaq Data Link
+        if NasdaqDataLinkTool is not None:
+            try:
+                if self.nasdaq_dl_tool is None:
+                    self.nasdaq_dl_tool = NasdaqDataLinkTool()
+                df = self.nasdaq_dl_tool.fetch_stock_data(
+                    symbol, "-5d", "today")
+                results["nasdaq_dl"] = {
+                    "status": "available" if not df.empty else "no_data",
+                    "rows": len(df) if not df.empty else 0
+                }
+            except Exception as e:
+                results["nasdaq_dl"] = {"status": "error", "error": str(e)}
+        else:
+            results["nasdaq_dl"] = {"status": "not_installed"}
+
+        return results
+
+
+if __name__ == "__main__":
+    # Example usage
+    tool = MarketDataTool()
+
+    # Test all sources
+    print("Testing all available data sources...")
+    test_results = tool.test_all_sources()
+    for source, result in test_results.items():
+        print(f"\n{source}: {result}")
+
+    # Example 1: Using default dynamic dates (last 5 trading days)
+    print("\nExample 1: Using default dynamic dates (last 5 trading days)")
+    df1 = tool.fetch_market_data("AAPL")
+    print(f"Shape: {df1.shape}")
+    if not df1.empty:
+        print(df1.head())
+
+    # Example 2: Using explicit dates
+    print("\nExample 2: Using explicit dates")
+    df2 = tool.fetch_market_data("MSFT", "2024-01-01", "2024-01-31")
+    print(f"Shape: {df2.shape}")
+    if not df2.empty:
+        print(df2.head())
+
+    # Example 3: Using relative dates
+    print("\nExample 3: Using relative dates")
+    df3 = tool.fetch_market_data("GOOGL", "-30d", "today")
+    print(f"Shape: {df3.shape}")
+    if not df3.empty:
+        print(df3.head())
+
+    # Example 4: Using a different data source
+    print("\nExample 4: Using Yahoo Finance")
+    tool.data_source = "yahoo"
+    df4 = tool.fetch_market_data("TSLA", "-10d", "today")
+    print(f"Shape: {df4.shape}")
+    if not df4.empty:
+        print(df4.head())

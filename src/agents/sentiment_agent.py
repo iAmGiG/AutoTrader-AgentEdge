@@ -19,8 +19,7 @@ import pandas as pd
 from .base_agent import BaseAgent
 from src.tools.tools import SENTIMENT_AGENT, get_tools_for_agent
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
-from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
-from src.tools.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
+from src.utils.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
 
 # LLM config optimized for sentiment analysis and narrative generation
 SENTIMENT_LLM_CONFIG = {
@@ -28,7 +27,6 @@ SENTIMENT_LLM_CONFIG = {
     "max_tokens": 4096,  # Ensure enough tokens for complex responses
     "top_p": 0.9,        # Allow for some creative variety
 }
-
 
 
 class SentimentAgent(BaseAgent):
@@ -44,6 +42,9 @@ class SentimentAgent(BaseAgent):
     def __init__(self, name="SentimentAgent", memory_system=None):
         # Load configurations and utilities
         self.config = load_agent_config("sentiment_agent")
+        # Limit this agent to a single tool round
+        # Temporarily increased for debugging
+        self.max_tool_rounds = 2
         self.market_sectors = load_market_sectors().get("sectors", {})
         self.query_parser = QueryParser(self.market_sectors)
 
@@ -172,7 +173,7 @@ class SentimentAgent(BaseAgent):
                 if isinstance(result, dict):
                     # Optionally post-process or summarize, else just return
                     return result
-                # If it’s a DataFrame for some reason, provide a sample
+                # If it's a DataFrame for some reason, provide a sample
                 if isinstance(result, pd.DataFrame):
                     if not result.empty:
                         return {
@@ -187,104 +188,114 @@ class SentimentAgent(BaseAgent):
             elif tool_name == "search_sec_filings":
                 if isinstance(result, pd.DataFrame) and not result.empty:
                     # Extract arguments in a more robust way
-                    ticker = None
-                    search_terms = []
+                    ticker = tool_args.get("ticker", "N/A")
+                    search_terms = tool_args.get("search_terms", ["N/A"])
+                    if isinstance(search_terms, list) and search_terms:
+                        search_terms_str = ", ".join(
+                            str(term) for term in search_terms)
+                    else:
+                        search_terms_str = str(search_terms)
 
-                    # Try different possible locations for the ticker and search_terms
-                    if isinstance(tool_args, dict):
-                        ticker = tool_args.get("ticker", "")
-                        search_terms = tool_args.get("search_terms", [])
+                    # Create search result summary
+                    search_results = []
+                    for idx, row in result.iterrows():
+                        if idx >= 5:  # Limit to first 5 results
+                            break
+                        search_results.append({
+                            "filing_date": str(row.get('filing_date', 'N/A')),
+                            "form_type": str(row.get('form_type', 'N/A')),
+                            "search_term": str(row.get('search_term', 'N/A')),
+                            "section": str(row.get('section', 'N/A')),
+                            "context": str(row.get('context', 'N/A'))[:300]  # Limit context
+                        })
 
-                        # Check if arguments were nested one level deeper
-                        if not ticker and "arguments" in tool_args and isinstance(tool_args["arguments"], dict):
-                            args_dict = tool_args["arguments"]
-                            ticker = args_dict.get("ticker", "")
-                            search_terms = args_dict.get("search_terms", [])
-
-                    # If we still couldn't extract the ticker, try to infer from the result
-                    if not ticker and "ticker" in result.columns:
-                        ticker = result["ticker"].iloc[0]
-
-                    # If search_terms is a string, convert to list
-                    if isinstance(search_terms, str):
-                        try:
-                            # Try to parse as JSON array
-                            parsed_terms = json.loads(search_terms)
-                            if isinstance(parsed_terms, list):
-                                search_terms = parsed_terms
-                            else:
-                                search_terms = [search_terms]
-                        except json.JSONDecodeError:
-                            # Just use as a single term
-                            search_terms = [search_terms]
-
-                    # If we still don't have search terms, try to extract from results
-                    if not search_terms and "search_term" in result.columns:
-                        search_terms = list(result["search_term"].unique())
-
-                    search_summary = {
-                        "ticker": ticker,
-                        "search_terms": search_terms,
-                        "total_matches": len(result),
-                        "filing_dates": sorted(result["filing_date"].astype(str).unique().tolist()) if "filing_date" in result.columns else [],
-                        "sections_with_matches": sorted(result["section"].unique().tolist()) if "section" in result.columns else [],
-                        "sample_contexts": []
-                    }
-
-                    # Process matches for each search term
-                    for term in search_terms:
-                        term_matches = result
-                        if "search_term" in result.columns:
-                            term_matches = result[result["search_term"] == term]
-
-                        if not term_matches.empty:
-                            contexts = []
-                            if "context" in term_matches.columns:
-                                # Increased from 2 to 3
-                                contexts = term_matches["context"].tolist()[:3]
-
-                            for context in contexts:
-                                search_summary["sample_contexts"].append({
-                                    "term": term,
-                                    "context": context
-                                })
-
-                    return search_summary
-
-                # No matches found or empty DataFrame
-                ticker = tool_args.get("ticker", "")
-                search_terms = tool_args.get("search_terms", [])
-
-                # Handle case where the result is a string error message
-                if isinstance(result, str) and "error" in result.lower():
                     return {
                         "ticker": ticker,
-                        "search_terms": search_terms,
-                        "total_matches": 0,
-                        "error": result,
-                        "message": "Error occurred while searching SEC filings"
+                        "search_terms": search_terms_str,
+                        "total_matches": len(result),
+                        "search_results": search_results
+                    }
+                elif isinstance(result, pd.DataFrame) and result.empty:
+                    ticker = tool_args.get("ticker", "N/A")
+                    search_terms = tool_args.get("search_terms", ["N/A"])
+                    return {
+                        "ticker": ticker,
+                        "search_terms": search_terms if isinstance(search_terms, str) else ", ".join(search_terms),
+                        "message": "No matches found in SEC filings"
                     }
 
-                # Standard empty result
-                return {
-                    "ticker": ticker,
-                    "search_terms": search_terms,
-                    "total_matches": 0,
-                    "message": "No matches found in SEC filings"
-                }
+            # Other Sentiment Tools
+            elif tool_name == "fetch_alpha_vantage_news":
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    # This tool returns news with sentiment scores
+                    news_items = []
+                    for idx, row in result.head(5).iterrows():
+                        news_items.append({
+                            "title": str(row.get('title', 'N/A')),
+                            "published": str(row.get('time_published', 'N/A')),
+                            "sentiment_score": float(row.get('overall_sentiment_score', 0)),
+                            "sentiment_label": str(row.get('overall_sentiment_label', 'N/A'))
+                        })
+                    return {
+                        "total_articles": len(result),
+                        "news_items": news_items
+                    }
 
-            # Fallback: handle DataFrames generically
+            # News Tool Result Processing
+            elif tool_name == "fetch_news":
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    news_items = []
+                    for idx, row in result.head(5).iterrows():
+                        news_items.append({
+                            "title": str(row.get('title', 'N/A')),
+                            "published": str(row.get('publishedAt', row.get('published', 'N/A'))),
+                            "source": str(row.get('source', {}).get('name', 'N/A') if isinstance(row.get('source'), dict) else 'N/A')
+                        })
+                    return {
+                        "total_articles": len(result),
+                        "news_items": news_items
+                    }
+
+            # Finnhub News Tools
+            elif tool_name.startswith("fetch_finnhub"):
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    # Finnhub returns news headlines
+                    news_items = []
+                    for idx, row in result.head(5).iterrows():
+                        news_items.append({
+                            "title": str(row.get('title', row.get('headline', 'N/A'))),
+                            "published": str(row.get('published_at', row.get('datetime', 'N/A'))),
+                            "category": str(row.get('category', 'N/A'))
+                        })
+                    return {
+                        "total_articles": len(result),
+                        "news_items": news_items
+                    }
+
+            # FMP Tools (if they return results)
+            elif tool_name.startswith("fetch_fmp"):
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    return {
+                        "total_results": len(result),
+                        "sample_data": result.head(3).to_dict(orient="records")
+                    }
+
+            # Default DataFrame handling
             if isinstance(result, pd.DataFrame):
                 if not result.empty:
+                    # For unhandled DataFrames, provide a basic summary
                     return {
                         "summary": f"DataFrame with {len(result)} rows and columns: {', '.join(list(result.columns))}",
                         "sample_data": result.head(3).to_dict(orient="records")
                     }
                 return {"summary": "Empty DataFrame"}
 
+            # Default dict handling
+            if isinstance(result, dict):
+                return result
+
             # Final fallback: just return the result as-is
             return result
-
 
         except Exception as e:
             traceback.print_exc()
@@ -292,61 +303,66 @@ class SentimentAgent(BaseAgent):
             return {"error": f"Failed to process result: {str(e)}"}
 
     def generate_reply(self, messages, context=None) -> str:
-    def generate_reply(self, messages, context=None) -> str:
         """
         Primary entry point for generating replies to user messages.
         Lets the LLM decide which tools to call based on the query.
 
         Args:
-            messages: List of conversation messages
-            context: Optional context information
+            messages: List of message dicts or a single message
+            context: Optional context (not used currently)
 
         Returns:
-            Generated response or coroutine to be awaited
+            Generated response string
         """
-        if not messages:
-            return self.config.get("default_response", "I can help with analyzing market sentiment from news and SEC filings.")
+        try:
+            print(f"\n{self.name} processing request...")
 
-        # Get the last message
-        if isinstance(messages[-1], dict):
-            last_message = messages[-1].get("content", "")
-        else:
-            last_message = str(messages[-1])
+            # Convert single message to list
+            if isinstance(messages, str):
+                messages = [{"role": "user", "content": messages}]
+            elif isinstance(messages, dict):
+                messages = [messages]
 
-        # Preprocess the message to extract key information
-        query_details = self.preprocess_message(last_message)
+            # Extract the most recent user message
+            user_message = None
+            for msg in reversed(messages):
+                if isinstance(msg, dict) and msg.get("role") == "user":
+                    user_message = msg.get("content", "")
+                    break
 
-        # Format supplementary context for the LLM
-        supplementary_context = self.format_supplementary_context(
-            query_details)
+            if not user_message:
+                return "I couldn't find a user message to process."
 
-        # Log the extracted information
-        print(f"Extracted query details: {query_details}")
+            # Pre-process the message
+            query_details = self.preprocess_message(user_message)
+            supplementary_context = self.format_supplementary_context(
+                query_details)
 
-        # Create a system prompt with supplementary context
-        system_prompt = self.config.get("system_prompt", "")
-        system_prompt += f"\n\nSupplementary context for this query:\n{supplementary_context}"
+            # Create enhanced messages with system context
+            enhanced_messages = []
 
+            # Add system message with agent role, tools, and context
+            system_content = self.config.get(
+                "system_prompt", "You are a sentiment analysis agent.")
+            system_content += f"\n\n{supplementary_context}"
 
-        # Add specific guidance based on extracted entities
-        if query_details.get("ticker"):
-            ticker = query_details["ticker"]
-            system_prompt += f"\n\nThis query mentions the stock ticker {ticker}. Use the unified news tool for comprehensive analysis:"
-            system_prompt += f"\n1. fetch_all_news(ticker=\"{ticker}\", keywords=\"{query_details.get('topic', '')}\", start_date=\"{query_details.get('start_date')}\") - This will get news from multiple sources in a single call"
+            enhanced_messages.append({
+                "role": "system",
+                "content": system_content
+            })
 
-        elif query_details.get("topic"):
-            topic = query_details["topic"]
-            system_prompt += f"\n\nThis query mentions the topic '{topic}'. Use the unified news tool for comprehensive coverage:"
-            system_prompt += f"\n1. fetch_all_news(keywords=\"{topic}\", count=10) - This will get news from multiple sources in a single call"
+            # Add the original messages
+            enhanced_messages.extend(messages)
 
-        # Add guidance for SEC filings search if appropriate
-        if query_details.get("ticker") and any(term in last_message.lower() for term in ["risk", "sec", "filing", "10-k", "10k", "report", "earnings", "er"]):
-            ticker = query_details["ticker"]
-            system_prompt += f"\n\nThis query appears to be asking about SEC filings or earnings. Consider using the SEC search tool instead of the news tool:"
-            system_prompt += f"\n1. search_sec_filings(ticker=\"{ticker}\", search_terms=[\"risk\", \"earnings\"], form_type=\"10-K\") - For regulatory disclosures"
+            # Let the LLM generate a response with tool calls
+            response = super().generate_reply(enhanced_messages, context)
 
-        # Reinforce one-tool-per-prompt constraint
-        system_prompt += f"\n\nIMPORTANT: Use only ONE tool call to get all needed information. The fetch_all_news tool is designed to get comprehensive news data in a single call."
+            # Narrative polish based on query type
+            # (This is handled by the LLM now with better prompting)
+            return response
 
-        # Let the LLM generate a response with tool usage
-        return self.process_with_tools(last_message, system_prompt)
+        except Exception as e:
+            traceback.print_exc()
+            error_msg = f"Error in {self.name}: {str(e)}"
+            print(error_msg)
+            return error_msg

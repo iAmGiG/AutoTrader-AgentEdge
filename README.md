@@ -14,6 +14,7 @@ RH2MAS is a research project developing an LLM-based investment research system 
 - /docs           # Research notes
 - -/architecture  # System design documentation
 - -/research      # Research progress and findings
+- -/indicator_library.md  # Technical indicator definitions
 - /src
 - -/agents
 - -/core          # Core architecture components
@@ -29,6 +30,14 @@ This repository is under active research development. See our [Research Document
 - Architecture Documentation
 - Research Progress
 - API Documentation
+
+## Configuration
+
+Secrets such as API keys are no longer loaded from `config/config.json`. Instead
+the project reads configuration values from environment variables. You can store
+these secrets using the [Codex CLI](https://github.com/openai/codex) and set the
+`envKey` field in `~/.codex/config.json` to match the lowercase variable names
+used by the code (e.g. `open_ai_key`, `newsapi_key`).
 
 ## Research Goals
 

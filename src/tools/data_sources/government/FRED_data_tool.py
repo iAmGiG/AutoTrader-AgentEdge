@@ -6,14 +6,15 @@ allowing retrieval of various economic indicators such as GDP, inflation rates,
 unemployment figures, and more.
 """
 
+from src.utils.date_utils import process_date_param, get_processed_date_range
 import logging
 from typing import Optional, Dict, Any, List
 import pandas as pd
-import logging
-from typing import Optional, Dict, Any, List
 from fredapi import Fred
+import os
 from config.config_loader import ConfigLoader
-from src.tools.date_utils import process_date_param, get_processed_date_range
+
+config_loader = ConfigLoader()
 
 
 # Define standard economic indicator series IDs for easy access
@@ -63,16 +64,15 @@ class FREDDataTool:
         if verbose:
             logging.basicConfig(level=logging.INFO)
 
-        # Load API key from config if not provided
+        # Load API key from environment if not provided
         if api_key is None:
-            config_loader = ConfigLoader()
-            api_key = config_loader.get("fredapi")
+            api_key = os.getenv("FREDAPI", config_loader.get("FREDAPI"))
 
             if not api_key:
-                self.logger.error("No FRED API key provided in config.json")
+                self.logger.error("No FRED API key provided in environment")
                 raise ValueError(
-                    "FRED API key is required. Add it to config.json under 'fredapi' key.")
-
+                    "FRED API key is required. Set the FREDAPI environment variable."
+                )
         # Initialize FRED API client
         try:
             self.fred = Fred(api_key=api_key)
@@ -93,188 +93,162 @@ class FREDDataTool:
 
         Args:
             series_id: FRED series ID (e.g., 'GDP', 'UNRATE')
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y".
-                        If None, fetches 5 years of data.
-            end_date: End date in YYYY-MM-DD format or relative date like "today".
-                      If None, uses current date.
-            transform: Transformation to apply ('pct_change', 'diff', etc.)
+            start_date: Start date (YYYY-MM-DD format or relative like '-1y')
+            end_date: End date (YYYY-MM-DD format or 'today')
+            transform: Optional data transformation ('chg', 'ch1', 'pch', 'pc1', 'pca', 'cch', 'cca', 'log')
 
         Returns:
-            DataFrame with date index and value column
+            DataFrame with the requested economic data
         """
         try:
-            # Use the date_utils to properly handle date parameters
-            processed_start, processed_end = get_processed_date_range(
-                start_date=start_date,
-                end_date=end_date,
-                default_days_back=365*5  # Default to 5 years of data
+            # Process date parameters
+            start_date, end_date = get_processed_date_range(
+                start_date, end_date)
+
+            self.logger.info(
+                f"Fetching FRED series {series_id} from {start_date} to {end_date}")
+
+            # Fetch data using fredapi
+            # Note: fredapi expects observation_start/observation_end parameters
+            data = self.fred.get_series(
+                series_id,
+                observation_start=start_date,
+                observation_end=end_date
             )
 
-            # Fetch data from FRED
-            series = self.fred.get_series(
-                series_id, processed_start, processed_end, transform=transform)
-
-            if series.empty:
+            if data is None or data.empty:
                 self.logger.warning(f"No data returned for series {series_id}")
                 return pd.DataFrame()
 
-            # Convert series to DataFrame
-            df = pd.DataFrame(series)
-            df.reset_index(inplace=True)
-
-            # Rename columns to standard format
-            df.columns = ['Date', 'Value']
+            # Convert to DataFrame with proper column names
+            df = pd.DataFrame(data, columns=['value'])
+            df.index.name = 'date'
+            df = df.reset_index()
 
             # Add metadata
-            df['Series ID'] = series_id
-            df['Source'] = 'FRED'
+            df['series_id'] = series_id
+            df['series_name'] = self._get_series_name(series_id)
 
-            # Get series information for additional context
-            try:
-                series_info = self.fred.get_series_info(series_id)
-                if series_info is not None:
-                    df['Title'] = series_info.get('title', series_id)
-                    df['Units'] = series_info.get('units', '')
-                    df['Frequency'] = series_info.get('frequency', '')
-                else:
-                    df['Title'] = series_id
-                    df['Units'] = ''
-                    df['Frequency'] = ''
-            except Exception as e:
-                self.logger.warning(
-                    f"Could not fetch series info for {series_id}: {e}")
-                df['Title'] = series_id
-                df['Units'] = ''
-                df['Frequency'] = ''
+            # Apply transformation if requested
+            if transform:
+                df = self._apply_transformation(df, transform)
 
+            self.logger.info(
+                f"Successfully fetched {len(df)} observations for {series_id}")
             return df
 
         except Exception as e:
-            self.logger.error(f"Error fetching series {series_id}: {e}")
+            self.logger.error(f"Error fetching FRED series {series_id}: {e}")
             return pd.DataFrame()
 
-    def get_indicator(self, indicator: str,
-                      start_date: Optional[str] = None,
-                      end_date: Optional[str] = None,
-                      transform: Optional[str] = None) -> pd.DataFrame:
+    def get_economic_indicator(self, indicator: str,
+                               start_date: Optional[str] = None,
+                               end_date: Optional[str] = None) -> pd.DataFrame:
         """
-        Get an economic indicator by name using predefined series IDs.
+        Get data for a common economic indicator using friendly names.
 
         Args:
-            indicator: Name of the indicator (e.g., 'gdp', 'unemployment')
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
-            end_date: End date in YYYY-MM-DD format or relative date like "today"
-            transform: Transformation to apply
+            indicator: Indicator name (e.g., 'unemployment', 'gdp', 'inflation')
+            start_date: Start date (YYYY-MM-DD format or relative like '-1y')
+            end_date: End date (YYYY-MM-DD format or 'today')
 
         Returns:
-            DataFrame with the requested indicator
+            DataFrame with the requested economic indicator data
         """
-        # Get the series ID for the indicator
-        series_id = ECONOMIC_INDICATORS.get(indicator.lower())
-
-        if not series_id:
-            self.logger.error(f"Unknown indicator: {indicator}")
-            self.logger.info(
-                f"Available indicators: {', '.join(ECONOMIC_INDICATORS.keys())}")
+        # Check if indicator is recognized
+        if indicator.lower() not in self.indicators:
+            self.logger.error(
+                f"Unknown indicator: {indicator}. Available indicators: {list(self.indicators.keys())}")
             return pd.DataFrame()
 
-        # Fetch the series
-        return self.get_series(series_id, start_date, end_date, transform)
+        # Get the FRED series ID for this indicator
+        series_id = self.indicators[indicator.lower()]
 
-    def get_gdp(self, start_date: Optional[str] = None,
-                end_date: Optional[str] = None,
-                real: bool = True) -> pd.DataFrame:
+        # Fetch using the series ID
+        df = self.get_series(series_id, start_date, end_date)
+
+        # Add friendly indicator name
+        if not df.empty:
+            df['indicator'] = indicator.lower()
+
+        return df
+
+    def get_multiple_series(self, series_ids: List[str],
+                            start_date: Optional[str] = None,
+                            end_date: Optional[str] = None) -> pd.DataFrame:
         """
-        Get Gross Domestic Product data.
+        Get data for multiple FRED series in a single call.
 
         Args:
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
-            end_date: End date in YYYY-MM-DD format or relative date like "today"
-            real: Whether to get real (inflation-adjusted) GDP
+            series_ids: List of FRED series IDs
+            start_date: Start date (YYYY-MM-DD format or relative like '-1y')
+            end_date: End date (YYYY-MM-DD format or 'today')
 
         Returns:
-            DataFrame with GDP data
+            DataFrame with data for all requested series
         """
-        series_id = "GDPC1" if real else "GDP"
-        return self.get_series(series_id, start_date, end_date)
+        all_data = []
 
-    def get_inflation(self, start_date: Optional[str] = None,
-                      end_date: Optional[str] = None,
-                      year_over_year: bool = True) -> pd.DataFrame:
-        """
-        Get inflation data.
+        for series_id in series_ids:
+            df = self.get_series(series_id, start_date, end_date)
+            if not df.empty:
+                all_data.append(df)
 
-        Args:
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
-            end_date: End date in YYYY-MM-DD format or relative date like "today"
-            year_over_year: Whether to compute year-over-year percentage change
-
-        Returns:
-            DataFrame with inflation data
-        """
-        if year_over_year:
-            # Use Core CPI YoY series directly for YoY inflation
-            return self.get_series("CORESTICKM159SFRBATL", start_date, end_date)
+        if all_data:
+            # Combine all dataframes
+            combined_df = pd.concat(all_data, ignore_index=True)
+            return combined_df
         else:
-            # Get CPI index
-            transform = None  # Don't apply transformation in the initial call
-            df = self.get_series("CPIAUCSL", start_date, end_date, transform)
+            return pd.DataFrame()
 
-            if df.empty:
-                return df
+    def search_series(self, search_text: str, limit: int = 10) -> pd.DataFrame:
+        """
+        Search for FRED series that match the given text.
 
+        Args:
+            search_text: Text to search for in series names/descriptions
+            limit: Maximum number of results to return
+
+        Returns:
+            DataFrame with matching series information
+        """
+        try:
+            self.logger.info(f"Searching FRED for: {search_text}")
+
+            # Use fredapi search function
+            results = self.fred.search(search_text, limit=limit)
+
+            if results is None or results.empty:
+                self.logger.warning(f"No series found matching: {search_text}")
+                return pd.DataFrame()
+
+            # Convert results to a more usable format
+            df = pd.DataFrame({
+                'series_id': results.index,
+                'title': results['title'],
+                'units': results['units'],
+                'frequency': results['frequency'],
+                'last_updated': results['last_updated']
+            })
+
+            self.logger.info(f"Found {len(df)} series matching: {search_text}")
             return df
 
-    def get_unemployment(self, start_date: Optional[str] = None,
-                         end_date: Optional[str] = None) -> pd.DataFrame:
-        """
-        Get unemployment rate data.
-
-        Args:
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
-            end_date: End date in YYYY-MM-DD format or relative date like "today"
-
-        Returns:
-            DataFrame with unemployment rate data
-        """
-        return self.get_series("UNRATE", start_date, end_date)
-
-    def get_interest_rates(self, start_date: Optional[str] = None,
-                           end_date: Optional[str] = None,
-                           rate_type: str = "fed_funds") -> pd.DataFrame:
-        """
-        Get interest rate data.
-
-        Args:
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
-            end_date: End date in YYYY-MM-DD format or relative date like "today"
-            rate_type: Type of interest rate (fed_funds, treasury_10y, treasury_2y, treasury_3m)
-
-        Returns:
-            DataFrame with interest rate data
-        """
-        rate_mapping = {
-            "fed_funds": "FEDFUNDS",
-            "treasury_10y": "DGS10",
-            "treasury_2y": "DGS2",
-            "treasury_3m": "DGS3MO"
-        }
-
-        series_id = rate_mapping.get(rate_type, "FEDFUNDS")
-        return self.get_series(series_id, start_date, end_date)
+        except Exception as e:
+            self.logger.error(f"Error searching FRED series: {e}")
+            return pd.DataFrame()
 
     def get_yield_curve(self, date: Optional[str] = None) -> pd.DataFrame:
         """
-        Get the yield curve for a specific date.
+        Get U.S. Treasury yield curve data for a specific date.
 
         Args:
-            date: Date in YYYY-MM-DD format or relative date like "today".
-                 If None, uses most recent data.
+            date: Date for yield curve (defaults to most recent data)
 
         Returns:
             DataFrame with yield curve data
         """
-        # Define Treasury maturities to include
+        # Treasury maturity series
         maturities = {
             "1M": "DGS1MO",
             "3M": "DGS3MO",
@@ -289,242 +263,126 @@ class FREDDataTool:
             "30Y": "DGS30"
         }
 
-        # Process the date parameter using date_utils
-        processed_date = process_date_param(
-            date) or process_date_param("today")
+        if date is None:
+            # Get most recent data
+            date = pd.Timestamp.now().strftime('%Y-%m-%d')
 
-        # For end date, we use the next day to ensure we get data for the date we want
-        # Using standard datetime to create a date one day after processed_date
-        from datetime import datetime, timedelta
-        date_obj = datetime.strptime(processed_date, '%Y-%m-%d')
-        end_date = (date_obj + timedelta(days=1)).strftime('%Y-%m-%d')
+        # Process the date
+        processed_date = process_date_param(date)
 
-        # Fetch data for each maturity
-        yield_data = {}
+        yield_data = []
         for maturity, series_id in maturities.items():
-            try:
-                # Get a single data point for the date
-                series = self.fred.get_series(
-                    series_id, processed_date, end_date)
-                if not series.empty:
-                    yield_data[maturity] = series.iloc[0]
-                else:
-                    yield_data[maturity] = None
-            except Exception as e:
-                self.logger.warning(
-                    f"Could not fetch data for {maturity} ({series_id}): {e}")
-                yield_data[maturity] = None
+            df = self.get_series(series_id, processed_date, processed_date)
+            if not df.empty:
+                yield_data.append({
+                    'maturity': maturity,
+                    'series_id': series_id,
+                    'yield': df['value'].iloc[0],
+                    'date': df['date'].iloc[0]
+                })
 
-        # Create DataFrame
-        df = pd.DataFrame([yield_data])
-        df['Date'] = processed_date
-
-        # Reorder columns to put Date first
-        cols = df.columns.tolist()
-        cols.remove('Date')
-        df = df[['Date'] + cols]
-
-        return df
-
-    def get_multiple_series(self, series_ids: List[str],
-                            start_date: Optional[str] = None,
-                            end_date: Optional[str] = None) -> pd.DataFrame:
-        """
-        Get multiple series in a single DataFrame with proper alignment.
-
-        Args:
-            series_ids: List of FRED series IDs
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
-            end_date: End date in YYYY-MM-DD format or relative date like "today"
-
-        Returns:
-            DataFrame with multiple series aligned by date
-        """
-        # Use the date_utils to properly handle date parameters
-        processed_start, processed_end = get_processed_date_range(
-            start_date=start_date,
-            end_date=end_date,
-            default_days_back=365*5  # Default to 5 years of data
-        )
-
-        data = {}
-
-        # Fetch each series
-        for series_id in series_ids:
-            try:
-                series = self.fred.get_series(
-                    series_id, processed_start, processed_end)
-                if not series.empty:
-                    data[series_id] = series
-                else:
-                    self.logger.warning(
-                        f"No data returned for series {series_id}")
-            except Exception as e:
-                self.logger.error(f"Error fetching series {series_id}: {e}")
-
-        # If no data was fetched, return empty DataFrame
-        if not data:
+        if yield_data:
+            return pd.DataFrame(yield_data)
+        else:
+            self.logger.warning(f"No yield curve data found for date: {date}")
             return pd.DataFrame()
 
-        # Combine series into a single DataFrame
-        df = pd.DataFrame(data)
-
-        # Reset index to make date a column
-        df.reset_index(inplace=True)
-        df.rename(columns={'index': 'Date'}, inplace=True)
-
-        return df
-
-    def get_series_info(self, series_id: str) -> Dict[str, Any]:
+    def _get_series_name(self, series_id: str) -> str:
         """
-        Get metadata information about a specific series.
+        Get the friendly name for a series ID if available.
 
         Args:
             series_id: FRED series ID
 
         Returns:
-            Dictionary with series metadata
+            Friendly name or the series ID itself
         """
-        try:
-            info = self.fred.get_series_info(series_id)
-            return info
-        except Exception as e:
-            self.logger.error(
-                f"Error fetching series info for {series_id}: {e}")
-            return {}
+        # Reverse lookup in our indicators dictionary
+        for name, sid in self.indicators.items():
+            if sid == series_id:
+                return name.replace('_', ' ').title()
+        return series_id
 
-    def search_series(self, search_text: str, limit: int = 10) -> pd.DataFrame:
+    def _apply_transformation(self, df: pd.DataFrame, transform: str) -> pd.DataFrame:
         """
-        Search for FRED series matching the search text.
+        Apply a transformation to the data.
 
         Args:
-            search_text: Text to search for
-            limit: Maximum number of results to return
+            df: DataFrame with 'value' column
+            transform: Transformation to apply
 
         Returns:
-            DataFrame with search results
+            DataFrame with transformed values
         """
-        try:
-            results = self.fred.search(search_text, limit=limit)
+        if transform == 'chg':  # Change
+            df['value'] = df['value'].diff()
+        elif transform == 'ch1':  # Change from year ago
+            df['value'] = df['value'].diff(12)  # Assuming monthly data
+        elif transform == 'pch':  # Percent change
+            df['value'] = df['value'].pct_change() * 100
+        elif transform == 'pc1':  # Percent change from year ago
+            df['value'] = df['value'].pct_change(12) * 100
+        elif transform == 'log':  # Natural log
+            df['value'] = df['value'].apply(lambda x: pd.np.log(x) if x > 0 else None)
 
-            if results.empty:
-                self.logger.info(f"No series found matching '{search_text}'")
-                return pd.DataFrame()
-
-            # Rename the index to 'series_id' for clarity
-            results.index.name = 'series_id'
-
-            # Reset index to make series_id a column
-            results.reset_index(inplace=True)
-
-            return results
-        except Exception as e:
-            self.logger.error(f"Error searching for '{search_text}': {e}")
-            return pd.DataFrame()
-
-    def get_indicator_comparison(self,
-                                 indicators: List[str],
-                                 start_date: Optional[str] = None,
-                                 end_date: Optional[str] = None) -> pd.DataFrame:
-        """
-        Get multiple indicators for comparison, normalized to the same scale.
-
-        Args:
-            indicators: List of indicator names (must be in ECONOMIC_INDICATORS)
-            start_date: Start date in YYYY-MM-DD format or relative date like "-5y"
-            end_date: End date in YYYY-MM-DD format or relative date like "today"
-
-        Returns:
-            DataFrame with multiple indicators normalized for comparison
-        """
-        # Validate indicators
-        series_ids = []
-        for indicator in indicators:
-            series_id = ECONOMIC_INDICATORS.get(indicator.lower())
-            if series_id:
-                series_ids.append(series_id)
-            else:
-                self.logger.warning(
-                    f"Unknown indicator: {indicator}, skipping")
-
-        if not series_ids:
-            return pd.DataFrame()
-
-        # Get the data
-        df = self.get_multiple_series(series_ids, start_date, end_date)
-
-        if df.empty:
-            return df
-
-        # Add indicator names for clarity
-        reverse_mapping = {v: k for k, v in ECONOMIC_INDICATORS.items()}
-        rename_cols = {
-            col: f"{reverse_mapping.get(col, col)}" for col in df.columns if col != 'Date'}
-        df.rename(columns=rename_cols, inplace=True)
+        # Add transformation info
+        df['transform'] = transform
 
         return df
 
-    def list_available_indicators(self) -> pd.DataFrame:
+    def test_connection(self) -> bool:
         """
-        List all available predefined indicators.
+        Test the FRED API connection.
 
         Returns:
-            DataFrame with indicator names and series IDs
+            True if connection is successful, False otherwise
         """
-        data = []
-        for name, series_id in ECONOMIC_INDICATORS.items():
-            try:
-                info = self.fred.get_series_info(series_id)
-                title = info.get('title', 'Unknown')
-                units = info.get('units', 'Unknown')
-                frequency = info.get('frequency', 'Unknown')
-
-                data.append({
-                    'Name': name,
-                    'Series ID': series_id,
-                    'Title': title,
-                    'Units': units,
-                    'Frequency': frequency
-                })
-            except Exception as e:
-                self.logger.warning(
-                    f"Could not fetch info for {name} ({series_id}): {e}")
-                data.append({
-                    'Name': name,
-                    'Series ID': series_id,
-                    'Title': 'Error retrieving info',
-                    'Units': 'Unknown',
-                    'Frequency': 'Unknown'
-                })
-
-        return pd.DataFrame(data)
+        try:
+            # Try to fetch a small amount of GDP data
+            df = self.get_series("GDP", "-1m", "today")
+            return not df.empty
+        except Exception as e:
+            self.logger.error(f"Connection test failed: {e}")
+            return False
 
 
-# Example usage
 if __name__ == "__main__":
-    # Initialize the tool
-    fred_tool = FREDDataTool(verbose=True)
+    # Example usage
+    tool = FREDDataTool()
 
-    # Get GDP data using relative date format
-    gdp_data = fred_tool.get_indicator('gdp', start_date="-5y")
-    print("\nGDP Data:")
-    print(gdp_data.head())
+    # Test connection
+    print("Testing FRED connection...")
+    if tool.test_connection():
+        print("✓ Connection successful!")
+    else:
+        print("✗ Connection failed!")
 
-    # Get unemployment rate using relative date format
-    unemployment_data = fred_tool.get_unemployment(start_date="-2y")
-    print("\nUnemployment Rate:")
-    print(unemployment_data.head())
+    # Get unemployment rate
+    print("\nFetching unemployment rate...")
+    unemployment = tool.get_economic_indicator("unemployment", "-1y", "today")
+    if not unemployment.empty:
+        print(unemployment.tail())
 
-    # Get yield curve for current date
-    yield_curve = fred_tool.get_yield_curve("today")
-    print("\nCurrent Yield Curve:")
-    print(yield_curve)
+    # Get multiple indicators
+    print("\nFetching multiple indicators...")
+    indicators = tool.get_multiple_series(
+        ["UNRATE", "GDP", "CPIAUCSL"], "-6m", "today")
+    if not indicators.empty:
+        print(indicators.groupby('series_name').tail(2))
 
-    # Get multiple indicators for comparison
-    comparison = fred_tool.get_indicator_comparison(['gdp_growth', 'unemployment', 'inflation_yoy'],
-                                                    start_date="-3y")
-    print("\nEconomic Indicator Comparison:")
-    print(comparison.head())
+    # Search for series
+    print("\nSearching for inflation series...")
+    search_results = tool.search_series("inflation", limit=5)
+    if not search_results.empty:
+        print(search_results[['series_id', 'title']])
 
-    # Print the attribution notice required by FRED
-    print("\nThis product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.")
+    # Get yield curve
+    print("\nFetching current yield curve...")
+    yield_curve = tool.get_yield_curve()
+    if not yield_curve.empty:
+        print(yield_curve)
+
+    # Print available indicators
+    print("\nAvailable economic indicators:")
+    for key, series_id in tool.indicators.items():
+        print(f"  - {key}: {series_id}")

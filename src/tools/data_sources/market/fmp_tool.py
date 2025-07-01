@@ -8,10 +8,17 @@ and other corporate actions. FMP offers good free tier access to corporate event
 import requests
 import logging
 import pandas as pd
+<<<<<<< HEAD
+from typing import Optional
+import os
+from config.config_loader import ConfigLoader
+from src.utils.date_utils import process_date_param, localize_df, get_default_timezone
+=======
 from typing import Optional, List
 from datetime import datetime, timedelta
 from config.config_loader import ConfigLoader
 from src.tools.date_utils import process_date_param
+>>>>>>> origin/development
 
 
 class FMPTool:
@@ -35,6 +42,18 @@ class FMPTool:
         if verbose:
             logging.basicConfig(level=logging.INFO)
 
+<<<<<<< HEAD
+        # Load API key from environment if not provided
+        if api_key is None:
+            config_loader = ConfigLoader()
+            api_key = os.getenv("FMP", config_loader.get("FMP"))
+
+            if not api_key:
+                self.logger.error("No FMP API key provided in environment")
+                raise ValueError(
+                    "FMP API key is required. Set the FMP environment variable."
+                )
+=======
         # Load API key from config if not provided
         if api_key is None:
             config_loader = ConfigLoader()
@@ -44,6 +63,7 @@ class FMPTool:
                 self.logger.error("No FMP API key provided in config.json")
                 raise ValueError(
                     "FMP API key is required. Add it to config.json under 'FMP' key.")
+>>>>>>> origin/development
 
         self.api_key = api_key
         self.base_url = "https://financialmodelingprep.com/api/v3"
@@ -463,66 +483,121 @@ class FMPTool:
     def fetch_stock_data(self, symbol: str, start_date: str = "-1y", end_date: str = "today") -> pd.DataFrame:
         """
         Fetch basic stock price data from FMP API (alternative to Yahoo/Alpha Vantage).
+<<<<<<< HEAD
+
+=======
         
+>>>>>>> origin/development
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
             start_date: Start date (YYYY-MM-DD or relative like "-1y") 
             end_date: End date (YYYY-MM-DD or relative like "today")
+<<<<<<< HEAD
+
+=======
             
+>>>>>>> origin/development
         Returns:
             DataFrame with basic stock price data (Open, High, Low, Close, Volume)
         """
         try:
+<<<<<<< HEAD
+            # Process date parameters
+            processed_start = process_date_param(
+                start_date) or process_date_param("-1y")
+            processed_end = process_date_param(
+                end_date) or process_date_param("today")
+
+=======
             # Process date parameters  
             processed_start = process_date_param(start_date) or process_date_param("-1y")
             processed_end = process_date_param(end_date) or process_date_param("today")
             
+>>>>>>> origin/development
             url = f"{self.base_url}/historical-price-full/{symbol}"
             params = {
                 'from': processed_start,
                 'to': processed_end,
                 'apikey': self.api_key
             }
+<<<<<<< HEAD
+
+            self.logger.info(
+                f"Fetching stock data for {symbol} from {processed_start} to {processed_end}")
+=======
             
             self.logger.info(f"Fetching stock data for {symbol} from {processed_start} to {processed_end}")
+>>>>>>> origin/development
             response = requests.get(url, params=params)
             response.raise_for_status()
 
             data = response.json()
+<<<<<<< HEAD
+
+=======
             
+>>>>>>> origin/development
             if not data or 'historical' not in data:
                 self.logger.warning(f"No stock data returned for {symbol}")
                 return pd.DataFrame()
 
             # Convert to DataFrame
             df = pd.DataFrame(data['historical'])
+<<<<<<< HEAD
+
+=======
             
+>>>>>>> origin/development
             if not df.empty:
                 # Standardize column names to match other market data tools
                 column_mapping = {
                     'date': 'Date',
+<<<<<<< HEAD
+                    'open': 'Open',
+=======
                     'open': 'Open', 
+>>>>>>> origin/development
                     'high': 'High',
                     'low': 'Low',
                     'close': 'Close',
                     'volume': 'Volume'
                 }
+<<<<<<< HEAD
+
+                # Rename existing columns
+                df = df.rename(
+                    columns={k: v for k, v in column_mapping.items() if k in df.columns})
+
+=======
                 
                 # Rename existing columns
                 df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
                 
+>>>>>>> origin/development
                 # Convert date to datetime and set as index
                 if 'Date' in df.columns:
                     df['Date'] = pd.to_datetime(df['Date'])
                     df.set_index('Date', inplace=True)
+<<<<<<< HEAD
+
+                # Sort by date (oldest to newest)
+                df = df.sort_index()
+
+=======
                 
                 # Sort by date (oldest to newest)
                 df = df.sort_index()
                 
+>>>>>>> origin/development
                 # Keep only OHLCV columns
                 ohlcv_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
                 df = df[[col for col in ohlcv_columns if col in df.columns]]
 
+<<<<<<< HEAD
+                df = localize_df(df, get_default_timezone())
+
+=======
+>>>>>>> origin/development
             return df
 
         except Exception as e:
