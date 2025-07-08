@@ -293,7 +293,8 @@ class FinnhubNewsProvider(NewsSourceProvider):
                     url=row.get('URL', row.get('url', None)),
                     published_date=pub_date,
                     summary=row.get('Summary', row.get('summary', None)),
-                    tickers=row.get('related') if isinstance(row.get('related'), list) else [],
+                    tickers=row.get('related') if isinstance(
+                        row.get('related'), list) else [],
                     categories=[
                         row.get('Category', row.get('category', 'general'))],
                     raw_data=row.to_dict() if hasattr(row, 'to_dict') else dict(row)

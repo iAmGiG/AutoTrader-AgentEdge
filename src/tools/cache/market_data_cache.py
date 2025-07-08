@@ -48,7 +48,11 @@ class MarketDataCache:
                 # New format
                 df = pd.DataFrame(data['values'])
                 if 'index' in data and not df.empty:
-                    df.index = pd.to_datetime(data['index'])
+                    # Handle timezone-aware datetime
+                    try:
+                        df.index = pd.to_datetime(data['index'], utc=True)
+                    except:
+                        df.index = pd.to_datetime(data['index'])
                     df = df.sort_index()
             else:
                 # Old format (backward compatibility)

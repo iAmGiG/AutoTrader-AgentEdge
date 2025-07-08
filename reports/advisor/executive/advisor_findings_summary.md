@@ -7,17 +7,22 @@ Following your guidance to implement the MACD-based strategy as an initial testi
 ## Key Findings
 
 ### 1. Strategy Implementation ✅
+
 Successfully implemented your specified strategy:
+
 - Entry: No position + MACD < 0 yesterday + MACD rising + positive sentiment
 - Exit: MACD falling from negative OR crossing below zero
 
 ### 2. Testing Results 📊
+
 - **Backtests Run**: 12 volatile periods
 - **Trades Executed**: 1 (AAPL during COVID crash)
 - **Key Insight**: MACD < 0 recovery pattern is extremely rare
 
 ### 3. System Validation ✅
+
 The restrictive strategy served as an excellent system validator:
+
 - **Zero false positives**: System maintains strict discipline
 - **100% tool execution**: All agents performing optimally
 - **Full reasoning capture**: Complete audit trail for every decision

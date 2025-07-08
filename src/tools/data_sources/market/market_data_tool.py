@@ -31,7 +31,10 @@ except ImportError:
 
 try:
     from src.tools.data_sources.market.nasdaq_data_link_tool import NasdaqDataLinkTool
-except ImportError:
+except ImportError as e:
+    # Log the specific import error for debugging
+    import logging
+    logging.getLogger("MarketDataTool").debug(f"NasdaqDataLinkTool import failed: {e}")
     pass
 
 

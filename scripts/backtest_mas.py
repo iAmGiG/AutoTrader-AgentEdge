@@ -228,8 +228,8 @@ def main() -> None:
     prices = cache.get(symbol, start, end, "alpha_vantage")
 
     if prices is None or prices.empty:
-        # Use MarketDataTool with Alpha Vantage as the preferred source
-        tool = MarketDataTool()
+        # Use MarketDataTool with Yahoo as the preferred source (no rate limits)
+        tool = MarketDataTool(config={"data_source": "yahoo"})
         result = tool.fetch_market_data(
             symbol=symbol,
             start_date=start,
@@ -262,7 +262,12 @@ def main() -> None:
             prices.set_index('date', inplace=True)
         elif 'Date' in prices.columns:
             prices.set_index('Date', inplace=True)
-    prices.index = pd.to_datetime(prices.index)
+
+    # Handle timezone-aware datetime conversion
+    try:
+        prices.index = pd.to_datetime(prices.index, utc=True)
+    except:
+        prices.index = pd.to_datetime(prices.index)
 
     # Sort by date
     prices = prices.sort_index()
