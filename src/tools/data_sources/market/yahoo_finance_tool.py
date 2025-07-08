@@ -1,63 +1,11 @@
 import yfinance as yf
 import pandas as pd
 import logging
-<<<<<<< HEAD
-import time
-from typing import Optional
-from datetime import datetime, timedelta
-from src.utils.date_utils import get_processed_date_range, localize_df, get_default_timezone
-=======
-from typing import Optional
-from src.tools.date_utils import get_processed_date_range
-
-
-class YahooFinanceTool:
-    def __init__(self):
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-    def fetch_stock_data(self, ticker: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
-        """
-        Fetch stock data from Yahoo Finance.
-
-        Args:
-            ticker: Stock symbol to fetch
-            start_date: Start date (YYYY-MM-DD) or relative date (e.g., "-30d")
-                        If None, uses dynamic calculation (last 5 trading days)
-            end_date: End date (YYYY-MM-DD) or relative date (e.g., "today")
-                      If None, uses today's date
-
-        Returns:
-            DataFrame with stock data
-        """
-        try:
-            # Use dynamic date handling
-            processed_start, processed_end = get_processed_date_range(
-                start_date, end_date)
-
-            self.logger.info(
-                f"Fetching Yahoo Finance data for {ticker} from {processed_start} to {processed_end}")
-
-            stock = yf.Ticker(ticker)
-            df = stock.history(start=processed_start, end=processed_end)
-
-            if df.empty:
-                self.logger.warning(f"No data fetched for {ticker}")
-
-            return df[['Open', 'High', 'Low', 'Close', 'Volume']]
-
-        except Exception as e:
-            self.logger.error(f"Error fetching Yahoo Finance data: {e}")
-            return pd.DataFrame()
-
-import yfinance as yf
-import pandas as pd
-import logging
 import time
 import functools
 from typing import Optional
 from datetime import datetime, timedelta
-from src.tools.date_utils import get_processed_date_range, process_date_param
->>>>>>> origin/development
+from src.utils.date_utils import get_processed_date_range, localize_df, get_default_timezone, process_date_param
 
 # Global cache and throttling variables
 _last_request_time = {}
@@ -131,11 +79,7 @@ def _retry_on_rate_limit(func, *args, max_retries=3, **kwargs):
         except Exception as e:
             if "Too Many Requests" in str(e) or "Rate limited" in str(e):
                 if attempt < max_retries - 1:
-<<<<<<< HEAD
-                    wait_time = (2 ** attempt) * 0.5  # 0.5, 1, 2 seconds
-=======
                     wait_time = (2 ** attempt) * 5  # 5, 10, 20 seconds
->>>>>>> origin/development
                     logging.warning(
                         f"Rate limited, waiting {wait_time} seconds before retry {attempt + 1}")
                     time.sleep(wait_time)
@@ -254,10 +198,7 @@ class YahooFinanceTool:
                 result = pd.DataFrame()
             else:
                 result = df[['Open', 'High', 'Low', 'Close', 'Volume']]
-<<<<<<< HEAD
                 result = localize_df(result, get_default_timezone())
-=======
->>>>>>> origin/development
 
             # Cache the result
             _store_in_cache(cache_key, result)
