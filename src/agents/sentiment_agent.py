@@ -1,16 +1,21 @@
 """
-SentimentAgent module for sentiment analysis on market data and news.
+SentimentAgent V2 - Enhanced with market-based sentiment indicators.
 
-This agent is designed to:
-1. Retrieve market news and analyze sentiment
-2. Perform contextual analysis on news and SEC filings
-3. Present a coherent summary of market sentiment with explanations
+This enhanced version adds VXX (volatility) based sentiment when news data is unavailable.
+It maintains backward compatibility with the original SentimentAgent output format.
+
+Key enhancements:
+1. Falls back to VXX market sentiment when news is unavailable
+2. Maintains the same JSON output format for compatibility
+3. Adds logging to track which sentiment source is used
 """
 
 # Standard library imports
 import json
 import traceback
-from typing import Dict, Any
+import logging
+from typing import Dict, Any, Optional
+from datetime import datetime, timedelta
 
 # Third-party imports
 import pandas as pd
@@ -20,6 +25,11 @@ from .base_agent import BaseAgent
 from src.tools.tools import SENTIMENT_AGENT, get_tools_for_agent
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
 from src.utils.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
+from src.tools.data_sources.market.market_data_tool import MarketDataTool
+from src.tools.cache import MarketDataCache
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # LLM config optimized for sentiment analysis and narrative generation
 SENTIMENT_LLM_CONFIG = {
@@ -28,15 +38,23 @@ SENTIMENT_LLM_CONFIG = {
     "top_p": 0.9,        # Allow for some creative variety
 }
 
+# VXX thresholds for sentiment interpretation
+VXX_THRESHOLDS = {
+    "extreme_fear": 50,    # VXX > 50: Extreme market fear
+    "high_fear": 40,       # VXX > 40: High fear/volatility
+    "moderate_fear": 30,   # VXX > 30: Moderate concern
+    "low_fear": 20,        # VXX < 20: Low fear/complacency
+}
+
 
 class SentimentAgent(BaseAgent):
     """
-    Agent for sentiment analysis and market behavior explanation.
+    Enhanced Agent for sentiment analysis with market-based fallback.
 
     Uses LLM-driven function calling to:
-    - Retrieve news and analyze sentiment
-    - Search for relevant information in SEC filings
-    - Generate explanations of market sentiment
+    - Retrieve news and analyze sentiment (primary)
+    - Use VXX volatility as sentiment indicator when news unavailable (fallback)
+    - Generate explanations of market sentiment from available data
     """
 
     def __init__(self, name="SentimentAgent", memory_system=None):
@@ -51,6 +69,12 @@ class SentimentAgent(BaseAgent):
         # Initialize the sentiment analyzer
         self.sentiment_analyzer = SentimentAnalyzer()
 
+        # Initialize market data tool for VXX fallback
+        self.market_data_tool = MarketDataTool()
+        
+        # Initialize cache for VXX data
+        self.market_cache = MarketDataCache()
+
         # Use only the tools appropriate for sentiment analysis
         tools = get_tools_for_agent(SENTIMENT_AGENT)
 
@@ -64,6 +88,111 @@ class SentimentAgent(BaseAgent):
 
         # Store the data processor
         self.data_processor = DataProcessor()
+
+    def _get_vix_sentiment(self, date: str) -> Dict[str, Any]:
+        """
+        Get VXX-based market sentiment for a given date.
+
+        Args:
+            date: Target date in YYYY-MM-DD format
+
+        Returns:
+            Dictionary with VXX data and interpretation
+        """
+        try:
+            # Get VXX data around the target date (3 days before to 1 day after)
+            target_date = datetime.strptime(date, "%Y-%m-%d")
+            start_date = (target_date - timedelta(days=3)).strftime("%Y-%m-%d")
+            end_date = (target_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+            logger.info(
+                f"Fetching VXX data for sentiment analysis: {start_date} to {end_date}")
+
+            # Try to get VXX data from cache first
+            vxx_data = self.market_cache.get("VXX", start_date, end_date, "yahoo")
+            
+            if vxx_data is None or vxx_data.empty:
+                # Fetch VXX data from market tool
+                vxx_data = self.market_data_tool.fetch_market_data(
+                    "VXX", start_date, end_date)
+                
+                # Cache the data if successfully fetched
+                if vxx_data is not None and not vxx_data.empty:
+                    self.market_cache.set("VXX", start_date, end_date, "yahoo", vxx_data)
+                    logger.info(f"Cached VXX data for {start_date} to {end_date}")
+
+            if vxx_data is not None and not vxx_data.empty:
+                # Find the closest date to target
+                vxx_data.index = pd.to_datetime(
+                    vxx_data.index).tz_localize(None)
+                target_datetime = pd.to_datetime(target_date)
+
+                # Get the row closest to target date
+                date_diffs = abs(vxx_data.index - target_datetime)
+                closest_idx = date_diffs.argmin()
+                closest_date = vxx_data.index[closest_idx]
+                vxx_value = float(vxx_data.loc[closest_date, 'Close'])
+
+                # Calculate sentiment based on VXX levels
+                if vxx_value > VXX_THRESHOLDS["extreme_fear"]:
+                    sentiment_score = -0.8
+                    interpretation = "Extreme market fear - highly bearish conditions"
+                elif vxx_value > VXX_THRESHOLDS["high_fear"]:
+                    sentiment_score = -0.6
+                    interpretation = "High market fear - bearish sentiment"
+                elif vxx_value > VXX_THRESHOLDS["moderate_fear"]:
+                    sentiment_score = -0.3
+                    interpretation = "Moderate market concern - slightly bearish"
+                elif vxx_value > VXX_THRESHOLDS["low_fear"]:
+                    sentiment_score = 0.1
+                    interpretation = "Normal market conditions - neutral sentiment"
+                else:
+                    sentiment_score = 0.3
+                    interpretation = "Low market fear - complacent/bullish conditions"
+
+                return {
+                    "vxx_value": vxx_value,
+                    "date_used": closest_date.strftime("%Y-%m-%d"),
+                    "sentiment_score": sentiment_score,
+                    "interpretation": interpretation,
+                    "confidence": 0.7  # VXX provides good but not perfect sentiment signal
+                }
+            else:
+                logger.warning(f"No VXX data available for {date}")
+                return {
+                    "vxx_value": None,
+                    "sentiment_score": 0.0,
+                    "interpretation": "No volatility data available",
+                    "confidence": 0.0
+                }
+
+        except Exception as e:
+            logger.error(f"Error fetching VXX sentiment: {str(e)}")
+            return {
+                "vxx_value": None,
+                "sentiment_score": 0.0,
+                "interpretation": f"Error retrieving market sentiment: {str(e)}",
+                "confidence": 0.0
+            }
+
+    def _extract_date_from_message(self, message: str) -> Optional[str]:
+        """Extract date from message using various patterns."""
+        import re
+
+        # Look for YYYY-MM-DD pattern
+        date_pattern = r'\d{4}-\d{2}-\d{2}'
+        matches = re.findall(date_pattern, message)
+        if matches:
+            return matches[0]
+
+        # Look for "on [date]" pattern
+        on_pattern = r'on (\d{4}-\d{2}-\d{2})'
+        matches = re.findall(on_pattern, message)
+        if matches:
+            return matches[0]
+
+        # Default to today if no date found
+        return datetime.now().strftime("%Y-%m-%d")
 
     def preprocess_message(self, message: str) -> Dict[str, Any]:
         """
@@ -136,6 +265,10 @@ class SentimentAgent(BaseAgent):
         context.append(
             "The unified news tool (fetch_all_news) is designed to get all needed news in a single call.")
 
+        # Add note about VXX fallback
+        context.append(
+            "\nNOTE: If news data is unavailable, market sentiment will be derived from VXX volatility levels.")
+
         return "\n".join(context)
 
     def process_tool_result(self, tool_name: str, result: Any, tool_args: dict) -> Any:
@@ -171,7 +304,12 @@ class SentimentAgent(BaseAgent):
             if tool_name == "fetch_all_news":
                 # Result should be a dict with headlines, sentiment, etc.
                 if isinstance(result, dict):
-                    # Optionally post-process or summarize, else just return
+                    # Check if news data is empty or has no articles
+                    if (result.get("total_articles", 0) == 0 or
+                        not result.get("articles") or
+                            (isinstance(result.get("articles"), list) and len(result["articles"]) == 0)):
+                        # Mark as no news available
+                        result["no_news_available"] = True
                     return result
                 # If it's a DataFrame for some reason, provide a sample
                 if isinstance(result, pd.DataFrame):
@@ -180,7 +318,7 @@ class SentimentAgent(BaseAgent):
                             "summary": f"DataFrame with {len(result)} rows and columns: {', '.join(list(result.columns))}",
                             "sample_data": result.head(3).to_dict(orient="records")
                         }
-                    return {"summary": "Empty DataFrame"}
+                    return {"summary": "Empty DataFrame", "no_news_available": True}
                 # Otherwise just return whatever was given
                 return result
 
@@ -241,45 +379,8 @@ class SentimentAgent(BaseAgent):
                         "total_articles": len(result),
                         "news_items": news_items
                     }
-
-            # News Tool Result Processing
-            elif tool_name == "fetch_news":
-                if isinstance(result, pd.DataFrame) and not result.empty:
-                    news_items = []
-                    for idx, row in result.head(5).iterrows():
-                        news_items.append({
-                            "title": str(row.get('title', 'N/A')),
-                            "published": str(row.get('publishedAt', row.get('published', 'N/A'))),
-                            "source": str(row.get('source', {}).get('name', 'N/A') if isinstance(row.get('source'), dict) else 'N/A')
-                        })
-                    return {
-                        "total_articles": len(result),
-                        "news_items": news_items
-                    }
-
-            # Finnhub News Tools
-            elif tool_name.startswith("fetch_finnhub"):
-                if isinstance(result, pd.DataFrame) and not result.empty:
-                    # Finnhub returns news headlines
-                    news_items = []
-                    for idx, row in result.head(5).iterrows():
-                        news_items.append({
-                            "title": str(row.get('title', row.get('headline', 'N/A'))),
-                            "published": str(row.get('published_at', row.get('datetime', 'N/A'))),
-                            "category": str(row.get('category', 'N/A'))
-                        })
-                    return {
-                        "total_articles": len(result),
-                        "news_items": news_items
-                    }
-
-            # FMP Tools (if they return results)
-            elif tool_name.startswith("fetch_fmp"):
-                if isinstance(result, pd.DataFrame) and not result.empty:
-                    return {
-                        "total_results": len(result),
-                        "sample_data": result.head(3).to_dict(orient="records")
-                    }
+                elif isinstance(result, pd.DataFrame) and result.empty:
+                    return {"total_articles": 0, "no_news_available": True}
 
             # Default DataFrame handling
             if isinstance(result, pd.DataFrame):
@@ -289,7 +390,7 @@ class SentimentAgent(BaseAgent):
                         "summary": f"DataFrame with {len(result)} rows and columns: {', '.join(list(result.columns))}",
                         "sample_data": result.head(3).to_dict(orient="records")
                     }
-                return {"summary": "Empty DataFrame"}
+                return {"summary": "Empty DataFrame", "no_news_available": True}
 
             # Default dict handling
             if isinstance(result, dict):
@@ -306,17 +407,17 @@ class SentimentAgent(BaseAgent):
     def generate_reply(self, messages, context=None) -> str:
         """
         Primary entry point for generating replies to user messages.
-        Lets the LLM decide which tools to call based on the query.
+        Enhanced to use VXX sentiment when news is unavailable.
 
         Args:
             messages: List of message dicts or a single message
             context: Optional context (not used currently)
 
         Returns:
-            Generated response string
+            Generated response string with JSON sentiment data
         """
         try:
-            print(f"\n{self.name} processing request...")
+            print(f"\n{self.name} V2 processing request...")
 
             # Convert single message to list
             if isinstance(messages, str):
@@ -336,6 +437,11 @@ class SentimentAgent(BaseAgent):
 
             # Pre-process the message
             query_details = self.preprocess_message(user_message)
+
+            # Extract date and symbol from message
+            date = self._extract_date_from_message(user_message)
+            symbol = query_details.get("ticker", "market")
+
             supplementary_context = self.format_supplementary_context(
                 query_details)
 
@@ -347,6 +453,12 @@ class SentimentAgent(BaseAgent):
                 "system_prompt", "You are a sentiment analysis agent.")
             system_content += f"\n\n{supplementary_context}"
 
+            # Add specific instructions for V2 behavior
+            system_content += "\n\nCRITICAL REQUIREMENT: You MUST ALWAYS return a JSON response with the following structure, even if no news is found:"
+            system_content += '\n{"score": <float between -1 and 1>, "confidence": <float between 0 and 1>, "reasoning": "<explanation>", "sources": <number of sources>}'
+            system_content += '\n\nIf no news is found, return: {"score": 0.0, "confidence": 0.0, "reasoning": "No news data available", "sources": 0}'
+            system_content += '\nNEVER return a message saying you cannot provide analysis. ALWAYS return the JSON structure.'
+
             enhanced_messages.append({
                 "role": "system",
                 "content": system_content
@@ -356,14 +468,108 @@ class SentimentAgent(BaseAgent):
             enhanced_messages.extend(messages)
 
             # Let the LLM generate a response with tool calls
-            response = super().generate_reply(enhanced_messages, context)
+            # Extract just the user message for processing
+            user_msg = enhanced_messages[-1]['content'] if enhanced_messages else user_message
+            system_msg = enhanced_messages[0]['content'] if enhanced_messages else system_content
+            
+            response = self.process_with_tools(user_msg, system_msg)
 
-            # Narrative polish based on query type
-            # (This is handled by the LLM now with better prompting)
+            # Check if response is None or empty
+            if not response:
+                response = json.dumps({
+                    "score": 0.0,
+                    "confidence": 0.0,
+                    "reasoning": "No response generated",
+                    "sources": 0
+                })
+
+            # Check if the response indicates no news data
+            no_news_indicators = [
+                "no news data available",
+                "no news found",
+                "unable to find news",
+                "news data is unavailable",
+                "0 articles found",
+                "no articles found",
+                "empty news results",
+                "lack of significant news coverage",
+                "only one article",
+                "yielded only one article",
+                "absence of relevant news"
+            ]
+
+            response_lower = response.lower()
+            no_news_found = any(
+                indicator in response_lower for indicator in no_news_indicators)
+
+            # Also check if we got a score of 0 with low confidence
+            try:
+                # Try to parse JSON from response
+                import re
+                json_match = re.search(r'\{[^}]+\}', response)
+                if json_match:
+                    json_data = json.loads(json_match.group())
+                    # Check for low confidence (< 0.3) OR score of 0
+                    if (json_data.get("confidence", 1) < 0.3 or 
+                        (json_data.get("score", 1) == 0 and json_data.get("confidence", 1) <= 0.2)):
+                        no_news_found = True
+                        logger.info(f"Low confidence sentiment detected: score={json_data.get('score')}, confidence={json_data.get('confidence')}")
+            except:
+                pass
+
+            if no_news_found:
+                logger.info(
+                    f"No news found for {symbol} on {date}, using VXX sentiment fallback")
+
+                # Get VXX sentiment
+                vix_sentiment = self._get_vix_sentiment(date)
+
+                # Create a new prompt for the LLM to synthesize VXX sentiment
+                vxx_prompt = f"""
+                No news data was available for {symbol} on {date}.
+                
+                Using market volatility indicator (VXX) as sentiment proxy:
+                - VXX value: {vix_sentiment['vxx_value']}
+                - Date used: {vix_sentiment['date_used']}
+                - Market interpretation: {vix_sentiment['interpretation']}
+                - Suggested sentiment score: {vix_sentiment['sentiment_score']}
+                
+                Please provide a sentiment analysis in JSON format based on this market volatility data.
+                Consider that high VXX (>40) indicates fear/bearish sentiment, while low VXX (<20) indicates complacency/bullish sentiment.
+                
+                Return JSON with: score, confidence, reasoning, sources (set sources=1 for VXX).
+                """
+
+                # Get LLM to synthesize the VXX data
+                vxx_messages = [
+                    {"role": "system", "content": "You are a sentiment analysis agent. Provide market sentiment based on volatility indicators."},
+                    {"role": "user", "content": vxx_prompt}
+                ]
+
+                # Extract user and system messages
+                vxx_user_msg = vxx_messages[-1]['content']
+                vxx_system_msg = vxx_messages[0]['content']
+                
+                response = self.process_with_tools(vxx_user_msg, vxx_system_msg)
+
+                # Log the sentiment source
+                logger.info(
+                    f"Sentiment source for {symbol} on {date}: VXX (market volatility)")
+            else:
+                # Log that news was used
+                logger.info(
+                    f"Sentiment source for {symbol} on {date}: news data")
+
             return response
 
         except Exception as e:
             traceback.print_exc()
-            error_msg = f"Error in {self.name}: {str(e)}"
+            error_msg = f"Error in {self.name} V2: {str(e)}"
             print(error_msg)
-            return error_msg
+            # Return a valid JSON response even on error
+            return json.dumps({
+                "score": 0.0,
+                "confidence": 0.0,
+                "reasoning": error_msg,
+                "sources": 0
+            })

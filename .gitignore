@@ -134,6 +134,22 @@ tests/test_nasdaq_direct.py
 tests/test_nasdaq_ssl_config.py
 tests/test_vix_uvxy.py
 tests/test_vxx_correlation.py
+tests/test_sentiment_v2.py
+tests/test_enhanced_sentiment.py
+tests/test_vxx_fallback_logic.py
+tests/test_vxx_fallback_debug.py
+tests/test_vxx_caching.py
+tests/test_strategy_v2.py
+tests/test_sentiment_v2_simple.py
+tests/test_nasdaq_data_link.py
+tests/test_backtest_vxx_caching.py
+
+# Enhanced sentiment integration test outputs
+enhanced_sentiment_comparison_*.json
+scripts/test_strategy_v2.py
+
+# Deprecated agent versions
+src/agents/deprecated/
 
 # Scripts
 install_dependencies.sh

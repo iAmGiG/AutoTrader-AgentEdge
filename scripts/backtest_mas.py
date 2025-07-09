@@ -13,20 +13,23 @@ from src.utils.output_manager import OutputManager
 from src.utils.report_generator import ReportGenerator
 from src.utils.date_utils import process_date_param
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
-from src.agents.strategy_agent import StrategyAgent
 from src.agents.coordinator_agent import CoordinatorAgent
+from src.agents.strategy_agent import StrategyAgent
 from src.tools.cache import MarketDataCache
+import sys
+import os
+import json
 import traceback
 import asyncio
 from typing import List, Dict
 import pandas as pd
-import sys
-import os
-import json
 
 # Add src to Python path
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
+
+
+# Import both strategy versions
 
 
 def setup_output_directory(symbol: str, start_date: str, end_date: str) -> Dict[str, str]:
@@ -279,7 +282,11 @@ def main() -> None:
 
     # Initialize agents
     coord = CoordinatorAgent()
+    print("🧠 Using Enhanced Sentiment V2 (with VXX fallback)")
+
+    # Initialize strategy agent
     strat = StrategyAgent()
+    print("📌 Using enhanced strategy (sentiment >= 0 with VXX fallback)")
 
     # Track portfolio state
     equity = 100_000.0  # Starting cash

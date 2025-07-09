@@ -9,7 +9,7 @@ class StrategyAgent(BaseAgent):
 
     Entry:
       - If flat AND yesterday’s MACD < 0 AND today’s MACD > yesterday’s MACD
-        AND sentiment > 0 → BUY
+        AND sentiment >= 0 → BUY  (V2: Changed from > to >= to allow neutral sentiment)
 
     Exit:
       - If long AND (yesterday’s MACD < 0 AND today’s MACD < yesterday’s MACD)
@@ -45,7 +45,7 @@ class StrategyAgent(BaseAgent):
             if (
                 macd_y is not None and macd_y < 0 and
                 macd_t is not None and macd_t > macd_y and
-                sentiment > 0
+                sentiment >= 0
             ):
                 action = "BUY"
                 self.position = 1
@@ -86,7 +86,7 @@ class StrategyAgent(BaseAgent):
         return {
             "action": action,
             "qty":    100 if action == "BUY" else 0,
-            "reason": "macd_sent_rule_v1"
+            "reason": "macd_sent_rule_v2"
         }
 
     def calculate_metrics(self, initial_capital: float = 100000.0, risk_free_rate: float = 0.02) -> Dict:
