@@ -124,6 +124,17 @@ test_data_retrieval.py
 tests/batch_backtest_report.md
 tests/test_agents.py
 
+# NYSE ADD test files (temporary)
+tests/test_nyse_add_indicator.py
+tests/test_nasdaq_basic.py
+tests/test_nyse_internals_all_sources.py
+tests/nyse_add_test_summary.md
+tests/test_nasdaq_api_key.py
+tests/test_nasdaq_direct.py
+tests/test_nasdaq_ssl_config.py
+tests/test_vix_uvxy.py
+tests/test_vxx_correlation.py
+
 # Scripts
 install_dependencies.sh
 run_simple_agent.sh
