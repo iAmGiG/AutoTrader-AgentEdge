@@ -1,52 +1,117 @@
 # RH2MAS Current Architecture
 
-## Simplified Agent System
+**Last Updated**: 2025-07-11
 
-The system now uses a streamlined architecture with enhanced agents:
+## Overview
 
-### Core Agents
+RH2MAS (Reflective Hybrid Head Multi-Agent System) uses a streamlined multi-agent architecture for financial analysis and trading decisions.
 
-1. **SentimentAgent** (`src/agents/sentiment_agent.py`)
-   - Enhanced with VXX fallback mechanism
-   - Uses news sentiment when available
-   - Falls back to VXX volatility indicator when news unavailable
-   - Always provides reliable sentiment signal
+## Core Agents
 
-2. **TechAgent** (`src/agents/tech_agent.py`)
-   - Performs technical analysis
-   - Calculates MACD and other indicators
-   - Provides market timing signals
+### 1. SentimentAgent (`src/agents/sentiment_agent.py`)
+- **Enhanced Features**:
+  - News sentiment analysis using multiple sources
+  - VXX fallback mechanism for missing news data
+  - News caching with relevance filtering (≥ 0.5 score)
+  - Always provides reliable sentiment signal (0-1 scale)
+- **Data Sources**: Alpha Vantage News, NewsAPI, Finnhub
+- **Caching**: 7-day news cache to reduce API calls
 
-3. **StrategyAgent** (`src/agents/strategy_agent.py`)
-   - Uses sentiment >= 0 requirement (allows neutral sentiment)
-   - Combines sentiment and technical signals
-   - Makes trading decisions based on MACD conditions
+### 2. TechAgent (`src/agents/tech_agent.py`)
+- **Technical Analysis**:
+  - MACD calculation (fixed: uses MACD line, not histogram)
+  - RSI, Bollinger Bands, EMA/SMA indicators
+  - Pattern recognition via LLM
+- **Key Fix**: MACD = MACD_line (EMA12 - EMA26) for correct signals
+- **Data Sources**: Yahoo Finance, Alpha Vantage, FMP
 
-4. **CoordinatorAgent** (`src/agents/coordinator_agent.py`)
-   - Orchestrates multi-agent collaboration
-   - Aggregates signals from all agents
-   - Provides unified trading recommendations
+### 3. StrategyAgent (`src/agents/strategy_agent.py`)
+- **Trading Strategy**:
+  - Enhanced strategy: sentiment >= 0 requirement
+  - MACD-based entry/exit signals
+  - Risk management with position sizing
+- **Decision Logic**: Combines sentiment + technical signals
 
-### Key Features
+### 4. CoordinatorAgent (`src/agents/coordinator_agent.py`)
+- **Orchestration**:
+  - Manages agent communication
+  - Aggregates signals from all agents
+  - Provides unified trading recommendations
+- **Output**: Structured signals with reasoning
 
-- **VXX Fallback**: Ensures sentiment analysis works even without news data
-- **Market Data Caching**: Reduces API calls and speeds up backtesting
-- **Unified Strategy**: Single strategy implementation (sentiment >= 0)
-- **Simplified Testing**: Focused test suite for core functionality
+## System Architecture
 
-### Running Backtests
+```
+User Request
+    ↓
+CoordinatorAgent
+    ├── SentimentAgent → News Analysis + VXX Fallback
+    ├── TechAgent → Technical Indicators + MACD
+    └── StrategyAgent → Trading Decision
+         ↓
+    Trading Signal
+```
 
+## Key Infrastructure
+
+### Caching System
+- **Market Data Cache**: 24-hour expiry, reduces API calls
+- **News Cache**: 7-day expiry, filters relevant news only
+- **Location**: `.cache/` directory
+
+### Data Sources
+- **Market Data**: Yahoo (primary), Alpha Vantage, FMP
+- **News**: Alpha Vantage News, NewsAPI, Finnhub
+- **Economic**: FRED, SEC Edgar (future)
+
+### Output Organization
+Backtests create organized output:
+```
+.cache/backtests/runs/SYMBOL_START_END_TIMESTAMP/
+├── data/          # CSV files (trades, equity, metrics)
+├── analysis/      # LLM reasoning and agent responses
+├── reports/       # Executive summaries
+└── metadata.json  # Run configuration
+```
+
+## Running the System
+
+### Single Backtest
 ```bash
-# Single backtest
 python scripts/backtest_mas.py SYMBOL START END
 
 # Example
-python scripts/backtest_mas.py AAPL 2024-01-01 2024-03-31
-
-# Run test suite
-python scripts/run_backtest_suite.py quick
+python scripts/backtest_mas.py AAPL 2024-01-01 2024-01-31
 ```
 
-### Deprecated Components
+### Batch Testing
+```bash
+# Quick tests (2-3 minutes)
+python scripts/run_backtest_suite.py quick
 
-Old agent versions have been moved to `src/agents/deprecated/` and are excluded from the repository.
+# Comprehensive tests (market stress periods)
+python scripts/run_backtest_suite.py comprehensive --parallel
+
+# Extended tests for specific symbols
+python scripts/run_backtest_suite.py extended --symbols AAPL,MSFT
+```
+
+## Recent Changes (2025-07-11)
+
+1. **MACD Fix**: Technical agent now uses MACD line instead of histogram
+2. **News Caching**: Sentiment agent caches relevant news (score ≥ 0.5)
+3. **Test Cleanup**: Tests moved to rapid iteration mode
+4. **Documentation**: Consolidated agent docs, added technical agent guide
+
+## API Limitations
+
+- **Alpha Vantage**: 25 calls/day (free tier)
+- **Yahoo Finance**: Rate limited but primary source
+- **Solution**: Aggressive caching strategy
+
+## Future Enhancements
+
+- Risk agent implementation
+- Quantitative agent for advanced analytics
+- Memory system integration
+- Real-time trading capabilities

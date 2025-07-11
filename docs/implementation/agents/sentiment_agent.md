@@ -1,252 +1,205 @@
 # Sentiment Agent Documentation
 
-## 1. Overview
+**Last Updated**: 2025-07-11
 
-The Sentiment Agent analyzes market data and news sentiment to provide insights about market behavior. It uses LLM-driven function calling to decide which data sources to query based on the user's question.
+## Overview
 
-### Key Capabilities
+The Sentiment Agent is responsible for analyzing market sentiment through news articles and providing sentiment scores for trading decisions. It features an enhanced VXX fallback mechanism to ensure reliable sentiment signals even when news data is unavailable.
 
-- Fetches and analyzes news articles and their sentiment
-- Retrieves market data for stocks and sectors
-- Generates explanatory narratives about market behavior
-- Integrates with the broader RH2MAS multi-agent system
+## Key Features
 
-## 2. Architecture
+### 1. Multi-Source News Analysis
+- **Data Sources**: Alpha Vantage News, NewsAPI, Finnhub
+- **Unified News Tool**: Aggregates news from multiple sources
+- **Relevance Scoring**: Filters news by relevance (threshold ≥ 0.5)
+- **Sentiment Analysis**: Uses LLM to analyze article sentiment
 
-### Component Diagram
+### 2. VXX Fallback Mechanism
+When news is unavailable, the agent:
+1. Fetches VXX (volatility index) data
+2. Analyzes VXX movement patterns
+3. Converts volatility signals to sentiment scores
+4. Ensures trading strategy always has sentiment input
 
-For detailed component diagrams, see the UML diagrams in:
+### 3. News Caching System (NEW)
+- **Implementation**: NewsCache class with 7-day expiry
+- **Filtering**: Only caches relevant news (score ≥ 0.5)
+- **Benefits**: Reduces API calls, speeds up backtesting
+- **Location**: `.cache/news/` directory
 
-- [docs/UML/SentimentAgent/sentimentAgentSystemDataFlow.svg](./UML/SentimentAgent/sentimentAgentSystemDataFlow.svg)
-- [docs/UML/SentimentAgent/sentimentAgentSystemSequenceDiagram.svg](./UML/SentimentAgent/sentimentAgentSystemSequenceDiagram.svg)
+## Architecture
 
 ### Data Flow
-
-1. User query is received by the agent
-2. Query is parsed to extract key information (ticker, sector, date range)
-3. LLM decides which tools to call based on the query context
-4. Data is retrieved from selected sources
-5. Results are normalized and processed
-6. LLM generates a narrative response synthesizing the data
-
-### Tool Registration and Usage
-
-The Sentiment Agent follows AutoGen 0.5.x patterns for tool registration and usage:
-
-```python
-# Tools are defined using FunctionTool in tools.py
-sentiment_tools = get_tools_for_agent(SENTIMENT_AGENT)
-
-# Agent is initialized with these tools
-agent = SentimentAgent(tools=sentiment_tools)
-
-# Agent uses process_with_tools to allow LLM to select tools
-response = agent.process_with_tools(query, system_prompt)
+```
+User Query
+    ↓
+SentimentAgent
+    ├── Check News Cache
+    ├── Fetch News (if not cached)
+    │   ├── Alpha Vantage News API
+    │   ├── NewsAPI
+    │   └── Finnhub
+    ├── Relevance Filtering
+    ├── Sentiment Analysis (LLM)
+    └── VXX Fallback (if no news)
+         ↓
+    Sentiment Score (0-1)
 ```
 
-## 3. Implementation Details
+### Key Components
 
-### AutoGen 0.5.x Integration
+1. **BaseAgent Integration**
+   - Inherits from `BaseAgent` for tool management
+   - Uses AutoGen 0.6.x function calling
+   - Handles async/sync tool execution
 
-The Sentiment Agent uses AutoGen 0.5.x's function calling capabilities through:
+2. **Tool Management**
+   ```python
+   # Tools available to sentiment agent
+   - fetch_all_news: Unified news fetching
+   - fetch_market_data: Market data for VXX
+   - analyze_sentiment: LLM-based analysis
+   ```
 
-- `FunctionTool` for tool definition (see `tools.py`)
-- `model_client` for LLM integration
-- AutoGen's messaging system for conversation management
+3. **Caching Override**
+   ```python
+   async def _execute_tool(self, tool_name, tool_args):
+       if tool_name == "fetch_all_news":
+           # Check cache first
+           cached = self.news_cache.get(...)
+           if cached:
+               return cached
+           # Fetch and cache if not found
+   ```
 
-### Dual Implementation Approaches
+## Implementation Details
 
-The system supports two different implementation approaches:
+### News Fetching and Analysis
 
-1. **AutoGen Framework Mode**
-   - Uses `SentimentAgent` class (inherits from `BaseAgent` and AutoGen's `AssistantAgent`)
-   - Follows AutoGen 0.5.x patterns for tool registration and usage
-   - Tools are registered during agent initialization
-   - LLM selects tools dynamically based on query
+1. **Unified News Tool**
+   - Fetches from multiple sources in parallel
+   - Standardizes output format
+   - Deduplicates similar articles
+   - Provides search guidance for poor results
 
-2. **Direct OpenAI API Mode**
-   - Manually implements function calling using the OpenAI API directly
-   - Defines tool schemas inline in the implementation
-   - Provides a more direct control over the LLM interaction
-   - Useful for testing and development
+2. **Relevance Scoring**
+   ```python
+   # Scoring factors:
+   - Ticker match in title: 3x weight
+   - Keyword match in title: 2x weight
+   - Content matches: 1x weight
+   # Articles with score < 0.5 are filtered
+   ```
 
-The CLI supports switching between these modes:
+3. **Sentiment Analysis Process**
+   - Extract key themes from articles
+   - Analyze tone and market implications
+   - Generate confidence score
+   - Provide narrative explanation
 
-- Default: Direct OpenAI API Mode (for simplicity)
-- Toggle with "direct" command: Switches to AutoGen Framework Mode
+### VXX Fallback Logic
 
-### LLM Function Calling Implementation
-
+When no relevant news is found:
 ```python
-# Example of the AutoGen implementation in SentimentAgent:
-def generate_reply(self, messages, context=None):
-    # [Processing logic...]
-    return self.process_with_tools(last_message, system_prompt)
-
-# Example of the direct implementation in CLI:
-async def process_with_llm_function_calling(prompt, system_prompt):
-    # [Direct OpenAI API implementation...]
-```
-
-## 4. Usage Guide
-
-### CLI Interface
-
-The sentiment_agent_cli_improved.py provides an interactive interface:
-
-```bash
-python sentiment_agent_cli_improved.py
-```
-
-### Switching Between Modes
-
-Type "direct" in the CLI to toggle between:
-
-- Function calling mode (default): Uses OpenAI API directly
-- Direct agent mode: Uses SentimentAgent class with AutoGen
-
-### When to Use Each Mode
-
-- **Direct OpenAI API Mode**: For quick testing, simplified tool set
-- **AutoGen Framework Mode**: For full access to all tools, proper framework usage
-
-### Adding New Tools
-
-To add a new tool to the Sentiment Agent:
-
-1. Define the tool function in tools.py
-2. Wrap it with FunctionTool
-3. Add it to SENTIMENT_TOOLS list
-4. Tag with agent_types = [SENTIMENT_AGENT]
-
-Example:
-
-```python
-def my_new_tool(param1: str, param2: int) -> dict:
-    """Tool documentation"""
-    # Implementation
-    return result
-
-new_tool = FunctionTool(
-    func=my_new_tool,
-    name="my_new_tool",
-    description="Description of what the tool does"
+# Fetch VXX data for the date
+vxx_data = self.market_data_tool.fetch_market_data(
+    symbol="VXX",
+    start_date=date,
+    end_date=date
 )
-new_tool.agent_types = [SENTIMENT_AGENT]
 
-# Add to SENTIMENT_TOOLS list
-SENTIMENT_TOOLS.append(new_tool)
+# Analyze VXX movement
+if vxx_change > 5%:
+    sentiment = 0.2  # High volatility = negative
+elif vxx_change < -5%:
+    sentiment = 0.8  # Low volatility = positive
+else:
+    sentiment = 0.5  # Neutral
 ```
 
-## 5. Testing
+## Configuration
 
-### Unit Testing
+### LLM Settings
+```python
+SENTIMENT_LLM_CONFIG = {
+    "temperature": 0.3,  # Balanced for analysis
+    "max_tokens": 4096,  # Sufficient for complex responses
+    "model": "gpt-4"
+}
+```
 
-- Test individual components (QueryParser, tool functions)
-- Mock API responses for deterministic testing
+### System Prompt
+The agent uses a detailed system prompt that guides it to:
+- Analyze news sentiment objectively
+- Consider market context
+- Provide numerical scores with explanations
+- Use VXX as a fallback indicator
 
-### Integration Testing
+## Usage Examples
 
-- Test complete agent workflow with mock LLM responses
-- Verify tool selection logic
+### Basic Usage
+```python
+# Initialize agent
+agent = SentimentAgent()
 
-### Example Test Cases
+# Get sentiment for a date
+result = agent.generate_reply(
+    messages=[{
+        "role": "user",
+        "content": "What's the sentiment for AAPL on 2024-01-15?"
+    }]
+)
+```
 
-- News sentiment analysis for specific ticker
-- Market data retrieval and processing
-- Error handling for missing data sources
+### Response Format
+```json
+{
+    "score": 0.7,
+    "analysis": "Positive sentiment based on product launch news",
+    "confidence": 0.8,
+    "key_themes": ["innovation", "market expansion"],
+    "data_source": "news"  // or "vxx_fallback"
+}
+```
 
-## 6. Future Work
+## Testing and Validation
 
-### Planned Improvements
+### Unit Tests
+- News fetching with mock data
+- Sentiment scoring accuracy
+- VXX fallback triggering
+- Cache hit/miss scenarios
 
-- Enhanced natural language understanding
-- Additional data sources integration
-- Performance optimizations
-- Integration with other agents
+### Integration Tests
+- Multi-agent coordination
+- API failure handling
+- Cache persistence
+- Performance benchmarks
 
-### Enhanced Query Understanding
+## Recent Improvements (2025-07-11)
 
-- Implement a proper NLP pipeline for entity extraction
-- Add more sophisticated date parsing for complex time ranges
-- Support for comparison queries (e.g., "Compare tech vs energy sentiment")
+1. **News Caching**: Added NewsCache integration
+2. **Relevance Filtering**: Only cache/use relevant news
+3. **Enhanced VXX Fallback**: More sophisticated analysis
+4. **Better Error Handling**: Graceful degradation
 
-### Additional Data Sources
+## Known Limitations
 
-- Integrate FRED economic indicators for macro context
-- Add SEC filings for fundamental analysis
-- Support bond yield and dollar index for cross-asset correlation
-- Add options data to incorporate market expectations
+1. **API Rate Limits**: 
+   - Alpha Vantage: 25 calls/day
+   - Solution: Aggressive caching
 
-### Performance Optimization
+2. **News Quality**:
+   - Not all news is relevant
+   - Solution: Relevance scoring
 
-- Cache frequently accessed sector/ticker data
-- Implement parallel data fetching for multiple sources
-- Add request debouncing to manage API rate limits
-- Cache recent API responses for common queries
+3. **Historical Data**:
+   - Limited news for old dates
+   - Solution: VXX fallback
 
-### Response Quality
+## Future Enhancements
 
-- Fine-tune the LLM system prompt for better narratives
-- Add visual representations (charts, tables) of sentiment/price data
-- Include customizable response detail levels
-- Support for time series sentiment analysis
-
-### Integration with Other Agents
-
-- Standardize interfaces for Strategy and Risk agents
-- Implement a structured output format for agent consumption
-- Add metadata to responses for machine readability
-- Support for targeted queries from other agents
-
-## 7. Technical Details
-
-### Key Improvements from Refactoring
-
-1. **Modular Architecture**
-   - Separated concerns into distinct modules:
-     - SentimentAgent class (coordination and LLM integration)
-     - QueryParser (natural language understanding)
-     - DataProcessor (data formatting and preparation)
-   - Moved shared utilities to a dedicated module
-
-2. **External Configuration**
-   - Moved system prompts to `agent_prompts.json`
-   - Kept market sector data in `market_sectors.json`
-   - Made it easier to update prompts and sector information
-
-3. **LLM-Driven Design**
-   - Eliminated hard-coded narrative templates
-   - Let the LLM decide which tools to call based on the query
-   - Used the LLM to generate natural language explanations
-   - Provided supplementary context to guide the LLM
-
-4. **Improved Query Understanding**
-   - Implemented priority-based sector detection
-   - Better support for complex natural language queries
-   - Maintained fallback strategies for ambiguous queries
-
-5. **Enhanced Processing Flow**
-   - Pre-process user queries to extract helpful context
-   - Process tool results for consistent data structures
-   - Format data for optimal LLM consumption
-
-### Technical Debt to Address
-
-1. **Code Structure**
-   - Review circular import issues in data tools
-   - Separate data fetching from processing logic
-   - Implement proper error handling and rate limit management
-   - Add comprehensive unit tests for each component
-
-2. **Configuration Management**
-   - Move API keys to secure storage
-   - Implement versioning for sector configurations
-   - Add validation for configuration files
-   - Support for hot-reloading of configurations
-
-3. **Documentation**
-   - Document the query language capabilities
-   - Add examples of different query types
-   - Create developer documentation for extending the agent
-   - Document integration points with other agents
+1. **Additional Sources**: Reuters, Bloomberg APIs
+2. **NLP Improvements**: Fine-tuned sentiment models
+3. **Real-time Analysis**: Streaming news integration
+4. **Sector Analysis**: Industry-specific sentiment
