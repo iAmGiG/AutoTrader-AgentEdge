@@ -27,6 +27,7 @@ from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
 from src.utils.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
 from src.tools.cache import MarketDataCache
+from src.tools.cache.news_cache import NewsCache
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -74,6 +75,9 @@ class SentimentAgent(BaseAgent):
         
         # Initialize cache for VXX data
         self.market_cache = MarketDataCache()
+        
+        # Initialize news cache
+        self.news_cache = NewsCache()
 
         # Use only the tools appropriate for sentiment analysis
         tools = get_tools_for_agent(SENTIMENT_AGENT)
@@ -403,6 +407,133 @@ class SentimentAgent(BaseAgent):
             traceback.print_exc()
             print(f"Error in process_tool_result: {str(e)}")
             return {"error": f"Failed to process result: {str(e)}"}
+
+    async def _execute_tool(self, tool_name: str, tool_args: Any) -> Any:
+        """
+        Override to add news caching for fetch_all_news tool.
+        Only caches relevant news (relevance_score >= 0.5).
+        """
+        # Check if this is a news fetch that can be cached
+        if tool_name == "fetch_all_news" and isinstance(tool_args, dict):
+            # Extract parameters
+            keywords = tool_args.get("keywords", [])
+            if isinstance(keywords, str):
+                keywords = [keywords]
+            ticker = tool_args.get("ticker", "")
+            count = tool_args.get("count", 10)
+            
+            # Extract date range from tool args
+            # The sentiment agent typically queries for a specific date
+            # but we'll cache with a small range around it
+            start_date = tool_args.get("start_date", "")
+            end_date = tool_args.get("end_date", "")
+            
+            # If only one date provided, create a small range
+            if start_date and not end_date:
+                end_date = start_date
+            elif not start_date and not end_date:
+                # Default to today
+                from datetime import datetime
+                today = datetime.now().strftime("%Y-%m-%d")
+                start_date = end_date = today
+            
+            # Check cache first
+            cached_data = self.news_cache.get(
+                keywords=keywords,
+                ticker=ticker,
+                start=start_date,
+                end=end_date,
+                source="unified"
+            )
+            
+            if cached_data is not None:
+                # Convert DataFrame back to the expected format
+                if not cached_data.empty:
+                    # Filter by relevance score if present
+                    if 'relevance_score' in cached_data.columns:
+                        relevant_data = cached_data[cached_data['relevance_score'] >= 0.5]
+                    else:
+                        relevant_data = cached_data
+                    
+                    # Limit to requested count
+                    relevant_data = relevant_data.head(count)
+                    
+                    result = {
+                        "articles": relevant_data.to_dict(orient="records"),
+                        "count": len(relevant_data),
+                        "total_articles": len(relevant_data),
+                        "sources_used": ["cache"],
+                        "search_guidance": f"Using cached news data for {ticker} from {start_date} to {end_date}"
+                    }
+                else:
+                    # Empty cache means no news was found previously
+                    result = {
+                        "articles": [],
+                        "count": 0,
+                        "total_articles": 0,
+                        "sources_used": ["cache"],
+                        "search_guidance": "No cached news found for this period"
+                    }
+                
+                logger.info(f"Using cached news for {ticker} ({start_date} to {end_date})")
+                return result
+        
+        # Call the parent method for actual tool execution
+        result = await super()._execute_tool(tool_name, tool_args)
+        
+        # Cache the result if it's from fetch_all_news
+        if tool_name == "fetch_all_news" and isinstance(result, dict) and isinstance(tool_args, dict):
+            # Extract parameters for caching
+            cache_keywords = tool_args.get("keywords", [])
+            if isinstance(cache_keywords, str):
+                cache_keywords = [cache_keywords]
+            cache_ticker = tool_args.get("ticker", "")
+            cache_start_date = tool_args.get("start_date", "")
+            cache_end_date = tool_args.get("end_date", "")
+            
+            # If only one date provided, create a small range
+            if cache_start_date and not cache_end_date:
+                cache_end_date = cache_start_date
+            elif not cache_start_date and not cache_end_date:
+                # Default to today
+                from datetime import datetime
+                today = datetime.now().strftime("%Y-%m-%d")
+                cache_start_date = cache_end_date = today
+            
+            # Only cache if we have articles
+            if result.get("articles"):
+                articles_df = pd.DataFrame(result["articles"])
+                
+                # Only cache relevant articles (relevance_score >= 0.5)
+                if 'relevance_score' in articles_df.columns:
+                    relevant_articles = articles_df[articles_df['relevance_score'] >= 0.5]
+                else:
+                    relevant_articles = articles_df
+                
+                # Only cache if we have relevant articles
+                if not relevant_articles.empty:
+                    self.news_cache.set(
+                        keywords=cache_keywords,
+                        ticker=cache_ticker,
+                        start=cache_start_date,
+                        end=cache_end_date,
+                        source="unified",
+                        data=relevant_articles
+                    )
+                    logger.info(f"Cached {len(relevant_articles)} relevant news articles for {cache_ticker}")
+            else:
+                # Cache empty result to avoid repeated API calls
+                self.news_cache.set(
+                    keywords=cache_keywords,
+                    ticker=cache_ticker,
+                    start=cache_start_date,
+                    end=cache_end_date,
+                    source="unified",
+                    data=pd.DataFrame()
+                )
+                logger.info(f"Cached empty news result for {cache_ticker}")
+        
+        return result
 
     def generate_reply(self, messages, context=None) -> str:
         """
