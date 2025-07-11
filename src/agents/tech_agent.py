@@ -515,7 +515,9 @@ class TechAgent(BaseAgent):
 
                 # Always compute MACD so downstream logic can rely on it
                 macd_df = macd(df["Close"])
-                macd_df["MACD"] = macd_df["MACD_line"] - macd_df["MACD_signal"]
+                # Use MACD line (not histogram) for strategy signals
+                # MACD line = EMA(12) - EMA(26)
+                macd_df["MACD"] = macd_df["MACD_line"]
                 df = pd.concat([df, macd_df], axis=1)
                 if "bollinger" in req:
                     df = pd.concat([df, bollinger_bands(df["Close"])], axis=1)

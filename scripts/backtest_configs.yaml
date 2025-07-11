@@ -3,17 +3,17 @@
 
 # Quick tests for development/debugging
 quick_tests:
-  - name: "AAPL Recent Week"
+  - name: "AAPL Jan 2024 Test"
     symbol: "AAPL"
-    start: "2025-06-20"
-    end: "2025-06-25"
-    description: "Quick test with recent data"
+    start: "2024-01-15"
+    end: "2024-01-20"
+    description: "Quick test with cached data"
   
-  - name: "NVDA Recent Week"
-    symbol: "NVDA"
-    start: "2025-06-20"
-    end: "2025-06-25"
-    description: "Quick test with volatile stock"
+  - name: "AAPL Feb 2024 Test"
+    symbol: "AAPL"
+    start: "2024-02-01"
+    end: "2024-02-06"
+    description: "Quick test with cached data"
 
 # Comprehensive tests for market stress periods
 comprehensive_tests:

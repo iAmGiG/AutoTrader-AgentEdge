@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 from .base_agent import BaseAgent
-from .sentiment_agent import SentimentAgent
+from .sentiment_agent import SentimentAgent  # Using enhanced version with VXX fallback
 from .tech_agent import TechAgent
 
 
