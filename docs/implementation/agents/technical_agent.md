@@ -32,13 +32,16 @@ macd_df["MACD"] = macd_df["MACD_line"]  # Use MACD line for signals
 macd_df["MACD"] = macd_df["MACD_line"] - macd_df["MACD_signal"]  # This was the histogram!
 ```
 
-#### MACD Components:
+#### MACD Components
+
 - **MACD Line**: EMA(12) - EMA(26) - The primary signal line
 - **Signal Line**: EMA(9) of MACD line - Used for crossover signals
 - **Histogram**: MACD line - Signal line - Shows convergence/divergence
 
-#### Why This Matters:
+#### Why This Matters
+
 The strategy agent expects the MACD value to be the MACD line itself, not the histogram. Using the histogram led to incorrect trading signals because:
+
 1. Histogram values are much smaller in magnitude
 2. Histogram represents the difference between MACD and signal, not the trend itself
 3. Standard MACD trading strategies use the MACD line value
@@ -46,7 +49,7 @@ The strategy agent expects the MACD value to be the MACD line itself, not the hi
 ### 3. Data Flow
 
 1. **Input**: Market data (OHLCV) from various sources
-2. **Processing**: 
+2. **Processing**:
    - Calculate requested indicators
    - Always includes MACD for downstream consistency
    - Formats data for LLM analysis
@@ -55,6 +58,7 @@ The strategy agent expects the MACD value to be the MACD line itself, not the hi
 ### 4. LLM Integration
 
 The agent uses GPT-4 to:
+
 - Interpret technical patterns
 - Identify support/resistance levels
 - Assess signal strength
@@ -63,10 +67,13 @@ The agent uses GPT-4 to:
 ### 5. Key Methods
 
 #### `generate_reply(messages, context)`
+
 Main entry point for technical analysis requests.
 
 #### `_execute_tool(tool_name, tool_args)`
+
 Handles tool execution, particularly `analyze_technicals` which:
+
 - Fetches market data
 - Calculates indicators (always includes MACD)
 - Returns formatted analysis
@@ -98,11 +105,13 @@ technical_data = {
 ## Common Issues and Solutions
 
 ### Issue 1: MACD Values Seem Wrong
+
 **Symptom**: MACD values are very small (near 0) when stock is trending
 **Cause**: Using histogram instead of MACD line
 **Solution**: Ensure `MACD = MACD_line` not `MACD_line - MACD_signal`
 
 ### Issue 2: Missing MACD Data
+
 **Symptom**: Strategy complains about missing MACD
 **Cause**: Not enough historical data for calculation
 **Solution**: MACD requires 26+ days of data minimum
@@ -110,6 +119,7 @@ technical_data = {
 ## Testing
 
 To verify MACD calculations:
+
 ```python
 # Test with known data
 from src.tools.processors.indicator_library import macd

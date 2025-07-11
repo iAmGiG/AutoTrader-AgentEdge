@@ -42,4 +42,3 @@ only sees the tools it needs, reducing prompt noise and API usage.
 - [AutoGen Core Reference](autogen_core_reference/README.md) – Reference
   documentation for AutoGen Core 0.6.x components used in RH2MAS
 - [Status Summary: Sentiment and Tech Agents](status_summary_sentiment_tech_agents.md) – High-level overview of the active agents and their limitations
-

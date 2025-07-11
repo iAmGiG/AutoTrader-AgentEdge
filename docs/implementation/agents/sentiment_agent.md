@@ -9,19 +9,23 @@ The Sentiment Agent is responsible for analyzing market sentiment through news a
 ## Key Features
 
 ### 1. Multi-Source News Analysis
+
 - **Data Sources**: Alpha Vantage News, NewsAPI, Finnhub
 - **Unified News Tool**: Aggregates news from multiple sources
 - **Relevance Scoring**: Filters news by relevance (threshold ≥ 0.5)
 - **Sentiment Analysis**: Uses LLM to analyze article sentiment
 
 ### 2. VXX Fallback Mechanism
+
 When news is unavailable, the agent:
+
 1. Fetches VXX (volatility index) data
 2. Analyzes VXX movement patterns
 3. Converts volatility signals to sentiment scores
 4. Ensures trading strategy always has sentiment input
 
 ### 3. News Caching System (NEW)
+
 - **Implementation**: NewsCache class with 7-day expiry
 - **Filtering**: Only caches relevant news (score ≥ 0.5)
 - **Benefits**: Reduces API calls, speeds up backtesting
@@ -30,6 +34,7 @@ When news is unavailable, the agent:
 ## Architecture
 
 ### Data Flow
+
 ```
 User Query
     ↓
@@ -54,6 +59,7 @@ SentimentAgent
    - Handles async/sync tool execution
 
 2. **Tool Management**
+
    ```python
    # Tools available to sentiment agent
    - fetch_all_news: Unified news fetching
@@ -62,6 +68,7 @@ SentimentAgent
    ```
 
 3. **Caching Override**
+
    ```python
    async def _execute_tool(self, tool_name, tool_args):
        if tool_name == "fetch_all_news":
@@ -83,6 +90,7 @@ SentimentAgent
    - Provides search guidance for poor results
 
 2. **Relevance Scoring**
+
    ```python
    # Scoring factors:
    - Ticker match in title: 3x weight
@@ -100,6 +108,7 @@ SentimentAgent
 ### VXX Fallback Logic
 
 When no relevant news is found:
+
 ```python
 # Fetch VXX data for the date
 vxx_data = self.market_data_tool.fetch_market_data(
@@ -120,6 +129,7 @@ else:
 ## Configuration
 
 ### LLM Settings
+
 ```python
 SENTIMENT_LLM_CONFIG = {
     "temperature": 0.3,  # Balanced for analysis
@@ -129,7 +139,9 @@ SENTIMENT_LLM_CONFIG = {
 ```
 
 ### System Prompt
+
 The agent uses a detailed system prompt that guides it to:
+
 - Analyze news sentiment objectively
 - Consider market context
 - Provide numerical scores with explanations
@@ -138,6 +150,7 @@ The agent uses a detailed system prompt that guides it to:
 ## Usage Examples
 
 ### Basic Usage
+
 ```python
 # Initialize agent
 agent = SentimentAgent()
@@ -152,6 +165,7 @@ result = agent.generate_reply(
 ```
 
 ### Response Format
+
 ```json
 {
     "score": 0.7,
@@ -165,12 +179,14 @@ result = agent.generate_reply(
 ## Testing and Validation
 
 ### Unit Tests
+
 - News fetching with mock data
 - Sentiment scoring accuracy
 - VXX fallback triggering
 - Cache hit/miss scenarios
 
 ### Integration Tests
+
 - Multi-agent coordination
 - API failure handling
 - Cache persistence
@@ -185,7 +201,7 @@ result = agent.generate_reply(
 
 ## Known Limitations
 
-1. **API Rate Limits**: 
+1. **API Rate Limits**:
    - Alpha Vantage: 25 calls/day
    - Solution: Aggressive caching
 

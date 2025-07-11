@@ -9,18 +9,21 @@ The Coordinator Agent is the orchestrator of the multi-agent system, responsible
 ## Core Responsibilities
 
 ### 1. Agent Orchestration
+
 - Manages parallel agent execution
 - Handles agent communication
 - Aggregates responses from multiple agents
 - Ensures data consistency
 
 ### 2. Signal Aggregation
+
 - Collects sentiment analysis from SentimentAgent
 - Gathers technical indicators from TechAgent
 - Combines signals into structured format
 - Validates signal completeness
 
 ### 3. Error Handling
+
 - Manages agent failures gracefully
 - Provides fallback mechanisms
 - Logs issues for debugging
@@ -29,6 +32,7 @@ The Coordinator Agent is the orchestrator of the multi-agent system, responsible
 ## Architecture
 
 ### Communication Flow
+
 ```
 Coordinator Agent
     ├── Parallel Execution
@@ -44,7 +48,9 @@ Coordinator Agent
 ### Key Methods
 
 #### `get_signals(date, symbol)`
+
 Primary method for obtaining trading signals:
+
 ```python
 async def get_signals(self, date: str, symbol: str) -> Dict:
     """
@@ -62,7 +68,9 @@ async def get_signals(self, date: str, symbol: str) -> Dict:
 ```
 
 #### `get_signals_with_reasoning(date, symbol)`
+
 Enhanced method that captures LLM reasoning:
+
 ```python
 async def get_signals_with_reasoning(self, date: str, symbol: str):
     """
@@ -76,6 +84,7 @@ async def get_signals_with_reasoning(self, date: str, symbol: str):
 ## Signal Structure
 
 ### Unified Output Format
+
 ```python
 {
     'ok': True,
@@ -96,7 +105,9 @@ async def get_signals_with_reasoning(self, date: str, symbol: str):
 ```
 
 ### Raw Response Capture
+
 For backtesting analysis:
+
 ```python
 raw_responses = {
     'sentiment': {
@@ -116,6 +127,7 @@ raw_responses = {
 ## Implementation Details
 
 ### 1. Parallel Agent Execution
+
 ```python
 # Execute agents concurrently for efficiency
 tasks = [
@@ -126,12 +138,15 @@ results = await asyncio.gather(*tasks, return_exceptions=True)
 ```
 
 ### 2. Response Parsing
+
 The coordinator uses specialized parsing for each agent:
+
 - **Sentiment**: Extracts score, themes, confidence
 - **Technical**: Extracts MACD values, patterns
 - **Validation**: Ensures required fields present
 
 ### 3. Error Recovery
+
 ```python
 # Graceful degradation
 if sentiment_failed:
@@ -147,6 +162,7 @@ if technical_failed:
 ## Integration Points
 
 ### 1. With Backtesting System
+
 ```python
 # In backtest_mas.py
 coord = CoordinatorAgent()
@@ -157,6 +173,7 @@ for date in trading_days:
 ```
 
 ### 2. With Strategy Agent
+
 ```python
 # Strategy uses coordinator's unified signals
 signals = coordinator.get_signals(date, symbol)
@@ -164,7 +181,9 @@ decision = strategy.decide_trade(signals, price, date)
 ```
 
 ### 3. With Output Manager
+
 Coordinator signals are saved for post-analysis:
+
 - Daily reasoning files
 - Agent response tracking
 - Performance attribution
@@ -172,6 +191,7 @@ Coordinator signals are saved for post-analysis:
 ## Configuration
 
 ### Agent Initialization
+
 ```python
 class CoordinatorAgent:
     def __init__(self):
@@ -181,6 +201,7 @@ class CoordinatorAgent:
 ```
 
 ### Timeout Settings
+
 - Agent timeout: 30 seconds per agent
 - Total timeout: 60 seconds
 - Retry attempts: 1
@@ -218,12 +239,14 @@ save_llm_reasoning(reasoning)
 ## Error Handling
 
 ### Common Issues
+
 1. **Agent Timeout**: Returns partial signals
 2. **API Failures**: Uses cached data when possible
 3. **Parse Errors**: Falls back to default values
 4. **Network Issues**: Implements retry logic
 
 ### Debugging
+
 - Check agent logs for detailed errors
 - Review raw_responses for parsing issues
 - Verify API credentials and limits

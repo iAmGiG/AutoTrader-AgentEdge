@@ -28,6 +28,7 @@ The agent uses a sentiment-filtered MACD strategy:
    - Invalid signals
 
 ### Decision Flow
+
 ```
 Receive Signals
     ↓
@@ -48,6 +49,7 @@ Generate Decision
 ## Key Components
 
 ### 1. Signal Processing
+
 ```python
 def decide_trade(self, signals, price, trade_date):
     """
@@ -64,6 +66,7 @@ def decide_trade(self, signals, price, trade_date):
 ```
 
 ### 2. Strategy Implementation
+
 ```python
 # Enhanced strategy (sentiment >= 0)
 if sentiment_score >= 0:
@@ -76,6 +79,7 @@ if sentiment_score >= 0:
 ```
 
 ### 3. Risk Management
+
 - **Position Sizing**: Fixed 100 shares (configurable)
 - **Capital Check**: Ensures sufficient funds
 - **Drawdown Monitoring**: Tracks equity curve
@@ -101,6 +105,7 @@ The agent calculates various performance metrics:
    - Number of Trades
 
 ### Metric Calculation
+
 ```python
 def calculate_metrics(self, initial_capital):
     """Calculate performance metrics from equity curve."""
@@ -115,6 +120,7 @@ def calculate_metrics(self, initial_capital):
 ## Integration with Other Agents
 
 ### Input Requirements
+
 ```python
 signals = {
     'sentiment': {
@@ -131,6 +137,7 @@ signals = {
 ```
 
 ### Output Format
+
 ```python
 decision = {
     'action': 'BUY',          # BUY/SELL/HOLD
@@ -146,6 +153,7 @@ decision = {
 ## Configuration
 
 ### Strategy Parameters
+
 ```python
 # Configurable thresholds
 SENTIMENT_THRESHOLD = 0.0    # Minimum sentiment (0 = neutral)
@@ -154,6 +162,7 @@ RISK_THRESHOLD = 0.20        # 20% drawdown limit
 ```
 
 ### Backtesting Settings
+
 - Initial capital: $100,000
 - Commission: $0 (simplified)
 - Slippage: Not modeled
@@ -190,12 +199,14 @@ elif decision['action'] == 'SELL':
 ## Performance Characteristics
 
 ### Strengths
+
 - Clear entry/exit rules
 - Combines sentiment + technical
 - Risk management built-in
 - Transparent decision logic
 
 ### Limitations
+
 - Single position only
 - Fixed position sizing
 - Daily frequency only

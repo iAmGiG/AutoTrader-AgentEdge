@@ -9,6 +9,7 @@ RH2MAS (Reflective Hybrid Head Multi-Agent System) uses a streamlined multi-agen
 ## Core Agents
 
 ### 1. SentimentAgent (`src/agents/sentiment_agent.py`)
+
 - **Enhanced Features**:
   - News sentiment analysis using multiple sources
   - VXX fallback mechanism for missing news data
@@ -18,6 +19,7 @@ RH2MAS (Reflective Hybrid Head Multi-Agent System) uses a streamlined multi-agen
 - **Caching**: 7-day news cache to reduce API calls
 
 ### 2. TechAgent (`src/agents/tech_agent.py`)
+
 - **Technical Analysis**:
   - MACD calculation (fixed: uses MACD line, not histogram)
   - RSI, Bollinger Bands, EMA/SMA indicators
@@ -26,6 +28,7 @@ RH2MAS (Reflective Hybrid Head Multi-Agent System) uses a streamlined multi-agen
 - **Data Sources**: Yahoo Finance, Alpha Vantage, FMP
 
 ### 3. StrategyAgent (`src/agents/strategy_agent.py`)
+
 - **Trading Strategy**:
   - Enhanced strategy: sentiment >= 0 requirement
   - MACD-based entry/exit signals
@@ -33,6 +36,7 @@ RH2MAS (Reflective Hybrid Head Multi-Agent System) uses a streamlined multi-agen
 - **Decision Logic**: Combines sentiment + technical signals
 
 ### 4. CoordinatorAgent (`src/agents/coordinator_agent.py`)
+
 - **Orchestration**:
   - Manages agent communication
   - Aggregates signals from all agents
@@ -55,17 +59,21 @@ CoordinatorAgent
 ## Key Infrastructure
 
 ### Caching System
+
 - **Market Data Cache**: 24-hour expiry, reduces API calls
 - **News Cache**: 7-day expiry, filters relevant news only
 - **Location**: `.cache/` directory
 
 ### Data Sources
+
 - **Market Data**: Yahoo (primary), Alpha Vantage, FMP
 - **News**: Alpha Vantage News, NewsAPI, Finnhub
 - **Economic**: FRED, SEC Edgar (future)
 
 ### Output Organization
+
 Backtests create organized output:
+
 ```
 .cache/backtests/runs/SYMBOL_START_END_TIMESTAMP/
 ├── data/          # CSV files (trades, equity, metrics)
@@ -77,6 +85,7 @@ Backtests create organized output:
 ## Running the System
 
 ### Single Backtest
+
 ```bash
 python scripts/backtest_mas.py SYMBOL START END
 
@@ -85,6 +94,7 @@ python scripts/backtest_mas.py AAPL 2024-01-01 2024-01-31
 ```
 
 ### Batch Testing
+
 ```bash
 # Quick tests (2-3 minutes)
 python scripts/run_backtest_suite.py quick

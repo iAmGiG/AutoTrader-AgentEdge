@@ -9,6 +9,7 @@ The Enhanced Sentiment Agent V2 now includes proper caching for VXX (volatility)
 ### 1. **Changes to sentiment_agent_v2.py**
 
 Added MarketDataCache to the agent initialization:
+
 ```python
 from src.tools.cache import MarketDataCache
 
@@ -23,6 +24,7 @@ class SentimentAgent(BaseAgent):
 ### 2. **Updated _get_vix_sentiment method**
 
 The method now checks cache before fetching from API:
+
 ```python
 def _get_vix_sentiment(self, date: str) -> Dict[str, Any]:
     # ... date calculation ...
@@ -53,6 +55,7 @@ def _get_vix_sentiment(self, date: str) -> Dict[str, Any]:
 VXX data is cached in: `.cache/market_data/`
 
 Each cache file is named with an MD5 hash of the request parameters:
+
 - Symbol: VXX
 - Start date
 - End date  
@@ -76,6 +79,7 @@ Two test scripts verify the caching implementation:
 ## Usage in Backtesting
 
 When running backtests with Enhanced Sentiment V2:
+
 - News data is attempted first
 - If no news is found, VXX fallback is triggered
 - VXX data is fetched from cache if available
@@ -85,6 +89,7 @@ When running backtests with Enhanced Sentiment V2:
 ## Example Output
 
 When VXX caching is active, you'll see messages like:
+
 ```
 💾 Cached data for VXX (2024-11-28 to 2024-12-02) from yahoo
 ✅ Cache hit for VXX (2024-11-28 to 2024-12-02) from yahoo
@@ -93,6 +98,7 @@ When VXX caching is active, you'll see messages like:
 ## Performance Impact
 
 For a typical backtest:
+
 - Without caching: ~3-5 seconds per VXX fetch
 - With caching: <0.1 seconds for cached lookups
 - For a 30-day backtest with daily VXX lookups: ~90-150 seconds saved
