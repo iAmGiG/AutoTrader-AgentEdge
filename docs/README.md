@@ -4,6 +4,12 @@ This folder contains the main documentation for the research prototype. The
 project is built around a **multi‑agent system** with shared memory and a set of
 data–retrieval tools. Below is a quick overview of what is implemented today.
 
+## Recent Updates (2025-07-11)
+
+- **MACD Calculation Fix**: Technical agent now correctly uses MACD line (EMA12-EMA26) instead of histogram for trading signals. See [technical_agent.md](implementation/agents/technical_agent.md) for details.
+- **News Caching**: Sentiment agent now caches relevant news (score ≥ 0.5) to reduce API calls
+- **Test Infrastructure**: Moved to rapid iteration mode, tests excluded from version control
+
 ## Hybrid‑Head
 
 Neural architecture combining attention and state space models. The current code
