@@ -245,6 +245,7 @@ def main() -> None:
         if result is None or result.empty:
             print(f"Failed to fetch data for {symbol}")
             output_manager.finalize_run("failed")
+            print(f"Output directory: {run_dir}")  # Still output directory for parsing
             return
 
         prices = result
@@ -260,6 +261,7 @@ def main() -> None:
     elif 'Close' not in prices.columns:
         print("Error: No 'Close' price column found in data")
         output_manager.finalize_run("failed")
+        print(f"Output directory: {run_dir}")  # Still output directory for parsing
         return
 
     # Ensure index is datetime
@@ -518,10 +520,20 @@ def main() -> None:
             print(
                 f"  - {category}: {len(examples)} high-quality examples extracted")
 
+    # Save days processed to metadata for cost tracking
+    metadata_path = run_dir / "metadata.json"
+    if metadata_path.exists():
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        metadata['days_processed'] = successful_days
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+
     # Finalize run
     output_manager.finalize_run("completed")
 
     print(f"\n🎯 Complete organized output saved to: {run_dir}")
+    print(f"Output directory: {run_dir}")  # This line is parsed by other scripts
     print("\nOrganized structure includes:")
     print("  📁 data/          - Trade, equity, and metrics CSV files")
     print("  📁 analysis/      - Daily LLM reasoning and agent responses")

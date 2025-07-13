@@ -20,7 +20,6 @@ import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import concurrent.futures
-from src.utils.report_generator import ReportGenerator
 import time
 
 # Define clear market periods
@@ -127,8 +126,18 @@ def run_backtests_for_condition(condition_name: str, condition_data: Dict,
             if ticker in progress[condition_name] and progress[condition_name][ticker].get('completed'):
                 run_dir = progress[condition_name][ticker].get('run_dir')
                 if run_dir and os.path.exists(run_dir):
-                    run_dirs.append(run_dir)
-                    completed_tickers.append(ticker)
+                    # Verify the run actually completed successfully
+                    metadata_file = os.path.join(run_dir, "metadata.json")
+                    if os.path.exists(metadata_file):
+                        with open(metadata_file) as f:
+                            metadata = json.load(f)
+                        if metadata.get('status') == 'completed':
+                            run_dirs.append(run_dir)
+                            completed_tickers.append(ticker)
+                            continue
+                    # If not properly completed, remove from progress
+                    progress[condition_name][ticker]['completed'] = False
+                    save_progress(progress)
 
     remaining_tickers = [t for t in TICKERS if t not in completed_tickers]
 
