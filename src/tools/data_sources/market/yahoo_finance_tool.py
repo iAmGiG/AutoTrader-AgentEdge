@@ -2,7 +2,6 @@ import yfinance as yf
 import pandas as pd
 import logging
 import time
-import functools
 from typing import Optional
 from datetime import datetime, timedelta
 from src.utils.date_utils import get_processed_date_range, localize_df, get_default_timezone, process_date_param

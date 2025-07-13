@@ -9,6 +9,15 @@ Usage:
 Example:
     python backtest_mas.py NVDA 2023-01-01 2024-12-31
 """
+import sys
+import os
+
+# autopep8: off
+# this line must come before local imports, review before linting
+# Add parent directory to Python path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# autopep8: on
+
 from src.utils.output_manager import OutputManager
 from src.utils.report_generator import ReportGenerator
 from src.utils.date_utils import process_date_param
@@ -16,17 +25,11 @@ from src.tools.data_sources.market.market_data_tool import MarketDataTool
 from src.agents.coordinator_agent import CoordinatorAgent
 from src.agents.strategy_agent import StrategyAgent
 from src.tools.cache import MarketDataCache
-import sys
-import os
 import json
 import traceback
 import asyncio
 from typing import List, Dict
 import pandas as pd
-
-# Add src to Python path
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
 
 
 # Import both strategy versions
@@ -423,10 +426,10 @@ def main() -> None:
     initial_value = 100_000.0
     total_return = (final_value - initial_value) / initial_value * 100
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print(f"BACKTEST SUMMARY: {symbol}")
     print(f"Period: {start} to {end}")
-    print("="*60)
+    print("=" * 60)
 
     print(f"\nProcessing Statistics:")
     print(f"  Total days: {total_days}")

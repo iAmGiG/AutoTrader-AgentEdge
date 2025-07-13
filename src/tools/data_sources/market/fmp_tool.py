@@ -8,9 +8,8 @@ and other corporate actions. FMP offers good free tier access to corporate event
 import requests
 import logging
 import pandas as pd
-from typing import Optional, List
+from typing import Optional
 import os
-from datetime import datetime, timedelta
 from config.config_loader import ConfigLoader
 from src.utils.date_utils import process_date_param, localize_df, get_default_timezone
 

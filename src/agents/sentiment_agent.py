@@ -72,10 +72,10 @@ class SentimentAgent(BaseAgent):
 
         # Initialize market data tool for VXX fallback
         self.market_data_tool = MarketDataTool()
-        
+
         # Initialize cache for VXX data
         self.market_cache = MarketDataCache()
-        
+
         # Initialize news cache
         self.news_cache = NewsCache()
 
@@ -114,12 +114,12 @@ class SentimentAgent(BaseAgent):
 
             # Try to get VXX data from cache first
             vxx_data = self.market_cache.get("VXX", start_date, end_date, "yahoo")
-            
+
             if vxx_data is None or vxx_data.empty:
                 # Fetch VXX data from market tool
                 vxx_data = self.market_data_tool.fetch_market_data(
                     "VXX", start_date, end_date)
-                
+
                 # Cache the data if successfully fetched
                 if vxx_data is not None and not vxx_data.empty:
                     self.market_cache.set("VXX", start_date, end_date, "yahoo", vxx_data)
@@ -421,13 +421,13 @@ class SentimentAgent(BaseAgent):
                 keywords = [keywords]
             ticker = tool_args.get("ticker", "")
             count = tool_args.get("count", 10)
-            
+
             # Extract date range from tool args
             # The sentiment agent typically queries for a specific date
             # but we'll cache with a small range around it
             start_date = tool_args.get("start_date", "")
             end_date = tool_args.get("end_date", "")
-            
+
             # If only one date provided, create a small range
             if start_date and not end_date:
                 end_date = start_date
@@ -436,7 +436,7 @@ class SentimentAgent(BaseAgent):
                 from datetime import datetime
                 today = datetime.now().strftime("%Y-%m-%d")
                 start_date = end_date = today
-            
+
             # Check cache first
             cached_data = self.news_cache.get(
                 keywords=keywords,
@@ -445,7 +445,7 @@ class SentimentAgent(BaseAgent):
                 end=end_date,
                 source="unified"
             )
-            
+
             if cached_data is not None:
                 # Convert DataFrame back to the expected format
                 if not cached_data.empty:
@@ -454,10 +454,10 @@ class SentimentAgent(BaseAgent):
                         relevant_data = cached_data[cached_data['relevance_score'] >= 0.5]
                     else:
                         relevant_data = cached_data
-                    
+
                     # Limit to requested count
                     relevant_data = relevant_data.head(count)
-                    
+
                     result = {
                         "articles": relevant_data.to_dict(orient="records"),
                         "count": len(relevant_data),
@@ -474,13 +474,13 @@ class SentimentAgent(BaseAgent):
                         "sources_used": ["cache"],
                         "search_guidance": "No cached news found for this period"
                     }
-                
+
                 logger.info(f"Using cached news for {ticker} ({start_date} to {end_date})")
                 return result
-        
+
         # Call the parent method for actual tool execution
         result = await super()._execute_tool(tool_name, tool_args)
-        
+
         # Cache the result if it's from fetch_all_news
         if tool_name == "fetch_all_news" and isinstance(result, dict) and isinstance(tool_args, dict):
             # Extract parameters for caching
@@ -490,7 +490,7 @@ class SentimentAgent(BaseAgent):
             cache_ticker = tool_args.get("ticker", "")
             cache_start_date = tool_args.get("start_date", "")
             cache_end_date = tool_args.get("end_date", "")
-            
+
             # If only one date provided, create a small range
             if cache_start_date and not cache_end_date:
                 cache_end_date = cache_start_date
@@ -499,17 +499,17 @@ class SentimentAgent(BaseAgent):
                 from datetime import datetime
                 today = datetime.now().strftime("%Y-%m-%d")
                 cache_start_date = cache_end_date = today
-            
+
             # Only cache if we have articles
             if result.get("articles"):
                 articles_df = pd.DataFrame(result["articles"])
-                
+
                 # Only cache relevant articles (relevance_score >= 0.5)
                 if 'relevance_score' in articles_df.columns:
                     relevant_articles = articles_df[articles_df['relevance_score'] >= 0.5]
                 else:
                     relevant_articles = articles_df
-                
+
                 # Only cache if we have relevant articles
                 if not relevant_articles.empty:
                     self.news_cache.set(
@@ -520,7 +520,8 @@ class SentimentAgent(BaseAgent):
                         source="unified",
                         data=relevant_articles
                     )
-                    logger.info(f"Cached {len(relevant_articles)} relevant news articles for {cache_ticker}")
+                    logger.info(
+                        f"Cached {len(relevant_articles)} relevant news articles for {cache_ticker}")
             else:
                 # Cache empty result to avoid repeated API calls
                 self.news_cache.set(
@@ -532,7 +533,7 @@ class SentimentAgent(BaseAgent):
                     data=pd.DataFrame()
                 )
                 logger.info(f"Cached empty news result for {cache_ticker}")
-        
+
         return result
 
     def generate_reply(self, messages, context=None) -> str:
@@ -602,7 +603,7 @@ class SentimentAgent(BaseAgent):
             # Extract just the user message for processing
             user_msg = enhanced_messages[-1]['content'] if enhanced_messages else user_message
             system_msg = enhanced_messages[0]['content'] if enhanced_messages else system_content
-            
+
             response = self.process_with_tools(user_msg, system_msg)
 
             # Check if response is None or empty
@@ -641,10 +642,11 @@ class SentimentAgent(BaseAgent):
                 if json_match:
                     json_data = json.loads(json_match.group())
                     # Check for low confidence (< 0.3) OR score of 0
-                    if (json_data.get("confidence", 1) < 0.3 or 
-                        (json_data.get("score", 1) == 0 and json_data.get("confidence", 1) <= 0.2)):
+                    if (json_data.get("confidence", 1) < 0.3 or
+                            (json_data.get("score", 1) == 0 and json_data.get("confidence", 1) <= 0.2)):
                         no_news_found = True
-                        logger.info(f"Low confidence sentiment detected: score={json_data.get('score')}, confidence={json_data.get('confidence')}")
+                        logger.info(
+                            f"Low confidence sentiment detected: score={json_data.get('score')}, confidence={json_data.get('confidence')}")
             except:
                 pass
 
@@ -680,7 +682,7 @@ class SentimentAgent(BaseAgent):
                 # Extract user and system messages
                 vxx_user_msg = vxx_messages[-1]['content']
                 vxx_system_msg = vxx_messages[0]['content']
-                
+
                 response = self.process_with_tools(vxx_user_msg, vxx_system_msg)
 
                 # Log the sentiment source

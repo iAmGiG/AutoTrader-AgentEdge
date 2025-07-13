@@ -75,17 +75,17 @@ class StrategyAgent(BaseAgent):
 
         # Log trade decision
         self.trade_log.append({
-            "date":       trade_date,
-            "action":     action,
-            "price":      price,
+            "date": trade_date,
+            "action": action,
+            "price": price,
             "macd_today": macd_t,
-            "macd_yest":  macd_y,
-            "sentiment":  sentiment,
+            "macd_yest": macd_y,
+            "sentiment": sentiment,
         })
 
         return {
             "action": action,
-            "qty":    100 if action == "BUY" else 0,
+            "qty": 100 if action == "BUY" else 0,
             "reason": "macd_sent_rule_v2"
         }
 
@@ -178,7 +178,7 @@ class StrategyAgent(BaseAgent):
                 daily_returns = []
                 for i in range(1, len(equity_values)):
                     daily_return = (
-                        equity_values[i] - equity_values[i-1]) / equity_values[i-1]
+                        equity_values[i] - equity_values[i - 1]) / equity_values[i - 1]
                     daily_returns.append(daily_return)
 
                 if daily_returns:
@@ -233,9 +233,9 @@ class StrategyAgent(BaseAgent):
 
     def print_metrics_summary(self, metrics: Dict) -> None:
         """Print a formatted summary of performance metrics."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("STRATEGY PERFORMANCE METRICS")
-        print("="*60)
+        print("=" * 60)
 
         print(f"\nReturns:")
         print(f"  Total Return: {metrics['total_return_pct']:+.2f}%")
@@ -256,4 +256,4 @@ class StrategyAgent(BaseAgent):
             print(f"  Expectancy: ${metrics['expectancy']:,.2f}")
             print(f"  Avg Holding Days: {metrics['avg_holding_days']:.1f}")
 
-        print("="*60)
+        print("=" * 60)

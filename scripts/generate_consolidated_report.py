@@ -23,7 +23,7 @@ def find_all_runs(base_dir: Path) -> list:
     runs_dir = base_dir / "runs"
     if not runs_dir.exists():
         return []
-    
+
     completed_runs = []
     for run_dir in runs_dir.iterdir():
         if run_dir.is_dir():
@@ -35,50 +35,50 @@ def find_all_runs(base_dir: Path) -> list:
                     metadata = json.load(f)
                 if metadata.get('status') == 'completed':
                     completed_runs.append(run_dir)
-    
+
     return sorted(completed_runs)
 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate consolidated backtest report')
     parser.add_argument('output_dir', nargs='?', default='.cache/backtests/consolidated',
-                       help='Output directory for consolidated report')
+                        help='Output directory for consolidated report')
     parser.add_argument('--base-dir', default='.cache/backtests',
-                       help='Base directory containing backtest runs')
+                        help='Base directory containing backtest runs')
     parser.add_argument('--last-n', type=int, default=None,
-                       help='Only include last N runs')
-    
+                        help='Only include last N runs')
+
     args = parser.parse_args()
-    
+
     # Find all completed runs
     base_dir = Path(args.base_dir)
     all_runs = find_all_runs(base_dir)
-    
+
     if not all_runs:
         print("No completed backtest runs found!")
         return
-    
+
     print(f"Found {len(all_runs)} completed runs")
-    
+
     # Limit to last N if specified
     if args.last_n:
         all_runs = all_runs[-args.last_n:]
         print(f"Using last {len(all_runs)} runs")
-    
+
     # Create output directory
     output_dir = Path(args.output_dir)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = output_dir / f"report_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate consolidated report
     print("\n📊 Generating consolidated report...")
     report_gen = ReportGenerator()
-    
+
     # Main consolidated report
     report_path = output_dir / "consolidated_report.md"
     report_gen.create_consolidated_report(all_runs, report_path)
-    
+
     # Extract best examples across all runs
     print("\n🏆 Extracting best examples across all runs...")
     all_examples = {
@@ -88,12 +88,12 @@ def main():
         'risk_assessment': [],
         'market_synthesis': []
     }
-    
+
     for run_dir in all_runs:
         examples = report_gen.extract_llm_examples(run_dir, num_examples=3)
         for category in all_examples:
             all_examples[category].extend(examples.get(category, []))
-    
+
     # Sort and limit to top examples
     for category in all_examples:
         all_examples[category] = sorted(
@@ -101,25 +101,25 @@ def main():
             key=lambda x: x.get('quality_score', x.get('confidence', 0)),
             reverse=True
         )[:10]
-    
+
     # Save best examples
     import json
     examples_path = output_dir / "best_examples_all_runs.json"
     with open(examples_path, 'w') as f:
         json.dump(all_examples, f, indent=2, default=str)
     print(f"✅ Best examples saved to: {examples_path}")
-    
+
     # Create examples showcase report
     showcase_report = create_examples_showcase(all_examples)
     showcase_path = output_dir / "llm_intelligence_showcase.md"
     showcase_path.write_text(showcase_report)
     print(f"✅ Intelligence showcase saved to: {showcase_path}")
-    
+
     # Generate visualization script
     viz_script_path = output_dir / "visualize_results.py"
     viz_script_path.write_text(generate_visualization_script())
     print(f"✅ Visualization script saved to: {viz_script_path}")
-    
+
     print(f"\n🎯 Consolidated report complete!")
     print(f"📁 Output directory: {output_dir}")
     print("\nGenerated files:")
@@ -128,7 +128,7 @@ def main():
     print("  - best_examples_all_runs.json : Raw data of best examples")
     print("  - consolidated_metrics.csv    : Metrics data for further analysis")
     print("  - visualize_results.py        : Script to generate charts")
-    
+
     # Try to generate visualizations if matplotlib is available
     try:
         import matplotlib
@@ -136,9 +136,9 @@ def main():
         metrics_csv = output_dir / "consolidated_metrics.csv"
         if metrics_csv.exists():
             import subprocess
-            result = subprocess.run([sys.executable, str(viz_script_path), 
-                                   str(metrics_csv), str(output_dir)],
-                                  capture_output=True, text=True)
+            result = subprocess.run([sys.executable, str(viz_script_path),
+                                     str(metrics_csv), str(output_dir)],
+                                    capture_output=True, text=True)
             if result.returncode == 0:
                 print("✅ Visualizations generated successfully!")
             else:
@@ -161,7 +161,7 @@ demonstrating how AI agents work together to make intelligent trading decisions.
 The Sentiment Agent demonstrates sophisticated understanding of market news and events:
 
 """
-    
+
     # Add top sentiment examples
     for i, example in enumerate(all_examples.get('sentiment_analysis', [])[:3], 1):
         report += f"""### Example {i}: {example.get('date', 'N/A')}
@@ -172,13 +172,13 @@ The Sentiment Agent demonstrates sophisticated understanding of market news and 
 ---
 
 """
-    
+
     report += """## 📊 Technical Analysis Mastery
 
 The Technical Agent identifies complex patterns and market dynamics:
 
 """
-    
+
     # Add top technical examples
     for i, example in enumerate(all_examples.get('technical_analysis', [])[:3], 1):
         report += f"""### Example {i}: {example.get('date', 'N/A')}
@@ -189,13 +189,13 @@ The Technical Agent identifies complex patterns and market dynamics:
 ---
 
 """
-    
+
     report += """## 🎯 Intelligent Trading Decisions
 
 The Strategy Agent synthesizes multiple inputs to make well-reasoned trading decisions:
 
 """
-    
+
     # Add top decision examples
     for i, example in enumerate(all_examples.get('decision_reasoning', [])[:3], 1):
         report += f"""### Example {i}: {example.get('date', 'N/A')} - {example.get('action', 'N/A')}
@@ -206,13 +206,13 @@ The Strategy Agent synthesizes multiple inputs to make well-reasoned trading dec
 ---
 
 """
-    
+
     report += """## 🔄 Market Synthesis
 
 The Coordinator Agent demonstrates the power of multi-agent collaboration:
 
 """
-    
+
     # Add synthesis examples
     for i, example in enumerate(all_examples.get('market_synthesis', [])[:2], 1):
         report += f"""### Example {i}: {example.get('date', 'N/A')}
@@ -221,7 +221,7 @@ The Coordinator Agent demonstrates the power of multi-agent collaboration:
 ---
 
 """
-    
+
     report += """## 💡 Key Advantages Demonstrated
 
 1. **Nuanced Understanding**: The system goes beyond simple keyword matching to understand context and implications
@@ -241,7 +241,7 @@ The Coordinator Agent demonstrates the power of multi-agent collaboration:
 ---
 *This showcase demonstrates the advanced capabilities of AI-driven financial analysis*
 """
-    
+
     return report
 
 

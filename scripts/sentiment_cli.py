@@ -2,18 +2,20 @@
 """
 Simplified interactive CLI for the Sentiment Agent using AutoGen 0.5.x.
 """
-
 import sys
 import os
+
+# fmt: off
+# Ensure the src directory is in the path - MUST come before local imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# fmt: on
+
 import json
 import asyncio
 import traceback
 from typing import Dict, Any
 from src.agents.sentiment_agent import SentimentAgent
 from config.config_loader import ConfigLoader
-
-# Ensure the src directory is in the path
-sys.path.insert(0, os.path.abspath('.'))
 
 # Import configuration
 

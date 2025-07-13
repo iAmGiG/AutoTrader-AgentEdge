@@ -4,13 +4,16 @@
 This script analyzes historical data to find periods where MACD < 0
 and then starts recovering, which are the entry conditions for our strategy.
 """
+import sys
+import os
+
+# fmt: off
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# fmt: on
+
 import pandas as pd
 from src.tools.processors.indicator_library import macd
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
-import sys
-import os
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
 
 
 def find_macd_opportunities(symbol: str, start: str, end: str):

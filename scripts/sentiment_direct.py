@@ -3,6 +3,13 @@ Direct mode only - Sentiment Agent online.
 """
 import asyncio
 import traceback
+import sys
+import os
+
+# fmt: off
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# fmt: on
+
 from src.agents.sentiment_agent import SentimentAgent
 
 

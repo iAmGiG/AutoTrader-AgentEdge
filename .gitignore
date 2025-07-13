@@ -62,14 +62,36 @@ env.bak/
 venv.bak/
 env_test/
 
+# Environment & Config Files
+# ==========================
+
+# Environment variable files
+*.env
+.env.*
+
+# Local development configs (but keep .vscode/settings.json)
+.editorconfig
+.tool-versions
+
+# Linter/formatter caches
+.ruff_cache/
+.pylint.d/
+
+# Old/backup config files
+*.cfg.bak
+*.toml.bak
+.pep8
+.isort.cfg
+
 # IDEs
 # ====
 
 # PyCharm
 .idea/
 
-# VS Code
-.vscode/
+# VS Code (keeping settings.json for project-specific linting config)
+.vscode/*
+!.vscode/settings.json
 
 # Spyder
 .spyderproject

@@ -112,7 +112,7 @@ Return a JSON object with:
                     start_idx = val_clean.find('{')
                     end_idx = val_clean.rfind('}')
                     if start_idx != -1 and end_idx != -1:
-                        json_str = val_clean[start_idx:end_idx+1]
+                        json_str = val_clean[start_idx:end_idx + 1]
                         try:
                             parsed = json.loads(json_str)
                             if isinstance(parsed, dict):

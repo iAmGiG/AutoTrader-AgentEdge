@@ -33,9 +33,7 @@ try:
 except ImportError:
     _sparklines = None
 from src.utils.date_utils import (
-    process_date_param,
     get_processed_date_range,
-    get_default_date_range,
     resolve_anchor,
 )
 from src.utils.agent_utils import QueryParser
@@ -693,7 +691,7 @@ class TechAgent(BaseAgent):
             end_idx = response_str.rfind('}')
 
             if start_idx != -1 and end_idx != -1:
-                json_str = response_str[start_idx:end_idx+1]
+                json_str = response_str[start_idx:end_idx + 1]
                 parsed = json.loads(json_str)
 
                 # Validate required fields

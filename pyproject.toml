@@ -1,0 +1,58 @@
+[project]
+name = "RH2MAS"
+description = "Reflective Hybrid Head Multi-Agent System for Financial Analysis"
+requires-python = ">=3.10"
+
+[tool.autopep8]
+# Main autopep8 configuration
+ignore = ["E402"]  # module level import not at top of file
+max_line_length = 100
+
+[tool.isort]
+# Skip scripts directory to preserve sys.path setup
+skip_glob = ["scripts/*.py"]
+known_local_folder = ["src", "config"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.black]
+# Black configuration
+line-length = 100
+target-version = ['py310']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | \.cache
+  | __pycache__
+  | reports
+)/
+'''
+
+[tool.ruff]
+# Ruff configuration
+line-length = 100
+target-version = "py310"
+exclude = [".git", "__pycache__", ".venv", ".cache", "reports"]
+
+[tool.ruff.lint]
+# E402: module level import not at top of file
+ignore = ["E402"]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-local-folder = ["src", "config"]
+
+[tool.ruff.lint.per-file-ignores]
+# Don't sort imports in scripts directory
+"scripts/*.py" = ["I001", "E402"]
+
+[tool.pycodestyle]
+# For tools that read from pyproject.toml
+ignore = ["E402"]
+max-line-length = 100
+
+[tool.flake8]
+# Note: flake8 doesn't support pyproject.toml natively, this is for reference
+# Real config stays in setup.cfg
+ignore = ["E402"]
+max-line-length = 100
