@@ -11,7 +11,6 @@ from typing import Dict, Any, Optional
 import logging
 import requests
 import pandas as pd
-<<<<<<< HEAD
 import os
 from config.config_loader import ConfigLoader
 from src.utils.date_utils import (
@@ -19,10 +18,6 @@ from src.utils.date_utils import (
     localize_df,
     get_default_timezone,
 )
-=======
-from config.config_loader import ConfigLoader
-from src.tools.date_utils import get_processed_date_range
->>>>>>> origin/development
 
 
 class AlphaVantageMarketTool:
@@ -35,17 +30,11 @@ class AlphaVantageMarketTool:
     """
 
     def __init__(self):
-<<<<<<< HEAD
         # Load API key from environment or config
         config_loader = ConfigLoader()
         self.api_key = os.getenv(
             "ALPHA_VANTAGE_KEY", config_loader.get("ALPHA_VANTAGE_KEY")
         )
-=======
-        # Load API key from config
-        config_loader = ConfigLoader()
-        self.api_key = config_loader.get("alpha_vantage_key")
->>>>>>> origin/development
 
         if not self.api_key:
             logging.warning("Alpha Vantage API key not found in config.")
@@ -139,11 +128,8 @@ class AlphaVantageMarketTool:
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)
 
-<<<<<<< HEAD
             df = localize_df(df, get_default_timezone())
 
-=======
->>>>>>> origin/development
             return df
 
         except Exception as e:

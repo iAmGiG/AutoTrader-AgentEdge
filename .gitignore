@@ -62,14 +62,36 @@ env.bak/
 venv.bak/
 env_test/
 
+# Environment & Config Files
+# ==========================
+
+# Environment variable files
+*.env
+.env.*
+
+# Local development configs (but keep .vscode/settings.json)
+.editorconfig
+.tool-versions
+
+# Linter/formatter caches
+.ruff_cache/
+.pylint.d/
+
+# Old/backup config files
+*.cfg.bak
+*.toml.bak
+.pep8
+.isort.cfg
+
 # IDEs
 # ====
 
 # PyCharm
 .idea/
 
-# VS Code
-.vscode/
+# VS Code (keeping settings.json for project-specific linting config)
+.vscode/*
+!.vscode/settings.json
 
 # Spyder
 .spyderproject
@@ -111,18 +133,20 @@ temp_env.sh
 environment.yml
 conda_requirements.txt
 
-# Test files (old/deprecated)
-test_alpha_vantage.py
-test_sentiment_agent.py
-test_unified_market_data.py
-src/test_sentiment.py
-src/test/test_sentiment.py
+# Test files - ignore entire test directory as we iterate rapidly
+tests/
 src/test/
+pytest.ini
+**/test_*.py
+enhanced_sentiment_comparison_*.json
+
+# Legacy test files
+test_*.py
 sentiment_agent_cli.py
 sentiment_agent_cli_improved.py
-test_data_retrieval.py
-tests/batch_backtest_report.md
-tests/test_agents.py
+
+# Deprecated agent versions
+src/agents/deprecated/
 
 # Scripts
 install_dependencies.sh

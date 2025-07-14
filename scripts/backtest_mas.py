@@ -9,24 +9,30 @@ Usage:
 Example:
     python backtest_mas.py NVDA 2023-01-01 2024-12-31
 """
+import sys
+import os
+
+# autopep8: off
+# this line must come before local imports, review before linting
+# Add parent directory to Python path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# autopep8: on
+
 from src.utils.output_manager import OutputManager
 from src.utils.report_generator import ReportGenerator
 from src.utils.date_utils import process_date_param
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
-from src.agents.strategy_agent import StrategyAgent
 from src.agents.coordinator_agent import CoordinatorAgent
+from src.agents.strategy_agent import StrategyAgent
 from src.tools.cache import MarketDataCache
+import json
 import traceback
 import asyncio
 from typing import List, Dict
 import pandas as pd
-import sys
-import os
-import json
 
-# Add src to Python path
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
+
+# Import both strategy versions
 
 
 def setup_output_directory(symbol: str, start_date: str, end_date: str) -> Dict[str, str]:
@@ -227,9 +233,28 @@ def main() -> None:
     print(f"\nChecking cache for {symbol} from {start} to {end}")
     prices = cache.get(symbol, start, end, "alpha_vantage")
 
+    # If no exact match, try to get data for the full year
     if prices is None or prices.empty:
-        # Use MarketDataTool with Alpha Vantage as the preferred source
-        tool = MarketDataTool()
+        year = start[:4]  # Extract year from start date
+        year_start = f"{year}-01-01"
+        year_end = f"{year}-12-31"
+        print(f"Trying full year cache: {year_start} to {year_end}")
+        year_prices = cache.get(symbol, year_start, year_end, "alpha_vantage")
+
+        if year_prices is not None and not year_prices.empty:
+            # Filter to requested date range using string comparison on date part
+            start_date = pd.to_datetime(start)
+            end_date = pd.to_datetime(end)
+
+            # Convert index to date for comparison
+            date_mask = (year_prices.index.date >= start_date.date()) & \
+                (year_prices.index.date <= end_date.date())
+            prices = year_prices[date_mask]
+            print(f"Using subset of yearly cache: {len(prices)} days")
+
+    if prices is None or prices.empty:
+        # Use MarketDataTool with Yahoo as the preferred source (no rate limits)
+        tool = MarketDataTool(config={"data_source": "yahoo"})
         result = tool.fetch_market_data(
             symbol=symbol,
             start_date=start,
@@ -239,6 +264,7 @@ def main() -> None:
         if result is None or result.empty:
             print(f"Failed to fetch data for {symbol}")
             output_manager.finalize_run("failed")
+            print(f"Output directory: {run_dir}")  # Still output directory for parsing
             return
 
         prices = result
@@ -254,6 +280,7 @@ def main() -> None:
     elif 'Close' not in prices.columns:
         print("Error: No 'Close' price column found in data")
         output_manager.finalize_run("failed")
+        print(f"Output directory: {run_dir}")  # Still output directory for parsing
         return
 
     # Ensure index is datetime
@@ -262,7 +289,12 @@ def main() -> None:
             prices.set_index('date', inplace=True)
         elif 'Date' in prices.columns:
             prices.set_index('Date', inplace=True)
-    prices.index = pd.to_datetime(prices.index)
+
+    # Handle timezone-aware datetime conversion
+    try:
+        prices.index = pd.to_datetime(prices.index, utc=True)
+    except:
+        prices.index = pd.to_datetime(prices.index)
 
     # Sort by date
     prices = prices.sort_index()
@@ -274,7 +306,11 @@ def main() -> None:
 
     # Initialize agents
     coord = CoordinatorAgent()
+    print("🧠 Using Enhanced Sentiment V2 (with VXX fallback)")
+
+    # Initialize strategy agent
     strat = StrategyAgent()
+    print("📌 Using enhanced strategy (sentiment >= 0 with VXX fallback)")
 
     # Track portfolio state
     equity = 100_000.0  # Starting cash
@@ -411,10 +447,10 @@ def main() -> None:
     initial_value = 100_000.0
     total_return = (final_value - initial_value) / initial_value * 100
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print(f"BACKTEST SUMMARY: {symbol}")
     print(f"Period: {start} to {end}")
-    print("="*60)
+    print("=" * 60)
 
     print(f"\nProcessing Statistics:")
     print(f"  Total days: {total_days}")
@@ -503,10 +539,20 @@ def main() -> None:
             print(
                 f"  - {category}: {len(examples)} high-quality examples extracted")
 
+    # Save days processed to metadata for cost tracking
+    metadata_path = run_dir / "metadata.json"
+    if metadata_path.exists():
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        metadata['days_processed'] = successful_days
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+
     # Finalize run
     output_manager.finalize_run("completed")
 
     print(f"\n🎯 Complete organized output saved to: {run_dir}")
+    print(f"Output directory: {run_dir}")  # This line is parsed by other scripts
     print("\nOrganized structure includes:")
     print("  📁 data/          - Trade, equity, and metrics CSV files")
     print("  📁 analysis/      - Daily LLM reasoning and agent responses")

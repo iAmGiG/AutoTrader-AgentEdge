@@ -13,7 +13,6 @@ Features:
 - Async fetching for improved performance
 """
 
-<<<<<<< HEAD
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 from src.tools.data_sources.news.finnhub_tool import FinnHubTool
@@ -33,25 +32,6 @@ config_loader = ConfigLoader()
 
 
 # Import individual news data sources
-=======
-import os
-import json
-import asyncio
-from datetime import datetime
-from typing import List, Dict, Any, Optional, Union, Literal
-from abc import ABC, abstractmethod
-
-import pandas as pd
-from pydantic import BaseModel, Field
-
-# Import individual news data sources
-from src.tools.data_sources.news.news_headline_tool import NewsHeadlineTool
-from src.tools.data_sources.news.alpha_vantage_news import AlphaVantageNewsTool
-from src.tools.data_sources.news.finnhub_tool import FinnHubTool
-from src.tools.processors.data_normalizer import normalize_data_for_sentiment
-from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
-from config.config_loader import ConfigLoader
->>>>>>> origin/development
 
 
 # =====================
@@ -111,19 +91,12 @@ class NewsSourceProvider(ABC):
         self._load_api_key()
 
     def _load_api_key(self):
-<<<<<<< HEAD
         """Load API key from environment if configured"""
         if self.config.api_key_config_name:
             self.api_key = os.getenv(
                 self.config.api_key_config_name.upper(),
                 config_loader.get(self.config.api_key_config_name.upper()),
             )
-=======
-        """Load API key from config if needed"""
-        if self.config.api_key_config_name:
-            config_loader = ConfigLoader()
-            self.api_key = config_loader.get(self.config.api_key_config_name)
->>>>>>> origin/development
         else:
             self.api_key = None
 
@@ -305,7 +278,6 @@ class FinnhubNewsProvider(NewsSourceProvider):
                     continue
 
                 # Create article object
-<<<<<<< HEAD
                 # Get published date - Finnhub tool already converts datetime to Date column
                 pub_date = row.get('Date', None)
                 if pub_date is None and 'datetime' in row:
@@ -314,26 +286,17 @@ class FinnhubNewsProvider(NewsSourceProvider):
                 elif pub_date is None:
                     # Fallback to current time
                     pub_date = datetime.now()
-                
+
                 article = NewsArticle(
                     source_id=self.source_id,
                     title=row.get('Headline', row.get('headline', '')),
                     url=row.get('URL', row.get('url', None)),
                     published_date=pub_date,
                     summary=row.get('Summary', row.get('summary', None)),
-                    tickers=row.get('related', []),
-                    categories=[row.get('Category', row.get('category', 'general'))],
-=======
-                article = NewsArticle(
-                    source_id=self.source_id,
-                    title=row.get('headline', ''),
-                    url=row.get('url', None),
-                    published_date=pd.to_datetime(
-                        row.get('datetime', datetime.now()), unit='s'),
-                    summary=row.get('summary', None),
-                    tickers=row.get('related', []),
-                    categories=[row.get('category', 'general')],
->>>>>>> origin/development
+                    tickers=row.get('related') if isinstance(
+                        row.get('related'), list) else [],
+                    categories=[
+                        row.get('Category', row.get('category', 'general'))],
                     raw_data=row.to_dict() if hasattr(row, 'to_dict') else dict(row)
                 )
                 articles.append(article)

@@ -9,7 +9,7 @@ class StrategyAgent(BaseAgent):
 
     Entry:
       - If flat AND yesterday’s MACD < 0 AND today’s MACD > yesterday’s MACD
-        AND sentiment > 0 → BUY
+        AND sentiment >= 0 → BUY  (V2: Changed from > to >= to allow neutral sentiment)
 
     Exit:
       - If long AND (yesterday’s MACD < 0 AND today’s MACD < yesterday’s MACD)
@@ -39,13 +39,17 @@ class StrategyAgent(BaseAgent):
         sentiment = aggregated.get("sentiment", {}).get("score", 0)
 
         action = "HOLD"
+        
+        # Use small threshold for near-zero comparisons to handle precision issues
+        # This helps catch crossings that might be missed due to floating-point precision
+        ZERO_THRESHOLD = 0.01
 
         # Entry rule
         if self.position == 0:
             if (
-                macd_y is not None and macd_y < 0 and
+                macd_y is not None and macd_y < ZERO_THRESHOLD and
                 macd_t is not None and macd_t > macd_y and
-                sentiment > 0
+                sentiment >= 0
             ):
                 action = "BUY"
                 self.position = 1
@@ -55,8 +59,8 @@ class StrategyAgent(BaseAgent):
         # Exit rule
         elif self.position == 1:
             if (
-                (macd_y is not None and macd_y < 0 and macd_t < macd_y) or
-                (macd_y is not None and macd_y > 0 and macd_t < 0)
+                (macd_y is not None and macd_y < ZERO_THRESHOLD and macd_t < macd_y) or
+                (macd_y is not None and macd_y > -ZERO_THRESHOLD and macd_t < -ZERO_THRESHOLD)
             ):
                 action = "SELL"
                 self.position = 0
@@ -75,18 +79,18 @@ class StrategyAgent(BaseAgent):
 
         # Log trade decision
         self.trade_log.append({
-            "date":       trade_date,
-            "action":     action,
-            "price":      price,
+            "date": trade_date,
+            "action": action,
+            "price": price,
             "macd_today": macd_t,
-            "macd_yest":  macd_y,
-            "sentiment":  sentiment,
+            "macd_yest": macd_y,
+            "sentiment": sentiment,
         })
 
         return {
             "action": action,
-            "qty":    100 if action == "BUY" else 0,
-            "reason": "macd_sent_rule_v1"
+            "qty": 100 if action == "BUY" else 0,
+            "reason": "macd_sent_rule_v2"
         }
 
     def calculate_metrics(self, initial_capital: float = 100000.0, risk_free_rate: float = 0.02) -> Dict:
@@ -178,7 +182,7 @@ class StrategyAgent(BaseAgent):
                 daily_returns = []
                 for i in range(1, len(equity_values)):
                     daily_return = (
-                        equity_values[i] - equity_values[i-1]) / equity_values[i-1]
+                        equity_values[i] - equity_values[i - 1]) / equity_values[i - 1]
                     daily_returns.append(daily_return)
 
                 if daily_returns:
@@ -233,9 +237,9 @@ class StrategyAgent(BaseAgent):
 
     def print_metrics_summary(self, metrics: Dict) -> None:
         """Print a formatted summary of performance metrics."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("STRATEGY PERFORMANCE METRICS")
-        print("="*60)
+        print("=" * 60)
 
         print(f"\nReturns:")
         print(f"  Total Return: {metrics['total_return_pct']:+.2f}%")
@@ -256,4 +260,4 @@ class StrategyAgent(BaseAgent):
             print(f"  Expectancy: ${metrics['expectancy']:,.2f}")
             print(f"  Avg Holding Days: {metrics['avg_holding_days']:.1f}")
 
-        print("="*60)
+        print("=" * 60)

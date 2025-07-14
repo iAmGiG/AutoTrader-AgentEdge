@@ -2,7 +2,6 @@
 import logging
 from typing import Any, Dict, List
 import re
-from datetime import datetime
 import json
 
 # 3rd-party libs
@@ -34,9 +33,7 @@ try:
 except ImportError:
     _sparklines = None
 from src.utils.date_utils import (
-    process_date_param,
     get_processed_date_range,
-    get_default_date_range,
     resolve_anchor,
 )
 from src.utils.agent_utils import QueryParser
@@ -516,7 +513,9 @@ class TechAgent(BaseAgent):
 
                 # Always compute MACD so downstream logic can rely on it
                 macd_df = macd(df["Close"])
-                macd_df["MACD"] = macd_df["MACD_line"] - macd_df["MACD_signal"]
+                # Use MACD histogram for strategy signals as requested by advisor
+                # MACD histogram = MACD line - Signal line
+                macd_df["MACD"] = macd_df["MACD_hist"]
                 df = pd.concat([df, macd_df], axis=1)
                 if "bollinger" in req:
                     df = pd.concat([df, bollinger_bands(df["Close"])], axis=1)
@@ -692,7 +691,7 @@ class TechAgent(BaseAgent):
             end_idx = response_str.rfind('}')
 
             if start_idx != -1 and end_idx != -1:
-                json_str = response_str[start_idx:end_idx+1]
+                json_str = response_str[start_idx:end_idx + 1]
                 parsed = json.loads(json_str)
 
                 # Validate required fields

@@ -2,7 +2,14 @@ import logging
 from typing import Optional
 import os
 import pandas as pd
-import nasdaqdatalink
+try:
+    import nasdaqdatalink
+except ImportError:
+    try:
+        import nasdaq_data_link as nasdaqdatalink
+    except ImportError:
+        # Try the newest package name
+        import quandl as nasdaqdatalink
 from src.utils.date_utils import get_processed_date_range, localize_df, get_default_timezone
 
 
@@ -16,6 +23,17 @@ class NasdaqDataLinkTool:
 
         if api_key is None:
             api_key = os.getenv("NASDAQ_DATA_LINK_KEY")
+            if not api_key:
+                # Try alternative names
+                api_key = os.getenv("NASDAQLINK")
+                if not api_key:
+                    # Try loading from config
+                    try:
+                        from config.config_loader import ConfigLoader
+                        config_loader = ConfigLoader()
+                        api_key = config_loader.get("NASDAQLINK")
+                    except:
+                        pass
         if api_key:
             nasdaqdatalink.ApiConfig.api_key = api_key
         else:

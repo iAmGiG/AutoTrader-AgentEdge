@@ -2,60 +2,123 @@
 
 ## Overview
 
-RH2MAS is a research project developing an LLM-based investment research system that combines hybrid neural architectures with reflective learning mechanisms. The system integrates:
+RH2MAS is a financial analysis system using a multi-agent architecture with AutoGen 0.6.x. The system employs specialized agents working together to analyze market sentiment, technical indicators, and make trading decisions.
 
-- Hybrid-Head Architecture (based on Hymba)
-- Layered Memory System
-- Dynamic Risk Analysis
-- Verbal Reinforcement Learning
+## Key Features
+
+> NOTE: not all features have been implemented yet, as further testing is required.
+
+- **Multi-Agent Architecture**: Sentiment, Technical, Strategy, and Coordinator agents
+- **Enhanced Sentiment Analysis**: News aggregation with VXX volatility fallback
+- **Technical Analysis**: MACD, RSI, Bollinger Bands, and pattern recognition
+- **Smart Caching**: Reduces API calls with market data and news caching
+- **Comprehensive Backtesting**: Organized output with LLM reasoning capture
+
+## Quick Start
+
+```bash
+# Install dependencies
+pip install -e .
+
+# Run a single backtest
+python scripts/backtest_mas.py AAPL 2024-01-01 2024-01-31
+
+# Run test suite
+python scripts/run_backtest_suite.py quick
+```
 
 ## Project Structure
 
-- /docs           # Research notes
-- -/architecture  # System design documentation
-- -/research      # Research progress and findings
-- -/indicator_library.md  # Technical indicator definitions
-- /src
-- -/agents
-- -/core          # Core architecture components
-- -/tools         # Common utilities and agent tools
-- -/tests          # Test suites
+```bash
+RH2MAS/
+├── src/
+│   ├── agents/         # Agent implementations
+│   ├── core/          # Core system components
+│   ├── tools/         # Data sources and tools
+│   └── utils/         # Utilities and helpers
+├── scripts/           # Executable scripts
+├── docs/              # Documentation
+├── config/            # Configuration files
+└── .cache/           # Cached data and results
+```
 
-## Project Status
+## Current Agents
 
-This repository is under active research development. See our [Research Documentation](docs/research/README.md) for current progress.
+1. **SentimentAgent**: Analyzes news sentiment with VXX fallback
+2. **TechAgent**: Performs technical analysis (MACD fix implemented)
+3. **StrategyAgent**: Makes trading decisions (sentiment >= 0)
+4. **CoordinatorAgent**: Orchestrates multi-agent collaboration
+
+## Recent Updates (2025-07-11)
+
+- ✅ Fixed MACD calculation (now uses MACD line, not histogram)
+- ✅ Added news caching with relevance filtering
+- ✅ Consolidated documentation
+- ✅ Enhanced strategy with VXX fallback
 
 ## Documentation
 
-- Architecture Documentation
-- Research Progress
-- API Documentation
+- [System Architecture](docs/CURRENT_ARCHITECTURE.md) - Current system design
+- [Agent Documentation](docs/implementation/agents/) - Individual agent guides
+- [AutoGen Reference](docs/autogen_core_reference/) - Framework documentation
+- [API Documentation](docs/implementation/tools/) - Tool and API references
 
 ## Configuration
 
-Secrets such as API keys are no longer loaded from `config/config.json`. Instead
-the project reads configuration values from environment variables. You can store
-these secrets using the [Codex CLI](https://github.com/openai/codex) and set the
-`envKey` field in `~/.codex/config.json` to match the lowercase variable names
-used by the code (e.g. `open_ai_key`, `newsapi_key`).
+API keys must be stored in `config/config.json` (not included in repo for security):
 
-## Research Goals
+1. Create the config directory: `mkdir -p config`
+2. Create `config/config.json` with your API keys:
 
-1. Efficient hybrid processing for financial data
-2. Scalable multi-agent coordination
-3. Adaptive risk profiling
-4. Verifiable decision-making processes
+```json
+{
+  "openai_api_key": "sk-...",
+  "alpha_vantage_api_key": "...",
+  "newsapi_key": "...",
+  "finnhub_api_key": "..."
+}
+```
 
-## Research Papers
+**Important**:
 
-This project builds upon:
+- `config/config.json` is in `.gitignore` and should NEVER be committed
+- Keep your API keys secure and private
+- The system uses `ConfigLoader` to load keys at runtime
 
-- SGLang (2024): Structured Language Model Programs
-- Hymba (2024): Hybrid-head Architecture
-- FinMem (2023): Layered Memory Systems
-- FinCon (2024): Hierarchical Agent Systems with VRL
-- [Additioanl papers from HF](https://huggingface.co/collections/m-ric/agents-65ba776fbd9e29f771c07d4e)
+## Environment Setup
 
-### License
+```bash
+# Python 3.10+ required
+conda create -n RH2MAS python=3.10
+conda activate RH2MAS
+
+# Install requirements
+pip install -e .
+```
+
+## API Limitations
+
+- **Alpha Vantage**: 25 calls/day (free tier)
+- **Yahoo Finance**: Rate limited, but primary source
+- **Solution**: Aggressive caching (24hr market data, 7-day news)
+
+## Performance
+
+Example backtest results:
+
+- Processing: ~80 seconds per symbol/month
+- Cache hit rate: >90% after initial run
+- LLM calls: 2-3 per trading day
+
+## Contributing
+
+This is an active research project. Key areas for contribution:
+
+- Additional data sources
+- Risk agent implementation
+- Real-time trading capabilities
+- Performance optimizations
+
+## License
 
 This project is licensed under AGPL-3.0 - see the LICENSE file for details.

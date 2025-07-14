@@ -1,0 +1,27 @@
+{
+  "Bear Market (2022)": {
+    "condition": "Bear Market (2022)",
+    "ticker_count": 0,
+    "metrics": {}
+  },
+  "Bull Recovery (2023)": {
+    "condition": "Bull Recovery (2023)",
+    "ticker_count": 0,
+    "metrics": {}
+  },
+  "Current Market (2024-2025)": {
+    "condition": "Current Market (2024-2025)",
+    "ticker_count": 0,
+    "metrics": {}
+  },
+  "COVID Crash (2020)": {
+    "condition": "COVID Crash (2020)",
+    "ticker_count": 0,
+    "metrics": {}
+  },
+  "2018 Correction": {
+    "condition": "2018 Correction",
+    "ticker_count": 0,
+    "metrics": {}
+  }
+}

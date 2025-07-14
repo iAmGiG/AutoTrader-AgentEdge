@@ -8,7 +8,7 @@ unemployment figures, and more.
 
 from src.utils.date_utils import process_date_param, get_processed_date_range
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, List
 import pandas as pd
 from fredapi import Fred
 import os

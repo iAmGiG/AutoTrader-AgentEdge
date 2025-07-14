@@ -13,7 +13,7 @@ from config.config_loader import ConfigLoader
 import pandas as pd
 from typing import Optional, List
 import os
-from src.utils.date_utils import process_date_param, get_processed_date_range
+from src.utils.date_utils import get_processed_date_range
 
 # Define news categories supported by Finnhub
 NEWS_CATEGORIES = {

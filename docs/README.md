@@ -4,6 +4,12 @@ This folder contains the main documentation for the research prototype. The
 project is built around a **multi‑agent system** with shared memory and a set of
 data–retrieval tools. Below is a quick overview of what is implemented today.
 
+## Recent Updates (2025-07-11)
+
+- **MACD Calculation Fix**: Technical agent now correctly uses MACD line (EMA12-EMA26) instead of histogram for trading signals. See [technical_agent.md](implementation/agents/technical_agent.md) for details.
+- **News Caching**: Sentiment agent now caches relevant news (score ≥ 0.5) to reduce API calls
+- **Test Infrastructure**: Moved to rapid iteration mode, tests excluded from version control
+
 ## Hybrid‑Head
 
 Neural architecture combining attention and state space models. The current code
@@ -36,4 +42,3 @@ only sees the tools it needs, reducing prompt noise and API usage.
 - [AutoGen Core Reference](autogen_core_reference/README.md) – Reference
   documentation for AutoGen Core 0.6.x components used in RH2MAS
 - [Status Summary: Sentiment and Tech Agents](status_summary_sentiment_tech_agents.md) – High-level overview of the active agents and their limitations
-
