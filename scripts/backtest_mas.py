@@ -233,6 +233,25 @@ def main() -> None:
     print(f"\nChecking cache for {symbol} from {start} to {end}")
     prices = cache.get(symbol, start, end, "alpha_vantage")
 
+    # If no exact match, try to get data for the full year
+    if prices is None or prices.empty:
+        year = start[:4]  # Extract year from start date
+        year_start = f"{year}-01-01"
+        year_end = f"{year}-12-31"
+        print(f"Trying full year cache: {year_start} to {year_end}")
+        year_prices = cache.get(symbol, year_start, year_end, "alpha_vantage")
+
+        if year_prices is not None and not year_prices.empty:
+            # Filter to requested date range using string comparison on date part
+            start_date = pd.to_datetime(start)
+            end_date = pd.to_datetime(end)
+
+            # Convert index to date for comparison
+            date_mask = (year_prices.index.date >= start_date.date()) & \
+                (year_prices.index.date <= end_date.date())
+            prices = year_prices[date_mask]
+            print(f"Using subset of yearly cache: {len(prices)} days")
+
     if prices is None or prices.empty:
         # Use MarketDataTool with Yahoo as the preferred source (no rate limits)
         tool = MarketDataTool(config={"data_source": "yahoo"})
