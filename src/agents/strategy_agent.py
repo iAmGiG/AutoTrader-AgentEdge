@@ -39,11 +39,15 @@ class StrategyAgent(BaseAgent):
         sentiment = aggregated.get("sentiment", {}).get("score", 0)
 
         action = "HOLD"
+        
+        # Use small threshold for near-zero comparisons to handle precision issues
+        # This helps catch crossings that might be missed due to floating-point precision
+        ZERO_THRESHOLD = 0.01
 
         # Entry rule
         if self.position == 0:
             if (
-                macd_y is not None and macd_y < 0 and
+                macd_y is not None and macd_y < ZERO_THRESHOLD and
                 macd_t is not None and macd_t > macd_y and
                 sentiment >= 0
             ):
@@ -55,8 +59,8 @@ class StrategyAgent(BaseAgent):
         # Exit rule
         elif self.position == 1:
             if (
-                (macd_y is not None and macd_y < 0 and macd_t < macd_y) or
-                (macd_y is not None and macd_y > 0 and macd_t < 0)
+                (macd_y is not None and macd_y < ZERO_THRESHOLD and macd_t < macd_y) or
+                (macd_y is not None and macd_y > -ZERO_THRESHOLD and macd_t < -ZERO_THRESHOLD)
             ):
                 action = "SELL"
                 self.position = 0
