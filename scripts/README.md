@@ -4,7 +4,7 @@ This directory contains executable scripts for running backtests, generating rep
 
 ## Directory Structure
 
-```
+```bash
 scripts/
 ├── backtest_service/     # Intelligent backtest service with rate limit management
 │   ├── backtest_service.py

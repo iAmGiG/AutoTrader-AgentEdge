@@ -536,6 +536,62 @@ class SentimentAgent(BaseAgent):
 
         return result
 
+    def analyze_market_heat(self, date: str) -> Dict[str, Any]:
+        """
+        Simple market heat based on VXX volatility levels.
+        
+        Args:
+            date: Target date in YYYY-MM-DD format
+            
+        Returns:
+            Dictionary with heat level, VXX value, and interpretation
+        """
+        try:
+            # Get VXX data for the date
+            vxx_data = self._get_vix_sentiment(date)
+            
+            if vxx_data['vxx_value'] is None:
+                # No VXX data available
+                return {
+                    "heat_level": 0.0,
+                    "vxx_level": None,
+                    "interpretation": "No market data available",
+                    "date": date
+                }
+            
+            vxx_level = vxx_data['vxx_value']
+            
+            # Convert VXX to heat score
+            # VXX < 20: Hot market (0.7) - low volatility, bullish
+            # VXX 20-30: Neutral (0.3) - normal volatility
+            # VXX > 30: Cold market (-0.3) - high volatility, bearish
+            
+            if vxx_level < 20:
+                heat = 0.7
+                interpretation = "Bullish - low volatility"
+            elif vxx_level < 30:
+                heat = 0.3
+                interpretation = "Neutral - normal volatility"
+            else:
+                heat = -0.3
+                interpretation = "Bearish - high volatility"
+            
+            return {
+                "heat_level": heat,
+                "vxx_level": vxx_level,
+                "interpretation": interpretation,
+                "date": date
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analyzing market heat: {str(e)}")
+            return {
+                "heat_level": 0.0,
+                "vxx_level": None,
+                "interpretation": f"Error: {str(e)}",
+                "date": date
+            }
+
     def generate_reply(self, messages, context=None) -> str:
         """
         Primary entry point for generating replies to user messages.
