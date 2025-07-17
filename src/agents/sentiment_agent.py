@@ -538,48 +538,53 @@ class SentimentAgent(BaseAgent):
 
     def analyze_market_heat(self, date: str) -> Dict[str, Any]:
         """
-        Simple market heat based on VXX volatility levels.
+        Comprehensive market heat assessment using VXX, SPY momentum, and sector rotation.
+        
+        Formula: heat = 0.4 * vxx_component + 0.3 * spy_momentum + 0.3 * sector_rotation
         
         Args:
             date: Target date in YYYY-MM-DD format
             
         Returns:
-            Dictionary with heat level, VXX value, and interpretation
+            Dictionary with heat level (-1 to +1), components, and interpretation
         """
         try:
-            # Get VXX data for the date
-            vxx_data = self._get_vix_sentiment(date)
+            # Component 1: VXX-based volatility (40% weight)
+            vxx_component = self._calculate_vxx_heat_component(date)
             
-            if vxx_data['vxx_value'] is None:
-                # No VXX data available
-                return {
-                    "heat_level": 0.0,
-                    "vxx_level": None,
-                    "interpretation": "No market data available",
-                    "date": date
-                }
+            # Component 2: SPY momentum (30% weight)
+            spy_component = self._calculate_spy_momentum_component(date)
             
-            vxx_level = vxx_data['vxx_value']
+            # Component 3: Sector rotation (30% weight)
+            sector_component = self._calculate_sector_rotation_component(date)
             
-            # Convert VXX to heat score
-            # VXX < 20: Hot market (0.7) - low volatility, bullish
-            # VXX 20-30: Neutral (0.3) - normal volatility
-            # VXX > 30: Cold market (-0.3) - high volatility, bearish
+            # Calculate weighted heat score
+            heat_score = (
+                0.4 * vxx_component['score'] +
+                0.3 * spy_component['score'] +
+                0.3 * sector_component['score']
+            )
             
-            if vxx_level < 20:
-                heat = 0.7
-                interpretation = "Bullish - low volatility"
-            elif vxx_level < 30:
-                heat = 0.3
-                interpretation = "Neutral - normal volatility"
+            # Determine interpretation
+            if heat_score > 0.6:
+                interpretation = "Very Hot - Strong bullish conditions"
+            elif heat_score > 0.2:
+                interpretation = "Hot - Bullish market sentiment"
+            elif heat_score > -0.2:
+                interpretation = "Neutral - Mixed market conditions"
+            elif heat_score > -0.6:
+                interpretation = "Cold - Bearish market sentiment"
             else:
-                heat = -0.3
-                interpretation = "Bearish - high volatility"
+                interpretation = "Very Cold - Strong bearish conditions"
             
             return {
-                "heat_level": heat,
-                "vxx_level": vxx_level,
+                "heat_level": round(heat_score, 3),
                 "interpretation": interpretation,
+                "components": {
+                    "vxx": vxx_component,
+                    "spy_momentum": spy_component,
+                    "sector_rotation": sector_component
+                },
                 "date": date
             }
             
@@ -587,10 +592,160 @@ class SentimentAgent(BaseAgent):
             logger.error(f"Error analyzing market heat: {str(e)}")
             return {
                 "heat_level": 0.0,
-                "vxx_level": None,
-                "interpretation": f"Error: {str(e)}",
+                "interpretation": f"Error calculating market heat: {str(e)}",
+                "components": {},
                 "date": date
             }
+    
+    def _calculate_vxx_heat_component(self, date: str) -> Dict[str, Any]:
+        """Calculate VXX-based heat component (inverted - low VXX = hot market)."""
+        try:
+            vxx_data = self._get_vix_sentiment(date)
+            
+            if vxx_data['vxx_value'] is None:
+                return {"score": 0.0, "value": None, "description": "No VXX data"}
+            
+            vxx_level = vxx_data['vxx_value']
+            
+            # Normalize VXX to -1 to +1 scale (inverted)
+            # VXX < 15: Very hot (+1.0)
+            # VXX 15-20: Hot (+0.5)
+            # VXX 20-25: Neutral (0.0)
+            # VXX 25-30: Cold (-0.5)
+            # VXX > 30: Very cold (-1.0)
+            
+            if vxx_level < 15:
+                score = 1.0
+            elif vxx_level < 20:
+                score = 0.5 + (20 - vxx_level) / 10  # Linear scale from 0.5 to 1.0
+            elif vxx_level < 25:
+                score = (25 - vxx_level) / 5  # Linear scale from 0 to 0.5
+            elif vxx_level < 30:
+                score = -0.5 + (25 - vxx_level) / 10  # Linear scale from -0.5 to 0
+            else:
+                score = max(-1.0, -0.5 - (vxx_level - 30) / 20)  # Cap at -1.0
+            
+            return {
+                "score": round(score, 3),
+                "value": round(vxx_level, 2),
+                "description": f"VXX: {vxx_level:.2f}"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating VXX component: {str(e)}")
+            return {"score": 0.0, "value": None, "description": f"Error: {str(e)}"}
+    
+    def _calculate_spy_momentum_component(self, date: str) -> Dict[str, Any]:
+        """Calculate SPY momentum component using 20-day price change."""
+        try:
+            # Get SPY data for the last 20 trading days
+            end_date = pd.to_datetime(date)
+            start_date = end_date - timedelta(days=30)  # Extra days for weekends
+            
+            market_data_tool = MarketDataTool()
+            spy_data = market_data_tool.fetch_market_data(
+                symbol="SPY", 
+                start_date=start_date.strftime("%Y-%m-%d"),
+                end_date=end_date.strftime("%Y-%m-%d")
+            )
+            
+            if spy_data.empty or len(spy_data) < 20:
+                return {"score": 0.0, "value": None, "description": "Insufficient SPY data"}
+            
+            # Calculate 20-day return
+            current_price = spy_data.iloc[-1]['Close']
+            price_20d_ago = spy_data.iloc[-20]['Close']
+            momentum_pct = ((current_price - price_20d_ago) / price_20d_ago) * 100
+            
+            # Normalize to -1 to +1 scale
+            # -10% or worse: -1.0
+            # -5%: -0.5
+            # 0%: 0.0
+            # +5%: +0.5
+            # +10% or better: +1.0
+            
+            score = max(-1.0, min(1.0, momentum_pct / 10))
+            
+            return {
+                "score": round(score, 3),
+                "value": round(momentum_pct, 2),
+                "description": f"SPY 20d: {momentum_pct:+.1f}%"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating SPY momentum: {str(e)}")
+            return {"score": 0.0, "value": None, "description": f"Error: {str(e)}"}
+    
+    def _calculate_sector_rotation_component(self, date: str) -> Dict[str, Any]:
+        """Calculate sector rotation component by comparing defensive vs growth sectors."""
+        try:
+            # Define sector ETFs
+            growth_sectors = ["XLK", "XLY"]  # Tech, Consumer Discretionary
+            defensive_sectors = ["XLU", "XLP"]  # Utilities, Consumer Staples
+            
+            end_date = pd.to_datetime(date)
+            start_date = end_date - timedelta(days=30)
+            
+            market_data_tool = MarketDataTool()
+            
+            # Calculate average performance for each group
+            growth_perf = []
+            defensive_perf = []
+            
+            for sector in growth_sectors:
+                try:
+                    data = market_data_tool.fetch_market_data(
+                        symbol=sector,
+                        start_date=start_date.strftime("%Y-%m-%d"),
+                        end_date=end_date.strftime("%Y-%m-%d")
+                    )
+                    if not data.empty and len(data) >= 20:
+                        perf = ((data.iloc[-1]['Close'] - data.iloc[-20]['Close']) / 
+                               data.iloc[-20]['Close']) * 100
+                        growth_perf.append(perf)
+                except:
+                    pass
+            
+            for sector in defensive_sectors:
+                try:
+                    data = market_data_tool.fetch_market_data(
+                        symbol=sector,
+                        start_date=start_date.strftime("%Y-%m-%d"),
+                        end_date=end_date.strftime("%Y-%m-%d")
+                    )
+                    if not data.empty and len(data) >= 20:
+                        perf = ((data.iloc[-1]['Close'] - data.iloc[-20]['Close']) / 
+                               data.iloc[-20]['Close']) * 100
+                        defensive_perf.append(perf)
+                except:
+                    pass
+            
+            if not growth_perf or not defensive_perf:
+                return {"score": 0.0, "value": None, "description": "Insufficient sector data"}
+            
+            # Calculate rotation score
+            avg_growth = sum(growth_perf) / len(growth_perf)
+            avg_defensive = sum(defensive_perf) / len(defensive_perf)
+            rotation_diff = avg_growth - avg_defensive
+            
+            # Normalize to -1 to +1
+            # Growth outperforming by 5%+: +1.0
+            # Growth outperforming by 2.5%: +0.5
+            # Equal performance: 0.0
+            # Defensive outperforming by 2.5%: -0.5
+            # Defensive outperforming by 5%+: -1.0
+            
+            score = max(-1.0, min(1.0, rotation_diff / 5))
+            
+            return {
+                "score": round(score, 3),
+                "value": round(rotation_diff, 2),
+                "description": f"Growth vs Defensive: {rotation_diff:+.1f}%"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating sector rotation: {str(e)}")
+            return {"score": 0.0, "value": None, "description": f"Error: {str(e)}"}
 
     def generate_reply(self, messages, context=None) -> str:
         """
