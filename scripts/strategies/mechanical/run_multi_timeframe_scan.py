@@ -17,9 +17,9 @@ from typing import List, Dict, Tuple
 import argparse
 
 # Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from run_daily_scan import run_daily_scan
+from scripts.strategies.mechanical.run_daily_scan import run_daily_scan
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
 from pandas.tseries.offsets import CustomBusinessDay

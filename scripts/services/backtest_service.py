@@ -11,7 +11,7 @@ This service:
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import time
 import json
@@ -152,7 +152,7 @@ class BacktestService:
 
         cmd = [
             sys.executable,
-            "scripts/backtest_mas.py",
+            os.path.join(os.path.dirname(__file__), '..', 'backtest_mas.py'),
             symbol,
             start,
             end
@@ -307,7 +307,7 @@ class BacktestService:
 
         cmd = [
             sys.executable,
-            "scripts/generate_market_conditions_report.py",
+            os.path.join(os.path.dirname(__file__), '..', 'generate_market_conditions_report.py'),
             "--skip-backtests"
         ]
 

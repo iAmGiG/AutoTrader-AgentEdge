@@ -20,7 +20,7 @@ import glob
 import json
 
 # Add parent directory to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 
 class BacktestAggregator:
@@ -29,7 +29,7 @@ class BacktestAggregator:
     def __init__(self, cache_dir: str = None):
         """Initialize aggregator with cache directory path."""
         if cache_dir is None:
-            cache_dir = os.path.join(os.path.dirname(__file__), '..', '.cache', 'backtests')
+            cache_dir = os.path.join(os.path.dirname(__file__), '..', '..', '.cache', 'backtests')
         self.cache_dir = cache_dir
         self.trades_data = {}
         self.metrics_data = {}

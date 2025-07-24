@@ -15,7 +15,7 @@ import os
 # autopep8: off
 # this line must come before local imports, review before linting
 # Add parent directory to Python path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 # autopep8: on
 
 from src.utils.output_manager import OutputManager
