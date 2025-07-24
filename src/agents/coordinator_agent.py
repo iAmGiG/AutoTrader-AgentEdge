@@ -6,11 +6,14 @@ and exposes an API to fetch combined signals.
 
 from typing import Any, Dict, Tuple
 import json
+import logging
 from datetime import datetime
 
 from .base_agent import BaseAgent
 from .sentiment_agent import SentimentAgent  # Using enhanced version with VXX fallback
 from .tech_agent import TechAgent
+
+logger = logging.getLogger(__name__)
 
 
 class CoordinatorAgent(BaseAgent):
@@ -134,9 +137,23 @@ Return a JSON object with:
                 if "MACD_prev" in latest:
                     tech_dict["macd_yest"] = latest["MACD_prev"]
 
+            # Calculate market heat using sentiment agent
+            market_heat_data = {}
+            try:
+                market_heat_data = self.sentiment.analyze_market_heat(date)
+                logger.info(f"Market heat for {date}: {market_heat_data.get('heat_level', 'N/A')}")
+            except Exception as e:
+                logger.error(f"Error calculating market heat: {e}")
+                market_heat_data = {
+                    "heat_level": 0.0,
+                    "interpretation": "Error calculating market heat",
+                    "components": {},
+                    "date": date
+                }
+
             # Prepare signals dictionary (same as before)
             signals = {"ok": True, "sentiment": sentiment_dict,
-                       "technical": tech_dict}
+                       "technical": tech_dict, "market_heat": market_heat_data}
 
             # Prepare raw responses with full LLM reasoning
             raw_responses = {
@@ -154,7 +171,8 @@ Return a JSON object with:
                     "tools_called": tech_full.get("tools_called", []),
                     "parsed_data": tech_dict,
                     "analysis": tech_dict.get("analysis", "No detailed analysis captured")
-                }
+                },
+                "market_heat": market_heat_data
             }
 
             return signals, raw_responses
