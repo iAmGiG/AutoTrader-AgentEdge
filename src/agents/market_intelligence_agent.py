@@ -34,9 +34,12 @@ class MarketIntelligenceAgent(BaseAgent):
         super().__init__(
             name=name,
             tools=tools,
-            model_client=model_client,
             memory_system=memory_system
         )
+        
+        # Store model_client as instance variable if provided
+        if model_client:
+            self.model_client = model_client
         
         self.config = {
             "system_prompt": """You are an expert Market Intelligence Agent responsible for analyzing 

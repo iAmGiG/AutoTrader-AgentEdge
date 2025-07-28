@@ -30,9 +30,12 @@ class LLMStrategyAgent(BaseAgent):
         super().__init__(
             name=name,
             tools=[],
-            model_client=model_client,
             memory_system=memory_system
         )
+        
+        # Store model_client as instance variable if provided
+        if model_client:
+            self.model_client = model_client
         
         self.position = 0  # 0 = flat, 1 = long
         self.entry_price = None
