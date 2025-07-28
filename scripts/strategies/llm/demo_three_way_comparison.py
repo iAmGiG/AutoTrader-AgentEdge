@@ -11,7 +11,7 @@ import asyncio
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from src.agents.coordinator_agent import CoordinatorAgent
 from src.utils.parallel_strategy_tester import ParallelStrategyTester

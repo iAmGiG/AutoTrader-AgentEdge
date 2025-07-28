@@ -405,3 +405,7 @@ class StrategyAgent(BaseAgent):
                 print(f"  {reason}: {count} ({count/summary['rejected_trades']*100:.1f}%)")
 
         print("=" * 60)
+    
+    def get_metrics(self, initial_capital: float = 100000.0) -> Dict:
+        """Wrapper method for calculate_metrics for compatibility."""
+        return self.calculate_metrics(initial_capital)

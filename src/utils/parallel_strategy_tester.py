@@ -318,7 +318,20 @@ class ParallelStrategyTester:
     def analyze_disagreements(self) -> Dict:
         """Analyze patterns in strategy disagreements."""
         
-        disagreements = [c for c in self.comparison_log if not c["agreement"]]
+        # Handle both two-way and three-way comparison formats
+        disagreements = []
+        for c in self.comparison_log:
+            if "agreements" in c:
+                # Three-way comparison format - use mechanical_llm agreement
+                if not c["agreements"]["mechanical_llm"]:
+                    disagreements.append(c)
+            elif "agreement" in c:
+                # Two-way comparison format
+                if not c["agreement"]:
+                    disagreements.append(c)
+            else:
+                # Fallback - assume disagreement if no agreement field
+                disagreements.append(c)
         
         if not disagreements:
             return {"message": "No disagreements found"}
