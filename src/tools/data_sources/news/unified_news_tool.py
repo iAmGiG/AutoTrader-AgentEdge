@@ -405,7 +405,7 @@ class NewsSourceRegistry:
             NewsSource(
                 name="alpha_vantage",
                 enabled=True,
-                priority=2,
+                priority=3,
                 api_key_config_name="alpha_vantage_key",
                 config={"sentiment_included": True}
             ),
@@ -419,7 +419,7 @@ class NewsSourceRegistry:
             NewsSource(
                 name="newsapi",
                 enabled=True,
-                priority=3,
+                priority=2,
                 api_key_config_name="newsapi_key",
                 config={"default_language": "en"}
             )
