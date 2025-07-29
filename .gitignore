@@ -124,8 +124,9 @@ config/
 
 # Internal documentation
 CLAUDE.md
+.claude_archive/
 ADVISOR_REQUIREMENTS_MET.md
-TODO_NEXT_SESSION.md
+TODO.md
 docs/internalREADME.md
 docs/research/notes.md
 docs/original_sentiment_agent.py
