@@ -16,34 +16,32 @@ logger = logging.getLogger(__name__)
 
 class LLMStrategyAgent(BaseAgent):
     """Strategy agent that uses LLM for actual trading decisions.
-    
+
     Unlike the mechanical StrategyAgent, this agent:
     - Uses LLM to reason about trading decisions
     - Considers market intelligence rankings
     - Provides detailed explanations for each decision
     - Adapts to changing market conditions
     """
-    
-    def __init__(self, name: str = "LLMStrategyAgent", 
-                 model_client=None, memory_system=None):
+
+    def __init__(self, name: str = "LLMStrategyAgent",
+                 model_client=None, memory_system=None, llm_config=None):
         # LLM strategy agent doesn't need tools - it reasons about provided data
         super().__init__(
             name=name,
             tools=[],
-            memory_system=memory_system
+            memory_system=memory_system,
+            llm_config=llm_config
         )
-        
-        # Store model_client as instance variable if provided
-        if model_client:
-            self.model_client = model_client
-        
+        # Note: model_client is automatically set up by BaseAgent.__init__
+
         self.position = 0  # 0 = flat, 1 = long
         self.entry_price = None
         self.entry_date = None
         self.trade_log = []
         self.trades = []
         self.decision_history = []  # Track LLM reasoning
-        
+
         self.config = {
             "system_prompt": """You are an expert trading strategist making real trading decisions.
 Your goal is to maximize risk-adjusted returns by making intelligent BUY/SELL/HOLD decisions.
@@ -63,25 +61,26 @@ Current position tracking:
             "temperature": 0.3,  # Lower temperature for more consistent decisions
             "max_tokens": 1500
         }
-    
+
     async def decide_trade_llm(self, aggregated: Dict, price: float, trade_date: str) -> Dict:
         """Make trading decision using LLM reasoning.
-        
+
         :param aggregated: Signals from all agents (sentiment, technical, market_heat)
         :param price: Current stock price
         :param trade_date: Date of trading decision
         :return: Trading decision with detailed reasoning
         """
-        
+
         # Extract key data
         sentiment = aggregated.get("sentiment", {})
         technical = aggregated.get("technical", {})
         market_heat = aggregated.get("market_heat", {})
-        
+
         # Build comprehensive context for LLM
         position_status = "FLAT (no position)" if self.position == 0 else f"LONG (entry @ ${self.entry_price:.2f})"
-        current_pnl = ((price - self.entry_price) / self.entry_price * 100) if self.position == 1 and self.entry_price else 0
-        
+        current_pnl = ((price - self.entry_price) / self.entry_price *
+                       100) if self.position == 1 and self.entry_price else 0
+
         prompt = f"""Make a trading decision for {aggregated.get('symbol', 'UNKNOWN')} on {trade_date}.
 
 Current Status:
@@ -126,38 +125,52 @@ Return a JSON object with:
     "expected_horizon": "expected holding period if buying",
     "stop_loss_consideration": "where you might exit if wrong"
 }}"""
-        
+
         try:
-            # Get LLM decision
-            response = await self.process_with_tools_async(
-                prompt,
-                self.config["system_prompt"],
-                max_tokens=self.config["max_tokens"],
-                temperature=self.config["temperature"]
-            )
-            
+            # Build messages for direct model client call
+            from autogen_core.models import UserMessage, SystemMessage
+
+            messages = [
+                SystemMessage(content=self.config["system_prompt"]),
+                UserMessage(content=prompt, source="user")
+            ]
+
+            # Get LLM decision directly from model client
+            if hasattr(self, 'model_client') and self.model_client:
+                # Create without extra parameters first - they should be in client config
+                response = await self.model_client.create(messages=messages)
+                response_content = response.content
+            else:
+                # Fallback to base agent method without extra parameters
+                response_content = await self.process_with_tools_async(
+                    prompt,
+                    self.config["system_prompt"]
+                )
+
             # Parse response
             try:
-                if "```json" in response:
-                    json_start = response.find("```json") + 7
-                    json_end = response.rfind("```")
-                    response = response[json_start:json_end].strip()
-                
-                decision = json.loads(response)
-                
+                if "```json" in response_content:
+                    json_start = response_content.find("```json") + 7
+                    json_end = response_content.rfind("```")
+                    json_content = response_content[json_start:json_end].strip()
+                else:
+                    json_content = response_content
+
+                decision = json.loads(json_content)
+
                 # Validate and execute decision
                 action = decision.get("action", "HOLD").upper()
-                
+
                 # Ensure valid action based on position
                 if self.position == 0 and action == "SELL":
                     action = "HOLD"
                     decision["action"] = "HOLD"
                     decision["reasoning"]["decision_rationale"] = "Cannot SELL when flat - adjusted to HOLD"
                 elif self.position == 1 and action == "BUY":
-                    action = "HOLD"  
+                    action = "HOLD"
                     decision["action"] = "HOLD"
                     decision["reasoning"]["decision_rationale"] = "Already long - adjusted to HOLD"
-                
+
                 # Execute trade
                 if action == "BUY" and self.position == 0:
                     self.position = 1
@@ -179,7 +192,7 @@ Return a JSON object with:
                         })
                         self.entry_price = None
                         self.entry_date = None
-                
+
                 # Store decision with full context
                 self.decision_history.append({
                     "date": trade_date,
@@ -188,12 +201,13 @@ Return a JSON object with:
                     "decision": decision,
                     "aggregated_signals": aggregated
                 })
-                
+
                 # Log decision
                 logger.info(f"LLM Decision for {trade_date}: {action} "
-                           f"(confidence: {decision.get('confidence', 'N/A')})")
-                logger.info(f"Rationale: {decision.get('reasoning', {}).get('decision_rationale', 'No rationale')}")
-                
+                            f"(confidence: {decision.get('confidence', 'N/A')})")
+                logger.info(
+                    f"Rationale: {decision.get('reasoning', {}).get('decision_rationale', 'No rationale')}")
+
                 return {
                     "action": action,
                     "qty": 100 if action == "BUY" else 0,
@@ -202,11 +216,11 @@ Return a JSON object with:
                     "risk_level": decision.get("risk_level", "medium"),
                     "llm_based": True  # Flag to indicate LLM decision
                 }
-                
+
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse LLM decision: {e}")
                 logger.error(f"Raw response: {response}")
-                
+
                 return {
                     "action": "HOLD",
                     "qty": 0,
@@ -214,7 +228,7 @@ Return a JSON object with:
                     "llm_based": True,
                     "raw_response": response
                 }
-                
+
         except Exception as e:
             logger.error(f"LLM decision failed: {e}")
             return {
@@ -223,7 +237,7 @@ Return a JSON object with:
                 "reasoning": {"error": str(e)},
                 "llm_based": True
             }
-    
+
     def get_entry_reasoning(self) -> Dict:
         """Get reasoning for the entry that led to current position."""
         # Find the decision that opened the current position
@@ -231,7 +245,7 @@ Return a JSON object with:
             if decision["action"] == "BUY":
                 return decision.get("decision", {}).get("reasoning", {})
         return {}
-    
+
     def get_metrics(self, initial_capital: float = 10000, risk_free_rate: float = 0.02) -> Dict:
         """Calculate performance metrics (same as mechanical version for comparison)."""
         if not self.trades:
@@ -251,23 +265,26 @@ Return a JSON object with:
                 "avg_confidence": 0.0,
                 "decision_quality": 0.0
             }
-        
+
         # Standard metrics calculation
         profits = [t["profit"] for t in self.trades]
         returns = [t["return"] for t in self.trades]
-        
+
         winning_trades = [t for t in self.trades if t["profit"] > 0]
         losing_trades = [t for t in self.trades if t["profit"] <= 0]
-        
+
         total_return = sum(profits) / initial_capital
         win_rate = len(winning_trades) / len(self.trades)
-        avg_win = sum(t["profit"] for t in winning_trades) / len(winning_trades) if winning_trades else 0
-        avg_loss = sum(abs(t["profit"]) for t in losing_trades) / len(losing_trades) if losing_trades else 0
-        
+        avg_win = sum(t["profit"] for t in winning_trades) / \
+            len(winning_trades) if winning_trades else 0
+        avg_loss = sum(abs(t["profit"]) for t in losing_trades) / \
+            len(losing_trades) if losing_trades else 0
+
         # LLM-specific metrics
-        confidences = [d["decision"].get("confidence", 0.5) for d in self.decision_history if "decision" in d]
+        confidences = [d["decision"].get("confidence", 0.5)
+                       for d in self.decision_history if "decision" in d]
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0
-        
+
         # Decision quality based on outcome alignment with confidence
         decision_quality_scores = []
         for trade in self.trades:
@@ -277,24 +294,25 @@ Return a JSON object with:
                 if decision["date"] == trade["entry_date"] and decision["action"] == "BUY":
                     entry_confidence = decision["decision"].get("confidence", 0.5)
                     break
-            
+
             # Quality = confidence if profitable, (1-confidence) if loss
             if trade["profit"] > 0:
                 decision_quality_scores.append(entry_confidence)
             else:
                 decision_quality_scores.append(1 - entry_confidence)
-        
-        decision_quality = sum(decision_quality_scores) / len(decision_quality_scores) if decision_quality_scores else 0.5
-        
+
+        decision_quality = sum(decision_quality_scores) / \
+            len(decision_quality_scores) if decision_quality_scores else 0.5
+
         return {
             "total_return": total_return,
             "total_return_pct": total_return * 100,
             "win_rate": win_rate,
             "avg_win": avg_win,
             "avg_loss": avg_loss,
-            "profit_factor": (sum(t["profit"] for t in winning_trades) / 
-                            sum(abs(t["profit"]) for t in losing_trades)) if losing_trades else float('inf'),
-            "sharpe_ratio": (sum(returns) / len(returns)) / (sum((r - sum(returns)/len(returns))**2 for r in returns) / len(returns))**0.5 if len(returns) > 1 else 0,
+            "profit_factor": (sum(t["profit"] for t in winning_trades) /
+                              sum(abs(t["profit"]) for t in losing_trades)) if losing_trades else float('inf'),
+            "sharpe_ratio": (sum(returns) / len(returns)) / (sum((r - sum(returns) / len(returns))**2 for r in returns) / len(returns))**0.5 if len(returns) > 1 else 0,
             "max_drawdown": self._calculate_max_drawdown(profits),
             "num_trades": len(self.trades),
             "expectancy": (win_rate * avg_win) - ((1 - win_rate) * avg_loss),
@@ -303,18 +321,18 @@ Return a JSON object with:
             "avg_confidence": avg_confidence,
             "decision_quality": decision_quality
         }
-    
+
     def _calculate_max_drawdown(self, profits: List[float]) -> float:
         """Calculate maximum drawdown from profit series."""
         if not profits:
             return 0.0
-        
+
         cumulative = []
         total = 0
         for p in profits:
             total += p
             cumulative.append(total)
-        
+
         peak = cumulative[0]
         max_dd = 0
         for value in cumulative:
@@ -322,9 +340,9 @@ Return a JSON object with:
                 peak = value
             dd = (peak - value) / peak if peak > 0 else 0
             max_dd = max(max_dd, dd)
-        
+
         return max_dd
-    
+
     def decide_trade(self, aggregated: Dict, price: float, trade_date: str) -> Dict:
         """Synchronous wrapper for backtesting compatibility."""
         import asyncio
@@ -336,7 +354,7 @@ Return a JSON object with:
             )
         finally:
             loop.close()
-    
+
     def generate_reply(self, messages, context=None) -> str:
         """Required by BaseAgent but not used for trading."""
         return "LLMStrategyAgent makes trading decisions via decide_trade_llm method"
