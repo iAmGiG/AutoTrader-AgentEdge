@@ -1,14 +1,28 @@
-"""Parallel Strategy Tester - Compare mechanical and LLM strategies side by side.
+"""Parallel Strategy Tester - Core utility for three-way strategy comparison.
 
-This allows direct comparison of trading decisions and performance metrics.
+This module enables systematic comparison of Buy & Hold vs Mechanical vs LLM trading strategies,
+essential for validating LLM trading performance and research integrity. The utility feeds
+identical market signals to all three strategies and tracks their decisions, performance metrics,
+and agreement patterns to demonstrate strategy progression and LLM effectiveness.
+
+Key Features:
+- Three-way strategy comparison (Buy & Hold baseline, Mechanical rules, LLM decisions)
+- Identical signal feeding for fair comparison
+- Comprehensive performance metrics tracking
+- Agreement/disagreement pattern analysis
+- Automated report generation
+- Critical for research validation and academic rigor
+
+This is NOT a test script - it's a core research utility for proving LLM trading efficacy.
 """
 
-import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-import pandas as pd
 import json
+import logging
+from datetime import datetime
 from pathlib import Path
+from typing import Dict, Optional
+
+import pandas as pd
 
 from ..agents.strategy_agent import StrategyAgent
 from ..agents.llm_strategy_agent import LLMStrategyAgent
@@ -19,24 +33,24 @@ logger = logging.getLogger(__name__)
 
 class ParallelStrategyTester:
     """Run mechanical and LLM strategies in parallel for comparison.
-    
+
     Key features:
     - Feed identical signals to both strategies
     - Track decisions and reasoning from each
     - Log agreement/disagreement patterns
     - Calculate comparative performance metrics
     """
-    
+
     def __init__(self, output_dir: Optional[str] = None, initial_capital: float = 10000):
         """Initialize parallel tester with three strategy instances."""
         self.initial_capital = initial_capital
-        
+
         # Initialize all three strategies
-        self.buy_hold_strategy = BuyHoldStrategy(name="BuyHoldStrategy", 
-                                                initial_capital=initial_capital)
+        self.buy_hold_strategy = BuyHoldStrategy(name="BuyHoldStrategy",
+                                                 initial_capital=initial_capital)
         self.mechanical_strategy = StrategyAgent(name="MechanicalStrategy")
         self.llm_strategy = LLMStrategyAgent(name="LLMStrategy")
-        
+
         # Tracking
         self.comparison_log = []
         self.agreement_stats = {
@@ -45,51 +59,51 @@ class ParallelStrategyTester:
             "all_three_agreements": 0,
             "mechanical_llm_agreement_rate": 0.0
         }
-        
+
         # Performance tracking
         self.buy_hold_equity = [initial_capital]
         self.mechanical_equity = [initial_capital]
         self.llm_equity = [initial_capital]
-        
+
         # Output directory
         self.output_dir = Path(output_dir) if output_dir else Path(".cache/parallel_tests")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def run_three_way_comparison(self, signals: Dict, price: float, date: str) -> Dict:
         """Run all three strategies on same signals and compare.
-        
+
         :param signals: Aggregated signals from all agents
         :param price: Current stock price
         :param date: Trading date
         :return: Three-way comparison results
         """
-        
+
         # Get buy & hold decision (always HOLD after initial buy)
         try:
             bh_decision = self.buy_hold_strategy.decide_trade(signals, price, date)
         except Exception as e:
             logger.error(f"Buy & Hold error: {e}")
             bh_decision = {"action": "HOLD", "error": str(e)}
-        
+
         # Get mechanical decision
         try:
             mech_decision = self.mechanical_strategy.decide_trade(signals, price, date)
         except Exception as e:
             logger.error(f"Mechanical strategy error: {e}")
             mech_decision = {"action": "HOLD", "error": str(e)}
-        
+
         # Get LLM decision
         try:
             llm_decision = self.llm_strategy.decide_trade(signals, price, date)
         except Exception as e:
             logger.error(f"LLM strategy error: {e}")
             llm_decision = {"action": "HOLD", "error": str(e)}
-        
+
         # Compare decisions
         mech_llm_agree = mech_decision.get("action") == llm_decision.get("action")
-        all_agree = (bh_decision.get("action") == mech_decision.get("action") == 
-                    llm_decision.get("action"))
-        
+        all_agree = (bh_decision.get("action") == mech_decision.get("action") ==
+                     llm_decision.get("action"))
+
         # Create comparison entry
         comparison = {
             "date": date,
@@ -121,7 +135,7 @@ class ParallelStrategyTester:
             },
             "timestamp": datetime.now().isoformat()
         }
-        
+
         # Update tracking
         self.comparison_log.append(comparison)
         self.agreement_stats["total_decisions"] += 1
@@ -130,50 +144,51 @@ class ParallelStrategyTester:
         if all_agree:
             self.agreement_stats["all_three_agreements"] += 1
         self.agreement_stats["mechanical_llm_agreement_rate"] = (
-            self.agreement_stats["mechanical_llm_agreements"] / 
+            self.agreement_stats["mechanical_llm_agreements"] /
             self.agreement_stats["total_decisions"]
         )
-        
+
         # Update equity curves
         self._update_equity(bh_decision.get("action"), price, "buy_hold")
         self._update_equity(mech_decision.get("action"), price, "mechanical")
         self._update_equity(llm_decision.get("action"), price, "llm")
-        
+
         # Log significant events
         if not mech_llm_agree:
             logger.info(f"DISAGREEMENT on {date}: Mechanical={mech_decision['action']}, "
-                       f"LLM={llm_decision['action']} (confidence={llm_decision.get('confidence', 'N/A')})")
+                        f"LLM={llm_decision['action']} (confidence={llm_decision.get('confidence', 'N/A')})")
             if isinstance(llm_decision.get("reasoning"), dict):
-                logger.info(f"LLM reasoning: {llm_decision['reasoning'].get('decision_rationale', 'No rationale')}")
-        
+                logger.info(
+                    f"LLM reasoning: {llm_decision['reasoning'].get('decision_rationale', 'No rationale')}")
+
         return comparison
-    
+
     def run_parallel_decision(self, signals: Dict, price: float, date: str) -> Dict:
         """Run both strategies on same signals and compare decisions.
-        
+
         :param signals: Aggregated signals from all agents
         :param price: Current stock price
         :param date: Trading date
         :return: Comparison results
         """
-        
+
         # Get mechanical decision
         try:
             mech_decision = self.mechanical_strategy.decide_trade(signals, price, date)
         except Exception as e:
             logger.error(f"Mechanical strategy error: {e}")
             mech_decision = {"action": "HOLD", "error": str(e)}
-        
+
         # Get LLM decision
         try:
             llm_decision = self.llm_strategy.decide_trade(signals, price, date)
         except Exception as e:
             logger.error(f"LLM strategy error: {e}")
             llm_decision = {"action": "HOLD", "error": str(e)}
-        
+
         # Compare decisions
         agree = mech_decision.get("action") == llm_decision.get("action")
-        
+
         # Create comparison entry
         comparison = {
             "date": date,
@@ -198,7 +213,7 @@ class ParallelStrategyTester:
             "agreement": agree,
             "timestamp": datetime.now().isoformat()
         }
-        
+
         # Update tracking
         self.comparison_log.append(comparison)
         self.agreement_stats["total_decisions"] += 1
@@ -209,20 +224,21 @@ class ParallelStrategyTester:
         self.agreement_stats["agreement_rate"] = (
             self.agreement_stats["agreements"] / self.agreement_stats["total_decisions"]
         )
-        
+
         # Update equity curves
         self._update_equity(mech_decision.get("action"), price, "mechanical")
         self._update_equity(llm_decision.get("action"), price, "llm")
-        
+
         # Log significant disagreements
         if not agree:
             logger.info(f"DISAGREEMENT on {date}: Mechanical={mech_decision['action']}, "
-                       f"LLM={llm_decision['action']} (confidence={llm_decision.get('confidence', 'N/A')})")
+                        f"LLM={llm_decision['action']} (confidence={llm_decision.get('confidence', 'N/A')})")
             if isinstance(llm_decision.get("reasoning"), dict):
-                logger.info(f"LLM reasoning: {llm_decision['reasoning'].get('decision_rationale', 'No rationale')}")
-        
+                logger.info(
+                    f"LLM reasoning: {llm_decision['reasoning'].get('decision_rationale', 'No rationale')}")
+
         return comparison
-    
+
     def _update_equity(self, action: str, price: float, strategy: str):
         """Update equity curve for a strategy based on its action."""
         if strategy == "buy_hold":
@@ -246,20 +262,20 @@ class ParallelStrategyTester:
             # Simple tracking for now
             current_equity = equity_list[-1]
             equity_list.append(current_equity)
-    
+
     def get_three_way_comparison(self) -> Dict:
         """Calculate and compare performance metrics for all three strategies."""
-        
+
         # Get metrics from each strategy
         bh_metrics = self.buy_hold_strategy.get_metrics(self.initial_capital)
         mech_metrics = self.mechanical_strategy.get_metrics(self.initial_capital)
         llm_metrics = self.llm_strategy.get_metrics(self.initial_capital)
-        
+
         # Calculate equity-based metrics
         bh_returns = pd.Series(self.buy_hold_equity).pct_change().dropna()
         mech_returns = pd.Series(self.mechanical_equity).pct_change().dropna()
         llm_returns = pd.Series(self.llm_equity).pct_change().dropna()
-        
+
         comparison = {
             "buy_hold": {
                 **bh_metrics,
@@ -281,7 +297,7 @@ class ParallelStrategyTester:
                 "total_decisions": self.agreement_stats["total_decisions"],
                 "mechanical_vs_bh": {
                     "outperformance": (
-                        (self.mechanical_equity[-1] - self.buy_hold_equity[-1]) / 
+                        (self.mechanical_equity[-1] - self.buy_hold_equity[-1]) /
                         self.buy_hold_equity[-1] * 100
                         if self.buy_hold_equity[-1] > 0 else 0
                     ),
@@ -290,7 +306,7 @@ class ParallelStrategyTester:
                 },
                 "llm_vs_bh": {
                     "outperformance": (
-                        (self.llm_equity[-1] - self.buy_hold_equity[-1]) / 
+                        (self.llm_equity[-1] - self.buy_hold_equity[-1]) /
                         self.buy_hold_equity[-1] * 100
                         if self.buy_hold_equity[-1] > 0 else 0
                     ),
@@ -299,7 +315,7 @@ class ParallelStrategyTester:
                 },
                 "llm_vs_mechanical": {
                     "outperformance": (
-                        (self.llm_equity[-1] - self.mechanical_equity[-1]) / 
+                        (self.llm_equity[-1] - self.mechanical_equity[-1]) /
                         self.mechanical_equity[-1] * 100
                         if self.mechanical_equity[-1] > 0 else 0
                     ),
@@ -308,16 +324,16 @@ class ParallelStrategyTester:
                 }
             }
         }
-        
+
         return comparison
-    
+
     def get_performance_comparison(self) -> Dict:
         """Legacy method - calls get_three_way_comparison."""
         return self.get_three_way_comparison()
-    
+
     def analyze_disagreements(self) -> Dict:
         """Analyze patterns in strategy disagreements."""
-        
+
         # Handle both two-way and three-way comparison formats
         disagreements = []
         for c in self.comparison_log:
@@ -332,10 +348,10 @@ class ParallelStrategyTester:
             else:
                 # Fallback - assume disagreement if no agreement field
                 disagreements.append(c)
-        
+
         if not disagreements:
             return {"message": "No disagreements found"}
-        
+
         # Analyze when strategies disagree
         analysis = {
             "total_disagreements": len(disagreements),
@@ -344,69 +360,71 @@ class ParallelStrategyTester:
             "market_conditions": {},
             "common_patterns": []
         }
-        
+
         # Count disagreement types
         for d in disagreements:
             mech_action = d["mechanical"]["action"]
             llm_action = d["llm"]["action"]
             key = f"{mech_action}_vs_{llm_action}"
             analysis["by_action"][key] = analysis["by_action"].get(key, 0) + 1
-        
+
         # Analyze market conditions during disagreements
-        heat_levels = [d["signals"]["market_heat"] for d in disagreements if d["signals"]["market_heat"] != "N/A"]
+        heat_levels = [d["signals"]["market_heat"]
+                       for d in disagreements if d["signals"]["market_heat"] != "N/A"]
         if heat_levels:
             analysis["market_conditions"]["avg_heat"] = sum(heat_levels) / len(heat_levels)
             analysis["market_conditions"]["heat_range"] = (min(heat_levels), max(heat_levels))
-        
+
         # Find common patterns
         if len(disagreements) >= 3:
             # Example: LLM more conservative in cold markets
             cold_market_disagreements = [
-                d for d in disagreements 
+                d for d in disagreements
                 if d["signals"]["market_heat"] != "N/A" and d["signals"]["market_heat"] < -0.2
             ]
             if cold_market_disagreements:
-                llm_holds = sum(1 for d in cold_market_disagreements if d["llm"]["action"] == "HOLD")
+                llm_holds = sum(
+                    1 for d in cold_market_disagreements if d["llm"]["action"] == "HOLD")
                 if llm_holds / len(cold_market_disagreements) > 0.6:
                     analysis["common_patterns"].append(
                         "LLM tends to be more conservative (HOLD) in cold market conditions"
                     )
-        
+
         return analysis
-    
+
     def save_results(self, run_name: str = None):
         """Save comparison results to files."""
-        
+
         if not run_name:
             run_name = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         run_dir = self.output_dir / run_name
         run_dir.mkdir(exist_ok=True)
-        
+
         # Save comparison log
         with open(run_dir / "comparison_log.json", "w") as f:
             json.dump(self.comparison_log, f, indent=2)
-        
+
         # Save performance comparison
         perf_comparison = self.get_performance_comparison()
         with open(run_dir / "performance_comparison.json", "w") as f:
             json.dump(perf_comparison, f, indent=2)
-        
+
         # Save disagreement analysis
         disagreement_analysis = self.analyze_disagreements()
         with open(run_dir / "disagreement_analysis.json", "w") as f:
             json.dump(disagreement_analysis, f, indent=2)
-        
+
         # Generate summary report
         self._generate_summary_report(run_dir, perf_comparison, disagreement_analysis)
-        
+
         logger.info(f"Results saved to {run_dir}")
         return run_dir
-    
-    def _generate_summary_report(self, run_dir: Path, perf_comparison: Dict, 
-                                disagreement_analysis: Dict):
+
+    def _generate_summary_report(self, run_dir: Path, perf_comparison: Dict,
+                                 disagreement_analysis: Dict):
         """Generate a markdown summary report."""
-        
+
         report = f"""# Parallel Strategy Comparison Report
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
@@ -457,19 +475,19 @@ The LLM strategy demonstrates {"superior" if perf_comparison['comparison']['llm_
 with the added benefit of explainable decision-making. Key advantages include better adaptation to market 
 conditions and transparent reasoning for each trade.
 """
-        
+
         with open(run_dir / "summary_report.md", "w") as f:
             f.write(report)
-    
+
     def _get_top_disagreement_pattern(self, analysis: Dict) -> str:
         """Get the most common disagreement pattern."""
         if not analysis.get("by_action"):
             return "No clear pattern"
-        
+
         # Find most common disagreement
         patterns = analysis["by_action"]
         top_pattern = max(patterns.items(), key=lambda x: x[1])
-        
+
         # Format nicely
         actions = top_pattern[0].split("_vs_")
         return f"Mechanical {actions[0]} while LLM {actions[1]} ({top_pattern[1]} times)"

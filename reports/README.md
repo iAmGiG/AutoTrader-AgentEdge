@@ -10,7 +10,9 @@ reports/
 ├── validation/      # LLM validation and obfuscation test results
 ├── analysis/        # Market and strategy analysis reports  
 ├── sessions/        # Work session summaries
-│   └── YYYY/       # Organized by year
+│   ├── YYYY/       # Daily completion summaries by year
+│   └── summaries/  # Comprehensive session summaries for main chat
+├── technical/       # Technical implementation reports
 ├── deprecated/     # Pre-134 reports (not in repo)
 └── README.md       # This file
 ```
