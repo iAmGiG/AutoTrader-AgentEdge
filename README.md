@@ -2,122 +2,129 @@
 
 ## Overview
 
-RH2MAS is a financial analysis system using a multi-agent architecture with AutoGen 0.6.x. The system employs specialized agents working together to analyze market sentiment, technical indicators, and make trading decisions.
+RH2MAS is a financial analysis research project exploring multi-agent architectures using [AutoGen](https://github.com/microsoft/autogen) 0.7.x. The system demonstrates how LLM-powered and rule-based agents can work together for trading strategy analysis.
 
-## Key Features
+## Research Focus
 
-> NOTE: not all features have been implemented yet, as further testing is required.
+This project implements a three-way strategy comparison framework:
 
-- **Multi-Agent Architecture**: Sentiment, Technical, Strategy, and Coordinator agents
-- **Enhanced Sentiment Analysis**: News aggregation with VXX volatility fallback
-- **Technical Analysis**: MACD, RSI, Bollinger Bands, and pattern recognition
-- **Smart Caching**: Reduces API calls with market data and news caching
-- **Comprehensive Backtesting**: Organized output with LLM reasoning capture
+- **Buy & Hold**: Baseline reference strategy
+- **Mechanical**: MACD-based rules with market heat filtering  
+- **LLM**: AI-powered decision making with explainable reasoning
 
-## Quick Start
+The system is designed to validate whether LLM-enhanced trading strategies provide advantages over traditional approaches.
 
-```bash
-# Install dependencies
-pip install -e .
+## Architecture
 
-# Run a single backtest
-python scripts/backtest_mas.py AAPL 2024-01-01 2024-01-31
+### Agent Implementation Status
 
-# Run test suite
-python scripts/run_backtest_suite.py quick
-```
+#### LLM-Powered Agents (Require OpenAI API)
+1. **SentimentAgent**: Analyzes news sentiment using LLM
+2. **TechAgent**: Calculates technical indicators with LLM interpretation
+3. **LLMStrategyAgent**: Makes trading decisions with detailed reasoning
+4. **MarketIntelligenceAgent**: Ranks trading opportunities (experimental)
 
-## Project Structure
+#### Rule-Based Agents (No LLM Required)
+1. **StrategyAgent**: MACD crossover rules with market heat filtering
+2. **BuyHoldStrategy**: Simple baseline for comparison
+3. **CoordinatorAgent**: Orchestrates other agents (no direct LLM usage)
 
-```bash
-RH2MAS/
-├── src/
-│   ├── agents/         # Agent implementations
-│   ├── core/          # Core system components
-│   ├── tools/         # Data sources and tools
-│   └── utils/         # Utilities and helpers
-├── scripts/           # Executable scripts
-├── docs/              # Documentation
-├── config/            # Configuration files
-└── .cache/           # Cached data and results
-```
+#### Placeholder
+1. **RiskAgent**: Not implemented (TODO comment only)
 
-## Current Agents
+### Core Features
 
-1. **SentimentAgent**: Analyzes news sentiment with VXX fallback
-2. **TechAgent**: Performs technical analysis (MACD fix implemented)
-3. **StrategyAgent**: Makes trading decisions (sentiment >= 0)
-4. **CoordinatorAgent**: Orchestrates multi-agent collaboration
+- **Multi-Source News**: Fetches from [Alpha Vantage](https://www.alphavantage.co/), [Finnhub](https://finnhub.io/), [NewsAPI](https://newsapi.org/) (with fallbacks)
+- **Technical Analysis**: Currently uses MACD (12/26 EMA) for trading signals. Additional indicators available: RSI, Bollinger Bands, Fibonacci retracements
+- **Backtesting Framework**: Historical strategy performance evaluation
+- **Data Caching**: Automatic caching to reduce API calls (freemium tier friendly)
 
-## Recent Updates (2025-07-11)
-
-- ✅ Fixed MACD calculation (now uses MACD line, not histogram)
-- ✅ Added news caching with relevance filtering
-- ✅ Consolidated documentation
-- ✅ Enhanced strategy with VXX fallback
-
-## Documentation
-
-- [System Architecture](docs/CURRENT_ARCHITECTURE.md) - Current system design
-- [Agent Documentation](docs/implementation/agents/) - Individual agent guides
-- [AutoGen Reference](docs/autogen_core_reference/) - Framework documentation
-- [API Documentation](docs/implementation/tools/) - Tool and API references
-
-## Configuration
-
-API keys must be stored in `config/config.json` (not included in repo for security):
-
-1. Create the config directory: `mkdir -p config`
-2. Create `config/config.json` with your API keys:
-
-```json
-{
-  "openai_api_key": "sk-...",
-  "alpha_vantage_api_key": "...",
-  "newsapi_key": "...",
-  "finnhub_api_key": "..."
-}
-```
-
-**Important**:
-
-- `config/config.json` is in `.gitignore` and should NEVER be committed
-- Keep your API keys secure and private
-- The system uses `ConfigLoader` to load keys at runtime
-
-## Environment Setup
+## Installation
 
 ```bash
 # Python 3.10+ required
 conda create -n RH2MAS python=3.10
 conda activate RH2MAS
 
-# Install requirements
+# Install dependencies
 pip install -e .
 ```
 
-## API Limitations
+## Configuration
 
-- **Alpha Vantage**: 25 calls/day (free tier)
-- **Yahoo Finance**: Rate limited, but primary source
-- **Solution**: Aggressive caching (24hr market data, 7-day news)
+Create `config/config.json` with required API keys:
 
-## Performance
+```json
+{
+  "openai_api_key": "sk-...",
+  "alpha_vantage_key": "...",
+  "newsapi_key": "...",
+  "finnhub_key": "..."
+}
+```
 
-Example backtest results:
+Note: This file is excluded from version control for security.
 
-- Processing: ~80 seconds per symbol/month
-- Cache hit rate: >90% after initial run
-- LLM calls: 2-3 per trading day
+## Usage
 
-## Contributing
+### Single Backtest
+```bash
+python scripts/backtest.py SYMBOL START_DATE END_DATE
+# Example: python scripts/backtest.py AAPL 2023-01-01 2023-12-31
+```
 
-This is an active research project. Key areas for contribution:
+### Automated Backtest Service
+```bash
+python scripts/run_experiments.py
+```
 
-- Additional data sources
-- Risk agent implementation
-- Real-time trading capabilities
-- Performance optimizations
+### Three-Way Strategy Analysis
+```bash
+python scripts/analyze_results.py
+```
+
+### Parallel Strategy Comparison Demo
+```bash
+python scripts/agents/demo_parallel.py SYMBOL START END
+```
+
+## Project Structure
+
+```
+RH2MAS/
+├── src/
+│   ├── agents/           # Agent implementations
+│   ├── tools/            # Data sources and processing tools
+│   ├── utils/            # Utilities including ParallelStrategyTester
+│   └── validation/       # Validation tools (ObfuscationValidator)
+├── scripts/
+│   ├── backtest_mas.py   # Primary backtesting script
+│   ├── validation/       # Validation and analysis scripts
+│   └── strategies/       # Strategy demonstration scripts
+├── docs/                 # Documentation
+├── config/               # Configuration directory (create locally)
+└── reports/              # Analysis reports and guides
+```
+
+## Documentation
+
+- [Terminology](docs/terminology.md) - Complete terminology and acronym reference
+- [Project Structure](docs/project_structure.md) - Detailed directory structure
+- [Commands](docs/commands.md) - All commands and setup instructions
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+
+## API Services
+
+- [Alpha Vantage](https://www.alphavantage.co/documentation/) - News and market data (freemium)
+- [Finnhub](https://finnhub.io/docs/api) - Financial data (freemium)
+- [NewsAPI](https://newsapi.org/docs) - General news (freemium)
+- [OpenAI](https://platform.openai.com/docs/api-reference) - LLM services (usage-based)
+
+The system implements caching to work efficiently with freemium API tiers.
+
+## Academic Context
+
+This is an academic research project exploring multi-agent systems for financial analysis. The focus is on validating whether LLM-enhanced decision-making provides advantages over traditional rule-based approaches.
 
 ## License
 
