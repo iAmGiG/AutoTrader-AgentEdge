@@ -1,151 +1,97 @@
 # Scripts Directory
 
-This directory contains executable scripts organized by functionality for running backtests, analyzing results, and demonstrating strategies.
+The scripts directory is organized into 3 clear layers matching the system architecture:
 
-## Directory Structure
+## Layer 1: Experiment Entry Points
 
-```bash
-scripts/
-├── backtesting/                 # Core backtesting functionality
-│   ├── backtest_mas.py         # Main multi-agent system backtesting engine
-│   ├── run_backtest_suite.py   # Batch runner for multiple backtests  
-│   └── backtest_configs.yaml   # Configuration for test suites
-│
-├── strategies/                  # Strategy implementations and demos
-│   ├── mechanical/             # Mechanical/rule-based strategies
-│   │   ├── run_daily_scan.py   # Daily portfolio scanner with TA + Market Heat
-│   │   └── run_multi_timeframe_scan.py  # Historical multi-date analysis
-│   │
-│   └── llm/                    # LLM-based strategies
-│       ├── demo_parallel_strategies.py    # Mechanical vs LLM comparison
-│       └── demo_three_way_comparison.py   # Buy & Hold vs Mechanical vs LLM
-│
-├── analysis/                    # Analysis and reporting tools
-│   ├── analyze_cache.py        # Analyzes cached market data coverage
-│   ├── analyze_scan_performance.py  # Evaluates scan results
-│   ├── aggregate_results.py    # Aggregates backtest results
-│   └── README_ANALYSIS_TOOLS.md # Analysis tools documentation
-│
-├── services/                    # Background services and automation
-│   ├── backtest_service.py     # Intelligent backtest service with rate limiting
-│   ├── start_backtest_service.py  # User-friendly service launcher
-│   ├── run_backtest_service.sh # Shell wrapper with auto-restart
-│   └── README.md               # Service documentation
-│
-├── demos/                       # Quick demonstration scripts (future)
-│
-└── utils/                       # Utility scripts (future)
-```
+**Main scripts for running experiments and analysis:**
 
-## Quick Start Guide
-
-### 1. Running a Single Backtest
+### `backtest.py` - Primary Backtesting
 
 ```bash
-python scripts/backtesting/backtest_mas.py AAPL 2024-01-01 2024-12-31
+python backtest.py SYMBOL START_DATE END_DATE
+# Example: python backtest.py AAPL 2023-01-01 2023-12-31
 ```
 
-### 2. Comparing Strategies
+Single stock backtesting with full LLM reasoning capture.
 
-**Two-way comparison (Mechanical vs LLM):**
+### `analyze_results.py` - Results Analysis  
+
 ```bash
-python scripts/strategies/llm/demo_parallel_strategies.py NVDA 2024-01-01 2024-01-31
+python analyze_results.py
 ```
 
-**Three-way comparison (Buy & Hold vs Mechanical vs LLM):**
+Analyzes cached backtest data and generates performance reports.
+
+### `run_experiments.py` - Batch Experiments
+
 ```bash
-python scripts/strategies/llm/demo_three_way_comparison.py MSFT 2024-01-01 2024-01-31
+python run_experiments.py
 ```
 
-### 3. Running Mechanical Strategy Scans
+Automated batch processing with rate limiting and resume capability.
 
-**Daily scan across portfolios:**
-```bash
-python scripts/strategies/mechanical/run_daily_scan.py
-```
+## Layer 2: Agent Operations (`agents/`)
 
-**Historical analysis:**
-```bash
-python scripts/strategies/mechanical/run_multi_timeframe_scan.py
-```
+**Scripts for working directly with agents:**
 
-### 4. Batch Backtesting
+### `compare_strategies.py` - Strategy Comparison
 
-**Run comprehensive test suite:**
-```bash
-python scripts/backtesting/run_backtest_suite.py comprehensive --parallel
-```
+Three-way comparison demo: Buy & Hold vs Mechanical vs LLM
 
-**Start intelligent backtest service:**
-```bash
-python scripts/services/start_backtest_service.py
-```
+### `demo_parallel.py` - Parallel Strategy Demo
 
-### 5. Analyzing Results
+Real-time parallel execution of multiple strategies
 
-**Aggregate backtest results:**
-```bash
-python scripts/analysis/aggregate_results.py
-```
+### `test_agents.py` - Agent Testing
 
-**Analyze cache coverage:**
-```bash
-python scripts/analysis/analyze_cache.py
-```
+Validation and testing of agent functionality
 
-## Key Script Categories
+## Layer 3: Tools & Utilities (`tools/`)
 
-### Backtesting Scripts
+**Supporting tools and utilities:**
 
-- **backtest_mas.py**: Core engine that runs the multi-agent system on historical data
-- **run_backtest_suite.py**: Batch runner for multiple symbols/periods with parallel support
-- **backtest_configs.yaml**: Defines test suites (quick, comprehensive, extended)
+### Data Tools (`tools/data/`)
 
-### Strategy Scripts
+- `build_cache.py` - Build market data cache
+- `collect_data.py` - Collect fresh market data
 
-#### Mechanical Strategies
-- **run_daily_scan.py**: Scans portfolios using TA signals + market heat filtering
-- **run_multi_timeframe_scan.py**: Tests mechanical strategy across date ranges
+### Validation Tools (`tools/validation/`)
 
-#### LLM Strategies
-- **demo_parallel_strategies.py**: Demonstrates LLM vs Mechanical decision differences
-- **demo_three_way_comparison.py**: Proves strategy progression (B&H → Mechanical → LLM)
+- `obfuscation_test.py` - Data integrity validation
 
-### Analysis Scripts
+### General Utils (`tools/utils/`)
 
-- **analyze_cache.py**: Shows what market data is cached to avoid API limits
-- **analyze_scan_performance.py**: Evaluates mechanical strategy scan results
-- **aggregate_results.py**: Combines results from multiple backtests for comparison
+- Maintenance and utility scripts
 
-### Service Scripts
+## Quick Start
 
-- **backtest_service.py**: Core service with intelligent rate limiting and resume
-- **start_backtest_service.py**: User interface for launching the service
-- **run_backtest_service.sh**: Shell script for production deployment
+1. **Run a single backtest:**
 
-## Common Use Cases
+   ```bash
+   python backtest.py NVDA 2023-01-01 2023-12-31
+   ```
 
-### Research & Development
+2. **Analyze results:**
 
-1. Test new strategy ideas using backtest_mas.py
-2. Compare strategies with demo scripts
-3. Analyze results with aggregation tools
+   ```bash
+   python analyze_results.py
+   ```
 
-### Production Backtesting
+3. **Compare strategies:**
 
-1. Use backtest service for large-scale tests
-2. Configure test suites in backtest_configs.yaml
-3. Monitor progress and handle API limits automatically
+   ```bash
+   python agents/compare_strategies.py
+   ```
 
-### Strategy Evaluation
+## Architecture Notes
 
-1. Run three-way comparison to prove LLM superiority
-2. Analyze agreement/disagreement patterns
-3. Generate reports for advisors/stakeholders
+- **Layer 1**: What users interact with directly
+- **Layer 2**: Agent-specific operations and demos  
+- **Layer 3**: Supporting infrastructure
 
-## Notes
+This structure mirrors the system architecture: experiment entry points → agent operations → underlying tools and utilities.
 
-- All scripts handle relative imports correctly after reorganization
-- Scripts automatically add project root to Python path
-- Cache data in `.cache/` to minimize API calls
-- Use `--help` flag on any script for detailed options
+## Legacy Scripts
+
+The old directory structure (`backtesting/`, `analysis/`, `strategies/`, etc.) is preserved for reference but the new 3-layer structure provides clearer entry points.

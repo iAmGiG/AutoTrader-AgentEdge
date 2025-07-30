@@ -4,18 +4,18 @@ This version captures and saves all LLM reasoning and analysis
 for demonstrating the intelligent analysis performed by the agents.
 
 Usage:
-    python backtest_mas.py SYMBOL START END
+    python backtest.py SYMBOL START END
 
 Example:
-    python backtest_mas.py NVDA 2023-01-01 2024-12-31
+    python backtest.py NVDA 2023-01-01 2024-12-31
 """
 import sys
 import os
 
 # autopep8: off
 # this line must come before local imports, review before linting
-# Add parent directory to Python path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+# Add project root to Python path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # autopep8: on
 
 from src.utils.output_manager import OutputManager

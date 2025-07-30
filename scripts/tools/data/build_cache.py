@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import List, Dict
 
 # Add project root to path
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.tools.data_sources.market.fmp_tool import FMPTool

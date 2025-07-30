@@ -15,7 +15,7 @@ import json
 import time
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from src.tools.data_sources.market.fmp_tool import FMPTool
 from src.tools.cache.market_data_cache import MarketDataCache
