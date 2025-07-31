@@ -530,3 +530,131 @@ class FMPTool:
         except Exception as e:
             self.logger.error(f"Error fetching stock data for {symbol}: {e}")
             return pd.DataFrame()
+
+    def fetch_quote(self, symbol: str) -> pd.DataFrame:
+        """
+        Fetch real-time stock quote from FMP API.
+        
+        This uses the Stock Quote API which has good free tier coverage for MAG7 stocks:
+        AAPL, TSLA, AMZN, MSFT, NVDA, GOOGL, META, NFLX, etc.
+        
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            
+        Returns:
+            DataFrame with current quote data (single row with OHLCV and other metrics)
+        """
+        try:
+            # Use the quote endpoint - this has good free tier access
+            url = f"{self.base_url}/quote/{symbol}"
+            params = {
+                'apikey': self.api_key
+            }
+            
+            self.logger.info(f"Fetching real-time quote for {symbol}")
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if not data or not isinstance(data, list) or len(data) == 0:
+                self.logger.warning(f"No quote data returned for {symbol}")
+                return pd.DataFrame()
+            
+            # FMP returns a list with one quote object
+            quote_data = data[0]
+            
+            # Convert to DataFrame with standardized columns
+            df_data = {
+                'Symbol': quote_data.get('symbol', symbol),
+                'Open': quote_data.get('open'),
+                'High': quote_data.get('dayHigh'),
+                'Low': quote_data.get('dayLow'), 
+                'Close': quote_data.get('price'),  # Current price
+                'Volume': quote_data.get('volume'),
+                'PreviousClose': quote_data.get('previousClose'),
+                'Change': quote_data.get('change'),
+                'ChangePercent': quote_data.get('changesPercentage'),
+                'MarketCap': quote_data.get('marketCap'),
+                'PE': quote_data.get('pe'),
+                'EPS': quote_data.get('eps'),
+                'Timestamp': pd.Timestamp.now(),
+                'Data_Source': 'FMP_Quote'
+            }
+            
+            # Create DataFrame
+            df = pd.DataFrame([df_data])
+            
+            # Set timestamp as index
+            df.set_index('Timestamp', inplace=True)
+            
+            self.logger.info(f"Successfully fetched quote for {symbol}: ${quote_data.get('price', 'N/A')}")
+            
+            return df
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching quote for {symbol}: {e}")
+            return pd.DataFrame()
+
+    def fetch_multiple_quotes(self, symbols: list) -> pd.DataFrame:
+        """
+        Fetch real-time quotes for multiple symbols.
+        
+        Args:
+            symbols: List of stock symbols (e.g., ['AAPL', 'MSFT', 'GOOGL'])
+            
+        Returns:
+            DataFrame with quote data for all symbols
+        """
+        try:
+            # Join symbols with comma for batch request
+            symbol_string = ','.join(symbols)
+            url = f"{self.base_url}/quote/{symbol_string}"
+            params = {
+                'apikey': self.api_key
+            }
+            
+            self.logger.info(f"Fetching quotes for {len(symbols)} symbols: {symbol_string}")
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if not data or not isinstance(data, list):
+                self.logger.warning(f"No quote data returned for symbols: {symbol_string}")
+                return pd.DataFrame()
+            
+            # Process each quote
+            all_quotes = []
+            for quote_data in data:
+                quote_df_data = {
+                    'Symbol': quote_data.get('symbol'),
+                    'Open': quote_data.get('open'),
+                    'High': quote_data.get('dayHigh'),
+                    'Low': quote_data.get('dayLow'),
+                    'Close': quote_data.get('price'),  # Current price
+                    'Volume': quote_data.get('volume'), 
+                    'PreviousClose': quote_data.get('previousClose'),
+                    'Change': quote_data.get('change'),
+                    'ChangePercent': quote_data.get('changesPercentage'),
+                    'MarketCap': quote_data.get('marketCap'),
+                    'PE': quote_data.get('pe'),
+                    'EPS': quote_data.get('eps'),
+                    'Timestamp': pd.Timestamp.now(),
+                    'Data_Source': 'FMP_Quote'
+                }
+                all_quotes.append(quote_df_data)
+            
+            # Create combined DataFrame
+            df = pd.DataFrame(all_quotes)
+            
+            # Set multi-index with timestamp and symbol
+            df.set_index(['Timestamp', 'Symbol'], inplace=True)
+            
+            self.logger.info(f"Successfully fetched {len(df)} quotes")
+            
+            return df
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching multiple quotes: {e}")
+            return pd.DataFrame()

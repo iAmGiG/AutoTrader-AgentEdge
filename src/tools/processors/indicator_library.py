@@ -16,6 +16,7 @@ __all__ = [
     "ichimoku",
     "stochrsi",
     "cci",
+    "fibonacci_retracement",
 ]
 
 
@@ -248,3 +249,55 @@ def cci(
         lambda x: np.mean(np.abs(x - x.mean())), raw=True
     )
     return (tp - ma) / (0.015 * mad)
+
+
+# --- Fibonacci Retracement ---
+def fibonacci_retracement(
+    high: pd.Series, low: pd.Series, period: int = 20
+) -> pd.DataFrame:
+    """Calculate Fibonacci retracement levels for support and resistance analysis.
+    
+    Parameters:
+    -----------
+    high : pd.Series
+        High price series
+    low : pd.Series  
+        Low price series
+    period : int, default 20
+        Lookback period for identifying significant high/low points
+        
+    Returns:
+    --------
+    pd.DataFrame
+        DataFrame with fibonacci retracement levels:
+        - Fib_0_0: 0% level (swing high)
+        - Fib_23_6: 23.6% retracement level
+        - Fib_38_2: 38.2% retracement level  
+        - Fib_50_0: 50% retracement level (key support/resistance)
+        - Fib_61_8: 61.8% retracement level
+        - Fib_100_0: 100% level (swing low)
+    """
+    # Find swing highs and lows over the lookback period
+    swing_high = high.rolling(window=period).max()
+    swing_low = low.rolling(window=period).min()
+    
+    # Calculate the range between swing high and low
+    price_range = swing_high - swing_low
+    
+    # Calculate fibonacci retracement levels
+    fib_0_0 = swing_high  # 0% (swing high)
+    fib_23_6 = swing_high - (price_range * 0.236)  # 23.6%
+    fib_38_2 = swing_high - (price_range * 0.382)  # 38.2%
+    fib_50_0 = swing_high - (price_range * 0.500)  # 50% (key level)
+    fib_61_8 = swing_high - (price_range * 0.618)  # 61.8%
+    fib_100_0 = swing_low  # 100% (swing low)
+    
+    return pd.DataFrame({
+        "Fib_0_0": fib_0_0,
+        "Fib_23_6": fib_23_6,
+        "Fib_38_2": fib_38_2,
+        "Fib_50_0": fib_50_0,      # Key 50% retracement level
+        "Fib_61_8": fib_61_8,
+        "Fib_100_0": fib_100_0,
+        "Fib_range": price_range   # Range for reference
+    })

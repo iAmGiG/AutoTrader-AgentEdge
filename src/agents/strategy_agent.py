@@ -101,7 +101,14 @@ class StrategyAgent(BaseAgent):
         macd_y = aggregated.get("technical", {}).get("macd_yest")
         macd_t = aggregated.get("technical", {}).get("macd_today")
         sentiment = aggregated.get("sentiment", {}).get("score", 0)
-        market_heat = aggregated.get("market_heat", 0.0)  # Get market heat from aggregated data
+        
+        # Extract market heat value from the market_heat dictionary
+        market_heat_data = aggregated.get("market_heat", {})
+        if isinstance(market_heat_data, dict):
+            market_heat = market_heat_data.get("heat_level", 0.0)
+        else:
+            # Fallback for backward compatibility
+            market_heat = float(market_heat_data) if market_heat_data else 0.0
 
         action = "HOLD"
 
@@ -398,3 +405,7 @@ class StrategyAgent(BaseAgent):
                 print(f"  {reason}: {count} ({count/summary['rejected_trades']*100:.1f}%)")
 
         print("=" * 60)
+    
+    def get_metrics(self, initial_capital: float = 100000.0) -> Dict:
+        """Wrapper method for calculate_metrics for compatibility."""
+        return self.calculate_metrics(initial_capital)
