@@ -9,8 +9,8 @@ RH2MAS is a financial analysis research project exploring multi-agent architectu
 This project implements a three-way strategy comparison framework:
 
 - **Buy & Hold**: Baseline reference strategy
-- **Mechanical**: MACD-based rules with market heat filtering  
-- **LLM**: AI-powered decision making with explainable reasoning
+- **Mechanical**: MACD histogram crossover with sentiment >= 0 threshold
+- **LLM**: AI-powered decision making with structured explanations
 
 The system is designed to validate whether LLM-enhanced trading strategies provide advantages over traditional approaches.
 
@@ -18,25 +18,33 @@ The system is designed to validate whether LLM-enhanced trading strategies provi
 
 ### Agent Implementation Status
 
-#### LLM-Powered Agents (Require OpenAI API)
-1. **SentimentAgent**: Analyzes news sentiment using LLM
-2. **TechAgent**: Calculates technical indicators with LLM interpretation
-3. **LLMStrategyAgent**: Makes trading decisions with detailed reasoning
-4. **MarketIntelligenceAgent**: Ranks trading opportunities (experimental)
+#### LLM-Powered Agents (Use GPT-4o-mini)
+
+1. **SentimentAgent**: Analyzes news sentiment using LLM, falls back to VXX volatility when no news
+2. **TechAgent**: Interprets pre-calculated technical indicators using LLM
+3. **LLMStrategyAgent**: Makes trading decisions with structured explanations
+
+#### Experimental/Future Features
+
+4. **MarketIntelligenceAgent**: Ranks multiple stocks based on market conditions (not used in core comparison)
 
 #### Rule-Based Agents (No LLM Required)
-1. **StrategyAgent**: MACD crossover rules with market heat filtering
+
+1. **StrategyAgent**: MACD histogram crossover with sentiment >= 0 threshold
 2. **BuyHoldStrategy**: Simple baseline for comparison
 3. **CoordinatorAgent**: Orchestrates other agents (no direct LLM usage)
 
 #### Placeholder
+
 1. **RiskAgent**: Not implemented (TODO comment only)
 
 ### Core Features
 
 - **Multi-Source News**: Fetches from [Alpha Vantage](https://www.alphavantage.co/), [Finnhub](https://finnhub.io/), [NewsAPI](https://newsapi.org/) (with fallbacks)
-- **Technical Analysis**: Currently uses MACD (12/26 EMA) for trading signals. Additional indicators available: RSI, Bollinger Bands, Fibonacci retracements
-- **Backtesting Framework**: Historical strategy performance evaluation
+- **Sentiment Sources**: News analysis when available, VXX volatility index as primary fallback (frequently used)
+- **Technical Analysis**: Uses MACD histogram (12/26 EMA difference minus signal line) for trading signals. Additional indicators available: RSI, Bollinger Bands, Fibonacci retracements
+- **Price Data**: Uses only closing prices for all trading decisions
+- **Backtesting Framework**: Historical strategy performance evaluation on cached data
 - **Data Caching**: Automatic caching to reduce API calls (freemium tier friendly)
 
 ## Installation
@@ -68,29 +76,33 @@ Note: This file is excluded from version control for security.
 ## Usage
 
 ### Single Backtest
+
 ```bash
 python scripts/backtest.py SYMBOL START_DATE END_DATE
 # Example: python scripts/backtest.py AAPL 2023-01-01 2023-12-31
 ```
 
 ### Automated Backtest Service
+
 ```bash
 python scripts/run_experiments.py
 ```
 
 ### Three-Way Strategy Analysis
+
 ```bash
 python scripts/analyze_results.py
 ```
 
 ### Parallel Strategy Comparison Demo
+
 ```bash
 python scripts/agents/demo_parallel.py SYMBOL START END
 ```
 
 ## Project Structure
 
-```
+```bash
 RH2MAS/
 ├── src/
 │   ├── agents/           # Agent implementations
@@ -98,9 +110,11 @@ RH2MAS/
 │   ├── utils/            # Utilities including ParallelStrategyTester
 │   └── validation/       # Validation tools (ObfuscationValidator)
 ├── scripts/
-│   ├── backtest_mas.py   # Primary backtesting script
-│   ├── validation/       # Validation and analysis scripts
-│   └── strategies/       # Strategy demonstration scripts
+│   ├── backtest.py       # Primary backtesting script
+│   ├── analyze_results.py # Results analysis
+│   ├── run_experiments.py # Batch experiments
+│   ├── agents/           # Agent operation scripts
+│   └── tools/            # Data and validation tools
 ├── docs/                 # Documentation
 ├── config/               # Configuration directory (create locally)
 └── reports/              # Analysis reports and guides
