@@ -26,7 +26,7 @@ The system is designed to validate whether LLM-enhanced trading strategies provi
 
 #### Experimental/Future Features
 
-4. **MarketIntelligenceAgent**: Ranks multiple stocks based on market conditions (not used in core comparison)
+- **MarketIntelligenceAgent**: Ranks multiple stocks based on market conditions (not used in core comparison)
 
 #### Rule-Based Agents (No LLM Required)
 
