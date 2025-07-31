@@ -47,7 +47,8 @@ SENTIMENT_AGENT = "sentiment"
 TECH_AGENT = "tech"
 RISK_AGENT = "risk"
 STRATEGY_AGENT = "strategy"
-ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, RISK_AGENT, STRATEGY_AGENT]
+MARKET_INTELLIGENCE_AGENT = "market_intelligence"
+ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, RISK_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 # CORPORATE ACTIONS TOOL HIERARCHY:
 # 1. PRIMARY: Yahoo Finance tools - Free but rate limited, enhanced with caching/throttling
@@ -84,8 +85,8 @@ news_tool = FunctionTool(
     name="fetch_news",
     description="Fetch news articles for a given keyword, returning a Pandas DataFrame with headlines, published dates, and sources with headlines, published dates, and sources."
 )
-# Only sentiment and strategy agents should use news
-news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+# Market intelligence needs news for context
+news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 ##################################
 # 2) Alpha Vantage News Tool
@@ -179,8 +180,8 @@ unified_news_tool = FunctionTool(
     name="fetch_all_news",
     description="Fetch news from multiple sources (AlphaVantage, Finnhub, NewsAPI) with unified output, sentiment analysis, relevance scoring, and deduplication. Articles are sorted by relevance to your query, with higher scores for more relevant content. The tool also provides search guidance if results are inadequate."
 )
-# Useful for sentiment and strategy agents
-unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+# Market intelligence uses news for comprehensive analysis
+unified_news_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 ##################################
 # 4) FMP Corporate Actions Tools (EXPERIMENTAL - PREMIUM LOCKED)
@@ -586,8 +587,8 @@ if YahooFinanceTool is not None:
         name="fetch_yahoo_data",
         description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
     )
-    # Only quant and strategy agents handle price data
-    yahoo_finance_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+    # Market intelligence needs price data for market analysis
+    yahoo_finance_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 else:
     yahoo_finance_tool = None
 
@@ -656,8 +657,8 @@ alpha_vantage_tool = FunctionTool(
     name="fetch_alpha_vantage_data",
     description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
 )
-# Only quant and strategy agents handle price data
-alpha_vantage_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+# Market intelligence may use this as fallback
+alpha_vantage_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 
 def fetch_market_data(
@@ -688,8 +689,8 @@ market_data_tool = FunctionTool(
     name="fetch_market_data",
     description="Fetch market data from specified source for a given ticker and date range."
 )
-# Only quant and strategy agents handle price data
-market_data_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+# Market intelligence needs market data for analysis
+market_data_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 ##################################
 # 6) FRED Economic Data Tool
@@ -733,8 +734,8 @@ if FREDDataTool is not None:
         name="fetch_economic_indicator",
         description="Fetch economic indicator data from FRED (Federal Reserve)."
     )
-    # Relevant for quant and strategy agents
-    fred_indicator_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT]
+    # Market intelligence needs economic indicators
+    fred_indicator_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 else:
     fred_indicator_tool = None
 
@@ -765,8 +766,8 @@ fred_rates_tool = FunctionTool(
     name="fetch_interest_rates",
     description="Fetch interest rate data from FRED (Federal Reserve)."
 )
-# Relevant for multiple agents
-fred_rates_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, RISK_AGENT]
+# Market intelligence needs interest rate data
+fred_rates_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, RISK_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 
 def fetch_yield_curve(date: str = "today") -> pd.DataFrame:

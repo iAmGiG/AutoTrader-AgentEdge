@@ -1,6 +1,9 @@
-from typing import Dict
+from typing import Dict, Optional
 import numpy as np
+import logging
 from .base_agent import BaseAgent
+
+logger = logging.getLogger(__name__)
 
 
 class StrategyAgent(BaseAgent):
@@ -26,58 +29,138 @@ class StrategyAgent(BaseAgent):
         self.trade_log = []
         self.trades = []  # List of completed trades for metrics calculation
         self.equity_curve = []  # Track equity over time
+        # Market heat threshold for trading (adjusted for current market conditions)
+        self.market_heat_threshold = -0.2
+        self.decision_log = []  # Log all filtering decisions
 
     def generate_reply(self, messages, context=None):
         """Stub required by BaseAgent; this agent does not support chat."""
         raise NotImplementedError(
             "StrategyAgent does not support chat-based interactions")
 
+    def filter_trades(self, ta_signals: Dict, market_heat: float) -> Dict:
+        """Filter trades based on TA signals AND market heat threshold.
+
+        :param ta_signals: Technical analysis signals dictionary
+        :param market_heat: Current market heat score (-1 to 1)
+        :return: Filtered trade decision with approval status
+        """
+        # Extract TA signal if exists
+        ta_action = ta_signals.get("action", "HOLD")
+        has_ta_signal = ta_action in ["BUY", "SELL"]
+
+        # Apply AND logic: both conditions must be true
+        heat_above_threshold = market_heat > self.market_heat_threshold
+        trade_approved = has_ta_signal and heat_above_threshold
+
+        # Log the decision
+        decision_entry = {
+            "ta_signal": ta_action,
+            "has_ta_signal": has_ta_signal,
+            "market_heat": market_heat,
+            "heat_threshold": self.market_heat_threshold,
+            "heat_above_threshold": heat_above_threshold,
+            "trade_approved": trade_approved,
+            "reason": self._get_rejection_reason(has_ta_signal, heat_above_threshold)
+        }
+        self.decision_log.append(decision_entry)
+
+        # Log to logger for real-time monitoring
+        logger.info(f"Trade Filter Decision: TA={ta_action}, Heat={market_heat:.3f}, "
+                    f"Approved={trade_approved}, Reason={decision_entry['reason']}")
+
+        # Return filtered decision
+        if trade_approved:
+            return {
+                "action": ta_action,
+                "approved": True,
+                "market_heat": market_heat,
+                "reason": f"TA signal {ta_action} with market heat {market_heat:.3f} > {self.market_heat_threshold}"
+            }
+        else:
+            return {
+                "action": "HOLD",
+                "approved": False,
+                "market_heat": market_heat,
+                "reason": decision_entry['reason']
+            }
+
+    def _get_rejection_reason(self, has_ta_signal: bool, heat_above_threshold: bool) -> str:
+        """Get human-readable reason for trade rejection."""
+        if not has_ta_signal and not heat_above_threshold:
+            return "No TA signal AND market heat too low"
+        elif not has_ta_signal:
+            return "No TA signal"
+        elif not heat_above_threshold:
+            return f"Market heat below threshold ({self.market_heat_threshold})"
+        else:
+            return "Trade approved"
+
     def decide_trade(self, aggregated: Dict, price: float, trade_date: str) -> Dict:
-        """Return a BUY/SELL/HOLD decision based on MACD crossovers and sentiment."""
+        """Return a BUY/SELL/HOLD decision based on MACD crossovers, sentiment, and market heat."""
         macd_y = aggregated.get("technical", {}).get("macd_yest")
         macd_t = aggregated.get("technical", {}).get("macd_today")
         sentiment = aggregated.get("sentiment", {}).get("score", 0)
+        
+        # Extract market heat value from the market_heat dictionary
+        market_heat_data = aggregated.get("market_heat", {})
+        if isinstance(market_heat_data, dict):
+            market_heat = market_heat_data.get("heat_level", 0.0)
+        else:
+            # Fallback for backward compatibility
+            market_heat = float(market_heat_data) if market_heat_data else 0.0
 
         action = "HOLD"
-        
+
         # Use small threshold for near-zero comparisons to handle precision issues
         # This helps catch crossings that might be missed due to floating-point precision
         ZERO_THRESHOLD = 0.01
 
-        # Entry rule
+        # First determine TA signal based on MACD and sentiment
+        ta_signal = {"action": "HOLD"}
+
+        # Entry rule (TA signal)
         if self.position == 0:
             if (
                 macd_y is not None and macd_y < ZERO_THRESHOLD and
                 macd_t is not None and macd_t > macd_y and
                 sentiment >= 0
             ):
-                action = "BUY"
-                self.position = 1
-                self.entry_price = price
-                self.entry_date = trade_date
+                ta_signal = {"action": "BUY"}
 
-        # Exit rule
+        # Exit rule (TA signal)
         elif self.position == 1:
             if (
                 (macd_y is not None and macd_y < ZERO_THRESHOLD and macd_t < macd_y) or
                 (macd_y is not None and macd_y > -ZERO_THRESHOLD and macd_t < -ZERO_THRESHOLD)
             ):
-                action = "SELL"
-                self.position = 0
-                # Record completed trade
-                if self.entry_price is not None:
-                    self.trades.append({
-                        "entry_date": self.entry_date or trade_date,
-                        "exit_date": trade_date,
-                        "entry_price": self.entry_price,
-                        "exit_price": price,
-                        "return": (price - self.entry_price) / self.entry_price,
-                        "profit": price - self.entry_price
-                    })
-                    self.entry_price = None
-                    self.entry_date = None
+                ta_signal = {"action": "SELL"}
 
-        # Log trade decision
+        # Apply market heat filter
+        filtered_decision = self.filter_trades(ta_signal, market_heat)
+        action = filtered_decision["action"]
+
+        # Execute the trade if approved
+        if action == "BUY" and self.position == 0:
+            self.position = 1
+            self.entry_price = price
+            self.entry_date = trade_date
+        elif action == "SELL" and self.position == 1:
+            self.position = 0
+            # Record completed trade
+            if self.entry_price is not None:
+                self.trades.append({
+                    "entry_date": self.entry_date or trade_date,
+                    "exit_date": trade_date,
+                    "entry_price": self.entry_price,
+                    "exit_price": price,
+                    "return": (price - self.entry_price) / self.entry_price,
+                    "profit": price - self.entry_price
+                })
+                self.entry_price = None
+                self.entry_date = None
+
+        # Log trade decision with market heat data
         self.trade_log.append({
             "date": trade_date,
             "action": action,
@@ -85,12 +168,19 @@ class StrategyAgent(BaseAgent):
             "macd_today": macd_t,
             "macd_yest": macd_y,
             "sentiment": sentiment,
+            "market_heat": market_heat,
+            "ta_signal": ta_signal["action"],
+            "filtered": ta_signal["action"] != action,
+            "filter_reason": filtered_decision.get("reason", "")
         })
 
         return {
             "action": action,
             "qty": 100 if action == "BUY" else 0,
-            "reason": "macd_sent_rule_v2"
+            "reason": filtered_decision.get("reason", "macd_sent_heat_rule"),
+            "market_heat": market_heat,
+            "ta_signal": ta_signal["action"],
+            "approved": filtered_decision.get("approved", False)
         }
 
     def calculate_metrics(self, initial_capital: float = 100000.0, risk_free_rate: float = 0.02) -> Dict:
@@ -261,3 +351,61 @@ class StrategyAgent(BaseAgent):
             print(f"  Avg Holding Days: {metrics['avg_holding_days']:.1f}")
 
         print("=" * 60)
+
+    def get_decision_summary(self) -> Dict:
+        """Get summary of all filtering decisions made."""
+        if not self.decision_log:
+            return {
+                "total_decisions": 0,
+                "approved_trades": 0,
+                "rejected_trades": 0,
+                "rejection_reasons": {}
+            }
+
+        total = len(self.decision_log)
+        approved = sum(1 for d in self.decision_log if d["trade_approved"])
+        rejected = total - approved
+
+        # Count rejection reasons
+        rejection_reasons = {}
+        for decision in self.decision_log:
+            if not decision["trade_approved"]:
+                reason = decision["reason"]
+                rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
+
+        return {
+            "total_decisions": total,
+            "approved_trades": approved,
+            "rejected_trades": rejected,
+            "approval_rate": approved / total if total > 0 else 0,
+            "rejection_reasons": rejection_reasons,
+            "avg_market_heat": np.mean([d["market_heat"] for d in self.decision_log]) if self.decision_log else 0
+        }
+
+    def print_decision_summary(self) -> None:
+        """Print a formatted summary of trade filtering decisions."""
+        summary = self.get_decision_summary()
+
+        print("\n" + "=" * 60)
+        print("TRADE FILTERING SUMMARY")
+        print("=" * 60)
+
+        print(f"\nDecision Statistics:")
+        print(f"  Total Decisions: {summary['total_decisions']}")
+        print(f"  Approved Trades: {summary['approved_trades']}")
+        print(f"  Rejected Trades: {summary['rejected_trades']}")
+        if summary['total_decisions'] > 0:
+            print(f"  Approval Rate: {summary['approval_rate']*100:.1f}%")
+            if 'avg_market_heat' in summary:
+                print(f"  Avg Market Heat: {summary['avg_market_heat']:.3f}")
+
+        if summary['rejection_reasons'] and summary['rejected_trades'] > 0:
+            print(f"\nRejection Reasons:")
+            for reason, count in sorted(summary['rejection_reasons'].items(), key=lambda x: x[1], reverse=True):
+                print(f"  {reason}: {count} ({count/summary['rejected_trades']*100:.1f}%)")
+
+        print("=" * 60)
+    
+    def get_metrics(self, initial_capital: float = 100000.0) -> Dict:
+        """Wrapper method for calculate_metrics for compatibility."""
+        return self.calculate_metrics(initial_capital)

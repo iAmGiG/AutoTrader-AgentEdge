@@ -1,63 +1,97 @@
 # Scripts Directory
 
-This directory contains executable scripts for running backtests, generating reports, and analyzing results.
+The scripts directory is organized into 3 clear layers matching the system architecture:
 
-## Directory Structure
+## Layer 1: Experiment Entry Points
 
-```
-scripts/
-├── backtest_service/     # Intelligent backtest service with rate limit management
-│   ├── backtest_service.py
-│   ├── start_backtest_service.py
-│   └── run_backtest_service.sh
-├── backtest_mas.py       # Main multi-agent system backtesting script
-├── run_backtest_suite.py # Batch runner for multiple backtests
-├── backtest_configs.yaml # Configuration for test suites
-└── aggregate_results.py  # Results aggregation and analysis
-```
+**Main scripts for running experiments and analysis:**
 
-## Main Scripts
-
-### Core Backtesting
-
-- `backtest_mas.py` - Main multi-agent system backtesting script
-- `run_backtest_suite.py` - Run multiple backtests with different configurations
-- `backtest_configs.yaml` - Define test suites and parameters
-- `aggregate_results.py` - Aggregate and analyze backtest results
-
-### Backtest Service
-
-- `backtest_service/` - Intelligent service for managing long-running backtests with rate limit handling
-- See `backtest_service/README.md` for detailed documentation
-
-## Usage Examples
-
-### Single Backtest
+### `backtest.py` - Primary Backtesting
 
 ```bash
-python scripts/backtest_mas.py AAPL 2024-01-01 2024-12-31
+python backtest.py SYMBOL START_DATE END_DATE
+# Example: python backtest.py AAPL 2023-01-01 2023-12-31
 ```
 
-### Batch Backtesting
+Single stock backtesting with full LLM reasoning capture.
+
+### `analyze_results.py` - Results Analysis  
 
 ```bash
-python scripts/run_backtest_suite.py comprehensive --parallel
+python analyze_results.py
 ```
 
-### Start Backtest Service
+Analyzes cached backtest data and generates performance reports.
+
+### `run_experiments.py` - Batch Experiments
 
 ```bash
-python scripts/backtest_service/start_backtest_service.py
+python run_experiments.py
 ```
 
-### Aggregate Results
+Automated batch processing with rate limiting and resume capability.
 
-```bash
-python scripts/aggregate_results.py
-```
+## Layer 2: Agent Operations (`agents/`)
 
-## Notes
+**Scripts for working directly with agents:**
 
-- Test scripts have been moved to the `tests/` directory
-- Template files have been moved to `docs/templates/`
-- Old CLI test files have been removed
+### `compare_strategies.py` - Strategy Comparison
+
+Three-way comparison demo: Buy & Hold vs Mechanical vs LLM
+
+### `demo_parallel.py` - Parallel Strategy Demo
+
+Real-time parallel execution of multiple strategies
+
+### `test_agents.py` - Agent Testing
+
+Validation and testing of agent functionality
+
+## Layer 3: Tools & Utilities (`tools/`)
+
+**Supporting tools and utilities:**
+
+### Data Tools (`tools/data/`)
+
+- `build_cache.py` - Build market data cache
+- `collect_data.py` - Collect fresh market data
+
+### Validation Tools (`tools/validation/`)
+
+- `obfuscation_test.py` - Data integrity validation
+
+### General Utils (`tools/utils/`)
+
+- Maintenance and utility scripts
+
+## Quick Start
+
+1. **Run a single backtest:**
+
+   ```bash
+   python backtest.py NVDA 2023-01-01 2023-12-31
+   ```
+
+2. **Analyze results:**
+
+   ```bash
+   python analyze_results.py
+   ```
+
+3. **Compare strategies:**
+
+   ```bash
+   python agents/compare_strategies.py
+   ```
+
+## Architecture Notes
+
+- **Layer 1**: What users interact with directly
+- **Layer 2**: Agent-specific operations and demos  
+- **Layer 3**: Supporting infrastructure
+
+This structure mirrors the system architecture: experiment entry points → agent operations → underlying tools and utilities.
+
+## Legacy Scripts
+
+The old directory structure (`backtesting/`, `analysis/`, `strategies/`, etc.) is preserved for reference but the new 3-layer structure provides clearer entry points.

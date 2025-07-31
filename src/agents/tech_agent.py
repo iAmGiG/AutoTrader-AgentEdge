@@ -12,7 +12,7 @@ import numpy as np
 
 # project imports
 from src.agents.base_agent import BaseAgent
-from src.tools.tools import TECH_AGENT, get_tools_for_agent
+from src.tools.tools import TECH_AGENT, get_tools_for_agent, fetch_market_data
 from src.tools.processors.indicator_library import (
     sma,
     ema,
@@ -622,6 +622,223 @@ class TechAgent(BaseAgent):
         # ---------------------------------------------------------------
         # default passthrough (macro tools etc.)
         return result
+
+    async def scan_stocks(self, stock_list: List[str], date: str, use_cache: bool = True) -> Dict[str, Any]:
+        """
+        Scan multiple stocks for MACD histogram entry signals.
+        
+        Args:
+            stock_list: List of stock symbols to scan
+            date: Date to analyze (YYYY-MM-DD)
+            use_cache: Whether to use cached market data (default: True)
+            
+        Returns:
+            {
+                "scan_date": "2025-07-12",
+                "market_open": True,
+                "stocks_scanned": 7,
+                "entries_found": 2,
+                "entries": [
+                    {
+                        "symbol": "NVDA",
+                        "histogram_value": -0.03,
+                        "histogram_prev": -0.08,
+                        "improving": True,
+                        "signal_strength": 0.8,
+                        "price": 875.50,
+                        "volume_ratio": 1.2
+                    },
+                    {
+                        "symbol": "TSLA", 
+                        "histogram_value": 0.02,
+                        "histogram_prev": -0.05,
+                        "improving": True,
+                        "signal_strength": 0.6,
+                        "price": 245.30,
+                        "volume_ratio": 0.9
+                    }
+                ],
+                "scan_time_seconds": 12.5
+            }
+        """
+        import time
+        from src.tools.cache import MarketDataCache
+        
+        start_time = time.time()
+        cache = MarketDataCache() if use_cache else None
+        
+        # Initialize results
+        results = {
+            "scan_date": date,
+            "market_open": True,  # TODO: Check actual market status
+            "stocks_scanned": len(stock_list),
+            "entries_found": 0,
+            "entries": [],
+            "errors": [],
+            "cache_hits": 0,
+            "scan_time_seconds": 0
+        }
+        
+        # Process each stock
+        for symbol in stock_list:
+            try:
+                # Calculate date range (need enough history for MACD)
+                end_date = pd.to_datetime(date)
+                start_date = end_date - pd.Timedelta(days=60)  # 60 days for MACD calculation
+                
+                market_data = None
+                
+                # Try cache first
+                if cache:
+                    market_data = cache.get(
+                        symbol, 
+                        start_date.strftime("%Y-%m-%d"), 
+                        end_date.strftime("%Y-%m-%d"), 
+                        "yahoo"
+                    )
+                    if market_data is not None:
+                        results["cache_hits"] += 1
+                
+                # Fetch from API if not in cache
+                if market_data is None or market_data.empty:
+                    market_data = fetch_market_data(
+                        symbol=symbol,
+                        start_date=start_date.strftime("%Y-%m-%d"),
+                        end_date=end_date.strftime("%Y-%m-%d")
+                    )
+                    
+                    # Cache the data for future use
+                    if cache and market_data is not None and not market_data.empty:
+                        cache.set(
+                            symbol,
+                            start_date.strftime("%Y-%m-%d"),
+                            end_date.strftime("%Y-%m-%d"),
+                            "yahoo",
+                            market_data
+                        )
+                
+                if market_data is None or market_data.empty:
+                    results["errors"].append({"symbol": symbol, "error": "No data available"})
+                    continue
+                
+                # Ensure we have required columns
+                if 'Close' not in market_data.columns and 'close' in market_data.columns:
+                    market_data['Close'] = market_data['close']
+                
+                # Calculate MACD
+                macd_df = macd(market_data['Close'])
+                
+                # Merge MACD with market data for easier processing
+                combined_df = pd.concat([market_data, macd_df], axis=1)
+                
+                # Get the last two days of MACD histogram values
+                if len(combined_df) >= 2:
+                    # Get values for the requested date and previous day
+                    try:
+                        # Find the row for the requested date
+                        target_date = pd.to_datetime(date).date()
+                        
+                        # Get the last available date <= target date
+                        available_dates = combined_df.index.date
+                        valid_dates = available_dates[available_dates <= target_date]
+                        
+                        if len(valid_dates) >= 2:
+                            current_idx = -1  # Last valid date
+                            prev_idx = -2     # Second to last valid date
+                            
+                            current_row = combined_df[combined_df.index.date == valid_dates[current_idx]].iloc[0]
+                            prev_row = combined_df[combined_df.index.date == valid_dates[prev_idx]].iloc[0]
+                            
+                            current_hist = float(current_row['MACD_hist'])
+                            prev_hist = float(prev_row['MACD_hist'])
+                            
+                            # Check entry criteria:
+                            # 1. Histogram < 0.05 (allowing slight positive for momentum crosses)
+                            # 2. Histogram is improving (current > previous)
+                            if current_hist < 0.05 and current_hist > prev_hist:
+                                # Calculate signal strength based on improvement rate
+                                improvement = current_hist - prev_hist
+                                signal_strength = min(1.0, improvement / 0.1)  # Normalize to 0-1
+                                
+                                # Get current price
+                                current_price = float(current_row['Close'])
+                                
+                                # Calculate volume ratio (current vs 20-day average)
+                                volume_ratio = 1.0
+                                if 'Volume' in combined_df.columns:
+                                    current_volume = float(current_row['Volume'])
+                                    avg_volume = combined_df['Volume'].tail(20).mean()
+                                    if avg_volume > 0:
+                                        volume_ratio = current_volume / avg_volume
+                                
+                                # Additional metrics for enhanced analysis
+                                macd_line = float(current_row.get('MACD_line', 0))
+                                signal_line = float(current_row.get('MACD_signal', 0))
+                                
+                                entry = {
+                                    "symbol": symbol,
+                                    "histogram_value": round(current_hist, 4),
+                                    "histogram_prev": round(prev_hist, 4),
+                                    "improving": True,
+                                    "signal_strength": round(signal_strength, 2),
+                                    "price": round(current_price, 2),
+                                    "volume_ratio": round(volume_ratio, 2),
+                                    "macd_line": round(macd_line, 4),
+                                    "signal_line": round(signal_line, 4),
+                                    "date": str(valid_dates[current_idx])
+                                }
+                                
+                                results["entries"].append(entry)
+                                results["entries_found"] += 1
+                                
+                    except Exception as e:
+                        results["errors"].append({"symbol": symbol, "error": str(e)})
+                        continue
+                        
+            except Exception as e:
+                results["errors"].append({"symbol": symbol, "error": str(e)})
+                continue
+        
+        # Calculate scan time
+        results["scan_time_seconds"] = round(time.time() - start_time, 2)
+        
+        # Sort entries by signal strength (descending)
+        results["entries"] = sorted(results["entries"], key=lambda x: x["signal_strength"], reverse=True)
+        
+        # Add summary statistics
+        results["summary"] = {
+            "hit_rate": round(results["entries_found"] / results["stocks_scanned"] * 100, 1) if results["stocks_scanned"] > 0 else 0,
+            "cache_hit_rate": round(results["cache_hits"] / results["stocks_scanned"] * 100, 1) if results["stocks_scanned"] > 0 else 0,
+            "avg_signal_strength": round(sum(e["signal_strength"] for e in results["entries"]) / len(results["entries"]), 2) if results["entries"] else 0
+        }
+        
+        return results
+
+    def scan_stocks_sync(self, stock_list: List[str], date: str, use_cache: bool = True) -> Dict[str, Any]:
+        """
+        Synchronous wrapper for scan_stocks method.
+        
+        Args:
+            stock_list: List of stock symbols to scan
+            date: Date to analyze (YYYY-MM-DD)
+            use_cache: Whether to use cached market data (default: True)
+            
+        Returns:
+            Same as scan_stocks method
+        """
+        import asyncio
+        
+        # Check if we're already in an event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an event loop, create a new task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, self.scan_stocks(stock_list, date, use_cache))
+                return future.result()
+        except RuntimeError:
+            # No event loop running, we can use asyncio.run
+            return asyncio.run(self.scan_stocks(stock_list, date, use_cache))
 
     def generate_reply(self, messages, context=None):
         """
