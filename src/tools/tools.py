@@ -13,6 +13,7 @@ except ImportError:
     SECEdgarTool = None
 from src.tools.data_sources.news.finnhub_tool import FinnHubTool
 from src.tools.data_sources.news.unified_news_tool import fetch_unified_news
+from src.tools.data_sources.news.yahoo_scraper_tool import yahoo_finance_scraper_tool
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 import os
@@ -947,22 +948,9 @@ else:
 # SENTIMENT_AGENT tools
 # Build sentiment tools list (filtering out None values)
 _sentiment_tools_raw = [
-    unified_news_tool,  # The unified news tool as the only news source
+    unified_news_tool,  # The unified news tool as primary news source
+    yahoo_finance_scraper_tool,  # Yahoo Finance web scraper as backup news source
     sec_search_tool,    # SEC search tool for regulatory information
-    # PRIMARY corporate actions tool (free but rate limited)
-    # Yahoo Finance corporate events (enhanced with caching)
-    yahoo_corporate_events_tool,
-    # EXPERIMENTAL corporate actions tools (premium subscription required)
-    # fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
-    # fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
-    # fmp_historical_earnings_tool,    # FMP historical earnings (EXPERIMENTAL)
-    # fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
-    # fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
-    # finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
-    # Finnhub insider transactions (PREMIUM)
-    # finnhub_insider_transactions_tool,
-    # finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
-    # finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
 # Filter out None values from conditional imports
 SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
@@ -1000,20 +988,6 @@ _strategy_tools_raw = [
     fred_rates_tool,
     fred_yield_curve_tool,
     sec_filings_tool,
-    # PRIMARY corporate actions tool (free but rate limited)
-    # Yahoo Finance corporate events (enhanced with caching)
-    yahoo_corporate_events_tool,
-    # EXPERIMENTAL corporate actions tools (premium subscription required)
-    fmp_earnings_calendar_tool,      # FMP earnings calendar (EXPERIMENTAL)
-    fmp_dividend_calendar_tool,      # FMP dividend calendar (EXPERIMENTAL)
-    fmp_historical_earnings_tool,    # FMP historical earnings (EXPERIMENTAL)
-    fmp_historical_dividends_tool,   # FMP historical dividends (EXPERIMENTAL)
-    fmp_stock_split_calendar_tool,   # FMP stock splits (EXPERIMENTAL)
-    finnhub_earnings_calendar_tool,  # Finnhub earnings calendar (PREMIUM)
-    # Finnhub insider transactions (PREMIUM)
-    finnhub_insider_transactions_tool,
-    finnhub_dividends_tool,          # Finnhub dividend data (PREMIUM)
-    finnhub_earnings_estimates_tool,  # Finnhub earnings estimates (PREMIUM)
 ]
 # Filter out None values from conditional imports
 STRATEGY_TOOLS = [tool for tool in _strategy_tools_raw if tool is not None]
