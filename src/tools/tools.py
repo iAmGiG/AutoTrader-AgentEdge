@@ -1,8 +1,8 @@
 from autogen_core.tools import FunctionTool
-from src.tools.data_sources.news.news_headline_tool import NewsHeadlineTool
+from src.tools.data_sources.news.sources.api_based.news_headline_tool import NewsHeadlineTool
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
-from src.tools.data_sources.news.alpha_vantage_news import AlphaVantageNewsTool
+from src.tools.data_sources.news.sources.api_based.alpha_vantage_news import AlphaVantageNewsTool
 try:
     from src.tools.data_sources.government.FRED_data_tool import FREDDataTool
 except ImportError:
@@ -11,9 +11,10 @@ try:
     from src.tools.data_sources.government.sec_edgar_tool import SECEdgarTool
 except ImportError:
     SECEdgarTool = None
-from src.tools.data_sources.news.finnhub_tool import FinnHubTool
-from src.tools.data_sources.news.unified_news_tool import fetch_unified_news
-from src.tools.data_sources.news.yahoo_scraper_tool import yahoo_finance_scraper_tool
+from src.tools.data_sources.news.sources.api_based.finnhub_tool import FinnHubTool
+from src.tools.data_sources.news.aggregators.legacy.unified_news_tool import fetch_unified_news
+from src.tools.data_sources.news.sources.scrapers.yahoo_scraper_tool import yahoo_finance_scraper_tool
+from src.tools.data_sources.news.aggregators.hybrid_historical_news_tool import hybrid_historical_news_tool
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 import os
@@ -949,6 +950,7 @@ else:
 # Build sentiment tools list (filtering out None values)
 _sentiment_tools_raw = [
     unified_news_tool,  # The unified news tool as primary news source
+    hybrid_historical_news_tool,  # Hybrid historical news tool with FinViz integration
     yahoo_finance_scraper_tool,  # Yahoo Finance web scraper as backup news source
     sec_search_tool,    # SEC search tool for regulatory information
 ]
