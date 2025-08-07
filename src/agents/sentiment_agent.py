@@ -1,13 +1,14 @@
 """
-SentimentAgent V2 - Enhanced with market-based sentiment indicators.
+SentimentAgent - Pure text-based sentiment analysis.
 
-This enhanced version adds VXX (volatility) based sentiment when news data is unavailable.
-It maintains backward compatibility with the original SentimentAgent output format.
+This agent performs sentiment analysis exclusively from news articles and text sources.
+When no news is available, it returns neutral sentiment (0.0) with zero confidence.
 
-Key enhancements:
-1. Falls back to VXX market sentiment when news is unavailable
-2. Maintains the same JSON output format for compatibility
-3. Adds logging to track which sentiment source is used
+Key features:
+1. Multi-source news aggregation and analysis
+2. LLM-driven sentiment scoring with explanations
+3. Confidence scoring based on news availability and relevance
+4. No market indicators - purely text-based analysis
 """
 
 # Standard library imports
@@ -25,8 +26,8 @@ from .base_agent import BaseAgent
 from src.tools.tools import SENTIMENT_AGENT, get_tools_for_agent
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
 from src.utils.agent_utils import load_agent_config, load_market_sectors, QueryParser, DataProcessor
+# Import MarketDataTool only for market heat calculation (SPY momentum, sector rotation)
 from src.tools.data_sources.market.market_data_tool import MarketDataTool
-from src.tools.cache import MarketDataCache
 from src.tools.cache.news_cache import NewsCache
 
 # Set up logging
@@ -39,13 +40,7 @@ SENTIMENT_LLM_CONFIG = {
     "top_p": 0.9,        # Allow for some creative variety
 }
 
-# VXX thresholds for sentiment interpretation
-VXX_THRESHOLDS = {
-    "extreme_fear": 50,    # VXX > 50: Extreme market fear
-    "high_fear": 40,       # VXX > 40: High fear/volatility
-    "moderate_fear": 30,   # VXX > 30: Moderate concern
-    "low_fear": 20,        # VXX < 20: Low fear/complacency
-}
+# Removed VXX thresholds - sentiment is now purely text-based
 
 
 class SentimentAgent(BaseAgent):
@@ -70,11 +65,7 @@ class SentimentAgent(BaseAgent):
         # Initialize the sentiment analyzer
         self.sentiment_analyzer = SentimentAnalyzer()
 
-        # Initialize market data tool for VXX fallback
-        self.market_data_tool = MarketDataTool()
-
-        # Initialize cache for VXX data
-        self.market_cache = MarketDataCache()
+        # Removed VXX fallback - sentiment is now purely text-based
 
         # Initialize news cache
         self.news_cache = NewsCache()
@@ -93,91 +84,7 @@ class SentimentAgent(BaseAgent):
         # Store the data processor
         self.data_processor = DataProcessor()
 
-    def _get_vix_sentiment(self, date: str) -> Dict[str, Any]:
-        """
-        Get VXX-based market sentiment for a given date.
-
-        Args:
-            date: Target date in YYYY-MM-DD format
-
-        Returns:
-            Dictionary with VXX data and interpretation
-        """
-        try:
-            # Get VXX data around the target date (3 days before to 1 day after)
-            target_date = datetime.strptime(date, "%Y-%m-%d")
-            start_date = (target_date - timedelta(days=3)).strftime("%Y-%m-%d")
-            end_date = (target_date + timedelta(days=1)).strftime("%Y-%m-%d")
-
-            logger.info(
-                f"Fetching VXX data for sentiment analysis: {start_date} to {end_date}")
-
-            # Try to get VXX data from cache first
-            vxx_data = self.market_cache.get("VXX", start_date, end_date, "yahoo")
-
-            if vxx_data is None or vxx_data.empty:
-                # Fetch VXX data from market tool
-                vxx_data = self.market_data_tool.fetch_market_data(
-                    "VXX", start_date, end_date)
-
-                # Cache the data if successfully fetched
-                if vxx_data is not None and not vxx_data.empty:
-                    self.market_cache.set("VXX", start_date, end_date, "yahoo", vxx_data)
-                    logger.info(f"Cached VXX data for {start_date} to {end_date}")
-
-            if vxx_data is not None and not vxx_data.empty:
-                # Find the closest date to target
-                vxx_data.index = pd.to_datetime(
-                    vxx_data.index).tz_localize(None)
-                target_datetime = pd.to_datetime(target_date)
-
-                # Get the row closest to target date
-                date_diffs = abs(vxx_data.index - target_datetime)
-                closest_idx = date_diffs.argmin()
-                closest_date = vxx_data.index[closest_idx]
-                vxx_value = float(vxx_data.loc[closest_date, 'Close'])
-
-                # Calculate sentiment based on VXX levels
-                if vxx_value > VXX_THRESHOLDS["extreme_fear"]:
-                    sentiment_score = -0.8
-                    interpretation = "Extreme market fear - highly bearish conditions"
-                elif vxx_value > VXX_THRESHOLDS["high_fear"]:
-                    sentiment_score = -0.6
-                    interpretation = "High market fear - bearish sentiment"
-                elif vxx_value > VXX_THRESHOLDS["moderate_fear"]:
-                    sentiment_score = -0.3
-                    interpretation = "Moderate market concern - slightly bearish"
-                elif vxx_value > VXX_THRESHOLDS["low_fear"]:
-                    sentiment_score = 0.1
-                    interpretation = "Normal market conditions - neutral sentiment"
-                else:
-                    sentiment_score = 0.3
-                    interpretation = "Low market fear - complacent/bullish conditions"
-
-                return {
-                    "vxx_value": vxx_value,
-                    "date_used": closest_date.strftime("%Y-%m-%d"),
-                    "sentiment_score": sentiment_score,
-                    "interpretation": interpretation,
-                    "confidence": 0.7  # VXX provides good but not perfect sentiment signal
-                }
-            else:
-                logger.warning(f"No VXX data available for {date}")
-                return {
-                    "vxx_value": None,
-                    "sentiment_score": 0.0,
-                    "interpretation": "No volatility data available",
-                    "confidence": 0.0
-                }
-
-        except Exception as e:
-            logger.error(f"Error fetching VXX sentiment: {str(e)}")
-            return {
-                "vxx_value": None,
-                "sentiment_score": 0.0,
-                "interpretation": f"Error retrieving market sentiment: {str(e)}",
-                "confidence": 0.0
-            }
+    # Removed VXX fallback method - sentiment is now purely text-based
 
     def _extract_date_from_message(self, message: str) -> Optional[str]:
         """Extract date from message using various patterns."""
@@ -269,9 +176,9 @@ class SentimentAgent(BaseAgent):
         context.append(
             "The unified news tool (fetch_all_news) is designed to get all needed news in a single call.")
 
-        # Add note about VXX fallback
+        # Note: Sentiment is now purely text-based
         context.append(
-            "\nNOTE: If news data is unavailable, market sentiment will be derived from VXX volatility levels.")
+            "\nNOTE: Sentiment analysis is purely text-based. If no news is available, neutral sentiment (0.0) will be returned.")
 
         return "\n".join(context)
 
@@ -538,9 +445,9 @@ class SentimentAgent(BaseAgent):
 
     def analyze_market_heat(self, date: str) -> Dict[str, Any]:
         """
-        Comprehensive market heat assessment using VXX, SPY momentum, and sector rotation.
+        Market heat assessment using SPY momentum and sector rotation.
         
-        Formula: heat = 0.4 * vxx_component + 0.3 * spy_momentum + 0.3 * sector_rotation
+        Formula: heat = 0.5 * spy_momentum + 0.5 * sector_rotation
         
         Args:
             date: Target date in YYYY-MM-DD format
@@ -549,20 +456,16 @@ class SentimentAgent(BaseAgent):
             Dictionary with heat level (-1 to +1), components, and interpretation
         """
         try:
-            # Component 1: VXX-based volatility (40% weight)
-            vxx_component = self._calculate_vxx_heat_component(date)
-            
-            # Component 2: SPY momentum (30% weight)
+            # Component 1: SPY momentum (50% weight)
             spy_component = self._calculate_spy_momentum_component(date)
             
-            # Component 3: Sector rotation (30% weight)
+            # Component 2: Sector rotation (50% weight)
             sector_component = self._calculate_sector_rotation_component(date)
             
-            # Calculate weighted heat score
+            # Calculate weighted heat score (no VXX)
             heat_score = (
-                0.4 * vxx_component['score'] +
-                0.3 * spy_component['score'] +
-                0.3 * sector_component['score']
+                0.5 * spy_component['score'] +
+                0.5 * sector_component['score']
             )
             
             # Determine interpretation
@@ -581,11 +484,11 @@ class SentimentAgent(BaseAgent):
                 "heat_level": round(heat_score, 3),
                 "interpretation": interpretation,
                 "components": {
-                    "vxx": vxx_component,
                     "spy_momentum": spy_component,
                     "sector_rotation": sector_component
                 },
-                "date": date
+                "date": date,
+                "analysis_type": "rule-based"
             }
             
         except Exception as e:
@@ -597,43 +500,7 @@ class SentimentAgent(BaseAgent):
                 "date": date
             }
     
-    def _calculate_vxx_heat_component(self, date: str) -> Dict[str, Any]:
-        """Calculate VXX-based heat component (inverted - low VXX = hot market)."""
-        try:
-            vxx_data = self._get_vix_sentiment(date)
-            
-            if vxx_data['vxx_value'] is None:
-                return {"score": 0.0, "value": None, "description": "No VXX data"}
-            
-            vxx_level = vxx_data['vxx_value']
-            
-            # Normalize VXX to -1 to +1 scale (inverted)
-            # VXX < 15: Very hot (+1.0)
-            # VXX 15-20: Hot (+0.5)
-            # VXX 20-25: Neutral (0.0)
-            # VXX 25-30: Cold (-0.5)
-            # VXX > 30: Very cold (-1.0)
-            
-            if vxx_level < 15:
-                score = 1.0
-            elif vxx_level < 20:
-                score = 0.5 + (20 - vxx_level) / 10  # Linear scale from 0.5 to 1.0
-            elif vxx_level < 25:
-                score = (25 - vxx_level) / 5  # Linear scale from 0 to 0.5
-            elif vxx_level < 30:
-                score = -0.5 + (25 - vxx_level) / 10  # Linear scale from -0.5 to 0
-            else:
-                score = max(-1.0, -0.5 - (vxx_level - 30) / 20)  # Cap at -1.0
-            
-            return {
-                "score": round(score, 3),
-                "value": round(vxx_level, 2),
-                "description": f"VXX: {vxx_level:.2f}"
-            }
-            
-        except Exception as e:
-            logger.error(f"Error calculating VXX component: {str(e)}")
-            return {"score": 0.0, "value": None, "description": f"Error: {str(e)}"}
+    # Removed VXX heat component calculation - sentiment is now purely text-based
     
     def _calculate_spy_momentum_component(self, date: str) -> Dict[str, Any]:
         """Calculate SPY momentum component using 20-day price change."""
@@ -863,46 +730,25 @@ class SentimentAgent(BaseAgent):
 
             if no_news_found:
                 logger.info(
-                    f"No news found for {symbol} on {date}, using VXX sentiment fallback")
-
-                # Get VXX sentiment
-                vix_sentiment = self._get_vix_sentiment(date)
-
-                # Create a new prompt for the LLM to synthesize VXX sentiment
-                vxx_prompt = f"""
-                No news data was available for {symbol} on {date}.
+                    f"No relevant news found for {symbol} on {date}, returning neutral sentiment")
                 
-                Using market volatility indicator (VXX) as sentiment proxy:
-                - VXX value: {vix_sentiment['vxx_value']}
-                - Date used: {vix_sentiment['date_used']}
-                - Market interpretation: {vix_sentiment['interpretation']}
-                - Suggested sentiment score: {vix_sentiment['sentiment_score']}
+                # Return neutral sentiment when no news is available
+                # This ensures sentiment is purely text-based
+                response = json.dumps({
+                    "score": 0.0,
+                    "analysis": f"No relevant news articles were found for {symbol} on {date}. Without text-based information, sentiment cannot be determined.",
+                    "confidence": 0.0,
+                    "key_themes": [],
+                    "data_source": "no_news"
+                })
                 
-                Please provide a sentiment analysis in JSON format based on this market volatility data.
-                Consider that high VXX (>40) indicates fear/bearish sentiment, while low VXX (<20) indicates complacency/bullish sentiment.
-                
-                Return JSON with: score, confidence, reasoning, sources (set sources=1 for VXX).
-                """
-
-                # Get LLM to synthesize the VXX data
-                vxx_messages = [
-                    {"role": "system", "content": "You are a sentiment analysis agent. Provide market sentiment based on volatility indicators."},
-                    {"role": "user", "content": vxx_prompt}
-                ]
-
-                # Extract user and system messages
-                vxx_user_msg = vxx_messages[-1]['content']
-                vxx_system_msg = vxx_messages[0]['content']
-
-                response = self.process_with_tools(vxx_user_msg, vxx_system_msg)
-
                 # Log the sentiment source
                 logger.info(
-                    f"Sentiment source for {symbol} on {date}: VXX (market volatility)")
+                    f"Sentiment source for {symbol} on {date}: No news (neutral)")
             else:
-                # Log that news was used
+                # Log that news was used (sources: Google Search, Yahoo scraper, Finnhub, NewsAPI)
                 logger.info(
-                    f"Sentiment source for {symbol} on {date}: news data")
+                    f"Sentiment source for {symbol} on {date}: News data (checking Google Search, Yahoo scraper, Finnhub, NewsAPI)")
 
             return response
 
