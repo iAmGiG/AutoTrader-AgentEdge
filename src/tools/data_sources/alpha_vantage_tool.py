@@ -219,8 +219,8 @@ class AlphaVantageTool:
                 return pd.DataFrame()
 
             if "feed" not in data:
-                self.logger.warning(
-                    "No news feed found in Alpha Vantage response")
+                self.logger.debug(
+                    "Alpha Vantage: No news available, using alternative sources (Google Search, Yahoo scraper)")
                 return pd.DataFrame()
 
             # Extract feed items and convert to DataFrame
