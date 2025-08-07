@@ -17,7 +17,7 @@ from typing import Dict
 from pathlib import Path
 import logging
 
-from src.tools.data_sources.news.aggregators.hybrid_historical_news_tool import hybrid_historical_news_tool
+from src.tools.data_sources.news.aggregators.hybrid_historical_news_tool import fetch_hybrid_historical_news
 from config.config_loader import ConfigLoader
 
 # Configure logging
@@ -70,13 +70,15 @@ class NewsDataCollector:
         self.status_dir.mkdir(parents=True, exist_ok=True)
         self.status_file = self.status_dir / 'news_data_status.json'
 
-        # Quota and rate limiting
-        self.daily_quota = 90  # Leave 10 searches for manual use
-        self.rate_limit_delay = 900  # 15 minutes between searches
+        # Session-based tracking (simple and fast)
+        self.session_start_time = time.time()
+        self.session_searches = 0
+        self.session_quota = 90  # Conservative limit per session
+        self.rate_limit_delay = 65  # 65 seconds between searches (match market data)
 
         logger.info("News data collector initialized")
-        logger.info(f"Daily quota: {self.daily_quota}/100 searches")
-        logger.info(f"Rate limit: {self.rate_limit_delay/60} minutes between searches")
+        logger.info(f"Session quota: {self.session_quota} searches")
+        logger.info(f"Rate limit: {self.rate_limit_delay}s between searches")
 
     def load_status(self) -> Dict:
         """Load collection status from disk."""
@@ -106,25 +108,21 @@ class NewsDataCollector:
         except Exception as e:
             logger.error(f"Failed to save status: {e}")
 
-    def check_daily_quota(self, status: Dict) -> bool:
+    def check_session_quota(self) -> bool:
         """
-        Check if we have quota remaining for today.
-
-        Args:
-            status: Current status dict
-
+        Check if we have quota remaining for this session (simple delta time).
+        
         Returns:
             True if quota available, False if exhausted
         """
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_usage = status['daily_usage'].get(today, 0)
-
-        if today_usage >= self.daily_quota:
-            logger.warning(f"Daily quota exhausted: {today_usage}/{self.daily_quota}")
+        if self.session_searches >= self.session_quota:
+            session_duration = (time.time() - self.session_start_time) / 60  # minutes
+            logger.warning(f"Session quota exhausted: {self.session_searches}/{self.session_quota}")
+            logger.info(f"Session duration: {session_duration:.1f} minutes")
             return False
 
-        remaining = self.daily_quota - today_usage
-        logger.info(f"Daily quota remaining: {remaining}/{self.daily_quota}")
+        remaining = self.session_quota - self.session_searches
+        logger.info(f"Session quota remaining: {remaining}/{self.session_quota}")
         return True
 
     def collect_ticker_news(
@@ -146,9 +144,9 @@ class NewsDataCollector:
         Returns:
             True if successful, False if failed
         """
-        # Check daily quota first
-        if not self.check_daily_quota(status):
-            logger.warning("Daily quota exhausted - stopping collection")
+        # Check session quota first
+        if not self.check_session_quota():
+            logger.warning("Session quota exhausted - stopping collection")
             return False
 
         search_key = f"{ticker}_{start_date}_{end_date}"
@@ -176,35 +174,29 @@ class NewsDataCollector:
             logger.info(f"Collecting news for {ticker} from {start_date} to {end_date}")
 
             # Use existing hybrid news tool
-            search_query = f"{ticker} stock market crash Q2 2025"
+            search_keywords = [ticker, "stock", "market", "crash", "Q2", "2025", "volatility"]
 
-            news_df = hybrid_historical_news_tool(
-                query=search_query,
-                start_date=start_date,
-                end_date=end_date,
-                max_results=20
+            news_df = fetch_hybrid_historical_news(
+                target_date=start_date,
+                keywords=search_keywords,
+                max_articles=20
             )
 
             if not news_df.empty:
                 logger.info(f"✓ Successfully collected {len(news_df)} articles for {ticker}")
                 status['completed_searches'].append(search_key)
-
-                # Update daily usage
-                status['daily_usage'][today] = status['daily_usage'].get(today, 0) + 1
-
+                self.session_searches += 1
                 return True
             else:
                 logger.warning(f"⚠ No news found for {ticker}")
                 status['failed_searches'].append(search_key)
-                # Still count as quota usage
-                status['daily_usage'][today] = status['daily_usage'].get(today, 0) + 1
+                self.session_searches += 1  # Still count as quota usage
                 return False
 
         except Exception as e:
             logger.error(f"✗ Failed to collect news for {ticker}: {e}")
             status['failed_searches'].append(search_key)
-            # Still count as quota usage
-            status['daily_usage'][today] = status['daily_usage'].get(today, 0) + 1
+            self.session_searches += 1  # Still count as quota usage
             return False
 
         finally:
@@ -237,10 +229,10 @@ class NewsDataCollector:
         quota_exhausted = False
 
         for ticker in self.MAG7_TICKERS:
-            # Check quota before each ticker
-            if not self.check_daily_quota(status):
+            # Check session quota before each ticker
+            if not self.check_session_quota():
                 quota_exhausted = True
-                logger.warning("Daily quota exhausted - stopping collection")
+                logger.warning("Session quota exhausted - stopping collection")
                 break
 
             success = self.collect_ticker_news(ticker, start_date, end_date, status)
@@ -310,18 +302,18 @@ class NewsDataCollector:
     def get_collection_status(self) -> Dict:
         """Get current collection status and progress."""
         status = self.load_status()
-
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_usage = status['daily_usage'].get(today, 0)
+        
+        session_duration = (time.time() - self.session_start_time) / 60  # minutes
 
         return {
             'total_completed': len(status['completed_searches']),
             'total_failed': len(status['failed_searches']),
-            'today_quota_usage': f"{today_usage}/{self.daily_quota}",
+            'session_searches': f"{self.session_searches}/{self.session_quota}",
+            'session_duration_minutes': f"{session_duration:.1f}",
+            'session_remaining': self.session_quota - self.session_searches,
             'last_search_time': status['last_search_time'],
             'current_ticker': status['current_ticker'],
-            'start_time': status['start_time'],
-            'daily_usage_history': status['daily_usage']
+            'start_time': status['start_time']
         }
 
     def validate_news_cache(self) -> Dict:

@@ -18,6 +18,12 @@ from src.utils.date_utils import (
 YahooFinanceTool = None
 FMPTool = None
 NasdaqDataLinkTool = None
+PolygonHistoricalData = None
+
+try:
+    from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalData
+except ImportError:
+    pass
 
 try:
     from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
@@ -92,7 +98,8 @@ class MarketDataTool:
         self.default_date_range = self.config.get("default_date_range",
                                                   get_processed_date_range(default_days_back=self.default_days_back))
 
-        # Initialize specific data source tools
+        # Initialize specific data source tools (Polygon first priority)
+        self.polygon_tool = None
         self.alpha_vantage_tool = None
         self.yahoo_finance_tool = None
         self.fmp_tool = None
@@ -133,25 +140,102 @@ class MarketDataTool:
             f"using data_source={self.data_source}"
         )
 
-        # Route to the appropriate data source
-        if self.data_source == "alpha_vantage":
-            df = self._fetch_from_alpha_vantage(
-                symbol, start_date, end_date, filters)
-        elif self.data_source == "yahoo":
-            df = self._fetch_from_yahoo(symbol, start_date, end_date, filters)
-        elif self.data_source == "fmp":
-            df = self._fetch_from_fmp(symbol, start_date, end_date, filters)
-        elif self.data_source == "nasdaq":
-            df = self._fetch_from_nasdaq(symbol, start_date, end_date, filters)
-        elif self.data_source == "csv":
-            df = self._fetch_from_csv(symbol, start_date, end_date, filters)
-        else:
-            self.logger.error(f"Unsupported data_source: {self.data_source}")
-            return pd.DataFrame()
+        # Use hierarchical fallback: Polygon → Alpha Vantage → Yahoo → FMP
+        df = pd.DataFrame()
+        
+        # Try sources in priority order
+        sources = [
+            ("polygon", self._fetch_from_polygon),
+            ("alpha_vantage", self._fetch_from_alpha_vantage),
+            ("yahoo", self._fetch_from_yahoo),
+            ("fmp", self._fetch_from_fmp)
+        ]
+        
+        for source_name, fetch_method in sources:
+            try:
+                df = fetch_method(symbol, start_date, end_date, filters)
+                if not df.empty:
+                    self.logger.info(f"Successfully fetched {len(df)} records from {source_name}")
+                    break
+                else:
+                    self.logger.warning(f"{source_name.title()} returned no data, attempting {sources[sources.index((source_name, fetch_method)) + 1][0] if sources.index((source_name, fetch_method)) + 1 < len(sources) else 'no more'} fallback")
+            except Exception as e:
+                self.logger.warning(f"{source_name.title()} failed: {e}, trying fallback")
+                continue
+        
+        # Legacy single-source routing (for CSV and specific requests)
+        if df.empty and self.data_source in ["csv", "nasdaq"]:
+            if self.data_source == "csv":
+                df = self._fetch_from_csv(symbol, start_date, end_date, filters)
+            elif self.data_source == "nasdaq":
+                df = self._fetch_from_nasdaq(symbol, start_date, end_date, filters)
 
         if not df.empty:
             df = localize_df(df, get_default_timezone())
         return df
+
+    def _fetch_from_polygon(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        filters: Optional[Dict[str, Any]] = None
+    ) -> pd.DataFrame:
+        """
+        Fetch market data from Polygon.io API with caching.
+
+        Args:
+            symbol: Stock symbol
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            filters: Additional filters (ignored for now)
+
+        Returns:
+            DataFrame with OHLCV data and Polygon-specific fields
+        """
+        if not PolygonHistoricalData:
+            self.logger.warning("PolygonHistoricalData not available")
+            return pd.DataFrame()
+
+        if self.polygon_tool is None:
+            try:
+                # Initialize Polygon tool with API key from config
+                config_loader = ConfigLoader()
+                api_key = config_loader.get("POLYGON_IO")
+                if not api_key:
+                    self.logger.warning("POLYGON_IO API key not found in config")
+                    return pd.DataFrame()
+                
+                self.polygon_tool = PolygonHistoricalData(api_key=api_key)
+                self.logger.info("Polygon tool initialized")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize Polygon tool: {e}")
+                return pd.DataFrame()
+
+        try:
+            # Fetch historical prices with caching
+            df = self.polygon_tool.fetch_historical_prices(
+                ticker=symbol,
+                start_date=start_date,
+                end_date=end_date,
+                use_cache=True
+            )
+            
+            if not df.empty:
+                # Ensure date column is properly formatted
+                if 'date' in df.columns:
+                    df['date'] = pd.to_datetime(df['date'])
+                    df.set_index('date', inplace=True)
+                
+                self.logger.info(f"Polygon returned {len(df)} records for {symbol}")
+                return df
+            else:
+                self.logger.warning(f"Polygon returned no data for {symbol}")
+                return pd.DataFrame()
+                
+        except Exception as e:
+            self.logger.error(f"Polygon fetch failed for {symbol}: {e}")
+            return pd.DataFrame()
 
     def _fetch_from_alpha_vantage(
         self,

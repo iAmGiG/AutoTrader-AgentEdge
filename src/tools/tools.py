@@ -667,16 +667,16 @@ def fetch_market_data(
     symbol: str = "AAPL",
     start_date: str = "-30d",  # Changed to relative date for current data
     end_date: str = "today",   # Changed to always get current data
-    source: str = "alpha_vantage"
+    source: str = "auto"      # Changed to use hierarchical fallback
 ) -> pd.DataFrame:
     """
-    Fetch market data from the specified source (alpha_vantage, yahoo, csv).
+    Fetch market data using hierarchical source fallback (Polygon → Alpha Vantage → Yahoo → FMP).
 
     Args:
         symbol: Stock symbol/ticker to fetch data for
         start_date: Start of date range (YYYY-MM-DD or relative like "-30d")
         end_date: End of date range (YYYY-MM-DD or "today")
-        source: Data source to use ("alpha_vantage", "yahoo", "csv")
+        source: Data source preference ("auto" for hierarchical, "polygon", "alpha_vantage", "yahoo", "fmp")
 
     Returns:
         DataFrame with price and volume data
@@ -684,6 +684,49 @@ def fetch_market_data(
     tool = MarketDataTool({"data_source": source})
     df = tool.fetch_market_data(symbol, start_date, end_date)
     return df
+
+def fetch_polygon_historical_data(
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    data_type: str = "prices"
+) -> dict:
+    """
+    Direct access to Polygon.io historical data with caching.
+
+    Args:
+        ticker: Stock symbol
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        data_type: Type of data to fetch ("prices", "news", "dividends", "splits")
+
+    Returns:
+        Dictionary with data and metadata
+    """
+    try:
+        from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalData
+        
+        config_loader = ConfigLoader()
+        api_key = config_loader.get("POLYGON_IO")
+        if not api_key:
+            return {"error": "POLYGON_IO API key not found in config"}
+        
+        polygon_tool = PolygonHistoricalData(api_key=api_key)
+        
+        if data_type == "prices":
+            df = polygon_tool.fetch_historical_prices(ticker, start_date, end_date, use_cache=True)
+            if not df.empty:
+                return {
+                    "ticker": ticker,
+                    "prices": df.to_dict(orient='records'),
+                    "source": "polygon",
+                    "cached": True  # Polygon tool handles caching internally
+                }
+        
+        return {"ticker": ticker, "prices": [], "source": "polygon", "error": "No data found"}
+        
+    except Exception as e:
+        return {"error": f"Polygon fetch failed: {e}"}
 
 
 market_data_tool = FunctionTool(
