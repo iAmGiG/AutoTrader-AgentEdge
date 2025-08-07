@@ -8,6 +8,8 @@ This package contains tools for retrieving market data from various sources:
 """
 
 # Lazy imports to avoid import errors when optional dependencies are missing
+
+
 def __getattr__(name):
     """Lazy import of market data tools."""
     if name == "AlphaVantageMarketTool":
@@ -31,8 +33,15 @@ def __getattr__(name):
     elif name == "NasdaqDataLinkTool":
         from .nasdaq_data_link_tool import NasdaqDataLinkTool
         return NasdaqDataLinkTool
+    elif name == "PolygonHistoricalTool":
+        from .polygon_historical_tool import PolygonHistoricalTool
+        return PolygonHistoricalTool
+    elif name == "create_polygon_tool":
+        from .polygon_historical_tool import create_polygon_tool
+        return create_polygon_tool
     else:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "AlphaVantageMarketTool",
@@ -40,4 +49,6 @@ __all__ = [
     "MarketDataTool",
     "FMPTool",
     "NasdaqDataLinkTool",
+    "PolygonHistoricalTool",
+    "create_polygon_tool",
 ]

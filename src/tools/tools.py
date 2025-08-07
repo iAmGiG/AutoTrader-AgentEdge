@@ -695,6 +695,55 @@ market_data_tool = FunctionTool(
 market_data_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 ##################################
+# 5b) Polygon Historical Data Tool
+##################################
+
+
+def fetch_polygon_historical_data(
+    ticker: str = "AAPL",
+    start_date: str = "2022-01-01",
+    end_date: str = "2022-12-31",
+    data_type: str = "all"
+) -> dict:
+    """
+    Fetch historical market data from Polygon.io API.
+
+    Args:
+        ticker: Stock symbol to fetch data for
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        data_type: Type of data to fetch ('prices', 'news', 'events', 'all')
+
+    Returns:
+        Dictionary containing requested data (prices, news, and/or events)
+    """
+    # Load API key from config
+    api_key = config_loader.get("POLYGON_IO")
+    if not api_key:
+        print("WARNING: POLYGON_IO API key not found in config. Returning empty data.")
+        return {}
+
+    try:
+        from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalTool
+        tool = PolygonHistoricalTool(api_key)
+        return tool(ticker, start_date, end_date, data_type)
+    except ImportError:
+        print("WARNING: polygon-api-client not installed. Install with: pip install polygon-api-client")
+        return {}
+    except Exception as e:
+        print(f"ERROR fetching Polygon data: {e}")
+        return {}
+
+
+polygon_historical_tool = FunctionTool(
+    func=fetch_polygon_historical_data,
+    name="fetch_polygon_historical_data",
+    description="Fetch historical market data (prices, news, events) from Polygon.io with 2 years of history."
+)
+# Technical and strategy agents need historical data for backtesting
+polygon_historical_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+
+##################################
 # 6) FRED Economic Data Tool
 ##################################
 
