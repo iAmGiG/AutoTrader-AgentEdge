@@ -306,11 +306,11 @@ def main() -> None:
 
     # Initialize agents
     coord = CoordinatorAgent()
-    print("🧠 Using Enhanced Sentiment V2 (with VXX fallback)")
+    print("🧠 Using Enhanced Sentiment V2 (news-first with market heat fallback)")
 
     # Initialize strategy agent
     strat = StrategyAgent()
-    print("📌 Using enhanced strategy (sentiment >= 0 with VXX fallback)")
+    print("📌 Using news-first strategy (news sentiment prioritized over market heat)")
 
     # Track portfolio state
     equity = 100_000.0  # Starting cash
