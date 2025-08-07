@@ -18,7 +18,11 @@ from src.tools.data_sources.news.aggregators.hybrid_historical_news_tool import 
 import pandas as pd
 from src.tools.processors.data_normalizer import normalize_data_for_sentiment
 import os
+from datetime import datetime
+import logging
 from config.config_loader import ConfigLoader
+
+logger = logging.getLogger(__name__)
 
 # Lazy imports for optional dependencies
 YahooFinanceTool = None
@@ -140,8 +144,11 @@ def fetch_all_news(
     count: int = 10
 ) -> dict:
     """
-    Unified news fetching from multiple sources (AlphaVantage, Finnhub, NewsAPI) with
-    standardized output format, sentiment analysis, and deduplication.
+    Unified news fetching with priority sources:
+    1. Google Search API (premium sources: Barrons, WSJ, Bloomberg)
+    2. Yahoo Finance scraper (real-time financial news)
+    3. FinViz (recent market news)
+    4. Legacy sources (AlphaVantage, Finnhub, NewsAPI) as fallback
 
     Args:
         keywords: Keywords to search for (comma-separated)
@@ -155,6 +162,40 @@ def fetch_all_news(
     Returns:
         Dictionary with news articles and metadata including sentiment analysis
     """
+    # Try hybrid historical news tool first (Google Search, FinViz priority)
+    if ticker and end_date:
+        try:
+            from src.tools.data_sources.news.aggregators.hybrid_historical_news_tool import fetch_hybrid_historical_news
+            # Convert to target date if single date requested
+            target_date = end_date if end_date != "today" else datetime.now().strftime("%Y-%m-%d")
+            keywords_list = [ticker] if ticker else (keywords.split(",") if keywords else None)
+            
+            hybrid_result = fetch_hybrid_historical_news(
+                target_date=target_date,
+                keywords=keywords_list,
+                max_articles=count
+            )
+            
+            if not hybrid_result.empty:
+                # Convert DataFrame to expected format, handling timestamps
+                hybrid_result = hybrid_result.copy()
+                # Convert timestamp columns to strings
+                for col in hybrid_result.columns:
+                    if 'date' in col.lower() or 'time' in col.lower():
+                        hybrid_result[col] = hybrid_result[col].astype(str)
+                
+                articles = hybrid_result.to_dict('records')
+                logger.info(f"Using hybrid news sources (Google Search, FinViz priority): {len(articles)} articles found")
+                return {
+                    "status": "SUCCESS",
+                    "source": "hybrid_historical",
+                    "ticker": ticker,
+                    "articles": articles
+                }
+        except Exception as e:
+            logger.debug(f"Hybrid news tool unavailable, falling back to legacy sources: {e}")
+    
+    # Fall back to legacy unified news
     result = fetch_unified_news(
         keywords=keywords,
         ticker=ticker,
@@ -174,6 +215,7 @@ def fetch_all_news(
             "keywords": keywords,
             "articles": [],
         }
+    logger.info(f"Using legacy news sources (AlphaVantage, Finnhub, NewsAPI): {len(articles)} articles found")
     return result
 
 
