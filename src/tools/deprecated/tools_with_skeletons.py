@@ -1,0 +1,915 @@
+from autogen_core.tools import FunctionTool
+from src.tools.data_sources.market.market_data_tool import MarketDataTool
+from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
+from src.tools.data_sources.news.sources.api_based.alpha_vantage_news import AlphaVantageNewsTool
+try:
+    from src.tools.data_sources.government.FRED_data_tool import FREDDataTool
+except ImportError:
+    FREDDataTool = None
+# SEC Edgar tools removed - experimental and unused
+import pandas as pd
+from src.tools.processors.data_normalizer import normalize_data_for_sentiment
+import os
+from datetime import datetime
+import logging
+from config.config_loader import ConfigLoader
+
+logger = logging.getLogger(__name__)
+
+# Lazy imports for optional dependencies
+YahooFinanceTool = None
+FMPTool = None
+
+try:
+    from src.tools.data_sources.market.yahoo_finance_tool import YahooFinanceTool
+except ImportError:
+    pass
+
+try:
+    from src.tools.data_sources.market.fmp_tool import FMPTool
+except ImportError:
+    pass
+
+config_loader = ConfigLoader()
+# Import other vendor tools as needed
+
+##################################
+# Tool Organization by Agent Type
+##################################
+
+# Every tool is tagged with the agent types that should use it
+# This allows for better separation of concerns between agents
+
+# Agent Types
+SENTIMENT_AGENT = "sentiment"
+TECH_AGENT = "tech"
+STRATEGY_AGENT = "strategy"
+MARKET_INTELLIGENCE_AGENT = "market_intelligence"
+ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+
+# CORPORATE ACTIONS TOOL HIERARCHY:
+# 1. PRIMARY: Yahoo Finance tools - Free but rate limited, enhanced with caching/throttling
+#    - fetch_yahoo_corporate_events (with historical support via days_back parameter)
+# 2. UNOBTAINIUM: Premium-locked corporate actions (both require paid subscriptions)
+#    - FMP tools: fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar (EXPERIMENTAL)
+#    - Finnhub tools: fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions
+# 3. NOTE: Corporate actions data is largely premium-only across major financial APIs
+#    - Consider web scraping alternatives for comprehensive free corporate actions data
+
+##################################
+# 1) News Headline Tool as a Function
+##################################
+
+
+
+
+
+##################################
+# 2) Alpha Vantage News Tool
+##################################
+
+
+def fetch_alpha_vantage_news(
+    symbol: str = "AAPL",
+    topics: str = None
+) -> pd.DataFrame:
+    """
+    Fetch news and sentiment data from Alpha Vantage API.
+
+    Args:
+        symbol: Stock symbol to fetch news about
+        topics: Optional topics to filter by
+
+    Returns:
+        DataFrame with news and pre-calculated sentiment scores
+    """
+    tool = AlphaVantageNewsTool()
+    df = tool.fetch_news_sentiment(symbol, topics)
+    # Normalize for sentiment analysis
+    normalized_df = normalize_data_for_sentiment(
+        df, "alpha_vantage", symbol=symbol)
+    return normalized_df if normalized_df is not None else df
+
+
+
+##################################
+# 3) Unified News Tool
+##################################
+
+
+def fetch_all_news(
+    keywords: str = None,
+    ticker: str = None,
+    start_date: str = "-7d",
+    end_date: str = "today",
+    category: str = None,
+    sources: str = None,
+    count: int = 10
+) -> dict:
+    """
+    Unified news fetching with priority sources:
+    1. Google Search API (premium sources: Barrons, WSJ, Bloomberg)
+    2. Yahoo Finance scraper (real-time financial news)
+    3. FinViz (recent market news)
+    4. Legacy sources (AlphaVantage, Finnhub, NewsAPI) as fallback
+
+    Args:
+        keywords: Keywords to search for (comma-separated)
+        ticker: Stock ticker to get news about
+        start_date: Start date for news (YYYY-MM-DD or relative date like "-7d")
+        end_date: End date for news (YYYY-MM-DD or "today")
+        category: Type of news to fetch ("financial", "economic", "general")
+        sources: Comma-separated list of sources to use (default: all available sources)
+        count: Maximum number of news articles to return
+
+    Returns:
+        Dictionary with news articles and metadata including sentiment analysis
+    """
+    logger.warning("fetch_all_news is deprecated. Use google_search_simple_tool instead.")
+    return {
+        "status": "DEPRECATED",
+        "reason": "This tool is deprecated. Use google_search_simple_tool instead.",
+        "ticker": ticker,
+        "keywords": keywords,
+        "articles": [],
+    }
+
+
+
+##################################
+# 4) FMP Corporate Actions Tools (EXPERIMENTAL - PREMIUM LOCKED)
+##################################
+
+
+def fetch_fmp_earnings_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch earnings calendar from FMP API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with earnings calendar data
+    """
+    tool = FMPTool()
+    df = tool.fetch_earnings_calendar(start_date, end_date)
+    return df
+
+
+fmp_earnings_calendar_tool = FunctionTool(
+    func=fetch_fmp_earnings_calendar,
+    name="fetch_fmp_earnings_calendar",
+    description="EXPERIMENTAL: Fetch earnings calendar from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative to Finnhub for corporate actions. Will return 403 errors with free tier."
+)
+fmp_earnings_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_dividend_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch dividend calendar from FMP API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with dividend calendar data
+    """
+    tool = FMPTool()
+    df = tool.fetch_dividend_calendar(start_date, end_date)
+    return df
+
+
+fmp_dividend_calendar_tool = FunctionTool(
+    func=fetch_fmp_dividend_calendar,
+    name="fetch_fmp_dividend_calendar",
+    description="EXPERIMENTAL: Fetch dividend calendar from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative to Finnhub for dividend data. Will return 403 errors with free tier."
+)
+fmp_dividend_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_historical_earnings(
+    symbol: str,
+    limit: int = 80
+) -> pd.DataFrame:
+    """
+    Fetch historical earnings data for a specific symbol from FMP API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        limit: Maximum number of earnings records to retrieve
+
+    Returns:
+        DataFrame with historical earnings data
+    """
+    tool = FMPTool()
+    df = tool.fetch_historical_earnings(symbol, limit)
+    return df
+
+
+fmp_historical_earnings_tool = FunctionTool(
+    func=fetch_fmp_historical_earnings,
+    name="fetch_fmp_historical_earnings",
+    description="EXPERIMENTAL: Fetch historical earnings data from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative for historical earnings analysis. Requires symbol parameter."
+)
+fmp_historical_earnings_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_historical_dividends(
+    symbol: str,
+    start_date: str = "-1y",
+    end_date: str = "today"
+) -> pd.DataFrame:
+    """
+    Fetch historical dividend data for a specific symbol from FMP API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        start_date: Start date (YYYY-MM-DD or relative like "-1y")
+        end_date: End date (YYYY-MM-DD or relative like "today")
+
+    Returns:
+        DataFrame with historical dividend data
+    """
+    tool = FMPTool()
+    df = tool.fetch_historical_dividends(symbol, start_date, end_date)
+    return df
+
+
+fmp_historical_dividends_tool = FunctionTool(
+    func=fetch_fmp_historical_dividends,
+    name="fetch_fmp_historical_dividends",
+    description="EXPERIMENTAL: Fetch historical dividend data from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative for dividend analysis. Requires symbol parameter."
+)
+fmp_historical_dividends_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_fmp_stock_split_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch stock split calendar from FMP API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with stock split calendar data
+    """
+    tool = FMPTool()
+    df = tool.fetch_stock_split_calendar(start_date, end_date)
+    return df
+
+
+fmp_stock_split_calendar_tool = FunctionTool(
+    func=fetch_fmp_stock_split_calendar,
+    name="fetch_fmp_stock_split_calendar",
+    description="EXPERIMENTAL: Fetch stock split calendar from FMP. REQUIRES PREMIUM SUBSCRIPTION. Alternative for stock split data."
+)
+fmp_stock_split_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+##################################
+# 5) Finnhub News and Sentiment Tool (SECONDARY - Premium locked)
+##################################
+
+
+def fetch_finnhub_news(
+    category: str = "general",
+    tickers: list = None,
+    count: int = 10
+) -> pd.DataFrame:
+    """
+    Fetch financial news articles from Finnhub using the free tier API.
+
+    Args:
+        category: News category ('general', 'forex', 'crypto', 'merger', 'business', 'economic', etc.)
+        tickers: List of ticker symbols to filter by (optional, may not work in free tier)
+        count: Number of news articles to retrieve
+
+    Returns:
+        DataFrame with financial news headlines, dates, and sources
+    """
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_news(category=category, tickers=tickers, count=count)
+    return df
+
+
+# Deprecated - not used
+finnhub_news_tool = None
+
+
+def fetch_finnhub_financial_headlines(
+    count: int = 10
+) -> pd.DataFrame:
+    """
+    Fetch a combined set of financial and economic headlines from multiple categories
+    on Finnhub. Combines business, economic, forex, and general news for comprehensive
+    market coverage.
+
+    Args:
+        count: Number of news headlines to retrieve per category
+
+    Returns:
+        DataFrame with diverse financial headlines for sentiment analysis
+    """
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_financial_headlines(count=count)
+    return df
+
+
+# Deprecated - not used
+finnhub_financial_headlines_tool = None
+
+
+def fetch_finnhub_economic_headlines(
+    count: int = 10
+) -> pd.DataFrame:
+    """
+    Fetch headlines specifically from the 'economic' category on Finnhub.
+    This provides economic news focused content for sentiment analysis.
+
+    Args:
+        count: Number of economic news headlines to retrieve
+
+    Returns:
+        DataFrame with economic headlines from Finnhub
+        DataFrame with economic headlines from Finnhub
+    """
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_economic_headlines(count=count)
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_economic_headlines(count=count)
+    return df
+
+
+# Deprecated - not used
+finnhub_economic_headlines_tool = None
+
+
+def fetch_finnhub_earnings_calendar(
+    start_date: str = "today",
+    end_date: str = "+30d"
+) -> pd.DataFrame:
+    """
+    Fetch earnings calendar from Finnhub free tier API.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD or relative like "today")
+        end_date: End date (YYYY-MM-DD or relative like "+30d")
+
+    Returns:
+        DataFrame with earnings calendar data including EPS estimates and actuals
+    """
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_earnings_calendar(start_date, end_date)
+    return df
+
+
+finnhub_earnings_calendar_tool = FunctionTool(
+    func=fetch_finnhub_earnings_calendar,
+    name="fetch_finnhub_earnings_calendar",
+    description="SECONDARY: Fetch earnings calendar from Finnhub with EPS estimates and actuals. Requires premium subscription. Use only if FMP tools fail or are unavailable."
+)
+finnhub_earnings_calendar_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_finnhub_insider_transactions(
+    symbol: str,
+    start_date: str = "-90d",
+    end_date: str = "today"
+) -> pd.DataFrame:
+    """
+    Fetch insider transaction data from Finnhub free tier API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        start_date: Start date (YYYY-MM-DD or relative like "-90d")
+        end_date: End date (YYYY-MM-DD or relative like "today")
+
+    Returns:
+        DataFrame with insider transaction data
+    """
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_insider_transactions(symbol, start_date, end_date)
+    return df
+
+
+finnhub_insider_transactions_tool = FunctionTool(
+    func=fetch_finnhub_insider_transactions,
+    name="fetch_finnhub_insider_transactions",
+    description="SECONDARY: Fetch insider transaction data from Finnhub. Requires premium subscription. Use only if other tools are unavailable."
+)
+finnhub_insider_transactions_tool.agent_types = [
+    SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_finnhub_dividends(
+    symbol: str,
+    start_date: str = "-1y",
+    end_date: str = "today"
+) -> pd.DataFrame:
+    """
+    Fetch dividend data from Finnhub free tier API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+        start_date: Start date (YYYY-MM-DD or relative like "-1y")
+        end_date: End date (YYYY-MM-DD or relative like "today")
+
+    Returns:
+        DataFrame with dividend data including ex-dividend dates and amounts
+    """
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_dividends(symbol, start_date, end_date)
+    return df
+
+
+finnhub_dividends_tool = FunctionTool(
+    func=fetch_finnhub_dividends,
+    name="fetch_finnhub_dividends",
+    description="SECONDARY: Fetch dividend data from Finnhub. Requires premium subscription. Use only if FMP tools fail. Requires symbol parameter."
+)
+finnhub_dividends_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+
+def fetch_finnhub_earnings_estimates(
+    symbol: str
+) -> pd.DataFrame:
+    """
+    Fetch earnings estimates from Finnhub free tier API.
+
+    Args:
+        symbol: Stock symbol (e.g., 'AAPL')
+
+    Returns:
+        DataFrame with EPS estimates and historical earnings surprises
+    """
+    # Load API key from environment
+    api_key = os.getenv("FINNHUB_KEY", config_loader.get("FINNHUB_KEY"))
+
+    tool = FinnHubTool(api_key)
+    df = tool.fetch_earnings_estimates(symbol)
+    return df
+
+
+finnhub_earnings_estimates_tool = FunctionTool(
+    func=fetch_finnhub_earnings_estimates,
+    name="fetch_finnhub_earnings_estimates",
+    description="SECONDARY: Fetch earnings estimates from Finnhub. Requires premium subscription. Use only if FMP tools fail."
+)
+finnhub_earnings_estimates_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+##################################
+# 5) Market Data Tools
+##################################
+
+
+def fetch_yahoo_data(
+    ticker: str = "AAPL",
+    start_date: str = "2023-01-01",
+    end_date: str = "2023-02-01"
+) -> pd.DataFrame:
+    """
+    Fetch stock price data from Yahoo Finance.
+
+    Args:
+        ticker: Stock symbol/ticker to fetch data for
+        start_date: Start of date range (YYYY-MM-DD or relative like "-7d")
+        end_date: End of date range (YYYY-MM-DD or relative like "-1d")
+
+    Returns:
+        DataFrame with Open, High, Low, Close and Volume data
+    """
+    if YahooFinanceTool is None:
+        return pd.DataFrame()  # Return empty if not available
+    tool = YahooFinanceTool()
+    df = tool.fetch_stock_data(ticker, start_date, end_date)
+    return df
+
+
+# Only create tool if Yahoo is available
+if YahooFinanceTool is not None:
+    yahoo_finance_tool = FunctionTool(
+        func=fetch_yahoo_data,
+        name="fetch_yahoo_data",
+        description="Fetch stock price data from Yahoo Finance for a given ticker and date range."
+    )
+    # Market intelligence needs price data for market analysis
+    yahoo_finance_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+else:
+    yahoo_finance_tool = None
+
+
+def fetch_yahoo_corporate_events(
+    ticker: str,
+    days_ahead: int = 30,
+    days_back: int = 0
+) -> pd.DataFrame:
+    """
+    Fetch corporate events (earnings dates, dividend dates) from Yahoo Finance.
+    Can fetch both upcoming events and recent historical events.
+
+    Args:
+        ticker: Stock symbol to fetch events for
+        days_ahead: Number of days ahead to look for upcoming events (default: 30)
+        days_back: Number of days back to look for historical events (default: 0)
+                  Set to 30 for last month, 7 for last week, etc.
+
+    Returns:
+        DataFrame containing events within the specified timeframe
+    """
+    if YahooFinanceTool is None:
+        return pd.DataFrame()  # Return empty if not available
+    tool = YahooFinanceTool()
+    events_df = tool.fetch_corporate_events(ticker, days_ahead, days_back)
+    return events_df
+
+
+# Only create tool if Yahoo is available
+if YahooFinanceTool is not None:
+    yahoo_corporate_events_tool = FunctionTool(
+        func=fetch_yahoo_corporate_events,
+        name="fetch_yahoo_corporate_events",
+        description="BACKUP: Fetch corporate events from Yahoo Finance as DataFrame. Can get both upcoming events (days_ahead) and historical events (days_back). For 'last month' queries, use days_back=30. For upcoming events, use days_ahead=30. Use when Finnhub tools return empty results. Note: Subject to rate limiting."
+    )
+    # Useful for sentiment and strategy agents for event-driven analysis
+    yahoo_corporate_events_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+else:
+    yahoo_corporate_events_tool = None
+
+
+def fetch_alpha_vantage_data(
+    symbol: str = "AAPL",
+    start_date: str = "2024-01-01",
+    end_date: str = "2024-12-31"
+) -> pd.DataFrame:
+    """
+    Fetch stock price data from Alpha Vantage API.
+
+    Args:
+        symbol: Stock symbol/ticker to fetch data for
+        start_date: Start of date range (YYYY-MM-DD or relative like "-7d")
+        end_date: End of date range (YYYY-MM-DD or relative like "-1d")
+
+    Returns:
+        DataFrame with open, high, low, close, volume data
+    """
+    tool = AlphaVantageMarketTool()
+    df = tool.fetch_stock_data(symbol, start_date, end_date)
+    return df
+
+
+alpha_vantage_tool = FunctionTool(
+    func=fetch_alpha_vantage_data,
+    name="fetch_alpha_vantage_data",
+    description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
+)
+# Market intelligence may use this as fallback
+alpha_vantage_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+
+
+def fetch_market_data(
+    symbol: str = "AAPL",
+    start_date: str = "-30d",  # Changed to relative date for current data
+    end_date: str = "today",   # Changed to always get current data
+    source: str = "auto"      # Changed to use hierarchical fallback
+) -> pd.DataFrame:
+    """
+    Fetch market data using hierarchical source fallback (Polygon → Alpha Vantage → Yahoo → FMP).
+
+    Args:
+        symbol: Stock symbol/ticker to fetch data for
+        start_date: Start of date range (YYYY-MM-DD or relative like "-30d")
+        end_date: End of date range (YYYY-MM-DD or "today")
+        source: Data source preference ("auto" for hierarchical, "polygon", "alpha_vantage", "yahoo", "fmp")
+
+    Returns:
+        DataFrame with price and volume data
+    """
+    tool = MarketDataTool({"data_source": source})
+    df = tool.fetch_market_data(symbol, start_date, end_date)
+    return df
+
+
+def fetch_polygon_historical_data(
+    ticker: str,
+    start_date: str,
+    end_date: str,
+    data_type: str = "prices"
+) -> dict:
+    """
+    Direct access to Polygon.io historical data with caching.
+
+    Args:
+        ticker: Stock symbol
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        data_type: Type of data to fetch ("prices", "news", "dividends", "splits")
+
+    Returns:
+        Dictionary with data and metadata
+    """
+    try:
+        from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalData
+
+        config_loader = ConfigLoader()
+        api_key = config_loader.get("POLYGON_IO")
+        if not api_key:
+            return {"error": "POLYGON_IO API key not found in config"}
+
+        polygon_tool = PolygonHistoricalData(api_key=api_key)
+
+        if data_type == "prices":
+            df = polygon_tool.fetch_historical_prices(ticker, start_date, end_date, use_cache=True)
+            if not df.empty:
+                return {
+                    "ticker": ticker,
+                    "prices": df.to_dict(orient='records'),
+                    "source": "polygon",
+                    "cached": True  # Polygon tool handles caching internally
+                }
+
+        return {"ticker": ticker, "prices": [], "source": "polygon", "error": "No data found"}
+
+    except Exception as e:
+        return {"error": f"Polygon fetch failed: {e}"}
+
+
+market_data_tool = FunctionTool(
+    func=fetch_market_data,
+    name="fetch_market_data",
+    description="Fetch market data from specified source for a given ticker and date range."
+)
+# Market intelligence needs market data for analysis
+market_data_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+
+##################################
+# 5b) Polygon Historical Data Tool
+##################################
+
+
+def fetch_polygon_historical_data(
+    ticker: str = "AAPL",
+    start_date: str = "2022-01-01",
+    end_date: str = "2022-12-31",
+    data_type: str = "all"
+) -> dict:
+    """
+    Fetch historical market data from Polygon.io API.
+
+    Args:
+        ticker: Stock symbol to fetch data for
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        data_type: Type of data to fetch ('prices', 'news', 'events', 'all')
+
+    Returns:
+        Dictionary containing requested data (prices, news, and/or events)
+    """
+    # Load API key from config
+    api_key = config_loader.get("POLYGON_IO")
+    if not api_key:
+        print("WARNING: POLYGON_IO API key not found in config. Returning empty data.")
+        return {}
+
+    try:
+        from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalTool
+        tool = PolygonHistoricalTool(api_key)
+        return tool(ticker, start_date, end_date, data_type)
+    except ImportError:
+        print("WARNING: polygon-api-client not installed. Install with: pip install polygon-api-client")
+        return {}
+    except Exception as e:
+        print(f"ERROR fetching Polygon data: {e}")
+        return {}
+
+
+polygon_historical_tool = FunctionTool(
+    func=fetch_polygon_historical_data,
+    name="fetch_polygon_historical_data",
+    description="Fetch historical market data (prices, news, events) from Polygon.io with 2 years of history."
+)
+# Technical and strategy agents need historical data for backtesting
+polygon_historical_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+
+##################################
+# 6) FRED Economic Data Tool
+##################################
+
+
+def fetch_economic_indicator(
+    indicator: str = "gdp",
+    start_date: str = "-5y",  # Changed to relative date format
+    end_date: str = "today"   # Changed to relative date format
+) -> pd.DataFrame:
+    """
+    Fetch economic data from FRED (Federal Reserve Economic Data).
+
+    Args:
+        indicator: Name of economic indicator (e.g., 'gdp', 'unemployment', 'inflation')
+        start_date: Start date in YYYY-MM-DD format or relative date like "-5y" (default: 5 years ago)
+        end_date: End date in YYYY-MM-DD format or relative date like "today" (default: today)
+
+    Returns:
+        DataFrame with dates and indicator values
+    """
+
+    if FREDDataTool is None:
+        print("WARNING: FREDDataTool not available (missing fredapi). Returning empty DataFrame.")
+        return pd.DataFrame()
+
+    tool = FREDDataTool()
+    raw_df = tool.get_indicator(indicator, start_date, end_date)
+
+    # Optionally normalize the data (commented out for now as it may not be needed)
+    # normalized_df = normalize_fred_data(raw_df, indicator)
+    # return normalized_df
+
+    return raw_df
+
+
+if FREDDataTool is not None:
+    fred_indicator_tool = FunctionTool(
+        func=fetch_economic_indicator,
+        name="fetch_economic_indicator",
+        description="Fetch economic indicator data from FRED (Federal Reserve)."
+    )
+    # Market intelligence needs economic indicators
+    fred_indicator_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+else:
+    fred_indicator_tool = None
+
+
+def fetch_interest_rates(
+    rate_type: str = "fed_funds",
+    start_date: str = "-5y",  # Changed to relative date format
+    end_date: str = "today"   # Changed to relative date format
+) -> pd.DataFrame:
+    """
+    Fetch interest rate data from FRED.
+
+    Args:
+        rate_type: Type of interest rate ('fed_funds', 'treasury_10y', 'treasury_2y', 'treasury_3m')
+        start_date: Start date in YYYY-MM-DD format or relative date like "-5y" (default: 5 years ago)
+        end_date: End date in YYYY-MM-DD format or relative date like "today" (default: today)
+
+    Returns:
+        DataFrame with dates and interest rate values
+    """
+    tool = FREDDataTool()
+    df = tool.get_interest_rates(start_date, end_date, rate_type)
+    return df
+
+
+fred_rates_tool = FunctionTool(
+    func=fetch_interest_rates,
+    name="fetch_interest_rates",
+    description="Fetch interest rate data from FRED (Federal Reserve)."
+)
+# Market intelligence needs interest rate data
+fred_rates_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+
+
+def fetch_yield_curve(date: str = "today") -> pd.DataFrame:
+    """
+    Fetch the yield curve for a specific date.
+
+    Args:
+        date: Date in YYYY-MM-DD format or relative date like "today" (default: today)
+
+    Returns:
+        DataFrame with yield curve data for various maturities
+    """
+    if FREDDataTool is None:
+        print("WARNING: FREDDataTool not available (missing fredapi). Returning empty DataFrame.")
+        return pd.DataFrame()
+
+    tool = FREDDataTool()
+    df = tool.get_yield_curve(date)
+    return df
+
+
+if FREDDataTool is not None:
+    fred_yield_curve_tool = FunctionTool(
+        func=fetch_yield_curve,
+        name="fetch_yield_curve",
+        description="Fetch the Treasury yield curve for a specific date."
+    )
+    fred_yield_curve_tool.agent_types = [
+        TECH_AGENT, STRATEGY_AGENT]  # Relevant for multiple agents
+else:
+    fred_yield_curve_tool = None
+
+# SEC Edgar tools removed - were experimental and unused
+
+
+# SEC filings tools removed - were experimental and unused
+
+
+# SEC search tools removed - were experimental and unused
+
+
+# SEC compare tools removed - were experimental and unused
+
+##################################
+# Tool Collections by Agent Type
+##################################
+
+# SENTIMENT_AGENT tools - Simplified to use only Google Search
+# Import the simplified Google Search tool
+from src.tools.data_sources.news.google_search_simple import google_search_simple_tool
+
+_sentiment_tools_raw = [
+    google_search_simple_tool,  # Single source: Google Custom Search API with caching
+]
+# Filter out None values from conditional imports
+SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
+
+# TECH_AGENT tools - Polygon.io primary (5/min) with Alpha Vantage fallback (25/day)
+_tech_tools_raw = [
+    polygon_historical_tool,  # Primary: Polygon.io (5 calls/min with caching)
+    alpha_vantage_tool,       # Fallback: Alpha Vantage (25 calls/day)
+]
+# Filter out None values from conditional imports
+TECH_TOOLS = [tool for tool in _tech_tools_raw if tool is not None]
+
+
+# STRATEGY_AGENT tools - Strategy aggregates outputs from other agents
+# It shouldn't need direct access to data sources
+_strategy_tools_raw = [
+    # Strategy agent aggregates results from other agents
+    # No direct data access tools needed
+]
+# Filter out None values from conditional imports
+STRATEGY_TOOLS = [tool for tool in _strategy_tools_raw if tool is not None]
+
+
+# All tools combined (filter out None values from conditional imports)
+ALL_TOOLS = list(set(
+    tool for tool in (
+        SENTIMENT_TOOLS +
+        TECH_TOOLS +
+        STRATEGY_TOOLS
+    ) if tool is not None
+))
+
+
+########################################
+# Tool dispatcher dictionary for efficient lookup by name
+########################################
+ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS if tool is not None}
+
+
+########################################
+# Helper function to get tools for a specific agent type
+########################################
+def get_tools_for_agent(agent_type):
+    """
+    Get the list of tools that should be used by a specific agent type.
+
+    Args:
+        agent_type: Type of agent (e.g., 'sentiment', 'tech')
+
+    Returns:
+        List of FunctionTool objects appropriate for the agent type
+    """
+    if agent_type == SENTIMENT_AGENT:
+        return SENTIMENT_TOOLS
+    elif agent_type == TECH_AGENT:
+        return TECH_TOOLS
+    elif agent_type == STRATEGY_AGENT:
+        return STRATEGY_TOOLS
+    else:
+        # Return all tools if agent type is unknown
+        return ALL_TOOLS
