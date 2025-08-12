@@ -91,7 +91,7 @@ class SentimentAgent(BaseAgent):
             Dictionary with extracted query details
         """
         # Parse the message for key components
-        query_details = self.query_parser.parse_query(message)
+        query_details = self.query_parser.extract_query_details(message)
 
         # Extract date
         date = self._extract_date_from_message(message)

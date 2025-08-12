@@ -105,9 +105,8 @@ class BaseAgent(AssistantAgent, ABC):
         model_client_instance = OpenAIChatCompletionClient(**client_config)
 
         # 3. Set up tools
-        tools = tools or ALL_TOOLS
         if tools is None:
-            tools = []
+            tools = ALL_TOOLS
 
         # 4. Call the parent constructor
         super().__init__(
@@ -352,7 +351,13 @@ class BaseAgent(AssistantAgent, ABC):
         if isinstance(result, pd.DataFrame):
             # Handle DataFrame conversion
             try:
-                result_dict = result.to_dict(orient='records')
+                # Convert datetime columns to strings to avoid JSON serialization issues
+                result_copy = result.copy()
+                for col in result_copy.columns:
+                    if result_copy[col].dtype == 'datetime64[ns]' or 'datetime' in str(result_copy[col].dtype):
+                        result_copy[col] = result_copy[col].astype(str)
+                
+                result_dict = result_copy.to_dict(orient='records')
                 # Add context for empty DataFrames to help LLM provide better responses
                 if len(result_dict) == 0:
                     if 'Error' in result.columns and not result.empty:
