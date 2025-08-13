@@ -35,13 +35,12 @@ class StrategyAgent(BaseAgent):
         raise NotImplementedError(
             "StrategyAgent does not support chat-based interactions")
 
-
     def decide_trade(self, aggregated: Dict, price: float, trade_date: str) -> Dict:
         """Return a BUY/SELL/HOLD decision based on MACD crossovers and sentiment."""
         macd_y = aggregated.get("technical", {}).get("macd_yest")
         macd_t = aggregated.get("technical", {}).get("macd_today")
         sentiment = aggregated.get("sentiment", {}).get("score", 0)
-        
+
         action = "HOLD"
         reason = "no_signal"
 
@@ -69,7 +68,7 @@ class StrategyAgent(BaseAgent):
                 elif sentiment < -0.5:
                     action = "SELL"
                     reason = f"Extreme negative sentiment ({sentiment:.2f})"
-                
+
                 # Record completed trade for any SELL action
                 if action == "SELL":
                     self.position = 0
@@ -271,7 +270,6 @@ class StrategyAgent(BaseAgent):
 
         print("=" * 60)
 
-    
     def get_metrics(self, initial_capital: float = 100000.0) -> Dict:
         """Wrapper method for calculate_metrics for compatibility."""
         return self.calculate_metrics(initial_capital)

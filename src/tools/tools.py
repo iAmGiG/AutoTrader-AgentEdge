@@ -13,6 +13,7 @@ from autogen_core.tools import FunctionTool
 # Project imports
 # MarketDataTool deprecated - using Polygon + Alpha Vantage directly
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
+from src.tools.data_sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from src.tools.data_sources.news.google_search_simple import google_search_simple_tool
 from config.config_loader import ConfigLoader
 
@@ -169,12 +170,24 @@ polygon_historical_tool = FunctionTool(
 polygon_historical_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
 ##################################
+# VXX Volatility Tool for V2 Sentiment
+##################################
+
+vxx_volatility_tool = FunctionTool(
+    func=fetch_vxx_volatility_data,
+    name="fetch_vxx_volatility_data",
+    description="Fetch VXX volatility data for market fear-based sentiment analysis. Returns VXX-based sentiment scores for V2 Market Fear sentiment agent."
+)
+vxx_volatility_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+
+##################################
 # Tool Collections by Agent Type
 ##################################
 
-# SENTIMENT_AGENT tools - Single Google Search tool
+# SENTIMENT_AGENT tools - Google Search + VXX Volatility
 _sentiment_tools_raw = [
-    google_search_simple_tool,  # Single source: Google Custom Search API with caching
+    google_search_simple_tool,  # V1: Google Custom Search API with caching
+    vxx_volatility_tool,        # V2: VXX volatility data for market fear sentiment
 ]
 SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
 

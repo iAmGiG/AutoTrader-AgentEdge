@@ -3,7 +3,7 @@ StrategyAgent as Orchestrator - Issue #188
 Manages TechAgent and SentimentAgent internally for simplified architecture
 """
 
-from typing import Dict, Optional
+from typing import Dict
 import numpy as np
 import logging
 import json
@@ -11,6 +11,7 @@ from .base_agent import BaseAgent
 from .tech_agent import TechAgent
 from .sentiment_v0 import V0SentimentAgent
 from .sentiment_v1 import SentimentV1Agent
+from .sentiment_v2 import SentimentV2Agent
 
 logger = logging.getLogger(__name__)
 
@@ -18,18 +19,18 @@ logger = logging.getLogger(__name__)
 class StrategyAgent(BaseAgent):
     """
     Orchestrator StrategyAgent that manages TechAgent and SentimentAgent internally.
-    
+
     Implements MACD + sentiment trading strategy by coordinating:
     - TechAgent: Fetches market data and calculates MACD
     - SentimentAgent: Provides sentiment scores (V0-V4)
-    
+
     Entry: MACD improving AND sentiment >= 0 → BUY
     Exit: MACD deteriorating OR sentiment < -0.5 → SELL
     """
 
     def __init__(self, name: str = "StrategyAgent", sentiment_version: str = "V0", memory_system=None):
         super().__init__(name=name, tools=[], memory_system=memory_system)
-        
+
         # Trading state
         self.position = 0       # 0 = flat, 1 = long
         self.entry_price = None
@@ -37,12 +38,12 @@ class StrategyAgent(BaseAgent):
         self.trade_log = []
         self.trades = []  # List of completed trades for metrics calculation
         self.equity_curve = []  # Track equity over time
-        
+
         # Internal agents
         self.tech_agent = TechAgent()
         self.sentiment_agent = self._create_sentiment_agent(sentiment_version)
         self.sentiment_version = sentiment_version
-        
+
         logger.info(f"StrategyAgent initialized with {sentiment_version} sentiment agent")
 
     def _create_sentiment_agent(self, version: str):
@@ -51,9 +52,9 @@ class StrategyAgent(BaseAgent):
             return V0SentimentAgent()
         elif version == "V1":
             return SentimentV1Agent()
-        # TODO: Add V2-V4 when implemented
-        # elif version == "V2":
-        #     return V2SentimentAgent()
+        elif version == "V2":
+            return SentimentV2Agent()
+        # TODO: Add V3-V4 when implemented
         # elif version == "V3":
         #     return V3SentimentAgent()
         # elif version == "V4":
@@ -70,19 +71,19 @@ class StrategyAgent(BaseAgent):
     def decide_trade(self, symbol: str, date: str, price: float) -> Dict:
         """
         Main orchestration method: get data from agents and make trading decision.
-        
+
         Args:
             symbol: Stock ticker symbol
             date: Trading date (YYYY-MM-DD)
             price: Current stock price
-            
+
         Returns:
             Dict with trading decision and reasoning
         """
         # Get technical data from TechAgent
         tech_message = f"Get MACD data for {symbol} on {date}"
         tech_response = self.tech_agent.generate_reply(tech_message)
-        
+
         try:
             tech_data = json.loads(tech_response)
             macd_y = tech_data.get("macd_yest")
@@ -91,11 +92,11 @@ class StrategyAgent(BaseAgent):
             logger.error(f"Failed to parse tech agent response: {e}")
             macd_y = None
             macd_t = None
-        
+
         # Get sentiment data from SentimentAgent
         sentiment_message = f"Get sentiment for {symbol} on {date}"
         sentiment_response = self.sentiment_agent.generate_reply(sentiment_message)
-        
+
         try:
             sentiment_data = json.loads(sentiment_response)
             # V0 uses "score", V1+ use "sentiment"
@@ -103,7 +104,7 @@ class StrategyAgent(BaseAgent):
         except (json.JSONDecodeError, AttributeError) as e:
             logger.error(f"Failed to parse sentiment agent response: {e}")
             sentiment = 0
-        
+
         # Make trading decision based on aggregated data
         return self._make_trading_decision(macd_y, macd_t, sentiment, price, date)
 
@@ -136,7 +137,7 @@ class StrategyAgent(BaseAgent):
                 elif sentiment < -0.5:
                     action = "SELL"
                     reason = f"Extreme negative sentiment ({sentiment:.2f})"
-                
+
                 # Record completed trade for any SELL action
                 if action == "SELL":
                     self.position = 0
