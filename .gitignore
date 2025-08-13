@@ -161,6 +161,9 @@ package-lock.json
 # Deprecated backtest scripts backup
 scripts/deprecated_backtest_scripts/
 
+# Deprecated code archive (local only)
+deprecated/
+
 # SEC Edgar data
 sec-edgar-filings/
 

@@ -1,51 +1,38 @@
-# RH2MAS: Reflective Hybrid-Head Multi-Agent System
+# RH2MAS: V0-V4 Sentiment Analysis Framework
 
 ## Overview
 
-RH2MAS is a financial analysis research project exploring multi-agent architectures using [AutoGen](https://github.com/microsoft/autogen) 0.7.x. The system demonstrates how LLM-powered and rule-based agents can work together for trading strategy analysis.
+RH2MAS (Reflective Hybrid-Head Multi-Agent System) is a research framework demonstrating the **gradual introduction of LLM capabilities** in financial trading through a 5-phase sentiment analysis comparison study (V0-V4). Built on [AutoGen](https://github.com/microsoft/autogen) 0.7.x, the system measures the incremental value of increasingly sophisticated sentiment approaches applied to a consistent MACD-based trading strategy.
 
-## Research Focus
+## Research Focus: V0-V4 Framework
 
-This project implements a three-way strategy comparison framework:
+This project implements a systematic comparison of 5 sentiment approaches:
 
-- **Buy & Hold**: Baseline reference strategy
-- **Mechanical**: MACD histogram crossover with sentiment >= 0 threshold
-- **LLM**: AI-powered decision making with structured explanations
+- **V0 (Baseline)**: Fixed sentiment = 1.0 - Pure MACD strategy
+- **V1 (NLP)**: VADER sentiment analysis on news - Mechanical text processing
+- **V2 (Market Fear)**: VXX/VIX volatility-based sentiment - Fear gauge approach
+- **V3 (Hybrid)**: Weighted combination of V1 + V2 - Heuristic blending
+- **V4 (LLM)**: GPT-4o-mini reasoning - Only version using LLM for decisions
 
-The system is designed to validate whether LLM-enhanced trading strategies provide advantages over traditional approaches.
+All versions use identical MACD crossover signals with AAPL as the test symbol across 5 quarters (2024 Q1-Q4, 2025 Q1).
 
-## Architecture
+## Simplified Architecture
 
-### Agent Implementation Status
+### Core Agents
 
-#### LLM-Powered Agents (Use GPT-4o-mini)
+1. **StrategyAgent**: Orchestrator combining TechAgent + SentimentAgent[V0-V4]
+2. **TechAgent**: Fetches market data and calculates MACD indicators
+3. **SentimentAgent**: Implements V0-V4 sentiment approaches (5 versions)
+4. **BaseAgent**: Common interface for all agents
 
-1. **SentimentAgent**: Analyzes news sentiment using LLM, falls back to VXX volatility when no news
-2. **TechAgent**: Interprets pre-calculated technical indicators using LLM
-3. **LLMStrategyAgent**: Makes trading decisions with structured explanations
+### Data Sources (V0-V4 Infrastructure)
 
-#### Experimental/Future Features
-
-- **MarketIntelligenceAgent**: Ranks multiple stocks based on market conditions (not used in core comparison)
-
-#### Rule-Based Agents (No LLM Required)
-
-1. **StrategyAgent**: MACD histogram crossover with sentiment >= 0 threshold
-2. **BuyHoldStrategy**: Simple baseline for comparison
-3. **CoordinatorAgent**: Orchestrates other agents (no direct LLM usage)
-
-#### Placeholder
-
-1. **RiskAgent**: Not implemented (TODO comment only)
-
-### Core Features
-
-- **Multi-Source News**: Fetches from [Alpha Vantage](https://www.alphavantage.co/), [Finnhub](https://finnhub.io/), [NewsAPI](https://newsapi.org/) (with fallbacks)
-- **Sentiment Sources**: News analysis when available, VXX volatility index as primary fallback (frequently used)
-- **Technical Analysis**: Uses MACD histogram (12/26 EMA difference minus signal line) for trading signals. Additional indicators available: RSI, Bollinger Bands, Fibonacci retracements
-- **Price Data**: Uses only closing prices for all trading decisions
-- **Backtesting Framework**: Historical strategy performance evaluation on cached data
-- **Data Caching**: Automatic caching to reduce API calls (freemium tier friendly)
+- **Market Data**:
+  - Primary: [Polygon.io](https://polygon.io) API (5 calls/min, 1-year history)
+  - Fallback: [Alpha Vantage](https://www.alphavantage.co/) API (25 calls/day)
+- **News Data**:
+  - [Google Custom Search](https://developers.google.com/custom-search) API (100 calls/day)
+  - Premium sources: WSJ, Bloomberg, Barrons, Reuters
 
 ## Installation
 
@@ -64,10 +51,11 @@ Create `config/config.json` with required API keys:
 
 ```json
 {
-  "openai_api_key": "sk-...",
-  "alpha_vantage_key": "...",
-  "newsapi_key": "...",
-  "finnhub_key": "..."
+  "OPENAI_API_KEY": "sk-...",      // For V4 LLM analysis
+  "POLYGON_API_KEY": "...",        // Primary market data
+  "ALPHA_VANTAGE_KEY": "...",      // Fallback market data
+  "GOOGLE_API_KEY": "...",         // News data
+  "GOOGLE_CSE_ID": "..."           // Custom search engine ID
 }
 ```
 
@@ -75,29 +63,17 @@ Note: This file is excluded from version control for security.
 
 ## Usage
 
-### Single Backtest
+### V4 Date Obfuscation Testing
 
 ```bash
-python scripts/backtest.py SYMBOL START_DATE END_DATE
-# Example: python scripts/backtest.py AAPL 2023-01-01 2023-12-31
+python scripts/obfuscation_test.py
 ```
 
-### Automated Backtest Service
+### Future: V0-V4 Quarterly Backtesting
 
 ```bash
-python scripts/run_experiments.py
-```
-
-### Three-Way Strategy Analysis
-
-```bash
-python scripts/analyze_results.py
-```
-
-### Parallel Strategy Comparison Demo
-
-```bash
-python scripts/agents/demo_parallel.py SYMBOL START END
+# To be implemented (Issue #187)
+python scripts/backtest_v0_v4.py AAPL 2024-01-01 2024-03-31  # Q1 2024
 ```
 
 ## Project Structure
@@ -105,40 +81,50 @@ python scripts/agents/demo_parallel.py SYMBOL START END
 ```bash
 RH2MAS/
 ├── src/
-│   ├── agents/           # Agent implementations
-│   ├── tools/            # Data sources and processing tools
-│   ├── utils/            # Utilities including ParallelStrategyTester
-│   └── validation/       # Validation tools (ObfuscationValidator)
+│   ├── agents/           # V0-V4 agent implementations
+│   ├── tools/            # Data sources (Polygon, Google Search)
+│   └── validation/       # V4 obfuscation validator
 ├── scripts/
-│   ├── backtest.py       # Primary backtesting script
-│   ├── analyze_results.py # Results analysis
-│   ├── run_experiments.py # Batch experiments
-│   ├── agents/           # Agent operation scripts
-│   └── tools/            # Data and validation tools
-├── docs/                 # Documentation
-├── config/               # Configuration directory (create locally)
-└── reports/              # Analysis reports and guides
+│   └── obfuscation_test.py  # V4 validation script
+├── docs/
+│   ├── architecture/     # V0-V4 framework design
+│   ├── implementation/   # Component details
+│   └── reference/        # Commands, terminology
+├── tests/                # V0-V4 component tests
+├── config/               # API configuration (local only)
+└── reports/              # V0-V4 analysis results
 ```
 
 ## Documentation
 
-- [Terminology](docs/terminology.md) - Complete terminology and acronym reference
-- [Project Structure](docs/project_structure.md) - Detailed directory structure
-- [Commands](docs/commands.md) - All commands and setup instructions
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [V0-V4 Architecture](docs/architecture/V0-V4_ARCHITECTURE.md) - Framework design
+- [Project Structure](docs/architecture/project_structure.md) - Repository organization
+- [Commands](docs/reference/commands.md) - Setup and usage
+- [Terminology](docs/reference/terminology.md) - Glossary
+- [Troubleshooting](docs/reference/troubleshooting.md) - Common issues
 
-## API Services
+## Development Status
 
-- [Alpha Vantage](https://www.alphavantage.co/documentation/) - News and market data (freemium)
-- [Finnhub](https://finnhub.io/docs/api) - Financial data (freemium)
-- [NewsAPI](https://newsapi.org/docs) - General news (freemium)
-- [OpenAI](https://platform.openai.com/docs/api-reference) - LLM services (usage-based)
+### Completed ✅
 
-The system implements caching to work efficiently with freemium API tiers.
+- Repository cleanup (Issues #186, #190-193)
+- Simplified multi-agent architecture
+- V0-V4 framework design
+- Data infrastructure (Polygon.io + Google Search)
+
+### In Progress 🚧
+
+- V0-V4 sentiment agent implementations (Issues #181-185)
+- Quarterly testing framework (Issue #187)
+- Statistical comparison analysis
+
+### Repository Cleanup Note
+
+All deprecated code from the original complex multi-agent system has been moved to an untracked `deprecated/` folder, preserving it for reference while keeping the main codebase focused on the V0-V4 framework.
 
 ## Academic Context
 
-This is an academic research project exploring multi-agent systems for financial analysis. The focus is on validating whether LLM-enhanced decision-making provides advantages over traditional rule-based approaches.
+This is an academic research project exploring the gradual introduction of LLM capabilities in financial trading decisions. The V0-V4 framework provides measurable evidence of the incremental value each approach adds to a consistent base strategy.
 
 ## License
 

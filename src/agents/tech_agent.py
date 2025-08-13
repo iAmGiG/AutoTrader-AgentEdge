@@ -460,8 +460,8 @@ class TechAgent(BaseAgent):
                             ", ".join(query["indicators"]))
 
         snippets.append(
-            "Available technical tools: fetch_market_data, fetch_yahoo_data, "
-            "fetch_economic_indicator, fetch_interest_rates, fetch_yield_curve"
+            "Available technical tools: fetch_polygon_historical_data (primary), "
+            "fetch_alpha_vantage_data (fallback). Use Polygon first for best data quality."
         )
 
         return "\n".join(snippets)

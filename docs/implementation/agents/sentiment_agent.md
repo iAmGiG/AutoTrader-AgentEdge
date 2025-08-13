@@ -1,221 +1,73 @@
-# Sentiment Agent Documentation
+# Sentiment Agent Documentation (V0-V4 Framework)
 
-**Last Updated**: 2025-07-11
+**Last Updated**: 2025-08-13
 
 ## Overview
 
-The Sentiment Agent is responsible for analyzing market sentiment through news articles and providing sentiment scores for trading decisions. It features an enhanced VXX fallback mechanism to ensure reliable sentiment signals even when news data is unavailable.
+The Sentiment Agent implements 5 different sentiment approaches (V0-V4) for the framework's gradual LLM introduction study. Each version provides a sentiment score that modulates the base MACD trading strategy.
 
-## Key Features
+## V0-V4 Implementations
 
-### 1. Multi-Source News Analysis
+### V0: Fixed Baseline
+- **Approach**: Always returns sentiment = 1.0 (bullish)
+- **Purpose**: Pure MACD strategy baseline
+- **Data Sources**: None
+- **Implementation**: Simple constant return
 
-- **Data Sources**: Alpha Vantage News, NewsAPI, Finnhub
-- **Unified News Tool**: Aggregates news from multiple sources
-- **Relevance Scoring**: Filters news by relevance (threshold ≥ 0.5)
-- **Sentiment Analysis**: Uses LLM to analyze article sentiment
+### V1: NLP Analysis
+- **Approach**: VADER sentiment analysis on news
+- **Data Source**: Google Custom Search API
+- **Processing**: 
+  - Fetches relevant news articles
+  - Applies VADER with financial lexicon
+  - Averages sentiment scores
+- **Output**: Score between -1.0 and 1.0
 
-### 2. VXX Fallback Mechanism
+### V2: Market Fear Gauge
+- **Approach**: VXX/VIX volatility-based sentiment
+- **Data Source**: Polygon.io or Alpha Vantage
+- **Processing**:
+  - Fetches VXX price movements
+  - Converts volatility to fear score
+  - Inverts to sentiment (high VXX = negative sentiment)
+- **Output**: Fear-adjusted sentiment score
 
-When news is unavailable, the agent:
+### V3: Heuristic Combination
+- **Approach**: Weighted blend of V1 + V2
+- **Processing**:
+  - Gets V1 news sentiment
+  - Gets V2 volatility sentiment
+  - Applies adaptive weighting based on market conditions
+- **Output**: Combined sentiment score
 
-1. Fetches VXX (volatility index) data
-2. Analyzes VXX movement patterns
-3. Converts volatility signals to sentiment scores
-4. Ensures trading strategy always has sentiment input
-
-### 3. News Caching System (NEW)
-
-- **Implementation**: NewsCache class with 7-day expiry
-- **Filtering**: Only caches relevant news (score ≥ 0.5)
-- **Benefits**: Reduces API calls, speeds up backtesting
-- **Location**: `.cache/news/` directory
-
-## Architecture
-
-### Data Flow
-
-```
-User Query
-    ↓
-SentimentAgent
-    ├── Check News Cache
-    ├── Fetch News (if not cached)
-    │   ├── Alpha Vantage News API
-    │   ├── NewsAPI
-    │   └── Finnhub
-    ├── Relevance Filtering
-    ├── Sentiment Analysis (LLM)
-    └── VXX Fallback (if no news)
-         ↓
-    Sentiment Score (0-1)
-```
-
-### Key Components
-
-1. **BaseAgent Integration**
-   - Inherits from `BaseAgent` for tool management
-   - Uses AutoGen 0.6.x function calling
-   - Handles async/sync tool execution
-
-2. **Tool Management**
-
-   ```python
-   # Tools available to sentiment agent
-   - fetch_all_news: Unified news fetching
-   - fetch_market_data: Market data for VXX
-   - analyze_sentiment: LLM-based analysis
-   ```
-
-3. **Caching Override**
-
-   ```python
-   async def _execute_tool(self, tool_name, tool_args):
-       if tool_name == "fetch_all_news":
-           # Check cache first
-           cached = self.news_cache.get(...)
-           if cached:
-               return cached
-           # Fetch and cache if not found
-   ```
+### V4: LLM Analysis
+- **Approach**: GPT-4o-mini reasoning
+- **Data Sources**: Google Search news + market context
+- **Processing**:
+  - Provides news and market data to LLM
+  - LLM reasons about sentiment implications
+  - Returns structured sentiment decision
+- **Output**: LLM-derived sentiment with reasoning
 
 ## Implementation Details
 
-### News Fetching and Analysis
-
-1. **Unified News Tool**
-   - Fetches from multiple sources in parallel
-   - Standardizes output format
-   - Deduplicates similar articles
-   - Provides search guidance for poor results
-
-2. **Relevance Scoring**
-
-   ```python
-   # Scoring factors:
-   - Ticker match in title: 3x weight
-   - Keyword match in title: 2x weight
-   - Content matches: 1x weight
-   # Articles with score < 0.5 are filtered
-   ```
-
-3. **Sentiment Analysis Process**
-   - Extract key themes from articles
-   - Analyze tone and market implications
-   - Generate confidence score
-   - Provide narrative explanation
-
-### VXX Fallback Logic
-
-When no relevant news is found:
-
+### Base Class
+All sentiment agents inherit from `BaseAgent` and implement:
 ```python
-# Fetch VXX data for the date
-vxx_data = self.market_data_tool.fetch_market_data(
-    symbol="VXX",
-    start_date=date,
-    end_date=date
-)
-
-# Analyze VXX movement
-if vxx_change > 5%:
-    sentiment = 0.2  # High volatility = negative
-elif vxx_change < -5%:
-    sentiment = 0.8  # Low volatility = positive
-else:
-    sentiment = 0.5  # Neutral
+def generate_reply(self, messages: List[Dict]) -> Dict:
+    # Returns sentiment score and reasoning
 ```
 
-## Configuration
+### Caching Strategy
+- News cached for 7 days to reduce API calls
+- Market data cached with appropriate TTL
+- V4 implements date obfuscation for validation
 
-### LLM Settings
+## Usage in V0-V4 Framework
 
+The StrategyAgent selects which sentiment version to use:
 ```python
-SENTIMENT_LLM_CONFIG = {
-    "temperature": 0.3,  # Balanced for analysis
-    "max_tokens": 4096,  # Sufficient for complex responses
-    "model": "gpt-4"
-}
+sentiment_agent = SentimentAgentV0()  # or V1, V2, V3, V4
+sentiment = sentiment_agent.generate_reply(context)
+# Combine with MACD signals for trading decision
 ```
-
-### System Prompt
-
-The agent uses a detailed system prompt that guides it to:
-
-- Analyze news sentiment objectively
-- Consider market context
-- Provide numerical scores with explanations
-- Use VXX as a fallback indicator
-
-## Usage Examples
-
-### Basic Usage
-
-```python
-# Initialize agent
-agent = SentimentAgent()
-
-# Get sentiment for a date
-result = agent.generate_reply(
-    messages=[{
-        "role": "user",
-        "content": "What's the sentiment for AAPL on 2024-01-15?"
-    }]
-)
-```
-
-### Response Format
-
-```json
-{
-    "score": 0.7,
-    "analysis": "Positive sentiment based on product launch news",
-    "confidence": 0.8,
-    "key_themes": ["innovation", "market expansion"],
-    "data_source": "news"  // or "vxx_fallback"
-}
-```
-
-## Testing and Validation
-
-### Unit Tests
-
-- News fetching with mock data
-- Sentiment scoring accuracy
-- VXX fallback triggering
-- Cache hit/miss scenarios
-
-### Integration Tests
-
-- Multi-agent coordination
-- API failure handling
-- Cache persistence
-- Performance benchmarks
-
-## Recent Improvements (2025-07-11)
-
-1. **News Caching**: Added NewsCache integration
-2. **Relevance Filtering**: Only cache/use relevant news
-3. **Enhanced VXX Fallback**: More sophisticated analysis
-4. **Better Error Handling**: Graceful degradation
-
-## Known Limitations
-
-1. **API Rate Limits**:
-   - Alpha Vantage: 25 calls/day
-   - Solution: Aggressive caching
-
-2. **News Quality**:
-   - Not all news is relevant
-   - Solution: Relevance scoring
-
-3. **Historical Data**:
-   - Limited news for old dates
-   - Solution: VXX fallback
-
-## Future Enhancements
-
-1. **Additional Sources**: Reuters, Bloomberg APIs
-2. **NLP Improvements**: Fine-tuned sentiment models
-3. **Real-time Analysis**: Streaming news integration
-4. **Sector Analysis**: Industry-specific sentiment

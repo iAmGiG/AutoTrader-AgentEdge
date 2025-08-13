@@ -1,19 +1,19 @@
-# Reports Structure (Post-Issue #134)
+# Reports Structure (V0-V4 Framework)
 
-**Branch**: LLMEnhancedTrading  
-**Milestone**: Post-Obfuscation Validation Era
+**Branch**: ToolArchChange  
+**Framework**: V0-V4 Sentiment Analysis Comparison Study
 
 ## Folder Structure
 
 ```
 reports/
-├── validation/      # LLM validation and obfuscation test results
-├── analysis/        # Market and strategy analysis reports  
+├── v0_v4/           # V0-V4 comparison results and analysis
+│   ├── quarterly/  # AAPL quarterly test results
+│   └── analysis/   # Statistical comparisons between versions
 ├── sessions/        # Work session summaries
-│   ├── YYYY/       # Daily completion summaries by year
-│   └── summaries/  # Comprehensive session summaries for main chat
+│   └── TEMPLATE.md # Template for session reports
 ├── technical/       # Technical implementation reports
-├── deprecated/     # Pre-134 reports (not in repo)
+├── validation/      # Testing and validation results
 └── README.md       # This file
 ```
 
@@ -24,29 +24,33 @@ All reports follow: `title_yy_mm_dd.ext`
 - **lowercase** throughout
 - **2-3 word** descriptive title
 - **yy_mm_dd** date format
-- Include **branch name** in report metadata
-- Include **issue numbers** when relevant
+- Include **version** (V0-V4) when relevant
+- Include **issue numbers** for traceability
 
 ## Report Types
 
+### V0-V4 Analysis Reports
+
+- Quarterly performance comparisons
+- Sentiment approach effectiveness
+- Statistical significance testing
+- Trade frequency analysis
+
+### Technical Reports  
+
+- Implementation details for each version
+- Architecture decisions
+- Tool integration documentation
+
 ### Validation Reports
-- Obfuscation test results
-- LLM performance validation
-- Data leakage assessments
 
-### Analysis Reports  
-- Market performance analysis
-- Strategy comparison results
-- Cached data insights
-
-### Session Reports
-- Daily work summaries
-- Milestone completions
-- Architecture changes
+- Date obfuscation testing (V4)
+- Performance metrics validation
+- Data integrity checks
 
 ## Important Notes
 
-- Issue #134 marks the introduction of obfuscation validation
-- All pre-134 reports moved to deprecated/ (gitignored)
-- New reports must include validation considerations
-- Branch tracking is critical due to rapid iteration
+- Issues #181-190 define the V0-V4 implementation roadmap
+- Focus on gradual LLM introduction demonstration
+- All legacy reports archived to deprecated/ (gitignored)
+- Quarterly testing periods: AAPL 2024 Q1-Q4, 2025 Q1

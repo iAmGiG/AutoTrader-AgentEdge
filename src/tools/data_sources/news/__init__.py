@@ -1,31 +1,16 @@
 """
-News data sources package.
+News data sources package for V0-V4 framework.
 
-Reorganized modular structure:
-- aggregators/: Unifying tools that combine multiple news sources
-- sources/: Individual data source implementations (API-based and scrapers)
-- utils/: Support utilities (quota managers, batch operations, etc.)
+Simple structure:
+- google_search_simple.py: Main interface tool (used by tools.py)
+- google_search_api.py: Google Custom Search API implementation
 
-For most use cases, import from aggregators for unified interfaces.
+This package provides Google Search-based financial news for sentiment analysis.
 """
 
-# Import primary aggregator for common use
-from .aggregators.hybrid_historical_news_tool import (
-    fetch_hybrid_historical_news,
-    hybrid_historical_news_tool
-)
-
-# Import legacy unified tool for backward compatibility
-from .aggregators.legacy.unified_news_tool import (
-    UnifiedNewsController,
-    fetch_unified_news,
-    fetch_unified_news_async
-)
+from .google_search_simple import fetch_google_news, google_search_simple_tool
 
 __all__ = [
-    "fetch_hybrid_historical_news",
-    "hybrid_historical_news_tool",
-    "UnifiedNewsController", 
-    "fetch_unified_news",
-    "fetch_unified_news_async"
+    "fetch_google_news",
+    "google_search_simple_tool"
 ]

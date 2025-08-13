@@ -1,44 +1,36 @@
-# Core Components
+# RH2MAS Documentation (V0-V4 Framework)
 
-This folder contains the main documentation for the research prototype. The
-project is built around a **multi‑agent system** with shared memory and a set of
-data–retrieval tools. Below is a quick overview of what is implemented today.
+This directory contains documentation for the V0-V4 sentiment analysis framework - a research study demonstrating the gradual introduction of LLM capabilities in financial trading decisions.
 
-## Recent Updates (2025-07-11)
+## V0-V4 Framework Overview
 
-- **MACD Calculation Fix**: Technical agent now correctly uses MACD line (EMA12-EMA26) instead of histogram for trading signals. See [technical_agent.md](implementation/agents/technical_agent.md) for details.
-- **News Caching**: Sentiment agent now caches relevant news (score ≥ 0.5) to reduce API calls
-- **Test Infrastructure**: Moved to rapid iteration mode, tests excluded from version control
+The project implements 5 sentiment approaches (V0-V4) applied to a consistent MACD-based trading strategy, measuring the incremental value of each approach through quarterly backtesting on AAPL.
 
-## Hybrid‑Head
+## Documentation Structure
 
-Neural architecture combining attention and state space models. The current code
-uses this design indirectly through pre‑trained models to keep memory usage low.
+### [architecture/](architecture/) - System Design
+- **[V0-V4_ARCHITECTURE.md](architecture/V0-V4_ARCHITECTURE.md)** - Complete framework architecture
+- **[project_structure.md](architecture/project_structure.md)** - Repository organization
 
-## Memory System
+### [implementation/](implementation/) - Component Details
+- **[agents/](implementation/agents/)** - Agent documentation
+  - `sentiment_agent.md` - V0-V4 sentiment implementations
+  - `strategy_agent.md` - Orchestrator pattern
+  - `technical_agent.md` - Market data and MACD
+- **[tools/](implementation/tools/)** - Tool documentation
+  - `indicator_library.md` - MACD and technical indicators
+  - `google_search_historical_news.md` - News data source
+  - `news_cache_organization.md` - Caching strategy
+- **[macd_analysis/](implementation/macd_analysis/)** - MACD verification scripts
 
-Layered memory implementation with a RadixAttention cache. Agents can store and
-retrieve conversation context or intermediate results from this system.
+### [reference/](reference/) - Quick Reference
+- **[commands.md](reference/commands.md)** - Command reference and setup
+- **[terminology.md](reference/terminology.md)** - Glossary of terms and acronyms
+- **[troubleshooting.md](reference/troubleshooting.md)** - Common issues and solutions
+- **[news_limitations.md](reference/news_limitations.md)** - News data constraints
 
-## Agent Framework
+## Quick Links
 
-The framework defines four specialized agents.  At this stage the Sentiment and
-Tech agents are operational, while the Risk and Strategy agents are still
-experimental.
-
-1. **Sentiment Agent** – fetches financial news and analyses sentiment using LLM
-   function calling.  Supports date‑range and ticker queries through a unified
-   tool.
-2. **Tech Agent** – performs technical analysis with indicators such as EMA,
-   MACD and ATR on market data retrieved from common APIs.
-3. **Risk Agent** – prototype utilities for scanning SEC filings.
-4. **Strategy Agent** – early orchestrator that combines other agents’ output.
-
-Agents communicate via a lightweight orchestrator and a message bus. Each agent
-only sees the tools it needs, reducing prompt noise and API usage.
-
-## Reference Documentation
-
-- [AutoGen Core Reference](autogen_core_reference/README.md) – Reference
-  documentation for AutoGen Core 0.6.x components used in RH2MAS
-- [Status Summary: Sentiment and Tech Agents](status_summary_sentiment_tech_agents.md) – High-level overview of the active agents and their limitations
+- **V0-V4 Testing**: Quarterly backtesting framework (Issues #181-187)
+- **Data Sources**: Polygon.io (market), Google Search (news)
+- **Base Strategy**: MACD crossover signals (consistent across V0-V4)

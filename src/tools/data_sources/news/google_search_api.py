@@ -5,8 +5,7 @@ Uses Google Custom Search API to find historical financial news from premium sou
 
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
-import time
+from datetime import datetime
 import json
 import os
 from typing import List, Dict, Optional, Any
@@ -14,7 +13,8 @@ import logging
 from urllib.parse import urlparse
 import re
 from autogen_core.tools import FunctionTool
-from ...utils.google_search_quota_manager import get_quota_manager, check_quota_before_search, record_search_usage
+# Quota management removed for simplified V0-V4 framework
+from config.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +94,12 @@ class GoogleSearchNewsTool:
             api_key: Google Custom Search API key
             search_engine_id: Custom Search Engine ID
         """
-        self.api_key = api_key or os.getenv('GOOGLE_SEARCH_API_KEY')
-        self.search_engine_id = search_engine_id or os.getenv('GOOGLE_SEARCH_ENGINE_ID')
+        # Load from config.json first, then fallback to environment variables
+        config_loader = ConfigLoader()
+        self.api_key = api_key or config_loader.get(
+            'GOOGLE_SEARCH_API_KEY') or os.getenv('GOOGLE_SEARCH_API_KEY')
+        self.search_engine_id = search_engine_id or config_loader.get(
+            'GOOGLE_SEARCH_ENGINE_ID') or os.getenv('GOOGLE_SEARCH_ENGINE_ID')
         self.cache = GoogleSearchNewsCache()
 
         if not self.api_key:

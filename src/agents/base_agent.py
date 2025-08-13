@@ -27,24 +27,14 @@ from autogen_core._cancellation_token import CancellationToken
 
 # Import tool dictionary for dynamic tool access
 from src.tools.tools import ALL_TOOLS
-# Import only functions that don't depend on optional packages
+# Import only functions that are still active (minimal architecture)
 from src.tools.tools import (
-    fetch_market_data, fetch_news,
-    fetch_alpha_vantage_data, fetch_alpha_vantage_news,
-    search_sec_filings,
-    fetch_finnhub_earnings_calendar, fetch_finnhub_insider_transactions,
-    fetch_finnhub_dividends, fetch_finnhub_earnings_estimates,
-    fetch_all_news, fetch_fmp_earnings_calendar, fetch_fmp_dividend_calendar,
-    fetch_fmp_historical_earnings, fetch_fmp_historical_dividends,
-    fetch_fmp_stock_split_calendar
+    fetch_market_data,
+    fetch_alpha_vantage_data,
+    fetch_polygon_historical_data
 )
 
-# Try to import yahoo-dependent functions
-try:
-    from src.tools.tools import fetch_yahoo_data, fetch_yahoo_corporate_events
-except ImportError:
-    fetch_yahoo_data = None
-    fetch_yahoo_corporate_events = None
+# Yahoo functions removed - no longer used
 import os
 from config.config_loader import ConfigLoader
 
@@ -58,27 +48,10 @@ open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
 # Fallback map for tool execution (build dynamically to handle conditional imports)
 TOOL_FUNCTION_MAP = {
     "fetch_market_data": fetch_market_data,
-    "fetch_news": fetch_news,
     "fetch_alpha_vantage_data": fetch_alpha_vantage_data,
-    "fetch_alpha_vantage_news": fetch_alpha_vantage_news,
-    "search_sec_filings": search_sec_filings,
-    "fetch_finnhub_earnings_calendar": fetch_finnhub_earnings_calendar,
-    "fetch_finnhub_insider_transactions": fetch_finnhub_insider_transactions,
-    "fetch_finnhub_dividends": fetch_finnhub_dividends,
-    "fetch_finnhub_earnings_estimates": fetch_finnhub_earnings_estimates,
-    "fetch_all_news": fetch_all_news,
-    "fetch_fmp_earnings_calendar": fetch_fmp_earnings_calendar,
-    "fetch_fmp_dividend_calendar": fetch_fmp_dividend_calendar,
-    "fetch_fmp_historical_earnings": fetch_fmp_historical_earnings,
-    "fetch_fmp_historical_dividends": fetch_fmp_historical_dividends,
-    "fetch_fmp_stock_split_calendar": fetch_fmp_stock_split_calendar
+    "fetch_polygon_historical_data": fetch_polygon_historical_data,
+    # Minimal architecture - only essential tools
 }
-
-# Add yahoo functions if available
-if fetch_yahoo_data is not None:
-    TOOL_FUNCTION_MAP["fetch_yahoo_data"] = fetch_yahoo_data
-if fetch_yahoo_corporate_events is not None:
-    TOOL_FUNCTION_MAP["fetch_yahoo_corporate_events"] = fetch_yahoo_corporate_events
 
 # Default LLM parameters
 DEFAULT_LLM_CONFIG = {
@@ -132,9 +105,8 @@ class BaseAgent(AssistantAgent, ABC):
         model_client_instance = OpenAIChatCompletionClient(**client_config)
 
         # 3. Set up tools
-        tools = tools or ALL_TOOLS
         if tools is None:
-            tools = []
+            tools = ALL_TOOLS
 
         # 4. Call the parent constructor
         super().__init__(
@@ -379,7 +351,13 @@ class BaseAgent(AssistantAgent, ABC):
         if isinstance(result, pd.DataFrame):
             # Handle DataFrame conversion
             try:
-                result_dict = result.to_dict(orient='records')
+                # Convert datetime columns to strings to avoid JSON serialization issues
+                result_copy = result.copy()
+                for col in result_copy.columns:
+                    if result_copy[col].dtype == 'datetime64[ns]' or 'datetime' in str(result_copy[col].dtype):
+                        result_copy[col] = result_copy[col].astype(str)
+                
+                result_dict = result_copy.to_dict(orient='records')
                 # Add context for empty DataFrames to help LLM provide better responses
                 if len(result_dict) == 0:
                     if 'Error' in result.columns and not result.empty:
