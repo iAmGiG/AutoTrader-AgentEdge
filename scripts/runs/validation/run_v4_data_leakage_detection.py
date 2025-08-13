@@ -23,7 +23,7 @@ from src.validation.obfuscation_validator import ObfuscationValidator
 async def run_critical_validation_tests():
     """
     Run the critical validation tests to detect data leakage.
-    
+
     These tests will determine if our impressive backtest results
     are due to genuine LLM analysis or memorized training data.
     """
@@ -32,10 +32,10 @@ async def run_critical_validation_tests():
     print("Issue #134: Date Obfuscation Testing")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
-    
+
     # Initialize validator
     validator = ObfuscationValidator(use_cached_data=True)
-    
+
     # Test scenarios - using periods where we previously saw good performance
     test_scenarios = [
         {
@@ -45,32 +45,32 @@ async def run_critical_validation_tests():
             'description': '2022 Summer Bear Market (Previous +2.37% return)'
         },
         {
-            'symbol': 'AAPL', 
+            'symbol': 'AAPL',
             'start_date': '2022-07-01',
             'end_date': '2022-08-31',
             'description': '2022 AAPL Summer Period (Previous outperformance)'
         },
         {
             'symbol': 'TSLA',
-            'start_date': '2022-07-01', 
+            'start_date': '2022-07-01',
             'end_date': '2022-08-31',
             'description': '2022 TSLA Summer Period (Previous capital preservation)'
         }
     ]
-    
+
     print("📋 Test Scenarios:")
     for i, scenario in enumerate(test_scenarios, 1):
         print(f"   {i}. {scenario['symbol']}: {scenario['description']}")
     print()
-    
+
     # Run validation tests
     results = []
-    
+
     for i, scenario in enumerate(test_scenarios, 1):
         print(f"🧪 Running Test {i}/{len(test_scenarios)}: {scenario['symbol']}")
         print(f"   Period: {scenario['start_date']} to {scenario['end_date']}")
         print(f"   Context: {scenario['description']}")
-        
+
         try:
             # Run comparison test
             test_result = await validator.run_comparison_test(
@@ -79,57 +79,58 @@ async def run_critical_validation_tests():
                 end_date=scenario['end_date'],
                 test_name=f"Test_{i}_{scenario['symbol']}"
             )
-            
+
             results.append(test_result)
-            
+
             # Quick summary
             perf_comp = test_result['performance_comparison']
             leak_assess = test_result['data_leakage_assessment']
-            
+
             print(f"   📊 Real Return: {perf_comp['real_return']:+.2f}%")
             print(f"   📊 Obfuscated Return: {perf_comp['obfuscated_return']:+.2f}%")
             print(f"   📊 Performance Degradation: {perf_comp['performance_degradation_pct']:+.1f}%")
             print(f"   🔍 Assessment: {leak_assess['assessment']}")
             print()
-            
+
         except Exception as e:
             print(f"   ❌ Test failed: {e}")
             print()
             continue
-    
+
     # Generate comprehensive report
     print("📄 Generating validation report...")
-    
+
     # Create output directory
     output_dir = Path('.cache/validation/obfuscation')
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
+
     # Save detailed results
     results_file = output_dir / f'obfuscation_results_{timestamp}.json'
     validator.save_results(str(results_file))
-    
+
     # Generate validation report
     report_file = output_dir / f'obfuscation_validation_report_{timestamp}.md'
     report_content = validator.generate_validation_report(str(report_file))
-    
+
     # Print summary to console
     print("\n" + "=" * 70)
     print("🎯 VALIDATION SUMMARY")
     print("=" * 70)
-    
+
     if results:
         # Overall assessment
-        high_risk_count = sum(1 for r in results if r['data_leakage_assessment']['likely_data_leakage'])
+        high_risk_count = sum(
+            1 for r in results if r['data_leakage_assessment']['likely_data_leakage'])
         total_tests = len(results)
-        
+
         print(f"Total Tests: {total_tests}")
         print(f"High Risk (Likely Data Leakage): {high_risk_count}")
         print(f"Clean Tests: {total_tests - high_risk_count}")
         print(f"Data Leakage Rate: {high_risk_count/total_tests*100:.1f}%")
         print()
-        
+
         # Critical assessment
         if high_risk_count > total_tests * 0.5:
             print("🚨 CRITICAL FINDING: Majority of tests show data leakage")
@@ -143,18 +144,18 @@ async def run_critical_validation_tests():
             print("✅ CLEAN: No evidence of data leakage detected")
             print("   ✨ Previous results appear to be legitimate")
             print("   🚀 Can proceed with confidence in LLM system")
-        
+
         print()
         print("📁 Detailed Results:")
         print(f"   JSON: {results_file}")
         print(f"   Report: {report_file}")
-        
+
     else:
         print("❌ No validation tests completed successfully")
         print("🔧 Check system configuration and try again")
-    
+
     print(f"\n✅ Validation complete: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
     return results
 
 
@@ -162,9 +163,9 @@ async def run_quick_validation_test():
     """Run a single quick validation test for immediate feedback."""
     print("⚡ Quick Validation Test")
     print("=" * 40)
-    
+
     validator = ObfuscationValidator(use_cached_data=True)
-    
+
     # Test with SPY data that we know exists
     result = await validator.run_comparison_test(
         symbol='SPY',
@@ -172,16 +173,16 @@ async def run_quick_validation_test():
         end_date='2022-08-31',
         test_name='QuickTest_SPY'
     )
-    
+
     # Print results
     perf_comp = result['performance_comparison']
     leak_assess = result['data_leakage_assessment']
-    
+
     print(f"Real Return: {perf_comp['real_return']:+.2f}%")
     print(f"Obfuscated Return: {perf_comp['obfuscated_return']:+.2f}%")
     print(f"Performance Degradation: {perf_comp['performance_degradation_pct']:+.1f}%")
     print(f"Assessment: {leak_assess['assessment']}")
-    
+
     return result
 
 
@@ -203,12 +204,12 @@ def print_usage():
 async def main():
     """Main execution function."""
     import sys
-    
+
     # Parse command line arguments
     mode = 'full'
     if len(sys.argv) > 1:
         mode = sys.argv[1].lower()
-    
+
     if mode == 'help':
         print_usage()
         return

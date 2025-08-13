@@ -89,9 +89,31 @@ def fetch_market_data(
     Returns:
         DataFrame with price and volume data
     """
-    tool = MarketDataTool({"data_source": source})
-    df = tool.fetch_market_data(symbol, start_date, end_date)
-    return df
+    try:
+        # Try Polygon.io first if available and preferred
+        if (source in ["auto", "polygon"]) and POLYGON_AVAILABLE:
+            logger.info(f"Attempting Polygon.io for {symbol}")
+            polygon_data = fetch_polygon_historical_data(symbol, start_date, end_date, "prices")
+            if polygon_data and "prices" in polygon_data:
+                df = polygon_data["prices"]
+                if isinstance(df, pd.DataFrame) and not df.empty:
+                    logger.info(f"✓ Polygon.io data retrieved for {symbol}")
+                    return df
+        
+        # Fallback to Alpha Vantage
+        logger.info(f"Attempting Alpha Vantage for {symbol}")
+        df = fetch_alpha_vantage_data(symbol, start_date, end_date)
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            logger.info(f"✓ Alpha Vantage data retrieved for {symbol}")
+            return df
+        
+        # If all else fails, return empty DataFrame
+        logger.warning(f"No market data available for {symbol}")
+        return pd.DataFrame()
+        
+    except Exception as e:
+        logger.error(f"Error fetching market data for {symbol}: {str(e)}")
+        return pd.DataFrame()
 
 market_data_tool = FunctionTool(
     func=fetch_market_data,

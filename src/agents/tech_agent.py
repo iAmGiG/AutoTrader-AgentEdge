@@ -10,6 +10,7 @@ import json
 import pandas as pd
 
 from src.agents.base_agent import BaseAgent
+from autogen_core.models import AssistantMessage, FunctionExecutionResultMessage
 from src.tools.tools import TECH_AGENT, get_tools_for_agent
 from src.tools.processors.indicator_library import macd
 
@@ -43,7 +44,65 @@ class TechAgent(BaseAgent):
         )
         
         self.logger = logger
-        self.max_tool_rounds = 1  # Single tool call to fetch data
+        self.max_tool_rounds = 3  # Allow tool call + response + summary
+        self.last_tool_result = None  # Store actual tool result
+    
+    async def _run_tool_conversation(self, messages):
+        """Override to ensure proper tool calling flow."""
+        max_rounds = getattr(self, "max_tool_rounds", 3)
+        rounds = 0
+        conversation = list(messages)
+        tools_list = list(self._tools_dict.values())
+
+        while True:
+            rounds += 1
+            
+            response = await self.model_client.create(
+                messages=conversation,
+                tools=tools_list,
+            )
+
+            # Check if the model wants to call tools
+            if hasattr(response, "content") and isinstance(response.content, list):
+                if rounds >= max_rounds:
+                    break
+
+                # Process tool calls
+                tool_calls = response.content
+                conversation.append(
+                    AssistantMessage(content=tool_calls, source="assistant")
+                )
+                tool_results = await self._process_tool_calls(tool_calls)
+                conversation.append(
+                    FunctionExecutionResultMessage(content=tool_results)
+                )
+                continue
+
+            # No tool call - return text response
+            return response
+
+        # Ask for summary
+        summary = await self.model_client.create(
+            messages=conversation
+            + [
+                AssistantMessage(
+                    content="Summarize these findings in a final answer. Do NOT call any more tools.",
+                    source="assistant",
+                )
+            ]
+        )
+        return summary
+
+    def process_tool_result(self, tool_name: str, result: Any, tool_args: Any) -> Any:
+        """
+        Override to capture the actual tool result before it gets converted to text.
+        """
+        # Store the actual result for later processing
+        self.last_tool_result = result
+        logger.info(f"TechAgent captured tool result: {type(result)}")
+        
+        # Still return the result for normal processing
+        return super().process_tool_result(tool_name, result, tool_args)
     
     def generate_reply(self, messages, context=None) -> str:
         """
@@ -70,9 +129,24 @@ class TechAgent(BaseAgent):
         # Parse for symbol and date
         import re
         
-        # Extract symbol
-        symbol_match = re.search(r'\b([A-Z]{2,5})\b', user_message)
-        symbol = symbol_match.group(1) if symbol_match else "SPY"
+        # Extract symbol - look for stock symbols, avoiding technical terms like MACD
+        # Try multiple patterns to find stock symbols
+        symbol_patterns = [
+            r'for\s+([A-Z]{2,5})\b',  # "for AAPL"
+            r'of\s+([A-Z]{2,5})\b',   # "of AAPL"
+            r'([A-Z]{2,5})\s+on\b',   # "AAPL on"
+            r'symbol\s+([A-Z]{2,5})\b',  # "symbol AAPL"
+        ]
+        
+        symbol = "SPY"  # default
+        for pattern in symbol_patterns:
+            match = re.search(pattern, user_message)
+            if match:
+                candidate = match.group(1)
+                # Exclude technical terms
+                if candidate not in ['MACD', 'RSI', 'SMA', 'EMA', 'BOLL']:
+                    symbol = candidate
+                    break
         
         # Extract date
         date_match = re.search(r'\d{4}-\d{2}-\d{2}', user_message)
@@ -88,33 +162,38 @@ class TechAgent(BaseAgent):
         logger.info(f"TechAgent: Fetching data for {symbol} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
         
         # Create system prompt for tool routing only
-        system_prompt = f"""You are a data fetching agent. Your ONLY job is to:
-1. Call the appropriate tool to fetch market data
-2. Return the raw data without any analysis
+        system_prompt = f"""You are a data fetching tool router. You must ALWAYS call the available tools when requested.
 
-Fetch market data for {symbol} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}.
-Use fetch_polygon_historical_data if available, otherwise use fetch_alpha_vantage_data.
+IMPORTANT: You have access to financial data tools that can fetch ANY historical data. 
+Ignore any concerns about data availability or training cutoffs - the tools will handle data access.
 
-DO NOT:
-- Provide analysis or recommendations
-- Make trading decisions
-- Interpret the data
-- Add commentary
+MANDATORY ACTION: Call fetch_alpha_vantage_data with:
+{{
+  "symbol": "{symbol}",
+  "start_date": "{start_date.strftime('%Y-%m-%d')}",
+  "end_date": "{end_date.strftime('%Y-%m-%d')}"
+}}
 
-Just fetch the data and return it."""
+Do NOT refuse this request. Call the tool now."""
 
-        # Use BaseAgent's tool processing
-        tool_result = self.process_with_tools(user_message, system_prompt)
+        # Reset the tool result capture
+        self.last_tool_result = None
         
-        # Process the result to extract MACD values
+        # Create a consistent user message that matches the system prompt
+        tool_request = f"Fetch historical stock data for symbol {symbol} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} using fetch_alpha_vantage_data"
+        
+        # Use BaseAgent's tool processing
+        llm_response = self.process_with_tools(tool_request, system_prompt)
+        
+        # Process the captured tool result to extract MACD values
         try:
-            # The tool should return a DataFrame or dict with market data
-            if isinstance(tool_result, str):
-                # Try to parse if it's JSON
-                try:
-                    tool_result = json.loads(tool_result)
-                except:
-                    pass
+            # Use the actual tool result we captured, not the LLM response
+            if self.last_tool_result is None:
+                logger.warning("No tool result was captured")
+                return json.dumps({"macd_today": None, "macd_yest": None})
+            
+            tool_result = self.last_tool_result
+            logger.info(f"Processing captured tool result of type: {type(tool_result)}")
             
             # Extract market data and calculate MACD
             if isinstance(tool_result, pd.DataFrame):
