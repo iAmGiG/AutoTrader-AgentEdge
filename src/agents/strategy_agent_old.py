@@ -1,112 +1,47 @@
-"""
-StrategyAgent as Orchestrator - Issue #188
-Manages TechAgent and SentimentAgent internally for simplified architecture
-"""
-
 from typing import Dict, Optional
 import numpy as np
 import logging
-import json
 from .base_agent import BaseAgent
-from .tech_agent import TechAgent
-from .sentiment_v0 import V0SentimentAgent
 
 logger = logging.getLogger(__name__)
 
 
 class StrategyAgent(BaseAgent):
     """
-    Orchestrator StrategyAgent that manages TechAgent and SentimentAgent internally.
-    
-    Implements MACD + sentiment trading strategy by coordinating:
-    - TechAgent: Fetches market data and calculates MACD
-    - SentimentAgent: Provides sentiment scores (V0-V4)
-    
-    Entry: MACD improving AND sentiment >= 0 → BUY
-    Exit: MACD deteriorating OR sentiment < -0.5 → SELL
+    Implements a hard-coded MACD + sentiment trading strategy.
+
+    Entry:
+      - If flat AND yesterday’s MACD < 0 AND today’s MACD > yesterday’s MACD
+        AND sentiment >= 0 → BUY  (V2: Changed from > to >= to allow neutral sentiment)
+
+    Exit:
+      - If long AND (yesterday’s MACD < 0 AND today’s MACD < yesterday’s MACD)
+        OR (yesterday’s MACD > 0 AND today’s MACD < 0) → SELL
+
+    Otherwise: HOLD
     """
 
-    def __init__(self, name: str = "StrategyAgent", sentiment_version: str = "V0", memory_system=None):
+    def __init__(self, name: str = "StrategyAgent", memory_system=None):
         super().__init__(name=name, tools=[], memory_system=memory_system)
-        
-        # Trading state
         self.position = 0       # 0 = flat, 1 = long
         self.entry_price = None
         self.entry_date = None
         self.trade_log = []
         self.trades = []  # List of completed trades for metrics calculation
         self.equity_curve = []  # Track equity over time
-        
-        # Internal agents
-        self.tech_agent = TechAgent()
-        self.sentiment_agent = self._create_sentiment_agent(sentiment_version)
-        self.sentiment_version = sentiment_version
-        
-        logger.info(f"StrategyAgent initialized with {sentiment_version} sentiment agent")
-
-    def _create_sentiment_agent(self, version: str):
-        """Create the appropriate sentiment agent based on version."""
-        if version == "V0":
-            return V0SentimentAgent()
-        # TODO: Add V1-V4 when implemented
-        # elif version == "V1":
-        #     return V1SentimentAgent()
-        # elif version == "V2":
-        #     return V2SentimentAgent()
-        # elif version == "V3":
-        #     return V3SentimentAgent()
-        # elif version == "V4":
-        #     return V4SentimentAgent()
-        else:
-            logger.warning(f"Unknown sentiment version {version}, defaulting to V0")
-            return V0SentimentAgent()
 
     def generate_reply(self, messages, context=None):
         """Stub required by BaseAgent; this agent does not support chat."""
         raise NotImplementedError(
             "StrategyAgent does not support chat-based interactions")
 
-    def decide_trade(self, symbol: str, date: str, price: float) -> Dict:
-        """
-        Main orchestration method: get data from agents and make trading decision.
-        
-        Args:
-            symbol: Stock ticker symbol
-            date: Trading date (YYYY-MM-DD)
-            price: Current stock price
-            
-        Returns:
-            Dict with trading decision and reasoning
-        """
-        # Get technical data from TechAgent
-        tech_message = f"Get MACD data for {symbol} on {date}"
-        tech_response = self.tech_agent.generate_reply(tech_message)
-        
-        try:
-            tech_data = json.loads(tech_response)
-            macd_y = tech_data.get("macd_yest")
-            macd_t = tech_data.get("macd_today")
-        except (json.JSONDecodeError, AttributeError) as e:
-            logger.error(f"Failed to parse tech agent response: {e}")
-            macd_y = None
-            macd_t = None
-        
-        # Get sentiment data from SentimentAgent
-        sentiment_message = f"Get sentiment for {symbol} on {date}"
-        sentiment_response = self.sentiment_agent.generate_reply(sentiment_message)
-        
-        try:
-            sentiment_data = json.loads(sentiment_response)
-            sentiment = sentiment_data.get("score", 0)
-        except (json.JSONDecodeError, AttributeError) as e:
-            logger.error(f"Failed to parse sentiment agent response: {e}")
-            sentiment = 0
-        
-        # Make trading decision based on aggregated data
-        return self._make_trading_decision(macd_y, macd_t, sentiment, price, date)
 
-    def _make_trading_decision(self, macd_y: float, macd_t: float, sentiment: float, price: float, trade_date: str) -> Dict:
-        """Make the actual trading decision based on MACD and sentiment data."""
+    def decide_trade(self, aggregated: Dict, price: float, trade_date: str) -> Dict:
+        """Return a BUY/SELL/HOLD decision based on MACD crossovers and sentiment."""
+        macd_y = aggregated.get("technical", {}).get("macd_yest")
+        macd_t = aggregated.get("technical", {}).get("macd_today")
+        sentiment = aggregated.get("sentiment", {}).get("score", 0)
+        
         action = "HOLD"
         reason = "no_signal"
 
@@ -158,18 +93,13 @@ class StrategyAgent(BaseAgent):
             "macd_today": macd_t,
             "macd_yest": macd_y,
             "sentiment": sentiment,
-            "reason": reason,
-            "version": self.sentiment_version
+            "reason": reason
         })
 
         return {
             "action": action,
             "qty": 100 if action == "BUY" else 0,
-            "reason": reason,
-            "macd_today": macd_t,
-            "macd_yest": macd_y,
-            "sentiment": sentiment,
-            "version": self.sentiment_version
+            "reason": reason
         }
 
     def calculate_metrics(self, initial_capital: float = 100000.0, risk_free_rate: float = 0.02) -> Dict:
@@ -341,6 +271,7 @@ class StrategyAgent(BaseAgent):
 
         print("=" * 60)
 
+    
     def get_metrics(self, initial_capital: float = 100000.0) -> Dict:
         """Wrapper method for calculate_metrics for compatibility."""
         return self.calculate_metrics(initial_capital)
