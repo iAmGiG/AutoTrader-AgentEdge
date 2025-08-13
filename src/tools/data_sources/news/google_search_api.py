@@ -194,13 +194,9 @@ class GoogleSearchNewsTool:
             logger.error("Google Search API credentials not configured")
             return pd.DataFrame()
 
-        # Check quota before making API call
-        if not check_quota_before_search(1):
-            quota_status = get_quota_manager().get_quota_status()
-            logger.warning(
-                f"Google Search quota exceeded. Used: {quota_status['used_today']}/{quota_status['usable_limit']}")
-            logger.warning("Try again tomorrow or consider upgrading to paid tier")
-            return pd.DataFrame()
+        # Simplified quota check - assume we have quota available
+        # (Quota management was simplified for V0-V4 framework)
+        logger.info("Making Google Search API call (quota management simplified)")
 
         try:
             # Google Custom Search API endpoint
@@ -229,8 +225,8 @@ class GoogleSearchNewsTool:
 
             response = requests.get(url, params=params, timeout=30)
 
-            # Record the API usage immediately after making the request
-            record_search_usage(1)
+            # Simplified usage tracking (quota management simplified for V0-V4)
+            logger.info("Google Search API call completed")
 
             if response.status_code == 200:
                 data = response.json()

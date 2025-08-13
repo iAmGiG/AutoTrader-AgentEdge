@@ -10,6 +10,7 @@ import json
 from .base_agent import BaseAgent
 from .tech_agent import TechAgent
 from .sentiment_v0 import V0SentimentAgent
+from .sentiment_v1 import SentimentV1Agent
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +49,9 @@ class StrategyAgent(BaseAgent):
         """Create the appropriate sentiment agent based on version."""
         if version == "V0":
             return V0SentimentAgent()
-        # TODO: Add V1-V4 when implemented
-        # elif version == "V1":
-        #     return V1SentimentAgent()
+        elif version == "V1":
+            return SentimentV1Agent()
+        # TODO: Add V2-V4 when implemented
         # elif version == "V2":
         #     return V2SentimentAgent()
         # elif version == "V3":
@@ -97,7 +98,8 @@ class StrategyAgent(BaseAgent):
         
         try:
             sentiment_data = json.loads(sentiment_response)
-            sentiment = sentiment_data.get("score", 0)
+            # V0 uses "score", V1+ use "sentiment"
+            sentiment = sentiment_data.get("score") or sentiment_data.get("sentiment", 0)
         except (json.JSONDecodeError, AttributeError) as e:
             logger.error(f"Failed to parse sentiment agent response: {e}")
             sentiment = 0

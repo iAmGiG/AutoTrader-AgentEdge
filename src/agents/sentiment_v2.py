@@ -1,7 +1,11 @@
 """
 V2 Sentiment Agent: Market Fear Based (VIX/VXX)
 Uses volatility indices to gauge market sentiment
-Pure mechanical calculation, no LLM involvement
+
+ARCHITECTURE NOTE: V2-V3 should inherit from BaseAgent for LLM tool calling
+- Use LLM to route and call market data tools (VIX fetching)
+- Mechanical calculation of sentiment from VIX values
+- No LLM decisions in final sentiment score (same as V1 pattern)
 """
 
 import json

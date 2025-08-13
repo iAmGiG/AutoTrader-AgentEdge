@@ -1,7 +1,11 @@
 """
 V3 Sentiment Agent: Heuristic Combination
 Combines V1 (VADER NLP) and V2 (Market Fear) with adaptive weighting
-Pure mechanical combination, no LLM involvement
+
+ARCHITECTURE NOTE: V3 should inherit from BaseAgent for LLM tool calling
+- Use LLM to coordinate calls to V1 and V2 sentiment agents
+- Mechanical combination algorithm for final sentiment
+- No LLM decisions in final sentiment score (same as V1/V2 pattern)
 """
 
 import json

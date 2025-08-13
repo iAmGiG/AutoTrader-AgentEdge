@@ -1,204 +1,226 @@
 """
-V1 Sentiment Agent: NLP Analysis with VADER
-Fetches news via Google Search and analyzes with VADER sentiment
-Pure mechanical NLP, no LLM involvement
+V1 Sentiment Agent: NLP Analysis with VADER + Google Search
+Uses LLM for tool calling but mechanical VADER sentiment processing
+No LLM decisions in final sentiment score
 """
 
 import json
 import logging
-from typing import Dict, Any, List
-from datetime import datetime
 import re
-import pandas as pd
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from datetime import datetime
+from typing import Any
 
-from src.tools.data_sources.news.google_search_simple import GoogleSearchNewsTool
-from src.tools.cache.news_cache import NewsCache
+from src.agents.base_agent import BaseAgent
+from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
+
 
 logger = logging.getLogger(__name__)
 
 
-class SentimentV1Agent:
+class SentimentV1Agent(BaseAgent):
     """
-    V1: NLP-based Sentiment Agent using VADER
-    
-    Fetches news articles and analyzes sentiment mechanically using VADER
-    No LLM involvement - pure NLP processing
+    V1: NLP-based Sentiment Agent using VADER + financial lexicon
+
+    Architecture:
+    - Inherits from BaseAgent for LLM tool calling capabilities
+    - Uses LLM to route and call Google Search news tool
+    - Mechanical VADER sentiment processing (no LLM decision-making)
+    - Enhanced financial lexicon with Austrian economics terms
+
+    Tool Calling Pattern:
+    - LLM determines which tools to call based on request
+    - LLM fetches news data via Google Search tool
+    - Mechanical sentiment analysis via SentimentAnalyzer
+    - Returns aggregated sentiment score (-1.0 to +1.0)
     """
-    
+
     def __init__(self, name: str = "SentimentV1Agent", memory_system=None):
-        self.name = name
+        # Initialize enhanced sentiment analyzer with financial lexicon
+        self.sentiment_analyzer = SentimentAnalyzer()
+
+        # Set max tool rounds for efficient processing
+        self.max_tool_rounds = 3
+
+        # Call parent constructor with Google Search news tool
+        from src.tools.tools import ALL_TOOLS
+        super().__init__(
+            name=name,
+            tools=ALL_TOOLS,  # Includes Google Search news tool
+            memory_system=memory_system
+        )
+
         self.logger = logger
-        
-        # Initialize VADER sentiment analyzer
-        self.vader = SentimentIntensityAnalyzer()
-        
-        # Initialize news tool and cache
-        self.news_tool = GoogleSearchNewsTool()
-        self.news_cache = NewsCache()
-        
-    def analyze_text_sentiment(self, text: str) -> Dict[str, float]:
+
+    def process_tool_result(self, tool_name: str, result: Any, tool_args: Any) -> Any:
         """
-        Analyze sentiment of text using VADER.
-        
+        Process tool results and apply mechanical VADER sentiment analysis.
+
         Args:
-            text: Text to analyze
-            
+            tool_name: Name of the tool that was executed
+            result: Raw result from the tool
+            tool_args: Arguments passed to the tool
+
         Returns:
-            Dict with sentiment scores
+            Processed result with sentiment analysis applied
         """
-        scores = self.vader.polarity_scores(text)
-        return scores
-    
-    def fetch_and_analyze_news(self, symbol: str, date: str) -> Dict[str, Any]:
-        """
-        Fetch news and analyze sentiment with VADER.
-        
-        Args:
-            symbol: Stock ticker symbol
-            date: Target date (YYYY-MM-DD)
-            
-        Returns:
-            Dict with aggregated sentiment analysis
-        """
-        try:
-            # Check cache first
-            cache_key = f"v1_{symbol}_{date}"
-            cached_data = self.news_cache.get(cache_key)
-            if cached_data:
-                logger.info(f"Using cached V1 sentiment for {symbol} on {date}")
-                return cached_data
-            
-            # Fetch news from Google Search
-            news_results = self.news_tool.fetch_news(
-                query=f"{symbol} stock market news",
-                days_back=3
-            )
-            
-            if news_results is None or news_results.empty:
-                logger.warning(f"No news found for {symbol}")
+        # If this is news data from Google Search, apply sentiment analysis
+        if tool_name == "fetch_google_news" and result is not None:
+            try:
+                import pandas as pd
+
+                # Convert result to DataFrame if needed
+                if isinstance(result, str):
+                    # Try to parse JSON string
+                    try:
+                        import json
+                        data = json.loads(result)
+                        if isinstance(data, list):
+                            df = pd.DataFrame(data)
+                        else:
+                            df = pd.DataFrame([data])
+                    except:
+                        # If not JSON, treat as single text entry
+                        df = pd.DataFrame([{"title": result, "snippet": ""}])
+                elif isinstance(result, list):
+                    df = pd.DataFrame(result)
+                elif isinstance(result, pd.DataFrame):
+                    df = result
+                else:
+                    # Convert other types to DataFrame
+                    df = pd.DataFrame([{"title": str(result), "snippet": ""}])
+
+                # Apply sentiment analysis to each article
+                if not df.empty and 'title' in df.columns:
+                    # Combine title and snippet for analysis
+                    df['combined_text'] = df.apply(
+                        lambda row: f"{row.get('title', '')} {row.get('snippet', '')}".strip(),
+                        axis=1
+                    )
+
+                    # Analyze sentiment for each article
+                    sentiments = []
+                    for _, row in df.iterrows():
+                        text = row['combined_text']
+                        if text:
+                            sentiment_score = self.sentiment_analyzer.analyze_text(text)
+                            sentiments.append(sentiment_score)
+
+                    # Calculate aggregate sentiment
+                    if sentiments:
+                        avg_sentiment = sum(sentiments) / len(sentiments)
+
+                        # Calculate confidence based on consistency and volume
+                        if len(sentiments) > 1:
+                            import pandas as pd
+                            sentiment_std = pd.Series(sentiments).std()
+                            consistency_score = max(0, 1 - sentiment_std)
+                            volume_score = min(1, len(sentiments) / 10)
+                            confidence = (consistency_score + volume_score) / 2
+                        else:
+                            confidence = 0.3
+
+                        # Create enhanced result with sentiment analysis
+                        sentiment_result = {
+                            "sentiment": round(avg_sentiment, 4),
+                            "confidence": round(confidence, 4),
+                            "articles_analyzed": len(sentiments),
+                            "version": "V1",
+                            "mode": "vader_nlp_enhanced",
+                            "raw_news_data": result,
+                            "sentiment_scores": sentiments[:5]  # Top 5 for transparency
+                        }
+
+                        # Log the sentiment analysis
+                        self.logger.info(
+                            f"V1 Sentiment Analysis: {avg_sentiment:.3f} "
+                            f"(confidence: {confidence:.3f}, articles: {len(sentiments)})"
+                        )
+
+                        return sentiment_result
+
+            except Exception as e:
+                self.logger.error(f"Error in sentiment analysis: {str(e)}")
+                # Return fallback result
                 return {
                     "sentiment": 0.0,
                     "confidence": 0.0,
-                    "reasoning": "No news articles found",
-                    "articles_analyzed": 0
+                    "articles_analyzed": 0,
+                    "version": "V1",
+                    "mode": "vader_nlp_enhanced",
+                    "error": str(e),
+                    "raw_news_data": result
                 }
-            
-            # Analyze each article with VADER
-            sentiments = []
-            article_details = []
-            
-            for _, article in news_results.iterrows():
-                # Combine title and snippet for analysis
-                text = f"{article.get('title', '')} {article.get('snippet', '')}"
-                
-                if text.strip():
-                    scores = self.analyze_text_sentiment(text)
-                    sentiments.append(scores['compound'])
-                    
-                    article_details.append({
-                        "title": article.get('title', ''),
-                        "sentiment": scores['compound'],
-                        "positive": scores['pos'],
-                        "negative": scores['neg'],
-                        "neutral": scores['neu']
-                    })
-            
-            if not sentiments:
-                return {
-                    "sentiment": 0.0,
-                    "confidence": 0.0,
-                    "reasoning": "No analyzable text in articles",
-                    "articles_analyzed": 0
-                }
-            
-            # Calculate aggregate sentiment
-            avg_sentiment = sum(sentiments) / len(sentiments)
-            
-            # Calculate confidence based on consistency and article count
-            if len(sentiments) > 1:
-                sentiment_std = pd.Series(sentiments).std()
-                # Higher consistency = higher confidence
-                consistency_score = max(0, 1 - sentiment_std)
-                # More articles = higher confidence
-                volume_score = min(1, len(sentiments) / 10)
-                confidence = (consistency_score + volume_score) / 2
-            else:
-                confidence = 0.3  # Low confidence with single article
-            
-            # Generate reasoning
-            if avg_sentiment > 0.05:
-                sentiment_label = "positive"
-            elif avg_sentiment < -0.05:
-                sentiment_label = "negative"
-            else:
-                sentiment_label = "neutral"
-            
-            reasoning = (
-                f"VADER NLP analysis of {len(sentiments)} articles shows "
-                f"{sentiment_label} sentiment (avg: {avg_sentiment:.3f})"
-            )
-            
-            result = {
-                "sentiment": round(avg_sentiment, 4),
-                "confidence": round(confidence, 4),
-                "reasoning": reasoning,
-                "articles_analyzed": len(sentiments),
-                "mode": "vader_nlp",
-                "version": "V1",
-                "details": article_details[:5]  # Include top 5 for transparency
-            }
-            
-            # Cache the result
-            self.news_cache.set(cache_key, result)
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error in V1 sentiment analysis: {str(e)}")
-            return {
-                "sentiment": 0.0,
-                "confidence": 0.0,
-                "reasoning": f"Error: {str(e)}",
-                "articles_analyzed": 0,
-                "mode": "vader_nlp",
-                "version": "V1"
-            }
-    
+
+        # For non-news tools, return result as-is
+        return result
+
     def generate_reply(self, messages, context=None) -> str:
         """
-        Generate VADER-based sentiment response.
-        
+        Generate V1 sentiment response using LLM tool calling + mechanical VADER.
+
         Args:
             messages: Input messages (expects symbol and date)
-            context: Optional context (not used)
-            
+            context: Optional context
+
         Returns:
-            JSON string with VADER sentiment analysis
+            JSON string with V1 sentiment analysis
         """
         # Extract message content
         if isinstance(messages, str):
             message = messages
         elif isinstance(messages, list) and messages:
-            message = messages[-1].get("content", "") if isinstance(messages[-1], dict) else str(messages[-1])
+            message = messages[-1].get("content", "") if isinstance(messages[-1],
+                                                                    dict) else str(messages[-1])
         elif isinstance(messages, dict):
             message = messages.get("content", "")
         else:
             message = ""
-        
-        # Parse for symbol and date
+
+        # Extract symbol and date from message
         symbol_match = re.search(r'\b([A-Z]{2,5})\b', message)
         symbol = symbol_match.group(1) if symbol_match else "SPY"
-        
+
         date_match = re.search(r'\d{4}-\d{2}-\d{2}', message)
         date = date_match.group(0) if date_match else datetime.now().strftime("%Y-%m-%d")
-        
-        logger.info(f"V1 Sentiment: Analyzing {symbol} for {date} with VADER")
-        
-        # Fetch and analyze news
-        result = self.fetch_and_analyze_news(symbol, date)
-        
-        # Log the result
-        logger.info(f"V1 Result: sentiment={result['sentiment']}, confidence={result['confidence']}")
-        
-        return json.dumps(result)
+
+        self.logger.info(f"V1 Sentiment: Analyzing {symbol} for {date} with VADER+LLM tools")
+
+        # Create system prompt for LLM tool calling
+        system_prompt = f"""
+You are a V1 sentiment analysis agent that uses tools to gather news data.
+
+Your task:
+1. Use the fetch_google_search_news tool to get recent news for {symbol}
+2. The tool will automatically apply VADER sentiment analysis to the results
+3. Return ONLY the sentiment analysis result in JSON format - no narrative text
+
+When the tool returns sentiment analysis results, you must respond with ONLY the JSON data.
+Do not add explanations, summaries, or additional text.
+
+Example response format:
+{{"sentiment": -0.2345, "confidence": 0.7, "articles_analyzed": 5, "version": "V1", "mode": "vader_nlp_enhanced"}}
+"""
+
+        # Use LLM tool calling to fetch and process news
+        try:
+            prompt = f"Analyze sentiment for {symbol} stock on {date}. Fetch recent news and apply sentiment analysis."
+
+            response = self.process_with_tools(prompt, system_prompt)
+
+            # The response should contain the processed sentiment data
+            return response
+
+        except Exception as e:
+            self.logger.error(f"Error in V1 sentiment generation: {str(e)}")
+
+            # Return fallback response
+            fallback_result = {
+                "sentiment": 0.0,
+                "confidence": 0.0,
+                "reasoning": f"Error in V1 analysis: {str(e)}",
+                "articles_analyzed": 0,
+                "version": "V1",
+                "mode": "vader_nlp_enhanced"
+            }
+
+            return json.dumps(fallback_result)
