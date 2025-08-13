@@ -62,7 +62,9 @@ Validation and testing of agent functionality
 
 ### General Utils (`tools/utils/`)
 
-- Maintenance and utility scripts
+- `examine_cached_results.py` - Analyze Google Search news cache contents
+- `organize_news_cache.py` - Organize news cache by publication date
+- Other maintenance and utility scripts
 
 ## Quick Start
 

@@ -256,7 +256,7 @@ def fibonacci_retracement(
     high: pd.Series, low: pd.Series, period: int = 20
 ) -> pd.DataFrame:
     """Calculate Fibonacci retracement levels for support and resistance analysis.
-    
+
     Parameters:
     -----------
     high : pd.Series
@@ -265,7 +265,7 @@ def fibonacci_retracement(
         Low price series
     period : int, default 20
         Lookback period for identifying significant high/low points
-        
+
     Returns:
     --------
     pd.DataFrame
@@ -280,10 +280,10 @@ def fibonacci_retracement(
     # Find swing highs and lows over the lookback period
     swing_high = high.rolling(window=period).max()
     swing_low = low.rolling(window=period).min()
-    
+
     # Calculate the range between swing high and low
     price_range = swing_high - swing_low
-    
+
     # Calculate fibonacci retracement levels
     fib_0_0 = swing_high  # 0% (swing high)
     fib_23_6 = swing_high - (price_range * 0.236)  # 23.6%
@@ -291,7 +291,7 @@ def fibonacci_retracement(
     fib_50_0 = swing_high - (price_range * 0.500)  # 50% (key level)
     fib_61_8 = swing_high - (price_range * 0.618)  # 61.8%
     fib_100_0 = swing_low  # 100% (swing low)
-    
+
     return pd.DataFrame({
         "Fib_0_0": fib_0_0,
         "Fib_23_6": fib_23_6,

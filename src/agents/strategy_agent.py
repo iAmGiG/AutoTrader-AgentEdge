@@ -38,20 +38,35 @@ class StrategyAgent(BaseAgent):
         raise NotImplementedError(
             "StrategyAgent does not support chat-based interactions")
 
-    def filter_trades(self, ta_signals: Dict, market_heat: float) -> Dict:
-        """Filter trades based on TA signals AND market heat threshold.
+    def filter_trades(self, ta_signals: Dict, market_heat: float, sentiment_signals: Optional[Dict] = None) -> Dict:
+        """Filter trades based on TA signals with news-first logic, then market heat threshold.
 
         :param ta_signals: Technical analysis signals dictionary
         :param market_heat: Current market heat score (-1 to 1)
+        :param sentiment_signals: Sentiment analysis signals (if available)
         :return: Filtered trade decision with approval status
         """
         # Extract TA signal if exists
         ta_action = ta_signals.get("action", "HOLD")
         has_ta_signal = ta_action in ["BUY", "SELL"]
 
-        # Apply AND logic: both conditions must be true
-        heat_above_threshold = market_heat > self.market_heat_threshold
-        trade_approved = has_ta_signal and heat_above_threshold
+        # Check if we have meaningful news sentiment data
+        has_news_sentiment = False
+        if sentiment_signals:
+            sentiment_confidence = sentiment_signals.get("confidence", 0)
+            sentiment_score = sentiment_signals.get("score", 0)
+            has_news_sentiment = sentiment_confidence > 0.1  # Minimum confidence threshold
+        
+        # News-first logic: if we have news sentiment, use it instead of market heat
+        if has_news_sentiment and has_ta_signal:
+            # Allow trades based on news sentiment even in cold markets
+            trade_approved = True
+            filter_reason = "news-based"
+        else:
+            # Fallback to market heat filtering
+            heat_above_threshold = market_heat > self.market_heat_threshold
+            trade_approved = has_ta_signal and heat_above_threshold
+            filter_reason = "market-heat-based"
 
         # Log the decision
         decision_entry = {
@@ -59,23 +74,31 @@ class StrategyAgent(BaseAgent):
             "has_ta_signal": has_ta_signal,
             "market_heat": market_heat,
             "heat_threshold": self.market_heat_threshold,
-            "heat_above_threshold": heat_above_threshold,
+            "has_news_sentiment": has_news_sentiment,
+            "filter_reason": filter_reason,
             "trade_approved": trade_approved,
-            "reason": self._get_rejection_reason(has_ta_signal, heat_above_threshold)
+            "reason": self._get_rejection_reason(has_ta_signal, has_news_sentiment, market_heat)
         }
         self.decision_log.append(decision_entry)
 
         # Log to logger for real-time monitoring
-        logger.info(f"Trade Filter Decision: TA={ta_action}, Heat={market_heat:.3f}, "
-                    f"Approved={trade_approved}, Reason={decision_entry['reason']}")
+        sentiment_info = f"News={has_news_sentiment}" if sentiment_signals else "News=None"
+        logger.info(f"Trade Filter Decision: TA={ta_action}, {sentiment_info}, Heat={market_heat:.3f}, "
+                    f"Approved={trade_approved}, Filter={filter_reason}")
 
         # Return filtered decision
         if trade_approved:
+            reason_text = f"TA signal {ta_action} with {filter_reason} approval"
+            if filter_reason == "news-based":
+                reason_text += f" (news confidence: {sentiment_signals.get('confidence', 0):.2f})"
+            else:
+                reason_text += f" (heat: {market_heat:.3f} > {self.market_heat_threshold})"
+            
             return {
                 "action": ta_action,
                 "approved": True,
                 "market_heat": market_heat,
-                "reason": f"TA signal {ta_action} with market heat {market_heat:.3f} > {self.market_heat_threshold}"
+                "reason": reason_text
             }
         else:
             return {
@@ -85,16 +108,16 @@ class StrategyAgent(BaseAgent):
                 "reason": decision_entry['reason']
             }
 
-    def _get_rejection_reason(self, has_ta_signal: bool, heat_above_threshold: bool) -> str:
+    def _get_rejection_reason(self, has_ta_signal: bool, has_news_sentiment: bool, market_heat: float) -> str:
         """Get human-readable reason for trade rejection."""
-        if not has_ta_signal and not heat_above_threshold:
-            return "No TA signal AND market heat too low"
-        elif not has_ta_signal:
+        if not has_ta_signal:
             return "No TA signal"
-        elif not heat_above_threshold:
-            return f"Market heat below threshold ({self.market_heat_threshold})"
+        elif has_news_sentiment:
+            return "Trade approved (news-based)"
+        elif market_heat > self.market_heat_threshold:
+            return "Trade approved (market-heat-based)"
         else:
-            return "Trade approved"
+            return f"Market heat below threshold ({self.market_heat_threshold}) and no news sentiment"
 
     def decide_trade(self, aggregated: Dict, price: float, trade_date: str) -> Dict:
         """Return a BUY/SELL/HOLD decision based on MACD crossovers, sentiment, and market heat."""
@@ -136,8 +159,9 @@ class StrategyAgent(BaseAgent):
             ):
                 ta_signal = {"action": "SELL"}
 
-        # Apply market heat filter
-        filtered_decision = self.filter_trades(ta_signal, market_heat)
+        # Apply market heat filter with sentiment data
+        sentiment_signals = aggregated.get("sentiment", {})
+        filtered_decision = self.filter_trades(ta_signal, market_heat, sentiment_signals)
         action = filtered_decision["action"]
 
         # Execute the trade if approved

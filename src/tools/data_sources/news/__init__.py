@@ -1,27 +1,16 @@
 """
-News data sources package.
+News data sources package for V0-V4 framework.
 
-This package contains tools for retrieving news and sentiment data from various sources:
-- Alpha Vantage (news sentiment)
-- Finnhub (financial headlines)
-- News Headline Tool (general news)
-- Unified News Tool (comprehensive news fetching system)
+Simple structure:
+- google_search_simple.py: Main interface tool (used by tools.py)
+- google_search_api.py: Google Custom Search API implementation
+
+This package provides Google Search-based financial news for sentiment analysis.
 """
 
-from .alpha_vantage_news import AlphaVantageNewsTool
-from .finnhub_tool import FinnHubTool
-from .news_headline_tool import NewsHeadlineTool
-from .unified_news_tool import (
-    UnifiedNewsController,
-    fetch_unified_news,
-    fetch_unified_news_async
-)
+from .google_search_simple import fetch_google_news, google_search_simple_tool
 
 __all__ = [
-    "AlphaVantageNewsTool",
-    "FinnHubTool",
-    "NewsHeadlineTool",
-    "UnifiedNewsController",
-    "fetch_unified_news",
-    "fetch_unified_news_async"
+    "fetch_google_news",
+    "google_search_simple_tool"
 ]
