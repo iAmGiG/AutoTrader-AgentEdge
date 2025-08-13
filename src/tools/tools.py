@@ -11,7 +11,7 @@ import pandas as pd
 from autogen_core.tools import FunctionTool
 
 # Project imports
-from src.tools.data_sources.market.market_data_tool import MarketDataTool
+# MarketDataTool deprecated - using Polygon + Alpha Vantage directly
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
 from src.tools.data_sources.news.google_search_simple import google_search_simple_tool
 from config.config_loader import ConfigLoader

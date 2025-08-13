@@ -3,18 +3,14 @@ Simplified Google Search News Tool for Sentiment Agent
 Direct access to Google Custom Search API with caching
 """
 
-import os
-import json
 import pandas as pd
-from datetime import datetime, timedelta
 import logging
-from typing import List, Optional
 from autogen_core.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
 
-# Import the existing Google Search tool
-from .sources.api_based.google_search_news_tool import GoogleSearchNewsTool
+# Import the Google Search API implementation
+from .google_search_api import GoogleSearchNewsTool
 
 
 def fetch_google_news(
@@ -25,16 +21,16 @@ def fetch_google_news(
 ) -> pd.DataFrame:
     """
     Fetch news using Google Custom Search API with caching.
-    
+
     This is a simplified interface that directly uses Google Search
     for financial news from premium sources (WSJ, Bloomberg, Barrons, etc.)
-    
+
     Args:
         symbol: Stock ticker symbol (e.g., 'AAPL')
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
         max_results: Maximum number of results to return
-        
+
     Returns:
         DataFrame with columns: title, summary, url, published_date, source
         Returns empty DataFrame if no results found
@@ -42,12 +38,12 @@ def fetch_google_news(
     try:
         # Initialize the Google Search tool
         google_tool = GoogleSearchNewsTool()
-        
+
         # Check if API credentials are configured
         if not google_tool.api_key or not google_tool.search_engine_id:
             logger.warning("Google Search API credentials not configured")
             return pd.DataFrame()
-        
+
         # Fetch news using the existing tool's search method
         results = google_tool.search_historical_news(
             ticker=symbol,  # Changed from 'symbol' to 'ticker'
@@ -55,9 +51,10 @@ def fetch_google_news(
             end_date=end_date,
             max_results=max_results
         )
-        
+
         if not results.empty:
-            logger.info(f"Google Search found {len(results)} articles for {symbol} from {start_date} to {end_date}")
+            logger.info(
+                f"Google Search found {len(results)} articles for {symbol} from {start_date} to {end_date}")
             # Ensure standard columns
             if 'Data_Source' not in results.columns:
                 results['Data_Source'] = 'Google_Search'
@@ -65,9 +62,9 @@ def fetch_google_news(
                 results['sentiment_ready'] = True
         else:
             logger.info(f"No news found for {symbol} from {start_date} to {end_date}")
-            
+
         return results
-        
+
     except Exception as e:
         logger.error(f"Error fetching Google news: {e}")
         return pd.DataFrame()
