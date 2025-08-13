@@ -18,6 +18,7 @@ from src.utils.date_utils import (
     localize_df,
     get_default_timezone,
 )
+from src.tools.cache import UnifiedCacheManager
 
 
 class AlphaVantageMarketTool:
@@ -29,7 +30,7 @@ class AlphaVantageMarketTool:
     - Company overview/fundamentals
     """
 
-    def __init__(self):
+    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
         # Load API key from environment or config
         config_loader = ConfigLoader()
         self.api_key = os.getenv(
@@ -41,6 +42,9 @@ class AlphaVantageMarketTool:
 
         self.base_url = "https://www.alphavantage.co/query"
         self.logger = logging.getLogger(self.__class__.__name__)
+        
+        # Initialize unified cache
+        self.cache = cache_manager or UnifiedCacheManager()
 
     def fetch_stock_data(self, symbol: str, start_date: Optional[str] = None,
                          end_date: Optional[str] = None) -> pd.DataFrame:
@@ -61,6 +65,14 @@ class AlphaVantageMarketTool:
             # Process date parameters, applying dynamic date calculation if needed
             processed_start, processed_end = get_processed_date_range(
                 start_date, end_date)
+
+            # Check cache first
+            cached_data = self.cache.get_market_data(
+                symbol, processed_start, processed_end, "alpha_vantage"
+            )
+            if cached_data is not None:
+                self.logger.info(f"Using cached Alpha Vantage data for {symbol}")
+                return cached_data
 
             self.logger.info(
                 f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}")
@@ -130,6 +142,9 @@ class AlphaVantageMarketTool:
 
             df = localize_df(df, get_default_timezone())
 
+            # Cache the data for future use
+            self.cache.set_market_data(symbol, processed_start, processed_end, "alpha_vantage", df)
+            
             return df
 
         except Exception as e:
