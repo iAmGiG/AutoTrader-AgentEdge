@@ -52,34 +52,109 @@ class UnifiedCacheManager:
         Get cached market data.
         
         Returns standardized OHLCV data regardless of original source.
+        First tries exact cache key match, then searches for overlapping date ranges.
         """
         cache_key = self._get_market_cache_key(symbol, start, end, source)
         cache_path = self.market_dir / cache_key
         
-        if not cache_path.exists():
-            return None
+        # First try exact match
+        if cache_path.exists():
+            try:
+                with open(cache_path, 'r') as f:
+                    cache_data = json.load(f)
 
+                # Check expiration (24 hours for market data)
+                cached_time = datetime.fromisoformat(cache_data['metadata']['cached_at'])
+                if datetime.now() - cached_time > timedelta(hours=24):
+                    self.logger.debug(f"Market data cache expired: {cache_key}")
+                else:
+                    # Convert to DataFrame
+                    df = pd.DataFrame(cache_data['data'])
+                    if not df.empty and 'date' in df.columns:
+                        df['date'] = pd.to_datetime(df['date'])
+                        df.set_index('date', inplace=True)
+                        
+                    self.logger.debug(f"Market data cache hit (exact): {cache_key}")
+                    return df
+
+            except Exception as e:
+                self.logger.error(f"Error reading market cache {cache_key}: {e}")
+        
+        # If exact match failed, search for overlapping date ranges
+        return self._search_overlapping_cache(symbol, start, end, source)
+
+    def _search_overlapping_cache(self, symbol: str, start: str, end: str, source: str) -> Optional[pd.DataFrame]:
+        """
+        Search for cached data with overlapping date ranges.
+        
+        This handles cases where we request a narrow date range but have 
+        broader cached ranges (e.g., requesting 2024-07-10 to 2024-07-16
+        but having cached 2024-07-01 to 2024-09-30).
+        """
         try:
-            with open(cache_path, 'r') as f:
-                cache_data = json.load(f)
-
-            # Check expiration (24 hours for market data)
-            cached_time = datetime.fromisoformat(cache_data['metadata']['cached_at'])
-            if datetime.now() - cached_time > timedelta(hours=24):
-                self.logger.debug(f"Market data cache expired: {cache_key}")
-                return None
-
-            # Convert to DataFrame
-            df = pd.DataFrame(cache_data['data'])
-            if not df.empty and 'date' in df.columns:
-                df['date'] = pd.to_datetime(df['date'])
-                df.set_index('date', inplace=True)
-                
-            self.logger.debug(f"Market data cache hit: {cache_key}")
-            return df
-
+            start_date = datetime.strptime(start, "%Y-%m-%d")
+            end_date = datetime.strptime(end, "%Y-%m-%d")
+            
+            # Look for cache files that might contain our date range
+            pattern = f"{symbol}_*_{source}.json"
+            matching_files = list(self.market_dir.glob(pattern))
+            
+            for cache_file in matching_files:
+                try:
+                    # Parse filename to extract date range
+                    name_parts = cache_file.stem.split('_')
+                    if len(name_parts) < 4:
+                        continue
+                        
+                    file_start_str = name_parts[1]
+                    file_end_str = name_parts[2]
+                    
+                    # Skip if not proper date format
+                    if len(file_start_str) != 10 or len(file_end_str) != 10:
+                        continue
+                    
+                    file_start_date = datetime.strptime(file_start_str, "%Y-%m-%d")
+                    file_end_date = datetime.strptime(file_end_str, "%Y-%m-%d")
+                    
+                    # Check if cached range overlaps with requested range
+                    if file_start_date <= end_date and file_end_date >= start_date:
+                        # Found overlapping range, load and filter data
+                        with open(cache_file, 'r') as f:
+                            cache_data = json.load(f)
+                        
+                        # Check expiration
+                        cached_time = datetime.fromisoformat(cache_data['metadata']['cached_at'])
+                        if datetime.now() - cached_time > timedelta(hours=24):
+                            continue
+                        
+                        # Convert to DataFrame  
+                        df = pd.DataFrame(cache_data['data'])
+                        if df.empty or 'date' not in df.columns:
+                            continue
+                            
+                        df['date'] = pd.to_datetime(df['date'])
+                        df.set_index('date', inplace=True)
+                        
+                        # Filter to requested date range
+                        mask = (df.index >= start_date) & (df.index <= end_date)
+                        filtered_df = df[mask]
+                        
+                        if not filtered_df.empty:
+                            self.logger.debug(
+                                f"Market data cache hit (overlap): {cache_file.name} "
+                                f"-> filtered {len(filtered_df)} records for {start} to {end}"
+                            )
+                            return filtered_df
+                            
+                except (ValueError, KeyError) as e:
+                    # Skip files with parsing errors
+                    continue
+                    
+            self.logger.debug(f"No overlapping market data cache found for {symbol} {start} to {end}")
+            return None
+            
         except Exception as e:
-            self.logger.error(f"Error reading market cache {cache_key}: {e}")
+            self.logger.error(f"Error in overlapping cache search: {e}")
             return None
 
     def set_market_data(self, symbol: str, start: str, end: str, source: str, data: pd.DataFrame):
