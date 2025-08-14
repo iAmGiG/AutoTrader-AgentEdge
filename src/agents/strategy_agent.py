@@ -12,6 +12,7 @@ from .tech_agent import TechAgent
 from .sentiment_v0 import V0SentimentAgent
 from .sentiment_v1 import SentimentV1Agent
 from .sentiment_v2 import SentimentV2Agent
+from .sentiment_v3 import SentimentV3Agent
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +55,9 @@ class StrategyAgent(BaseAgent):
             return SentimentV1Agent()
         elif version == "V2":
             return SentimentV2Agent()
-        # TODO: Add V3-V4 when implemented
-        # elif version == "V3":
-        #     return V3SentimentAgent()
+        elif version == "V3":
+            return SentimentV3Agent()
+        # TODO: Add V4 when implemented
         # elif version == "V4":
         #     return V4SentimentAgent()
         else:
