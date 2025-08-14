@@ -34,8 +34,8 @@ class SentimentV2Agent(BaseAgent):
 
     def __init__(self, name: str = "SentimentV2Agent", memory_system=None):
         self.max_tool_rounds = 3
-        from src.tools.tools import ALL_TOOLS
-        super().__init__(name=name, tools=ALL_TOOLS, memory_system=memory_system)
+        from src.tools.tools import SENTIMENT_TOOLS
+        super().__init__(name=name, tools=SENTIMENT_TOOLS, memory_system=memory_system)
         self.logger = logger
 
     def _extract_date_from_message(self, message: str) -> str:

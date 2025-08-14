@@ -32,11 +32,11 @@ class SentimentV3Agent(BaseAgent):
         # Set max tool rounds for efficient processing
         self.max_tool_rounds = 3
 
-        # Call parent constructor with tools (inherits all tools from V1/V2)
-        from src.tools.tools import ALL_TOOLS
+        # Call parent constructor with sentiment tools only (both Google Search and VXX)
+        from src.tools.tools import SENTIMENT_TOOLS
         super().__init__(
             name=name,
-            tools=ALL_TOOLS,  # Includes both Google Search and VXX tools
+            tools=SENTIMENT_TOOLS,  # Only Google Search and VXX tools for sentiment
             memory_system=memory_system
         )
 
