@@ -41,11 +41,11 @@ class SentimentV1Agent(BaseAgent):
         # Set max tool rounds for efficient processing
         self.max_tool_rounds = 3
 
-        # Call parent constructor with Google Search news tool
-        from src.tools.tools import ALL_TOOLS
+        # Call parent constructor with sentiment-specific tools only
+        from src.tools.tools import SENTIMENT_TOOLS
         super().__init__(
             name=name,
-            tools=ALL_TOOLS,  # Includes Google Search news tool
+            tools=SENTIMENT_TOOLS,  # Only Google Search and VXX tools for sentiment
             memory_system=memory_system
         )
 
@@ -63,6 +63,7 @@ class SentimentV1Agent(BaseAgent):
         Returns:
             Processed result with sentiment analysis applied
         """
+        # V1 should only be using Google Search tool, but tool access is controlled by tools configuration
         # If this is news data from Google Search, apply sentiment analysis
         if tool_name == "fetch_google_news" and result is not None:
             try:
@@ -178,7 +179,11 @@ class SentimentV1Agent(BaseAgent):
 
         # Extract symbol and date from message
         symbol_match = re.search(r'\b([A-Z]{2,5})\b', message)
-        symbol = symbol_match.group(1) if symbol_match else "SPY"
+        symbol = symbol_match.group(1) if symbol_match else None
+        
+        # Use context symbol or default to AAPL for testing
+        if not symbol:
+            symbol = context.get('symbol', 'AAPL') if context else 'AAPL'
 
         date_match = re.search(r'\d{4}-\d{2}-\d{2}', message)
         date = date_match.group(0) if date_match else datetime.now().strftime("%Y-%m-%d")
@@ -186,18 +191,13 @@ class SentimentV1Agent(BaseAgent):
         self.logger.info(f"V1 Sentiment: Analyzing {symbol} for {date} with VADER+LLM tools")
 
         # Create system prompt for LLM tool calling
-        system_prompt = f"""
-You are a V1 sentiment analysis agent that uses tools to gather news data.
+        system_prompt = f"""You are a V1 sentiment analysis agent that analyzes financial news for {symbol}.
 
-Your task:
-1. Use the fetch_google_search_news tool to get recent news for {symbol}
-2. The tool will automatically apply VADER sentiment analysis to the results
-3. Return ONLY the sentiment analysis result in JSON format - no narrative text
+Your task: Call fetch_google_news to get recent news for {symbol} on {date}, then return the sentiment analysis result.
 
-When the tool returns sentiment analysis results, you must respond with ONLY the JSON data.
-Do not add explanations, summaries, or additional text.
+The news tool will automatically apply VADER sentiment analysis and return structured results.
 
-Example response format:
+Response format:
 {{"sentiment": -0.2345, "confidence": 0.7, "articles_analyzed": 5, "version": "V1", "mode": "vader_nlp_enhanced"}}
 """
 

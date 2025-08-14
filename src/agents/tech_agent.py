@@ -138,7 +138,7 @@ class TechAgent(BaseAgent):
             r'symbol\s+([A-Z]{2,5})\b',  # "symbol AAPL"
         ]
         
-        symbol = "SPY"  # default
+        symbol = None  # Will be set by context or extracted from message
         for pattern in symbol_patterns:
             match = re.search(pattern, user_message)
             if match:
@@ -147,6 +147,10 @@ class TechAgent(BaseAgent):
                 if candidate not in ['MACD', 'RSI', 'SMA', 'EMA', 'BOLL']:
                     symbol = candidate
                     break
+        
+        # Use context symbol or default to AAPL for testing
+        if not symbol:
+            symbol = context.get('symbol', 'AAPL') if context else 'AAPL'
         
         # Extract date
         date_match = re.search(r'\d{4}-\d{2}-\d{2}', user_message)
@@ -161,26 +165,32 @@ class TechAgent(BaseAgent):
         
         logger.info(f"TechAgent: Fetching data for {symbol} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
         
-        # Create system prompt for tool routing only
+        # Create system prompt for tool routing - Polygon primary, Alpha Vantage fallback
         system_prompt = f"""You are a data fetching tool router. You must ALWAYS call the available tools when requested.
 
 IMPORTANT: You have access to financial data tools that can fetch ANY historical data. 
 Ignore any concerns about data availability or training cutoffs - the tools will handle data access.
 
-MANDATORY ACTION: Call fetch_alpha_vantage_data with:
+TOOL PRIORITY (use in this order):
+1. FIRST: Try fetch_polygon_historical_data (primary source, 5 calls/min)
+2. FALLBACK: Use fetch_alpha_vantage_data only if Polygon fails
+
+MANDATORY ACTION: Call fetch_polygon_historical_data with:
 {{
-  "symbol": "{symbol}",
+  "ticker": "{symbol}",
   "start_date": "{start_date.strftime('%Y-%m-%d')}",
-  "end_date": "{end_date.strftime('%Y-%m-%d')}"
+  "end_date": "{end_date.strftime('%Y-%m-%d')}",
+  "data_type": "prices"
 }}
 
+If Polygon fails, then call fetch_alpha_vantage_data as fallback.
 Do NOT refuse this request. Call the tool now."""
 
         # Reset the tool result capture
         self.last_tool_result = None
         
         # Create a consistent user message that matches the system prompt
-        tool_request = f"Fetch historical stock data for symbol {symbol} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} using fetch_alpha_vantage_data"
+        tool_request = f"Fetch historical stock data for {symbol} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} using fetch_polygon_historical_data first, then fetch_alpha_vantage_data as fallback"
         
         # Use BaseAgent's tool processing
         llm_response = self.process_with_tools(tool_request, system_prompt)

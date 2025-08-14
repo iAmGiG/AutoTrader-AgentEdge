@@ -266,6 +266,9 @@ class BaseAgent(AssistantAgent, ABC):
                 loop = asyncio.get_event_loop()
                 return await loop.run_in_executor(None, lambda: exec_fn(*args, **kwargs))
 
+        # Tool access control should be handled by proper tool configuration in tools.py
+        # Sentiment agents should only have access to sentiment tools via their initialization
+
         # Strategy 1: Use function map if available (most reliable fallback)
         if tool_name in TOOL_FUNCTION_MAP:
             try:
