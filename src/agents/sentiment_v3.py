@@ -6,6 +6,7 @@ Uses LLM for tool calling but mechanical combination algorithm for final sentime
 
 import json
 import logging
+import asyncio
 from typing import Dict, Any
 from datetime import datetime
 import re
@@ -152,11 +153,41 @@ class SentimentV3Agent(BaseAgent):
             # Get V1 sentiment (news-based)
             v1_message = f"{symbol} on {date}"
             v1_response = self.v1_agent.generate_reply(v1_message)
+            
+            # Handle async response if needed
+            if asyncio.iscoroutine(v1_response):
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(asyncio.run, v1_response)
+                            v1_response = future.result()
+                    else:
+                        v1_response = loop.run_until_complete(v1_response)
+                except RuntimeError:
+                    v1_response = asyncio.run(v1_response)
+                    
             v1_result = json.loads(v1_response)
 
             # Get V2 sentiment (VXX-based)
             v2_message = f"market fear on {date}"
             v2_response = self.v2_agent.generate_reply(v2_message)
+            
+            # Handle async response if needed
+            if asyncio.iscoroutine(v2_response):
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(asyncio.run, v2_response)
+                            v2_response = future.result()
+                    else:
+                        v2_response = loop.run_until_complete(v2_response)
+                except RuntimeError:
+                    v2_response = asyncio.run(v2_response)
+                    
             v2_result = json.loads(v2_response)
 
             # Mechanically combine the results using adaptive weighting

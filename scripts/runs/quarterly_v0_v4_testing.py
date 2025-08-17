@@ -278,7 +278,18 @@ class QuarterlyTestRunner:
                 # Get sentiment score from agent
                 try:
                     sentiment_response = agent.generate_reply(f"{self.symbol} on {date_str}")
-                    sentiment_data = json.loads(sentiment_response)
+                    
+                    # Handle async responses (V1, V3, V4 agents)
+                    import asyncio
+                    if asyncio.iscoroutine(sentiment_response):
+                        sentiment_response = await sentiment_response
+                    
+                    # Parse JSON response
+                    if isinstance(sentiment_response, str):
+                        sentiment_data = json.loads(sentiment_response)
+                    else:
+                        sentiment_data = sentiment_response
+                        
                     sentiment_score = sentiment_data.get('sentiment', 0.0) or sentiment_data.get('score', 0.0)
                     
                     # Handle potential string/format issues
@@ -603,6 +614,14 @@ class QuarterlyTestRunner:
             'sample_sizes': {v: len(returns) for v, returns in version_returns.items()}
         }
 
+    def _json_serialize_helper(self, obj):
+        """JSON serialization helper for numpy types."""
+        if isinstance(obj, (np.integer, np.floating)):
+            return obj.item()
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return str(obj)
+        
     def _save_results(self, results_summary: Dict[str, Any]):
         """Save results to organized file structure."""
         
@@ -615,7 +634,7 @@ class QuarterlyTestRunner:
         # Save complete results
         results_file = results_dir / f"quarterly_results_{self.symbol}_{timestamp}.json"
         with open(results_file, 'w') as f:
-            json.dump(results_summary, f, indent=2)
+            json.dump(results_summary, f, indent=2, default=self._json_serialize_helper)
         
         logger.info(f"💾 Results saved to: {results_file}")
         
@@ -631,7 +650,7 @@ class QuarterlyTestRunner:
             
             version_file = results_dir / f"{version.lower()}_results_{timestamp}.json"
             with open(version_file, 'w') as f:
-                json.dump(version_data, f, indent=2)
+                json.dump(version_data, f, indent=2, default=self._json_serialize_helper)
         
         # Save summary report
         self._generate_markdown_report(results_summary, results_dir / f"quarterly_results_summary_{timestamp}.md")

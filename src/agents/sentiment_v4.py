@@ -6,6 +6,7 @@ Provides raw news headlines and VXX data to LLM for reasoning-based sentiment an
 
 import json
 import logging
+import asyncio
 from typing import Dict, Any
 from datetime import datetime
 import re
@@ -333,6 +334,20 @@ Context: Analyzing {symbol} on {date}"""
             system_msg = enhanced_messages[0]['content']
 
             response = self.process_with_tools(user_msg, system_msg)
+            
+            # Handle async response if needed
+            if asyncio.iscoroutine(response):
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(asyncio.run, response)
+                            response = future.result()
+                    else:
+                        response = loop.run_until_complete(response)
+                except RuntimeError:
+                    response = asyncio.run(response)
 
             # Ensure we have a valid JSON response
             if not response:

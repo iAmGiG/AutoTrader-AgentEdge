@@ -12,6 +12,7 @@ ARCHITECTURE: V2-V3 inherit from BaseAgent for LLM tool calling
 import json
 import logging
 import traceback
+import asyncio
 from typing import Any
 from datetime import datetime
 import re
@@ -138,7 +139,7 @@ class SentimentV2Agent(BaseAgent):
             JSON string with VXX-based sentiment analysis
         """
         try:
-            print(f"\n{self.name} processing request...")
+            logger.debug(f"{self.name} processing request...")
 
             # Convert single message to list format
             if isinstance(messages, str):
@@ -190,6 +191,23 @@ ALWAYS call fetch_vxx_volatility_data with symbol="{symbol}" and date="{date}"."
             system_msg = enhanced_messages[0]['content']
 
             response = self.process_with_tools(user_msg, system_msg)
+            
+            # Handle async response if needed
+            if asyncio.iscoroutine(response):
+                # We need to handle this properly in the sync context
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # Create a new thread to run the coroutine
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(asyncio.run, response)
+                            response = future.result()
+                    else:
+                        response = loop.run_until_complete(response)
+                except RuntimeError:
+                    # No event loop, create a new one
+                    response = asyncio.run(response)
 
             # Ensure we have a valid JSON response
             if not response:
