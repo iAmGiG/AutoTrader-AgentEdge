@@ -7,8 +7,8 @@ Provides raw news headlines and VXX data to LLM for reasoning-based sentiment an
 import json
 import logging
 import asyncio
-from typing import Dict, Any
-from datetime import datetime
+from typing import Dict, Any, Optional
+from datetime import datetime, timedelta
 import re
 
 from src.agents.base_agent import BaseAgent
@@ -35,6 +35,12 @@ class SentimentV4Agent(BaseAgent):
     def __init__(self, name: str = "SentimentV4Agent", memory_system=None, enable_obfuscation: bool = True):
         # Set max tool rounds for comprehensive data gathering
         self.max_tool_rounds = 5  # May need multiple tools for complete analysis
+
+        # Memory-based queuing system for quarterly data
+        self.quarterly_memory: Dict[str, Dict] = {}  # {symbol_period: {date: sentiment_data}}
+        self.is_prepared: bool = False
+        self.prepared_symbol: Optional[str] = None
+        self.prepared_period: Optional[tuple] = None
 
         # Call parent constructor with both sentiment tools (Google Search + VXX)
         from src.tools.tools import SENTIMENT_TOOLS
@@ -204,6 +210,245 @@ class SentimentV4Agent(BaseAgent):
                                 ticker, obfuscated, flags=re.IGNORECASE)
 
         return obfuscated
+
+    async def prepare_quarterly_data(self, symbol: str, start_date: str, end_date: str) -> bool:
+        """
+        Prepare quarterly data for LLM-based sentiment analysis.
+        
+        V4 is unique - it uses LLM reasoning for sentiment decisions, so this method
+        gathers comprehensive quarterly context (news + VXX) for LLM to analyze.
+        
+        Args:
+            symbol: Stock ticker (e.g., 'AAPL')
+            start_date: Start of quarter in YYYY-MM-DD format
+            end_date: End of quarter in YYYY-MM-DD format
+            
+        Returns:
+            bool: True if preparation successful, False otherwise
+        """
+        try:
+            self.logger.info(f"V4Agent: Preparing quarterly LLM context for {symbol} ({start_date} to {end_date})")
+            
+            # Create memory key for this symbol/period
+            memory_key = f"{symbol}_{start_date}_{end_date}"
+            
+            # Gather comprehensive quarterly context for LLM analysis
+            quarterly_context = await self._gather_quarterly_context(symbol, start_date, end_date)
+            
+            # For each day, prepare LLM-ready context and pre-compute sentiment decisions
+            daily_sentiments = await self._compute_quarterly_llm_analysis(
+                symbol, start_date, end_date, quarterly_context
+            )
+            
+            # Store in memory for fast lookup
+            self.quarterly_memory[memory_key] = daily_sentiments
+            self.is_prepared = True
+            self.prepared_symbol = symbol
+            self.prepared_period = (start_date, end_date)
+            
+            self.logger.info(f"V4Agent: Successfully prepared {len(daily_sentiments)} LLM sentiment decisions")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"V4Agent: Preparation failed: {e}")
+            self.is_prepared = False
+            return False
+    
+    async def _gather_quarterly_context(self, symbol: str, start_date: str, end_date: str) -> Dict:
+        """
+        Gather comprehensive quarterly context (news + VXX) for LLM analysis.
+        
+        This replaces multiple individual API calls with batch data gathering.
+        """
+        try:
+            self.logger.info("V4Agent: Gathering quarterly news and VXX context...")
+            
+            # Batch-fetch news for entire quarter
+            news_request = {
+                "role": "user",
+                "content": f"Gather comprehensive financial news for {symbol} from {start_date} to {end_date} for LLM sentiment analysis"
+            }
+            
+            # Batch-fetch VXX volatility data for quarter
+            vxx_request = {
+                "role": "user", 
+                "content": f"Fetch VXX volatility data from {start_date} to {end_date} for market fear analysis"
+            }
+            
+            # Use existing LLM tool calling to gather data
+            # This is still just 2 API calls instead of 61+ calls
+            quarterly_news = await asyncio.create_task(
+                self._get_tool_response_async([news_request])
+            )
+            
+            quarterly_vxx = await asyncio.create_task(
+                self._get_tool_response_async([vxx_request])
+            )
+            
+            return {
+                "news_data": quarterly_news,
+                "vxx_data": quarterly_vxx,
+                "symbol": symbol,
+                "period": f"{start_date} to {end_date}"
+            }
+            
+        except Exception as e:
+            self.logger.error(f"V4Agent: Failed to gather quarterly context: {e}")
+            return {}
+    
+    async def _get_tool_response_async(self, messages) -> str:
+        """Async wrapper for LLM tool calling."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, self._generate_reply_sync, messages
+        )
+    
+    def _generate_reply_sync(self, messages) -> str:
+        """Synchronous version of generate_reply for async wrapper."""
+        return super().generate_reply(messages)
+    
+    async def _compute_quarterly_llm_analysis(self, symbol: str, start_date: str, end_date: str, 
+                                            quarterly_context: Dict) -> Dict[str, Dict]:
+        """
+        Pre-compute LLM sentiment decisions for each day in the quarter.
+        
+        This is where V4's LLM reasoning happens - during preparation, not during simulation.
+        """
+        daily_sentiments = {}
+        
+        try:
+            # Generate date range for the quarter
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            end = datetime.strptime(end_date, "%Y-%m-%d")
+            current = start
+            
+            self.logger.info("V4Agent: Computing LLM sentiment decisions for quarter...")
+            
+            while current <= end:
+                date_str = current.strftime("%Y-%m-%d")
+                
+                # For each date, create comprehensive LLM prompt with quarterly context
+                llm_prompt = self._create_llm_sentiment_prompt(
+                    symbol, date_str, quarterly_context
+                )
+                
+                # Get LLM's sentiment decision for this specific date
+                llm_decision = await self._get_llm_sentiment_decision(llm_prompt)
+                
+                daily_sentiments[date_str] = {
+                    "sentiment": llm_decision.get("sentiment", 0.0),
+                    "confidence": llm_decision.get("confidence", 0.0),
+                    "reasoning": llm_decision.get("reasoning", ""),
+                    "version": "V4",
+                    "mode": "llm_reasoning_batch",
+                    "date_obfuscated": self.enable_obfuscation
+                }
+                
+                current += timedelta(days=1)
+            
+            self.logger.info(f"V4Agent: Completed LLM analysis for {len(daily_sentiments)} days")
+            
+        except Exception as e:
+            self.logger.error(f"V4Agent: Error in LLM analysis: {e}")
+            
+        return daily_sentiments
+    
+    def _create_llm_sentiment_prompt(self, symbol: str, date: str, quarterly_context: Dict) -> str:
+        """Create comprehensive LLM prompt for sentiment analysis."""
+        # Apply date obfuscation if enabled
+        display_date = date
+        if self.enable_obfuscation and self.obfuscator:
+            display_date = self.obfuscator.obfuscate_date(date)
+            self.current_date_mapping[display_date] = date
+        
+        prompt = f"""
+        Analyze the sentiment for {symbol} on {display_date} using the following comprehensive data:
+        
+        QUARTERLY NEWS CONTEXT:
+        {quarterly_context.get('news_data', 'No news data available')}
+        
+        QUARTERLY VXX VOLATILITY CONTEXT:
+        {quarterly_context.get('vxx_data', 'No VXX data available')}
+        
+        ANALYSIS INSTRUCTIONS:
+        1. Consider the overall market sentiment trends for the quarter
+        2. Focus on news specific to {symbol} around {display_date}
+        3. Factor in VXX volatility levels indicating market fear
+        4. Provide a sentiment score from -1.0 (very bearish) to +1.0 (very bullish)
+        5. Include confidence level from 0.0 to 1.0
+        6. Explain your reasoning in 1-2 sentences
+        
+        Return your analysis in JSON format:
+        {{
+            "sentiment": <float between -1.0 and 1.0>,
+            "confidence": <float between 0.0 and 1.0>,
+            "reasoning": "<brief explanation of your analysis>"
+        }}
+        """
+        
+        return prompt
+    
+    async def _get_llm_sentiment_decision(self, prompt: str) -> Dict:
+        """Get LLM's sentiment decision for a specific prompt."""
+        try:
+            # Use the LLM to analyze sentiment
+            response = await asyncio.create_task(
+                self._get_tool_response_async([{"role": "user", "content": prompt}])
+            )
+            
+            # Parse LLM response for sentiment decision
+            if "{" in response and "}" in response:
+                # Extract JSON from response
+                json_start = response.find("{")
+                json_end = response.rfind("}") + 1
+                json_str = response[json_start:json_end]
+                
+                try:
+                    decision = json.loads(json_str)
+                    return decision
+                except json.JSONDecodeError:
+                    pass
+            
+            # Fallback if JSON parsing fails
+            return {"sentiment": 0.0, "confidence": 0.5, "reasoning": "LLM response parsing failed"}
+            
+        except Exception as e:
+            self.logger.error(f"V4Agent: LLM decision failed: {e}")
+            return {"sentiment": 0.0, "confidence": 0.0, "reasoning": f"Error: {e}"}
+    
+    def get_sentiment_for_date(self, date: str, symbol: str = None) -> Dict:
+        """
+        Fast lookup of pre-computed LLM sentiment decision for a specific date.
+        
+        Args:
+            date: Date in YYYY-MM-DD format
+            symbol: Stock symbol (optional, uses prepared symbol if not provided)
+            
+        Returns:
+            Dict with LLM sentiment decision for the date
+        """
+        if not self.is_prepared:
+            self.logger.warning("V4Agent: Not prepared - falling back to single-day mode")
+            return {"sentiment": 0.0, "confidence": 0.0, "version": "V4", "mode": "fallback"}
+        
+        # Use prepared symbol if not provided
+        lookup_symbol = symbol or self.prepared_symbol
+        memory_key = f"{lookup_symbol}_{self.prepared_period[0]}_{self.prepared_period[1]}"
+        
+        if memory_key in self.quarterly_memory and date in self.quarterly_memory[memory_key]:
+            return self.quarterly_memory[memory_key][date]
+        else:
+            self.logger.warning(f"V4Agent: Date {date} not in prepared data")
+            return {"sentiment": 0.0, "confidence": 0.0, "version": "V4", "mode": "date_miss"}
+    
+    def clear_memory(self):
+        """Clear quarterly memory and obfuscation mappings."""
+        self.quarterly_memory.clear()
+        self.is_prepared = False
+        self.prepared_symbol = None
+        self.prepared_period = None
+        self.current_date_mapping.clear()
+        self.logger.info("V4Agent: Memory cleared (including obfuscation mappings)")
 
     def generate_reply(self, messages, context=None) -> str:
         """
