@@ -2,266 +2,163 @@
 
 ## Overview
 
-The News Cache Organization system categorizes cached news articles by publication date to ensure backtesting receives historically appropriate content. This prevents temporal data leakage where recent articles could influence historical trading decisions.
+The News Cache Organization system uses a monthly consolidation structure with intelligent deduplication and date filtering to ensure backtesting receives historically appropriate content without temporal data leakage.
 
-## Problem Statement
-
-Initial Google Search results showed:
-
-- **86% invalid/missing dates** in cached articles
-- **14% recent content (2024-2025)** instead of requested historical dates
-- **0% actual October 2022 content** despite targeting that period
-
-The organization system addresses this by:
-
-1. Analyzing actual article publication dates
-2. Categorizing cache files by content date accuracy
-3. Enabling date-filtered news retrieval for backtesting
-
-## Cache Structure
+## Current Cache Structure (Monthly System)
 
 ### Directory Organization
 
 ```
-.cache/news/google_search/
-├── historical_2022/          # Verified historical content
-│   ├── cache_file_1.json     # 60%+ articles from 2022
-│   └── cache_file_2.json
-├── recent_2024_2025/         # Current market news
-│   ├── cache_file_3.json     # 60%+ articles from 2024-2025
-│   ├── cache_file_4.json
-│   └── ... (44 total files)
-└── mixed_dates/              # Mixed temporal content
-    ├── cache_file_5.json     # Retrospective analysis
-    └── cache_file_6.json
+.cache/news_monthly/              # Primary cache (49 files total)
+├── AAPL/
+│   ├── 2024-03.json             # All March 2024 articles
+│   ├── 2024-06.json             # All June 2024 articles
+│   └── ...
+├── TSLA/
+│   ├── 2025-06.json
+│   └── ...
+└── [Other tickers...]
 ```
 
-### Categorization Logic
+### Monthly File Format
 
+```json
+{
+  "month": "2024-06",
+  "ticker": "AAPL",
+  "consolidated_at": "2025-08-19T23:14:20.505693",
+  "results": [
+    {
+      "title": "Apple beats earnings expectations",
+      "summary": "...",
+      "url": "https://...",
+      "published_date": "2024-06-15 00:00:00",
+      "article_date": "2024-06-15",  // Used for date filtering
+      "relevance_score": 0.55,
+      "ticker": "AAPL"
+    }
+  ],
+  "articles_count": 22,
+  "duplicates_removed": 498,
+  "methodology": "monthly_consolidation_with_deduplication"
+}
+```
+
+## Cache Lookup Logic
+
+When an agent requests news for a specific date:
+
+### 1. Monthly File Loading
 ```python
-# Analyze article dates in each cache file
-date_counts = {'2022': 0, '2023': 0, '2024+': 0, 'unknown': 0}
-
-# Categorize based on predominant content
-if date_counts['2022'] / total_with_dates >= 0.6:
-    category = 'historical_2022'
-elif date_counts['2024+'] / total_with_dates >= 0.6:
-    category = 'recent_2024_2025'
-else:
-    category = 'mixed_dates'
+# Request: AAPL news for 2024-06-15
+cache_file = ".cache/news_monthly/AAPL/2024-06.json"
 ```
 
-## Implementation
-
-### Core Organization Script
-
-**File**: `organize_news_cache.py`
-
-Key functions:
-
-- `organize_cache_by_content_date()`: Analyzes and moves cache files
-- `create_cache_summary()`: Generates organization statistics
-- `create_usage_recommendations()`: Provides usage guidance
-
-### Date Analysis Process
-
-1. **Parse Article Dates**: Extract `published_date` from each article
-2. **Count by Year**: Categorize dates into temporal buckets
-3. **Calculate Predominance**: Determine majority content type
-4. **Move Files**: Organize into appropriate directories
-5. **Generate Statistics**: Track organization results
-
-### Example Analysis Output
-
-```
-📄 cache_file_example.json
-   2022: 3, 2023: 2, 2024+: 0, Unknown: 0
-   → Moved to: historical_2022
-```
-
-## Current Cache Statistics
-
-### Organization Results (Post-MAG7 Capture)
-
-- **Total Files Processed**: 49 cache files
-- **Historical 2022**: 1 file (3 verified 2022 articles)
-- **Recent 2024-2025**: 44 files (58+ recent articles)
-- **Mixed Dates**: 4 files (retrospective analysis)
-- **Empty Files**: 0
-
-### Content Quality
-
-**Historical 2022 Cache**:
-
-- Verified October-November 2022 content
-- Includes Elon Musk/Tesla coverage from actual period
-- Date range: 2022-09-30 to 2023-01-26
-
-**Recent 2024-2025 Cache**:
-
-- Premium sources: Barrons, WSJ, Bloomberg, Reuters, CNBC
-- Current market analysis and financial news
-- High volume, current relevance
-
-## Integration with Backtesting
-
-### Date-Filtered Retrieval
-
-The organized cache enables intelligent article selection:
-
+### 2. Date Filtering (Prevent Future Spill)
 ```python
-def get_articles_for_date(target_date):
-    """Return articles appropriate for backtesting date"""
-    
-    target_year = pd.to_datetime(target_date).year
-    
-    if target_year == 2022:
-        search_directory = "historical_2022"
-    elif target_year >= 2024:
-        search_directory = "recent_2024_2025"
-    else:
-        search_directory = "mixed_dates"
-    
-    return load_articles_from_directory(search_directory)
+# Load all articles for the month
+monthly_data = load_json(cache_file)
+articles = monthly_data['results']
+
+# Filter to only articles up to requested date
+end_date = "2024-06-15"
+filtered_articles = [
+    article for article in articles 
+    if article['article_date'] <= end_date
+]
 ```
 
-### Backtesting Workflow
+### 3. Return Filtered DataFrame
+- Agent receives only articles up to the requested date
+- Articles from June 16-30 remain hidden
+- Prevents temporal leakage in backtesting
 
-1. **Backtest Engine** requests news for specific date (e.g., 2022-10-25)
-2. **Sentiment Agent** calls hybrid historical news tool
-3. **Cache System** automatically selects appropriate directory
-4. **Article Filter** returns only temporally relevant content
-5. **Sentiment Analysis** processes historically appropriate news
+## New Search and Append Logic
 
-## Usage Recommendations
+When new searches are performed:
 
-### Historical 2022 Cache
-
-**Best For**:
-
-- Backtesting October 2022 trading periods
-- Analyzing sentiment during specific historical events
-- Validating strategy performance with historical context
-
-**Limitations**:
-
-- Limited volume (3 verified articles)
-- Specific to late 2022 period
-- May need expansion for comprehensive coverage
-
-### Recent 2024-2025 Cache
-
-**Best For**:
-
-- Current market sentiment analysis
-- Testing live trading strategies
-- Understanding current market dynamics
-
-**Characteristics**:
-
-- High volume (58+ articles)
-- Premium financial sources
-- Current market relevance
-
-### Mixed Dates Cache
-
-**Best For**:
-
-- Understanding market evolution over time
-- Retrospective market analysis
-- Research requiring broader temporal context
-
-**Considerations**:
-
-- Requires individual article date verification
-- May contain both historical and current perspectives
-- Useful for longitudinal market studies
-
-## Monitoring and Maintenance
-
-### Cache Health Checks
-
+### 1. API Search
 ```python
-# Regular validation script
-def validate_cache_organization():
-    """Verify cache organization remains accurate"""
-    
-    for directory in ['historical_2022', 'recent_2024_2025', 'mixed_dates']:
-        files = get_cache_files(directory)
-        
-        for file in files:
-            articles = load_articles(file)
-            date_accuracy = calculate_date_accuracy(articles, directory)
-            
-            if date_accuracy < 0.6:
-                logger.warning(f"Cache file {file} may need recategorization")
+# Google Search API call for specific date range
+results = google_search_api.search(ticker, start_date, end_date)
 ```
 
-### Cleanup Procedures
+### 2. Relevance Filtering
+```python
+# Only cache articles with relevance_score > 0.0
+relevant_articles = [a for a in results if a['relevance_score'] > 0.0]
+```
 
-- **Periodic Validation**: Check that files remain in correct categories
-- **Date Accuracy Monitoring**: Ensure categorization thresholds are met
-- **Cache Size Management**: Monitor storage usage and cleanup old entries
-- **Integration Testing**: Verify backtesting receives appropriate articles
+### 3. Set-Based Deduplication
+```python
+# Load existing monthly cache
+existing_articles = load_monthly_cache(ticker, month)
+existing_titles = {normalize_title(a['title']) for a in existing_articles}
 
-## Performance Impact
+# Only append truly new articles
+new_articles = []
+for article in relevant_articles:
+    normalized_title = normalize_title(article['title'])
+    if normalized_title not in existing_titles:
+        new_articles.append(article)
+        existing_titles.add(normalized_title)
+```
 
-### Backtesting Accuracy
+### 4. Append to Monthly Cache
+```python
+# Combine and sort by date
+all_articles = existing_articles + new_articles
+all_articles.sort(key=lambda x: x['article_date'])
 
-- **Eliminates Temporal Leakage**: Prevents future news from influencing historical decisions
-- **Contextual Relevance**: Provides period-appropriate market sentiment
-- **Strategy Validation**: Enables more accurate historical performance assessment
+# Save back to monthly cache
+save_monthly_cache(ticker, month, all_articles)
+```
 
-### System Efficiency
+## Key Statistics
 
-- **Fast Retrieval**: Date-based directory selection reduces search time
-- **Memory Optimization**: Load only relevant cache files
-- **Storage Organization**: Logical structure improves maintainability
+### Consolidation Results
+- **Original files**: 537 messy cache files with 180+ character names
+- **After consolidation**: 49 clean monthly files
+- **Deduplication rate**: 81.5% (1,143 duplicates removed from 1,403 articles)
+- **Final unique articles**: 260 relevant articles
+
+### Benefits of Monthly Structure
+1. **Simpler lookups**: One file per month vs multiple weekly/daily files
+2. **Better deduplication**: Same article won't appear across multiple files
+3. **Date safety**: Filtering prevents future data leakage
+4. **Efficient caching**: Append operations with automatic deduplication
+
+## Data Integrity Measures
+
+### Date Validation
+- Articles with future dates relative to request are rejected
+- Publication dates extracted from article snippets when available
+- Fallback to request date if no publication date found
+
+### Title-Only Sentiment
+- V1/V3/V4 agents use title-only sentiment analysis
+- Prevents date smuggling through summary text
+- Mimics realistic trader behavior (scanning headlines)
+
+### Relevance Scoring
+- Articles scored by relevance to ticker (0.0 to 1.0)
+- Only articles with score > 0.0 are cached
+- Categories: company_specific (1.0), sector_relevant (0.7), macro_economic (0.5), market_wide (0.3)
+
+## Implementation Files
+
+- **Cache Script**: `scripts/create_monthly_cache.py`
+- **Google Search API**: `src/tools/data_sources/news/google_search_api.py`
+- **Cache Directory**: `.cache/news_monthly/`
 
 ## Future Enhancements
 
-### Planned Improvements
+### Considered but Not Implemented
+1. **Database storage**: Would solve many issues but keeping it simple with JSON
+2. **Weekly sub-sections**: Monthly is sufficient granularity
+3. **Title obfuscation**: Would prevent V4 from using training knowledge of specific companies
 
-1. **Automated Re-categorization**: Periodic validation and adjustment
-2. **Granular Date Filtering**: Month/week level organization
-3. **Source-Specific Categories**: Separate premium vs. general sources
-4. **Quality Scoring**: Rate articles by historical relevance
-
-### Expansion Opportunities
-
-1. **Additional Time Periods**: Expand historical coverage beyond 2022
-2. **Event-Based Organization**: Group by market events (earnings, Fed meetings)
-3. **Ticker-Specific Caches**: Organize by individual stock coverage
-4. **Integration Testing**: Automated validation of backtesting accuracy
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: Articles appearing in wrong category
-**Solution**: Run re-categorization with adjusted thresholds
-
-**Issue**: Missing historical content
-**Solution**: Expand capture using improved search strategies
-
-**Issue**: Date parsing errors
-**Solution**: Enhance date parsing with multiple format support
-
-### Validation Commands
-
-```bash
-# Check cache organization
-python organize_news_cache.py
-
-# Validate date filtering
-python test_date_filtered_news.py
-
-# Analyze cache quality
-python analyze_search_quality.py
-```
-
----
-
-**Status**: Fully implemented and operational
-**Integration**: Seamlessly works with backtesting pipeline
-**Benefits**: Eliminates temporal data leakage, improves backtesting accuracy
+### Known Limitations
+- V4 can potentially recognize companies from headlines (not fully obfuscated)
+- 2024 data still contains some 2025 contamination from Google Search
+- Cache relies on Google Search API accuracy for date extraction

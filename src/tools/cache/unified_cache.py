@@ -36,6 +36,29 @@ class UnifiedCacheManager:
             
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    def _calculate_market_data_expiration(self, start_date: str, end_date: str) -> datetime:
+        """
+        Calculate appropriate expiration based on data recency.
+        
+        Historical data (>2 days old): Long expiration (10 years)
+        Recent data (≤2 days): Short expiration (24 hours) for fresh updates
+        """
+        try:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            today = datetime.now().date()
+            
+            # Historical data should never practically expire
+            if end_dt.date() < today - timedelta(days=2):
+                return datetime.now() + timedelta(days=365*10)  # 10 years
+            
+            # Recent data needs fresh updates
+            else:
+                return datetime.now() + timedelta(hours=24)
+                
+        except ValueError:
+            # Fallback to short expiration if date parsing fails
+            return datetime.now() + timedelta(hours=24)
+
     def _get_market_cache_key(self, symbol: str, start: str, end: str, source: str) -> str:
         """Generate standardized cache key for market data."""
         return f"{symbol}_{start}_{end}_{source}.json"
@@ -63,9 +86,18 @@ class UnifiedCacheManager:
                 with open(cache_path, 'r') as f:
                     cache_data = json.load(f)
 
-                # Check expiration (24 hours for market data)
-                cached_time = datetime.fromisoformat(cache_data['metadata']['cached_at'])
-                if datetime.now() - cached_time > timedelta(hours=24):
+                # Check expiration using date-aware logic
+                start_date = cache_data['metadata']['start_date']
+                end_date = cache_data['metadata']['end_date']
+                expected_expiry = self._calculate_market_data_expiration(start_date, end_date)
+                
+                # Use stored expiry if available, otherwise calculate
+                if 'expires_at' in cache_data['metadata']:
+                    expires_at = datetime.fromisoformat(cache_data['metadata']['expires_at'])
+                else:
+                    expires_at = expected_expiry
+                
+                if datetime.now() > expires_at:
                     self.logger.debug(f"Market data cache expired: {cache_key}")
                 else:
                     # Convert to DataFrame
@@ -87,9 +119,9 @@ class UnifiedCacheManager:
         """
         Search for cached data with overlapping date ranges.
         
-        This handles cases where we request a narrow date range but have 
-        broader cached ranges (e.g., requesting 2024-07-10 to 2024-07-16
-        but having cached 2024-07-01 to 2024-09-30).
+        This handles cases where we request a broad date range that spans 
+        multiple cached files (e.g., requesting 2024-01-01 to 2024-12-31
+        but having quarterly cache files).
         """
         try:
             start_date = datetime.strptime(start, "%Y-%m-%d")
@@ -98,6 +130,9 @@ class UnifiedCacheManager:
             # Look for cache files that might contain our date range
             pattern = f"{symbol}_*_{source}.json"
             matching_files = list(self.market_dir.glob(pattern))
+            
+            # Collect all overlapping data files
+            overlapping_data = []
             
             for cache_file in matching_files:
                 try:
@@ -122,9 +157,18 @@ class UnifiedCacheManager:
                         with open(cache_file, 'r') as f:
                             cache_data = json.load(f)
                         
-                        # Check expiration
-                        cached_time = datetime.fromisoformat(cache_data['metadata']['cached_at'])
-                        if datetime.now() - cached_time > timedelta(hours=24):
+                        # Check expiration using date-aware logic
+                        file_start_str = cache_data['metadata']['start_date']
+                        file_end_str = cache_data['metadata']['end_date']
+                        expected_expiry = self._calculate_market_data_expiration(file_start_str, file_end_str)
+                        
+                        # Use stored expiry if available, otherwise calculate
+                        if 'expires_at' in cache_data['metadata']:
+                            expires_at = datetime.fromisoformat(cache_data['metadata']['expires_at'])
+                        else:
+                            expires_at = expected_expiry
+                        
+                        if datetime.now() > expires_at:
                             continue
                         
                         # Convert to DataFrame  
@@ -135,20 +179,37 @@ class UnifiedCacheManager:
                         df['date'] = pd.to_datetime(df['date'])
                         df.set_index('date', inplace=True)
                         
-                        # Filter to requested date range
-                        mask = (df.index >= start_date) & (df.index <= end_date)
-                        filtered_df = df[mask]
-                        
-                        if not filtered_df.empty:
-                            self.logger.debug(
-                                f"Market data cache hit (overlap): {cache_file.name} "
-                                f"-> filtered {len(filtered_df)} records for {start} to {end}"
-                            )
-                            return filtered_df
+                        # Add to overlapping data list
+                        overlapping_data.append((file_start_date, df, cache_file.name))
                             
                 except (ValueError, KeyError) as e:
                     # Skip files with parsing errors
                     continue
+            
+            # Combine overlapping data if found
+            if overlapping_data:
+                # Sort by start date to ensure proper chronological order
+                overlapping_data.sort(key=lambda x: x[0])
+                
+                # Combine all DataFrames
+                combined_dfs = [df for _, df, _ in overlapping_data]
+                combined_df = pd.concat(combined_dfs, axis=0)
+                
+                # Remove duplicates (in case of overlapping ranges) and sort
+                combined_df = combined_df[~combined_df.index.duplicated(keep='first')]
+                combined_df = combined_df.sort_index()
+                
+                # Filter to requested date range
+                mask = (combined_df.index >= start_date) & (combined_df.index <= end_date)
+                filtered_df = combined_df[mask]
+                
+                if not filtered_df.empty:
+                    file_names = [name for _, _, name in overlapping_data]
+                    self.logger.debug(
+                        f"Market data cache hit (combined): {', '.join(file_names)} "
+                        f"-> {len(filtered_df)} records for {start} to {end}"
+                    )
+                    return filtered_df
                     
             self.logger.debug(f"No overlapping market data cache found for {symbol} {start} to {end}")
             return None
@@ -194,7 +255,8 @@ class UnifiedCacheManager:
             if 'date' in df.columns:
                 df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
 
-            # Create standardized cache structure
+            # Create standardized cache structure with date-aware expiration
+            expires_at = self._calculate_market_data_expiration(start, end)
             cache_data = {
                 "metadata": {
                     "symbol": symbol,
@@ -202,7 +264,7 @@ class UnifiedCacheManager:
                     "end_date": end,
                     "source": source,
                     "cached_at": datetime.now().isoformat(),
-                    "expires_at": (datetime.now() + timedelta(hours=24)).isoformat()
+                    "expires_at": expires_at.isoformat()
                 },
                 "data": df[['date', 'open', 'high', 'low', 'close', 'volume']].to_dict('records')
             }
