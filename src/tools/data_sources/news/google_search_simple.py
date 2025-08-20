@@ -1,6 +1,6 @@
 """
 Simplified Google Search News Tool for Sentiment Agent
-Direct access to Google Custom Search API with caching
+Direct access to Google Custom Search API with caching and smart sampling
 """
 
 import pandas as pd
@@ -80,5 +80,68 @@ google_search_simple_tool = FunctionTool(
                 "This is the primary news source for sentiment analysis."
 )
 
-# Export
-__all__ = ['fetch_google_news', 'google_search_simple_tool']
+# Smart sampling with NewsGovernor
+from typing import Optional
+from datetime import datetime
+
+# Global news governor (optional, for smart sampling)
+_news_governor = None
+
+def set_news_governor(governor):
+    """Set a global news governor for smart sampling."""
+    global _news_governor
+    _news_governor = governor
+    if governor is not None:
+        logger.info(f"📰 NewsGovernor enabled: {governor.sampling_strategy} sampling")
+    else:
+        logger.info("📰 NewsGovernor disabled")
+
+def fetch_google_news_smart(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    max_results: int = 10
+) -> pd.DataFrame:
+    """
+    Fetch news with optional smart sampling via NewsGovernor.
+    
+    If a NewsGovernor is set globally, this will use smart sampling.
+    Otherwise, it falls back to direct API calls.
+    """
+    global _news_governor
+    
+    if _news_governor is not None:
+        # Use smart sampling
+        try:
+            target_date = datetime.strptime(start_date, '%Y-%m-%d')
+        except ValueError:
+            target_date = datetime.now()
+        
+        # Define fetch function for governor
+        def actual_fetch(symbol, start_date, end_date):
+            return fetch_google_news(symbol, start_date, end_date, max_results)
+        
+        # Get news through governor
+        news_data, source = _news_governor.get_news_for_date(
+            target_date, symbol, actual_fetch
+        )
+        
+        logger.debug(f"📰 Smart sampling: {len(news_data)} articles ({source})")
+        return news_data
+    
+    else:
+        # Direct API call (original behavior)
+        return fetch_google_news(symbol, start_date, end_date, max_results)
+
+# Create smart sampling tool
+google_search_smart_tool = FunctionTool(
+    func=fetch_google_news_smart,
+    name="fetch_google_news",  # Same name for compatibility
+    description="Fetch financial news using Google Custom Search API with smart sampling. "
+                "Automatically reduces API quota usage while maintaining data quality. "
+                "Searches premium financial sources (WSJ, Bloomberg, Barrons, Reuters, CNBC) "
+                "with intelligent caching. Returns news articles with title, summary, URL, and date."
+)
+
+# Export both versions
+__all__ = ['fetch_google_news', 'fetch_google_news_smart', 'google_search_simple_tool', 'google_search_smart_tool', 'set_news_governor']

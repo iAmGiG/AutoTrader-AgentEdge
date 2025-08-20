@@ -14,7 +14,8 @@ from autogen_core.tools import FunctionTool
 # MarketDataTool deprecated - using Polygon + Alpha Vantage directly
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
 from src.tools.data_sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
-from src.tools.data_sources.news.google_search_simple import google_search_simple_tool
+from src.tools.data_sources.market.market_context_tool import market_context_tool
+from src.tools.data_sources.news.google_search_simple import google_search_simple_tool, google_search_smart_tool, set_news_governor
 from config.config_loader import ConfigLoader
 
 # Polygon.io import with fallback (requires optional package)
@@ -184,10 +185,12 @@ vxx_volatility_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 # Tool Collections by Agent Type
 ##################################
 
-# SENTIMENT_AGENT tools - Google Search + VXX Volatility
+# SENTIMENT_AGENT tools - Google Search + VXX Volatility + Market Context
+# Note: Can be switched to google_search_smart_tool for quota optimization
 _sentiment_tools_raw = [
-    google_search_simple_tool,  # V1: Google Custom Search API with caching
+    google_search_smart_tool,  # V1: Google Custom Search API with smart sampling
     vxx_volatility_tool,        # V2: VXX volatility data for market fear sentiment
+    market_context_tool,        # V4: SPY/QQQ market context for enhanced sentiment
 ]
 SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
 
@@ -237,6 +240,42 @@ def get_tools_for_agent(agent_type):
         return TECH_TOOLS
     elif agent_type == STRATEGY_AGENT:
         return STRATEGY_TOOLS
+    elif agent_type == MARKET_INTELLIGENCE_AGENT:
+        return TECH_TOOLS + SENTIMENT_TOOLS  # Market intelligence needs both
     else:
         # Return all tools if agent type is unknown
         return ALL_TOOLS
+
+
+##################################
+# NewsGovernor Integration
+##################################
+
+def enable_smart_news_sampling(governor=None):
+    """
+    Enable smart news sampling across all sentiment agents.
+    
+    Args:
+        governor: NewsGovernor instance, or None for balanced default
+    """
+    from src.tools.news_governor import create_balanced_governor
+    
+    if governor is None:
+        governor = create_balanced_governor()
+    
+    set_news_governor(governor)
+    
+    return governor
+
+def disable_smart_news_sampling():
+    """Disable smart news sampling (revert to direct API calls)."""
+    set_news_governor(None)
+
+def get_news_quota_status():
+    """Get current news quota status if NewsGovernor is enabled."""
+    from src.tools.data_sources.news.google_search_simple import _news_governor
+    
+    if _news_governor is not None:
+        return _news_governor.get_quota_status()
+    else:
+        return {"status": "disabled", "message": "NewsGovernor not enabled"}
