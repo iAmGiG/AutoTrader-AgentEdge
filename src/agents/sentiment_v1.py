@@ -100,18 +100,16 @@ class SentimentV1Agent(BaseAgent):
 
                 # Apply sentiment analysis to each article
                 if not df.empty and 'title' in df.columns:
-                    # Combine title and snippet for analysis
-                    df['combined_text'] = df.apply(
-                        lambda row: f"{row.get('title', '')} {row.get('snippet', '')}".strip(),
-                        axis=1
-                    )
-
-                    # Analyze sentiment for each article
+                    # Use title-only for sentiment analysis to avoid date smuggling from summaries
+                    # This mimics realistic trader behavior (scanning headlines) and eliminates
+                    # temporal contamination from summary text containing future/past references
+                    
+                    # Analyze sentiment for each article title
                     sentiments = []
                     for _, row in df.iterrows():
-                        text = row['combined_text']
-                        if text:
-                            sentiment_score = self.sentiment_analyzer.analyze_text(text)
+                        title = row.get('title', '').strip()
+                        if title:
+                            sentiment_score = self.sentiment_analyzer.analyze_text(title)
                             sentiments.append(sentiment_score)
 
                     # Calculate aggregate sentiment

@@ -21,6 +21,7 @@ The project implements 5 sentiment approaches (V0-V4) applied to a consistent MA
   - `indicator_library.md` - MACD and technical indicators
   - `google_search_historical_news.md` - News data source
   - `news_cache_organization.md` - Caching strategy
+  - `newsgovernor_smart_sampling.md` - Intelligent quota management
 - **[macd_analysis/](implementation/macd_analysis/)** - MACD verification scripts
 
 ### [reference/](reference/) - Quick Reference
