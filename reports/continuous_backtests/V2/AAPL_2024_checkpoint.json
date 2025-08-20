@@ -1,0 +1,2429 @@
+{
+  "version": "V2",
+  "symbol": "AAPL",
+  "year": 2024,
+  "last_date": "2024-12-31",
+  "cash": 10232.560000000001,
+  "position": 0,
+  "entry_price": 0,
+  "entry_date": null,
+  "trades": [
+    {
+      "date": "2024-01-08",
+      "action": "BUY",
+      "price": 185.56,
+      "shares": 53,
+      "sentiment": 0.0,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-01-17",
+      "action": "SELL",
+      "price": 182.68,
+      "shares": 53,
+      "sentiment": 0.3,
+      "macd_signal": "-1",
+      "return_pct": -1.5520586333261455,
+      "entry_date": "2024-01-08"
+    },
+    {
+      "date": "2024-01-18",
+      "action": "BUY",
+      "price": 188.63,
+      "shares": 52,
+      "sentiment": 0.3,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-01-31",
+      "action": "SELL",
+      "price": 184.4,
+      "shares": 52,
+      "sentiment": 0.3,
+      "macd_signal": "-1",
+      "return_pct": -2.242485288660335,
+      "entry_date": "2024-01-18"
+    },
+    {
+      "date": "2024-03-18",
+      "action": "BUY",
+      "price": 173.72,
+      "shares": 55,
+      "sentiment": 0.0,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-04-19",
+      "action": "SELL",
+      "price": 165.0,
+      "shares": 55,
+      "sentiment": 0.3,
+      "macd_signal": "-1",
+      "return_pct": -5.019571724614321,
+      "entry_date": "2024-03-18"
+    },
+    {
+      "date": "2024-04-25",
+      "action": "BUY",
+      "price": 169.89,
+      "shares": 53,
+      "sentiment": 0.0,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-05-29",
+      "action": "SELL",
+      "price": 190.29,
+      "shares": 53,
+      "sentiment": 0.3,
+      "macd_signal": "-1",
+      "return_pct": 12.007769733356882,
+      "entry_date": "2024-04-25"
+    },
+    {
+      "date": "2024-06-05",
+      "action": "BUY",
+      "price": 195.87,
+      "shares": 52,
+      "sentiment": 0.0,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-06-06",
+      "action": "SELL",
+      "price": 194.48,
+      "shares": 52,
+      "sentiment": 0.0,
+      "macd_signal": "-1",
+      "return_pct": -0.709654362587438,
+      "entry_date": "2024-06-05"
+    },
+    {
+      "date": "2024-06-07",
+      "action": "BUY",
+      "price": 196.89,
+      "shares": 51,
+      "sentiment": 0.3,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-06-10",
+      "action": "SELL",
+      "price": 193.12,
+      "shares": 51,
+      "sentiment": 0.3,
+      "macd_signal": "-1",
+      "return_pct": -1.9147747473208299,
+      "entry_date": "2024-06-07"
+    },
+    {
+      "date": "2024-06-11",
+      "action": "BUY",
+      "price": 207.15,
+      "shares": 48,
+      "sentiment": 0.3,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-06-25",
+      "action": "SELL",
+      "price": 209.07,
+      "shares": 48,
+      "sentiment": 0.3,
+      "macd_signal": "-1",
+      "return_pct": 0.9268645908761706,
+      "entry_date": "2024-06-11"
+    },
+    {
+      "date": "2024-07-02",
+      "action": "BUY",
+      "price": 220.27,
+      "shares": 45,
+      "sentiment": 0.3,
+      "macd_signal": "1"
+    },
+    {
+      "date": "2024-07-18",
+      "action": "SELL",
+      "price": 224.18,
+      "shares": 45,
+      "sentiment": 0.0,
+      "macd_signal": "-1",
+      "return_pct": 1.7750942025695722,
+      "entry_date": "2024-07-02"
+    }
+  ],
+  "daily_values": [
+    {
+      "date": "2024-01-02",
+      "portfolio_value": 10000.0,
+      "cash": 10000.0,
+      "position": 0,
+      "stock_price": 185.64,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-03",
+      "portfolio_value": 10000.0,
+      "cash": 10000.0,
+      "position": 0,
+      "stock_price": 184.25,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-04",
+      "portfolio_value": 10000.0,
+      "cash": 10000.0,
+      "position": 0,
+      "stock_price": 181.91,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-01-05",
+      "portfolio_value": 10000.0,
+      "cash": 10000.0,
+      "position": 0,
+      "stock_price": 181.18,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-08",
+      "portfolio_value": 10000.0,
+      "cash": 165.3199999999997,
+      "position": 53,
+      "stock_price": 185.56,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-01-09",
+      "portfolio_value": 9977.74,
+      "cash": 165.3199999999997,
+      "position": 53,
+      "stock_price": 185.14,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-10",
+      "portfolio_value": 10033.39,
+      "cash": 165.3199999999997,
+      "position": 53,
+      "stock_price": 186.19,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-11",
+      "portfolio_value": 10001.59,
+      "cash": 165.3199999999997,
+      "position": 53,
+      "stock_price": 185.59,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-12",
+      "portfolio_value": 10019.08,
+      "cash": 165.3199999999997,
+      "position": 53,
+      "stock_price": 185.92,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-16",
+      "portfolio_value": 9897.71,
+      "cash": 165.3199999999997,
+      "position": 53,
+      "stock_price": 183.63,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-17",
+      "portfolio_value": 9847.36,
+      "cash": 9847.36,
+      "position": 0,
+      "stock_price": 182.68,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-18",
+      "portfolio_value": 9847.36,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 188.63,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-19",
+      "portfolio_value": 9999.720000000001,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 191.56,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-22",
+      "portfolio_value": 10120.88,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 193.89,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-23",
+      "portfolio_value": 10187.960000000001,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 195.18,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-01-24",
+      "portfolio_value": 10152.6,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 194.5,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-25",
+      "portfolio_value": 10135.44,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 194.17,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-01-26",
+      "portfolio_value": 10044.44,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 192.42,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-29",
+      "portfolio_value": 10008.56,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 191.73,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-30",
+      "portfolio_value": 9816.68,
+      "cash": 38.600000000000364,
+      "position": 52,
+      "stock_price": 188.04,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-01-31",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 184.4,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-01",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 186.86,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-02-02",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 185.85,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-05",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 187.68,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-02-06",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 189.3,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-07",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 189.41,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-02-08",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 188.32,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-02-09",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 188.85,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-12",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 187.15,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-13",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 185.04,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-14",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 184.15,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-15",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 183.86,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-16",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 182.31,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-20",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 181.56,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-21",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 182.32,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-22",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 184.37,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-02-23",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 182.52,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-26",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 181.16,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-27",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 182.63,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-28",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 181.42,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-02-29",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 180.75,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-01",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 179.66,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-04",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 175.1,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-05",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 170.12,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-06",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 169.12,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-07",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 169.0,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-08",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 170.73,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-11",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 172.75,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-12",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 173.23,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-13",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 171.13,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-14",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 173.0,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-15",
+      "portfolio_value": 9627.400000000001,
+      "cash": 9627.400000000001,
+      "position": 0,
+      "stock_price": 172.62,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-18",
+      "portfolio_value": 9627.400000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 173.72,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-19",
+      "portfolio_value": 9757.200000000003,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 176.08,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-20",
+      "portfolio_value": 9899.65,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 178.67,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-21",
+      "portfolio_value": 9498.150000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 171.37,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-22",
+      "portfolio_value": 9548.2,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 172.28,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-25",
+      "portfolio_value": 9469.550000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 170.85,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-26",
+      "portfolio_value": 9406.850000000002,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 169.71,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-03-27",
+      "portfolio_value": 9604.85,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 173.31,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-03-28",
+      "portfolio_value": 9504.2,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 171.48,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-01",
+      "portfolio_value": 9424.45,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 170.03,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-02",
+      "portfolio_value": 9359.000000000002,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 168.84,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-03",
+      "portfolio_value": 9403.550000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 169.65,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-04",
+      "portfolio_value": 9357.900000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 168.82,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-04-05",
+      "portfolio_value": 9399.700000000003,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 169.58,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-08",
+      "portfolio_value": 9337.550000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 168.45,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-09",
+      "portfolio_value": 9404.65,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 169.67,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-10",
+      "portfolio_value": 9300.7,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 167.78,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-04-11",
+      "portfolio_value": 9700.0,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 175.04,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-12",
+      "portfolio_value": 9783.050000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 176.55,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-15",
+      "portfolio_value": 9570.750000000002,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 172.69,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-16",
+      "portfolio_value": 9388.7,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 169.38,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-17",
+      "portfolio_value": 9312.800000000001,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 168.0,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-18",
+      "portfolio_value": 9260.0,
+      "cash": 72.80000000000109,
+      "position": 55,
+      "stock_price": 167.04,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-04-19",
+      "portfolio_value": 9147.800000000001,
+      "cash": 9147.800000000001,
+      "position": 0,
+      "stock_price": 165.0,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-22",
+      "portfolio_value": 9147.800000000001,
+      "cash": 9147.800000000001,
+      "position": 0,
+      "stock_price": 165.84,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-04-23",
+      "portfolio_value": 9147.800000000001,
+      "cash": 9147.800000000001,
+      "position": 0,
+      "stock_price": 166.9,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-24",
+      "portfolio_value": 9147.800000000001,
+      "cash": 9147.800000000001,
+      "position": 0,
+      "stock_price": 169.02,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-25",
+      "portfolio_value": 9147.800000000001,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 169.89,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-04-26",
+      "portfolio_value": 9116.530000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 169.3,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-04-29",
+      "portfolio_value": 9339.130000000001,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 173.5,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-04-30",
+      "portfolio_value": 9171.12,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 170.33,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-01",
+      "portfolio_value": 9116.530000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 169.3,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-02",
+      "portfolio_value": 9314.220000000001,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 173.03,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-03",
+      "portfolio_value": 9862.77,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 183.38,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-06",
+      "portfolio_value": 9774.260000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 181.71,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-07",
+      "portfolio_value": 9810.830000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 182.4,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-08",
+      "portfolio_value": 9828.850000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 182.74,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-05-09",
+      "portfolio_value": 9925.84,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 184.57,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-05-10",
+      "portfolio_value": 9845.280000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 183.05,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-13",
+      "portfolio_value": 10016.470000000001,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 186.28,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-14",
+      "portfolio_value": 10077.420000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 187.43,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-15",
+      "portfolio_value": 10198.79,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 189.72,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-16",
+      "portfolio_value": 10205.150000000001,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 189.84,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-17",
+      "portfolio_value": 10206.740000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 189.87,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-05-20",
+      "portfolio_value": 10268.75,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 191.04,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-21",
+      "portfolio_value": 10338.18,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 192.35,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-22",
+      "portfolio_value": 10261.330000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 190.9,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-05-23",
+      "portfolio_value": 10048.27,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 186.88,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-05-24",
+      "portfolio_value": 10212.57,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 189.98,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-28",
+      "portfolio_value": 10213.100000000002,
+      "cash": 143.63000000000102,
+      "position": 53,
+      "stock_price": 189.99,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-29",
+      "portfolio_value": 10229.0,
+      "cash": 10229.0,
+      "position": 0,
+      "stock_price": 190.29,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-05-30",
+      "portfolio_value": 10229.0,
+      "cash": 10229.0,
+      "position": 0,
+      "stock_price": 191.29,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-05-31",
+      "portfolio_value": 10229.0,
+      "cash": 10229.0,
+      "position": 0,
+      "stock_price": 192.25,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-03",
+      "portfolio_value": 10229.0,
+      "cash": 10229.0,
+      "position": 0,
+      "stock_price": 194.03,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-04",
+      "portfolio_value": 10229.0,
+      "cash": 10229.0,
+      "position": 0,
+      "stock_price": 194.35,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-05",
+      "portfolio_value": 10229.0,
+      "cash": 43.76000000000022,
+      "position": 52,
+      "stock_price": 195.87,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-06-06",
+      "portfolio_value": 10156.72,
+      "cash": 10156.72,
+      "position": 0,
+      "stock_price": 194.48,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-06-07",
+      "portfolio_value": 10156.72,
+      "cash": 115.32999999999993,
+      "position": 51,
+      "stock_price": 196.89,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-10",
+      "portfolio_value": 9964.45,
+      "cash": 9964.45,
+      "position": 0,
+      "stock_price": 193.12,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-11",
+      "portfolio_value": 9964.45,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 207.15,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-12",
+      "portfolio_value": 10248.61,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 213.07,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-13",
+      "portfolio_value": 10304.77,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 214.24,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-06-14",
+      "portfolio_value": 10220.77,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 212.49,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-17",
+      "portfolio_value": 10421.41,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 216.67,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-06-18",
+      "portfolio_value": 10307.17,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 214.29,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-20",
+      "portfolio_value": 10085.89,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 209.68,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-06-21",
+      "portfolio_value": 9980.77,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 207.49,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-24",
+      "portfolio_value": 10011.97,
+      "cash": 21.25,
+      "position": 48,
+      "stock_price": 208.14,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-25",
+      "portfolio_value": 10056.61,
+      "cash": 10056.61,
+      "position": 0,
+      "stock_price": 209.07,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-06-26",
+      "portfolio_value": 10056.61,
+      "cash": 10056.61,
+      "position": 0,
+      "stock_price": 213.25,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-06-27",
+      "portfolio_value": 10056.61,
+      "cash": 10056.61,
+      "position": 0,
+      "stock_price": 214.1,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-06-28",
+      "portfolio_value": 10056.61,
+      "cash": 10056.61,
+      "position": 0,
+      "stock_price": 210.62,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-01",
+      "portfolio_value": 10056.61,
+      "cash": 10056.61,
+      "position": 0,
+      "stock_price": 216.75,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-02",
+      "portfolio_value": 10056.61,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 220.27,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-03",
+      "portfolio_value": 10114.210000000001,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 221.55,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-05",
+      "portfolio_value": 10329.76,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 226.34,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-08",
+      "portfolio_value": 10396.36,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 227.82,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-09",
+      "portfolio_value": 10435.060000000001,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 228.68,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-10",
+      "portfolio_value": 10628.560000000001,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 232.98,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-11",
+      "portfolio_value": 10385.11,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 227.57,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-07-12",
+      "portfolio_value": 10518.76,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 230.54,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-15",
+      "portfolio_value": 10692.460000000001,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 234.4,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-16",
+      "portfolio_value": 10711.36,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 234.82,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-17",
+      "portfolio_value": 10444.060000000001,
+      "cash": 144.46000000000095,
+      "position": 45,
+      "stock_price": 228.88,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-18",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 224.18,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-07-19",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 224.31,
+      "sentiment": 0.3
+    },
+    {
+      "date": "2024-07-22",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 223.96,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-07-23",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 225.01,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-07-24",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 218.54,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-07-25",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 217.49,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-07-26",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 217.96,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-07-29",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 218.24,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-07-30",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 218.8,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-07-31",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.08,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-08-01",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 218.36,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-02",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 219.86,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-05",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 209.27,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-08-06",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 207.23,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-07",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 209.82,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-08-08",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 213.31,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-08-09",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 216.24,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-12",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 217.53,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-08-13",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 221.27,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-14",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 221.72,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-15",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 224.72,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-16",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.05,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-19",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 225.89,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-20",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.51,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-21",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.4,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-22",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 224.53,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-23",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.84,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-08-26",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 227.18,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-27",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 228.03,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-28",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.49,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-29",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 229.79,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-08-30",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 229.0,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-03",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.77,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-09-04",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 220.85,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-09-05",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.38,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-09-06",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 220.82,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-09-09",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 220.91,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-10",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 220.11,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-11",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.66,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-12",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.77,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-13",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.5,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-16",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 216.32,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-17",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 216.79,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-18",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 220.69,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-19",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 228.87,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-20",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 228.2,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-23",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.47,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-09-24",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 227.37,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-09-25",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.37,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-09-26",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 227.52,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-09-27",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 227.79,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-09-30",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 233.0,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-10-01",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.21,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-02",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.78,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-03",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 225.67,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-04",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.8,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-07",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 221.69,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-08",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 225.77,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-09",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 229.54,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-10",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 229.04,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-11",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 227.55,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-10-14",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 231.3,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-15",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 233.85,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-16",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 231.78,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-17",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 232.15,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-18",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 235.0,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-21",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 236.48,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-22",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 235.86,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-23",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 230.76,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-24",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 230.57,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-25",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 231.41,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-28",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 233.4,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-29",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 233.67,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-10-30",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 230.1,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-10-31",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 225.91,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-11-01",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.91,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-11-04",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.01,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-05",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 223.45,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-06",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 222.72,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-11-07",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 227.48,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-11-08",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 226.96,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-11-11",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 224.23,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-12",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 224.23,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-13",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 225.12,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-14",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 228.22,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-15",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 225.0,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-18",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 228.02,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-11-19",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 228.28,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-20",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 229.0,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-21",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 228.52,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-22",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 229.87,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-25",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 232.87,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-26",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 235.06,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-27",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 234.93,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-11-29",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 237.33,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-02",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 239.59,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-03",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 242.65,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-04",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 243.01,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-05",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 243.04,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-06",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 242.84,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-09",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 246.75,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-10",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 247.77,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-11",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 246.49,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-12",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 247.96,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-13",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 248.13,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-16",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 251.04,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-12-17",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 253.48,
+      "sentiment": -0.8
+    },
+    {
+      "date": "2024-12-18",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 248.05,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-19",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 249.79,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-20",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 254.49,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-23",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 255.27,
+      "sentiment": 0.0
+    },
+    {
+      "date": "2024-12-24",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 258.2,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-26",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 259.02,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-27",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 255.59,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-30",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 252.2,
+      "sentiment": -0.6
+    },
+    {
+      "date": "2024-12-31",
+      "portfolio_value": 10232.560000000001,
+      "cash": 10232.560000000001,
+      "position": 0,
+      "stock_price": 250.42,
+      "sentiment": -0.6
+    }
+  ],
+  "sentiment_scores": [
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.0,
+    0.3,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.0,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    0.3,
+    0.3,
+    0.3,
+    0.0,
+    0.3,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    0.0,
+    -0.8,
+    0.0,
+    0.0,
+    -0.8,
+    0.0,
+    -0.8,
+    -0.8,
+    0.0,
+    -0.8,
+    -0.6,
+    0.0,
+    -0.6,
+    0.0,
+    0.0,
+    -0.6,
+    0.0,
+    -0.6,
+    0.0,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.8,
+    0.0,
+    -0.8,
+    0.0,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    0.0,
+    -0.6,
+    -0.8,
+    0.0,
+    0.0,
+    0.0,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    0.0,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    -0.8,
+    0.0,
+    -0.8,
+    0.0,
+    -0.8,
+    -0.6,
+    -0.6,
+    0.0,
+    0.0,
+    0.0,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    0.0,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.8,
+    -0.8,
+    -0.6,
+    -0.6,
+    -0.6,
+    0.0,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6
+  ],
+  "completed": true
+}
