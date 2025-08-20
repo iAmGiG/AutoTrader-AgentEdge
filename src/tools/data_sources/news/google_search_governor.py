@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 # Global news governor instance (shared across all tool calls)
 _news_governor: Optional[NewsGovernor] = None
 
+
 def initialize_news_governor(governor: NewsGovernor = None):
     """Initialize the global news governor for smart sampling."""
     global _news_governor
     _news_governor = governor or create_balanced_governor()
     logger.info(f"🎯 Initialized news governor: {_news_governor.sampling_strategy} sampling")
+
 
 def get_news_governor() -> NewsGovernor:
     """Get the current news governor, initializing if needed."""
@@ -30,6 +32,7 @@ def get_news_governor() -> NewsGovernor:
     if _news_governor is None:
         initialize_news_governor()
     return _news_governor
+
 
 def fetch_google_news_with_governor(
     symbol: str,
@@ -39,37 +42,37 @@ def fetch_google_news_with_governor(
 ) -> pd.DataFrame:
     """
     Fetch news using smart sampling via NewsGovernor.
-    
+
     This function replaces the standard fetch_google_news in agent tools
     to provide transparent quota management and intelligent caching.
-    
+
     Args:
         symbol: Stock ticker symbol
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD) 
         max_results: Maximum results to return
-        
+
     Returns:
         DataFrame with news articles (may be from cache)
     """
     governor = get_news_governor()
-    
+
     # Convert string date to datetime for governor
     try:
         target_date = datetime.strptime(start_date, '%Y-%m-%d')
     except ValueError:
         logger.warning(f"Invalid date format: {start_date}, using current date")
         target_date = datetime.now()
-    
+
     # Define the actual fetch function for governor
     def actual_fetch(symbol, start_date, end_date):
         return fetch_google_news(symbol, start_date, end_date, max_results)
-    
+
     # Get news through governor (with smart sampling)
     news_data, source = governor.get_news_for_date(
         target_date, symbol, actual_fetch
     )
-    
+
     # Log the source for transparency
     if source.startswith('fresh'):
         logger.info(f"📰 Fresh news: {len(news_data)} articles for {symbol}")
@@ -77,13 +80,15 @@ def fetch_google_news_with_governor(
         logger.info(f"📰 Cached news: {len(news_data)} articles for {symbol} ({source})")
     else:
         logger.info(f"📰 News source: {source} for {symbol}")
-    
+
     return news_data
+
 
 def get_quota_status():
     """Get current quota status from the news governor."""
     governor = get_news_governor()
     return governor.get_quota_status()
+
 
 def print_quota_summary():
     """Print a summary of news governor performance."""
@@ -91,6 +96,8 @@ def print_quota_summary():
     governor.print_quota_summary()
 
 # Convenience function to reset governor (useful for testing)
+
+
 def reset_news_governor():
     """Reset the global news governor (useful for testing)."""
     global _news_governor
@@ -100,25 +107,25 @@ def reset_news_governor():
 if __name__ == "__main__":
     # Test the governor-aware tool
     from src.tools.news_governor import create_conservative_governor
-    
+
     # Test different configurations
     configs = [
         ("Conservative", create_conservative_governor()),
         ("Balanced", create_balanced_governor()),
     ]
-    
+
     for name, governor in configs:
         print(f"\n🧪 Testing {name} Configuration")
         print("-" * 40)
-        
+
         initialize_news_governor(governor)
-        
+
         # Simulate multiple requests over time
         test_dates = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-08', '2024-01-09']
-        
+
         for date in test_dates:
             news_data = fetch_google_news_with_governor('AAPL', date, date)
             print(f"  {date}: {len(news_data)} articles")
-        
+
         print_quota_summary()
         reset_news_governor()

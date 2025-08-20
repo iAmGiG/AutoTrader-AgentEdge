@@ -15,7 +15,7 @@ from autogen_core.tools import FunctionTool
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
 from src.tools.data_sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from src.tools.data_sources.market.market_context_tool import market_context_tool
-from src.tools.data_sources.news.google_search_simple import google_search_simple_tool, google_search_smart_tool, set_news_governor
+from src.tools.data_sources.news.google_search_simple import google_search_smart_tool, set_news_governor
 from config.config_loader import ConfigLoader
 
 # Polygon.io import with fallback (requires optional package)
@@ -186,7 +186,7 @@ vxx_volatility_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 ##################################
 
 # SENTIMENT_AGENT tools - Google Search + VXX Volatility + Market Context
-# Note: Can be switched to google_search_smart_tool for quota optimization
+# Using google_search_smart_tool with NewsGovernor for 80-90% quota optimization
 _sentiment_tools_raw = [
     google_search_smart_tool,  # V1: Google Custom Search API with smart sampling
     vxx_volatility_tool,        # V2: VXX volatility data for market fear sentiment

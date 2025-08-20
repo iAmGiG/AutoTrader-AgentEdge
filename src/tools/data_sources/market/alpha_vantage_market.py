@@ -42,7 +42,7 @@ class AlphaVantageMarketTool:
 
         self.base_url = "https://www.alphavantage.co/query"
         self.logger = logging.getLogger(self.__class__.__name__)
-        
+
         # Initialize unified cache
         self.cache = cache_manager or UnifiedCacheManager()
 
@@ -144,7 +144,7 @@ class AlphaVantageMarketTool:
 
             # Cache the data for future use
             self.cache.set_market_data(symbol, processed_start, processed_end, "alpha_vantage", df)
-            
+
             return df
 
         except Exception as e:

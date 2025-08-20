@@ -8,7 +8,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import json
 import os
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 import logging
 from urllib.parse import urlparse
 import re
@@ -34,94 +34,98 @@ class GoogleSearchNewsCache:
         except ValueError:
             # Fallback for different date formats
             year_month = target_date[:7]  # Assume YYYY-MM-DD format
-        
+
         ticker_dir = os.path.join(self.cache_dir, ticker.upper())
         os.makedirs(ticker_dir, exist_ok=True)
-        
+
         return os.path.join(ticker_dir, f"{year_month}.json")
-    
+
     def normalize_title_for_dedup(self, title):
         """Normalize title for deduplication during append operations"""
         if not title:
             return ""
-        
+
         # Remove common prefixes and suffixes
-        title = re.sub(r'^(BREAKING:|UPDATE:|EXCLUSIVE:|CORRECTING AND REPLACING)[\s/]*', '', title, flags=re.IGNORECASE)
-        title = re.sub(r'\s*[-–—]\s*(MarketWatch|WSJ|Bloomberg|Reuters|CNBC|Barrons).*$', '', title, flags=re.IGNORECASE)
-        
+        title = re.sub(
+            r'^(BREAKING:|UPDATE:|EXCLUSIVE:|CORRECTING AND REPLACING)[\s/]*', '', title, flags=re.IGNORECASE)
+        title = re.sub(
+            r'\s*[-–—]\s*(MarketWatch|WSJ|Bloomberg|Reuters|CNBC|Barrons).*$', '', title, flags=re.IGNORECASE)
+
         # Normalize whitespace and punctuation
         title = ' '.join(title.split())
         title = re.sub(r'[^\w\s\-\']', ' ', title)
         title = ' '.join(title.split())
-        
+
         return title.lower().strip()
 
     def get(self, ticker: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
         """Get cached search results with date filtering to prevent future spill"""
         cache_file = self.get_cache_path(ticker, start_date)
-        
+
         if os.path.exists(cache_file):
             try:
                 with open(cache_file, 'r') as f:
                     data = json.load(f)
-                
+
                 if 'results' in data and data['results']:
                     df = pd.DataFrame(data['results'])
-                    
+
                     # Filter articles to only include those up to the requested date
                     if 'article_date' in df.columns:
                         df['article_date'] = pd.to_datetime(df['article_date'])
                         end_dt = pd.to_datetime(end_date)
                         df = df[df['article_date'] <= end_dt]
-                    
+
                     if not df.empty:
                         if 'published_date' in df.columns:
                             df['published_date'] = pd.to_datetime(df['published_date'])
-                        
-                        logger.info(f"Using cached news for {ticker}: {len(df)} articles up to {end_date}")
+
+                        logger.info(
+                            f"Using cached news for {ticker}: {len(df)} articles up to {end_date}")
                         return df
             except Exception as e:
                 logger.error(f"Error loading news cache {cache_file}: {e}")
-        
+
         # No fallback to nearby dates - monthly cache should have all data for the month
         return None
-    
+
     def _search_nearby_dates(self, ticker: str, target_date: str, end_date: str) -> Optional[pd.DataFrame]:
         """Search for cached news in nearby dates within the same month"""
         try:
             dt = datetime.strptime(target_date, '%Y-%m-%d')
             year_month = dt.strftime('%Y-%m')
-            
+
             ticker_dir = os.path.join(self.cache_dir, ticker.upper())
             month_dir = os.path.join(ticker_dir, year_month)
-            
+
             if not os.path.exists(month_dir):
                 return None
-            
+
             # Look for files within ±7 days
             for days_offset in range(-7, 8):
                 check_date = dt + timedelta(days=days_offset)
                 if check_date.strftime('%Y-%m') != year_month:
                     continue  # Don't cross month boundaries
-                
+
                 cache_file = os.path.join(month_dir, f"{check_date.strftime('%Y-%m-%d')}.json")
                 if os.path.exists(cache_file):
                     try:
                         with open(cache_file, 'r') as f:
                             data = json.load(f)
-                        
+
                         if 'results' in data and data['results']:
                             df = pd.DataFrame(data['results'])
                             if not df.empty and 'published_date' in df.columns:
                                 df['published_date'] = pd.to_datetime(df['published_date'])
-                            
-                            logger.info(f"Using nearby cached news for {ticker} from {check_date.strftime('%Y-%m-%d')} (offset: {days_offset} days)")
+
+                            logger.info(
+                                f"Using nearby cached news for {ticker} from {check_date.strftime('%Y-%m-%d')} (offset: {days_offset} days)")
                             return df
                     except Exception as e:
                         continue
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Error searching nearby dates for {ticker}: {e}")
             return None
@@ -130,21 +134,21 @@ class GoogleSearchNewsCache:
         """Cache search results with set-based deduplication and appending"""
         if data.empty:
             return
-        
+
         # Filter for relevant articles only
         data = data[data.get('relevance_score', 0.0) > 0.0].copy()
         if data.empty:
             logger.info(f"No relevant articles to cache for {ticker}")
             return
-        
+
         cache_file = self.get_cache_path(ticker, start_date)
-        
+
         try:
             # Load existing cache if it exists
             existing_articles = []
             existing_titles = set()
             week_info = {}
-            
+
             if os.path.exists(cache_file):
                 with open(cache_file, 'r') as f:
                     existing_data = json.load(f)
@@ -154,34 +158,35 @@ class GoogleSearchNewsCache:
                     'week_start': existing_data.get('week_start', ''),
                     'week_end': existing_data.get('week_end', '')
                 }
-                
+
                 # Build set of existing normalized titles
                 for article in existing_articles:
                     title = article.get('title', '')
                     normalized = self.normalize_title_for_dedup(title)
                     if normalized:
                         existing_titles.add(normalized)
-            
+
             # Process new articles and deduplicate
             new_articles = []
             duplicates_skipped = 0
-            
+
             for _, row in data.iterrows():
                 article = row.to_dict()
                 title = article.get('title', '')
                 normalized_title = self.normalize_title_for_dedup(title)
-                
+
                 if normalized_title and normalized_title not in existing_titles:
                     # Convert published_date to string if it's a datetime
                     if 'published_date' in article and pd.notna(article['published_date']):
                         if isinstance(article['published_date'], pd.Timestamp):
-                            article['published_date'] = article['published_date'].strftime('%Y-%m-%d %H:%M:%S')
-                    
+                            article['published_date'] = article['published_date'].strftime(
+                                '%Y-%m-%d %H:%M:%S')
+
                     new_articles.append(article)
                     existing_titles.add(normalized_title)
                 else:
                     duplicates_skipped += 1
-            
+
             if new_articles:
                 # Get month info
                 try:
@@ -189,20 +194,21 @@ class GoogleSearchNewsCache:
                     month_key = dt.strftime('%Y-%m')
                 except ValueError:
                     month_key = start_date[:7]  # Assume YYYY-MM-DD format
-                
+
                 # Add article_date to each new article for date filtering
                 for article in new_articles:
                     if 'published_date' in article and not pd.isna(article['published_date']):
-                        article['article_date'] = article['published_date'][:10] if isinstance(article['published_date'], str) else article['published_date']
+                        article['article_date'] = article['published_date'][:10] if isinstance(
+                            article['published_date'], str) else article['published_date']
                     else:
                         article['article_date'] = start_date
-                
+
                 # Combine existing and new articles
                 all_articles = existing_articles + new_articles
-                
+
                 # Sort articles by date for easier lookup
                 all_articles.sort(key=lambda x: x.get('article_date', ''))
-                
+
                 cache_data = {
                     'month': month_key,
                     'ticker': ticker.upper(),
@@ -212,14 +218,16 @@ class GoogleSearchNewsCache:
                     'articles_count': len(all_articles),
                     'methodology': 'monthly_consolidation_with_deduplication'
                 }
-                
+
                 with open(cache_file, 'w') as f:
                     json.dump(cache_data, f, indent=2)
-                
-                logger.info(f"Appended {len(new_articles)} new articles to {ticker} weekly cache (skipped {duplicates_skipped} duplicates)")
+
+                logger.info(
+                    f"Appended {len(new_articles)} new articles to {ticker} weekly cache (skipped {duplicates_skipped} duplicates)")
             else:
-                logger.info(f"No new articles to cache for {ticker} (all {duplicates_skipped} were duplicates)")
-        
+                logger.info(
+                    f"No new articles to cache for {ticker} (all {duplicates_skipped} were duplicates)")
+
         except Exception as e:
             logger.error(f"Error caching news data for {ticker}: {e}")
 
@@ -305,7 +313,7 @@ class GoogleSearchNewsTool:
 
             date_terms = list(set(date_terms))
             date_query = " OR ".join(date_terms)
-            
+
             # Add date exclusions for all searches to prevent future contamination
             target_year = start_dt.year
             if target_year <= 2024:
@@ -419,12 +427,12 @@ class GoogleSearchNewsTool:
                         # Sort articles by their actual publication dates into appropriate cache files
                         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
                         end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-                        
+
                         if len(df) > 0:
                             # Group articles by their actual publication dates
                             articles_by_date = {}
                             articles_without_dates = []
-                            
+
                             for idx, row in df.iterrows():
                                 pub_date = row['published_date']
                                 if pd.notna(pub_date):
@@ -434,7 +442,7 @@ class GoogleSearchNewsTool:
                                     articles_by_date[date_key].append(row.to_dict())
                                 else:
                                     articles_without_dates.append(row.to_dict())
-                            
+
                             # Cache articles in their proper date buckets
                             cached_count = 0
                             for date_key, articles in articles_by_date.items():
@@ -442,21 +450,24 @@ class GoogleSearchNewsTool:
                                     articles_df = pd.DataFrame(articles)
                                     self.cache.set(ticker, date_key, date_key, articles_df, query)
                                     cached_count += len(articles)
-                                    logger.info(f"Cached {len(articles)} articles for {ticker} on {date_key}")
-                            
+                                    logger.info(
+                                        f"Cached {len(articles)} articles for {ticker} on {date_key}")
+
                             # Cache articles without dates in the original requested date
                             if articles_without_dates:
                                 no_date_df = pd.DataFrame(articles_without_dates)
                                 self.cache.set(ticker, start_date, end_date, no_date_df, query)
-                                logger.info(f"Cached {len(articles_without_dates)} articles without dates for {ticker} on {start_date}")
+                                logger.info(
+                                    f"Cached {len(articles_without_dates)} articles without dates for {ticker} on {start_date}")
                                 cached_count += len(articles_without_dates)
-                            
-                            logger.info(f"Total cached: {cached_count} articles across {len(articles_by_date)} dates for {ticker}")
-                            
+
+                            logger.info(
+                                f"Total cached: {cached_count} articles across {len(articles_by_date)} dates for {ticker}")
+
                             # Return articles sorted by relevance for immediate use
                             df = df.sort_values(['relevance_score', 'published_date'],
                                                 ascending=[False, False], na_position='last')
-                            
+
                             logger.info(f"Found {len(df)} articles via Google Search for {ticker}")
                             return df.head(max_results)
                         else:
@@ -478,7 +489,7 @@ class GoogleSearchNewsTool:
         """Extract publication date from Google search result with strict validation"""
 
         snippet = item.get('snippet', '')
-        
+
         # PRIORITY 1: Extract date from BEGINNING of snippet (most reliable)
         if snippet:
             # Look for date at start of snippet (Google's publication date)
@@ -487,7 +498,7 @@ class GoogleSearchNewsTool:
                 r'^(\d{1,2})/(\d{1,2})/(\d{4})',              # "05/21/2025"
                 r'^(\d{4})-(\d{2})-(\d{2})',                   # "2025-05-21"
             ]
-            
+
             for pattern in date_patterns_start:
                 match = re.match(pattern, snippet.strip(), re.IGNORECASE)
                 if match:
@@ -500,16 +511,20 @@ class GoogleSearchNewsTool:
                             else:
                                 # Numeric format
                                 if pattern.startswith('^(\\d{4})'):
-                                    extracted_date = pd.to_datetime(f"{match.group(1)}-{match.group(2)}-{match.group(3)}")
+                                    extracted_date = pd.to_datetime(
+                                        f"{match.group(1)}-{match.group(2)}-{match.group(3)}")
                                 else:
-                                    extracted_date = pd.to_datetime(f"{match.group(1)}/{match.group(2)}/{match.group(3)}")
-                            
+                                    extracted_date = pd.to_datetime(
+                                        f"{match.group(1)}/{match.group(2)}/{match.group(3)}")
+
                             # CRITICAL: Validate date is historical (not future)
                             request_date = datetime.strptime(start_date, '%Y-%m-%d')
-                            if extracted_date <= request_date + timedelta(days=1):  # Allow 1 day tolerance
+                            # Allow 1 day tolerance
+                            if extracted_date <= request_date + timedelta(days=1):
                                 return extracted_date
                             else:
-                                logger.warning(f"Rejecting future article: {extracted_date.strftime('%Y-%m-%d')} > {start_date}")
+                                logger.warning(
+                                    f"Rejecting future article: {extracted_date.strftime('%Y-%m-%d')} > {start_date}")
                                 return None
                     except:
                         continue
@@ -532,7 +547,8 @@ class GoogleSearchNewsTool:
                                     if extracted_date <= request_date + timedelta(days=1):
                                         return extracted_date
                                     else:
-                                        logger.warning(f"Rejecting future pagemap date: {extracted_date.strftime('%Y-%m-%d')} > {start_date}")
+                                        logger.warning(
+                                            f"Rejecting future pagemap date: {extracted_date.strftime('%Y-%m-%d')} > {start_date}")
                                         return None
                                 except:
                                     continue
@@ -542,8 +558,9 @@ class GoogleSearchNewsTool:
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
         end_dt = datetime.strptime(end_date, '%Y-%m-%d')
         fallback_date = start_dt + (end_dt - start_dt) / 2
-        
-        logger.warning(f"No reliable date found for article, using fallback: {fallback_date.strftime('%Y-%m-%d')}")
+
+        logger.warning(
+            f"No reliable date found for article, using fallback: {fallback_date.strftime('%Y-%m-%d')}")
         return fallback_date
 
     def _get_source_from_url(self, url: str) -> str:

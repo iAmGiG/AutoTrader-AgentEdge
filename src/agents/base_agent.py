@@ -359,7 +359,7 @@ class BaseAgent(AssistantAgent, ABC):
                 for col in result_copy.columns:
                     if result_copy[col].dtype == 'datetime64[ns]' or 'datetime' in str(result_copy[col].dtype):
                         result_copy[col] = result_copy[col].astype(str)
-                
+
                 result_dict = result_copy.to_dict(orient='records')
                 # Add context for empty DataFrames to help LLM provide better responses
                 if len(result_dict) == 0:

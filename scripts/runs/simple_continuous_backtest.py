@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 # Import sentiment agents
 from src.agents.sentiment_v0 import V0SentimentAgent
-from src.agents.sentiment_v1 import SentimentV1Agent  
+from src.agents.sentiment_v1 import SentimentV1Agent
 from src.agents.sentiment_v2 import SentimentV2Agent
 from src.agents.sentiment_v3 import SentimentV3Agent
 from src.agents.sentiment_v4 import SentimentV4Agent
@@ -35,8 +35,10 @@ from src.agents.sentiment_v4 import SentimentV4Agent
 from src.tools.cache.unified_cache import UnifiedCacheManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class BacktestCheckpoint:
@@ -54,10 +56,11 @@ class BacktestCheckpoint:
     sentiment_scores: List[float]
     completed: bool = False
 
+
 class SimpleContinuousBacktest:
     """
     Simplified continuous backtesting with checkpoint/resume functionality.
-    
+
     Key Features:
     - One version at a time for clarity
     - Checkpoint every trading day
@@ -65,25 +68,25 @@ class SimpleContinuousBacktest:
     - Version-specific folders
     - Multi-year support
     """
-    
+
     def __init__(self, output_dir: str = "reports/continuous_backtests"):
         self.output_dir = Path(output_dir)
         self.cache_manager = UnifiedCacheManager()
-        
+
         # MACD parameters
         self.fast_period = 12
         self.slow_period = 26
         self.signal_period = 9
-        
+
         # Initialize sentiment agents
         self.agents = {
             'V0': V0SentimentAgent(),
             'V1': SentimentV1Agent(),
-            'V2': SentimentV2Agent(), 
+            'V2': SentimentV2Agent(),
             'V3': SentimentV3Agent(),
             'V4': SentimentV4Agent(enable_obfuscation=True)
         }
-        
+
         logger.info("✅ Simple Continuous Backtest initialized")
 
     def get_version_dir(self, version: str) -> Path:
@@ -105,23 +108,25 @@ class SimpleContinuousBacktest:
     def load_checkpoint(self, version: str, symbol: str, year: int) -> Optional[BacktestCheckpoint]:
         """Load existing checkpoint if available."""
         checkpoint_path = self.get_checkpoint_path(version, symbol, year)
-        
+
         if checkpoint_path.exists():
             try:
                 with open(checkpoint_path, 'r') as f:
                     data = json.load(f)
                     checkpoint = BacktestCheckpoint(**data)
-                    logger.info(f"📂 Loaded checkpoint: {version} {symbol} {year} (last: {checkpoint.last_date})")
+                    logger.info(
+                        f"📂 Loaded checkpoint: {version} {symbol} {year} (last: {checkpoint.last_date})")
                     return checkpoint
             except Exception as e:
                 logger.warning(f"⚠️ Could not load checkpoint: {e}")
-        
+
         return None
 
     def save_checkpoint(self, checkpoint: BacktestCheckpoint):
         """Save checkpoint to disk."""
-        checkpoint_path = self.get_checkpoint_path(checkpoint.version, checkpoint.symbol, checkpoint.year)
-        
+        checkpoint_path = self.get_checkpoint_path(
+            checkpoint.version, checkpoint.symbol, checkpoint.year)
+
         try:
             with open(checkpoint_path, 'w') as f:
                 json.dump(checkpoint.__dict__, f, indent=2, default=str)
@@ -132,10 +137,10 @@ class SimpleContinuousBacktest:
         """Calculate MACD indicator."""
         ema_fast = prices.ewm(span=self.fast_period).mean()
         ema_slow = prices.ewm(span=self.slow_period).mean()
-        
+
         macd_line = ema_fast - ema_slow
         signal_line = macd_line.ewm(span=self.signal_period).mean()
-        
+
         return {
             'macd': macd_line,
             'signal': signal_line,
@@ -146,14 +151,14 @@ class SimpleContinuousBacktest:
         """Generate MACD crossover signals."""
         macd = macd_data['macd']
         signal = macd_data['signal']
-        
+
         bullish_cross = (macd > signal) & (macd.shift(1) <= signal.shift(1))
         bearish_cross = (macd < signal) & (macd.shift(1) >= signal.shift(1))
-        
+
         signals = pd.Series(0, index=macd.index)
         signals[bullish_cross] = 1
         signals[bearish_cross] = -1
-        
+
         return signals
 
     async def get_sentiment(self, agent, symbol: str, date_str: str) -> float:
@@ -161,72 +166,74 @@ class SimpleContinuousBacktest:
         try:
             query = f"{symbol} on {date_str}"
             response = agent.generate_reply(query)
-            
+
             if asyncio.iscoroutine(response):
                 response = await response
-            
+
             if isinstance(response, str):
                 data = json.loads(response)
             else:
                 data = response
-            
+
             sentiment = data.get('sentiment', 0.0) or data.get('score', 0.0)
-            
+
             if isinstance(sentiment, str):
                 sentiment = float(sentiment)
-                
+
             return sentiment
-            
+
         except Exception as e:
             logger.warning(f"⚠️ Sentiment error for {symbol} on {date_str}: {e}")
             return 0.0  # Neutral fallback
 
-    async def run_continuous_backtest(self, version: str, symbol: str, year: int, 
-                                    initial_cash: float = 10000.0) -> Dict[str, Any]:
+    async def run_continuous_backtest(self, version: str, symbol: str, year: int,
+                                      initial_cash: float = 10000.0) -> Dict[str, Any]:
         """
         Run continuous backtest for one version/symbol/year with checkpoints.
-        
+
         Args:
             version: V0, V1, V2, V3, or V4
             symbol: Stock symbol (e.g., 'AAPL')
             year: Year to backtest (e.g., 2024)
             initial_cash: Starting cash amount
         """
-        
+
         logger.info(f"🚀 Starting continuous backtest: {version} {symbol} {year}")
-        
+
         # Check if already completed
         results_path = self.get_results_path(version, symbol, year)
         if results_path.exists():
             logger.info(f"✅ {version} {symbol} {year} already completed")
             with open(results_path, 'r') as f:
                 return json.load(f)
-        
+
         # Load checkpoint or start fresh
         checkpoint = self.load_checkpoint(version, symbol, year)
-        
+
         if checkpoint and checkpoint.completed:
             logger.info(f"✅ {version} {symbol} {year} completed from checkpoint")
             return self._load_final_results(version, symbol, year)
-        
+
         # Get market data for the year
         start_date = f"{year}-01-01"
         end_date = f"{year}-12-31"
-        
+
         market_data = self.cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
         if market_data is None or market_data.empty:
-            market_data = self.cache_manager.get_market_data(symbol, start_date, end_date, "alpha_vantage")
-        
+            market_data = self.cache_manager.get_market_data(
+                symbol, start_date, end_date, "alpha_vantage")
+
         if market_data is None or market_data.empty:
             raise ValueError(f"No market data available for {symbol} {year}")
-        
+
         # Calculate MACD signals
         macd_data = self.calculate_macd(market_data['close'])
         macd_signals = self.generate_macd_signals(macd_data)
-        
+
         logger.info(f"📊 Market data: {len(market_data)} trading days")
-        logger.info(f"📈 MACD signals: {(macd_signals == 1).sum()} buy, {(macd_signals == -1).sum()} sell")
-        
+        logger.info(
+            f"📈 MACD signals: {(macd_signals == 1).sum()} buy, {(macd_signals == -1).sum()} sell")
+
         # Initialize or resume state
         if checkpoint:
             # Resume from checkpoint
@@ -237,13 +244,14 @@ class SimpleContinuousBacktest:
             trades = checkpoint.trades
             daily_values = checkpoint.daily_values
             sentiment_scores = checkpoint.sentiment_scores
-            
+
             # Find resume point
             last_date = pd.to_datetime(checkpoint.last_date)
             resume_data = market_data[market_data.index > last_date]
-            
-            logger.info(f"🔄 Resuming from {checkpoint.last_date} ({len(resume_data)} days remaining)")
-            
+
+            logger.info(
+                f"🔄 Resuming from {checkpoint.last_date} ({len(resume_data)} days remaining)")
+
         else:
             # Start fresh
             cash = initial_cash
@@ -254,24 +262,24 @@ class SimpleContinuousBacktest:
             daily_values = []
             sentiment_scores = []
             resume_data = market_data
-            
+
             logger.info(f"🆕 Starting fresh backtest")
-        
+
         # Get agent
         agent = self.agents[version]
         total_days = len(resume_data)
         processed_days = 0
-        
+
         # Daily trading loop
         for date, row in resume_data.iterrows():
             current_price = row['close']
             date_str = date.strftime('%Y-%m-%d')
-            
+
             # Get signals
             macd_signal = macd_signals.get(date, 0)
             sentiment_score = await self.get_sentiment(agent, symbol, date_str)
             sentiment_scores.append(sentiment_score)
-            
+
             # Trading logic: MACD + Sentiment
             if position == 0 and macd_signal == 1 and sentiment_score >= 0:
                 # Enter long position
@@ -281,7 +289,7 @@ class SimpleContinuousBacktest:
                     cash -= shares * current_price
                     entry_price = current_price
                     entry_date = date_str
-                    
+
                     trades.append({
                         'date': date_str,
                         'action': 'BUY',
@@ -290,14 +298,15 @@ class SimpleContinuousBacktest:
                         'sentiment': sentiment_score,
                         'macd_signal': macd_signal
                     })
-                    
-                    logger.info(f"📈 BUY: {shares} shares at ${current_price:.2f} (sentiment: {sentiment_score:.3f})")
-            
+
+                    logger.info(
+                        f"📈 BUY: {shares} shares at ${current_price:.2f} (sentiment: {sentiment_score:.3f})")
+
             elif position > 0 and (macd_signal == -1 or sentiment_score < -0.5):
                 # Exit position
                 cash += position * current_price
                 exit_return = (current_price - entry_price) / entry_price * 100
-                
+
                 trades.append({
                     'date': date_str,
                     'action': 'SELL',
@@ -308,13 +317,14 @@ class SimpleContinuousBacktest:
                     'return_pct': exit_return,
                     'entry_date': entry_date
                 })
-                
-                logger.info(f"📉 SELL: {position} shares at ${current_price:.2f} ({exit_return:+.2f}% return)")
-                
+
+                logger.info(
+                    f"📉 SELL: {position} shares at ${current_price:.2f} ({exit_return:+.2f}% return)")
+
                 position = 0
                 entry_price = 0
                 entry_date = None
-            
+
             # Record daily portfolio value
             portfolio_value = cash + (position * current_price)
             daily_values.append({
@@ -325,9 +335,9 @@ class SimpleContinuousBacktest:
                 'stock_price': current_price,
                 'sentiment': sentiment_score
             })
-            
+
             processed_days += 1
-            
+
             # Save checkpoint every 3 days (more frequent for testing)
             if processed_days % 3 == 0:
                 checkpoint = BacktestCheckpoint(
@@ -344,13 +354,14 @@ class SimpleContinuousBacktest:
                     sentiment_scores=sentiment_scores
                 )
                 self.save_checkpoint(checkpoint)
-                
+
                 progress = (processed_days / total_days) * 100
-                logger.info(f"💾 Checkpoint saved: {processed_days}/{total_days} days ({progress:.1f}%)")
-        
+                logger.info(
+                    f"💾 Checkpoint saved: {processed_days}/{total_days} days ({progress:.1f}%)")
+
         # Calculate final metrics
         metrics = self._calculate_metrics(daily_values, trades, market_data)
-        
+
         # Create final results
         results = {
             'metadata': {
@@ -365,7 +376,8 @@ class SimpleContinuousBacktest:
             },
             'performance': metrics,
             'trades': trades,
-            'daily_values': daily_values[-50:] if len(daily_values) > 50 else daily_values,  # Last 50 days
+            # Last 50 days
+            'daily_values': daily_values[-50:] if len(daily_values) > 50 else daily_values,
             'sentiment_stats': {
                 'mean': np.mean(sentiment_scores),
                 'std': np.std(sentiment_scores),
@@ -373,11 +385,11 @@ class SimpleContinuousBacktest:
                 'max': np.max(sentiment_scores)
             }
         }
-        
+
         # Save final results
         with open(results_path, 'w') as f:
             json.dump(results, f, indent=2, default=str)
-        
+
         # Mark checkpoint as completed
         final_checkpoint = BacktestCheckpoint(
             version=version,
@@ -394,31 +406,32 @@ class SimpleContinuousBacktest:
             completed=True
         )
         self.save_checkpoint(final_checkpoint)
-        
-        logger.info(f"🎉 {version} {symbol} {year} completed: {metrics['total_return']:+.2f}% return")
-        
+
+        logger.info(
+            f"🎉 {version} {symbol} {year} completed: {metrics['total_return']:+.2f}% return")
+
         return results
 
-    def _calculate_metrics(self, daily_values: List[Dict], trades: List[Dict], 
-                          market_data: pd.DataFrame) -> Dict[str, Any]:
+    def _calculate_metrics(self, daily_values: List[Dict], trades: List[Dict],
+                           market_data: pd.DataFrame) -> Dict[str, Any]:
         """Calculate performance metrics."""
-        
+
         if not daily_values:
             return {'error': 'No daily values'}
-        
+
         initial_value = daily_values[0]['portfolio_value']
         final_value = daily_values[-1]['portfolio_value']
         total_return = ((final_value - initial_value) / initial_value) * 100
-        
+
         # Buy and hold comparison
         initial_price = market_data.iloc[0]['close']
         final_price = market_data.iloc[-1]['close']
         buy_hold_return = ((final_price - initial_price) / initial_price) * 100
-        
+
         # Trade analysis
         profitable_trades = [t for t in trades if t.get('return_pct', 0) > 0]
         losing_trades = [t for t in trades if t.get('return_pct', 0) < 0]
-        
+
         return {
             'total_return': round(total_return, 2),
             'total_return_pct': round(total_return, 2),
@@ -441,7 +454,7 @@ class SimpleContinuousBacktest:
     def get_status_summary(self) -> Dict[str, Any]:
         """Get status summary of all backtests."""
         summary = {}
-        
+
         for version in ['V0', 'V1', 'V2', 'V3', 'V4']:
             version_dir = self.get_version_dir(version)
             version_status = {
@@ -449,15 +462,15 @@ class SimpleContinuousBacktest:
                 'in_progress': [],
                 'not_started': []
             }
-            
+
             # Check for checkpoint and result files
             for file_path in version_dir.glob("*_checkpoint.json"):
                 try:
                     with open(file_path, 'r') as f:
                         checkpoint = json.load(f)
-                    
+
                     test_id = f"{checkpoint['symbol']}_{checkpoint['year']}"
-                    
+
                     if checkpoint.get('completed', False):
                         version_status['completed'].append(test_id)
                     else:
@@ -465,36 +478,37 @@ class SimpleContinuousBacktest:
                             'test_id': test_id,
                             'last_date': checkpoint['last_date']
                         })
-                        
+
                 except Exception as e:
                     logger.warning(f"Could not read checkpoint {file_path}: {e}")
-            
+
             summary[version] = version_status
-        
+
         return summary
+
 
 async def main():
     """Main execution with CLI arguments."""
-    
+
     parser = argparse.ArgumentParser(description='Simple Continuous Backtesting')
-    parser.add_argument('--version', choices=['V0', 'V1', 'V2', 'V3', 'V4'], 
-                       help='Version to test')
+    parser.add_argument('--version', choices=['V0', 'V1', 'V2', 'V3', 'V4'],
+                        help='Version to test')
     parser.add_argument('--symbol', default='AAPL', help='Symbol to test')
     parser.add_argument('--year', type=int, default=2024, help='Year to test')
     parser.add_argument('--cash', type=float, default=10000.0, help='Initial cash')
     parser.add_argument('--status', action='store_true', help='Show status summary')
     parser.add_argument('--all-versions', action='store_true', help='Run all V0-V4 versions')
-    
+
     args = parser.parse_args()
-    
+
     backtest = SimpleContinuousBacktest()
-    
+
     if args.status:
         # Show status summary
         summary = backtest.get_status_summary()
         print("\n📊 BACKTEST STATUS SUMMARY")
         print("=" * 50)
-        
+
         for version, status in summary.items():
             print(f"\n{version}:")
             if status['completed']:
@@ -504,17 +518,17 @@ async def main():
                     print(f"  🔄 In Progress: {ip['test_id']} (last: {ip['last_date']})")
             if not status['completed'] and not status['in_progress']:
                 print(f"  ⏳ Not started")
-        
+
         return
-    
+
     if args.all_versions:
         # Run all versions sequentially
         versions = ['V0', 'V1', 'V2', 'V3', 'V4']
         results = {}
-        
+
         print(f"\n🚀 Running all versions: {args.symbol} {args.year}")
         print("=" * 60)
-        
+
         for version in versions:
             try:
                 print(f"\n📈 Starting {version}...")
@@ -522,15 +536,15 @@ async def main():
                     version, args.symbol, args.year, args.cash
                 )
                 results[version] = result['performance']
-                
+
                 total_return = result['performance']['total_return']
                 num_trades = result['performance']['num_trades']
                 print(f"✅ {version}: {total_return:+.2f}% return, {num_trades} trades")
-                
+
             except Exception as e:
                 print(f"❌ {version} failed: {e}")
                 results[version] = {'error': str(e)}
-        
+
         # Print comparison
         print(f"\n📊 FINAL COMPARISON: {args.symbol} {args.year}")
         print("-" * 50)
@@ -541,22 +555,23 @@ async def main():
                 print(f"{version}: {ret:+6.2f}% | {trades:2d} trades")
             else:
                 print(f"{version}: ERROR")
-        
+
     elif args.version:
         # Run single version
         try:
             result = await backtest.run_continuous_backtest(
                 args.version, args.symbol, args.year, args.cash
             )
-            
+
             print(f"\n🎉 {args.version} {args.symbol} {args.year} completed!")
             print(f"Return: {result['performance']['total_return']:+.2f}%")
             print(f"Trades: {result['performance']['num_trades']}")
-            print(f"Results saved to: {backtest.get_results_path(args.version, args.symbol, args.year)}")
-            
+            print(
+                f"Results saved to: {backtest.get_results_path(args.version, args.symbol, args.year)}")
+
         except Exception as e:
             print(f"❌ {args.version} failed: {e}")
-    
+
     else:
         print("Please specify --version, --all-versions, or --status")
 

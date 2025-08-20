@@ -87,6 +87,7 @@ from datetime import datetime
 # Global news governor (optional, for smart sampling)
 _news_governor = None
 
+
 def set_news_governor(governor):
     """Set a global news governor for smart sampling."""
     global _news_governor
@@ -96,6 +97,7 @@ def set_news_governor(governor):
     else:
         logger.info("📰 NewsGovernor disabled")
 
+
 def fetch_google_news_smart(
     symbol: str,
     start_date: str,
@@ -104,34 +106,35 @@ def fetch_google_news_smart(
 ) -> pd.DataFrame:
     """
     Fetch news with optional smart sampling via NewsGovernor.
-    
+
     If a NewsGovernor is set globally, this will use smart sampling.
     Otherwise, it falls back to direct API calls.
     """
     global _news_governor
-    
+
     if _news_governor is not None:
         # Use smart sampling
         try:
             target_date = datetime.strptime(start_date, '%Y-%m-%d')
         except ValueError:
             target_date = datetime.now()
-        
+
         # Define fetch function for governor
         def actual_fetch(symbol, start_date, end_date):
             return fetch_google_news(symbol, start_date, end_date, max_results)
-        
+
         # Get news through governor
         news_data, source = _news_governor.get_news_for_date(
             target_date, symbol, actual_fetch
         )
-        
+
         logger.debug(f"📰 Smart sampling: {len(news_data)} articles ({source})")
         return news_data
-    
+
     else:
         # Direct API call (original behavior)
         return fetch_google_news(symbol, start_date, end_date, max_results)
+
 
 # Create smart sampling tool
 google_search_smart_tool = FunctionTool(
@@ -144,4 +147,5 @@ google_search_smart_tool = FunctionTool(
 )
 
 # Export both versions
-__all__ = ['fetch_google_news', 'fetch_google_news_smart', 'google_search_simple_tool', 'google_search_smart_tool', 'set_news_governor']
+__all__ = ['fetch_google_news', 'fetch_google_news_smart',
+           'google_search_simple_tool', 'google_search_smart_tool', 'set_news_governor']
