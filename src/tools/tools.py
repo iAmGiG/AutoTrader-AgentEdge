@@ -16,6 +16,7 @@ from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarke
 from src.tools.data_sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from src.tools.data_sources.market.market_context_tool import market_context_tool
 from src.tools.data_sources.news.google_search_simple import google_search_smart_tool, set_news_governor
+from src.tools.data_sources.news.hierarchical_news_tool import fetch_hierarchical_news
 from config.config_loader import ConfigLoader
 
 # Polygon.io import with fallback (requires optional package)
@@ -182,14 +183,26 @@ vxx_volatility_tool = FunctionTool(
 vxx_volatility_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
 
 ##################################
+# Hierarchical News Tool for V4 Sentiment
+##################################
+
+hierarchical_news_tool = FunctionTool(
+    func=fetch_hierarchical_news,
+    name="fetch_hierarchical_news",
+    description="Fetch hierarchical adaptive news mix for V4 sentiment analysis. Provides balanced company-specific, sector ETF, and broad market news for intelligent sentiment reasoning."
+)
+hierarchical_news_tool.agent_types = [SENTIMENT_AGENT]
+
+##################################
 # Tool Collections by Agent Type
 ##################################
 
-# SENTIMENT_AGENT tools - Google Search + VXX Volatility + Market Context
-# Using google_search_smart_tool with NewsGovernor for 80-90% quota optimization
+# SENTIMENT_AGENT tools - Multiple approaches for V0-V4 framework
+# V1: Google Search + smart sampling, V2: VXX volatility, V4: Hierarchical news
 _sentiment_tools_raw = [
-    google_search_smart_tool,  # V1: Google Custom Search API with smart sampling
+    google_search_smart_tool,   # V1: Google Custom Search API with smart sampling  
     vxx_volatility_tool,        # V2: VXX volatility data for market fear sentiment
+    hierarchical_news_tool,     # V4: Hierarchical adaptive news (Direct + Sector + Market)
     market_context_tool,        # V4: SPY/QQQ market context for enhanced sentiment
 ]
 SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
