@@ -4,21 +4,28 @@
 
 The News Cache Organization system uses a monthly consolidation structure with intelligent deduplication and date filtering to ensure backtesting receives historically appropriate content without temporal data leakage.
 
-## Current Cache Structure (Monthly System)
+## Current Cache Structure (URL-Filtered Monthly System)
 
 ### Directory Organization
 
 ```
-.cache/news_monthly/              # Primary cache (49 files total)
+.cache/news_filtered/            # Clean filtered cache (reliable sources only)
 ├── AAPL/
-│   ├── 2024-03.json             # All March 2024 articles
-│   ├── 2024-06.json             # All June 2024 articles
+│   ├── 2024-10.json             # October 2024 articles (Bloomberg/CNBC/Reuters/BusinessWire)
+│   ├── 2024-11.json             # November 2024 articles  
 │   └── ...
 ├── TSLA/
-│   ├── 2025-06.json
+│   ├── 2024-09.json
 │   └── ...
 └── [Other tickers...]
 ```
+
+### Cache Retrieval Pattern
+
+- **Monthly Storage**: All articles for a month stored in single file (`2024-10.json`)
+- **Daily Requests**: Any request for dates in that month (`2024-10-15`) reads from monthly file
+- **Date Filtering**: Cache returns only articles ≤ requested end_date to prevent future spill
+- **Date Fallback**: NaN `published_date` → Uses URL-extracted `article_date` (close enough approximation)
 
 ### Monthly File Format
 

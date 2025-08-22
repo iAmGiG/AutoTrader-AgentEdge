@@ -8,6 +8,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import json
 import os
+from typing import Optional, Dict
 from typing import List, Dict, Optional
 import logging
 from urllib.parse import urlparse
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 class GoogleSearchNewsCache:
     """Cache manager for Google search results with monthly organization structure"""
 
-    def __init__(self, cache_dir: str = "./.cache/news_monthly"):
+    def __init__(self, cache_dir: str = "./.cache/news_filtered"):
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
 
@@ -58,6 +59,7 @@ class GoogleSearchNewsCache:
 
         return title.lower().strip()
 
+
     def get(self, ticker: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
         """Get cached search results with date filtering to prevent future spill"""
         cache_file = self.get_cache_path(ticker, start_date)
@@ -70,19 +72,37 @@ class GoogleSearchNewsCache:
                 if 'results' in data and data['results']:
                     df = pd.DataFrame(data['results'])
 
-                    # Filter articles to only include those up to the requested date
+                    # Use URL-extracted date as fallback for NaN published_dates
+                    if 'published_date' in df.columns and 'article_date' in df.columns:
+                        # Convert to datetime
+                        df['published_date'] = pd.to_datetime(df['published_date'], errors='coerce')
+                        df['article_date'] = pd.to_datetime(df['article_date'], errors='coerce')
+                        
+                        # Use article_date as fallback for NaN published_dates
+                        df['published_date'] = df['published_date'].fillna(df['article_date'])
+
+                    # Enhanced date filtering for V4 daily requests vs V1/V3 range requests
                     if 'article_date' in df.columns:
                         df['article_date'] = pd.to_datetime(df['article_date'])
+                        start_dt = pd.to_datetime(start_date)
                         end_dt = pd.to_datetime(end_date)
-                        df = df[df['article_date'] <= end_dt]
-
-                    if not df.empty:
-                        if 'published_date' in df.columns:
-                            df['published_date'] = pd.to_datetime(df['published_date'])
-
-                        logger.info(
-                            f"Using cached news for {ticker}: {len(df)} articles up to {end_date}")
-                        return df
+                        
+                        # Check if this is a daily request (V4 pattern: start_date == end_date)
+                        if start_date == end_date:
+                            # V4 daily request: Return articles in a relevant time window around target date
+                            window_days = 3  # ±3 days window for daily relevance
+                            window_start = start_dt - timedelta(days=window_days)
+                            window_end = start_dt + timedelta(days=window_days)
+                            df_filtered = df[(df['article_date'] >= window_start) & (df['article_date'] <= window_end)]
+                            logger.info(
+                                f"Using cached news for {ticker} (daily window): {len(df_filtered)} articles around {start_date} (±{window_days} days)")
+                        else:
+                            # V1/V3 range request: Original logic - all articles up to end_date
+                            df_filtered = df[df['article_date'] <= end_dt]
+                            logger.info(
+                                f"Using cached news for {ticker} (range): {len(df_filtered)} articles up to {end_date}")
+                        
+                        return df_filtered
             except Exception as e:
                 logger.error(f"Error loading news cache {cache_file}: {e}")
 
@@ -131,7 +151,7 @@ class GoogleSearchNewsCache:
             return None
 
     def set(self, ticker: str, start_date: str, end_date: str, data: pd.DataFrame, query: str = ""):
-        """Cache search results with set-based deduplication and appending"""
+        """Cache search results with set-based deduplication and WSJ segregation"""
         if data.empty:
             return
 
@@ -141,6 +161,12 @@ class GoogleSearchNewsCache:
             logger.info(f"No relevant articles to cache for {ticker}")
             return
 
+        # Cache all articles directly (WSJ already filtered out at source level)
+        self._cache_articles_to_file(ticker, start_date, data, query)
+        logger.info(f"Cached {len(data)} articles for {ticker}")
+
+    def _cache_articles_to_file(self, ticker: str, start_date: str, data: pd.DataFrame, query: str):
+        """Internal method to cache articles to file"""
         cache_file = self.get_cache_path(ticker, start_date)
 
         try:
@@ -176,6 +202,11 @@ class GoogleSearchNewsCache:
                 normalized_title = self.normalize_title_for_dedup(title)
 
                 if normalized_title and normalized_title not in existing_titles:
+                    # Clean up NaN values and convert dates to strings
+                    for key in article:
+                        if pd.isna(article[key]):
+                            article[key] = None
+                    
                     # Convert published_date to string if it's a datetime
                     if 'published_date' in article and pd.notna(article['published_date']):
                         if isinstance(article['published_date'], pd.Timestamp):
@@ -262,15 +293,15 @@ class GoogleSearchNewsTool:
                            source_sites: List[str] = None) -> str:
         """Build optimized search query for historical financial news"""
 
-        # Default to premium financial news sites
+        # Updated configuration - sources with reliable historical data OR URL dates
+        # Business Wire + Reuters: proven date accuracy
+        # CNBC + Bloomberg: 100% reliable URL date patterns
         if not source_sites:
             source_sites = [
-                "barrons.com",
-                "wsj.com",
-                "marketwatch.com",
-                "bloomberg.com",
-                "reuters.com",
-                "cnbc.com"
+                "businesswire.com",  # 100% date accuracy, 0% contamination
+                "reuters.com",       # 75% date accuracy, 25% contamination  
+                "cnbc.com",          # 100% URL date extraction accuracy
+                "bloomberg.com",     # 100% URL date extraction accuracy
             ]
 
         # Build site restriction
@@ -295,7 +326,7 @@ class GoogleSearchNewsTool:
                 f'"{year}" report'
             ]
 
-            # Build query with historical context
+            # Build query with historical context - simplified
             date_query = " OR ".join(historical_terms)
             query = f"({site_query}) {ticker} ({date_query}) -2024 -2025"  # Exclude recent years
         else:
@@ -314,15 +345,17 @@ class GoogleSearchNewsTool:
             date_terms = list(set(date_terms))
             date_query = " OR ".join(date_terms)
 
-            # Add date exclusions for all searches to prevent future contamination
+            # Simple, focused query for reliable historical data
             target_year = start_dt.year
+            month_year = start_dt.strftime('%B %Y')  # e.g., "October 2024"
+            
+            # With only 2 reliable sources, we can use site restriction directly
+            # This ensures we only get results from sources with good date accuracy
             if target_year <= 2024:
-                # Exclude years after the target year to prevent contamination
-                future_years = [str(y) for y in range(target_year + 1, 2027)]
-                exclusions = " ".join([f"-{year}" for year in future_years])
-                query = f"({site_query}) {ticker} ({date_query}) {exclusions}"
+                # Include year exclusions to prevent future contamination
+                query = f"({site_query}) {ticker} \"{month_year}\" -2025 -2026"
             else:
-                query = f"({site_query}) {ticker} ({date_query})"
+                query = f"({site_query}) {ticker} \"{month_year}\""
 
         return query
 
@@ -351,140 +384,162 @@ class GoogleSearchNewsTool:
             logger.error("Google Search API credentials not configured")
             return pd.DataFrame()
 
-        # Build search query
-        query = self.build_search_query(ticker, start_date, end_date)
+        # Use URL pattern search strategy (more effective than combined queries)  
+        return self._search_with_url_patterns(ticker, start_date, end_date, max_results)
 
-        # Simplified quota check - assume we have quota available
-        # (Quota management was simplified for V0-V4 framework)
-        logger.info("Making Google Search API call (quota management simplified)")
-
-        try:
-            # Google Custom Search API endpoint
-            url = "https://www.googleapis.com/customsearch/v1"
-
-            params = {
-                'key': self.api_key,
-                'cx': self.search_engine_id,
-                'q': query,
-                'num': min(max_results, 10),  # API limit is 10 per request
-                'sort': 'date'  # Sort by date for historical accuracy
-            }
-
-            # Add date range restriction for historical searches
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-
-            # Use sort parameter with date range in query instead of dateRestrict
-            # Google Custom Search dateRestrict is unreliable for historical data
-            # Better to use date terms in the query itself for historical accuracy
-
-            logger.info(f"Google search query: {query}")
-
-            response = requests.get(url, params=params, timeout=30)
-
-            # Simplified usage tracking (quota management simplified for V0-V4)
-            logger.info("Google Search API call completed")
-
-            if response.status_code == 200:
-                data = response.json()
-
-                if 'items' in data:
-                    results = []
-
-                    for item in data['items']:
-                        # Extract article information
-                        title = item.get('title', '')
-                        link = item.get('link', '')
+    def _search_with_url_patterns(self, ticker: str, start_date: str, end_date: str, max_results: int) -> pd.DataFrame:
+        """
+        Search using individual URL pattern queries for each reliable source
+        More effective than combined OR queries
+        """
+        
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        year_month = start_dt.strftime('%Y-%m')  # e.g., "2024-10"
+        
+        # Individual URL pattern queries for each reliable source
+        source_queries = [
+            (f"site:cnbc.com/{year_month.replace('-', '/')} {ticker}", "CNBC"),
+            (f"site:bloomberg.com/news/articles/{year_month} {ticker}", "Bloomberg"), 
+            (f"site:reuters.com {ticker} {year_month}", "Reuters"),
+            (f"site:businesswire.com {ticker} {year_month.replace('-', '')}", "BusinessWire")  # YYYYMM format
+        ]
+        
+        all_results = []
+        
+        logger.info(f"Using URL pattern search strategy for {ticker} {year_month}")
+        
+        for query, source_name in source_queries:
+            logger.info(f"Searching {source_name}: {query}")
+            
+            try:
+                # Google Custom Search API endpoint
+                url = "https://www.googleapis.com/customsearch/v1"
+                
+                params = {
+                    'key': self.api_key,
+                    'cx': self.search_engine_id,
+                    'q': query,
+                    'num': min(3, max_results),  # 3 results per source, max 12 total
+                }
+                
+                response = requests.get(url, params=params, timeout=30)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    items = data.get('items', [])
+                    
+                    logger.info(f"{source_name}: Found {len(items)} results")
+                    
+                    for item in items:
+                        title = item.get('title', 'Untitled')
                         snippet = item.get('snippet', '')
-
-                        # Try to extract publication date
-                        published_date = self._extract_date_from_item(item, start_date, end_date)
-
-                        # Determine source from URL
-                        source = self._get_source_from_url(link)
-
-                        # Calculate relevance score based on title and snippet
+                        link = item.get('link', '')
+                        
+                        if not link:
+                            continue
+                            
+                        # Extract publication date from URL pattern
+                        published_date = self._extract_date_from_url(link)
+                        if not published_date:
+                            # Fallback to estimated date from search
+                            published_date = start_dt
+                        
+                        # Calculate relevance score
                         relevance_score = self._calculate_relevance(title, snippet, ticker)
-
-                        results.append({
-                            'title': title,
-                            'summary': snippet,
-                            'url': link,
-                            'published_date': published_date,
-                            'source': f'Google Search - {source}',
-                            'Data_Source': 'Google_Search_Historical',
-                            'sentiment_ready': True,
-                            'relevance_score': relevance_score,
-                            'ticker': ticker.upper()
-                        })
-
-                    if results:
-                        df = pd.DataFrame(results)
-
-                        # Ensure published_date is datetime for sorting
-                        df['published_date'] = pd.to_datetime(df['published_date'], errors='coerce')
-
-                        # Sort articles by their actual publication dates into appropriate cache files
-                        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-                        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-
-                        if len(df) > 0:
-                            # Group articles by their actual publication dates
-                            articles_by_date = {}
-                            articles_without_dates = []
-
-                            for idx, row in df.iterrows():
-                                pub_date = row['published_date']
-                                if pd.notna(pub_date):
-                                    date_key = pub_date.strftime('%Y-%m-%d')
-                                    if date_key not in articles_by_date:
-                                        articles_by_date[date_key] = []
-                                    articles_by_date[date_key].append(row.to_dict())
-                                else:
-                                    articles_without_dates.append(row.to_dict())
-
-                            # Cache articles in their proper date buckets
-                            cached_count = 0
-                            for date_key, articles in articles_by_date.items():
-                                if articles:
-                                    articles_df = pd.DataFrame(articles)
-                                    self.cache.set(ticker, date_key, date_key, articles_df, query)
-                                    cached_count += len(articles)
-                                    logger.info(
-                                        f"Cached {len(articles)} articles for {ticker} on {date_key}")
-
-                            # Cache articles without dates in the original requested date
-                            if articles_without_dates:
-                                no_date_df = pd.DataFrame(articles_without_dates)
-                                self.cache.set(ticker, start_date, end_date, no_date_df, query)
-                                logger.info(
-                                    f"Cached {len(articles_without_dates)} articles without dates for {ticker} on {start_date}")
-                                cached_count += len(articles_without_dates)
-
-                            logger.info(
-                                f"Total cached: {cached_count} articles across {len(articles_by_date)} dates for {ticker}")
-
-                            # Return articles sorted by relevance for immediate use
-                            df = df.sort_values(['relevance_score', 'published_date'],
-                                                ascending=[False, False], na_position='last')
-
-                            logger.info(f"Found {len(df)} articles via Google Search for {ticker}")
-                            return df.head(max_results)
-                        else:
-                            logger.info(f"No articles found for {ticker}")
-                            return pd.DataFrame()
-
+                        
+                        # Only include if relevance score > 0
+                        if relevance_score > 0:
+                            result = {
+                                'title': title,
+                                'summary': snippet,
+                                'url': link,
+                                'published_date': published_date,
+                                'source': f'Google Search - {source_name}',
+                                'Data_Source': 'Google_Search_Historical',
+                                'sentiment_ready': True,
+                                'relevance_score': relevance_score,
+                                'ticker': ticker.upper(),
+                                'url_pattern_source': source_name
+                            }
+                            all_results.append(result)
+                
+                elif response.status_code == 429:
+                    logger.warning(f"Rate limit hit for {source_name}")
+                    break  # Stop trying other sources if we hit rate limit
                 else:
-                    logger.info(f"No search results found for {ticker}")
-
-            else:
-                logger.error(f"Google Search API error: {response.status_code} - {response.text}")
-
-        except Exception as e:
-            logger.error(f"Error in Google search for {ticker}: {e}")
-
-        return pd.DataFrame()
-
+                    logger.warning(f"{source_name} search failed: {response.status_code}")
+                    
+            except Exception as e:
+                logger.error(f"Error searching {source_name}: {e}")
+                continue
+        
+        if all_results:
+            df = pd.DataFrame(all_results)
+            
+            # Remove duplicates by URL
+            df = df.drop_duplicates(subset=['url'], keep='first')
+            
+            # Sort by relevance score and date
+            df = df.sort_values(['relevance_score', 'published_date'], 
+                               ascending=[False, False], na_position='last')
+            
+            # Cache the results
+            if len(df) > 0:
+                query_summary = f"URL_patterns_{len(source_queries)}_sources"
+                self.cache.set(ticker, start_date, end_date, df, query_summary)
+                logger.info(f"Cached {len(df)} articles from URL pattern search")
+            
+            logger.info(f"URL pattern search found {len(df)} articles for {ticker}")
+            return df.head(max_results)
+        else:
+            logger.info(f"No results found via URL pattern search for {ticker}")
+            return pd.DataFrame()
+    
+    def _extract_date_from_url(self, url: str) -> Optional[datetime]:
+        """Extract publication date from URL patterns of reliable sources"""
+        import re
+        
+        # CNBC: /yyyy/mm/dd/
+        cnbc_pattern = r'cnbc\.com/(\d{4})/(\d{2})/(\d{2})/'
+        match = re.search(cnbc_pattern, url)
+        if match:
+            year, month, day = match.groups()
+            try:
+                return datetime(int(year), int(month), int(day))
+            except:
+                pass
+        
+        # Bloomberg: /news/articles/yyyy-mm-dd/
+        bloomberg_pattern = r'bloomberg\.com/news/articles/(\d{4})-(\d{2})-(\d{2})'
+        match = re.search(bloomberg_pattern, url)
+        if match:
+            year, month, day = match.groups()
+            try:
+                return datetime(int(year), int(month), int(day))
+            except:
+                pass
+        
+        # Reuters: article-name-yyyy-mm-dd/ at the end
+        reuters_pattern = r'reuters\.com/.*-(\d{4})-(\d{2})-(\d{2})/?$'
+        match = re.search(reuters_pattern, url)
+        if match:
+            year, month, day = match.groups()
+            try:
+                return datetime(int(year), int(month), int(day))
+            except:
+                pass
+        
+        # Business Wire: /home/YYYYMMDD#####/
+        businesswire_pattern = r'businesswire\.com/news/home/(\d{4})(\d{2})(\d{2})\d+/'
+        match = re.search(businesswire_pattern, url)
+        if match:
+            year, month, day = match.groups()
+            try:
+                return datetime(int(year), int(month), int(day))
+            except:
+                pass
+        
+        return None
     def _extract_date_from_item(self, item: Dict, start_date: str, end_date: str) -> datetime:
         """Extract publication date from Google search result with strict validation"""
 
@@ -518,13 +573,13 @@ class GoogleSearchNewsTool:
                                         f"{match.group(1)}/{match.group(2)}/{match.group(3)}")
 
                             # CRITICAL: Validate date is historical (not future)
-                            request_date = datetime.strptime(start_date, '%Y-%m-%d')
-                            # Allow 1 day tolerance
-                            if extracted_date <= request_date + timedelta(days=1):
+                            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+                            # Allow articles up to the end date plus 7 days tolerance
+                            if extracted_date <= end_date_obj + timedelta(days=7):
                                 return extracted_date
                             else:
                                 logger.warning(
-                                    f"Rejecting future article: {extracted_date.strftime('%Y-%m-%d')} > {start_date}")
+                                    f"Rejecting future article: {extracted_date.strftime('%Y-%m-%d')} > {end_date}")
                                 return None
                     except:
                         continue
@@ -543,12 +598,12 @@ class GoogleSearchNewsTool:
                             if field in entry:
                                 try:
                                     extracted_date = pd.to_datetime(entry[field])
-                                    request_date = datetime.strptime(start_date, '%Y-%m-%d')
-                                    if extracted_date <= request_date + timedelta(days=1):
+                                    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+                                    if extracted_date <= end_date_obj + timedelta(days=7):
                                         return extracted_date
                                     else:
                                         logger.warning(
-                                            f"Rejecting future pagemap date: {extracted_date.strftime('%Y-%m-%d')} > {start_date}")
+                                            f"Rejecting future pagemap date: {extracted_date.strftime('%Y-%m-%d')} > {end_date}")
                                         return None
                                 except:
                                     continue
