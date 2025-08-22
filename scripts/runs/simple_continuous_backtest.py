@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 import json
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Any, Optional
 import logging
 from pathlib import Path
@@ -56,6 +56,10 @@ class BacktestCheckpoint:
     sentiment_scores: List[float]
     completed: bool = False
 
+    # Enhanced position tracking
+    position_avg_cost: float = 0.0
+    total_cost_basis: float = 0.0
+
 
 class SimpleContinuousBacktest:
     """
@@ -88,6 +92,39 @@ class SimpleContinuousBacktest:
         }
 
         logger.info("✅ Simple Continuous Backtest initialized")
+
+    def update_position_tracking(self, action: str, shares: int, price: float,
+                                 current_avg_cost: float, cost_basis: float) -> tuple:
+        """Update position average cost and cost basis tracking."""
+
+        if action == 'BUY':
+            if current_avg_cost > 0:
+                # Adding to existing position - weighted average
+                new_cost_basis = cost_basis + (shares * price)
+                current_shares = cost_basis / current_avg_cost
+                total_shares = current_shares + shares
+                new_avg_cost = new_cost_basis / total_shares
+                return new_avg_cost, new_cost_basis
+            else:
+                # Starting new position
+                return price, shares * price
+
+        elif action == 'SELL':
+            if current_avg_cost > 0 and cost_basis > 0:
+                # Calculate current total shares from cost basis
+                current_shares = cost_basis / current_avg_cost
+                if shares >= current_shares:
+                    # Closing entire position
+                    return 0.0, 0.0
+                else:
+                    # Partial sale - reduce basis proportionally
+                    sold_ratio = shares / current_shares
+                    new_cost_basis = cost_basis * (1 - sold_ratio)
+                    return current_avg_cost, new_cost_basis
+            else:
+                return 0.0, 0.0
+
+        return current_avg_cost, cost_basis
 
     def get_version_dir(self, version: str) -> Path:
         """Get version-specific directory."""
@@ -245,12 +282,22 @@ class SimpleContinuousBacktest:
             daily_values = checkpoint.daily_values
             sentiment_scores = checkpoint.sentiment_scores
 
-            # Find resume point
-            last_date = pd.to_datetime(checkpoint.last_date)
-            resume_data = market_data[market_data.index > last_date]
+            # Enhanced position tracking
+            position_avg_cost = getattr(checkpoint, 'position_avg_cost', 0.0)
+            total_cost_basis = getattr(checkpoint, 'total_cost_basis', 0.0)
 
-            logger.info(
-                f"🔄 Resuming from {checkpoint.last_date} ({len(resume_data)} days remaining)")
+            # Find resume point
+            if checkpoint.last_date == "batch_preparation_complete":
+                # V4 batch preparation was completed, resume from start of daily trading
+                resume_data = market_data
+                logger.info(
+                    f"🔄 V4: Resuming from completed batch preparation ({len(resume_data)} days to trade)")
+            else:
+                # Normal resume from specific date
+                last_date = pd.to_datetime(checkpoint.last_date)
+                resume_data = market_data[market_data.index > last_date]
+                logger.info(
+                    f"🔄 Resuming from {checkpoint.last_date} ({len(resume_data)} days remaining)")
 
         else:
             # Start fresh
@@ -263,12 +310,59 @@ class SimpleContinuousBacktest:
             sentiment_scores = []
             resume_data = market_data
 
+            # Enhanced position tracking
+            position_avg_cost = 0.0
+            total_cost_basis = 0.0
+
             logger.info(f"🆕 Starting fresh backtest")
 
         # Get agent
         agent = self.agents[version]
         total_days = len(resume_data)
         processed_days = 0
+
+        # V4-specific weekly batch preparation for efficient LLM processing
+        if version == 'V4' and (not checkpoint or checkpoint.last_date != "batch_preparation_complete"):
+            logger.info(f"🤖 V4: Preparing weekly batch sentiment analysis...")
+            try:
+                # Use market data date range for weekly batch preparation
+                first_date = resume_data.index[0].strftime('%Y-%m-%d')
+                last_date = resume_data.index[-1].strftime('%Y-%m-%d')
+
+                success = await asyncio.to_thread(
+                    agent.prepare_period_data, symbol, first_date, last_date
+                )
+
+                if success:
+                    logger.info(
+                        f"✅ V4: Weekly batch preparation completed for {len(resume_data)} days")
+
+                    # Save checkpoint after successful batch preparation
+                    # This ensures V4 progress is saved before entering daily loop
+                    batch_prep_checkpoint = BacktestCheckpoint(
+                        version=version,
+                        symbol=symbol,
+                        year=year,
+                        last_date="batch_preparation_complete",  # Special marker
+                        cash=cash,
+                        position=position,
+                        entry_price=entry_price,
+                        entry_date=entry_date,
+                        trades=trades,
+                        daily_values=daily_values,
+                        sentiment_scores=sentiment_scores,
+                        completed=False
+                    )
+                    self.save_checkpoint(batch_prep_checkpoint)
+                    logger.info("💾 V4: Batch preparation checkpoint saved")
+
+                else:
+                    logger.warning(
+                        "⚠️ V4: Weekly batch preparation failed, falling back to daily mode")
+
+            except Exception as e:
+                logger.error(f"❌ V4: Weekly batch preparation error: {e}")
+                logger.info("🔄 V4: Continuing with daily sentiment analysis")
 
         # Daily trading loop
         for date, row in resume_data.iterrows():
@@ -286,9 +380,13 @@ class SimpleContinuousBacktest:
                 shares = int(cash / current_price)
                 if shares > 0:
                     position = shares
-                    cash -= shares * current_price
+                    cash = round(cash - (shares * current_price), 2)  # Round to cents
                     entry_price = current_price
                     entry_date = date_str
+
+                    # Update position tracking
+                    position_avg_cost, total_cost_basis = self.update_position_tracking(
+                        'BUY', shares, current_price, position_avg_cost, total_cost_basis)
 
                     trades.append({
                         'date': date_str,
@@ -296,16 +394,19 @@ class SimpleContinuousBacktest:
                         'price': current_price,
                         'shares': shares,
                         'sentiment': sentiment_score,
-                        'macd_signal': macd_signal
+                        'macd_signal': macd_signal,
+                        'position_avg_cost': position_avg_cost  # Enhanced tracking
                     })
 
                     logger.info(
-                        f"📈 BUY: {shares} shares at ${current_price:.2f} (sentiment: {sentiment_score:.3f})")
+                        f"📈 BUY: {shares} shares at ${current_price:.2f} (avg: ${position_avg_cost:.2f}, sentiment: {sentiment_score:.3f})")
 
             elif position > 0 and (macd_signal == -1 or sentiment_score < -0.5):
                 # Exit position
-                cash += position * current_price
+                cash = round(cash + (position * current_price), 2)  # Round to cents
                 exit_return = (current_price - entry_price) / entry_price * 100
+                avg_cost_return = (current_price - position_avg_cost) / \
+                    position_avg_cost * 100 if position_avg_cost > 0 else 0
 
                 trades.append({
                     'date': date_str,
@@ -315,25 +416,56 @@ class SimpleContinuousBacktest:
                     'sentiment': sentiment_score,
                     'macd_signal': macd_signal,
                     'return_pct': exit_return,
-                    'entry_date': entry_date
+                    'avg_cost_return_pct': avg_cost_return,  # Enhanced tracking
+                    'entry_date': entry_date,
+                    'entry_avg_cost': position_avg_cost
                 })
 
                 logger.info(
-                    f"📉 SELL: {position} shares at ${current_price:.2f} ({exit_return:+.2f}% return)")
+                    f"📉 SELL: {position} shares at ${current_price:.2f} (avg cost return: {avg_cost_return:+.2f}%)")
 
+                # Reset position tracking
                 position = 0
                 entry_price = 0
                 entry_date = None
+                position_avg_cost, total_cost_basis = self.update_position_tracking(
+                    'SELL', position, current_price, position_avg_cost, total_cost_basis)
 
-            # Record daily portfolio value
+            # Record enhanced daily portfolio value
             portfolio_value = cash + (position * current_price)
+            position_value = position * current_price
+
+            # Calculate enhanced metrics
+            if position > 0 and position_avg_cost > 0:
+                unrealized_pnl = (current_price - position_avg_cost) * position
+                unrealized_pnl_pct = ((current_price - position_avg_cost) / position_avg_cost) * 100
+            else:
+                unrealized_pnl = 0.0
+                unrealized_pnl_pct = 0.0
+
+            # Allocation percentages
+            cash_allocation_pct = (cash / portfolio_value) * 100 if portfolio_value > 0 else 0
+            position_allocation_pct = (position_value / portfolio_value) * \
+                100 if portfolio_value > 0 else 0
+
             daily_values.append({
                 'date': date_str,
-                'portfolio_value': portfolio_value,
-                'cash': cash,
+                'portfolio_value': round(portfolio_value, 2),
+                'cash': round(cash, 2),  # Round to cents for realism
                 'position': position,
-                'stock_price': current_price,
-                'sentiment': sentiment_score
+                'stock_price': round(current_price, 2),
+                'sentiment': round(sentiment_score, 4),
+
+                # Enhanced position tracking metrics
+                'position_avg_cost': round(position_avg_cost, 2) if position > 0 else 0.0,
+                'position_value': round(position_value, 2),
+                'cost_basis': round(total_cost_basis, 2),
+                'unrealized_pnl': round(unrealized_pnl, 2),
+                'unrealized_pnl_pct': round(unrealized_pnl_pct, 2),
+                'cash_allocation_pct': round(cash_allocation_pct, 1),
+                'position_allocation_pct': round(position_allocation_pct, 1),
+                'is_averaging_up': position_avg_cost > 0 and current_price > position_avg_cost,
+                'is_averaging_down': position_avg_cost > 0 and current_price < position_avg_cost
             })
 
             processed_days += 1
