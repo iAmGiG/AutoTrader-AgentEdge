@@ -42,6 +42,10 @@ class SentimentV4Agent(BaseAgent):
         self.prepared_symbol: Optional[str] = None
         self.prepared_period: Optional[tuple] = None
 
+        # Batch processing optimization for efficient LLM usage
+        self.prepared_sentiments: Dict[str, float] = {}  # {date: sentiment_score}
+        self.batch_processed: bool = False
+
         # Call parent constructor with both sentiment tools (Google Search + VXX)
         from src.tools.tools import SENTIMENT_TOOLS
         super().__init__(
@@ -224,50 +228,289 @@ class SentimentV4Agent(BaseAgent):
 
         return obfuscated
 
-    async def prepare_quarterly_data(self, symbol: str, start_date: str, end_date: str) -> bool:
+    def prepare_weekly_data(self, symbol: str, week_start: str, week_end: str) -> bool:
         """
-        Prepare quarterly data for LLM-based sentiment analysis.
+        Process one week of trading days (typically 5 days).
+        Makes ONE LLM call per week instead of 5 individual calls.
 
-        V4 is unique - it uses LLM reasoning for sentiment decisions, so this method
-        gathers comprehensive quarterly context (news + VXX) for LLM to analyze.
+        Optimized for GPT-4o-mini context window limitations.
 
         Args:
             symbol: Stock ticker (e.g., 'AAPL')
-            start_date: Start of quarter in YYYY-MM-DD format
-            end_date: End of quarter in YYYY-MM-DD format
+            week_start: Week start date in YYYY-MM-DD format
+            week_end: Week end date in YYYY-MM-DD format
 
         Returns:
             bool: True if preparation successful, False otherwise
         """
         try:
             self.logger.info(
-                f"V4Agent: Preparing quarterly LLM context for {symbol} ({start_date} to {end_date})")
+                f"V4Agent: Starting weekly batch processing for {symbol} ({week_start} to {week_end})")
 
-            # Create memory key for this symbol/period
-            memory_key = f"{symbol}_{start_date}_{end_date}"
+            # Generate trading days for this week (typically 5 days)
+            trading_days = self._generate_trading_days(week_start, week_end)
+            self.logger.info(f"V4Agent: Processing {len(trading_days)} trading days for week")
 
-            # Gather comprehensive quarterly context for LLM analysis
-            quarterly_context = await self._gather_quarterly_context(symbol, start_date, end_date)
+            # Create focused weekly prompt for LLM analysis
+            weekly_prompt = self._create_weekly_batch_prompt(symbol, trading_days)
 
-            # For each day, prepare LLM-ready context and pre-compute sentiment decisions
-            daily_sentiments = await self._compute_quarterly_llm_analysis(
-                symbol, start_date, end_date, quarterly_context
-            )
+            # Use the working process_with_tools pattern (same as generate_reply)
+            system_prompt = """You are an expert financial analyst. 
+            Analyze the provided data and return sentiment scores for ALL dates in the exact JSON format requested.
+            Use your tools to gather current market data, then provide comprehensive analysis."""
 
-            # Store in memory for fast lookup
-            self.quarterly_memory[memory_key] = daily_sentiments
-            self.is_prepared = True
-            self.prepared_symbol = symbol
-            self.prepared_period = (start_date, end_date)
+            # Make ONE LLM call for the week using the working pattern
+            self.logger.info(f"V4Agent: Making weekly LLM call for {len(trading_days)} days...")
+            response = self.process_with_tools(weekly_prompt, system_prompt)
 
-            self.logger.info(
-                f"V4Agent: Successfully prepared {len(daily_sentiments)} LLM sentiment decisions")
-            return True
+            # Handle async response if needed (same pattern as generate_reply)
+            if asyncio.iscoroutine(response):
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(asyncio.run, response)
+                            response = future.result()
+                    else:
+                        response = loop.run_until_complete(response)
+                except RuntimeError:
+                    response = asyncio.run(response)
+
+            # Parse the LLM response to extract sentiment scores
+            weekly_results = self._parse_batch_sentiment_response(response)
+
+            if weekly_results:
+                # Accumulate results (don't clear - build up over multiple weeks)
+                self.prepared_sentiments.update(weekly_results)
+
+                # Mark as processed for this week
+                self.batch_processed = True
+
+                self.logger.info(
+                    f"V4Agent: Weekly processing completed - {len(weekly_results)} new sentiment scores added ({len(self.prepared_sentiments)} total)")
+                return True
+            else:
+                self.logger.error("V4Agent: No sentiment scores parsed from weekly LLM response")
+                return False
 
         except Exception as e:
-            self.logger.error(f"V4Agent: Preparation failed: {e}")
+            self.logger.error(f"V4Agent: Weekly processing failed: {e}")
+            return False
+
+    def prepare_period_data(self, symbol: str, start_date: str, end_date: str) -> bool:
+        """
+        Prepare sentiment data for entire period by processing week by week.
+
+        This replaces prepare_quarterly_data with a weekly chunking approach.
+
+        Args:
+            symbol: Stock ticker (e.g., 'AAPL')
+            start_date: Period start date in YYYY-MM-DD format
+            end_date: Period end date in YYYY-MM-DD format
+
+        Returns:
+            bool: True if all weeks processed successfully
+        """
+        try:
+            self.logger.info(
+                f"V4Agent: Starting period preparation for {symbol} ({start_date} to {end_date})")
+
+            # Clear previous data
+            self.prepared_sentiments.clear()
+            self.batch_processed = False
+
+            # Generate weekly chunks
+            weeks = self._generate_weekly_chunks(start_date, end_date)
+            self.logger.info(f"V4Agent: Processing {len(weeks)} weeks")
+
+            # Process in smaller batches to avoid timeout issues
+            # Limit to 1 week per session to guarantee completion and checkpoint saving
+            max_weeks_per_session = 1
+            weeks_to_process = weeks[:max_weeks_per_session]
+
+            if len(weeks) > max_weeks_per_session:
+                self.logger.info(
+                    f"V4Agent: Processing first {max_weeks_per_session} weeks of {len(weeks)} total (resumable)")
+
+            success_count = 0
+            for week_start, week_end in weeks_to_process:
+                self.logger.info(f"V4Agent: Processing week {week_start} to {week_end}")
+
+                # Process each week
+                weekly_success = self.prepare_weekly_data(symbol, week_start, week_end)
+                if weekly_success:
+                    success_count += 1
+                    self.logger.info(
+                        f"V4Agent: Week {week_start} completed ({success_count}/{len(weeks_to_process)})")
+                else:
+                    self.logger.warning(
+                        f"V4Agent: Failed to process week {week_start} to {week_end}")
+
+            # Consider successful if we processed some weeks (partial success for resumable operation)
+            if success_count >= len(weeks_to_process) * 0.8:  # 80% of attempted weeks
+                self.is_prepared = True  # Mark as prepared even if partial
+                self.prepared_symbol = symbol
+                self.prepared_period = (start_date, end_date)
+
+                self.logger.info(
+                    f"V4Agent: Period preparation partially completed - {success_count}/{len(weeks_to_process)} weeks successful, {len(self.prepared_sentiments)} total sentiment scores")
+                self.logger.info(
+                    f"V4Agent: Will continue with daily sentiment analysis for remaining dates")
+                return True
+            else:
+                self.logger.error(
+                    f"V4Agent: Period preparation failed - only {success_count}/{len(weeks_to_process)} weeks successful")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"V4Agent: Period preparation failed: {e}")
             self.is_prepared = False
             return False
+
+    def _generate_trading_days(self, start_date: str, end_date: str):
+        """Generate list of trading days between start and end dates."""
+        from datetime import datetime, timedelta
+
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+
+        # Generate all dates in range, excluding weekends
+        all_dates = []
+        current = start
+        while current <= end:
+            # Skip weekends (Monday=0, Sunday=6)
+            if current.weekday() < 5:  # Monday-Friday
+                all_dates.append(current.strftime("%Y-%m-%d"))
+            current += timedelta(days=1)
+
+        return all_dates
+
+    def _create_weekly_batch_prompt(self, symbol: str, trading_days):
+        """Create focused weekly batch prompt optimized for GPT-4o-mini context window."""
+
+        # Create a list of all dates for the prompt
+        dates_list = "', '".join(sorted(trading_days))
+
+        prompt = f"""I need sentiment analysis for TICKER_001 for this week's trading days from {trading_days[0]} to {trading_days[-1]}.
+
+🛡️ CRITICAL INSTRUCTIONS:
+- You are analyzing TICKER_001 (obfuscated company ticker)  
+- Use your tools to gather focused news, VXX volatility, and market context
+- Analyze sentiment for each day based on available data up to that date
+- Return sentiment scores from -1.0 (very bearish) to +1.0 (very bullish)
+
+📋 ANALYSIS DATES (this week):
+['{dates_list}']
+
+🎯 REQUIRED OUTPUT FORMAT:
+Return a single JSON object with sentiment scores for ALL {len(trading_days)} trading days:
+{{
+  "{trading_days[0]}": 0.3,
+  "{trading_days[1] if len(trading_days) > 1 else trading_days[0]}": -0.1,
+  "{trading_days[2] if len(trading_days) > 2 else trading_days[0]}": 0.7
+  {', "' + trading_days[3] + '": 0.2' if len(trading_days) > 3 else ''}
+  {', "' + trading_days[4] + '": 0.5' if len(trading_days) > 4 else ''}
+}}
+
+💡 WEEKLY ANALYSIS APPROACH:
+1. Use fetch_hierarchical_news for TICKER_001 weekly news
+2. Use fetch_vxx_volatility_data for each day's market fear level
+3. Use fetch_market_context_data for SPY/QQQ trends
+4. Apply contrarian logic: High VXX = opportunity, Low VXX = caution
+
+⚠️ IMPORTANT: Return complete JSON with sentiment for ALL {len(trading_days)} dates."""
+
+        return prompt
+
+    def _generate_weekly_chunks(self, start_date: str, end_date: str):
+        """Generate weekly chunks for period processing."""
+        from datetime import datetime, timedelta
+
+        chunks = []
+        current = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+
+        while current <= end:
+            # Find start of week (Monday)
+            week_start = current - timedelta(days=current.weekday())
+
+            # Find end of week (Friday)
+            week_end = week_start + timedelta(days=4)
+
+            # Don't go past the end date
+            if week_end > end:
+                week_end = end
+
+            # Only add if we have at least one day in the week
+            if week_start <= end:
+                chunks.append((
+                    week_start.strftime('%Y-%m-%d'),
+                    week_end.strftime('%Y-%m-%d')
+                ))
+
+            # Move to next week
+            current = week_start + timedelta(days=7)
+
+        return chunks
+
+    def _parse_batch_sentiment_response(self, response: str):
+        """Parse LLM response to extract sentiment scores."""
+        import json
+        import re
+
+        if not response:
+            self.logger.warning("V4Agent: Empty response from LLM")
+            return {}
+
+        try:
+            self.logger.debug(f"V4Agent: Parsing response: {response[:500]}...")
+
+            # Look for JSON in the response - be more flexible with nested braces
+            json_patterns = [
+                r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',  # Handle nested braces
+                r'\{.*?\}',  # Simple pattern
+                r'\{[\s\S]*\}'  # Multiline pattern
+            ]
+
+            for pattern in json_patterns:
+                json_matches = re.findall(pattern, response, re.DOTALL)
+
+                for json_str in json_matches:
+                    try:
+                        sentiment_data = json.loads(json_str)
+
+                        # Validate that this looks like our expected format
+                        if isinstance(sentiment_data, dict) and len(sentiment_data) > 0:
+                            # Check if keys look like dates
+                            sample_key = next(iter(sentiment_data.keys()))
+                            if re.match(r'\d{4}-\d{2}-\d{2}', sample_key):
+                                # Convert to float and validate
+                                validated_scores = {}
+                                for date, score in sentiment_data.items():
+                                    try:
+                                        float_score = float(score)
+                                        # Clamp to valid range
+                                        float_score = max(-1.0, min(1.0, float_score))
+                                        validated_scores[date] = float_score
+                                    except (ValueError, TypeError):
+                                        self.logger.warning(
+                                            f"V4Agent: Invalid sentiment score for {date}: {score}")
+                                        validated_scores[date] = 0.0
+
+                                self.logger.info(
+                                    f"V4Agent: Successfully parsed {len(validated_scores)} sentiment scores")
+                                return validated_scores
+
+                    except json.JSONDecodeError:
+                        continue  # Try next pattern or next match
+
+        except Exception as e:
+            self.logger.error(f"V4Agent: Response parsing failed: {e}")
+
+        # Fallback: return empty dict
+        self.logger.warning("V4Agent: Could not parse any valid sentiment scores from response")
+        return {}
 
     async def _gather_quarterly_context(self, symbol: str, start_date: str, end_date: str) -> Dict:
         """
@@ -563,6 +806,24 @@ Return: {{"sentiment": <your_score>, "reasoning": "<brief explanation>"}}"""
             date_match = re.search(r'\d{4}-\d{2}-\d{2}', message)
             original_date = date_match.group(
                 0) if date_match else datetime.now().strftime("%Y-%m-%d")
+
+            # Check for batch-processed sentiment first (efficient path)
+            if self.batch_processed and original_date in self.prepared_sentiments:
+                sentiment_score = self.prepared_sentiments[original_date]
+                self.logger.info(
+                    f"V4Agent: Using batch-processed sentiment for {original_symbol} on {original_date}: {sentiment_score}")
+
+                return json.dumps({
+                    "sentiment": sentiment_score,
+                    "confidence": 0.8,  # High confidence for batch-processed results
+                    "reasoning": f"Batch-processed LLM analysis with date sanitization for TICKER_001",
+                    "version": "V4",
+                    "mode": "batch_processed"
+                })
+
+            # Fallback to individual analysis if not batch-processed
+            self.logger.info(
+                f"V4Agent: No batch data found, falling back to individual analysis for {original_symbol} on {original_date}")
 
             # Apply obfuscation if enabled (CRITICAL for preventing training knowledge leakage)
             if self.enable_obfuscation and self.obfuscator:

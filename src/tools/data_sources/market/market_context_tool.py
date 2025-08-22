@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 from autogen_core.tools import FunctionTool
-from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
+from src.tools.cache.unified_cache import UnifiedCacheManager
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,8 @@ def fetch_market_context_data(
     try:
         logger.info(f"Fetching market context for {symbols} on {date}")
 
-        # Initialize Alpha Vantage tool
-        av_tool = AlphaVantageMarketTool()
+        # Initialize unified cache manager for Polygon.io primary + Alpha Vantage fallback
+        cache_manager = UnifiedCacheManager()
 
         market_data = {}
 
@@ -46,8 +46,19 @@ def fetch_market_context_data(
                 end_date = (datetime.strptime(date, "%Y-%m-%d") +
                             timedelta(days=1)).strftime("%Y-%m-%d")
 
-                # Get market data
-                data = av_tool.fetch_stock_data(symbol, start_date, end_date)
+                # Get market data using Polygon.io primary + Alpha Vantage fallback pattern
+                data = cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
+                data_source = "Polygon.io"
+
+                if data is None or data.empty:
+                    data = cache_manager.get_market_data(
+                        symbol, start_date, end_date, "alpha_vantage")
+                    data_source = "Alpha Vantage"
+
+                if data is None or data.empty:
+                    logger.warning(
+                        f"No market data available from either Polygon.io or Alpha Vantage for {symbol}")
+                    data_source = "None"
 
                 if data is not None and len(data) > 0:
                     # Get the most recent data point
@@ -78,12 +89,12 @@ def fetch_market_context_data(
                         }
 
                         logger.info(
-                            f"Market context for {symbol}: {daily_change:+.2f}% daily, {trend_change:+.2f}% 5-day")
+                            f"Market context for {symbol}: {daily_change:+.2f}% daily, {trend_change:+.2f}% 5-day (source: {data_source})")
                     else:
                         logger.warning(f"No data available for {symbol} on {date}")
                         market_data[symbol] = _create_fallback_data(symbol, date)
                 else:
-                    logger.warning(f"No market data returned for {symbol}")
+                    logger.warning(f"No market data returned for {symbol} from either source")
                     market_data[symbol] = _create_fallback_data(symbol, date)
 
             except Exception as e:
