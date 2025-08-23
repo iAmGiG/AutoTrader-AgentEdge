@@ -88,7 +88,7 @@ class SimpleContinuousBacktest:
             'V1': SentimentV1Agent(),
             'V2': SentimentV2Agent(),
             'V3': SentimentV3Agent(),
-            'V4': SentimentV4Agent(enable_obfuscation=True)
+            'V4': SentimentV4Agent(enable_date_sanitization=True)
         }
 
         logger.info("✅ Simple Continuous Backtest initialized")
@@ -251,9 +251,16 @@ class SimpleContinuousBacktest:
             logger.info(f"✅ {version} {symbol} {year} completed from checkpoint")
             return self._load_final_results(version, symbol, year)
 
-        # Get market data for the year
-        start_date = f"{year}-01-01"
-        end_date = f"{year}-12-31"
+        # Get market data for the year or month
+        if hasattr(self, 'month_override') and self.month_override:
+            start_date = f"{year}-{self.month_override:02d}-01"
+            # Calculate last day of month
+            import calendar
+            last_day = calendar.monthrange(year, self.month_override)[1]
+            end_date = f"{year}-{self.month_override:02d}-{last_day}"
+        else:
+            start_date = f"{year}-01-01"
+            end_date = f"{year}-12-31"
 
         market_data = self.cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
         if market_data is None or market_data.empty:
@@ -627,6 +634,7 @@ async def main():
                         help='Version to test')
     parser.add_argument('--symbol', default='AAPL', help='Symbol to test')
     parser.add_argument('--year', type=int, default=2024, help='Year to test')
+    parser.add_argument('--month', type=int, help='Month to test (1-12, optional for single month)')
     parser.add_argument('--cash', type=float, default=10000.0, help='Initial cash')
     parser.add_argument('--status', action='store_true', help='Show status summary')
     parser.add_argument('--all-versions', action='store_true', help='Run all V0-V4 versions')
@@ -658,7 +666,14 @@ async def main():
         versions = ['V0', 'V1', 'V2', 'V3', 'V4']
         results = {}
 
-        print(f"\n🚀 Running all versions: {args.symbol} {args.year}")
+        # Set month override if specified
+        if args.month:
+            backtest.month_override = args.month
+            period_desc = f"{args.symbol} {args.year}-{args.month:02d}"
+        else:
+            period_desc = f"{args.symbol} {args.year}"
+
+        print(f"\n🚀 Running all versions: {period_desc}")
         print("=" * 60)
 
         for version in versions:
@@ -690,6 +705,8 @@ async def main():
 
     elif args.version:
         # Run single version
+        if args.month:
+            backtest.month_override = args.month
         try:
             result = await backtest.run_continuous_backtest(
                 args.version, args.symbol, args.year, args.cash

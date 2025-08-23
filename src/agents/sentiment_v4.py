@@ -8,11 +8,14 @@ import json
 import logging
 import asyncio
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 import re
 
 from src.agents.base_agent import BaseAgent
-from src.utils.data_obfuscation import DataObfuscator
+from src.utils.date_sanitizer import sanitize_dates_only, prepare_news_for_v4, format_news_for_llm_prompt
+from src.tools.data_sources.news.google_search_api import GoogleSearchNewsTool
+from src.tools.data_sources.market.vxx_volatility_tool import VXXVolatilityTool
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +35,11 @@ class SentimentV4Agent(BaseAgent):
     - No mechanical rules or thresholds - pure LLM analysis
     """
 
-    def __init__(self, name: str = "SentimentV4Agent", memory_system=None, enable_obfuscation: bool = True):
-        # Set max tool rounds for comprehensive data gathering
-        self.max_tool_rounds = 5  # May need multiple tools for complete analysis
+    def __init__(self, name: str = "SentimentV4Agent", memory_system=None, enable_date_sanitization: bool = True):
+        # Set max tool rounds to prevent infinite loops (Issue #215)
+        self.max_tool_rounds = 1  # Force single round to prevent excessive API usage
 
-        # Memory-based queuing system for quarterly data
-        self.quarterly_memory: Dict[str, Dict] = {}  # {symbol_period: {date: sentiment_data}}
+        # Weekly batch processing state
         self.is_prepared: bool = False
         self.prepared_symbol: Optional[str] = None
         self.prepared_period: Optional[tuple] = None
@@ -56,13 +58,14 @@ class SentimentV4Agent(BaseAgent):
 
         self.logger = logger
 
-        # Initialize data obfuscation for preventing LLM training knowledge leakage
-        self.enable_obfuscation = enable_obfuscation
-        self.obfuscator = DataObfuscator() if enable_obfuscation else None
+        # Initialize date sanitization for preventing temporal knowledge leakage
+        self.enable_date_sanitization = enable_date_sanitization
+        self.current_symbol = None  # Track current symbol for proper sanitization
 
-        # Track obfuscation mappings for this session
-        self.current_date_mapping = {}
-        self.current_ticker_mapping = {}
+        # Initialize direct tool access for optimization (Issue #212)
+        # These tools already handle caching internally
+        self.news_tool = GoogleSearchNewsTool()
+        self.vxx_tool = VXXVolatilityTool()
 
     def process_tool_result(self, tool_name: str, result: Any, tool_args: dict) -> Any:
         """
@@ -74,9 +77,9 @@ class SentimentV4Agent(BaseAgent):
         try:
             self.logger.debug(f"V4 processing tool result for {tool_name}")
 
-            # Apply obfuscation to tool results if enabled
-            if self.enable_obfuscation and self.obfuscator:
-                result = self._obfuscate_tool_result(result, tool_name, tool_args)
+            # Apply date sanitization to tool results if enabled
+            if self.enable_date_sanitization:
+                result = self._sanitize_tool_result(result, tool_name, tool_args)
 
             # For V4, we want to preserve raw data for LLM analysis
             # Don't apply mechanical transformations like V1-V3 do
@@ -118,6 +121,50 @@ class SentimentV4Agent(BaseAgent):
                         'date_analyzed': tool_args.get('date', 'unknown')
                     }
 
+            elif tool_name == "fetch_hierarchical_news":
+                # Format hierarchical news DataFrame for LLM consumption
+                if hasattr(result, 'to_dict'):  # It's a DataFrame
+                    try:
+                        # Convert DataFrame to list of dicts for processing
+                        news_list = result.to_dict('records')
+
+                        # Apply date sanitization if enabled
+                        if self.enable_date_sanitization:
+                            sanitized_news = prepare_news_for_v4(
+                                result, self.current_symbol or "TICKER_001")
+                            formatted_news = format_news_for_llm_prompt(sanitized_news)
+                        else:
+                            # Convert to format expected by formatter
+                            formatted_news_list = []
+                            for item in news_list:
+                                formatted_item = {
+                                    'title': item.get('title', ''),
+                                    'summary': item.get('summary', ''),
+                                    'source': item.get('source', ''),
+                                    'category': item.get('news_category', 'direct'),
+                                    'ticker': item.get('news_source_ticker', ''),
+                                    'relevance': item.get('relevance_score', 0.0)
+                                }
+                                formatted_news_list.append(formatted_item)
+                            formatted_news = format_news_for_llm_prompt(formatted_news_list)
+
+                        return {
+                            'tool': 'hierarchical_news',
+                            'formatted_news': formatted_news,
+                            'total_articles': len(news_list),
+                            'date_range': f"{tool_args.get('start_date', 'unknown')} to {tool_args.get('end_date', 'unknown')}",
+                            'ticker': tool_args.get('ticker', 'unknown')
+                        }
+
+                    except Exception as format_error:
+                        self.logger.error(f"Error formatting hierarchical news: {format_error}")
+                        # Fallback to simple string representation
+                        return {
+                            'tool': 'hierarchical_news',
+                            'formatted_news': f"Error formatting news: {format_error}",
+                            'raw_result': str(result)[:500]  # Truncated fallback
+                        }
+
             # Default: return result with tool context
             return {
                 'tool': tool_name,
@@ -133,9 +180,10 @@ class SentimentV4Agent(BaseAgent):
                 'result': result
             }
 
-    def _obfuscate_tool_result(self, result: Any, tool_name: str, tool_args: dict) -> Any:
+    def _sanitize_tool_result(self, result: Any, tool_name: str, tool_args: dict) -> Any:
         """
-        Apply obfuscation to tool results to prevent LLM training knowledge leakage.
+        Apply date sanitization to tool results to prevent temporal knowledge leakage.
+        Uses the proper date sanitizer instead of full obfuscation.
 
         Args:
             result: Raw tool result
@@ -143,90 +191,65 @@ class SentimentV4Agent(BaseAgent):
             tool_args: Tool arguments
 
         Returns:
-            Obfuscated result
+            Sanitized result
         """
         try:
-            if tool_name == "fetch_google_search_news":
-                # Obfuscate news headlines and content
-                if isinstance(result, dict) and 'articles' in result:
-                    obfuscated_articles = []
+            if tool_name in ["fetch_hierarchical_news", "fetch_google_search_news"]:
+                # Handle hierarchical news data (DataFrame)
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    # Use the proper date sanitization system
+                    processed_news = prepare_news_for_v4(result, self.current_symbol)
+                    return {
+                        'processed_news': processed_news,
+                        'formatted_text': format_news_for_llm_prompt(processed_news)
+                    }
+                elif isinstance(result, dict) and 'articles' in result:
+                    # Handle old format Google Search results
+                    sanitized_articles = []
                     for article in result['articles']:
-                        obfuscated_article = article.copy()
-
-                        # Obfuscate company names and dates in headlines/content
-                        if 'title' in obfuscated_article:
-                            obfuscated_article['title'] = self._obfuscate_text(
-                                obfuscated_article['title'])
-                        if 'content' in obfuscated_article:
-                            obfuscated_article['content'] = self._obfuscate_text(
-                                obfuscated_article['content'])
-                        if 'snippet' in obfuscated_article:
-                            obfuscated_article['snippet'] = self._obfuscate_text(
-                                obfuscated_article['snippet'])
-
-                        obfuscated_articles.append(obfuscated_article)
-
-                    result['articles'] = obfuscated_articles
+                        sanitized_article = article.copy()
+                        # Only sanitize dates, keep company names for analysis
+                        if 'title' in sanitized_article:
+                            sanitized_article['title'] = sanitize_dates_only(
+                                sanitized_article['title'])
+                        if 'content' in sanitized_article:
+                            sanitized_article['content'] = sanitize_dates_only(
+                                sanitized_article['content'])
+                        if 'snippet' in sanitized_article:
+                            sanitized_article['snippet'] = sanitize_dates_only(
+                                sanitized_article['snippet'])
+                        sanitized_articles.append(sanitized_article)
+                    result['articles'] = sanitized_articles
 
             elif tool_name == "fetch_vxx_volatility_data":
-                # VXX data doesn't need much obfuscation (just numbers)
-                # But we can obfuscate any date references
+                # VXX data is numerical, minimal sanitization needed
                 if isinstance(result, dict) and 'vxx_data' in result:
                     vxx_data = result['vxx_data']
                     if isinstance(vxx_data, dict) and 'date_used' in vxx_data:
-                        # Map the actual date to obfuscated date
-                        actual_date = vxx_data['date_used']
-                        if actual_date in self.current_date_mapping:
-                            vxx_data['date_used'] = self.current_date_mapping[actual_date]
+                        # Replace specific dates with generic markers
+                        vxx_data['date_used'] = '[ANALYSIS_DATE]'
 
             return result
 
         except Exception as e:
-            self.logger.warning(f"Error obfuscating tool result: {str(e)}")
+            self.logger.warning(f"Error sanitizing tool result: {str(e)}")
             return result
 
-    def _obfuscate_text(self, text: str) -> str:
+    def _sanitize_text_dates(self, text: str) -> str:
         """
-        Obfuscate company names, dates, and market events in text.
+        Sanitize only dates in text, keeping company names for analysis.
+        Uses the proper date sanitization utility.
 
         Args:
             text: Original text
 
         Returns:
-            Obfuscated text
+            Text with dates sanitized
         """
         if not text:
             return text
 
-        obfuscated = text
-
-        # Apply ticker mappings
-        for original_ticker, obfuscated_ticker in self.current_ticker_mapping.items():
-            # Replace ticker mentions (case insensitive)
-            obfuscated = re.sub(rf'\b{re.escape(original_ticker)}\b',
-                                obfuscated_ticker, obfuscated, flags=re.IGNORECASE)
-
-        # Apply date mappings
-        for original_date, obfuscated_date in self.current_date_mapping.items():
-            obfuscated = re.sub(rf'\b{re.escape(original_date)}\b', obfuscated_date, obfuscated)
-
-        # Remove/obfuscate common company names
-        company_names = {
-            'Apple': self.current_ticker_mapping.get('AAPL', 'STOCK_A'),
-            'Microsoft': self.current_ticker_mapping.get('MSFT', 'STOCK_B'),
-            'Google': self.current_ticker_mapping.get('GOOGL', 'STOCK_C'),
-            'Alphabet': self.current_ticker_mapping.get('GOOGL', 'STOCK_C'),
-            'Amazon': self.current_ticker_mapping.get('AMZN', 'STOCK_D'),
-            'NVIDIA': self.current_ticker_mapping.get('NVDA', 'STOCK_E'),
-            'Meta': self.current_ticker_mapping.get('META', 'STOCK_F'),
-            'Tesla': self.current_ticker_mapping.get('TSLA', 'STOCK_G'),
-        }
-
-        for company_name, ticker in company_names.items():
-            obfuscated = re.sub(rf'\b{re.escape(company_name)}\b',
-                                ticker, obfuscated, flags=re.IGNORECASE)
-
-        return obfuscated
+        return sanitize_dates_only(text)
 
     def prepare_weekly_data(self, symbol: str, week_start: str, week_end: str) -> bool:
         """
@@ -255,9 +278,10 @@ class SentimentV4Agent(BaseAgent):
             weekly_prompt = self._create_weekly_batch_prompt(symbol, trading_days)
 
             # Use the working process_with_tools pattern (same as generate_reply)
-            system_prompt = """You are an expert financial analyst. 
-            Analyze the provided data and return sentiment scores for ALL dates in the exact JSON format requested.
-            Use your tools to gather current market data, then provide comprehensive analysis."""
+            system_prompt = """Analyze market data and return sentiment from -1 to +1.
+Be aggressive and bullish - markets trend up.
+Fear creates opportunity. Complacency creates risk.
+Use your tools to gather data, then provide intelligent analysis."""
 
             # Make ONE LLM call for the week using the working pattern
             self.logger.info(f"V4Agent: Making weekly LLM call for {len(trading_days)} days...")
@@ -392,34 +416,12 @@ class SentimentV4Agent(BaseAgent):
         # Create a list of all dates for the prompt
         dates_list = "', '".join(sorted(trading_days))
 
-        prompt = f"""I need sentiment analysis for TICKER_001 for this week's trading days from {trading_days[0]} to {trading_days[-1]}.
+        prompt = f"""Analyze TICKER_001 sentiment for {trading_days[0]} to {trading_days[-1]}.
+Be aggressive and bullish - markets trend up.
+Fear creates opportunity. Complacency creates risk.
 
-🛡️ CRITICAL INSTRUCTIONS:
-- You are analyzing TICKER_001 (obfuscated company ticker)  
-- Use your tools to gather focused news, VXX volatility, and market context
-- Analyze sentiment for each day based on available data up to that date
-- Return sentiment scores from -1.0 (very bearish) to +1.0 (very bullish)
-
-📋 ANALYSIS DATES (this week):
-['{dates_list}']
-
-🎯 REQUIRED OUTPUT FORMAT:
-Return a single JSON object with sentiment scores for ALL {len(trading_days)} trading days:
-{{
-  "{trading_days[0]}": 0.3,
-  "{trading_days[1] if len(trading_days) > 1 else trading_days[0]}": -0.1,
-  "{trading_days[2] if len(trading_days) > 2 else trading_days[0]}": 0.7
-  {', "' + trading_days[3] + '": 0.2' if len(trading_days) > 3 else ''}
-  {', "' + trading_days[4] + '": 0.5' if len(trading_days) > 4 else ''}
-}}
-
-💡 WEEKLY ANALYSIS APPROACH:
-1. Use fetch_hierarchical_news for TICKER_001 weekly news
-2. Use fetch_vxx_volatility_data for each day's market fear level
-3. Use fetch_market_context_data for SPY/QQQ trends
-4. Apply contrarian logic: High VXX = opportunity, Low VXX = caution
-
-⚠️ IMPORTANT: Return complete JSON with sentiment for ALL {len(trading_days)} dates."""
+Return JSON with sentiment for these dates: {trading_days}
+Output: {{"date": sentiment_score, ...}}"""
 
         return prompt
 
@@ -512,246 +514,14 @@ Return a single JSON object with sentiment scores for ALL {len(trading_days)} tr
         self.logger.warning("V4Agent: Could not parse any valid sentiment scores from response")
         return {}
 
-    async def _gather_quarterly_context(self, symbol: str, start_date: str, end_date: str) -> Dict:
-        """
-        Gather comprehensive quarterly context (news + VXX + SPY/QQQ) for LLM analysis.
-
-        This replaces multiple individual API calls with batch data gathering.
-        """
-        try:
-            self.logger.info("V4Agent: Gathering quarterly news, VXX, and market context...")
-
-            # Use process_with_tools() instead of broken async wrapper
-            # This is the same pattern that works in individual mode
-
-            # Gather news data for entire quarter
-            news_prompt = f"Fetch comprehensive financial news for {symbol} from {start_date} to {end_date}"
-            news_system = "You are gathering quarterly news data. Call fetch_google_news to get comprehensive news for the date range."
-
-            self.logger.info(f"V4Agent: Fetching quarterly news...")
-            quarterly_news = await asyncio.create_task(
-                self._run_process_with_tools_async(news_prompt, news_system)
-            )
-
-            # Gather VXX data for representative date (quarter start)
-            vxx_prompt = f"Fetch VXX volatility data for {start_date} to analyze market fear context"
-            vxx_system = "You are gathering market volatility data. Call fetch_vxx_volatility_data for the specified date."
-
-            self.logger.info(f"V4Agent: Fetching quarterly VXX data...")
-            quarterly_vxx = await asyncio.create_task(
-                self._run_process_with_tools_async(vxx_prompt, vxx_system)
-            )
-
-            # Gather SPY/QQQ market context for the quarter
-            market_prompt = f"Fetch market context data (SPY and QQQ) for {start_date} to understand broader market direction"
-            market_system = "You are gathering market context data. Call fetch_market_context_data for SPY and QQQ indices."
-
-            self.logger.info(f"V4Agent: Fetching quarterly SPY/QQQ market context...")
-            quarterly_market = await asyncio.create_task(
-                self._run_process_with_tools_async(market_prompt, market_system)
-            )
-
-            return {
-                "news_data": quarterly_news,
-                "vxx_data": quarterly_vxx,
-                "market_data": quarterly_market,
-                "symbol": symbol,
-                "period": f"{start_date} to {end_date}"
-            }
-
-        except Exception as e:
-            self.logger.error(f"V4Agent: Failed to gather quarterly context: {e}")
-            return {}
-
-    async def _run_process_with_tools_async(self, prompt: str, system_prompt: str) -> str:
-        """Async wrapper for process_with_tools (the working pattern)."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, self.process_with_tools, prompt, system_prompt
-        )
-
-    async def _get_tool_response_async(self, messages) -> str:
-        """DEPRECATED: Broken async wrapper - use _run_process_with_tools_async instead."""
-        self.logger.warning("Using deprecated _get_tool_response_async - this returns None")
-        return None
-
-    def _generate_reply_sync(self, messages) -> str:
-        """DEPRECATED: Broken sync wrapper - use process_with_tools instead."""
-        self.logger.warning("Using deprecated _generate_reply_sync - this returns None")
-        return None
-
-    async def _compute_quarterly_llm_analysis(self, symbol: str, start_date: str, end_date: str,
-                                              quarterly_context: Dict) -> Dict[str, Dict]:
-        """
-        Pre-compute LLM sentiment decisions for each day in the quarter.
-
-        This is where V4's LLM reasoning happens - during preparation, not during simulation.
-        """
-        daily_sentiments = {}
-
-        try:
-            # Generate date range for the quarter
-            start = datetime.strptime(start_date, "%Y-%m-%d")
-            end = datetime.strptime(end_date, "%Y-%m-%d")
-            current = start
-
-            self.logger.info("V4Agent: Computing LLM sentiment decisions for quarter...")
-
-            while current <= end:
-                date_str = current.strftime("%Y-%m-%d")
-
-                # For each date, create comprehensive LLM prompt with quarterly context
-                llm_prompt = self._create_llm_sentiment_prompt(
-                    symbol, date_str, quarterly_context
-                )
-
-                # Get LLM's sentiment decision for this specific date
-                llm_decision = await self._get_llm_sentiment_decision(llm_prompt)
-
-                daily_sentiments[date_str] = {
-                    "sentiment": llm_decision.get("sentiment", 0.0),
-                    "confidence": llm_decision.get("confidence", 0.0),
-                    "reasoning": llm_decision.get("reasoning", ""),
-                    "version": "V4",
-                    "mode": "llm_reasoning_batch",
-                    "date_obfuscated": self.enable_obfuscation
-                }
-
-                current += timedelta(days=1)
-
-            self.logger.info(f"V4Agent: Completed LLM analysis for {len(daily_sentiments)} days")
-
-        except Exception as e:
-            self.logger.error(f"V4Agent: Error in LLM analysis: {e}")
-
-        return daily_sentiments
-
-    def _create_llm_sentiment_prompt(self, symbol: str, date: str, quarterly_context: Dict) -> str:
-        """Create comprehensive LLM prompt for sentiment analysis."""
-        # Apply date obfuscation if enabled
-        display_date = date
-        if self.enable_obfuscation and self.obfuscator:
-            date_mapping = self.obfuscator.obfuscate_dates([date])
-            display_date = date_mapping.get(date, date)
-            self.current_date_mapping[date] = display_date
-
-        # Safely handle quarterly context data
-        news_data = quarterly_context.get('news_data', 'No news data available')
-        vxx_data = quarterly_context.get('vxx_data', 'No VXX data available')
-        market_data = quarterly_context.get('market_data', 'No market context available')
-
-        # Ensure data is string-convertible
-        if news_data is None:
-            news_data = 'No news data available'
-        if vxx_data is None:
-            vxx_data = 'No VXX data available'
-        if market_data is None:
-            market_data = 'No market context available'
-
-        prompt = f"""You are an intelligent market analyst. Here's the data for {symbol} on {display_date}:
-
-NEWS DATA:
-{news_data}
-
-VXX VOLATILITY DATA:
-{vxx_data}
-
-MARKET CONTEXT (SPY/QQQ):
-{market_data}
-
-Use your understanding of markets to provide a sentiment score from -1.0 to +1.0.
-
-Key insights to consider:
-- When VXX is high, fear often creates opportunity
-- When VXX is low, watch out below - complacency is dangerous
-- If {symbol} diverges from SPY/QQQ, determine if it's sector rotation or company-specific
-- Bad news during high fear might already be priced in
-- Good news during low volatility might not move prices much
-
-Think about what these signals mean together, not as isolated rules.
-
-Return: {{"sentiment": <your_score>, "reasoning": "<brief explanation>"}}"""
-
-        return prompt
-
-    async def _get_llm_sentiment_decision(self, prompt: str) -> Dict:
-        """Get LLM's sentiment decision for a specific prompt."""
-        try:
-            # Use the working process_with_tools pattern instead of broken async wrapper
-            system_prompt = """You are an intelligent trader who understands market psychology and relationships.
-            Consider: What does high fear mean for future returns? What does complacency signal?
-            How do individual stocks relate to broader market moves? Think, don't just follow rules.
-            Return: {"decision": "BUY|SELL|HOLD", "sentiment": <-1.0 to 1.0>, "reasoning": "<your analysis>"}"""
-
-            # Use the working async wrapper
-            response = await asyncio.create_task(
-                self._run_process_with_tools_async(prompt, system_prompt)
-            )
-
-            # Handle None response (graceful fallback)
-            if not response:
-                self.logger.warning("V4Agent: LLM response was None, using neutral sentiment")
-                return {"sentiment": 0.0, "confidence": 0.5, "reasoning": "LLM response was None"}
-
-            # Log the raw response for debugging
-            self.logger.debug(f"V4Agent: Raw LLM response: {response[:200]}...")
-
-            # Parse LLM response for sentiment decision
-            if "{" in response and "}" in response:
-                # Extract JSON from response
-                json_start = response.find("{")
-                json_end = response.rfind("}") + 1
-                json_str = response[json_start:json_end]
-
-                try:
-                    decision = json.loads(json_str)
-                    self.logger.debug(f"V4Agent: Parsed decision: {decision}")
-                    return decision
-                except json.JSONDecodeError as je:
-                    self.logger.error(f"V4Agent: JSON parse error: {je}")
-                    return {"sentiment": 0.0, "confidence": 0.5, "reasoning": f"JSON parse error: {je}"}
-
-            # Fallback if JSON parsing fails
-            self.logger.warning(f"V4Agent: No JSON found in response: {response[:100]}...")
-            return {"sentiment": 0.0, "confidence": 0.5, "reasoning": "LLM response parsing failed"}
-
-        except Exception as e:
-            self.logger.error(f"V4Agent: LLM decision failed: {e}")
-            return {"sentiment": 0.0, "confidence": 0.0, "reasoning": f"Error: {e}"}
-
-    def get_sentiment_for_date(self, date: str, symbol: str = None) -> Dict:
-        """
-        Fast lookup of pre-computed LLM sentiment decision for a specific date.
-
-        Args:
-            date: Date in YYYY-MM-DD format
-            symbol: Stock symbol (optional, uses prepared symbol if not provided)
-
-        Returns:
-            Dict with LLM sentiment decision for the date
-        """
-        if not self.is_prepared:
-            self.logger.warning("V4Agent: Not prepared - falling back to single-day mode")
-            return {"sentiment": 0.0, "confidence": 0.0, "version": "V4", "mode": "fallback"}
-
-        # Use prepared symbol if not provided
-        lookup_symbol = symbol or self.prepared_symbol
-        memory_key = f"{lookup_symbol}_{self.prepared_period[0]}_{self.prepared_period[1]}"
-
-        if memory_key in self.quarterly_memory and date in self.quarterly_memory[memory_key]:
-            return self.quarterly_memory[memory_key][date]
-        else:
-            self.logger.warning(f"V4Agent: Date {date} not in prepared data")
-            return {"sentiment": 0.0, "confidence": 0.0, "version": "V4", "mode": "date_miss"}
-
     def clear_memory(self):
-        """Clear quarterly memory and obfuscation mappings."""
-        self.quarterly_memory.clear()
+        """Clear batch processing state."""
+        self.prepared_sentiments.clear()
+        self.batch_processed = False
         self.is_prepared = False
         self.prepared_symbol = None
         self.prepared_period = None
-        self.current_date_mapping.clear()
-        self.logger.info("V4Agent: Memory cleared (including obfuscation mappings)")
+        self.logger.info("V4Agent: Memory cleared")
 
     def generate_reply(self, messages, context=None) -> str:
         """
@@ -802,6 +572,8 @@ Return: {{"sentiment": <your_score>, "reasoning": "<brief explanation>"}}"""
                         break
 
             original_symbol = symbol_match.group(1).upper() if symbol_match else "AAPL"
+            # Set current symbol for sanitization
+            self.current_symbol = original_symbol
 
             date_match = re.search(r'\d{4}-\d{2}-\d{2}', message)
             original_date = date_match.group(
@@ -825,67 +597,77 @@ Return: {{"sentiment": <your_score>, "reasoning": "<brief explanation>"}}"""
             self.logger.info(
                 f"V4Agent: No batch data found, falling back to individual analysis for {original_symbol} on {original_date}")
 
-            # Apply obfuscation if enabled (CRITICAL for preventing training knowledge leakage)
-            if self.enable_obfuscation and self.obfuscator:
-                # Obfuscate date to prevent LLM from using training knowledge
-                self.current_date_mapping = self.obfuscator.obfuscate_dates([original_date])
-                obfuscated_date = self.current_date_mapping[original_date]
-
-                # Obfuscate ticker to prevent symbol recognition
-                self.current_ticker_mapping = self.obfuscator.obfuscate_tickers([original_symbol])
-                obfuscated_symbol = self.current_ticker_mapping[original_symbol]
-
-                # Use obfuscated values for LLM prompting
-                symbol = obfuscated_symbol
-                date = obfuscated_date
+            # Apply date sanitization if enabled (prevent temporal knowledge leakage)
+            if self.enable_date_sanitization:
+                # Use date sanitization - ticker keeps original value for hierarchical news
+                symbol = original_symbol  # Keep original ticker for proper news categorization
+                date = '[ANALYSIS_DATE]'  # Sanitize date only
 
                 self.logger.info(
-                    f"V4 Sentiment: LLM analysis for {original_symbol} ({symbol}) on {original_date} ({date}) - OBFUSCATED")
+                    f"V4 Sentiment: LLM analysis for {original_symbol} on {original_date} - DATE SANITIZED")
             else:
                 symbol = original_symbol
                 date = original_date
                 self.logger.info(
                     f"V4 Sentiment: LLM analysis for {symbol} on {date} - NO OBFUSCATION")
 
-            # Create comprehensive system message for V4 LLM analysis
-            obfuscation_warning = ""
-            if self.enable_obfuscation:
-                obfuscation_warning = f"""
-⚠️  CRITICAL: This data has been OBFUSCATED to prevent training knowledge leakage.
-- You are analyzing {symbol} on {date} (these are anonymized identifiers)
-- DO NOT use any external knowledge about market events or company history
-- Base your analysis ONLY on the data provided by the tools
-- Focus on the patterns and indicators in the raw data itself"""
+            # OPTIMIZATION: Fetch data directly from tools (they handle caching) (Issue #212)
+            cached_data = self._fetch_data_directly(original_symbol, original_date)
 
-            # For tool calls, use original values (tools expect real dates)
-            # For LLM analysis, use obfuscated values (prevent training knowledge)
+            if cached_data and cached_data['has_all_data']:
+                # We have all data - skip LLM tool calling and go directly to analysis
+                self.logger.info(
+                    f"V4 Agent: Using cached/fetched data for {original_symbol} on {original_date}, bypassing LLM tool calls")
+
+                # Prepare the data for LLM analysis (with obfuscation if enabled)
+                analysis_data = self._prepare_data_for_llm(
+                    cached_data, original_symbol, original_date)
+
+                # Call LLM for analysis only (no tool calling needed)
+                return self._analyze_with_llm(analysis_data, symbol, date, original_symbol, original_date)
+
+            # If we don't have all data, proceed with normal LLM tool calling
+            self.logger.info(f"V4 Agent: Some data missing, using LLM tool calling")
+
+            # Create comprehensive system message for V4 LLM analysis
+            sanitization_warning = ""
+            if self.enable_date_sanitization:
+                sanitization_warning = f"""
+⚠️  NOTICE: Dates have been sanitized to prevent temporal knowledge leakage.
+- You are analyzing market data with dates replaced by generic markers
+- Focus on the sentiment patterns and market psychology in the news and volatility data
+- Use your understanding of market dynamics, not specific historical events"""
+
+            # For tool calls, use original values (tools expect real dates and symbols)
+            # For LLM analysis, dates are sanitized but symbols preserved for context
             tool_symbol = original_symbol
             tool_date = original_date
-            analysis_symbol = symbol
-            analysis_date = date
 
             system_content = f"""You are an intelligent market analyst who understands market psychology.
-{obfuscation_warning}
+{sanitization_warning}
 
 Get the latest data for {tool_symbol} on {tool_date}:
-1. fetch_google_search_news
+1. fetch_hierarchical_news
 2. fetch_vxx_volatility_data  
 3. fetch_market_context_data
 
 Analyze this data with these insights:
 - High VXX means fear - often the best time to buy
 - Low VXX means complacency - time to be cautious
+- Consider cash losing value to inflation - sometimes market risk is better than guaranteed purchasing power erosion
 - News matters, but understand if it's company-specific or market-wide
 - SPY/QQQ divergence from {tool_symbol} might indicate sector rotation vs individual issues
 - Think about what the combination of signals tells you, not individual rules
 
 Be contrarian when appropriate - extreme sentiment often reverses.
+Remember: sitting in cash during inflation is also a risk - balance market downside against inflation erosion.
 
 Return: {{"sentiment": <your_score from -1.0 to +1.0>, "reasoning": "<brief explanation>"}}"""
 
+            # Fix date sanitization issue (Issue #215): Use original_date for clarity
             enhanced_messages = [
                 {"role": "system", "content": system_content},
-                {"role": "user", "content": f"Provide LLM-based sentiment analysis for {symbol} on {date}"}
+                {"role": "user", "content": f"Provide LLM-based sentiment analysis for {tool_symbol} on {tool_date}"}
             ]
 
             # Use BaseAgent's process_with_tools method for LLM tool calling
@@ -969,96 +751,190 @@ Return: {{"sentiment": <your_score from -1.0 to +1.0>, "reasoning": "<brief expl
                 "error": str(e)
             })
 
-    def validate_llm_reasoning(self, sentiment_result: Dict[str, Any]) -> Dict[str, Any]:
+    def _fetch_data_directly(self, symbol: str, date: str) -> Dict[str, Any]:
         """
-        Validate that V4 LLM reasoning is coherent and consistent.
+        Fetch data directly from tools (which handle caching internally).
+        This bypasses LLM tool calling when data is available in cache.
 
         Args:
-            sentiment_result: The LLM's sentiment analysis result
+            symbol: Stock ticker symbol
+            date: Date in YYYY-MM-DD format
 
         Returns:
-            Validation report with quality scores and recommendations
+            Dict with fetched data and availability flags
         """
-        validation = {
-            "reasoning_quality": 0.0,
-            "consistency_score": 0.0,
-            "data_utilization": 0.0,
-            "overall_quality": 0.0,
-            "issues": [],
-            "recommendations": []
+        result = {
+            'has_all_data': False,
+            'news_data': None,
+            'vxx_data': None,
+            'vxx_sentiment': None
         }
 
         try:
-            reasoning = sentiment_result.get("reasoning", "")
-            sentiment = sentiment_result.get("sentiment", 0.0)
-            confidence = sentiment_result.get("confidence", 0.0)
+            # Fetch news data directly (tool handles caching internally)
+            try:
+                news_df = self.news_tool.search_historical_news(
+                    ticker=symbol,
+                    start_date=date,
+                    end_date=date,
+                    max_results=10
+                )
+                if news_df is not None and not news_df.empty:
+                    result['news_data'] = news_df.to_dict(orient='records')
+                    self.logger.debug(
+                        f"Fetched {len(news_df)} news articles for {symbol} on {date}")
+            except Exception as e:
+                self.logger.warning(f"Could not fetch news data: {e}")
 
-            # Check reasoning quality
-            if len(reasoning) > 100:
-                validation["reasoning_quality"] += 0.3
-            if "news" in reasoning.lower():
-                validation["reasoning_quality"] += 0.2
-            if "vxx" in reasoning.lower() or "volatility" in reasoning.lower():
-                validation["reasoning_quality"] += 0.2
-            if "market" in reasoning.lower():
-                validation["reasoning_quality"] += 0.15
-            if any(word in reasoning.lower() for word in ["because", "therefore", "due to", "indicates"]):
-                validation["reasoning_quality"] += 0.15
+            # Fetch VXX sentiment directly (tool handles caching internally)
+            try:
+                vxx_result = self.vxx_tool.get_vxx_sentiment(date, lookback_days=5)
+                if vxx_result and vxx_result.get('vxx_data'):
+                    result['vxx_data'] = vxx_result['vxx_data']
+                    result['vxx_sentiment'] = vxx_result
+                    self.logger.debug(
+                        f"Fetched VXX sentiment for {date}: {vxx_result.get('sentiment', 0):.2f}")
+            except Exception as e:
+                self.logger.warning(f"Could not fetch VXX data: {e}")
 
-            # Check sentiment-reasoning consistency
-            reasoning_sentiment_indicators = {
-                'positive': ['bullish', 'positive', 'optimistic', 'growth', 'strong', 'good'],
-                'negative': ['bearish', 'negative', 'pessimistic', 'decline', 'weak', 'bad', 'fear']
-            }
-
-            reasoning_lower = reasoning.lower()
-            positive_count = sum(
-                1 for word in reasoning_sentiment_indicators['positive'] if word in reasoning_lower)
-            negative_count = sum(
-                1 for word in reasoning_sentiment_indicators['negative'] if word in reasoning_lower)
-
-            # Sentiment-reasoning alignment
-            if sentiment > 0.3 and positive_count > negative_count:
-                validation["consistency_score"] += 0.5
-            elif sentiment < -0.3 and negative_count > positive_count:
-                validation["consistency_score"] += 0.5
-            elif -0.3 <= sentiment <= 0.3 and abs(positive_count - negative_count) <= 1:
-                validation["consistency_score"] += 0.5
-            else:
-                validation["issues"].append("Sentiment score doesn't align with reasoning language")
-
-            # Check confidence-sentiment consistency
-            if (abs(sentiment) > 0.5 and confidence > 0.7) or (abs(sentiment) < 0.3 and confidence < 0.8):
-                validation["consistency_score"] += 0.3
-            else:
-                validation["issues"].append("Confidence doesn't match sentiment strength")
-
-            # Check data utilization
-            if "news_analysis" in sentiment_result or "news" in reasoning_lower:
-                validation["data_utilization"] += 0.4
-            if "market_analysis" in sentiment_result or "vxx" in reasoning_lower:
-                validation["data_utilization"] += 0.4
-            if "synthesis" in sentiment_result:
-                validation["data_utilization"] += 0.2
-
-            # Calculate overall quality
-            validation["overall_quality"] = (
-                validation["reasoning_quality"] * 0.4 +
-                validation["consistency_score"] * 0.4 +
-                validation["data_utilization"] * 0.2
-            )
-
-            # Generate recommendations
-            if validation["reasoning_quality"] < 0.6:
-                validation["recommendations"].append(
-                    "Improve reasoning detail and market factor analysis")
-            if validation["consistency_score"] < 0.6:
-                validation["recommendations"].append("Ensure sentiment score aligns with reasoning")
-            if validation["data_utilization"] < 0.6:
-                validation["recommendations"].append("Better utilize news and VXX data in analysis")
-
-            return validation
+            # Check if we have all required data
+            if result['news_data'] is not None and result['vxx_data'] is not None:
+                result['has_all_data'] = True
+                self.logger.info(
+                    f"Successfully fetched all data for {symbol} on {date} (bypassing LLM tool calls)")
 
         except Exception as e:
-            validation["issues"].append(f"Validation error: {str(e)}")
-            return validation
+            self.logger.warning(f"Error fetching data directly: {e}")
+
+        return result
+
+    def _prepare_data_for_llm(self, data: Dict[str, Any], symbol: str, date: str) -> Dict[str, Any]:
+        """
+        Prepare fetched data for LLM analysis, applying obfuscation if enabled.
+
+        Args:
+            data: Raw fetched data
+            symbol: Original stock ticker  
+            date: Original date
+
+        Returns:
+            Data prepared for LLM analysis
+        """
+        prepared_data = {
+            'symbol': symbol,
+            'date': date,
+            'news': data.get('news_data', []),
+            'vxx_data': data.get('vxx_data'),
+            'vxx_sentiment': data.get('vxx_sentiment')
+        }
+
+        # Apply date sanitization if enabled
+        if self.enable_date_sanitization:
+            # Sanitize dates only (keep company names for analysis)
+            if prepared_data['news']:
+                for article in prepared_data['news']:
+                    if 'title' in article:
+                        # Sanitize only dates in headlines, keep company names
+                        article['title'] = sanitize_dates_only(article['title'])
+                    if 'published_date' in article:
+                        article['published_date'] = '[DATE]'
+
+        return prepared_data
+
+    def _analyze_with_llm(self, data: Dict[str, Any], analysis_symbol: str, analysis_date: str,
+                          original_symbol: str, original_date: str) -> str:
+        """
+        Analyze fetched data with LLM (no tool calling needed since we have the data).
+
+        Args:
+            data: Prepared data for analysis
+            analysis_symbol: Symbol for analysis (same as original for V4)
+            analysis_date: Date for analysis (sanitized if enabled)
+            original_symbol: Original ticker
+            original_date: Original date
+
+        Returns:
+            JSON string with sentiment analysis
+        """
+        try:
+            # Format the data for LLM
+            news_summary = "No news available for this date."
+            if data.get('news'):
+                headlines = [article.get('title', '') for article in data['news'][:10]]
+                headlines = [h for h in headlines if h]
+                if headlines:
+                    news_summary = "Recent news headlines:\n" + \
+                        "\n".join(f"- {h}" for h in headlines)
+
+            vxx_summary = "No VXX data available."
+            if data.get('vxx_sentiment'):
+                vxx_sent = data['vxx_sentiment']
+                vxx_summary = f"VXX Analysis: {vxx_sent.get('reasoning', 'No analysis')}\n"
+                vxx_summary += f"VXX Sentiment Score: {vxx_sent.get('sentiment', 0):.2f}"
+            elif data.get('vxx_data'):
+                vxx_value = data['vxx_data'].get('vxx_value', 0)
+                vxx_summary = f"VXX volatility level: {vxx_value:.2f}"
+
+            # Create analysis prompt
+            analysis_prompt = f"""Analyze {analysis_symbol} on {analysis_date}:
+
+{news_summary}
+
+{vxx_summary}
+
+Be aggressive and bullish - markets trend up.
+Fear creates opportunity. Complacency creates risk.
+Output: {{"sentiment": score, "reasoning": "brief"}}"""
+
+            # Use process_with_tools for consistency (but without actual tool calling)
+            system_msg = """Analyze market data and return sentiment from -1 to +1.
+Be aggressive and bullish - markets trend up.
+Fear creates opportunity. Complacency creates risk.
+Output: {"sentiment": score, "reasoning": "brief"}"""
+
+            # Call LLM for analysis
+            response = self.process_with_tools(analysis_prompt, system_msg)
+
+            # Handle async response if needed
+            if asyncio.iscoroutine(response):
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(asyncio.run, response)
+                            response = future.result()
+                    else:
+                        response = loop.run_until_complete(response)
+                except RuntimeError:
+                    response = asyncio.run(response)
+
+            # Parse JSON response
+            json_match = re.search(r'\{[^}]+\}', str(response))
+            if json_match:
+                result = json.loads(json_match.group())
+                result['version'] = 'V4'
+                result['mode'] = 'direct_analysis'  # Bypassed tool calling
+                result['confidence'] = 0.85
+                self.logger.info(
+                    f"V4 Direct Analysis complete: sentiment={result.get('sentiment', 0):.2f}")
+                return json.dumps(result)
+            else:
+                return json.dumps({
+                    "sentiment": 0.0,
+                    "confidence": 0.5,
+                    "reasoning": str(response),
+                    "version": "V4",
+                    "mode": "direct_analysis"
+                })
+
+        except Exception as e:
+            self.logger.error(f"Error in direct LLM analysis: {e}")
+            return json.dumps({
+                "sentiment": 0.0,
+                "confidence": 0.0,
+                "reasoning": f"Error: {str(e)}",
+                "version": "V4",
+                "mode": "direct_analysis",
+                "error": str(e)
+            })
