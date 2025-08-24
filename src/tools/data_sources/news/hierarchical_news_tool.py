@@ -98,9 +98,12 @@ class HierarchicalNewsTool:
         self.news_tool = GoogleSearchNewsTool()
         
     def get_sector_etfs(self, ticker: str) -> List[str]:
-        """Get relevant sector ETFs for a ticker"""
+        """Get relevant sector ETFs for a ticker, excluding self to prevent duplication"""
         ticker = ticker.upper()
-        return self.config.sector_mappings.get(ticker, self.config.sector_mappings['DEFAULT'])
+        sector_etfs = self.config.sector_mappings.get(ticker, self.config.sector_mappings['DEFAULT'])
+        
+        # Remove primary ticker from sector ETFs to avoid duplication
+        return [etf for etf in sector_etfs if etf != ticker]
     
     def fetch_direct_news(self, ticker: str, start_date: str, end_date: str, max_items: int) -> pd.DataFrame:
         """
@@ -197,11 +200,12 @@ class HierarchicalNewsTool:
         
         return pd.DataFrame()
     
-    def fetch_market_news(self, start_date: str, end_date: str, max_items: int) -> pd.DataFrame:
+    def fetch_market_news(self, primary_ticker: str, start_date: str, end_date: str, max_items: int) -> pd.DataFrame:
         """
         Fetch broad market sentiment news via SPY
         
         Args:
+            primary_ticker: Primary ticker being analyzed (to avoid duplication)
             start_date: Start date for news search
             end_date: End date for news search
             max_items: Maximum number of articles to fetch
@@ -209,6 +213,11 @@ class HierarchicalNewsTool:
         Returns:
             DataFrame with market news
         """
+        # Skip market news if primary ticker is already SPY to avoid duplication
+        if primary_ticker.upper() == 'SPY':
+            logger.info(f"Skipping market news - primary ticker {primary_ticker} is market ETF")
+            return pd.DataFrame()
+            
         logger.info(f"Fetching market news via SPY (max: {max_items})")
         
         try:
@@ -271,7 +280,7 @@ class HierarchicalNewsTool:
             all_news.append(sector_news)
         
         # 3. Fetch market news
-        market_news = self.fetch_market_news(start_date, end_date, market_target + 1)
+        market_news = self.fetch_market_news(ticker, start_date, end_date, market_target + 1)
         if not market_news.empty:
             all_news.append(market_news)
         
