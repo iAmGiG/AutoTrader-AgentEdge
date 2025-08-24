@@ -24,11 +24,11 @@ import asyncio
 import argparse
 from dataclasses import dataclass
 
-# Import sentiment agents
+# Import sentiment agents - using optimized versions for better performance
 from src.agents.sentiment_v0 import V0SentimentAgent
-from src.agents.sentiment_v1 import SentimentV1Agent
-from src.agents.sentiment_v2 import SentimentV2Agent
-from src.agents.sentiment_v3 import SentimentV3Agent
+from src.agents_optimized.sentiment_v1 import OptimizedSentimentV1Agent
+from src.agents_optimized.sentiment_v2 import OptimizedSentimentV2Agent
+from src.agents_optimized.sentiment_v3 import OptimizedSentimentV3Agent
 from src.agents.sentiment_v4 import SentimentV4Agent
 
 # Import tools
@@ -82,12 +82,12 @@ class SimpleContinuousBacktest:
         self.slow_period = 26
         self.signal_period = 9
 
-        # Initialize sentiment agents
+        # Initialize sentiment agents - using optimized versions where available
         self.agents = {
             'V0': V0SentimentAgent(),
-            'V1': SentimentV1Agent(),
-            'V2': SentimentV2Agent(),
-            'V3': SentimentV3Agent(),
+            'V1': OptimizedSentimentV1Agent(),
+            'V2': OptimizedSentimentV2Agent(),
+            'V3': OptimizedSentimentV3Agent(),
             'V4': SentimentV4Agent(enable_date_sanitization=True)
         }
 
@@ -382,7 +382,9 @@ class SimpleContinuousBacktest:
             sentiment_scores.append(sentiment_score)
 
             # Trading logic: MACD + Sentiment
-            if position == 0 and macd_signal == 1 and sentiment_score >= 0:
+            # Adjusted threshold for V2/V3 VXX sentiment (ranges -0.3 to +0.8)
+            sentiment_threshold = -0.3 if version in ['V2', 'V3'] else 0.0
+            if position == 0 and macd_signal == 1 and sentiment_score >= sentiment_threshold:
                 # Enter long position
                 shares = int(cash / current_price)
                 if shares > 0:

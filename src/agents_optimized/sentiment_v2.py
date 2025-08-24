@@ -75,7 +75,8 @@ class OptimizedSentimentV2Agent(BaseAgent):
                     
                     if vxx_result:
                         # Convert VXX to sentiment using same logic as original V2
-                        sentiment = self.vxx_tool.calculate_sentiment(vxx_result['vxx_value'])
+                        vxx_sentiment_result = self.vxx_tool.vxx_to_sentiment(vxx_result['vxx_value'])
+                        sentiment = vxx_sentiment_result.get('sentiment_score', 0.0)
                     else:
                         sentiment = 0.0  # Neutral if no data
                         
@@ -165,7 +166,8 @@ class OptimizedSentimentV2Agent(BaseAgent):
             vxx_result = self.vxx_tool.fetch_vxx_data(date)
             
             if vxx_result:
-                sentiment = self.vxx_tool.calculate_sentiment(vxx_result['vxx_value'])
+                vxx_sentiment_result = self.vxx_tool.vxx_to_sentiment(vxx_result['vxx_value'])
+                sentiment = vxx_sentiment_result.get('sentiment_score', 0.0)
                 
                 return json.dumps({
                     "sentiment": round(sentiment, 4),
