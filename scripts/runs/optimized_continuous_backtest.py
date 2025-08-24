@@ -341,8 +341,11 @@ class OptimizedContinuousBacktest:
                         agent.prepare_period_data, symbol, first_date, last_date
                     )
                 else:
-                    # V1-V3 use their new optimized batch systems
-                    success = agent.prepare_period_data(symbol, first_date, last_date)
+                    # V1-V3 use their new optimized batch systems (some are async)
+                    if version in ['V1']:
+                        success = await agent.prepare_period_data(symbol, first_date, last_date)
+                    else:
+                        success = agent.prepare_period_data(symbol, first_date, last_date)
 
                 if success:
                     logger.info(
