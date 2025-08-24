@@ -1,12 +1,12 @@
 {
   "metadata": {
-    "version": "V2",
+    "version": "V1",
     "symbol": "AMZN",
     "year": 2024,
     "start_date": "2024-01-01",
     "end_date": "2024-12-31",
     "initial_cash": 10000.0,
-    "execution_time": "2025-08-24T17:29:21.829431",
+    "execution_time": "2025-08-24T17:27:18.430020",
     "framework": "SimpleContinuousBacktest_v1.0"
   },
   "performance": {
@@ -27,7 +27,7 @@
       "action": "BUY",
       "price": 149.1,
       "shares": 67,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "1",
       "position_avg_cost": 149.1
     },
@@ -36,7 +36,7 @@
       "action": "SELL",
       "price": 167.08,
       "shares": 67,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "-1",
       "return_pct": 12.05902079141517,
       "avg_cost_return_pct": 12.05902079141517,
@@ -48,7 +48,7 @@
       "action": "BUY",
       "price": 174.99,
       "shares": 64,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "1",
       "position_avg_cost": 161.7485496183206
     },
@@ -57,7 +57,7 @@
       "action": "SELL",
       "price": 173.16,
       "shares": 64,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "-1",
       "return_pct": -1.0457740442311059,
       "avg_cost_return_pct": 7.055055769345133,
@@ -69,7 +69,7 @@
       "action": "BUY",
       "price": 176.76,
       "shares": 62,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "1",
       "position_avg_cost": 166.57088082901552
     },
@@ -78,7 +78,7 @@
       "action": "SELL",
       "price": 174.12,
       "shares": 62,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "-1",
       "return_pct": -1.4935505770536244,
       "avg_cost_return_pct": 4.532076154855439,
@@ -90,7 +90,7 @@
       "action": "BUY",
       "price": 180.38,
       "shares": 60,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "1",
       "position_avg_cost": 169.84577075098812
     },
@@ -99,7 +99,7 @@
       "action": "SELL",
       "price": 183.32,
       "shares": 60,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "-1",
       "return_pct": 1.629892449273754,
       "avg_cost_return_pct": 7.933214462411617,
@@ -111,7 +111,7 @@
       "action": "BUY",
       "price": 186.21,
       "shares": 59,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "1",
       "position_avg_cost": 172.94028846153844
     },
@@ -120,7 +120,7 @@
       "action": "SELL",
       "price": 183.63,
       "shares": 59,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "-1",
       "return_pct": -1.3855324633478396,
       "avg_cost_return_pct": 6.181157458193393,
@@ -132,7 +132,7 @@
       "action": "BUY",
       "price": 184.3,
       "shares": 59,
-      "sentiment": -0.3,
+      "sentiment": 0.0,
       "macd_signal": "1",
       "position_avg_cost": 174.74681940700808
     },
@@ -1107,9 +1107,9 @@
     }
   ],
   "sentiment_stats": {
-    "mean": -0.1476190476190476,
-    "std": 0.14998110236212972,
-    "min": -0.3,
+    "mean": 0.0,
+    "std": 0.0,
+    "min": 0.0,
     "max": 0.0
   }
 }
