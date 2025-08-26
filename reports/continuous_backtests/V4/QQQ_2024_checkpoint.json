@@ -1,0 +1,72 @@
+{
+  "version": "V4",
+  "symbol": "QQQ",
+  "year": 2024,
+  "last_date": "2024-01-04",
+  "cash": 100000.0,
+  "position": 0,
+  "entry_price": 0,
+  "entry_date": null,
+  "trades": [],
+  "daily_values": [
+    {
+      "date": "2024-01-02",
+      "portfolio_value": 100000.0,
+      "cash": 100000.0,
+      "position": 0,
+      "stock_price": 402.59,
+      "sentiment": 0.7,
+      "position_avg_cost": 0.0,
+      "position_value": 0.0,
+      "cost_basis": 0.0,
+      "unrealized_pnl": 0.0,
+      "unrealized_pnl_pct": 0.0,
+      "cash_allocation_pct": 100.0,
+      "position_allocation_pct": 0.0,
+      "is_averaging_up": false,
+      "is_averaging_down": false
+    },
+    {
+      "date": "2024-01-03",
+      "portfolio_value": 100000.0,
+      "cash": 100000.0,
+      "position": 0,
+      "stock_price": 398.33,
+      "sentiment": 0.75,
+      "position_avg_cost": 0.0,
+      "position_value": 0.0,
+      "cost_basis": 0.0,
+      "unrealized_pnl": 0.0,
+      "unrealized_pnl_pct": 0.0,
+      "cash_allocation_pct": 100.0,
+      "position_allocation_pct": 0.0,
+      "is_averaging_up": false,
+      "is_averaging_down": false
+    },
+    {
+      "date": "2024-01-04",
+      "portfolio_value": 100000.0,
+      "cash": 100000.0,
+      "position": 0,
+      "stock_price": 396.28,
+      "sentiment": 0.85,
+      "position_avg_cost": 0.0,
+      "position_value": 0.0,
+      "cost_basis": 0.0,
+      "unrealized_pnl": 0.0,
+      "unrealized_pnl_pct": 0.0,
+      "cash_allocation_pct": 100.0,
+      "position_allocation_pct": 0.0,
+      "is_averaging_up": false,
+      "is_averaging_down": false
+    }
+  ],
+  "sentiment_scores": [
+    0.7,
+    0.75,
+    0.85
+  ],
+  "completed": false,
+  "position_avg_cost": 0.0,
+  "total_cost_basis": 0.0
+}
