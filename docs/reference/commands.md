@@ -61,7 +61,13 @@ python -m pytest tests/test_market_data_tool.py
 ### Analysis Tools
 
 ```bash
-# Three-way strategy comparison
+# V0-V4 Results Summary (basic)
+python scripts/generate_results_summary.py
+
+# Advanced Metrics Analysis 
+python scripts/generate_results_summary.py --advanced
+
+# Three-way strategy comparison (legacy)
 python scripts/validation/analyze_cached_performance.py
 
 # Build FMP data cache
@@ -102,6 +108,18 @@ python scripts/start_backtest_service.py
 
 # View logs
 tail -f .cache/backtests/nohup.out
+```
+
+## Advanced Metrics Analysis
+
+```bash
+# Generate comprehensive analysis of all V0-V4 results
+python scripts/generate_results_summary.py --advanced
+
+# Outputs generated:
+# - reports/backtest_analysis_2024.json (comprehensive analysis)
+# - reports/strategy_comparison_2024.csv (comparative metrics)
+# - reports/continuation_states_2025/ (40 continuation state files)
 ```
 
 ## Recent Performance Results (2024)

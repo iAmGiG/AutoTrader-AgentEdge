@@ -11,7 +11,7 @@ The Advanced Metrics System provides comprehensive analysis capabilities for bac
 
 ```bash
 # Run comprehensive analysis on all V0-V4 results
-python scripts/run_advanced_metrics_analysis.py
+python scripts/generate_results_summary.py --advanced
 
 # Or use the analyzer directly
 python src/analysis/metrics_analyzer.py
@@ -32,8 +32,8 @@ The analysis generates three types of outputs:
    - Comparative metrics across all strategies
    - Ready for spreadsheet analysis and visualization
 
-3. **Continuation Checkpoints** (`checkpoints/2025_continuation/`)
-   - Final state data for each ticker/strategy
+3. **Continuation States** (`reports/continuation_states_2025/`)
+   - Final portfolio states for each ticker/strategy after 2024
    - Ready to continue backtesting into 2025
 
 ## MetricsAnalyzer Features
@@ -194,16 +194,16 @@ src/analysis/
 └── __init__.py
 
 scripts/
-└── run_advanced_metrics_analysis.py  # Easy analysis runner
+└── generate_results_summary.py       # Enhanced with --advanced flag
 
 reports/
 ├── backtest_analysis_2024.json      # Comprehensive analysis
 ├── strategy_comparison_2024.csv     # Comparative metrics
 └── V0-V4_Framework_Results.md       # Summary report
 
-checkpoints/2025_continuation/
-├── AAPL_V0_2025_checkpoint.json    # State for continuation
-├── AAPL_V1_2025_checkpoint.json
+reports/continuation_states_2025/
+├── AAPL_V0_2024_01_01_to_2024_12_31_continuation_state.json
+├── AAPL_V1_2024_01_01_to_2024_12_31_continuation_state.json
 └── ...                             # All 40 combinations
 ```
 
