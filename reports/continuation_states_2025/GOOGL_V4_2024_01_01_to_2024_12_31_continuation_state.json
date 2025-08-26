@@ -1,0 +1,17 @@
+{
+  "date": "2024-12-31",
+  "portfolio_value": 120746.95,
+  "cash": 120746.95,
+  "position": 0,
+  "position_avg_cost": 0.0,
+  "stock_price": 189.3,
+  "last_sentiment": 0.4,
+  "last_macd_signal": "-1",
+  "last_trade_date": "2024-12-30",
+  "cumulative_return": 20.75,
+  "high_water_mark": 123792.99,
+  "initial_cash": 100000.0,
+  "symbol": "GOOGL",
+  "version": "V4",
+  "framework_version": "SimpleContinuousBacktest_v1.0"
+}

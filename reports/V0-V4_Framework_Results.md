@@ -1,6 +1,6 @@
 # V0-V4 Sentiment Framework Results Summary
 
-**Generated**: 2025-08-26 15:55:36
+**Generated**: 2025-08-26 16:01:15
 **Test Period**: 2024 Full Year
 **Framework**: Simple Continuous Backtest v1.0
 
@@ -8,14 +8,14 @@
 
 | Ticker | V0 (Baseline) | V1 (News) | V2 (VXX) | V3 (Combined) | V4 (LLM) | Status |
 |--------|---------------|-----------|----------|---------------|----------|--------|
-| AAPL | +8.73% (24 trades) | +-3.83% (16 trades) | +5.49% (8 trades) | +2.73% (14 trades) | +7.02% (24 trades) | ✅ Complete |
-| AMZN | +22.98% (22 trades) | +13.24% (20 trades) | +6.09% (10 trades) | +11.46% (16 trades) | +19.11% (22 trades) | ✅ Complete |
-| GOOGL | +24.49% (20 trades) | +16.45% (16 trades) | +9.05% (12 trades) | +8.75% (14 trades) | +20.75% (20 trades) | ✅ Complete |
-| META | +46.02% (18 trades) | +8.27% (16 trades) | +41.42% (10 trades) | +19.11% (12 trades) | +44.97% (18 trades) | ✅ Complete |
-| MSFT | +5.76% (20 trades) | +3.22% (18 trades) | +-5.63% (10 trades) | +-0.32% (18 trades) | +5.76% (20 trades) | ✅ Complete |
-| NVDA | +106.73% (13 trades) | +67.59% (13 trades) | +24.71% (9 trades) | +35.63% (11 trades) | +89.82% (13 trades) | ✅ Complete |
-| SPY | +6.86% (28 trades) | +2.70% (24 trades) | +1.89% (10 trades) | +1.55% (10 trades) | +4.98% (28 trades) | ✅ Complete |
-| TSLA | +69.51% (18 trades) | +54.87% (8 trades) | +39.98% (8 trades) | +67.03% (10 trades) | +60.84% (18 trades) | ✅ Complete |
+| AAPL | +8.730% (24 trades) | +-3.830% (16 trades) | +5.490% (8 trades) | +2.730% (14 trades) | +7.020% (24 trades) | ✅ Complete |
+| AMZN | +22.980% (22 trades) | +13.240% (20 trades) | +6.090% (10 trades) | +11.460% (16 trades) | +19.110% (22 trades) | ✅ Complete |
+| GOOGL | +24.490% (20 trades) | +16.450% (16 trades) | +9.050% (12 trades) | +8.750% (14 trades) | +20.750% (20 trades) | ✅ Complete |
+| META | +46.020% (18 trades) | +8.270% (16 trades) | +41.420% (10 trades) | +19.110% (12 trades) | +44.970% (18 trades) | ✅ Complete |
+| MSFT | +5.760% (20 trades) | +3.220% (18 trades) | +-5.630% (10 trades) | +-0.320% (18 trades) | +5.760% (20 trades) | ✅ Complete |
+| NVDA | +106.730% (13 trades) | +67.590% (13 trades) | +24.710% (9 trades) | +35.630% (11 trades) | +89.820% (13 trades) | ✅ Complete |
+| SPY | +6.860% (28 trades) | +2.700% (24 trades) | +1.890% (10 trades) | +1.550% (10 trades) | +4.980% (28 trades) | ✅ Complete |
+| TSLA | +69.510% (18 trades) | +54.870% (8 trades) | +39.980% (8 trades) | +67.030% (10 trades) | +60.840% (18 trades) | ✅ Complete |
 
 ## 📈 Detailed Analysis (Completed Tickers)
 
@@ -23,10 +23,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 8.73% | -3.83% | 5.49% | 2.73% | 7.02% |
+| Total Return % | 8.730% | -3.830% | 5.490% | 2.730% | 7.020% |
 | Final Portfolio Value | $108,731.45 | $96,168.05 | $105,487.05 | $102,733.62 | $107,023.20 |
 | Buy & Hold Return % | 34.90% | 34.90% | 34.90% | 34.90% | 34.90% |
-| Outperformance vs B&H | -26.16% | -38.73% | -29.41% | -32.16% | -27.87% |
+| Outperformance vs B&H | -26.160% | -38.730% | -29.410% | -32.160% | -27.870% |
 | Total Trades | 24 | 16 | 8 | 14 | 24 |
 | Profitable Trades | 5 | 3 | 2 | 3 | 5 |
 | Losing Trades | 7 | 5 | 2 | 4 | 7 |
@@ -37,10 +37,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 22.98% | 13.24% | 6.09% | 11.46% | 19.11% |
+| Total Return % | 22.980% | 13.240% | 6.090% | 11.460% | 19.110% |
 | Final Portfolio Value | $122,978.23 | $113,243.29 | $106,090.01 | $111,458.77 | $119,106.11 |
 | Buy & Hold Return % | 46.33% | 46.33% | 46.33% | 46.33% | 46.33% |
-| Outperformance vs B&H | -23.35% | -33.08% | -40.24% | -34.87% | -27.22% |
+| Outperformance vs B&H | -23.350% | -33.080% | -40.240% | -34.870% | -27.220% |
 | Total Trades | 22 | 20 | 10 | 16 | 22 |
 | Profitable Trades | 6 | 5 | 3 | 4 | 6 |
 | Losing Trades | 5 | 5 | 2 | 4 | 5 |
@@ -51,10 +51,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 24.49% | 16.45% | 9.05% | 8.75% | 20.75% |
+| Total Return % | 24.490% | 16.450% | 9.050% | 8.750% | 20.750% |
 | Final Portfolio Value | $124,492.79 | $116,448.56 | $109,045.51 | $108,745.36 | $120,746.95 |
 | Buy & Hold Return % | 37.01% | 37.01% | 37.01% | 37.01% | 37.01% |
-| Outperformance vs B&H | -12.51% | -20.56% | -27.96% | -28.26% | -16.26% |
+| Outperformance vs B&H | -12.510% | -20.560% | -27.960% | -28.260% | -16.260% |
 | Total Trades | 20 | 16 | 12 | 14 | 20 |
 | Profitable Trades | 7 | 6 | 3 | 4 | 7 |
 | Losing Trades | 3 | 2 | 3 | 3 | 3 |
@@ -65,10 +65,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 46.02% | 8.27% | 41.42% | 19.11% | 44.97% |
+| Total Return % | 46.020% | 8.270% | 41.420% | 19.110% | 44.970% |
 | Final Portfolio Value | $146,020.29 | $108,269.77 | $141,424.94 | $119,114.92 | $144,974.32 |
 | Buy & Hold Return % | 69.08% | 69.08% | 69.08% | 69.08% | 69.08% |
-| Outperformance vs B&H | -23.06% | -60.81% | -27.66% | -49.97% | -24.11% |
+| Outperformance vs B&H | -23.060% | -60.810% | -27.660% | -49.970% | -24.110% |
 | Total Trades | 18 | 16 | 10 | 12 | 18 |
 | Profitable Trades | 5 | 5 | 4 | 5 | 5 |
 | Losing Trades | 4 | 3 | 1 | 1 | 4 |
@@ -79,10 +79,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 5.76% | 3.22% | -5.63% | -0.32% | 5.76% |
+| Total Return % | 5.760% | 3.220% | -5.630% | -0.320% | 5.760% |
 | Final Portfolio Value | $105,763.37 | $103,220.79 | $94,366.44 | $99,683.96 | $105,759.75 |
 | Buy & Hold Return % | 13.65% | 13.65% | 13.65% | 13.65% | 13.65% |
-| Outperformance vs B&H | -7.89% | -10.43% | -19.29% | -13.97% | -7.89% |
+| Outperformance vs B&H | -7.890% | -10.430% | -19.290% | -13.970% | -7.890% |
 | Total Trades | 20 | 18 | 10 | 18 | 20 |
 | Profitable Trades | 6 | 5 | 2 | 5 | 6 |
 | Losing Trades | 4 | 4 | 3 | 4 | 4 |
@@ -93,10 +93,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 106.73% | 67.59% | 24.71% | 35.63% | 89.82% |
+| Total Return % | 106.730% | 67.590% | 24.710% | 35.630% | 89.820% |
 | Final Portfolio Value | $206,733.91 | $167,590.65 | $124,708.76 | $135,627.22 | $189,820.58 |
 | Buy & Hold Return % | 178.80% | 178.80% | 178.80% | 178.80% | 178.80% |
-| Outperformance vs B&H | -72.06% | -111.20% | -154.09% | -143.17% | -88.97% |
+| Outperformance vs B&H | -72.060% | -111.200% | -154.090% | -143.170% | -88.970% |
 | Total Trades | 13 | 13 | 9 | 11 | 13 |
 | Profitable Trades | 4 | 4 | 2 | 3 | 4 |
 | Losing Trades | 2 | 2 | 2 | 2 | 2 |
@@ -107,10 +107,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 6.86% | 2.70% | 1.89% | 1.55% | 4.98% |
+| Total Return % | 6.860% | 2.700% | 1.890% | 1.550% | 4.980% |
 | Final Portfolio Value | $106,864.28 | $102,698.97 | $101,888.81 | $101,546.68 | $104,984.19 |
 | Buy & Hold Return % | 24.00% | 24.00% | 24.00% | 24.00% | 24.00% |
-| Outperformance vs B&H | -17.13% | -21.30% | -22.11% | -22.45% | -19.01% |
+| Outperformance vs B&H | -17.130% | -21.300% | -22.110% | -22.450% | -19.010% |
 | Total Trades | 28 | 24 | 10 | 10 | 28 |
 | Profitable Trades | 8 | 6 | 4 | 4 | 8 |
 | Losing Trades | 6 | 6 | 1 | 1 | 6 |
@@ -121,10 +121,10 @@
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
 |--------|----|----|----|----|----| 
-| Total Return % | 69.51% | 54.87% | 39.98% | 67.03% | 60.84% |
+| Total Return % | 69.510% | 54.870% | 39.980% | 67.030% | 60.840% |
 | Final Portfolio Value | $169,507.26 | $154,868.96 | $139,977.41 | $167,030.92 | $160,836.92 |
 | Buy & Hold Return % | 62.56% | 62.56% | 62.56% | 62.56% | 62.56% |
-| Outperformance vs B&H | 6.94% | -7.69% | -22.59% | 4.47% | -1.73% |
+| Outperformance vs B&H | 6.940% | -7.690% | -22.590% | 4.470% | -1.730% |
 | Total Trades | 18 | 8 | 8 | 10 | 18 |
 | Profitable Trades | 5 | 3 | 3 | 4 | 5 |
 | Losing Trades | 4 | 1 | 1 | 1 | 4 |

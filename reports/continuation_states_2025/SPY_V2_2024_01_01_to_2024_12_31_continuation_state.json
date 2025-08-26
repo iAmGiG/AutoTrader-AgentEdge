@@ -1,0 +1,17 @@
+{
+  "date": "2024-12-31",
+  "portfolio_value": 101888.81,
+  "cash": 101888.81,
+  "position": 0,
+  "position_avg_cost": 0.0,
+  "stock_price": 586.08,
+  "last_sentiment": 0.0,
+  "last_macd_signal": "-1",
+  "last_trade_date": "2024-12-10",
+  "cumulative_return": 1.89,
+  "high_water_mark": 103240.82,
+  "initial_cash": 100000.0,
+  "symbol": "SPY",
+  "version": "V2",
+  "framework_version": "SimpleContinuousBacktest_v1.0"
+}

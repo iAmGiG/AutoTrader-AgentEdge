@@ -35,6 +35,13 @@ from src.agents.tech_agent import TechAgent  # Add tech agent for market data
 # Import tools
 from src.tools.cache.unified_cache import UnifiedCacheManager
 
+# Import advanced metrics capture
+try:
+    from src.analysis.metrics_capture import MetricsCapture
+    METRICS_CAPTURE_AVAILABLE = True
+except ImportError:
+    METRICS_CAPTURE_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -240,6 +247,12 @@ class SimpleContinuousBacktest:
         """
 
         logger.info(f"🚀 Starting continuous backtest: {version} {symbol} {year}")
+        
+        # Initialize advanced metrics capture if available
+        metrics_capture = None
+        if METRICS_CAPTURE_AVAILABLE:
+            metrics_capture = MetricsCapture(symbol, initial_cash)
+            logger.info(f"📊 Advanced metrics capture enabled for {version} {symbol}")
 
         # Check if already completed
         results_path = self.get_results_path(version, symbol, year)
@@ -456,6 +469,18 @@ class SimpleContinuousBacktest:
                         'macd_signal': macd_signal,
                         'position_avg_cost': position_avg_cost  # Enhanced tracking
                     })
+                    
+                    # Record trade in advanced metrics capture
+                    if metrics_capture:
+                        metrics_capture.record_trade(
+                            date=date_str,
+                            action='BUY',
+                            price=current_price,
+                            shares=shares,
+                            sentiment=sentiment_score,
+                            macd_signal=str(macd_signal),
+                            portfolio_value=cash + (position * current_price)
+                        )
 
                     logger.info(
                         f"📈 BUY: {shares} shares at ${current_price:.2f} (avg: ${position_avg_cost:.2f}, sentiment: {sentiment_score:.3f}, multiplier: {position_multiplier:.2f})")
@@ -479,6 +504,18 @@ class SimpleContinuousBacktest:
                     'entry_date': entry_date,
                     'entry_avg_cost': position_avg_cost
                 })
+                
+                # Record trade in advanced metrics capture
+                if metrics_capture:
+                    metrics_capture.record_trade(
+                        date=date_str,
+                        action='SELL',
+                        price=current_price,
+                        shares=position,
+                        sentiment=sentiment_score,
+                        macd_signal=str(macd_signal),
+                        portfolio_value=cash  # Cash after selling
+                    )
 
                 logger.info(
                     f"📉 SELL: {position} shares at ${current_price:.2f} (avg cost return: {avg_cost_return:+.2f}%)")
@@ -528,6 +565,20 @@ class SimpleContinuousBacktest:
                 'is_averaging_up': position_avg_cost > 0 and current_price > position_avg_cost,
                 'is_averaging_down': position_avg_cost > 0 and current_price < position_avg_cost
             })
+            
+            # Update advanced metrics capture with daily data
+            if metrics_capture:
+                # Note: Volume not available in current data, will be None
+                metrics_capture.update_daily_data(
+                    date=date_str,
+                    portfolio_value=round(portfolio_value, 2),
+                    cash=round(cash, 2),
+                    position=position,
+                    stock_price=round(current_price, 2),
+                    sentiment=round(sentiment_score, 4),
+                    volume=None,  # Not available in current market data
+                    macd_histogram=None  # Could add MACD histogram if needed
+                )
 
             processed_days += 1
 
@@ -598,6 +649,21 @@ class SimpleContinuousBacktest:
                 'max': np.max(sentiment_scores)
             }
         }
+        
+        # Add enhanced metrics if MetricsCapture was used
+        if metrics_capture:
+            enhanced_data = metrics_capture.export_enhanced_results()
+            results['enhanced_metrics'] = enhanced_data['enhanced_daily_data']
+            results['enhanced_trades'] = enhanced_data['enhanced_trade_data'] 
+            results['sentiment_effectiveness'] = enhanced_data['sentiment_effectiveness']
+            results['market_regime_analysis'] = enhanced_data['market_regime_summary']
+            results['real_time_metrics'] = enhanced_data['real_time_metrics']
+            
+            # Mark as having enhanced metrics
+            results['metadata']['enhanced_capture'] = True
+            results['metadata']['capture_framework'] = 'MetricsCapture_v1.0'
+            
+            logger.info("📊 Enhanced metrics added to results")
 
         # Save final results
         with open(results_path, 'w') as f:
@@ -646,10 +712,10 @@ class SimpleContinuousBacktest:
         losing_trades = [t for t in trades if t.get('return_pct', 0) < 0]
 
         return {
-            'total_return': round(total_return, 2),
-            'total_return_pct': round(total_return, 2),
+            'total_return': round(total_return, 3),
+            'total_return_pct': round(total_return, 3),
             'buy_hold_return': round(buy_hold_return, 2),
-            'outperformance': round(total_return - buy_hold_return, 2),
+            'outperformance': round(total_return - buy_hold_return, 3),
             'final_portfolio_value': round(final_value, 2),
             'num_trades': len(trades),
             'profitable_trades': len(profitable_trades),

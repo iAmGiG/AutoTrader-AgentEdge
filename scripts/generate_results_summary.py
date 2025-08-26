@@ -4,13 +4,28 @@ Generate results summary by ticker and experiment type (V0-V4).
 
 Reads all results files from reports/continuous_backtests/ and creates
 a comprehensive summary table.
+
+Options:
+  --basic: Generate basic summary (default - original functionality)
+  --advanced: Generate advanced metrics analysis with sentiment effectiveness
 """
 
 import json
 import os
+import sys
+import argparse
 from pathlib import Path
 import pandas as pd
 from typing import Dict, List
+
+# Add src to path for advanced metrics import
+sys.path.append(str(Path(__file__).parent.parent / "src"))
+
+try:
+    from analysis.metrics_analyzer import MetricsAnalyzer
+    ADVANCED_AVAILABLE = True
+except ImportError:
+    ADVANCED_AVAILABLE = False
 
 def load_results_files() -> Dict[str, Dict[str, Dict]]:
     """Load all results files organized by version/ticker."""
@@ -72,11 +87,11 @@ def create_summary_table(results: Dict[str, Dict[str, Dict]]) -> pd.DataFrame:
                 num_trades = perf.get('num_trades', 0)
                 win_rate = perf.get('win_rate', 0)
                 
-                # Format: "+12.34% (25 trades, 32.1% win)"
-                row[f"{version}_Return"] = f"+{return_pct:.2f}%"
+                # Format: "+12.345% (25 trades, 32.1% win)"
+                row[f"{version}_Return"] = f"+{return_pct:.3f}%"
                 row[f"{version}_Trades"] = num_trades
                 row[f"{version}_WinRate"] = f"{win_rate:.1f}%"
-                row[f"{version}_Summary"] = f"+{return_pct:.2f}% ({num_trades} trades)"
+                row[f"{version}_Summary"] = f"+{return_pct:.3f}% ({num_trades} trades)"
             else:
                 row[f"{version}_Return"] = "N/A"
                 row[f"{version}_Trades"] = 0
@@ -186,10 +201,10 @@ def generate_markdown_report(results: Dict[str, Dict[str, Dict]], df: pd.DataFra
             
             # Build metrics table
             metrics = [
-                ('Total Return %', 'return', '{:.2f}%'),
+                ('Total Return %', 'return', '{:.3f}%'),
                 ('Final Portfolio Value', 'final_value', '${:,.2f}'),
                 ('Buy & Hold Return %', 'buy_hold', '{:.2f}%'),
-                ('Outperformance vs B&H', 'outperformance', '{:.2f}%'),
+                ('Outperformance vs B&H', 'outperformance', '{:.3f}%'),
                 ('Total Trades', 'trades', '{}'),
                 ('Profitable Trades', 'profitable_trades', '{}'),
                 ('Losing Trades', 'losing_trades', '{}'),
@@ -248,7 +263,65 @@ def generate_markdown_report(results: Dict[str, Dict[str, Dict]], df: pd.DataFra
     
     return '\n'.join(report)
 
+def run_advanced_analysis():
+    """Run advanced metrics analysis."""
+    if not ADVANCED_AVAILABLE:
+        print("❌ Advanced metrics not available. Install required dependencies.")
+        return
+    
+    print("🚀 Running Advanced Metrics Analysis on V0-V4 Results")
+    print("=" * 60)
+    
+    analyzer = MetricsAnalyzer()
+    analysis = analyzer.analyze_all_results()
+    
+    # Save all reports
+    analyzer.save_analysis_report(analysis)
+    analyzer.save_comparison_csv(analysis) 
+    analyzer.save_checkpoints(analysis)
+    
+    # Print advanced insights
+    print("\n" + "=" * 60)
+    print("🔍 ADVANCED INSIGHTS")
+    print("=" * 60)
+    
+    total_files = analysis.get('total_files_analyzed', 0)
+    print(f"✅ Analyzed {total_files} backtest result files")
+    
+    # Best strategies per ticker
+    best_strategies = analysis.get('best_strategy_per_ticker', {})
+    if best_strategies:
+        print(f"\n🏆 Best Strategy per Ticker (by Sharpe Ratio):")
+        for symbol, info in sorted(best_strategies.items()):
+            version = info['best_version']
+            sharpe = info['sharpe_ratio']
+            print(f"  • {symbol}: {version} (Sharpe: {sharpe:.3f})")
+    
+    # Strategy rankings
+    strategy_rankings = analysis.get('strategy_rankings', {})
+    if 'Total_Return' in strategy_rankings:
+        print(f"\n📈 Strategy Rankings by Total Return:")
+        for i, (version, return_pct) in enumerate(strategy_rankings['Total_Return'].items(), 1):
+            print(f"  {i}. {version}: {return_pct:.2f}%")
+
 def main():
+    parser = argparse.ArgumentParser(description='Generate V0-V4 backtest results summary')
+    parser.add_argument('--advanced', action='store_true', 
+                       help='Generate advanced metrics analysis with sentiment effectiveness')
+    parser.add_argument('--basic', action='store_true', 
+                       help='Generate basic summary (default)')
+    
+    args = parser.parse_args()
+    
+    # Default to basic if neither specified
+    if not args.advanced and not args.basic:
+        args.basic = True
+    
+    if args.advanced:
+        run_advanced_analysis()
+        return
+    
+    # Original basic functionality
     print("🚀 Loading V0-V4 backtest results...")
     
     results = load_results_files()
@@ -293,6 +366,13 @@ def main():
         print("📊 Pattern observed: V0 baseline often competitive with V4 LLM sentiment")
         print("📊 V2/V3 VXX-based strategies showing mixed performance")
         print("📊 Results align with realistic market behavior expectations")
+    
+    if ADVANCED_AVAILABLE:
+        print(f"\n💡 Tip: Run with --advanced for comprehensive metrics including:")
+        print(f"   • Sentiment effectiveness analysis")
+        print(f"   • Risk-adjusted performance (Sharpe, Calmar ratios)")
+        print(f"   • Market regime analysis")
+        print(f"   • Trade quality metrics")
 
 if __name__ == "__main__":
     main()
