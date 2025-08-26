@@ -276,12 +276,14 @@ class SimpleContinuousBacktest:
         if market_data is None or market_data.empty:
             logger.info(f"📡 No cached data for {symbol} {year}, fetching via tech agent...")
             try:
-                response = await self.tech_agent.generate_reply(
-                    f"fetch historical market data for {symbol} from {start_date} to {end_date}"
-                )
-                
-                if asyncio.iscoroutine(response):
-                    response = await response
+                # Run tech agent in a new thread to avoid event loop conflicts
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        self.tech_agent.generate_reply,
+                        f"fetch historical market data for {symbol} from {start_date} to {end_date}"
+                    )
+                    response = future.result(timeout=60)  # 60 second timeout
                     
                 # Parse response and get data from cache (tech agent should have cached it)
                 market_data = self.cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
