@@ -9,7 +9,6 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 import pandas as pd
-import asyncio
 
 from src.agents.base_agent import BaseAgent
 from src.tools.processors.sentiment_analyzer import SentimentAnalyzer
@@ -52,7 +51,7 @@ class OptimizedSentimentV1Agent(BaseAgent):
 
         self.logger = logger
 
-    async def prepare_period_data(self, symbol: str, start_date: str, end_date: str) -> bool:
+    def prepare_period_data(self, symbol: str, start_date: str, end_date: str) -> bool:
         """
         Batch prepare sentiment data for entire period WITHOUT LLM calls.
         Uses direct tool access to bypass LLM routing.
@@ -75,7 +74,7 @@ class OptimizedSentimentV1Agent(BaseAgent):
             # OPTIMIZATION STEP 1: Direct tool call WITHOUT LLM (fast path when cached)
             batch_success = False
             try:
-                news_data = self.news_tool.fetch_news(
+                news_data = self.news_tool.search_historical_news(
                     ticker=symbol,
                     start_date=start_date,
                     end_date=end_date,
@@ -105,7 +104,7 @@ class OptimizedSentimentV1Agent(BaseAgent):
                 self.logger.info("V1 Optimized: Falling back to LLM tool calling for systematic data fetching")
                 try:
                     # Use original LLM-based batch preparation approach
-                    success = await self._llm_batch_preparation(symbol, start_date, end_date)
+                    success = self._llm_batch_preparation(symbol, start_date, end_date)
                     if success:
                         batch_success = True
                         self.logger.info(f"V1 Optimized: LLM fallback successful")
@@ -143,7 +142,7 @@ class OptimizedSentimentV1Agent(BaseAgent):
             
         return trading_days
 
-    async def _llm_batch_preparation(self, symbol: str, start_date: str, end_date: str) -> bool:
+    def _llm_batch_preparation(self, symbol: str, start_date: str, end_date: str) -> bool:
         """
         LLM-based batch preparation fallback when direct tool access fails.
         This ensures the system can still work systematically without cache.
@@ -264,7 +263,7 @@ class OptimizedSentimentV1Agent(BaseAgent):
             self.logger.info(f"V1 Optimized: Direct fetching news for {symbol} on {date}")
             
             # Direct tool call WITHOUT LLM
-            news_data = self.news_tool.fetch_news(
+            news_data = self.news_tool.search_historical_news(
                 ticker=symbol,
                 start_date=date,
                 end_date=date,
