@@ -112,8 +112,80 @@ class UnifiedCacheManager:
             except Exception as e:
                 self.logger.error(f"Error reading market cache {cache_key}: {e}")
         
-        # If exact match failed, search for overlapping date ranges
+        # SPECIAL CASE: For full-year requests, try loading quarterly files directly
+        # This avoids complex overlapping logic that can have bugs with mixed file types
+        if source == 'alpha_vantage' and start == f"{start[:4]}-01-01" and end == f"{end[:4]}-12-31":
+            quarterly_result = self._load_quarterly_cache(symbol, start[:4], source)
+            if quarterly_result is not None and len(quarterly_result) > 200:  # Good coverage
+                self.logger.debug(f"Market data: Using quarterly cache direct load ({len(quarterly_result)} days)")
+                return quarterly_result
+        
+        # If exact match failed, search for overlapping date ranges  
         return self._search_overlapping_cache(symbol, start, end, source)
+
+    def _load_quarterly_cache(self, symbol: str, year: str, source: str) -> Optional[pd.DataFrame]:
+        """
+        Load quarterly cache files for a full year (Q1-Q4).
+        
+        This method specifically handles the case where we have quarterly cache files
+        like SPY_2024-01-01_2024-03-31_alpha_vantage.json for each quarter.
+        """
+        try:
+            quarterly_files = [
+                f"{symbol}_{year}-01-01_{year}-03-31_{source}.json",  # Q1
+                f"{symbol}_{year}-04-01_{year}-06-30_{source}.json",  # Q2
+                f"{symbol}_{year}-07-01_{year}-09-30_{source}.json",  # Q3
+                f"{symbol}_{year}-10-01_{year}-12-31_{source}.json",  # Q4
+            ]
+            
+            quarterly_dfs = []
+            loaded_files = []
+            
+            for filename in quarterly_files:
+                cache_path = self.market_dir / filename
+                if cache_path.exists():
+                    try:
+                        with open(cache_path, 'r') as f:
+                            cache_data = json.load(f)
+                        
+                        # Check if this is historical data (don't apply expiration to historical data)
+                        metadata_end_str = cache_data['metadata']['end_date']
+                        file_end_date = datetime.strptime(metadata_end_str, '%Y-%m-%d')
+                        is_historical = file_end_date.date() < datetime.now().date() - timedelta(days=2)
+                        
+                        # For historical data, ignore expiration
+                        if not is_historical:
+                            if 'expires_at' in cache_data['metadata']:
+                                expires_at = datetime.fromisoformat(cache_data['metadata']['expires_at'])
+                                if datetime.now() > expires_at:
+                                    continue
+                        
+                        # Convert to DataFrame
+                        df = pd.DataFrame(cache_data['data'])
+                        if 'date' in df.columns and not df.empty:
+                            df['date'] = pd.to_datetime(df['date'])
+                            df.set_index('date', inplace=True)
+                            quarterly_dfs.append(df)
+                            loaded_files.append(filename)
+                            
+                    except Exception as e:
+                        self.logger.warning(f"Could not load quarterly cache {filename}: {e}")
+                        continue
+            
+            # Combine quarterly data if we have good coverage (at least 3 quarters)
+            if len(quarterly_dfs) >= 3:
+                combined = pd.concat(quarterly_dfs, axis=0)
+                combined = combined.sort_index()
+                combined = combined[~combined.index.duplicated(keep='first')]
+                
+                self.logger.debug(f"Quarterly cache loaded: {len(loaded_files)} files, {len(combined)} days")
+                return combined
+                
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error in quarterly cache loading: {e}")
+            return None
 
     def _search_overlapping_cache(self, symbol: str, start: str, end: str, source: str) -> Optional[pd.DataFrame]:
         """
@@ -158,9 +230,9 @@ class UnifiedCacheManager:
                             cache_data = json.load(f)
                         
                         # Check expiration using date-aware logic
-                        file_start_str = cache_data['metadata']['start_date']
-                        file_end_str = cache_data['metadata']['end_date']
-                        expected_expiry = self._calculate_market_data_expiration(file_start_str, file_end_str)
+                        metadata_start_str = cache_data['metadata']['start_date']
+                        metadata_end_str = cache_data['metadata']['end_date']
+                        expected_expiry = self._calculate_market_data_expiration(metadata_start_str, metadata_end_str)
                         
                         # Use stored expiry if available, otherwise calculate
                         if 'expires_at' in cache_data['metadata']:
@@ -168,8 +240,18 @@ class UnifiedCacheManager:
                         else:
                             expires_at = expected_expiry
                         
-                        if datetime.now() > expires_at:
-                            continue
+                        # HISTORICAL DATA FIX: Don't expire historical market data (>2 days old)
+                        # Historical data never changes, so expired cache is still valid
+                        try:
+                            file_end_date = datetime.strptime(metadata_end_str, '%Y-%m-%d')
+                            is_historical = file_end_date.date() < datetime.now().date() - timedelta(days=2)
+                            
+                            if not is_historical and datetime.now() > expires_at:
+                                continue  # Only skip expired recent data, not historical data
+                        except ValueError:
+                            # If date parsing fails, fall back to original expiry check  
+                            if datetime.now() > expires_at:
+                                continue
                         
                         # Convert to DataFrame  
                         df = pd.DataFrame(cache_data['data'])
@@ -191,17 +273,78 @@ class UnifiedCacheManager:
                 # Sort by start date to ensure proper chronological order
                 overlapping_data.sort(key=lambda x: x[0])
                 
-                # Combine all DataFrames
-                combined_dfs = [df for _, df, _ in overlapping_data]
-                combined_df = pd.concat(combined_dfs, axis=0)
+                # PRIORITY FIX: Prefer larger files (quarterly) over smaller (incremental) 
+                # to avoid loading partial data when complete data exists
+                
+                # Check if we have quarterly files (90+ days) that can cover the full range
+                quarterly_files = []
+                incremental_files = []
+                
+                for start_date, df, filename in overlapping_data:
+                    if len(df) >= 50:  # Quarterly files typically have 60-65 trading days
+                        quarterly_files.append((start_date, df, filename))
+                    else:
+                        incremental_files.append((start_date, df, filename))
+                
+                # Use quarterly files if they provide good coverage
+                if quarterly_files:
+                    # Calculate total coverage from quarterly files
+                    quarterly_dfs = [df for _, df, _ in quarterly_files] 
+                    if quarterly_dfs:
+                        combined_quarterly = pd.concat(quarterly_dfs, axis=0)
+                        combined_quarterly = combined_quarterly.sort_index()
+                        
+                        # Remove duplicates (overlapping quarterly files)
+                        combined_quarterly = combined_quarterly[~combined_quarterly.index.duplicated(keep='first')]
+                        
+                        # Check coverage quality - do quarterly files cover most of requested range?
+                        requested_days = (end_date - start_date).days
+                        actual_coverage = len(combined_quarterly)
+                        coverage_ratio = actual_coverage / max(requested_days * 0.7, 180)  # ~70% of calendar days are trading days
+                        
+                        if coverage_ratio > 0.8:  # If quarterly files provide 80%+ coverage
+                            self.logger.debug(
+                                f"Market data: Using quarterly files for better coverage "
+                                f"({actual_coverage} days from {len(quarterly_files)} quarterly files)"
+                            )
+                            combined_df = combined_quarterly
+                            self.logger.debug(f"QUARTERLY PATH: Final combined_df has {len(combined_df)} rows")
+                        else:
+                            # Fall back to combining all files if quarterly coverage is poor
+                            combined_dfs = [df for _, df, _ in overlapping_data]
+                            combined_df = pd.concat(combined_dfs, axis=0)
+                    else:
+                        # No quarterly data, use incremental
+                        combined_dfs = [df for _, df, _ in overlapping_data]
+                        combined_df = pd.concat(combined_dfs, axis=0)
+                else:
+                    # No quarterly files found, combine all incremental files
+                    combined_dfs = [df for _, df, _ in overlapping_data]
+                    combined_df = pd.concat(combined_dfs, axis=0)
                 
                 # Remove duplicates (in case of overlapping ranges) and sort
                 combined_df = combined_df[~combined_df.index.duplicated(keep='first')]
                 combined_df = combined_df.sort_index()
                 
                 # Filter to requested date range
+                self.logger.debug(f"BEFORE FILTERING: combined_df has {len(combined_df)} rows from {combined_df.index.min()} to {combined_df.index.max()}")
+                self.logger.debug(f"FILTER DEBUG: start_date={start_date} ({type(start_date)}), end_date={end_date} ({type(end_date)})")
+                self.logger.debug(f"FILTER DEBUG: index type={type(combined_df.index[0])}, timezone={combined_df.index.tz}")
+                
+                # Debug the mask application
                 mask = (combined_df.index >= start_date) & (combined_df.index <= end_date)
+                true_count = mask.sum()
+                self.logger.debug(f"FILTER DEBUG: mask selected {true_count}/{len(mask)} rows")
+                
+                # Sample some comparisons to debug the issue
+                sample_indices = combined_df.index[:5].tolist() + combined_df.index[-5:].tolist() 
+                for idx in sample_indices:
+                    ge_start = idx >= start_date
+                    le_end = idx <= end_date
+                    self.logger.debug(f"SAMPLE: {idx} >= {start_date}: {ge_start}, <= {end_date}: {le_end}")
+                
                 filtered_df = combined_df[mask]
+                self.logger.debug(f"AFTER FILTERING: filtered_df has {len(filtered_df)} rows from {filtered_df.index.min() if not filtered_df.empty else 'EMPTY'} to {filtered_df.index.max() if not filtered_df.empty else 'EMPTY'}")
                 
                 if not filtered_df.empty:
                     file_names = [name for _, _, name in overlapping_data]
