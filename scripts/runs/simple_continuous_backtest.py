@@ -30,6 +30,7 @@ from src.agents_optimized.sentiment_v1 import OptimizedSentimentV1Agent
 from src.agents_optimized.sentiment_v2 import OptimizedSentimentV2Agent
 from src.agents_optimized.sentiment_v3 import OptimizedSentimentV3Agent
 from src.agents.sentiment_v4 import SentimentV4Agent
+from src.agents.tech_agent import TechAgent  # Add tech agent for market data
 
 # Import tools
 from src.tools.cache.unified_cache import UnifiedCacheManager
@@ -90,6 +91,9 @@ class SimpleContinuousBacktest:
             'V3': OptimizedSentimentV3Agent(),
             'V4': SentimentV4Agent(enable_date_sanitization=True)
         }
+        
+        # Initialize tech agent for fetching market data
+        self.tech_agent = TechAgent()
 
         logger.info("✅ Simple Continuous Backtest initialized")
 
@@ -262,10 +266,31 @@ class SimpleContinuousBacktest:
             start_date = f"{year}-01-01"
             end_date = f"{year}-12-31"
 
+        # Try cache first
         market_data = self.cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
         if market_data is None or market_data.empty:
             market_data = self.cache_manager.get_market_data(
                 symbol, start_date, end_date, "alpha_vantage")
+
+        # If no cached data, use tech agent to fetch it
+        if market_data is None or market_data.empty:
+            logger.info(f"📡 No cached data for {symbol} {year}, fetching via tech agent...")
+            try:
+                response = await self.tech_agent.generate_reply(
+                    f"fetch historical market data for {symbol} from {start_date} to {end_date}"
+                )
+                
+                if asyncio.iscoroutine(response):
+                    response = await response
+                    
+                # Parse response and get data from cache (tech agent should have cached it)
+                market_data = self.cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
+                if market_data is None or market_data.empty:
+                    market_data = self.cache_manager.get_market_data(
+                        symbol, start_date, end_date, "alpha_vantage")
+                        
+            except Exception as e:
+                logger.error(f"❌ Tech agent failed to fetch data: {e}")
 
         if market_data is None or market_data.empty:
             raise ValueError(f"No market data available for {symbol} {year}")
