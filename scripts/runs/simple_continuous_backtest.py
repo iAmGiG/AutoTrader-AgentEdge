@@ -589,8 +589,8 @@ class SimpleContinuousBacktest:
             },
             'performance': metrics,
             'trades': trades,
-            # Last 50 days
-            'daily_values': daily_values[-50:] if len(daily_values) > 50 else daily_values,
+            # All daily values
+            'daily_values': daily_values,
             'sentiment_stats': {
                 'mean': np.mean(sentiment_scores),
                 'std': np.std(sentiment_scores),

@@ -8,7 +8,26 @@
 
 ## Core Commands
 
-### Single Backtesting
+### Continuous Backtesting (V0-V4 Framework)
+
+```bash
+# Simple continuous backtest with checkpoint/resume
+python scripts/runs/simple_continuous_backtest.py --version V0 --symbol AAPL --year 2024
+
+# Run all versions for a symbol
+python scripts/runs/simple_continuous_backtest.py --all-versions --symbol AAPL --year 2024
+
+# Single month testing
+python scripts/runs/simple_continuous_backtest.py --version V2 --symbol AAPL --month 1
+
+# Check status of all versions
+python scripts/runs/simple_continuous_backtest.py --status
+
+# V4 date obfuscation testing
+python scripts/obfuscation_test.py
+```
+
+### Single Backtesting (Legacy)
 
 ```bash
 # Single backtest for specific symbol/dates
@@ -83,6 +102,41 @@ python scripts/start_backtest_service.py
 
 # View logs
 tail -f .cache/backtests/nohup.out
+```
+
+## Recent Performance Results (2024)
+
+### AAPL
+- **V0** (Fixed baseline): +8.73% return (24 trades)
+- **V1** (News sentiment): -3.83% return
+- **V2** (VXX volatility): +5.49% return
+- **V3** (Combined heuristic): +2.73% return
+- **V4** (LLM reasoning): ~50-60 mins processing time
+
+### AMZN
+- **V0**: +22.98% return
+- **V1**: +13.24% return
+- **V2**: +6.09% return
+- **V3**: +11.46% return
+
+### SPY
+- **V0**: +6.86% return
+- **V1**: +2.70% return
+- **V2**: +1.89% return
+- **V3**: +1.55% return
+
+## Cache Management
+
+```bash
+# Check cache directory structure
+ls -la .cache/market_data/
+
+# Consolidated cache files should be named:
+# SYMBOL_YYYY-MM-DD_YYYY-MM-DD_source_consolidated.json
+# Example: AAPL_2024-01-01_2024-12-31_polygon_consolidated.json
+
+# Clear old checkpoints after cache fixes
+rm reports/continuous_backtests/V*/*.json
 ```
 
 ## Legacy Commands (Deprecated)

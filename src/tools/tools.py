@@ -13,6 +13,7 @@ from autogen_core.tools import FunctionTool
 # Project imports
 # MarketDataTool deprecated - using Polygon + Alpha Vantage directly
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
+from src.tools.data_sources.market.unified_market_tool import fetch_unified_market_data
 from src.tools.data_sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from src.tools.data_sources.market.market_context_tool import market_context_tool
 from src.tools.data_sources.news.google_search_simple import google_search_smart_tool, set_news_governor
@@ -171,6 +172,14 @@ polygon_historical_tool = FunctionTool(
 )
 polygon_historical_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
 
+# Unified market data tool using cache adapter
+unified_market_tool = FunctionTool(
+    func=fetch_unified_market_data,
+    name="fetch_unified_market_data", 
+    description="Fetch market data using unified cache system. Routes through cache adapter for consistent data management across Polygon and Alpha Vantage sources."
+)
+unified_market_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+
 ##################################
 # VXX Volatility Tool for V2 Sentiment
 ##################################
@@ -207,10 +216,11 @@ _sentiment_tools_raw = [
 ]
 SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
 
-# TECH_AGENT tools - Polygon.io primary (5/min) with Alpha Vantage fallback (25/day)
+# TECH_AGENT tools - Unified market data with cache adapter routing
 _tech_tools_raw = [
-    polygon_historical_tool,  # Primary: Polygon.io (5 calls/min with caching)
-    alpha_vantage_tool,       # Fallback: Alpha Vantage (25 calls/day)
+    unified_market_tool,      # Primary: Unified tool with cache adapter (routes Polygon -> Alpha Vantage)
+    polygon_historical_tool,  # Legacy: Direct Polygon.io access (backup)
+    alpha_vantage_tool,       # Legacy: Direct Alpha Vantage access (backup)
 ]
 TECH_TOOLS = [tool for tool in _tech_tools_raw if tool is not None]
 

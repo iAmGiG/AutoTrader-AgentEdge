@@ -112,16 +112,29 @@ class UnifiedCacheManager:
             except Exception as e:
                 self.logger.error(f"Error reading market cache {cache_key}: {e}")
         
-        # SPECIAL CASE: For full-year requests, try loading quarterly files directly
-        # This avoids complex overlapping logic that can have bugs with mixed file types
+        # PRIORITY FIX: Try overlapping/complete files first, quarterly fragments as fallback
+        # This prevents fragmented quarterly data from overriding complete datasets
+        complete_result = self._search_overlapping_cache(symbol, start, end, source)
+        if complete_result is not None:
+            # Calculate expected trading days for the time range
+            start_dt = datetime.strptime(start, "%Y-%m-%d")
+            end_dt = datetime.strptime(end, "%Y-%m-%d")
+            calendar_days = (end_dt - start_dt).days + 1
+            expected_trading_days = calendar_days * 0.7  # Rough estimate: ~70% of calendar days are trading days
+            min_threshold = max(expected_trading_days * 0.5, 5)  # At least 50% coverage or 5 days minimum
+            
+            if len(complete_result) >= min_threshold:
+                self.logger.debug(f"Market data: Using complete cache file ({len(complete_result)} days, expected ~{expected_trading_days:.0f})")
+                return complete_result
+        
+        # FALLBACK: For full-year requests, try loading quarterly files if no complete data
         if source == 'alpha_vantage' and start == f"{start[:4]}-01-01" and end == f"{end[:4]}-12-31":
             quarterly_result = self._load_quarterly_cache(symbol, start[:4], source)
             if quarterly_result is not None and len(quarterly_result) > 200:  # Good coverage
-                self.logger.debug(f"Market data: Using quarterly cache direct load ({len(quarterly_result)} days)")
+                self.logger.debug(f"Market data: Using quarterly cache fallback ({len(quarterly_result)} days)")
                 return quarterly_result
         
-        # If exact match failed, search for overlapping date ranges  
-        return self._search_overlapping_cache(symbol, start, end, source)
+        return None
 
     def _load_quarterly_cache(self, symbol: str, year: str, source: str) -> Optional[pd.DataFrame]:
         """
@@ -200,8 +213,10 @@ class UnifiedCacheManager:
             end_date = datetime.strptime(end, "%Y-%m-%d")
             
             # Look for cache files that might contain our date range
-            pattern = f"{symbol}_*_{source}.json"
-            matching_files = list(self.market_dir.glob(pattern))
+            # Handle both regular and consolidated files
+            pattern1 = f"{symbol}_*_{source}.json"
+            pattern2 = f"{symbol}_*_{source}_consolidated.json"
+            matching_files = list(self.market_dir.glob(pattern1)) + list(self.market_dir.glob(pattern2))
             
             # Collect all overlapping data files
             overlapping_data = []

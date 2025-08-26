@@ -11,6 +11,7 @@ The project implements 5 sentiment approaches (V0-V4) applied to a consistent MA
 ### [architecture/](architecture/) - System Design
 - **[V0-V4_ARCHITECTURE.md](architecture/V0-V4_ARCHITECTURE.md)** - Complete framework architecture
 - **[project_structure.md](architecture/project_structure.md)** - Repository organization
+- **[cache_system.md](architecture/cache_system.md)** - ✅ **Cache system architecture (overhauled 2025-08-26)**
 
 ### [implementation/](implementation/) - Component Details
 - **[agents/](implementation/agents/)** - Agent documentation
