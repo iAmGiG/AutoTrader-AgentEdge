@@ -224,7 +224,7 @@ class SimpleContinuousBacktest:
             return 0.0  # Neutral fallback
 
     async def run_continuous_backtest(self, version: str, symbol: str, year: int,
-                                      initial_cash: float = 10000.0) -> Dict[str, Any]:
+                                      initial_cash: float = 100000.0) -> Dict[str, Any]:
         """
         Run continuous backtest for one version/symbol/year with checkpoints.
 
@@ -378,16 +378,39 @@ class SimpleContinuousBacktest:
 
             # Get signals
             macd_signal = macd_signals.get(date, 0)
-            sentiment_score = await self.get_sentiment(agent, symbol, date_str)
+            
+            # Use V4 batch sentiment data when available to avoid redundant API calls
+            if version == 'V4' and hasattr(agent, 'prepared_sentiments') and date_str in agent.prepared_sentiments:
+                sentiment_score = agent.prepared_sentiments[date_str]
+                logger.debug(f"🤖 V4: Using batch sentiment for {date_str}: {sentiment_score:.3f}")
+            else:
+                sentiment_score = await self.get_sentiment(agent, symbol, date_str)
+            
             sentiment_scores.append(sentiment_score)
 
             # Trading logic: MACD + Sentiment
-            # Adjusted threshold for V2/V3 VXX sentiment (ranges -0.3 to +0.8)
-            sentiment_threshold = -0.3 if version in ['V2', 'V3'] else 0.0
+            # Use consistent threshold for all versions to enable proper comparison
+            sentiment_threshold = 0.0
             if position == 0 and macd_signal == 1 and sentiment_score >= sentiment_threshold:
-                # Enter long position
-                shares = int(cash / current_price)
-                if shares > 0:
+                # Enter long position with sentiment-based position sizing
+                # SENTIMENT POSITION SIZING (Issue #222)
+                # Normalize sentiment to 0-1 range (handles different sentiment ranges)
+                # V0: fixed 1.0, V1: -1 to +1, V2: ~0.3-0.8, V3: ~0.2-0.8, V4: -1 to +1
+                normalized_sentiment = max(0, min(1, (sentiment_score + 1) / 2))  # Clamp to [0,1]
+                
+                # Calculate position multiplier based on sentiment confidence
+                MIN_POSITION = 0.3  # Never go below 30% position
+                MAX_POSITION = 1.0  # Maximum 100% position
+                position_multiplier = MIN_POSITION + (MAX_POSITION - MIN_POSITION) * normalized_sentiment
+                
+                # Capital-aware position sizing - calculate affordable shares first
+                max_affordable_shares = int(cash * 0.95 / current_price)  # Keep 5% cash buffer
+                target_shares = max(1, int(max_affordable_shares * position_multiplier))
+                shares = min(target_shares, max_affordable_shares)
+                
+                # Ensure we have enough cash for this position
+                required_cash = shares * current_price
+                if shares > 0 and required_cash <= cash:
                     position = shares
                     cash = round(cash - (shares * current_price), 2)  # Round to cents
                     entry_price = current_price
@@ -408,7 +431,7 @@ class SimpleContinuousBacktest:
                     })
 
                     logger.info(
-                        f"📈 BUY: {shares} shares at ${current_price:.2f} (avg: ${position_avg_cost:.2f}, sentiment: {sentiment_score:.3f})")
+                        f"📈 BUY: {shares} shares at ${current_price:.2f} (avg: ${position_avg_cost:.2f}, sentiment: {sentiment_score:.3f}, multiplier: {position_multiplier:.2f})")
 
             elif position > 0 and (macd_signal == -1 or sentiment_score < -0.5):
                 # Exit position
@@ -433,12 +456,14 @@ class SimpleContinuousBacktest:
                 logger.info(
                     f"📉 SELL: {position} shares at ${current_price:.2f} (avg cost return: {avg_cost_return:+.2f}%)")
 
+                # Update position tracking before resetting (pass shares sold, not position count)
+                position_avg_cost, total_cost_basis = self.update_position_tracking(
+                    'SELL', position, current_price, position_avg_cost, total_cost_basis)
+                
                 # Reset position tracking
                 position = 0
                 entry_price = 0
                 entry_date = None
-                position_avg_cost, total_cost_basis = self.update_position_tracking(
-                    'SELL', position, current_price, position_avg_cost, total_cost_basis)
 
             # Record enhanced daily portfolio value
             portfolio_value = cash + (position * current_price)
@@ -499,6 +524,26 @@ class SimpleContinuousBacktest:
                 progress = (processed_days / total_days) * 100
                 logger.info(
                     f"💾 Checkpoint saved: {processed_days}/{total_days} days ({progress:.1f}%)")
+
+        # Verify position sizing differentiation worked
+        if trades:
+            buy_trades = [t for t in trades if t['action'] == 'BUY']
+            if buy_trades:
+                share_counts = [t['shares'] for t in buy_trades]
+                unique_shares = set(share_counts)
+                avg_sentiment = np.mean([t['sentiment'] for t in buy_trades])
+                
+                logger.info(f"📊 Position sizing verification:")
+                logger.info(f"   - Unique share counts: {sorted(unique_shares)}")
+                logger.info(f"   - Share count range: {min(share_counts)} to {max(share_counts)}")
+                logger.info(f"   - Average sentiment: {avg_sentiment:.3f}")
+                logger.info(f"   - Total buy trades: {len(buy_trades)}")
+                
+                # Warn if all trades have identical shares (position sizing not working)
+                if len(unique_shares) == 1:
+                    logger.warning("⚠️ All trades have identical share count - position sizing may not be working!")
+                else:
+                    logger.info("✅ Position sizing working - different share counts detected")
 
         # Calculate final metrics
         metrics = self._calculate_metrics(daily_values, trades, market_data)
@@ -637,7 +682,7 @@ async def main():
     parser.add_argument('--symbol', default='AAPL', help='Symbol to test')
     parser.add_argument('--year', type=int, default=2024, help='Year to test')
     parser.add_argument('--month', type=int, help='Month to test (1-12, optional for single month)')
-    parser.add_argument('--cash', type=float, default=10000.0, help='Initial cash')
+    parser.add_argument('--cash', type=float, default=100000.0, help='Initial cash')
     parser.add_argument('--status', action='store_true', help='Show status summary')
     parser.add_argument('--all-versions', action='store_true', help='Run all V0-V4 versions')
 
