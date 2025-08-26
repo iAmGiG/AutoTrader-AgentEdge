@@ -19,6 +19,35 @@ from config.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
+# Ticker disambiguation configuration for ambiguous stock symbols
+TICKER_SEARCH_OVERRIDES = {
+    'SPY': {
+        'enhanced_terms': ['SPDR S&P 500 ETF SPY', 'S&P 500 index fund SPY'],
+        'negative_filters': ['-espionage', '-intelligence', '-CIA', '-FBI', '-surveillance', '-agent', '-security'],
+        'required_context': ['market', 'stock', 'index', 'etf', 'fund', 's&p', 'trading', 'spdr']
+    },
+    'CAT': {
+        'enhanced_terms': ['Caterpillar Inc CAT stock', 'CAT machinery earnings'],
+        'negative_filters': ['-pet', '-animal', '-kitten', '-cat food'],
+        'required_context': ['machinery', 'construction', 'earnings', 'industrial', 'equipment']
+    },
+    'HOME': {
+        'enhanced_terms': ['Home Depot HD stock', 'HOME retail earnings'],
+        'negative_filters': ['-real estate', '-mortgage', '-housing market', '-home sales'],
+        'required_context': ['retail', 'store', 'earnings', 'depot', 'home improvement']
+    },
+    'PLUG': {
+        'enhanced_terms': ['Plug Power PLUG stock', 'PLUG fuel cell company'],
+        'negative_filters': ['-electrical plug', '-power plug', '-charger'],
+        'required_context': ['fuel cell', 'hydrogen', 'energy', 'stock', 'earnings']
+    },
+    'WOOD': {
+        'enhanced_terms': ['ARK Innovation ETF ARKK WOOD', 'Cathie Wood ARK'],
+        'negative_filters': ['-lumber', '-timber', '-forest', '-wooden'],
+        'required_context': ['ETF', 'innovation', 'ARK', 'Cathie Wood', 'investment']
+    }
+}
+
 
 class GoogleSearchNewsCache:
     """Cache manager for Google search results with monthly organization structure"""
@@ -289,9 +318,85 @@ class GoogleSearchNewsTool:
             logger.warning(
                 "Google Search Engine ID not found. Set GOOGLE_SEARCH_ENGINE_ID environment variable.")
 
+    def get_enhanced_ticker_term(self, ticker: str) -> str:
+        """
+        Get enhanced search term for ambiguous tickers
+        
+        Args:
+            ticker: Stock ticker symbol
+            
+        Returns:
+            Enhanced search term or original ticker if no override exists
+        """
+        ticker_upper = ticker.upper()
+        
+        if ticker_upper in TICKER_SEARCH_OVERRIDES:
+            # Use the first (primary) enhanced term for the ticker
+            enhanced_terms = TICKER_SEARCH_OVERRIDES[ticker_upper]['enhanced_terms']
+            if enhanced_terms:
+                logger.info(f"Using enhanced search term for {ticker}: {enhanced_terms[0]}")
+                return enhanced_terms[0]
+        
+        return ticker  # No override needed, use original ticker
+
+    def filter_results_by_context(self, results_df: pd.DataFrame, ticker: str) -> pd.DataFrame:
+        """
+        Filter results based on ticker disambiguation rules
+        
+        Args:
+            results_df: DataFrame with search results
+            ticker: Original ticker symbol
+            
+        Returns:
+            Filtered DataFrame with only contextually relevant articles
+        """
+        ticker_upper = ticker.upper()
+        
+        if ticker_upper not in TICKER_SEARCH_OVERRIDES:
+            return results_df  # No filtering needed
+        
+        config = TICKER_SEARCH_OVERRIDES[ticker_upper]
+        required_context = config.get('required_context', [])
+        negative_filters = config.get('negative_filters', [])
+        
+        if results_df.empty or not required_context:
+            return results_df
+        
+        filtered_results = []
+        
+        for _, article in results_df.iterrows():
+            title_lower = str(article.get('title', '')).lower()
+            summary_lower = str(article.get('summary', '')).lower()
+            text = title_lower + ' ' + summary_lower
+            
+            # Check for required financial context
+            has_required_context = any(keyword.lower() in text for keyword in required_context)
+            
+            # Check for negative filters (intelligence/spy terms for SPY)
+            has_negative_content = any(
+                neg_filter.replace('-', '').lower() in text 
+                for neg_filter in negative_filters
+            )
+            
+            # Keep article if it has required context and no negative content
+            if has_required_context and not has_negative_content:
+                filtered_results.append(article)
+            elif ticker_upper == 'SPY' and any(term in text for term in ['s&p', 'etf', 'fund', 'index']) and not has_negative_content:
+                # Special case for SPY - keep if clearly financial even without all context
+                filtered_results.append(article)
+        
+        if filtered_results:
+            filtered_df = pd.DataFrame(filtered_results)
+            logger.info(f"Content filtering for {ticker}: {len(results_df)} → {len(filtered_df)} articles")
+            return filtered_df
+        else:
+            # If filtering too aggressive, return original results
+            logger.warning(f"Content filtering for {ticker} too aggressive, returning original results")
+            return results_df
+
     def build_search_query(self, ticker: str, start_date: str, end_date: str,
                            source_sites: List[str] = None) -> str:
-        """Build optimized search query for historical financial news"""
+        """Build optimized search query for historical financial news with ticker disambiguation"""
 
         # Updated configuration - sources with reliable historical data OR URL dates
         # Business Wire + Reuters: proven date accuracy
@@ -306,6 +411,9 @@ class GoogleSearchNewsTool:
 
         # Build site restriction
         site_query = " OR ".join([f"site:{site}" for site in source_sites])
+        
+        # Get enhanced ticker term for disambiguation
+        enhanced_ticker = self.get_enhanced_ticker_term(ticker)
 
         # Build more specific historical search terms
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
@@ -328,7 +436,7 @@ class GoogleSearchNewsTool:
 
             # Build query with historical context - simplified
             date_query = " OR ".join(historical_terms)
-            query = f"({site_query}) {ticker} ({date_query}) -2024 -2025"  # Exclude recent years
+            query = f"({site_query}) {enhanced_ticker} ({date_query}) -2024 -2025"  # Exclude recent years
         else:
             # Original logic for other years
             date_terms = []
@@ -353,9 +461,9 @@ class GoogleSearchNewsTool:
             # This ensures we only get results from sources with good date accuracy
             if target_year <= 2024:
                 # Include year exclusions to prevent future contamination
-                query = f"({site_query}) {ticker} \"{month_year}\" -2025 -2026"
+                query = f"({site_query}) {enhanced_ticker} \"{month_year}\" -2025 -2026"
             else:
-                query = f"({site_query}) {ticker} \"{month_year}\""
+                query = f"({site_query}) {enhanced_ticker} \"{month_year}\""
 
         return query
 
@@ -390,18 +498,21 @@ class GoogleSearchNewsTool:
     def _search_with_url_patterns(self, ticker: str, start_date: str, end_date: str, max_results: int) -> pd.DataFrame:
         """
         Search using individual URL pattern queries for each reliable source
-        More effective than combined OR queries
+        More effective than combined OR queries - now with ticker disambiguation
         """
         
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
         year_month = start_dt.strftime('%Y-%m')  # e.g., "2024-10"
         
-        # Individual URL pattern queries for each reliable source
+        # Get enhanced ticker term for disambiguation
+        enhanced_ticker = self.get_enhanced_ticker_term(ticker)
+        
+        # Individual URL pattern queries for each reliable source using enhanced ticker
         source_queries = [
-            (f"site:cnbc.com/{year_month.replace('-', '/')} {ticker}", "CNBC"),
-            (f"site:bloomberg.com/news/articles/{year_month} {ticker}", "Bloomberg"), 
-            (f"site:reuters.com {ticker} {year_month}", "Reuters"),
-            (f"site:businesswire.com {ticker} {year_month.replace('-', '')}", "BusinessWire")  # YYYYMM format
+            (f"site:cnbc.com/{year_month.replace('-', '/')} {enhanced_ticker}", "CNBC"),
+            (f"site:bloomberg.com/news/articles/{year_month} {enhanced_ticker}", "Bloomberg"), 
+            (f"site:reuters.com {enhanced_ticker} {year_month}", "Reuters"),
+            (f"site:businesswire.com {enhanced_ticker} {year_month.replace('-', '')}", "BusinessWire")  # YYYYMM format
         ]
         
         all_results = []
@@ -479,17 +590,20 @@ class GoogleSearchNewsTool:
             # Remove duplicates by URL
             df = df.drop_duplicates(subset=['url'], keep='first')
             
+            # Apply content filtering for ambiguous tickers
+            df = self.filter_results_by_context(df, ticker)
+            
             # Sort by relevance score and date
             df = df.sort_values(['relevance_score', 'published_date'], 
                                ascending=[False, False], na_position='last')
             
-            # Cache the results
+            # Cache the filtered results
             if len(df) > 0:
-                query_summary = f"URL_patterns_{len(source_queries)}_sources"
+                query_summary = f"URL_patterns_{len(source_queries)}_sources_filtered"
                 self.cache.set(ticker, start_date, end_date, df, query_summary)
-                logger.info(f"Cached {len(df)} articles from URL pattern search")
+                logger.info(f"Cached {len(df)} filtered articles from URL pattern search")
             
-            logger.info(f"URL pattern search found {len(df)} articles for {ticker}")
+            logger.info(f"URL pattern search found {len(df)} quality articles for {ticker}")
             return df.head(max_results)
         else:
             logger.info(f"No results found via URL pattern search for {ticker}")

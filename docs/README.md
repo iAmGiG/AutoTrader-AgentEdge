@@ -31,6 +31,9 @@ The project implements 5 sentiment approaches (V0-V4) applied to a consistent MA
 - **[troubleshooting.md](reference/troubleshooting.md)** - Common issues and solutions
 - **[news_limitations.md](reference/news_limitations.md)** - News data constraints
 
+### Project Reports
+- **[project_rebuild_summary.md](project_rebuild_summary.md)** - ✅ **Complete MAG7 + benchmarks data infrastructure rebuild (2025-08-26)**
+
 ## Quick Links
 
 - **V0-V4 Testing**: Quarterly backtesting framework (Issues #181-187)
