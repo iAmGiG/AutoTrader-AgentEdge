@@ -104,28 +104,3 @@ def reset_news_governor():
     _news_governor = None
 
 
-if __name__ == "__main__":
-    # Test the governor-aware tool
-    from src.tools.news_governor import create_conservative_governor
-
-    # Test different configurations
-    configs = [
-        ("Conservative", create_conservative_governor()),
-        ("Balanced", create_balanced_governor()),
-    ]
-
-    for name, governor in configs:
-        print(f"\n🧪 Testing {name} Configuration")
-        print("-" * 40)
-
-        initialize_news_governor(governor)
-
-        # Simulate multiple requests over time
-        test_dates = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-08', '2024-01-09']
-
-        for date in test_dates:
-            news_data = fetch_google_news_with_governor('AAPL', date, date)
-            print(f"  {date}: {len(news_data)} articles")
-
-        print_quota_summary()
-        reset_news_governor()

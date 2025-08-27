@@ -1,0 +1,6352 @@
+{
+  "analysis_timestamp": "2025-08-26T16:57:26.625747",
+  "total_files_analyzed": 40,
+  "individual_analyses": {
+    "SPY_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/SPY_2024_results.json",
+        "symbol": "SPY",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:08:10.779458"
+      },
+      "basic_performance": {
+        "total_return": 1.55,
+        "total_return_pct": 1.55,
+        "buy_hold_return": 24.0,
+        "outperformance": -22.45,
+        "final_portfolio_value": 101546.68,
+        "num_trades": 10,
+        "profitable_trades": 4,
+        "losing_trades": 1,
+        "win_rate": 40.0,
+        "avg_trade_return": 0.46
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.18526667705724975,
+          "total_return": -0.3705333541144995,
+          "best_trade": 0.8819640854852446,
+          "worst_trade": -1.2524974395997441,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 0.8234908668242433,
+          "total_return": 1.6469817336484867,
+          "best_trade": 1.324137931034491,
+          "worst_trade": 0.32284380261399576,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 1.0337894343517124,
+          "total_return": 1.0337894343517124,
+          "best_trade": 1.0337894343517124,
+          "worst_trade": 1.0337894343517124,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 16.0,
+          "min": 11,
+          "max": 21
+        },
+        "profit_factor": 2.8445050192070442,
+        "largest_winner": 1.324137931034491,
+        "largest_loser": -1.2524974395997441,
+        "avg_winner": 0.8906838133713609,
+        "avg_loser": -1.2524974395997441,
+        "win_loss_ratio": 0.7111262548017611,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 1
+      },
+      "risk_metrics": {
+        "max_drawdown": 2.161266046398173,
+        "drawdown_duration": 156,
+        "calmar_ratio": 0.718112612644188,
+        "recovery_factor": 0.7156360979147339,
+        "sharpe_ratio": -0.11730836617928364,
+        "volatility": 3.415477694234258,
+        "annualized_return": 1.5520324071981673
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": -0.0158965171668346,
+          "total_return": -0.0476895515005038
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 1.1789636826931016,
+          "total_return": 2.357927365386203
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 101546.68,
+        "cash": 101546.68,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 586.08,
+        "last_sentiment": 0.2528,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-10",
+        "cumulative_return": 1.55,
+        "high_water_mark": 102822.14,
+        "initial_cash": 100000.0,
+        "symbol": "SPY",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "SPY",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:08:10.779458",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "NVDA_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/NVDA_2024_results.json",
+        "symbol": "NVDA",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:55.814034"
+      },
+      "basic_performance": {
+        "total_return": 35.63,
+        "total_return_pct": 35.63,
+        "buy_hold_return": 178.8,
+        "outperformance": -143.17,
+        "final_portfolio_value": 135627.22,
+        "num_trades": 11,
+        "profitable_trades": 3,
+        "losing_trades": 2,
+        "win_rate": 27.3,
+        "avg_trade_return": 11.55
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 40.572523855160625,
+          "total_return": 40.572523855160625,
+          "best_trade": 40.572523855160625,
+          "worst_trade": 40.572523855160625,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -4.634605051047828,
+          "total_return": -4.634605051047828,
+          "best_trade": -4.634605051047828,
+          "worst_trade": -4.634605051047828,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 4.9905709646873735,
+          "total_return": 9.981141929374747,
+          "best_trade": 16.98992443324938,
+          "worst_trade": -7.0087825038746345,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 29.2,
+          "min": 8,
+          "max": 48
+        },
+        "profit_factor": 5.960631274365501,
+        "largest_winner": 40.572523855160625,
+        "largest_loser": -7.0087825038746345,
+        "avg_winner": 23.13397999980963,
+        "avg_loser": -5.821693777461231,
+        "win_loss_ratio": 3.9737541829103336,
+        "consecutive_wins": 2,
+        "consecutive_losses": 1,
+        "total_winning_trades": 3,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 15.519933344005699,
+        "drawdown_duration": 110,
+        "calmar_ratio": 2.304728182092058,
+        "recovery_factor": 2.2955781581214323,
+        "sharpe_ratio": 1.5166758204670567,
+        "volatility": 20.21643062753897,
+        "annualized_return": 35.76922776212017
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 6.177659691100777,
+          "total_return": 12.355319382201554
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 15.13441102076829,
+          "total_return": 45.40323306230487
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 135627.22,
+        "cash": 39744.16,
+        "position": 714,
+        "position_avg_cost": 140.22,
+        "stock_price": 134.29,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "1",
+        "last_trade_date": "2024-12-24",
+        "cumulative_return": 35.63,
+        "high_water_mark": 148945.54,
+        "initial_cash": 100000.0,
+        "symbol": "NVDA",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "NVDA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:55.814034",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "META_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/META_2024_results.json",
+        "symbol": "META",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:47.237192"
+      },
+      "basic_performance": {
+        "total_return": 19.11,
+        "total_return_pct": 19.11,
+        "buy_hold_return": 69.08,
+        "outperformance": -49.97,
+        "final_portfolio_value": 119114.92,
+        "num_trades": 12,
+        "profitable_trades": 5,
+        "losing_trades": 1,
+        "win_rate": 41.7,
+        "avg_trade_return": 4.23
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 5.867169254722003,
+          "total_return": 5.867169254722003,
+          "best_trade": 5.867169254722003,
+          "worst_trade": 5.867169254722003,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.04436493059331298,
+          "total_return": -0.08872986118662596,
+          "best_trade": 0.7354553581971245,
+          "worst_trade": -0.8241852193837504,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 10.714821482148212,
+          "total_return": 10.714821482148212,
+          "best_trade": 10.714821482148212,
+          "worst_trade": 10.714821482148212,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 20.333333333333332,
+          "min": 1,
+          "max": 47
+        },
+        "profit_factor": 31.799915798362203,
+        "largest_winner": 10.714821482148212,
+        "largest_loser": -0.8241852193837504,
+        "avg_winner": 5.241804115731589,
+        "avg_loser": -0.8241852193837504,
+        "win_loss_ratio": 6.35998315967244,
+        "consecutive_wins": 4,
+        "consecutive_losses": 1,
+        "total_winning_trades": 5,
+        "total_losing_trades": 1
+      },
+      "risk_metrics": {
+        "max_drawdown": 4.059119886915095,
+        "drawdown_duration": 84,
+        "calmar_ratio": 4.726761514580158,
+        "recovery_factor": 4.709129203505053,
+        "sharpe_ratio": 1.5593142336659505,
+        "volatility": 10.32293203526502,
+        "annualized_return": 19.18649166453723
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.04436493059331298,
+          "total_return": -0.08872986118662596
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 4,
+          "win_rate": 100.0,
+          "avg_return": 6.368391305115205,
+          "total_return": 25.47356522046082
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 119114.92,
+        "cash": 119114.92,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 585.51,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-18",
+        "cumulative_return": 19.11,
+        "high_water_mark": 124154.5,
+        "initial_cash": 100000.0,
+        "symbol": "META",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "META",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:47.237192",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "GOOGL_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/GOOGL_2024_results.json",
+        "symbol": "GOOGL",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:24.410020"
+      },
+      "basic_performance": {
+        "total_return": 8.75,
+        "total_return_pct": 8.75,
+        "buy_hold_return": 37.01,
+        "outperformance": -28.26,
+        "final_portfolio_value": 108745.36,
+        "num_trades": 14,
+        "profitable_trades": 4,
+        "losing_trades": 3,
+        "win_rate": 28.6,
+        "avg_trade_return": 1.62
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 1.662580557003219,
+          "total_return": 3.325161114006438,
+          "best_trade": 5.146353166986572,
+          "worst_trade": -1.8211920529801335,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 2.5272964847812154,
+          "total_return": 5.054592969562431,
+          "best_trade": 9.049438330387185,
+          "worst_trade": -3.994845360824754,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 1.0233175672831352,
+          "total_return": 2.0466351345662703,
+          "best_trade": 3.277236492471218,
+          "worst_trade": -1.2306013579049473,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 16.714285714285715,
+          "min": 1,
+          "max": 27
+        },
+        "profit_factor": 2.6116751034468875,
+        "largest_winner": 9.049438330387185,
+        "largest_loser": -3.994845360824754,
+        "avg_winner": 4.600882760764533,
+        "avg_loser": -2.3488795905699447,
+        "win_loss_ratio": 1.9587563275851658,
+        "consecutive_wins": 2,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 3
+      },
+      "risk_metrics": {
+        "max_drawdown": 4.782344817793631,
+        "drawdown_duration": 95,
+        "calmar_ratio": 1.8352238292045324,
+        "recovery_factor": 1.8286761689498447,
+        "sharpe_ratio": 0.6126711014193458,
+        "volatility": 11.559817014916291,
+        "annualized_return": 8.77667316908768
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 4.321730046489603,
+          "total_return": 12.96519013946881
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": -0.40207446703012817,
+          "total_return": -1.6082978681205127
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 108745.36,
+        "cash": 108745.36,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 189.3,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 8.75,
+        "high_water_mark": 111043.44,
+        "initial_cash": 100000.0,
+        "symbol": "GOOGL",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "GOOGL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:24.410020",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "TSLA_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/TSLA_2024_results.json",
+        "symbol": "TSLA",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:34.245221"
+      },
+      "basic_performance": {
+        "total_return": 67.03,
+        "total_return_pct": 67.03,
+        "buy_hold_return": 62.56,
+        "outperformance": 4.47,
+        "final_portfolio_value": 167030.92,
+        "num_trades": 10,
+        "profitable_trades": 4,
+        "losing_trades": 1,
+        "win_rate": 40.0,
+        "avg_trade_return": 15.56
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -7.381465517241378,
+          "total_return": -7.381465517241378,
+          "best_trade": -7.381465517241378,
+          "worst_trade": -7.381465517241378,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 19.21509940516703,
+          "total_return": 38.43019881033406,
+          "best_trade": 27.798679361179346,
+          "worst_trade": 10.631519449154718,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 12.400168137873047,
+          "total_return": 12.400168137873047,
+          "best_trade": 12.400168137873047,
+          "worst_trade": 12.400168137873047,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 26.0,
+          "min": 10,
+          "max": 35
+        },
+        "profit_factor": 11.543079093627501,
+        "largest_winner": 34.37447334419414,
+        "largest_loser": -7.381465517241378,
+        "avg_winner": 21.301210073100314,
+        "avg_loser": -7.381465517241378,
+        "win_loss_ratio": 2.8857697734068752,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 1
+      },
+      "risk_metrics": {
+        "max_drawdown": 12.480218960894089,
+        "drawdown_duration": 115,
+        "calmar_ratio": 5.394571915783734,
+        "recovery_factor": 5.370973074273522,
+        "sharpe_ratio": 1.82275282942794,
+        "volatility": 29.541083551902368,
+        "annualized_return": 67.3254387092709
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 19.21509940516703,
+          "total_return": 38.43019881033406
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 13.131058654941938,
+          "total_return": 39.393175964825815
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 167030.92,
+        "cash": 167030.92,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 403.84,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-23",
+        "cumulative_return": 67.03,
+        "high_water_mark": 181710.4,
+        "initial_cash": 100000.0,
+        "symbol": "TSLA",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "TSLA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:34.245221",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "MSFT_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/MSFT_2024_results.json",
+        "symbol": "MSFT",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:24.485749"
+      },
+      "basic_performance": {
+        "total_return": -0.32,
+        "total_return_pct": -0.32,
+        "buy_hold_return": 13.65,
+        "outperformance": -13.97,
+        "final_portfolio_value": 99683.96,
+        "num_trades": 18,
+        "profitable_trades": 5,
+        "losing_trades": 4,
+        "win_rate": 27.8,
+        "avg_trade_return": 0.18
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 9.287677813659295,
+          "total_return": 9.287677813659295,
+          "best_trade": 9.287677813659295,
+          "worst_trade": 9.287677813659295,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.0430318323192156,
+          "total_return": -3.129095496957647,
+          "best_trade": 2.112198883151467,
+          "worst_trade": -3.6367125653696744,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -1.6913579585268859,
+          "total_return": -3.3827159170537717,
+          "best_trade": 1.5668759053597319,
+          "worst_trade": -4.949591822413503,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 19.11111111111111,
+          "min": 4,
+          "max": 37
+        },
+        "profit_factor": 1.1200759933436375,
+        "largest_winner": 9.287677813659295,
+        "largest_loser": -4.949591822413503,
+        "avg_winner": 2.9757161175797266,
+        "avg_loser": -3.320886412243171,
+        "win_loss_ratio": 0.8960607946749101,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 5,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 9.467312780304034,
+        "drawdown_duration": 223,
+        "calmar_ratio": -0.03349668346905058,
+        "recovery_factor": -0.033382228657057665,
+        "sharpe_ratio": -0.18382689058525564,
+        "volatility": 9.908995183748921,
+        "annualized_return": -0.31712357950434145
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.4806582513338256,
+          "total_return": -4.4419747540014765
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 6,
+          "win_rate": 66.66666666666666,
+          "avg_return": 1.0061682821545712,
+          "total_return": 6.037009692927427
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 99683.96,
+        "cash": 99683.96,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 421.5,
+        "last_sentiment": 0.1245,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": -0.32,
+        "high_water_mark": 107704.48,
+        "initial_cash": 100000.0,
+        "symbol": "MSFT",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "MSFT",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:24.485749",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AMZN_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/AMZN_2024_results.json",
+        "symbol": "AMZN",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:08:10.236399"
+      },
+      "basic_performance": {
+        "total_return": 11.46,
+        "total_return_pct": 11.46,
+        "buy_hold_return": 46.33,
+        "outperformance": -34.87,
+        "final_portfolio_value": 111458.77,
+        "num_trades": 16,
+        "profitable_trades": 4,
+        "losing_trades": 4,
+        "win_rate": 25.0,
+        "avg_trade_return": 2.14
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -1.0457740442311059,
+          "total_return": -1.0457740442311059,
+          "best_trade": -1.0457740442311059,
+          "worst_trade": -1.0457740442311059,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 3.994905295482911,
+          "total_return": 7.989810590965822,
+          "best_trade": 4.614880059970012,
+          "worst_trade": 3.37493053099581,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -0.12724253191775828,
+          "total_return": -0.38172759575327486,
+          "best_trade": 4.245734557125959,
+          "worst_trade": -2.321437929046799,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 17.25,
+          "min": 2,
+          "max": 47
+        },
+        "profit_factor": 3.3898826217473195,
+        "largest_winner": 12.05902079141517,
+        "largest_loser": -2.321437929046799,
+        "avg_winner": 6.073641484876738,
+        "avg_loser": -1.791696693540991,
+        "win_loss_ratio": 3.3898826217473195,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 4,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 7.8087425655991884,
+        "drawdown_duration": 152,
+        "calmar_ratio": 1.4727468396448646,
+        "recovery_factor": 1.467428322004202,
+        "sharpe_ratio": 0.7534423580332724,
+        "volatility": 12.90584435544348,
+        "annualized_return": 11.500300935086539
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": 0.8405871095216471,
+          "total_return": 3.3623484380865882
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": 3.4413576818141003,
+          "total_return": 13.765430727256401
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 111458.77,
+        "cash": 111458.77,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 219.39,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": 11.46,
+        "high_water_mark": 115035.21,
+        "initial_cash": 100000.0,
+        "symbol": "AMZN",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "AMZN",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:08:10.236399",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AAPL_V3": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V3/AAPL_2024_results.json",
+        "symbol": "AAPL",
+        "version": "V3",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:04:02.078930"
+      },
+      "basic_performance": {
+        "total_return": 2.73,
+        "total_return_pct": 2.73,
+        "buy_hold_return": 34.9,
+        "outperformance": -32.16,
+        "final_portfolio_value": 102733.62,
+        "num_trades": 14,
+        "profitable_trades": 3,
+        "losing_trades": 4,
+        "win_rate": 21.4,
+        "avg_trade_return": 0.75
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 2,
+          "win_rate": 0.0,
+          "avg_return": -1.312214554954134,
+          "total_return": -2.624429109908268,
+          "best_trade": -0.709654362587438,
+          "worst_trade": -1.9147747473208299,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 10.478359908883823,
+          "total_return": 10.478359908883823,
+          "best_trade": 10.478359908883823,
+          "worst_trade": 10.478359908883823,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.180050030940405,
+          "total_return": -3.540150092821215,
+          "best_trade": 1.0347537548026566,
+          "worst_trade": -2.852760736196315,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 15.857142857142858,
+          "min": 1,
+          "max": 41
+        },
+        "profit_factor": 1.7279348417338587,
+        "largest_winner": 10.478359908883823,
+        "largest_loser": -2.852760736196315,
+        "avg_winner": 4.14665941818755,
+        "avg_loser": -1.7998332393830347,
+        "win_loss_ratio": 2.303913122311812,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 3,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 6.267683371306498,
+        "drawdown_duration": 121,
+        "calmar_ratio": 0.4376633062546638,
+        "recovery_factor": 0.4361451972054824,
+        "sharpe_ratio": 0.13540226258921215,
+        "volatility": 7.0848217102168585,
+        "annualized_return": 2.7431350268433796
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 5.756556831843239,
+          "total_return": 11.513113663686479
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 5,
+          "win_rate": 20.0,
+          "avg_return": -1.2544936733311938,
+          "total_return": -6.272468366655969
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 102733.62,
+        "cash": 102733.62,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 250.42,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 2.73,
+        "high_water_mark": 104554.56,
+        "initial_cash": 100000.0,
+        "symbol": "AAPL",
+        "version": "V3",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V3",
+        "symbol": "AAPL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:04:02.078930",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "SPY_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/SPY_2024_results.json",
+        "symbol": "SPY",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:30:04.089793"
+      },
+      "basic_performance": {
+        "total_return": 4.98,
+        "total_return_pct": 4.98,
+        "buy_hold_return": 24.0,
+        "outperformance": -19.01,
+        "final_portfolio_value": 104984.19,
+        "num_trades": 28,
+        "profitable_trades": 8,
+        "losing_trades": 6,
+        "win_rate": 28.6,
+        "avg_trade_return": 0.51
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 8,
+          "win_rate": 37.5,
+          "avg_return": 0.39366384956059036,
+          "total_return": 3.149310796484723,
+          "best_trade": 4.669195111672981,
+          "worst_trade": -1.344866287395021,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 0.6513394264890896,
+          "total_return": 1.954018279467269,
+          "best_trade": 2.2140077059985512,
+          "worst_trade": -1.5841273575657733,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 100.0,
+          "avg_return": 0.7004869410575331,
+          "total_return": 2.1014608231725993,
+          "best_trade": 1.0337894343517124,
+          "worst_trade": 0.32284380261399576,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 15.428571428571429,
+          "min": 1,
+          "max": 43
+        },
+        "profit_factor": 2.197743510184537,
+        "largest_winner": 4.669195111672981,
+        "largest_loser": -1.5841273575657733,
+        "avg_winner": 1.6525115882911963,
+        "avg_loser": -1.0025504678674964,
+        "win_loss_ratio": 1.648307632638403,
+        "consecutive_wins": 3,
+        "consecutive_losses": 4,
+        "total_winning_trades": 8,
+        "total_losing_trades": 6
+      },
+      "risk_metrics": {
+        "max_drawdown": 3.8819234424291955,
+        "drawdown_duration": 84,
+        "calmar_ratio": 1.2884661968733597,
+        "recovery_factor": 1.2839485564097164,
+        "sharpe_ratio": 0.5250031645198744,
+        "volatility": 5.815185477850656,
+        "annualized_return": 5.001727134420286
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": -0.0158965171668346,
+          "total_return": -0.0476895515005038
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 11,
+          "win_rate": 54.54545454545454,
+          "avg_return": 0.6593163136931905,
+          "total_return": 7.252479450625096
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 104984.19,
+        "cash": 104984.19,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 586.08,
+        "last_sentiment": -0.3,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-10",
+        "cumulative_return": 4.98,
+        "high_water_mark": 106518.85,
+        "initial_cash": 100000.0,
+        "symbol": "SPY",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "SPY",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:30:04.089793",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "NVDA_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/NVDA_2024_results.json",
+        "symbol": "NVDA",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:52:42.311572"
+      },
+      "basic_performance": {
+        "total_return": 89.82,
+        "total_return_pct": 89.82,
+        "buy_hold_return": 178.8,
+        "outperformance": -88.97,
+        "final_portfolio_value": 189820.58,
+        "num_trades": 13,
+        "profitable_trades": 4,
+        "losing_trades": 2,
+        "win_rate": 30.8,
+        "avg_trade_return": 15.74
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 36.69822457813476,
+          "total_return": 36.69822457813476,
+          "best_trade": 36.69822457813476,
+          "worst_trade": 36.69822457813476,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 5,
+          "win_rate": 60.0,
+          "avg_return": 11.551710488901284,
+          "total_return": 57.75855244450642,
+          "best_trade": 40.572523855160625,
+          "worst_trade": -7.0087825038746345,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 33.5,
+          "min": 8,
+          "max": 55
+        },
+        "profit_factor": 9.112482434951485,
+        "largest_winner": 40.572523855160625,
+        "largest_loser": -7.0087825038746345,
+        "avg_winner": 26.525041144390915,
+        "avg_loser": -5.821693777461231,
+        "win_loss_ratio": 4.556241217475742,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 18.780838251550755,
+        "drawdown_duration": 134,
+        "calmar_ratio": 4.804834565262874,
+        "recovery_factor": 4.7825650163715885,
+        "sharpe_ratio": 2.319101337116878,
+        "volatility": 28.68831804860081,
+        "annualized_return": 90.23882079566224
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 6.177659691100777,
+          "total_return": 12.355319382201554
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 4,
+          "win_rate": 75.0,
+          "avg_return": 20.52536441010991,
+          "total_return": 82.10145764043963
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 189820.58,
+        "cash": 48950.37,
+        "position": 1049,
+        "position_avg_cost": 140.22,
+        "stock_price": 134.29,
+        "last_sentiment": 0.4,
+        "last_macd_signal": "1",
+        "last_trade_date": "2024-12-24",
+        "cumulative_return": 89.82,
+        "high_water_mark": 215160.95,
+        "initial_cash": 100000.0,
+        "symbol": "NVDA",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "NVDA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:52:42.311572",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "META_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/META_2024_results.json",
+        "symbol": "META",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:52:32.121287"
+      },
+      "basic_performance": {
+        "total_return": 44.97,
+        "total_return_pct": 44.97,
+        "buy_hold_return": 69.08,
+        "outperformance": -24.11,
+        "final_portfolio_value": 144974.32,
+        "num_trades": 18,
+        "profitable_trades": 5,
+        "losing_trades": 4,
+        "win_rate": 27.8,
+        "avg_trade_return": 5.22
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": 8.972114875301171,
+          "total_return": 35.888459501204686,
+          "best_trade": 38.781977414150724,
+          "worst_trade": -7.601266877812963,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 8.140948616655994,
+          "total_return": 16.281897233311987,
+          "best_trade": 10.714821482148212,
+          "worst_trade": 5.567075751163775,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.7432085593090836,
+          "total_return": -5.229625677927251,
+          "best_trade": 0.7354553581971245,
+          "worst_trade": -5.140895816740625,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 21.555555555555557,
+          "min": 1,
+          "max": 53
+        },
+        "profit_factor": 4.187659238347953,
+        "largest_winner": 38.781977414150724,
+        "largest_loser": -7.601266877812963,
+        "avg_winner": 12.333299852076367,
+        "avg_loser": -3.681442050948103,
+        "win_loss_ratio": 3.350127390678362,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 5,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 10.092621414382421,
+        "drawdown_duration": 74,
+        "calmar_ratio": 4.474489961374448,
+        "recovery_factor": 4.456158430346913,
+        "sharpe_ratio": 1.5622678982618694,
+        "volatility": 24.388219228678366,
+        "annualized_return": 45.15933320260692
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.04436493059331298,
+          "total_return": -0.08872986118662596
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 57.14285714285714,
+          "avg_return": 6.71849441682515,
+          "total_return": 47.02946091777605
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 144974.32,
+        "cash": 144974.32,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 585.51,
+        "last_sentiment": 0.4,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-18",
+        "cumulative_return": 44.97,
+        "high_water_mark": 152249.77,
+        "initial_cash": 100000.0,
+        "symbol": "META",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "META",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:52:32.121287",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "GOOGL_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/GOOGL_2024_results.json",
+        "symbol": "GOOGL",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:52:27.899869"
+      },
+      "basic_performance": {
+        "total_return": 20.75,
+        "total_return_pct": 20.75,
+        "buy_hold_return": 37.01,
+        "outperformance": -16.26,
+        "final_portfolio_value": 120746.95,
+        "num_trades": 20,
+        "profitable_trades": 7,
+        "losing_trades": 3,
+        "win_rate": 35.0,
+        "avg_trade_return": 2.43
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 6,
+          "win_rate": 100.0,
+          "avg_return": 5.1318658157059245,
+          "total_return": 30.791194894235545,
+          "best_trade": 11.480144404332133,
+          "worst_trade": 0.9075194468452831,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 0.5651252513177156,
+          "total_return": 0.5651252513177156,
+          "best_trade": 0.5651252513177156,
+          "worst_trade": 0.5651252513177156,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 0.0,
+          "avg_return": -2.3488795905699447,
+          "total_return": -7.046638771709834,
+          "best_trade": -1.2306013579049473,
+          "worst_trade": -3.994845360824754,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 19.2,
+          "min": 1,
+          "max": 35
+        },
+        "profit_factor": 4.449826528846574,
+        "largest_winner": 11.480144404332133,
+        "largest_loser": -3.994845360824754,
+        "avg_winner": 4.479474306507609,
+        "avg_loser": -2.3488795905699447,
+        "win_loss_ratio": 1.907068512362818,
+        "consecutive_wins": 4,
+        "consecutive_losses": 1,
+        "total_winning_trades": 7,
+        "total_losing_trades": 3
+      },
+      "risk_metrics": {
+        "max_drawdown": 7.2450975361554075,
+        "drawdown_duration": 83,
+        "calmar_ratio": 2.8743779400176175,
+        "recovery_factor": 2.8635846372620835,
+        "sharpe_ratio": 1.081105867306167,
+        "volatility": 17.00137081605831,
+        "annualized_return": 20.825148531201098
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 4.321730046489603,
+          "total_return": 12.96519013946881
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 71.42857142857143,
+          "avg_return": 1.6206416049106598,
+          "total_return": 11.344491234374619
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 120746.95,
+        "cash": 120746.95,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 189.3,
+        "last_sentiment": 0.4,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 20.75,
+        "high_water_mark": 123792.99,
+        "initial_cash": 100000.0,
+        "symbol": "GOOGL",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "GOOGL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:52:27.899869",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "TSLA_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/TSLA_2024_results.json",
+        "symbol": "TSLA",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:52:07.414987"
+      },
+      "basic_performance": {
+        "total_return": 60.84,
+        "total_return_pct": 60.84,
+        "buy_hold_return": 62.56,
+        "outperformance": -1.73,
+        "final_portfolio_value": 160836.92,
+        "num_trades": 18,
+        "profitable_trades": 5,
+        "losing_trades": 4,
+        "win_rate": 27.8,
+        "avg_trade_return": 7.27
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 14.040587042520675,
+          "total_return": 42.121761127562024,
+          "best_trade": 34.37447334419414,
+          "worst_trade": -4.652880354505166,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 12.75773019836884,
+          "total_return": 25.51546039673768,
+          "best_trade": 27.798679361179346,
+          "worst_trade": -2.283218964441664,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": -0.5521793437036657,
+          "total_return": -2.208717374814663,
+          "best_trade": 10.631519449154718,
+          "worst_trade": -8.990326131031676,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 23.666666666666668,
+          "min": 1,
+          "max": 35
+        },
+        "profit_factor": 3.8071396181449195,
+        "largest_winner": 34.37447334419414,
+        "largest_loser": -8.990326131031676,
+        "avg_winner": 17.747279023340987,
+        "avg_loser": -5.826972741804971,
+        "win_loss_ratio": 3.0457116945159357,
+        "consecutive_wins": 3,
+        "consecutive_losses": 3,
+        "total_winning_trades": 5,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 17.23745350414688,
+        "drawdown_duration": 83,
+        "calmar_ratio": 3.544584493139686,
+        "recovery_factor": 3.529344980415132,
+        "sharpe_ratio": 1.338960960882805,
+        "volatility": 40.06010966465398,
+        "annualized_return": 61.09961039201537
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 19.21509940516703,
+          "total_return": 38.43019881033406
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 42.857142857142854,
+          "avg_return": 3.8569007627358545,
+          "total_return": 26.99830533915098
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 160836.92,
+        "cash": 160836.92,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 403.84,
+        "last_sentiment": 0.4,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-23",
+        "cumulative_return": 60.84,
+        "high_water_mark": 174925.28,
+        "initial_cash": 100000.0,
+        "symbol": "TSLA",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "TSLA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:52:07.414987",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "MSFT_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/MSFT_2024_results.json",
+        "symbol": "MSFT",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:51:25.210939"
+      },
+      "basic_performance": {
+        "total_return": 5.76,
+        "total_return_pct": 5.76,
+        "buy_hold_return": 13.65,
+        "outperformance": -7.89,
+        "final_portfolio_value": 105759.75,
+        "num_trades": 20,
+        "profitable_trades": 6,
+        "losing_trades": 4,
+        "win_rate": 30.0,
+        "avg_trade_return": 0.67
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -1.3540871348418082,
+          "total_return": -2.7081742696836164,
+          "best_trade": 0.38448517676644944,
+          "worst_trade": -3.0926594464500656,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 0.25380853420601346,
+          "total_return": 0.5076170684120269,
+          "best_trade": 2.112198883151467,
+          "worst_trade": -1.60458181473944,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 6,
+          "win_rate": 66.66666666666666,
+          "avg_return": 1.4808005944426477,
+          "total_return": 8.884803566655886,
+          "best_trade": 9.287677813659295,
+          "worst_trade": -4.949591822413503,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 20.2,
+          "min": 4,
+          "max": 37
+        },
+        "profit_factor": 1.5031974551087754,
+        "largest_winner": 9.287677813659295,
+        "largest_loser": -4.949591822413503,
+        "avg_winner": 3.327965335726164,
+        "avg_loser": -3.320886412243171,
+        "win_loss_ratio": 1.0021316367391835,
+        "consecutive_wins": 3,
+        "consecutive_losses": 2,
+        "total_winning_trades": 6,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 9.231966835219351,
+        "drawdown_duration": 123,
+        "calmar_ratio": 0.6260952199312944,
+        "recovery_factor": 0.6238919726213626,
+        "sharpe_ratio": 0.36281846165326875,
+        "volatility": 11.977517348044266,
+        "annualized_return": 5.780090306095076
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.4806582513338256,
+          "total_return": -4.4419747540014765
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 71.42857142857143,
+          "avg_return": 1.5894601599122535,
+          "total_return": 11.126221119385775
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 105759.75,
+        "cash": 105759.75,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 421.5,
+        "last_sentiment": 0.4,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": 5.76,
+        "high_water_mark": 113701.34,
+        "initial_cash": 100000.0,
+        "symbol": "MSFT",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "MSFT",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:51:25.210939",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AMZN_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/AMZN_2024_results.json",
+        "symbol": "AMZN",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:27:30.445852"
+      },
+      "basic_performance": {
+        "total_return": 19.11,
+        "total_return_pct": 19.11,
+        "buy_hold_return": 46.33,
+        "outperformance": -27.22,
+        "final_portfolio_value": 119106.11,
+        "num_trades": 22,
+        "profitable_trades": 6,
+        "losing_trades": 5,
+        "win_rate": 27.3,
+        "avg_trade_return": 2.08
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 3,
+          "win_rate": 100.0,
+          "avg_return": 6.973211802837047,
+          "total_return": 20.91963540851114,
+          "best_trade": 12.05902079141517,
+          "worst_trade": 4.245734557125959,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -1.4935505770536244,
+          "total_return": -1.4935505770536244,
+          "best_trade": -1.4935505770536244,
+          "worst_trade": -1.4935505770536244,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 7,
+          "win_rate": 42.857142857142854,
+          "avg_return": 0.4964404396102922,
+          "total_return": 3.4750830772720454,
+          "best_trade": 5.529028757460661,
+          "worst_trade": -2.321437929046799,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 18.636363636363637,
+          "min": 2,
+          "max": 47
+        },
+        "profit_factor": 3.6777728090739967,
+        "largest_winner": 12.05902079141517,
+        "largest_loser": -2.321437929046799,
+        "avg_winner": 5.242247857706894,
+        "avg_loser": -1.7104638475023606,
+        "win_loss_ratio": 3.0648106742283305,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 6,
+        "total_losing_trades": 5
+      },
+      "risk_metrics": {
+        "max_drawdown": 8.430610707643893,
+        "drawdown_duration": 97,
+        "calmar_ratio": 2.274763568714694,
+        "recovery_factor": 2.2662782878441785,
+        "sharpe_ratio": 1.0310653729849883,
+        "volatility": 16.386721845550777,
+        "annualized_return": 19.177646099764335
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": 0.8405871095216471,
+          "total_return": 3.3623484380865882
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 57.14285714285714,
+          "avg_return": 2.791259924377568,
+          "total_return": 19.538819470642977
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 119106.11,
+        "cash": 119106.11,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 219.39,
+        "last_sentiment": 0.4,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": 19.11,
+        "high_water_mark": 123665.83,
+        "initial_cash": 100000.0,
+        "symbol": "AMZN",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "AMZN",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:27:30.445852",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AAPL_V4": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V4/AAPL_2024_results.json",
+        "symbol": "AAPL",
+        "version": "V4",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:27:15.031002"
+      },
+      "basic_performance": {
+        "total_return": 7.02,
+        "total_return_pct": 7.02,
+        "buy_hold_return": 34.9,
+        "outperformance": -27.87,
+        "final_portfolio_value": 107023.2,
+        "num_trades": 24,
+        "profitable_trades": 5,
+        "losing_trades": 7,
+        "win_rate": 20.8,
+        "avg_trade_return": 0.85
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 4.117937310111744,
+          "total_return": 8.235874620223488,
+          "best_trade": 10.478359908883823,
+          "worst_trade": -2.242485288660335,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 5.649057685384722,
+          "total_return": 11.298115370769445,
+          "best_trade": 12.007769733356882,
+          "worst_trade": -0.709654362587438,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 8,
+          "win_rate": 37.5,
+          "avg_return": -1.165574550579596,
+          "total_return": -9.324596404636768,
+          "best_trade": 1.7750942025695722,
+          "worst_trade": -5.019571724614321,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 17.916666666666668,
+          "min": 1,
+          "max": 41
+        },
+        "profit_factor": 1.6375512132796428,
+        "largest_winner": 12.007769733356882,
+        "largest_loser": -5.019571724614321,
+        "avg_winner": 5.24456843809782,
+        "avg_loser": -2.287635514876135,
+        "win_loss_ratio": 2.2925716985914995,
+        "consecutive_wins": 2,
+        "consecutive_losses": 3,
+        "total_winning_trades": 5,
+        "total_losing_trades": 7
+      },
+      "risk_metrics": {
+        "max_drawdown": 8.958516387403007,
+        "drawdown_duration": 102,
+        "calmar_ratio": 0.7867540235346018,
+        "recovery_factor": 0.7839690966994993,
+        "sharpe_ratio": 0.43153996802469746,
+        "volatility": 13.159402376067625,
+        "annualized_return": 7.0481488126899805
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 5.756556831843239,
+          "total_return": 11.513113663686479
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 10,
+          "win_rate": 30.0,
+          "avg_return": -0.1303720077330316,
+          "total_return": -1.303720077330316
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 107023.2,
+        "cash": 107023.2,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 250.42,
+        "last_sentiment": 0.4,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 7.02,
+        "high_water_mark": 109335.18,
+        "initial_cash": 100000.0,
+        "symbol": "AAPL",
+        "version": "V4",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V4",
+        "symbol": "AAPL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:27:15.031002",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "SPY_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/SPY_2024_results.json",
+        "symbol": "SPY",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:07:42.316115"
+      },
+      "basic_performance": {
+        "total_return": 2.7,
+        "total_return_pct": 2.7,
+        "buy_hold_return": 24.0,
+        "outperformance": -21.3,
+        "final_portfolio_value": 102698.97,
+        "num_trades": 24,
+        "profitable_trades": 6,
+        "losing_trades": 6,
+        "win_rate": 25.0,
+        "avg_trade_return": 0.38
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 10,
+          "win_rate": 40.0,
+          "avg_return": -0.20363402839331446,
+          "total_return": -2.0363402839331446,
+          "best_trade": 2.029327048965702,
+          "worst_trade": -1.5841273575657733,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 1.0337894343517124,
+          "total_return": 1.0337894343517124,
+          "best_trade": 1.0337894343517124,
+          "worst_trade": 1.0337894343517124,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 13.333333333333334,
+          "min": 1,
+          "max": 35
+        },
+        "profit_factor": 1.7573706985885464,
+        "largest_winner": 5.558364938895911,
+        "largest_loser": -1.5841273575657733,
+        "avg_winner": 1.761852816086576,
+        "avg_loser": -1.0025504678674964,
+        "win_loss_ratio": 1.7573706985885464,
+        "consecutive_wins": 2,
+        "consecutive_losses": 4,
+        "total_winning_trades": 6,
+        "total_losing_trades": 6
+      },
+      "risk_metrics": {
+        "max_drawdown": 3.1622367216807707,
+        "drawdown_duration": 205,
+        "calmar_ratio": 0.8564706170730426,
+        "recovery_factor": 0.8535003029644987,
+        "sharpe_ratio": 0.19379498404889228,
+        "volatility": 3.862688059660788,
+        "annualized_return": 2.7083628363489654
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": -0.0158965171668346,
+          "total_return": -0.0476895515005038
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 9,
+          "win_rate": 44.44444444444444,
+          "avg_return": 0.5115004045349981,
+          "total_return": 4.603503640814983
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 102698.97,
+        "cash": 102698.97,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 586.08,
+        "last_sentiment": 0.3612,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-10",
+        "cumulative_return": 2.7,
+        "high_water_mark": 104422.29,
+        "initial_cash": 100000.0,
+        "symbol": "SPY",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "SPY",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:07:42.316115",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "NVDA_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/NVDA_2024_results.json",
+        "symbol": "NVDA",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:29.251026"
+      },
+      "basic_performance": {
+        "total_return": 67.59,
+        "total_return_pct": 67.59,
+        "buy_hold_return": 178.8,
+        "outperformance": -111.2,
+        "final_portfolio_value": 167590.65,
+        "num_trades": 13,
+        "profitable_trades": 4,
+        "losing_trades": 2,
+        "win_rate": 30.8,
+        "avg_trade_return": 15.74
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 3,
+          "win_rate": 100.0,
+          "avg_return": 23.13397999980963,
+          "total_return": 69.40193999942889,
+          "best_trade": 40.572523855160625,
+          "worst_trade": 11.839491711018876,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -4.634605051047828,
+          "total_return": -4.634605051047828,
+          "best_trade": -4.634605051047828,
+          "worst_trade": -4.634605051047828,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 33.5,
+          "min": 8,
+          "max": 55
+        },
+        "profit_factor": 9.112482434951485,
+        "largest_winner": 40.572523855160625,
+        "largest_loser": -7.0087825038746345,
+        "avg_winner": 26.525041144390915,
+        "avg_loser": -5.821693777461231,
+        "win_loss_ratio": 4.556241217475742,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 15.733584177546318,
+        "drawdown_duration": 134,
+        "calmar_ratio": 4.314851826810725,
+        "recovery_factor": 4.295947397444241,
+        "sharpe_ratio": 2.255097868051993,
+        "volatility": 23.328295431094798,
+        "annualized_return": 67.88808443076604
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 6.177659691100777,
+          "total_return": 12.355319382201554
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 4,
+          "win_rate": 75.0,
+          "avg_return": 20.52536441010991,
+          "total_return": 82.10145764043963
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 167590.65,
+        "cash": 65933.12,
+        "position": 757,
+        "position_avg_cost": 140.22,
+        "stock_price": 134.29,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "1",
+        "last_trade_date": "2024-12-24",
+        "cumulative_return": 67.59,
+        "high_water_mark": 186835.75,
+        "initial_cash": 100000.0,
+        "symbol": "NVDA",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "NVDA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:29.251026",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "META_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/META_2024_results.json",
+        "symbol": "META",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:21.643729"
+      },
+      "basic_performance": {
+        "total_return": 8.27,
+        "total_return_pct": 8.27,
+        "buy_hold_return": 69.08,
+        "outperformance": -60.81,
+        "final_portfolio_value": 108269.77,
+        "num_trades": 16,
+        "profitable_trades": 5,
+        "losing_trades": 3,
+        "win_rate": 31.2,
+        "avg_trade_return": 1.58
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 5,
+          "win_rate": 40.0,
+          "avg_return": -1.4527633609152877,
+          "total_return": -7.263816804576439,
+          "best_trade": 5.567075751163775,
+          "worst_trade": -7.601266877812963,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 17.375,
+          "min": 1,
+          "max": 47
+        },
+        "profit_factor": 1.931914229601336,
+        "largest_winner": 10.714821482148212,
+        "largest_loser": -7.601266877812963,
+        "avg_winner": 5.241804115731589,
+        "avg_loser": -4.522115971312446,
+        "win_loss_ratio": 1.1591485377608017,
+        "consecutive_wins": 2,
+        "consecutive_losses": 1,
+        "total_winning_trades": 5,
+        "total_losing_trades": 3
+      },
+      "risk_metrics": {
+        "max_drawdown": 7.50808671290864,
+        "drawdown_duration": 102,
+        "calmar_ratio": 1.1053836287083607,
+        "recovery_factor": 1.1014483870813323,
+        "sharpe_ratio": 0.6433715767054349,
+        "volatility": 10.079240381063963,
+        "annualized_return": 8.299316135371981
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.04436493059331298,
+          "total_return": -0.08872986118662596
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 6,
+          "win_rate": 66.66666666666666,
+          "avg_return": 2.1219004209845393,
+          "total_return": 12.731402525907235
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 108269.77,
+        "cash": 108269.77,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 585.51,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-18",
+        "cumulative_return": 8.27,
+        "high_water_mark": 112209.16,
+        "initial_cash": 100000.0,
+        "symbol": "META",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "META",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:21.643729",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "GOOGL_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/GOOGL_2024_results.json",
+        "symbol": "GOOGL",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:17.618349"
+      },
+      "basic_performance": {
+        "total_return": 16.45,
+        "total_return_pct": 16.45,
+        "buy_hold_return": 37.01,
+        "outperformance": -20.56,
+        "final_portfolio_value": 116448.56,
+        "num_trades": 16,
+        "profitable_trades": 6,
+        "losing_trades": 2,
+        "win_rate": 37.5,
+        "avg_trade_return": 3.08
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 5,
+          "win_rate": 80.0,
+          "avg_return": 4.5101504851056236,
+          "total_return": 22.550752425528117,
+          "best_trade": 11.480144404332133,
+          "worst_trade": -1.8211920529801335,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 20.75,
+          "min": 1,
+          "max": 35
+        },
+        "profit_factor": 5.235317198344532,
+        "largest_winner": 11.480144404332133,
+        "largest_loser": -3.994845360824754,
+        "avg_winner": 5.074800116451329,
+        "avg_loser": -2.9080187069024435,
+        "win_loss_ratio": 1.7451057327815105,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 6,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 5.967924939773562,
+        "drawdown_duration": 78,
+        "calmar_ratio": 2.766367108875203,
+        "recovery_factor": 2.7561606699135357,
+        "sharpe_ratio": 1.1691612623456433,
+        "volatility": 11.980893207490553,
+        "annualized_return": 16.509471261625606
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 7.097895748686878,
+          "total_return": 14.195791497373756
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 6,
+          "win_rate": 66.66666666666666,
+          "avg_return": 1.7394952979215557,
+          "total_return": 10.436971787529334
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 116448.56,
+        "cash": 116448.56,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 189.3,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 16.45,
+        "high_water_mark": 118632.82,
+        "initial_cash": 100000.0,
+        "symbol": "GOOGL",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "GOOGL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:17.618349",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "TSLA_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/TSLA_2024_results.json",
+        "symbol": "TSLA",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:25.264308"
+      },
+      "basic_performance": {
+        "total_return": 54.87,
+        "total_return_pct": 54.87,
+        "buy_hold_return": 62.56,
+        "outperformance": -7.69,
+        "final_portfolio_value": 154868.96,
+        "num_trades": 8,
+        "profitable_trades": 3,
+        "losing_trades": 1,
+        "win_rate": 37.5,
+        "avg_trade_return": 17.04
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 3,
+          "win_rate": 100.0,
+          "avg_return": 24.268224051509403,
+          "total_return": 72.8046721545282,
+          "best_trade": 34.37447334419414,
+          "worst_trade": 10.631519449154718,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 28.0,
+          "min": 17,
+          "max": 35
+        },
+        "profit_factor": 15.647226364639884,
+        "largest_winner": 34.37447334419414,
+        "largest_loser": -4.652880354505166,
+        "avg_winner": 24.268224051509403,
+        "avg_loser": -4.652880354505166,
+        "win_loss_ratio": 5.215742121546628,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 3,
+        "total_losing_trades": 1
+      },
+      "risk_metrics": {
+        "max_drawdown": 11.604374890534316,
+        "drawdown_duration": 83,
+        "calmar_ratio": 4.748361090336419,
+        "recovery_factor": 4.728299500626835,
+        "sharpe_ratio": 1.7264757395514883,
+        "volatility": 26.266219893470538,
+        "annualized_return": 55.10176220789009
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 19.21509940516703,
+          "total_return": 38.43019881033406
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 14.86079649484449,
+          "total_return": 29.72159298968898
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 154868.96,
+        "cash": 154868.96,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 403.84,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-23",
+        "cumulative_return": 54.87,
+        "high_water_mark": 167381.0,
+        "initial_cash": 100000.0,
+        "symbol": "TSLA",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "TSLA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:25.264308",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "MSFT_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/MSFT_2024_results.json",
+        "symbol": "MSFT",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:16.785120"
+      },
+      "basic_performance": {
+        "total_return": 3.22,
+        "total_return_pct": 3.22,
+        "buy_hold_return": 13.65,
+        "outperformance": -10.43,
+        "final_portfolio_value": 103220.79,
+        "num_trades": 18,
+        "profitable_trades": 5,
+        "losing_trades": 4,
+        "win_rate": 27.8,
+        "avg_trade_return": 0.51
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 4,
+          "win_rate": 75.0,
+          "avg_return": 2.3987309961619987,
+          "total_return": 9.594923984647995,
+          "best_trade": 9.287677813659295,
+          "worst_trade": -1.60458181473944,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 5.089211426458348,
+          "total_return": 5.089211426458348,
+          "best_trade": 5.089211426458348,
+          "worst_trade": 5.089211426458348,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 19.88888888888889,
+          "min": 4,
+          "max": 37
+        },
+        "profit_factor": 1.344188788374166,
+        "largest_winner": 9.287677813659295,
+        "largest_loser": -4.949591822413503,
+        "avg_winner": 3.571118626241103,
+        "avg_loser": -3.320886412243171,
+        "win_loss_ratio": 1.0753510306993328,
+        "consecutive_wins": 3,
+        "consecutive_losses": 2,
+        "total_winning_trades": 5,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 6.973768665422403,
+        "drawdown_duration": 123,
+        "calmar_ratio": 0.46345489879149604,
+        "recovery_factor": 0.46184353891310354,
+        "sharpe_ratio": 0.17371452963901865,
+        "volatility": 9.329655375396126,
+        "annualized_return": 3.2320272510286463
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 0.0,
+          "avg_return": -3.2770868185764717,
+          "total_return": -6.554173637152943
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 71.42857142857143,
+          "avg_return": 1.5894601599122535,
+          "total_return": 11.126221119385775
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 103220.79,
+        "cash": 103220.79,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 421.5,
+        "last_sentiment": 0.1779,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-11-18",
+        "cumulative_return": 3.22,
+        "high_water_mark": 110834.62,
+        "initial_cash": 100000.0,
+        "symbol": "MSFT",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "MSFT",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:16.785120",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AMZN_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/AMZN_2024_results.json",
+        "symbol": "AMZN",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:07:38.020691"
+      },
+      "basic_performance": {
+        "total_return": 13.24,
+        "total_return_pct": 13.24,
+        "buy_hold_return": 46.33,
+        "outperformance": -33.08,
+        "final_portfolio_value": 113243.29,
+        "num_trades": 20,
+        "profitable_trades": 5,
+        "losing_trades": 5,
+        "win_rate": 25.0,
+        "avg_trade_return": 2.02
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 8,
+          "win_rate": 62.5,
+          "avg_return": 2.7528306656101886,
+          "total_return": 22.02264532488151,
+          "best_trade": 12.05902079141517,
+          "worst_trade": -2.306024223832435,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -1.0457740442311059,
+          "total_return": -1.0457740442311059,
+          "best_trade": -1.0457740442311059,
+          "worst_trade": -1.0457740442311059,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 17.5,
+          "min": 2,
+          "max": 43
+        },
+        "profit_factor": 3.894929763159607,
+        "largest_winner": 12.05902079141517,
+        "largest_loser": -2.306024223832435,
+        "avg_winner": 5.441550517823082,
+        "avg_loser": -1.3970856597446935,
+        "win_loss_ratio": 3.8949297631596065,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 5,
+        "total_losing_trades": 5
+      },
+      "risk_metrics": {
+        "max_drawdown": 5.126227142928269,
+        "drawdown_duration": 97,
+        "calmar_ratio": 2.5928748232306584,
+        "recovery_factor": 2.583438000454071,
+        "sharpe_ratio": 0.9337478317717818,
+        "volatility": 11.999200232573136,
+        "annualized_return": 13.29166529706034
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 1.894595455711129,
+          "total_return": 5.683786367133387
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 42.857142857142854,
+          "avg_return": 2.0769339890369363,
+          "total_return": 14.538537923258554
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 113243.29,
+        "cash": 113243.29,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 219.39,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": 13.24,
+        "high_water_mark": 116501.61,
+        "initial_cash": 100000.0,
+        "symbol": "AMZN",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "AMZN",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:07:38.020691",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AAPL_V1": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V1/AAPL_2024_results.json",
+        "symbol": "AAPL",
+        "version": "V1",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:03:31.130221"
+      },
+      "basic_performance": {
+        "total_return": -3.83,
+        "total_return_pct": -3.83,
+        "buy_hold_return": 34.9,
+        "outperformance": -38.73,
+        "final_portfolio_value": 96168.05,
+        "num_trades": 16,
+        "profitable_trades": 3,
+        "losing_trades": 5,
+        "win_rate": 18.8,
+        "avg_trade_return": -0.71
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 5,
+          "win_rate": 40.0,
+          "avg_return": -0.3728869610606201,
+          "total_return": -1.8644348053031004,
+          "best_trade": 1.7750942025695722,
+          "worst_trade": -2.242485288660335,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 2,
+          "win_rate": 0.0,
+          "avg_return": -2.3837677417585725,
+          "total_return": -4.767535483517145,
+          "best_trade": -1.9147747473208299,
+          "worst_trade": -2.852760736196315,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 12.375,
+          "min": 1,
+          "max": 20
+        },
+        "profit_factor": 0.3957619656314898,
+        "largest_winner": 1.7750942025695722,
+        "largest_loser": -2.852760736196315,
+        "avg_winner": 1.245570849416133,
+        "avg_loser": -1.8883636492384948,
+        "win_loss_ratio": 0.659603276052483,
+        "consecutive_wins": 2,
+        "consecutive_losses": 3,
+        "total_winning_trades": 3,
+        "total_losing_trades": 5
+      },
+      "risk_metrics": {
+        "max_drawdown": 6.998961181883251,
+        "drawdown_duration": 236,
+        "calmar_ratio": -0.5493462234423984,
+        "recovery_factor": -0.5475026793860446,
+        "sharpe_ratio": -0.77576832040065,
+        "volatility": 7.291170101287903,
+        "annualized_return": -3.8448528932875092
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 1.0347537548026566,
+          "total_return": 1.0347537548026566
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 28.57142857142857,
+          "avg_return": -0.9628370646781045,
+          "total_return": -6.739859452746732
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 96168.05,
+        "cash": 96168.05,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 250.42,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-10-25",
+        "cumulative_return": -3.83,
+        "high_water_mark": 102135.3,
+        "initial_cash": 100000.0,
+        "symbol": "AAPL",
+        "version": "V1",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V1",
+        "symbol": "AAPL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:03:31.130221",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "SPY_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/SPY_2024_results.json",
+        "symbol": "SPY",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:07:50.786090"
+      },
+      "basic_performance": {
+        "total_return": 1.89,
+        "total_return_pct": 1.89,
+        "buy_hold_return": 24.0,
+        "outperformance": -22.11,
+        "final_portfolio_value": 101888.81,
+        "num_trades": 10,
+        "profitable_trades": 4,
+        "losing_trades": 1,
+        "win_rate": 40.0,
+        "avg_trade_return": 0.46
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.18526667705724975,
+          "total_return": -0.3705333541144995,
+          "best_trade": 0.8819640854852446,
+          "worst_trade": -1.2524974395997441,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 100.0,
+          "avg_return": 0.8935903893333997,
+          "total_return": 2.680771168000199,
+          "best_trade": 1.324137931034491,
+          "worst_trade": 0.32284380261399576,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 16.0,
+          "min": 11,
+          "max": 21
+        },
+        "profit_factor": 2.8445050192070442,
+        "largest_winner": 1.324137931034491,
+        "largest_loser": -1.2524974395997441,
+        "avg_winner": 0.8906838133713609,
+        "avg_loser": -1.2524974395997441,
+        "win_loss_ratio": 0.7111262548017611,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 1
+      },
+      "risk_metrics": {
+        "max_drawdown": 2.3343479836754493,
+        "drawdown_duration": 156,
+        "calmar_ratio": 0.8119429478978735,
+        "recovery_factor": 0.8091381461585052,
+        "sharpe_ratio": -0.011006802464812145,
+        "volatility": 3.945825162900105,
+        "annualized_return": 1.8953573832849013
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": -0.0158965171668346,
+          "total_return": -0.0476895515005038
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 1.1789636826931016,
+          "total_return": 2.357927365386203
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 101888.81,
+        "cash": 101888.81,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 586.08,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-10",
+        "cumulative_return": 1.89,
+        "high_water_mark": 103240.82,
+        "initial_cash": 100000.0,
+        "symbol": "SPY",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "SPY",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:07:50.786090",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "NVDA_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/NVDA_2024_results.json",
+        "symbol": "NVDA",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:38.072584"
+      },
+      "basic_performance": {
+        "total_return": 24.71,
+        "total_return_pct": 24.71,
+        "buy_hold_return": 178.8,
+        "outperformance": -154.09,
+        "final_portfolio_value": 124708.76,
+        "num_trades": 9,
+        "profitable_trades": 2,
+        "losing_trades": 2,
+        "win_rate": 22.2,
+        "avg_trade_return": 11.48
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -4.634605051047828,
+          "total_return": -4.634605051047828,
+          "best_trade": -4.634605051047828,
+          "worst_trade": -4.634605051047828,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 4.9905709646873735,
+          "total_return": 9.981141929374747,
+          "best_trade": 16.98992443324938,
+          "worst_trade": -7.0087825038746345,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 31.0,
+          "min": 8,
+          "max": 48
+        },
+        "profit_factor": 4.943788739907949,
+        "largest_winner": 40.572523855160625,
+        "largest_loser": -7.0087825038746345,
+        "avg_winner": 28.781224144205005,
+        "avg_loser": -5.821693777461231,
+        "win_loss_ratio": 4.943788739907949,
+        "consecutive_wins": 1,
+        "consecutive_losses": 1,
+        "total_winning_trades": 2,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 17.45162836310125,
+        "drawdown_duration": 127,
+        "calmar_ratio": 1.4212633577189047,
+        "recovery_factor": 1.415842664415363,
+        "sharpe_ratio": 1.124489825276563,
+        "volatility": 19.678451827600703,
+        "annualized_return": 24.803359925003754
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 6.177659691100777,
+          "total_return": 12.355319382201554
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 16.781870675642995,
+          "total_return": 33.56374135128599
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 124708.76,
+        "cash": 23722.68,
+        "position": 752,
+        "position_avg_cost": 140.22,
+        "stock_price": 134.29,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "1",
+        "last_trade_date": "2024-12-24",
+        "cumulative_return": 24.71,
+        "high_water_mark": 137781.52,
+        "initial_cash": 100000.0,
+        "symbol": "NVDA",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "NVDA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:38.072584",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "META_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/META_2024_results.json",
+        "symbol": "META",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:29.698935"
+      },
+      "basic_performance": {
+        "total_return": 41.42,
+        "total_return_pct": 41.42,
+        "buy_hold_return": 69.08,
+        "outperformance": -27.66,
+        "final_portfolio_value": 141424.94,
+        "num_trades": 10,
+        "profitable_trades": 4,
+        "losing_trades": 1,
+        "win_rate": 40.0,
+        "avg_trade_return": 11.06
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 1.9261464645117925,
+          "total_return": 5.778439393535377,
+          "best_trade": 5.867169254722003,
+          "worst_trade": -0.8241852193837504,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 10.714821482148212,
+          "total_return": 10.714821482148212,
+          "best_trade": 10.714821482148212,
+          "worst_trade": 10.714821482148212,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 24.8,
+          "min": 1,
+          "max": 53
+        },
+        "profit_factor": 68.06652459888085,
+        "largest_winner": 38.781977414150724,
+        "largest_loser": -0.8241852193837504,
+        "avg_winner": 14.024855877304514,
+        "avg_loser": -0.8241852193837504,
+        "win_loss_ratio": 17.01663114972021,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 1
+      },
+      "risk_metrics": {
+        "max_drawdown": 4.619519565433065,
+        "drawdown_duration": 113,
+        "calmar_ratio": 9.003830323621559,
+        "recovery_factor": 8.967369747705906,
+        "sharpe_ratio": 1.9314913098919335,
+        "volatility": 17.7735672944216,
+        "annualized_return": 41.59337034380932
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.04436493059331298,
+          "total_return": -0.08872986118662596
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 3,
+          "win_rate": 100.0,
+          "avg_return": 18.45465605034031,
+          "total_return": 55.363968151020934
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 141424.94,
+        "cash": 141424.94,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 585.51,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-18",
+        "cumulative_return": 41.42,
+        "high_water_mark": 148274.51,
+        "initial_cash": 100000.0,
+        "symbol": "META",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "META",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:29.698935",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "GOOGL_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/GOOGL_2024_results.json",
+        "symbol": "GOOGL",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:20.236572"
+      },
+      "basic_performance": {
+        "total_return": 9.05,
+        "total_return_pct": 9.05,
+        "buy_hold_return": 37.01,
+        "outperformance": -27.96,
+        "final_portfolio_value": 109045.51,
+        "num_trades": 12,
+        "profitable_trades": 3,
+        "losing_trades": 3,
+        "win_rate": 25.0,
+        "avg_trade_return": 1.74
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -1.8211920529801335,
+          "total_return": -1.8211920529801335,
+          "best_trade": -1.8211920529801335,
+          "worst_trade": -1.8211920529801335,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 7.097895748686878,
+          "total_return": 14.195791497373756,
+          "best_trade": 9.049438330387185,
+          "worst_trade": 5.146353166986572,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -0.6494034087528278,
+          "total_return": -1.9482102262584833,
+          "best_trade": 3.277236492471218,
+          "worst_trade": -3.994845360824754,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 15.0,
+          "min": 1,
+          "max": 25
+        },
+        "profit_factor": 2.4796258976682615,
+        "largest_winner": 9.049438330387185,
+        "largest_loser": -3.994845360824754,
+        "avg_winner": 5.824342663281658,
+        "avg_loser": -2.3488795905699447,
+        "win_loss_ratio": 2.4796258976682615,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 3,
+        "total_losing_trades": 3
+      },
+      "risk_metrics": {
+        "max_drawdown": 5.260423315837056,
+        "drawdown_duration": 158,
+        "calmar_ratio": 1.7257056153532326,
+        "recovery_factor": 1.7195403215493206,
+        "sharpe_ratio": 0.6194457331721255,
+        "volatility": 11.951153913813036,
+        "annualized_return": 9.077942055275079
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 4.321730046489603,
+          "total_return": 12.96519013946881
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -0.8462669737778897,
+          "total_return": -2.538800921333669
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 109045.51,
+        "cash": 109045.51,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 189.3,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 9.05,
+        "high_water_mark": 111603.75,
+        "initial_cash": 100000.0,
+        "symbol": "GOOGL",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "GOOGL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:20.236572",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "TSLA_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/TSLA_2024_results.json",
+        "symbol": "TSLA",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:28.764261"
+      },
+      "basic_performance": {
+        "total_return": 39.98,
+        "total_return_pct": 39.98,
+        "buy_hold_return": 62.56,
+        "outperformance": -22.59,
+        "final_portfolio_value": 139977.41,
+        "num_trades": 8,
+        "profitable_trades": 3,
+        "losing_trades": 1,
+        "win_rate": 37.5,
+        "avg_trade_return": 10.86
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 10.349577764364229,
+          "total_return": 31.04873329309269,
+          "best_trade": 27.798679361179346,
+          "worst_trade": -7.381465517241378,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 12.400168137873047,
+          "total_return": 12.400168137873047,
+          "best_trade": 12.400168137873047,
+          "worst_trade": 12.400168137873047,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 23.75,
+          "min": 10,
+          "max": 34
+        },
+        "profit_factor": 6.886216135465139,
+        "largest_winner": 27.798679361179346,
+        "largest_loser": -7.381465517241378,
+        "avg_winner": 16.94345564940237,
+        "avg_loser": -7.381465517241378,
+        "win_loss_ratio": 2.29540537848838,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 3,
+        "total_losing_trades": 1
+      },
+      "risk_metrics": {
+        "max_drawdown": 12.312379898258284,
+        "drawdown_duration": 160,
+        "calmar_ratio": 3.2600655232723725,
+        "recovery_factor": 3.2469279156708954,
+        "sharpe_ratio": 1.250282347489387,
+        "volatility": 28.640009900559953,
+        "annualized_return": 40.13916521574363
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 19.21509940516703,
+          "total_return": 38.43019881033406
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 2.5093513103158345,
+          "total_return": 5.018702620631669
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 139977.41,
+        "cash": 139977.41,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 403.84,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-23",
+        "cumulative_return": 39.98,
+        "high_water_mark": 153277.61,
+        "initial_cash": 100000.0,
+        "symbol": "TSLA",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "TSLA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:28.764261",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "MSFT_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/MSFT_2024_results.json",
+        "symbol": "MSFT",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:20.539692"
+      },
+      "basic_performance": {
+        "total_return": -5.63,
+        "total_return_pct": -5.63,
+        "buy_hold_return": 13.65,
+        "outperformance": -19.29,
+        "final_portfolio_value": 94366.44,
+        "num_trades": 10,
+        "profitable_trades": 2,
+        "losing_trades": 3,
+        "win_rate": 20.0,
+        "avg_trade_return": -1.3
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 0.25380853420601346,
+          "total_return": 0.5076170684120269,
+          "best_trade": 2.112198883151467,
+          "worst_trade": -1.60458181473944,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -2.3398094941411487,
+          "total_return": -7.019428482423446,
+          "best_trade": 1.5668759053597319,
+          "worst_trade": -4.949591822413503,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 17.2,
+          "min": 9,
+          "max": 23
+        },
+        "profit_factor": 0.3610161781220256,
+        "largest_winner": 2.112198883151467,
+        "largest_loser": -4.949591822413503,
+        "avg_winner": 1.8395373942555993,
+        "avg_loser": -3.3969620675075394,
+        "win_loss_ratio": 0.5415242671830384,
+        "consecutive_wins": 1,
+        "consecutive_losses": 2,
+        "total_winning_trades": 2,
+        "total_losing_trades": 3
+      },
+      "risk_metrics": {
+        "max_drawdown": 9.637953565939572,
+        "drawdown_duration": 156,
+        "calmar_ratio": -0.5864677227331749,
+        "recovery_factor": -0.5845182757373869,
+        "sharpe_ratio": -0.8377798731467675,
+        "volatility": 8.859041760831815,
+        "annualized_return": -5.652348679624664
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.4806582513338256,
+          "total_return": -4.4419747540014765
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -1.0349183300049711,
+          "total_return": -2.0698366600099423
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 94366.44,
+        "cash": 94366.44,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 421.5,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": -5.63,
+        "high_water_mark": 101696.9,
+        "initial_cash": 100000.0,
+        "symbol": "MSFT",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "MSFT",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:20.539692",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AMZN_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/AMZN_2024_results.json",
+        "symbol": "AMZN",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:07:48.261972"
+      },
+      "basic_performance": {
+        "total_return": 6.09,
+        "total_return_pct": 6.09,
+        "buy_hold_return": 46.33,
+        "outperformance": -40.24,
+        "final_portfolio_value": 106090.01,
+        "num_trades": 10,
+        "profitable_trades": 3,
+        "losing_trades": 2,
+        "win_rate": 30.0,
+        "avg_trade_return": 1.52
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 3.994905295482911,
+          "total_return": 7.989810590965822,
+          "best_trade": 4.614880059970012,
+          "worst_trade": 3.37493053099581,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -0.12724253191775828,
+          "total_return": -0.38172759575327486,
+          "best_trade": 4.245734557125959,
+          "worst_trade": -2.321437929046799,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 17.0,
+          "min": 2,
+          "max": 47
+        },
+        "profit_factor": 2.644115660779365,
+        "largest_winner": 4.614880059970012,
+        "largest_loser": -2.321437929046799,
+        "avg_winner": 4.078515049363927,
+        "avg_loser": -2.313731076439617,
+        "win_loss_ratio": 1.7627437738529101,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 3,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 8.53660408154002,
+        "drawdown_duration": 158,
+        "calmar_ratio": 0.7159228533138754,
+        "recovery_factor": 0.7133996073648698,
+        "sharpe_ratio": 0.3878404750401217,
+        "volatility": 12.011967241262326,
+        "annualized_return": 6.111549951667006
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": 0.8405871095216471,
+          "total_return": 3.3623484380865882
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 4.245734557125959,
+          "total_return": 4.245734557125959
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 106090.01,
+        "cash": 106090.01,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 219.39,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": 6.09,
+        "high_water_mark": 109859.25,
+        "initial_cash": 100000.0,
+        "symbol": "AMZN",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "AMZN",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:07:48.261972",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AAPL_V2": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V2/AAPL_2024_results.json",
+        "symbol": "AAPL",
+        "version": "V2",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:03:44.596554"
+      },
+      "basic_performance": {
+        "total_return": 5.49,
+        "total_return_pct": 5.49,
+        "buy_hold_return": 34.9,
+        "outperformance": -29.41,
+        "final_portfolio_value": 105487.05,
+        "num_trades": 8,
+        "profitable_trades": 2,
+        "losing_trades": 2,
+        "win_rate": 25.0,
+        "avg_trade_return": 1.73
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "avg_return": 10.478359908883823,
+          "total_return": 10.478359908883823,
+          "best_trade": 10.478359908883823,
+          "worst_trade": 10.478359908883823,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.180050030940405,
+          "total_return": -3.540150092821215,
+          "best_trade": 1.0347537548026566,
+          "worst_trade": -2.852760736196315,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 23.25,
+          "min": 15,
+          "max": 41
+        },
+        "profit_factor": 2.5165804675143497,
+        "largest_winner": 10.478359908883823,
+        "largest_loser": -2.852760736196315,
+        "avg_winner": 5.756556831843239,
+        "avg_loser": -2.2874519238119357,
+        "win_loss_ratio": 2.5165804675143497,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 2,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 5.971001815283375,
+        "drawdown_duration": 157,
+        "calmar_ratio": 0.9221907130694579,
+        "recovery_factor": 0.9189496452597538,
+        "sharpe_ratio": 0.5127663965881366,
+        "volatility": 7.0453405321314015,
+        "annualized_return": 5.506402421775203
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 5.756556831843239,
+          "total_return": 11.513113663686479
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 2,
+          "win_rate": 0.0,
+          "avg_return": -2.2874519238119357,
+          "total_return": -4.5749038476238715
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 105487.05,
+        "cash": 105487.05,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 250.42,
+        "last_sentiment": 0.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 5.49,
+        "high_water_mark": 107853.59,
+        "initial_cash": 100000.0,
+        "symbol": "AAPL",
+        "version": "V2",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V2",
+        "symbol": "AAPL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:03:44.596554",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "SPY_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/SPY_2024_results.json",
+        "symbol": "SPY",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:07:40.824316"
+      },
+      "basic_performance": {
+        "total_return": 6.86,
+        "total_return_pct": 6.86,
+        "buy_hold_return": 24.0,
+        "outperformance": -17.13,
+        "final_portfolio_value": 106864.28,
+        "num_trades": 28,
+        "profitable_trades": 8,
+        "losing_trades": 6,
+        "win_rate": 28.6,
+        "avg_trade_return": 0.51
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 14,
+          "win_rate": 57.14285714285714,
+          "avg_return": 0.5146278499374708,
+          "total_return": 7.204789899124592,
+          "best_trade": 4.669195111672981,
+          "worst_trade": -1.5841273575657733,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 15.428571428571429,
+          "min": 1,
+          "max": 43
+        },
+        "profit_factor": 2.197743510184537,
+        "largest_winner": 4.669195111672981,
+        "largest_loser": -1.5841273575657733,
+        "avg_winner": 1.6525115882911963,
+        "avg_loser": -1.0025504678674964,
+        "win_loss_ratio": 1.648307632638403,
+        "consecutive_wins": 3,
+        "consecutive_losses": 4,
+        "total_winning_trades": 8,
+        "total_losing_trades": 6
+      },
+      "risk_metrics": {
+        "max_drawdown": 4.734602996765927,
+        "drawdown_duration": 84,
+        "calmar_ratio": 1.4549575346673764,
+        "recovery_factor": 1.4498111044767203,
+        "sharpe_ratio": 0.6811839520209935,
+        "volatility": 7.234613682205003,
+        "annualized_return": 6.888646303803325
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": -0.0158965171668346,
+          "total_return": -0.0476895515005038
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 11,
+          "win_rate": 54.54545454545454,
+          "avg_return": 0.6593163136931905,
+          "total_return": 7.252479450625096
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 106864.28,
+        "cash": 106864.28,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 586.08,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-10",
+        "cumulative_return": 6.86,
+        "high_water_mark": 108416.18,
+        "initial_cash": 100000.0,
+        "symbol": "SPY",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "SPY",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:07:40.824316",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "NVDA_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/NVDA_2024_results.json",
+        "symbol": "NVDA",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:27.694990"
+      },
+      "basic_performance": {
+        "total_return": 106.73,
+        "total_return_pct": 106.73,
+        "buy_hold_return": 178.8,
+        "outperformance": -72.06,
+        "final_portfolio_value": 206733.91,
+        "num_trades": 13,
+        "profitable_trades": 4,
+        "losing_trades": 2,
+        "win_rate": 30.8,
+        "avg_trade_return": 15.74
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 6,
+          "win_rate": 66.66666666666666,
+          "avg_return": 15.742796170440199,
+          "total_return": 94.45677702264119,
+          "best_trade": 40.572523855160625,
+          "worst_trade": -7.0087825038746345,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 33.5,
+          "min": 8,
+          "max": 55
+        },
+        "profit_factor": 9.112482434951485,
+        "largest_winner": 40.572523855160625,
+        "largest_loser": -7.0087825038746345,
+        "avg_winner": 26.525041144390915,
+        "avg_loser": -5.821693777461231,
+        "win_loss_ratio": 4.556241217475742,
+        "consecutive_wins": 3,
+        "consecutive_losses": 1,
+        "total_winning_trades": 4,
+        "total_losing_trades": 2
+      },
+      "risk_metrics": {
+        "max_drawdown": 22.02342019724661,
+        "drawdown_duration": 134,
+        "calmar_ratio": 4.869822837166254,
+        "recovery_factor": 4.846382126121536,
+        "sharpe_ratio": 2.3158222724836146,
+        "volatility": 33.013146523793985,
+        "annualized_return": 107.25015462906006
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": 6.177659691100777,
+          "total_return": 12.355319382201554
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 4,
+          "win_rate": 75.0,
+          "avg_return": 20.52536441010991,
+          "total_return": 82.10145764043963
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 206733.91,
+        "cash": 10804.8,
+        "position": 1459,
+        "position_avg_cost": 140.22,
+        "stock_price": 134.29,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "1",
+        "last_trade_date": "2024-12-24",
+        "cumulative_return": 106.73,
+        "high_water_mark": 237421.57,
+        "initial_cash": 100000.0,
+        "symbol": "NVDA",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "NVDA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:27.694990",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "META_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/META_2024_results.json",
+        "symbol": "META",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:19.994016"
+      },
+      "basic_performance": {
+        "total_return": 46.02,
+        "total_return_pct": 46.02,
+        "buy_hold_return": 69.08,
+        "outperformance": -23.06,
+        "final_portfolio_value": 146020.29,
+        "num_trades": 18,
+        "profitable_trades": 5,
+        "losing_trades": 4,
+        "win_rate": 27.8,
+        "avg_trade_return": 5.22
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 9,
+          "win_rate": 55.55555555555556,
+          "avg_return": 5.215636784065492,
+          "total_return": 46.94073105658942,
+          "best_trade": 38.781977414150724,
+          "worst_trade": -7.601266877812963,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 21.555555555555557,
+          "min": 1,
+          "max": 53
+        },
+        "profit_factor": 4.187659238347953,
+        "largest_winner": 38.781977414150724,
+        "largest_loser": -7.601266877812963,
+        "avg_winner": 12.333299852076367,
+        "avg_loser": -3.681442050948103,
+        "win_loss_ratio": 3.350127390678362,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 5,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 12.104678458292211,
+        "drawdown_duration": 75,
+        "calmar_ratio": 3.8175526684542,
+        "recovery_factor": 3.8018597650955512,
+        "sharpe_ratio": 1.4916736021626236,
+        "volatility": 26.339719868429352,
+        "annualized_return": 46.21024754923351
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 50.0,
+          "avg_return": -0.04436493059331298,
+          "total_return": -0.08872986118662596
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 57.14285714285714,
+          "avg_return": 6.71849441682515,
+          "total_return": 47.02946091777605
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 146020.29,
+        "cash": 146020.29,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 585.51,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-18",
+        "cumulative_return": 46.02,
+        "high_water_mark": 154253.97,
+        "initial_cash": 100000.0,
+        "symbol": "META",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "META",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:19.994016",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "GOOGL_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/GOOGL_2024_results.json",
+        "symbol": "GOOGL",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:16.179918"
+      },
+      "basic_performance": {
+        "total_return": 24.49,
+        "total_return_pct": 24.49,
+        "buy_hold_return": 37.01,
+        "outperformance": -12.51,
+        "final_portfolio_value": 124492.79,
+        "num_trades": 20,
+        "profitable_trades": 7,
+        "losing_trades": 3,
+        "win_rate": 35.0,
+        "avg_trade_return": 2.43
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 10,
+          "win_rate": 70.0,
+          "avg_return": 2.4309681373843426,
+          "total_return": 24.309681373843425,
+          "best_trade": 11.480144404332133,
+          "worst_trade": -3.994845360824754,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 19.2,
+          "min": 1,
+          "max": 35
+        },
+        "profit_factor": 4.449826528846574,
+        "largest_winner": 11.480144404332133,
+        "largest_loser": -3.994845360824754,
+        "avg_winner": 4.479474306507609,
+        "avg_loser": -2.3488795905699447,
+        "win_loss_ratio": 1.907068512362818,
+        "consecutive_wins": 4,
+        "consecutive_losses": 1,
+        "total_winning_trades": 7,
+        "total_losing_trades": 3
+      },
+      "risk_metrics": {
+        "max_drawdown": 8.333949103049337,
+        "drawdown_duration": 83,
+        "calmar_ratio": 2.9501601486603724,
+        "recovery_factor": 2.938917636422599,
+        "sharpe_ratio": 1.1436455046422642,
+        "volatility": 19.086049092101202,
+        "annualized_return": 24.586484524780005
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 66.66666666666666,
+          "avg_return": 4.321730046489603,
+          "total_return": 12.96519013946881
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 71.42857142857143,
+          "avg_return": 1.6206416049106598,
+          "total_return": 11.344491234374619
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 124492.79,
+        "cash": 124492.79,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 189.3,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 24.49,
+        "high_water_mark": 127858.61,
+        "initial_cash": 100000.0,
+        "symbol": "GOOGL",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "GOOGL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:16.179918",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "TSLA_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/TSLA_2024_results.json",
+        "symbol": "TSLA",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:23.688150"
+      },
+      "basic_performance": {
+        "total_return": 69.51,
+        "total_return_pct": 69.51,
+        "buy_hold_return": 62.56,
+        "outperformance": 6.94,
+        "final_portfolio_value": 169507.26,
+        "num_trades": 18,
+        "profitable_trades": 5,
+        "losing_trades": 4,
+        "win_rate": 27.8,
+        "avg_trade_return": 7.27
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 9,
+          "win_rate": 55.55555555555556,
+          "avg_return": 7.269833794387226,
+          "total_return": 65.42850414948504,
+          "best_trade": 34.37447334419414,
+          "worst_trade": -8.990326131031676,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 23.666666666666668,
+          "min": 1,
+          "max": 35
+        },
+        "profit_factor": 3.8071396181449195,
+        "largest_winner": 34.37447334419414,
+        "largest_loser": -8.990326131031676,
+        "avg_winner": 17.747279023340987,
+        "avg_loser": -5.826972741804971,
+        "win_loss_ratio": 3.0457116945159357,
+        "consecutive_wins": 3,
+        "consecutive_losses": 3,
+        "total_winning_trades": 5,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 18.812056524973702,
+        "drawdown_duration": 83,
+        "calmar_ratio": 3.711169324315166,
+        "recovery_factor": 3.69482517276761,
+        "sharpe_ratio": 1.362593399926007,
+        "volatility": 44.62041009969773,
+        "annualized_return": 69.81472710276537
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 19.21509940516703,
+          "total_return": 38.43019881033406
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 42.857142857142854,
+          "avg_return": 3.8569007627358545,
+          "total_return": 26.99830533915098
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 169507.26,
+        "cash": 169507.26,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 403.84,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-23",
+        "cumulative_return": 69.51,
+        "high_water_mark": 187979.76,
+        "initial_cash": 100000.0,
+        "symbol": "TSLA",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "TSLA",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:23.688150",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "MSFT_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/MSFT_2024_results.json",
+        "symbol": "MSFT",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:33:14.883773"
+      },
+      "basic_performance": {
+        "total_return": 5.76,
+        "total_return_pct": 5.76,
+        "buy_hold_return": 13.65,
+        "outperformance": -7.89,
+        "final_portfolio_value": 105763.37,
+        "num_trades": 20,
+        "profitable_trades": 6,
+        "losing_trades": 4,
+        "win_rate": 30.0,
+        "avg_trade_return": 0.67
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 10,
+          "win_rate": 60.0,
+          "avg_return": 0.6684246365384298,
+          "total_return": 6.684246365384298,
+          "best_trade": 9.287677813659295,
+          "worst_trade": -4.949591822413503,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 20.2,
+          "min": 4,
+          "max": 37
+        },
+        "profit_factor": 1.5031974551087754,
+        "largest_winner": 9.287677813659295,
+        "largest_loser": -4.949591822413503,
+        "avg_winner": 3.327965335726164,
+        "avg_loser": -3.320886412243171,
+        "win_loss_ratio": 1.0021316367391835,
+        "consecutive_wins": 3,
+        "consecutive_losses": 2,
+        "total_winning_trades": 6,
+        "total_losing_trades": 4
+      },
+      "risk_metrics": {
+        "max_drawdown": 11.43161222980096,
+        "drawdown_duration": 123,
+        "calmar_ratio": 0.505941184845236,
+        "recovery_factor": 0.5041607328995574,
+        "sharpe_ratio": 0.3267437838996017,
+        "volatility": 14.22784546151165,
+        "annualized_return": 5.783723436236787
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 3,
+          "win_rate": 33.33333333333333,
+          "avg_return": -1.4806582513338256,
+          "total_return": -4.4419747540014765
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 71.42857142857143,
+          "avg_return": 1.5894601599122535,
+          "total_return": 11.126221119385775
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 105763.37,
+        "cash": 105763.37,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 421.5,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": 5.76,
+        "high_water_mark": 115768.36,
+        "initial_cash": 100000.0,
+        "symbol": "MSFT",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "MSFT",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:33:14.883773",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AMZN_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/AMZN_2024_results.json",
+        "symbol": "AMZN",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:07:35.663258"
+      },
+      "basic_performance": {
+        "total_return": 22.98,
+        "total_return_pct": 22.98,
+        "buy_hold_return": 46.33,
+        "outperformance": -23.35,
+        "final_portfolio_value": 122978.23,
+        "num_trades": 22,
+        "profitable_trades": 6,
+        "losing_trades": 5,
+        "win_rate": 27.3,
+        "avg_trade_return": 2.08
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 11,
+          "win_rate": 54.54545454545454,
+          "avg_return": 2.081924355339051,
+          "total_return": 22.901167908729562,
+          "best_trade": 12.05902079141517,
+          "worst_trade": -2.321437929046799,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 18.636363636363637,
+          "min": 2,
+          "max": 47
+        },
+        "profit_factor": 3.6777728090739967,
+        "largest_winner": 12.05902079141517,
+        "largest_loser": -2.321437929046799,
+        "avg_winner": 5.242247857706894,
+        "avg_loser": -1.7104638475023606,
+        "win_loss_ratio": 3.0648106742283305,
+        "consecutive_wins": 2,
+        "consecutive_losses": 2,
+        "total_winning_trades": 6,
+        "total_losing_trades": 5
+      },
+      "risk_metrics": {
+        "max_drawdown": 9.437482651848374,
+        "drawdown_duration": 94,
+        "calmar_ratio": 2.444042801338387,
+        "recovery_factor": 2.434783813403843,
+        "sharpe_ratio": 1.084486067741933,
+        "volatility": 18.956856675620298,
+        "annualized_return": 23.065611538005925
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 4,
+          "win_rate": 50.0,
+          "avg_return": 0.8405871095216471,
+          "total_return": 3.3623484380865882
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 7,
+          "win_rate": 57.14285714285714,
+          "avg_return": 2.791259924377568,
+          "total_return": 19.538819470642977
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 122978.23,
+        "cash": 122978.23,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 219.39,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-19",
+        "cumulative_return": 22.98,
+        "high_water_mark": 128029.59,
+        "initial_cash": 100000.0,
+        "symbol": "AMZN",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "AMZN",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:07:35.663258",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    },
+    "AAPL_V0": {
+      "file_info": {
+        "path": "reports/continuous_backtests/V0/AAPL_2024_results.json",
+        "symbol": "AAPL",
+        "version": "V0",
+        "year": 2024,
+        "execution_time": "2025-08-26T15:02:51.085373"
+      },
+      "basic_performance": {
+        "total_return": 8.73,
+        "total_return_pct": 8.73,
+        "buy_hold_return": 34.9,
+        "outperformance": -26.16,
+        "final_portfolio_value": 108731.45,
+        "num_trades": 24,
+        "profitable_trades": 5,
+        "losing_trades": 7,
+        "win_rate": 20.8,
+        "avg_trade_return": 0.85
+      },
+      "sentiment_effectiveness": {
+        "very_bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.0,
+            0.3
+          ]
+        },
+        "bearish": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.3,
+            0.5
+          ]
+        },
+        "neutral": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0,
+          "best_trade": 0,
+          "worst_trade": 0,
+          "sentiment_range": [
+            0.5,
+            0.7
+          ]
+        },
+        "bullish": {
+          "total_trades": 12,
+          "win_rate": 41.66666666666667,
+          "avg_return": 0.8507827988630137,
+          "total_return": 10.209393586356164,
+          "best_trade": 12.007769733356882,
+          "worst_trade": -5.019571724614321,
+          "sentiment_range": [
+            0.7,
+            1.0
+          ]
+        }
+      },
+      "trade_quality": {
+        "holding_periods": {
+          "avg": 17.916666666666668,
+          "min": 1,
+          "max": 41
+        },
+        "profit_factor": 1.6375512132796428,
+        "largest_winner": 12.007769733356882,
+        "largest_loser": -5.019571724614321,
+        "avg_winner": 5.24456843809782,
+        "avg_loser": -2.287635514876135,
+        "win_loss_ratio": 2.2925716985914995,
+        "consecutive_wins": 2,
+        "consecutive_losses": 3,
+        "total_winning_trades": 5,
+        "total_losing_trades": 7
+      },
+      "risk_metrics": {
+        "max_drawdown": 10.066103265645552,
+        "drawdown_duration": 104,
+        "calmar_ratio": 0.8705167385945012,
+        "recovery_factor": 0.8674111291704536,
+        "sharpe_ratio": 0.48754665599984714,
+        "volatility": 15.637572224831365,
+        "annualized_return": 8.762711385165222
+      },
+      "regime_performance": {
+        "bull_market": {
+          "total_trades": 2,
+          "win_rate": 100.0,
+          "avg_return": 5.756556831843239,
+          "total_return": 11.513113663686479
+        },
+        "bear_market": {
+          "total_trades": 0,
+          "win_rate": 0,
+          "avg_return": 0,
+          "total_return": 0
+        },
+        "neutral_market": {
+          "total_trades": 10,
+          "win_rate": 30.0,
+          "avg_return": -0.1303720077330316,
+          "total_return": -1.303720077330316
+        }
+      },
+      "checkpoint_data": {
+        "date": "2024-12-31",
+        "portfolio_value": 108731.45,
+        "cash": 108731.45,
+        "position": 0,
+        "position_avg_cost": 0.0,
+        "stock_price": 250.42,
+        "last_sentiment": 1.0,
+        "last_macd_signal": "-1",
+        "last_trade_date": "2024-12-30",
+        "cumulative_return": 8.73,
+        "high_water_mark": 111534.47,
+        "initial_cash": 100000.0,
+        "symbol": "AAPL",
+        "version": "V0",
+        "framework_version": "SimpleContinuousBacktest_v1.0"
+      },
+      "metadata": {
+        "version": "V0",
+        "symbol": "AAPL",
+        "year": 2024,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_cash": 100000.0,
+        "execution_time": "2025-08-26T15:02:51.085373",
+        "framework": "SimpleContinuousBacktest_v1.0"
+      }
+    }
+  },
+  "comparative_analysis": [
+    {
+      "Symbol": "SPY",
+      "Version": "V3",
+      "Total_Return": 1.55,
+      "Max_Drawdown": 2.161266046398173,
+      "Sharpe_Ratio": -0.11730836617928364,
+      "Calmar_Ratio": 0.718112612644188,
+      "Profit_Factor": 2.8445050192070442,
+      "Win_Rate": 40.0,
+      "Num_Trades": 10,
+      "Avg_Holding_Days": 16.0
+    },
+    {
+      "Symbol": "NVDA",
+      "Version": "V3",
+      "Total_Return": 35.63,
+      "Max_Drawdown": 15.519933344005699,
+      "Sharpe_Ratio": 1.5166758204670567,
+      "Calmar_Ratio": 2.304728182092058,
+      "Profit_Factor": 5.960631274365501,
+      "Win_Rate": 27.3,
+      "Num_Trades": 11,
+      "Avg_Holding_Days": 29.2
+    },
+    {
+      "Symbol": "META",
+      "Version": "V3",
+      "Total_Return": 19.11,
+      "Max_Drawdown": 4.059119886915095,
+      "Sharpe_Ratio": 1.5593142336659505,
+      "Calmar_Ratio": 4.726761514580158,
+      "Profit_Factor": 31.799915798362203,
+      "Win_Rate": 41.7,
+      "Num_Trades": 12,
+      "Avg_Holding_Days": 20.333333333333332
+    },
+    {
+      "Symbol": "GOOGL",
+      "Version": "V3",
+      "Total_Return": 8.75,
+      "Max_Drawdown": 4.782344817793631,
+      "Sharpe_Ratio": 0.6126711014193458,
+      "Calmar_Ratio": 1.8352238292045324,
+      "Profit_Factor": 2.6116751034468875,
+      "Win_Rate": 28.6,
+      "Num_Trades": 14,
+      "Avg_Holding_Days": 16.714285714285715
+    },
+    {
+      "Symbol": "TSLA",
+      "Version": "V3",
+      "Total_Return": 67.03,
+      "Max_Drawdown": 12.480218960894089,
+      "Sharpe_Ratio": 1.82275282942794,
+      "Calmar_Ratio": 5.394571915783734,
+      "Profit_Factor": 11.543079093627501,
+      "Win_Rate": 40.0,
+      "Num_Trades": 10,
+      "Avg_Holding_Days": 26.0
+    },
+    {
+      "Symbol": "MSFT",
+      "Version": "V3",
+      "Total_Return": -0.32,
+      "Max_Drawdown": 9.467312780304034,
+      "Sharpe_Ratio": -0.18382689058525564,
+      "Calmar_Ratio": -0.03349668346905058,
+      "Profit_Factor": 1.1200759933436375,
+      "Win_Rate": 27.8,
+      "Num_Trades": 18,
+      "Avg_Holding_Days": 19.11111111111111
+    },
+    {
+      "Symbol": "AMZN",
+      "Version": "V3",
+      "Total_Return": 11.46,
+      "Max_Drawdown": 7.8087425655991884,
+      "Sharpe_Ratio": 0.7534423580332724,
+      "Calmar_Ratio": 1.4727468396448646,
+      "Profit_Factor": 3.3898826217473195,
+      "Win_Rate": 25.0,
+      "Num_Trades": 16,
+      "Avg_Holding_Days": 17.25
+    },
+    {
+      "Symbol": "AAPL",
+      "Version": "V3",
+      "Total_Return": 2.73,
+      "Max_Drawdown": 6.267683371306498,
+      "Sharpe_Ratio": 0.13540226258921215,
+      "Calmar_Ratio": 0.4376633062546638,
+      "Profit_Factor": 1.7279348417338587,
+      "Win_Rate": 21.4,
+      "Num_Trades": 14,
+      "Avg_Holding_Days": 15.857142857142858
+    },
+    {
+      "Symbol": "SPY",
+      "Version": "V4",
+      "Total_Return": 4.98,
+      "Max_Drawdown": 3.8819234424291955,
+      "Sharpe_Ratio": 0.5250031645198744,
+      "Calmar_Ratio": 1.2884661968733597,
+      "Profit_Factor": 2.197743510184537,
+      "Win_Rate": 28.6,
+      "Num_Trades": 28,
+      "Avg_Holding_Days": 15.428571428571429
+    },
+    {
+      "Symbol": "NVDA",
+      "Version": "V4",
+      "Total_Return": 89.82,
+      "Max_Drawdown": 18.780838251550755,
+      "Sharpe_Ratio": 2.319101337116878,
+      "Calmar_Ratio": 4.804834565262874,
+      "Profit_Factor": 9.112482434951485,
+      "Win_Rate": 30.8,
+      "Num_Trades": 13,
+      "Avg_Holding_Days": 33.5
+    },
+    {
+      "Symbol": "META",
+      "Version": "V4",
+      "Total_Return": 44.97,
+      "Max_Drawdown": 10.092621414382421,
+      "Sharpe_Ratio": 1.5622678982618694,
+      "Calmar_Ratio": 4.474489961374448,
+      "Profit_Factor": 4.187659238347953,
+      "Win_Rate": 27.8,
+      "Num_Trades": 18,
+      "Avg_Holding_Days": 21.555555555555557
+    },
+    {
+      "Symbol": "GOOGL",
+      "Version": "V4",
+      "Total_Return": 20.75,
+      "Max_Drawdown": 7.2450975361554075,
+      "Sharpe_Ratio": 1.081105867306167,
+      "Calmar_Ratio": 2.8743779400176175,
+      "Profit_Factor": 4.449826528846574,
+      "Win_Rate": 35.0,
+      "Num_Trades": 20,
+      "Avg_Holding_Days": 19.2
+    },
+    {
+      "Symbol": "TSLA",
+      "Version": "V4",
+      "Total_Return": 60.84,
+      "Max_Drawdown": 17.23745350414688,
+      "Sharpe_Ratio": 1.338960960882805,
+      "Calmar_Ratio": 3.544584493139686,
+      "Profit_Factor": 3.8071396181449195,
+      "Win_Rate": 27.8,
+      "Num_Trades": 18,
+      "Avg_Holding_Days": 23.666666666666668
+    },
+    {
+      "Symbol": "MSFT",
+      "Version": "V4",
+      "Total_Return": 5.76,
+      "Max_Drawdown": 9.231966835219351,
+      "Sharpe_Ratio": 0.36281846165326875,
+      "Calmar_Ratio": 0.6260952199312944,
+      "Profit_Factor": 1.5031974551087754,
+      "Win_Rate": 30.0,
+      "Num_Trades": 20,
+      "Avg_Holding_Days": 20.2
+    },
+    {
+      "Symbol": "AMZN",
+      "Version": "V4",
+      "Total_Return": 19.11,
+      "Max_Drawdown": 8.430610707643893,
+      "Sharpe_Ratio": 1.0310653729849883,
+      "Calmar_Ratio": 2.274763568714694,
+      "Profit_Factor": 3.6777728090739967,
+      "Win_Rate": 27.3,
+      "Num_Trades": 22,
+      "Avg_Holding_Days": 18.636363636363637
+    },
+    {
+      "Symbol": "AAPL",
+      "Version": "V4",
+      "Total_Return": 7.02,
+      "Max_Drawdown": 8.958516387403007,
+      "Sharpe_Ratio": 0.43153996802469746,
+      "Calmar_Ratio": 0.7867540235346018,
+      "Profit_Factor": 1.6375512132796428,
+      "Win_Rate": 20.8,
+      "Num_Trades": 24,
+      "Avg_Holding_Days": 17.916666666666668
+    },
+    {
+      "Symbol": "SPY",
+      "Version": "V1",
+      "Total_Return": 2.7,
+      "Max_Drawdown": 3.1622367216807707,
+      "Sharpe_Ratio": 0.19379498404889228,
+      "Calmar_Ratio": 0.8564706170730426,
+      "Profit_Factor": 1.7573706985885464,
+      "Win_Rate": 25.0,
+      "Num_Trades": 24,
+      "Avg_Holding_Days": 13.333333333333334
+    },
+    {
+      "Symbol": "NVDA",
+      "Version": "V1",
+      "Total_Return": 67.59,
+      "Max_Drawdown": 15.733584177546318,
+      "Sharpe_Ratio": 2.255097868051993,
+      "Calmar_Ratio": 4.314851826810725,
+      "Profit_Factor": 9.112482434951485,
+      "Win_Rate": 30.8,
+      "Num_Trades": 13,
+      "Avg_Holding_Days": 33.5
+    },
+    {
+      "Symbol": "META",
+      "Version": "V1",
+      "Total_Return": 8.27,
+      "Max_Drawdown": 7.50808671290864,
+      "Sharpe_Ratio": 0.6433715767054349,
+      "Calmar_Ratio": 1.1053836287083607,
+      "Profit_Factor": 1.931914229601336,
+      "Win_Rate": 31.2,
+      "Num_Trades": 16,
+      "Avg_Holding_Days": 17.375
+    },
+    {
+      "Symbol": "GOOGL",
+      "Version": "V1",
+      "Total_Return": 16.45,
+      "Max_Drawdown": 5.967924939773562,
+      "Sharpe_Ratio": 1.1691612623456433,
+      "Calmar_Ratio": 2.766367108875203,
+      "Profit_Factor": 5.235317198344532,
+      "Win_Rate": 37.5,
+      "Num_Trades": 16,
+      "Avg_Holding_Days": 20.75
+    },
+    {
+      "Symbol": "TSLA",
+      "Version": "V1",
+      "Total_Return": 54.87,
+      "Max_Drawdown": 11.604374890534316,
+      "Sharpe_Ratio": 1.7264757395514883,
+      "Calmar_Ratio": 4.748361090336419,
+      "Profit_Factor": 15.647226364639884,
+      "Win_Rate": 37.5,
+      "Num_Trades": 8,
+      "Avg_Holding_Days": 28.0
+    },
+    {
+      "Symbol": "MSFT",
+      "Version": "V1",
+      "Total_Return": 3.22,
+      "Max_Drawdown": 6.973768665422403,
+      "Sharpe_Ratio": 0.17371452963901865,
+      "Calmar_Ratio": 0.46345489879149604,
+      "Profit_Factor": 1.344188788374166,
+      "Win_Rate": 27.8,
+      "Num_Trades": 18,
+      "Avg_Holding_Days": 19.88888888888889
+    },
+    {
+      "Symbol": "AMZN",
+      "Version": "V1",
+      "Total_Return": 13.24,
+      "Max_Drawdown": 5.126227142928269,
+      "Sharpe_Ratio": 0.9337478317717818,
+      "Calmar_Ratio": 2.5928748232306584,
+      "Profit_Factor": 3.894929763159607,
+      "Win_Rate": 25.0,
+      "Num_Trades": 20,
+      "Avg_Holding_Days": 17.5
+    },
+    {
+      "Symbol": "AAPL",
+      "Version": "V1",
+      "Total_Return": -3.83,
+      "Max_Drawdown": 6.998961181883251,
+      "Sharpe_Ratio": -0.77576832040065,
+      "Calmar_Ratio": -0.5493462234423984,
+      "Profit_Factor": 0.3957619656314898,
+      "Win_Rate": 18.8,
+      "Num_Trades": 16,
+      "Avg_Holding_Days": 12.375
+    },
+    {
+      "Symbol": "SPY",
+      "Version": "V2",
+      "Total_Return": 1.89,
+      "Max_Drawdown": 2.3343479836754493,
+      "Sharpe_Ratio": -0.011006802464812145,
+      "Calmar_Ratio": 0.8119429478978735,
+      "Profit_Factor": 2.8445050192070442,
+      "Win_Rate": 40.0,
+      "Num_Trades": 10,
+      "Avg_Holding_Days": 16.0
+    },
+    {
+      "Symbol": "NVDA",
+      "Version": "V2",
+      "Total_Return": 24.71,
+      "Max_Drawdown": 17.45162836310125,
+      "Sharpe_Ratio": 1.124489825276563,
+      "Calmar_Ratio": 1.4212633577189047,
+      "Profit_Factor": 4.943788739907949,
+      "Win_Rate": 22.2,
+      "Num_Trades": 9,
+      "Avg_Holding_Days": 31.0
+    },
+    {
+      "Symbol": "META",
+      "Version": "V2",
+      "Total_Return": 41.42,
+      "Max_Drawdown": 4.619519565433065,
+      "Sharpe_Ratio": 1.9314913098919335,
+      "Calmar_Ratio": 9.003830323621559,
+      "Profit_Factor": 68.06652459888085,
+      "Win_Rate": 40.0,
+      "Num_Trades": 10,
+      "Avg_Holding_Days": 24.8
+    },
+    {
+      "Symbol": "GOOGL",
+      "Version": "V2",
+      "Total_Return": 9.05,
+      "Max_Drawdown": 5.260423315837056,
+      "Sharpe_Ratio": 0.6194457331721255,
+      "Calmar_Ratio": 1.7257056153532326,
+      "Profit_Factor": 2.4796258976682615,
+      "Win_Rate": 25.0,
+      "Num_Trades": 12,
+      "Avg_Holding_Days": 15.0
+    },
+    {
+      "Symbol": "TSLA",
+      "Version": "V2",
+      "Total_Return": 39.98,
+      "Max_Drawdown": 12.312379898258284,
+      "Sharpe_Ratio": 1.250282347489387,
+      "Calmar_Ratio": 3.2600655232723725,
+      "Profit_Factor": 6.886216135465139,
+      "Win_Rate": 37.5,
+      "Num_Trades": 8,
+      "Avg_Holding_Days": 23.75
+    },
+    {
+      "Symbol": "MSFT",
+      "Version": "V2",
+      "Total_Return": -5.63,
+      "Max_Drawdown": 9.637953565939572,
+      "Sharpe_Ratio": -0.8377798731467675,
+      "Calmar_Ratio": -0.5864677227331749,
+      "Profit_Factor": 0.3610161781220256,
+      "Win_Rate": 20.0,
+      "Num_Trades": 10,
+      "Avg_Holding_Days": 17.2
+    },
+    {
+      "Symbol": "AMZN",
+      "Version": "V2",
+      "Total_Return": 6.09,
+      "Max_Drawdown": 8.53660408154002,
+      "Sharpe_Ratio": 0.3878404750401217,
+      "Calmar_Ratio": 0.7159228533138754,
+      "Profit_Factor": 2.644115660779365,
+      "Win_Rate": 30.0,
+      "Num_Trades": 10,
+      "Avg_Holding_Days": 17.0
+    },
+    {
+      "Symbol": "AAPL",
+      "Version": "V2",
+      "Total_Return": 5.49,
+      "Max_Drawdown": 5.971001815283375,
+      "Sharpe_Ratio": 0.5127663965881366,
+      "Calmar_Ratio": 0.9221907130694579,
+      "Profit_Factor": 2.5165804675143497,
+      "Win_Rate": 25.0,
+      "Num_Trades": 8,
+      "Avg_Holding_Days": 23.25
+    },
+    {
+      "Symbol": "SPY",
+      "Version": "V0",
+      "Total_Return": 6.86,
+      "Max_Drawdown": 4.734602996765927,
+      "Sharpe_Ratio": 0.6811839520209935,
+      "Calmar_Ratio": 1.4549575346673764,
+      "Profit_Factor": 2.197743510184537,
+      "Win_Rate": 28.6,
+      "Num_Trades": 28,
+      "Avg_Holding_Days": 15.428571428571429
+    },
+    {
+      "Symbol": "NVDA",
+      "Version": "V0",
+      "Total_Return": 106.73,
+      "Max_Drawdown": 22.02342019724661,
+      "Sharpe_Ratio": 2.3158222724836146,
+      "Calmar_Ratio": 4.869822837166254,
+      "Profit_Factor": 9.112482434951485,
+      "Win_Rate": 30.8,
+      "Num_Trades": 13,
+      "Avg_Holding_Days": 33.5
+    },
+    {
+      "Symbol": "META",
+      "Version": "V0",
+      "Total_Return": 46.02,
+      "Max_Drawdown": 12.104678458292211,
+      "Sharpe_Ratio": 1.4916736021626236,
+      "Calmar_Ratio": 3.8175526684542,
+      "Profit_Factor": 4.187659238347953,
+      "Win_Rate": 27.8,
+      "Num_Trades": 18,
+      "Avg_Holding_Days": 21.555555555555557
+    },
+    {
+      "Symbol": "GOOGL",
+      "Version": "V0",
+      "Total_Return": 24.49,
+      "Max_Drawdown": 8.333949103049337,
+      "Sharpe_Ratio": 1.1436455046422642,
+      "Calmar_Ratio": 2.9501601486603724,
+      "Profit_Factor": 4.449826528846574,
+      "Win_Rate": 35.0,
+      "Num_Trades": 20,
+      "Avg_Holding_Days": 19.2
+    },
+    {
+      "Symbol": "TSLA",
+      "Version": "V0",
+      "Total_Return": 69.51,
+      "Max_Drawdown": 18.812056524973702,
+      "Sharpe_Ratio": 1.362593399926007,
+      "Calmar_Ratio": 3.711169324315166,
+      "Profit_Factor": 3.8071396181449195,
+      "Win_Rate": 27.8,
+      "Num_Trades": 18,
+      "Avg_Holding_Days": 23.666666666666668
+    },
+    {
+      "Symbol": "MSFT",
+      "Version": "V0",
+      "Total_Return": 5.76,
+      "Max_Drawdown": 11.43161222980096,
+      "Sharpe_Ratio": 0.3267437838996017,
+      "Calmar_Ratio": 0.505941184845236,
+      "Profit_Factor": 1.5031974551087754,
+      "Win_Rate": 30.0,
+      "Num_Trades": 20,
+      "Avg_Holding_Days": 20.2
+    },
+    {
+      "Symbol": "AMZN",
+      "Version": "V0",
+      "Total_Return": 22.98,
+      "Max_Drawdown": 9.437482651848374,
+      "Sharpe_Ratio": 1.084486067741933,
+      "Calmar_Ratio": 2.444042801338387,
+      "Profit_Factor": 3.6777728090739967,
+      "Win_Rate": 27.3,
+      "Num_Trades": 22,
+      "Avg_Holding_Days": 18.636363636363637
+    },
+    {
+      "Symbol": "AAPL",
+      "Version": "V0",
+      "Total_Return": 8.73,
+      "Max_Drawdown": 10.066103265645552,
+      "Sharpe_Ratio": 0.48754665599984714,
+      "Calmar_Ratio": 0.8705167385945012,
+      "Profit_Factor": 1.6375512132796428,
+      "Win_Rate": 20.8,
+      "Num_Trades": 24,
+      "Avg_Holding_Days": 17.916666666666668
+    }
+  ],
+  "strategy_rankings": {
+    "Total_Return": {
+      "V0": 36.385000000000005,
+      "V4": 31.65625,
+      "V1": 20.31375,
+      "V3": 18.2425,
+      "V2": 15.375
+    },
+    "Sharpe_Ratio": {
+      "V0": 1.1117119048596105,
+      "V4": 1.0814828788438187,
+      "V1": 0.7899494339642003,
+      "V3": 0.7623904186047797,
+      "V2": 0.6221911764808359
+    },
+    "Calmar_Ratio": {
+      "V4": 2.584295746106072,
+      "V0": 2.5780204047551867,
+      "V2": 2.1593067014392626,
+      "V3": 2.1070389395918934,
+      "V1": 2.037302221297938
+    },
+    "Profit_Factor": {
+      "V2": 11.342796587193122,
+      "V3": 7.624712468229244,
+      "V1": 4.914898930411381,
+      "V0": 3.8216716009922354,
+      "V4": 3.8216716009922354
+    }
+  },
+  "best_strategy_per_ticker": {
+    "SPY": {
+      "best_version": "V0",
+      "sharpe_ratio": 0.6811839520209935
+    },
+    "NVDA": {
+      "best_version": "V4",
+      "sharpe_ratio": 2.319101337116878
+    },
+    "META": {
+      "best_version": "V2",
+      "sharpe_ratio": 1.9314913098919335
+    },
+    "GOOGL": {
+      "best_version": "V1",
+      "sharpe_ratio": 1.1691612623456433
+    },
+    "TSLA": {
+      "best_version": "V3",
+      "sharpe_ratio": 1.82275282942794
+    },
+    "MSFT": {
+      "best_version": "V4",
+      "sharpe_ratio": 0.36281846165326875
+    },
+    "AMZN": {
+      "best_version": "V0",
+      "sharpe_ratio": 1.084486067741933
+    },
+    "AAPL": {
+      "best_version": "V2",
+      "sharpe_ratio": 0.5127663965881366
+    }
+  },
+  "summary_statistics": {
+    "mean_returns": {
+      "V0": 36.385000000000005,
+      "V1": 20.31375,
+      "V2": 15.375,
+      "V3": 18.2425,
+      "V4": 31.65625
+    },
+    "mean_sharpe_ratios": {
+      "V0": 1.1117119048596105,
+      "V1": 0.7899494339642003,
+      "V2": 0.6221911764808359,
+      "V3": 0.7623904186047797,
+      "V4": 1.0814828788438187
+    },
+    "mean_max_drawdowns": {
+      "V0": 12.117988178452835,
+      "V1": 7.8843955540846915,
+      "V2": 8.26548232363351,
+      "V3": 7.818327721652051,
+      "V4": 10.482378509866363
+    },
+    "version_counts": {
+      "V3": 8,
+      "V4": 8,
+      "V1": 8,
+      "V2": 8,
+      "V0": 8
+    },
+    "symbol_counts": {
+      "SPY": 5,
+      "NVDA": 5,
+      "META": 5,
+      "GOOGL": 5,
+      "TSLA": 5,
+      "MSFT": 5,
+      "AMZN": 5,
+      "AAPL": 5
+    }
+  }
+}

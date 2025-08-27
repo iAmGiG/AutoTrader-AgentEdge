@@ -7,27 +7,17 @@ Active tools: Google Search (news), Polygon.io (primary market data), Alpha Vant
 import logging
 import pandas as pd
 
-# Third-party imports  
+# Third-party imports
 from autogen_core.tools import FunctionTool
 
-# Project imports
-# MarketDataTool deprecated - using Polygon + Alpha Vantage directly
-from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
+# Project imports - only tools actually used
+from src.tools.data_sources.market.unified_market_tool import fetch_unified_market_data
 from src.tools.data_sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from src.tools.data_sources.market.market_context_tool import market_context_tool
 from src.tools.data_sources.news.google_search_simple import google_search_smart_tool, set_news_governor
 from src.tools.data_sources.news.hierarchical_news_tool import fetch_hierarchical_news
-from config.config_loader import ConfigLoader
-
-# Polygon.io import with fallback (requires optional package)
-try:
-    from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalTool
-    POLYGON_AVAILABLE = True
-except ImportError:
-    POLYGON_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
-config_loader = ConfigLoader()
 
 ##################################
 # Agent Types
@@ -36,140 +26,21 @@ config_loader = ConfigLoader()
 SENTIMENT_AGENT = "sentiment"
 TECH_AGENT = "tech"
 STRATEGY_AGENT = "strategy"
-MARKET_INTELLIGENCE_AGENT = "market_intelligence"
-ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, STRATEGY_AGENT]
 
-##################################
-# Alpha Vantage Market Data Tool
-##################################
+# Note: Individual Alpha Vantage and hierarchical market data tools removed
+# All market data access now handled by unified_market_tool for consistency
 
-def fetch_alpha_vantage_data(
-    symbol: str = "AAPL",
-    start_date: str = "2024-01-01",
-    end_date: str = "2024-12-31"
-) -> pd.DataFrame:
-    """
-    Fetch stock price data from Alpha Vantage API.
+# Note: Direct Polygon.io tool removed - functionality handled by unified_market_tool
+# with proper caching and fallback management
 
-    Args:
-        symbol: Stock symbol/ticker to fetch data for
-        start_date: Start of date range (YYYY-MM-DD or relative like "-7d")
-        end_date: End of date range (YYYY-MM-DD or relative like "-1d")
-
-    Returns:
-        DataFrame with open, high, low, close, volume data
-    """
-    tool = AlphaVantageMarketTool()
-    df = tool.fetch_stock_data(symbol, start_date, end_date)
-    return df
-
-alpha_vantage_tool = FunctionTool(
-    func=fetch_alpha_vantage_data,
-    name="fetch_alpha_vantage_data",
-    description="Fetch stock price data from Alpha Vantage for a given ticker and date range."
+# Unified market data tool using cache adapter
+unified_market_tool = FunctionTool(
+    func=fetch_unified_market_data,
+    name="fetch_unified_market_data",
+    description="Fetch market data using unified cache system. Routes through cache adapter for consistent data management across Polygon and Alpha Vantage sources."
 )
-alpha_vantage_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
-
-##################################
-# Market Data Tool (Hierarchical)
-##################################
-
-def fetch_market_data(
-    symbol: str = "AAPL",
-    start_date: str = "-30d",
-    end_date: str = "today",
-    source: str = "auto"
-) -> pd.DataFrame:
-    """
-    Fetch market data using hierarchical source fallback.
-
-    Args:
-        symbol: Stock symbol/ticker to fetch data for
-        start_date: Start of date range (YYYY-MM-DD or relative like "-30d")
-        end_date: End of date range (YYYY-MM-DD or "today")
-        source: Data source preference ("auto", "polygon", "alpha_vantage")
-
-    Returns:
-        DataFrame with price and volume data
-    """
-    try:
-        # Try Polygon.io first if available and preferred
-        if (source in ["auto", "polygon"]) and POLYGON_AVAILABLE:
-            logger.info(f"Attempting Polygon.io for {symbol}")
-            polygon_data = fetch_polygon_historical_data(symbol, start_date, end_date, "prices")
-            if polygon_data and "prices" in polygon_data:
-                df = polygon_data["prices"]
-                if isinstance(df, pd.DataFrame) and not df.empty:
-                    logger.info(f"✓ Polygon.io data retrieved for {symbol}")
-                    return df
-        
-        # Fallback to Alpha Vantage
-        logger.info(f"Attempting Alpha Vantage for {symbol}")
-        df = fetch_alpha_vantage_data(symbol, start_date, end_date)
-        if isinstance(df, pd.DataFrame) and not df.empty:
-            logger.info(f"✓ Alpha Vantage data retrieved for {symbol}")
-            return df
-        
-        # If all else fails, return empty DataFrame
-        logger.warning(f"No market data available for {symbol}")
-        return pd.DataFrame()
-        
-    except Exception as e:
-        logger.error(f"Error fetching market data for {symbol}: {str(e)}")
-        return pd.DataFrame()
-
-market_data_tool = FunctionTool(
-    func=fetch_market_data,
-    name="fetch_market_data",
-    description="Fetch market data from specified source for a given ticker and date range."
-)
-market_data_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
-
-##################################
-# Polygon.io Historical Data Tool
-##################################
-
-def fetch_polygon_historical_data(
-    ticker: str = "AAPL",
-    start_date: str = "2022-01-01",
-    end_date: str = "2022-12-31",
-    data_type: str = "all"
-) -> dict:
-    """
-    Fetch historical market data from Polygon.io API.
-
-    Args:
-        ticker: Stock symbol to fetch data for
-        start_date: Start date in YYYY-MM-DD format
-        end_date: End date in YYYY-MM-DD format
-        data_type: Type of data to fetch ('prices', 'news', 'events', 'all')
-
-    Returns:
-        Dictionary containing requested data (prices, news, and/or events)
-    """
-    # Load API key from config
-    api_key = config_loader.get("POLYGON_IO")
-    if not api_key:
-        print("WARNING: POLYGON_IO API key not found in config. Returning empty data.")
-        return {}
-
-    if not POLYGON_AVAILABLE:
-        print("WARNING: polygon-api-client not installed. Install with: pip install polygon-api-client")
-        return {}
-
-    try:
-        tool = PolygonHistoricalTool(api_key)
-        return tool(ticker, start_date, end_date, data_type)
-    except Exception as e:
-        print(f"ERROR fetching Polygon data: {e}")
-        return {}
-
-polygon_historical_tool = FunctionTool(
-    func=fetch_polygon_historical_data,
-    name="fetch_polygon_historical_data",
-    description="Fetch historical market data (prices, news, events) from Polygon.io with 2 years of history."
-)
-polygon_historical_tool.agent_types = [TECH_AGENT, STRATEGY_AGENT, MARKET_INTELLIGENCE_AGENT]
+unified_market_tool.agent_types = [TECH_AGENT]
 
 ##################################
 # VXX Volatility Tool for V2 Sentiment
@@ -180,7 +51,7 @@ vxx_volatility_tool = FunctionTool(
     name="fetch_vxx_volatility_data",
     description="Fetch VXX volatility data for market fear-based sentiment analysis. Returns VXX-based sentiment scores for V2 Market Fear sentiment agent."
 )
-vxx_volatility_tool.agent_types = [SENTIMENT_AGENT, STRATEGY_AGENT]
+vxx_volatility_tool.agent_types = [SENTIMENT_AGENT]
 
 ##################################
 # Hierarchical News Tool for V4 Sentiment
@@ -200,17 +71,18 @@ hierarchical_news_tool.agent_types = [SENTIMENT_AGENT]
 # SENTIMENT_AGENT tools - Multiple approaches for V0-V4 framework
 # V1: Google Search + smart sampling, V2: VXX volatility, V4: Hierarchical news
 _sentiment_tools_raw = [
-    google_search_smart_tool,   # V1: Google Custom Search API with smart sampling  
+    google_search_smart_tool,   # V1: Google Custom Search API with smart sampling
     vxx_volatility_tool,        # V2: VXX volatility data for market fear sentiment
     hierarchical_news_tool,     # V4: Hierarchical adaptive news (Direct + Sector + Market)
     market_context_tool,        # V4: SPY/QQQ market context for enhanced sentiment
 ]
 SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
 
-# TECH_AGENT tools - Polygon.io primary (5/min) with Alpha Vantage fallback (25/day)
+# TECH_AGENT tools - Unified market data with cache adapter routing
 _tech_tools_raw = [
-    polygon_historical_tool,  # Primary: Polygon.io (5 calls/min with caching)
-    alpha_vantage_tool,       # Fallback: Alpha Vantage (25 calls/day)
+    # Primary: Unified tool with cache adapter (routes Polygon -> Alpha Vantage)
+    unified_market_tool,
+    # Note: Individual polygon/alpha_vantage tools removed - redundant with unified tool
 ]
 TECH_TOOLS = [tool for tool in _tech_tools_raw if tool is not None]
 
@@ -237,12 +109,13 @@ ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS if tool is not None}
 # Helper function to get tools for a specific agent type
 ##################################
 
+
 def get_tools_for_agent(agent_type):
     """
     Get the list of tools that should be used by a specific agent type.
 
     Args:
-        agent_type: Type of agent (e.g., 'sentiment', 'tech')
+        agent_type: Type of agent (e.g., 'sentiment', 'tech', 'strategy')
 
     Returns:
         List of FunctionTool objects appropriate for the agent type
@@ -252,9 +125,7 @@ def get_tools_for_agent(agent_type):
     elif agent_type == TECH_AGENT:
         return TECH_TOOLS
     elif agent_type == STRATEGY_AGENT:
-        return STRATEGY_TOOLS
-    elif agent_type == MARKET_INTELLIGENCE_AGENT:
-        return TECH_TOOLS + SENTIMENT_TOOLS  # Market intelligence needs both
+        return STRATEGY_TOOLS  # Strategy agent aggregates, no direct tools needed
     else:
         # Return all tools if agent type is unknown
         return ALL_TOOLS
@@ -267,27 +138,29 @@ def get_tools_for_agent(agent_type):
 def enable_smart_news_sampling(governor=None):
     """
     Enable smart news sampling across all sentiment agents.
-    
+
     Args:
         governor: NewsGovernor instance, or None for balanced default
     """
     from src.tools.news_governor import create_balanced_governor
-    
+
     if governor is None:
         governor = create_balanced_governor()
-    
+
     set_news_governor(governor)
-    
+
     return governor
+
 
 def disable_smart_news_sampling():
     """Disable smart news sampling (revert to direct API calls)."""
     set_news_governor(None)
 
+
 def get_news_quota_status():
     """Get current news quota status if NewsGovernor is enabled."""
     from src.tools.data_sources.news.google_search_simple import _news_governor
-    
+
     if _news_governor is not None:
         return _news_governor.get_quota_status()
     else:

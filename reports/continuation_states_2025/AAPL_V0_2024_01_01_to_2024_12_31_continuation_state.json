@@ -1,0 +1,17 @@
+{
+  "date": "2024-12-31",
+  "portfolio_value": 108731.45,
+  "cash": 108731.45,
+  "position": 0,
+  "position_avg_cost": 0.0,
+  "stock_price": 250.42,
+  "last_sentiment": 1.0,
+  "last_macd_signal": "-1",
+  "last_trade_date": "2024-12-30",
+  "cumulative_return": 8.73,
+  "high_water_mark": 111534.47,
+  "initial_cash": 100000.0,
+  "symbol": "AAPL",
+  "version": "V0",
+  "framework_version": "SimpleContinuousBacktest_v1.0"
+}

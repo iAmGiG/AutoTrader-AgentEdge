@@ -153,16 +153,24 @@ class TechAgent(BaseAgent):
         if not symbol:
             symbol = context.get('symbol', 'AAPL') if context else 'AAPL'
 
-        # Extract date
-        date_match = re.search(r'\d{4}-\d{2}-\d{2}', user_message)
-        if date_match:
-            target_date = date_match.group(0)
+        # Extract date range - look for "from DATE to DATE" pattern first
+        date_range_match = re.search(r'from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})', user_message)
+        
+        if date_range_match:
+            # Use the exact date range requested (for backtesting)
+            start_date = pd.to_datetime(date_range_match.group(1))
+            end_date = pd.to_datetime(date_range_match.group(2))
         else:
-            target_date = pd.Timestamp.now().strftime("%Y-%m-%d")
-
-        # Calculate date range for MACD (need 60 days of history)
-        end_date = pd.to_datetime(target_date)
-        start_date = end_date - pd.Timedelta(days=60)
+            # Fallback: single date with MACD buffer for analysis
+            date_match = re.search(r'\d{4}-\d{2}-\d{2}', user_message)
+            if date_match:
+                target_date = date_match.group(0)
+            else:
+                target_date = pd.Timestamp.now().strftime("%Y-%m-%d")
+            
+            # Calculate date range for MACD (need 60 days of history)
+            end_date = pd.to_datetime(target_date)
+            start_date = end_date - pd.Timedelta(days=60)
 
         logger.info(
             f"TechAgent: Fetching data for {symbol} from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")

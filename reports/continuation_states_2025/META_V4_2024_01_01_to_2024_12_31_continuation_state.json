@@ -1,0 +1,17 @@
+{
+  "date": "2024-12-31",
+  "portfolio_value": 144974.32,
+  "cash": 144974.32,
+  "position": 0,
+  "position_avg_cost": 0.0,
+  "stock_price": 585.51,
+  "last_sentiment": 0.4,
+  "last_macd_signal": "-1",
+  "last_trade_date": "2024-12-18",
+  "cumulative_return": 44.97,
+  "high_water_mark": 152249.77,
+  "initial_cash": 100000.0,
+  "symbol": "META",
+  "version": "V4",
+  "framework_version": "SimpleContinuousBacktest_v1.0"
+}

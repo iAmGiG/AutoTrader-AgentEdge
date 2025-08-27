@@ -34,7 +34,7 @@ class ObfuscationValidator:
 
     If the V4 agent is genuinely analyzing:
     - Performance should be similar regardless of obfuscation
-    
+
     Part of V0-V4 sentiment framework validation.
     """
 
@@ -329,7 +329,7 @@ class ObfuscationValidator:
             # Get LLM sentiment decision (V4 agent)
             # For validation, we'll use a simple MACD-based decision with sentiment
             sentiment_score = 0.0  # Neutral for validation
-            
+
             # Simple MACD crossover logic for validation
             if macd_today > macd_yest and macd_today > 0:
                 action = 'BUY' if decision_data.get('current_position', 0) == 0 else 'HOLD'
@@ -340,7 +340,7 @@ class ObfuscationValidator:
             else:
                 action = 'HOLD'
                 reasoning = 'No clear MACD signal'
-            
+
             decision = {
                 'action': action,
                 'reasoning': reasoning,
@@ -368,7 +368,6 @@ class ObfuscationValidator:
             formatted.append(f"{date_key}: ${price:.2f}")
 
         return "\n".join(formatted)
-
 
     async def _load_market_data(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
         """

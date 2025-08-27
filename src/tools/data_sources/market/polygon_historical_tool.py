@@ -15,6 +15,8 @@ import pandas as pd
 from pathlib import Path
 import logging
 
+from config.config_loader import ConfigLoader
+
 try:
     from polygon import RESTClient
 except ImportError:
@@ -42,13 +44,21 @@ class PolygonHistoricalData:
         Initialize Polygon API client with rate limiting.
 
         Args:
-            api_key: Polygon API key (defaults to POLYGON_API_KEY env var)
+            api_key: Polygon API key (defaults to POLYGON_IO from config.json)
             cache_dir: Directory for caching data (defaults to .cache/polygon/)
         """
-        self.api_key = api_key or os.getenv('POLYGON_API_KEY')
+        if api_key:
+            self.api_key = api_key
+        else:
+            # Try environment variable first, then config.json
+            self.api_key = os.getenv('POLYGON_API_KEY')
+            if not self.api_key:
+                config_loader = ConfigLoader()
+                self.api_key = config_loader.get('POLYGON_IO')
+
         if not self.api_key:
             raise ValueError(
-                "Polygon API key required. Set POLYGON_API_KEY environment variable."
+                "Polygon API key required. Set POLYGON_API_KEY env var or POLYGON_IO in config.json"
             )
 
         self.client = RESTClient(api_key=self.api_key)

@@ -424,30 +424,3 @@ def get_recommended_sampling_strategy(test_duration_days: int,
         return 'monthly'
 
 
-# Example usage and testing
-if __name__ == "__main__":
-    # Test the news governor
-    governor = NewsGovernor(sampling_strategy='weekly', max_calls_per_test=30)
-
-    # Simulate test dates
-    test_dates = pd.date_range('2024-01-01', '2024-03-31', freq='D')
-
-    def mock_fetch_function(symbol, start_date, end_date):
-        """Mock news fetch function for testing."""
-        return pd.DataFrame({
-            'title': [f"News for {symbol} on {start_date}"],
-            'summary': [f"Mock news summary for {symbol}"],
-            'url': [f"https://example.com/news/{symbol}"],
-            'published_date': [start_date],
-            'source': ['Mock Source']
-        })
-
-    # Test sampling
-    for date in test_dates:
-        if date.weekday() < 5:  # Trading days only
-            news_data, source = governor.get_news_for_date(
-                date, 'AAPL', mock_fetch_function
-            )
-
-    # Print summary
-    governor.print_quota_summary()
