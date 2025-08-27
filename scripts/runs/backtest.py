@@ -26,9 +26,9 @@ from dataclasses import dataclass
 
 # Import sentiment agents - using optimized versions for better performance
 from src.agents.sentiment_v0 import V0SentimentAgent
-from src.agents_optimized.sentiment_v1 import OptimizedSentimentV1Agent
-from src.agents_optimized.sentiment_v2 import OptimizedSentimentV2Agent
-from src.agents_optimized.sentiment_v3 import OptimizedSentimentV3Agent
+from src.agents.sentiment_v1 import SentimentV1Agent
+from src.agents.sentiment_v2 import SentimentV2Agent
+from src.agents.sentiment_v3 import SentimentV3Agent
 from src.agents.sentiment_v4 import SentimentV4Agent
 from src.agents.tech_agent import TechAgent  # Add tech agent for market data
 
@@ -93,9 +93,9 @@ class SimpleContinuousBacktest:
         # Initialize sentiment agents - using optimized versions where available
         self.agents = {
             'V0': V0SentimentAgent(),
-            'V1': OptimizedSentimentV1Agent(),
-            'V2': OptimizedSentimentV2Agent(),
-            'V3': OptimizedSentimentV3Agent(),
+            'V1': SentimentV1Agent(),
+            'V2': SentimentV2Agent(),
+            'V3': SentimentV3Agent(),
             'V4': SentimentV4Agent(enable_date_sanitization=True)
         }
         

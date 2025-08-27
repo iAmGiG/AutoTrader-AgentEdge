@@ -1,7 +1,7 @@
 """
-V4 Sentiment Agent: LLM-Based Analysis
+V4 Sentiment Agent: LLM-Based Analysis (OPTIMIZED)
 The ONLY agent that uses LLM for sentiment decision-making
-Provides raw news headlines and VXX data to LLM for reasoning-based sentiment analysis
+Already optimized with weekly batch processing to reduce LLM calls
 """
 
 import json

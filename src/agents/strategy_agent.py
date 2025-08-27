@@ -9,12 +9,12 @@ import logging
 import json
 from .base_agent import BaseAgent
 from .tech_agent import TechAgent
-# Import optimized agents (Issue #217 - 90% performance improvement)
-from .sentiment_v0 import V0SentimentAgent  # V0 is same in both versions
-from src.agents_optimized.sentiment_v1 import OptimizedSentimentV1Agent
-from src.agents_optimized.sentiment_v2 import OptimizedSentimentV2Agent
-from src.agents_optimized.sentiment_v3 import OptimizedSentimentV3Agent
-from src.agents_optimized.sentiment_v4 import OptimizedSentimentV4Agent
+# Import sentiment agents (all now optimized with cache-first approach)
+from .sentiment_v0 import V0SentimentAgent
+from .sentiment_v1 import SentimentV1Agent
+from .sentiment_v2 import SentimentV2Agent
+from .sentiment_v3 import SentimentV3Agent
+from .sentiment_v4 import SentimentV4Agent
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +60,17 @@ class StrategyAgent(BaseAgent):
         logger.info(f"StrategyAgent initialized with {sentiment_version} sentiment agent")
 
     def _create_sentiment_agent(self, version: str):
-        """Create the appropriate sentiment agent based on version (using optimized agents for 90% performance improvement)."""
+        """Create the appropriate sentiment agent based on version (all agents now use cache-first optimization)."""
         if version == "V0":
             return V0SentimentAgent()
         elif version == "V1":
-            return OptimizedSentimentV1Agent()  # 90% faster
+            return SentimentV1Agent()  # Cache-optimized
         elif version == "V2":
-            return OptimizedSentimentV2Agent()  # 90% faster
+            return SentimentV2Agent()  # Cache-optimized  
         elif version == "V3":
-            return OptimizedSentimentV3Agent()  # 90% faster
+            return SentimentV3Agent()  # Cache-optimized
         elif version == "V4":
-            return OptimizedSentimentV4Agent()  # Optimized with weekly batching
+            return SentimentV4Agent()  # Cache-optimized with weekly batching
         else:
             logger.warning(f"Unknown sentiment version {version}, defaulting to V0")
             return V0SentimentAgent()

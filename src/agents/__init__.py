@@ -1,4 +1,4 @@
 from .base_agent import BaseAgent
-from .sentiment_agent import SentimentAgent
+# Legacy SentimentAgent removed - use V0-V4 agents instead
 from .strategy_agent import StrategyAgent
 from .tech_agent import TechAgent
