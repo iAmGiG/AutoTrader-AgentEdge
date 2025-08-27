@@ -55,7 +55,7 @@ class PolygonHistoricalData:
             if not self.api_key:
                 config_loader = ConfigLoader()
                 self.api_key = config_loader.get('POLYGON_IO')
-        
+
         if not self.api_key:
             raise ValueError(
                 "Polygon API key required. Set POLYGON_API_KEY env var or POLYGON_IO in config.json"

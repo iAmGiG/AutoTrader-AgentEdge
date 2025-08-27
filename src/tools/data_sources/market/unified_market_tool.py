@@ -7,28 +7,27 @@ regardless of source (Polygon, Alpha Vantage, etc.).
 
 import pandas as pd
 from typing import Optional
-from datetime import datetime
 
 from src.tools.cache import cache_adapter
-from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalData  
+from src.tools.data_sources.market.polygon_historical_tool import PolygonHistoricalData
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
 
 
 def fetch_unified_market_data(
     symbol: str = "AAPL",
-    start_date: str = "2024-01-01", 
+    start_date: str = "2024-01-01",
     end_date: str = "2024-12-31",
     source: str = "auto"
 ) -> pd.DataFrame:
     """
     Fetch market data using unified cache system.
-    
+
     Args:
         symbol: Stock symbol
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD) 
         source: Data source ("auto", "polygon", "alpha_vantage")
-    
+
     Returns:
         DataFrame with OHLCV data
     """
@@ -36,7 +35,7 @@ def fetch_unified_market_data(
     cached_data = cache_adapter.get_market_data(symbol, start_date, end_date, source)
     if cached_data is not None:
         return cached_data
-    
+
     # Cache miss - fetch from appropriate source
     if source == "auto":
         # Try Polygon first, fallback to Alpha Vantage
@@ -52,11 +51,11 @@ def fetch_unified_market_data(
         data = _fetch_from_alpha_vantage(symbol, start_date, end_date)
     else:
         raise ValueError(f"Unknown source: {source}")
-    
+
     # Store in unified cache for future use
     if data is not None and not data.empty:
         cache_adapter.set_market_data(symbol, start_date, end_date, source, data)
-    
+
     return data if data is not None else pd.DataFrame()
 
 

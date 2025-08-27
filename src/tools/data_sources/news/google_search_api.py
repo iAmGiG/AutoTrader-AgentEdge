@@ -88,7 +88,6 @@ class GoogleSearchNewsCache:
 
         return title.lower().strip()
 
-
     def get(self, ticker: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
         """Get cached search results with date filtering to prevent future spill"""
         cache_file = self.get_cache_path(ticker, start_date)
@@ -106,7 +105,7 @@ class GoogleSearchNewsCache:
                         # Convert to datetime
                         df['published_date'] = pd.to_datetime(df['published_date'], errors='coerce')
                         df['article_date'] = pd.to_datetime(df['article_date'], errors='coerce')
-                        
+
                         # Use article_date as fallback for NaN published_dates
                         df['published_date'] = df['published_date'].fillna(df['article_date'])
 
@@ -115,14 +114,15 @@ class GoogleSearchNewsCache:
                         df['article_date'] = pd.to_datetime(df['article_date'])
                         start_dt = pd.to_datetime(start_date)
                         end_dt = pd.to_datetime(end_date)
-                        
+
                         # Check if this is a daily request (V4 pattern: start_date == end_date)
                         if start_date == end_date:
                             # V4 daily request: Return articles in a relevant time window around target date
                             window_days = 3  # ±3 days window for daily relevance
                             window_start = start_dt - timedelta(days=window_days)
                             window_end = start_dt + timedelta(days=window_days)
-                            df_filtered = df[(df['article_date'] >= window_start) & (df['article_date'] <= window_end)]
+                            df_filtered = df[(df['article_date'] >= window_start)
+                                             & (df['article_date'] <= window_end)]
                             logger.info(
                                 f"Using cached news for {ticker} (daily window): {len(df_filtered)} articles around {start_date} (±{window_days} days)")
                         else:
@@ -130,7 +130,7 @@ class GoogleSearchNewsCache:
                             df_filtered = df[df['article_date'] <= end_dt]
                             logger.info(
                                 f"Using cached news for {ticker} (range): {len(df_filtered)} articles up to {end_date}")
-                        
+
                         return df_filtered
             except Exception as e:
                 logger.error(f"Error loading news cache {cache_file}: {e}")
@@ -235,7 +235,7 @@ class GoogleSearchNewsCache:
                     for key in article:
                         if pd.isna(article[key]):
                             article[key] = None
-                    
+
                     # Convert published_date to string if it's a datetime
                     if 'published_date' in article and pd.notna(article['published_date']):
                         if isinstance(article['published_date'], pd.Timestamp):
@@ -321,77 +321,79 @@ class GoogleSearchNewsTool:
     def get_enhanced_ticker_term(self, ticker: str) -> str:
         """
         Get enhanced search term for ambiguous tickers
-        
+
         Args:
             ticker: Stock ticker symbol
-            
+
         Returns:
             Enhanced search term or original ticker if no override exists
         """
         ticker_upper = ticker.upper()
-        
+
         if ticker_upper in TICKER_SEARCH_OVERRIDES:
             # Use the first (primary) enhanced term for the ticker
             enhanced_terms = TICKER_SEARCH_OVERRIDES[ticker_upper]['enhanced_terms']
             if enhanced_terms:
                 logger.info(f"Using enhanced search term for {ticker}: {enhanced_terms[0]}")
                 return enhanced_terms[0]
-        
+
         return ticker  # No override needed, use original ticker
 
     def filter_results_by_context(self, results_df: pd.DataFrame, ticker: str) -> pd.DataFrame:
         """
         Filter results based on ticker disambiguation rules
-        
+
         Args:
             results_df: DataFrame with search results
             ticker: Original ticker symbol
-            
+
         Returns:
             Filtered DataFrame with only contextually relevant articles
         """
         ticker_upper = ticker.upper()
-        
+
         if ticker_upper not in TICKER_SEARCH_OVERRIDES:
             return results_df  # No filtering needed
-        
+
         config = TICKER_SEARCH_OVERRIDES[ticker_upper]
         required_context = config.get('required_context', [])
         negative_filters = config.get('negative_filters', [])
-        
+
         if results_df.empty or not required_context:
             return results_df
-        
+
         filtered_results = []
-        
+
         for _, article in results_df.iterrows():
             title_lower = str(article.get('title', '')).lower()
             summary_lower = str(article.get('summary', '')).lower()
             text = title_lower + ' ' + summary_lower
-            
+
             # Check for required financial context
             has_required_context = any(keyword.lower() in text for keyword in required_context)
-            
+
             # Check for negative filters (intelligence/spy terms for SPY)
             has_negative_content = any(
-                neg_filter.replace('-', '').lower() in text 
+                neg_filter.replace('-', '').lower() in text
                 for neg_filter in negative_filters
             )
-            
+
             # Keep article if it has required context and no negative content
             if has_required_context and not has_negative_content:
                 filtered_results.append(article)
             elif ticker_upper == 'SPY' and any(term in text for term in ['s&p', 'etf', 'fund', 'index']) and not has_negative_content:
                 # Special case for SPY - keep if clearly financial even without all context
                 filtered_results.append(article)
-        
+
         if filtered_results:
             filtered_df = pd.DataFrame(filtered_results)
-            logger.info(f"Content filtering for {ticker}: {len(results_df)} → {len(filtered_df)} articles")
+            logger.info(
+                f"Content filtering for {ticker}: {len(results_df)} → {len(filtered_df)} articles")
             return filtered_df
         else:
             # If filtering too aggressive, return original results
-            logger.warning(f"Content filtering for {ticker} too aggressive, returning original results")
+            logger.warning(
+                f"Content filtering for {ticker} too aggressive, returning original results")
             return results_df
 
     def build_search_query(self, ticker: str, start_date: str, end_date: str,
@@ -404,14 +406,14 @@ class GoogleSearchNewsTool:
         if not source_sites:
             source_sites = [
                 "businesswire.com",  # 100% date accuracy, 0% contamination
-                "reuters.com",       # 75% date accuracy, 25% contamination  
+                "reuters.com",       # 75% date accuracy, 25% contamination
                 "cnbc.com",          # 100% URL date extraction accuracy
                 "bloomberg.com",     # 100% URL date extraction accuracy
             ]
 
         # Build site restriction
         site_query = " OR ".join([f"site:{site}" for site in source_sites])
-        
+
         # Get enhanced ticker term for disambiguation
         enhanced_ticker = self.get_enhanced_ticker_term(ticker)
 
@@ -436,7 +438,8 @@ class GoogleSearchNewsTool:
 
             # Build query with historical context - simplified
             date_query = " OR ".join(historical_terms)
-            query = f"({site_query}) {enhanced_ticker} ({date_query}) -2024 -2025"  # Exclude recent years
+            # Exclude recent years
+            query = f"({site_query}) {enhanced_ticker} ({date_query}) -2024 -2025"
         else:
             # Original logic for other years
             date_terms = []
@@ -456,7 +459,7 @@ class GoogleSearchNewsTool:
             # Simple, focused query for reliable historical data
             target_year = start_dt.year
             month_year = start_dt.strftime('%B %Y')  # e.g., "October 2024"
-            
+
             # With only 2 reliable sources, we can use site restriction directly
             # This ensures we only get results from sources with good date accuracy
             if target_year <= 2024:
@@ -492,7 +495,7 @@ class GoogleSearchNewsTool:
             logger.error("Google Search API credentials not configured")
             return pd.DataFrame()
 
-        # Use URL pattern search strategy (more effective than combined queries)  
+        # Use URL pattern search strategy (more effective than combined queries)
         return self._search_with_url_patterns(ticker, start_date, end_date, max_results)
 
     def _search_with_url_patterns(self, ticker: str, start_date: str, end_date: str, max_results: int) -> pd.DataFrame:
@@ -500,64 +503,65 @@ class GoogleSearchNewsTool:
         Search using individual URL pattern queries for each reliable source
         More effective than combined OR queries - now with ticker disambiguation
         """
-        
+
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
         year_month = start_dt.strftime('%Y-%m')  # e.g., "2024-10"
-        
+
         # Get enhanced ticker term for disambiguation
         enhanced_ticker = self.get_enhanced_ticker_term(ticker)
-        
+
         # Individual URL pattern queries for each reliable source using enhanced ticker
         source_queries = [
             (f"site:cnbc.com/{year_month.replace('-', '/')} {enhanced_ticker}", "CNBC"),
-            (f"site:bloomberg.com/news/articles/{year_month} {enhanced_ticker}", "Bloomberg"), 
+            (f"site:bloomberg.com/news/articles/{year_month} {enhanced_ticker}", "Bloomberg"),
             (f"site:reuters.com {enhanced_ticker} {year_month}", "Reuters"),
-            (f"site:businesswire.com {enhanced_ticker} {year_month.replace('-', '')}", "BusinessWire")  # YYYYMM format
+            # YYYYMM format
+            (f"site:businesswire.com {enhanced_ticker} {year_month.replace('-', '')}", "BusinessWire")
         ]
-        
+
         all_results = []
-        
+
         logger.info(f"Using URL pattern search strategy for {ticker} {year_month}")
-        
+
         for query, source_name in source_queries:
             logger.info(f"Searching {source_name}: {query}")
-            
+
             try:
                 # Google Custom Search API endpoint
                 url = "https://www.googleapis.com/customsearch/v1"
-                
+
                 params = {
                     'key': self.api_key,
                     'cx': self.search_engine_id,
                     'q': query,
                     'num': min(3, max_results),  # 3 results per source, max 12 total
                 }
-                
+
                 response = requests.get(url, params=params, timeout=30)
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     items = data.get('items', [])
-                    
+
                     logger.info(f"{source_name}: Found {len(items)} results")
-                    
+
                     for item in items:
                         title = item.get('title', 'Untitled')
                         snippet = item.get('snippet', '')
                         link = item.get('link', '')
-                        
+
                         if not link:
                             continue
-                            
+
                         # Extract publication date from URL pattern
                         published_date = self._extract_date_from_url(link)
                         if not published_date:
                             # Fallback to estimated date from search
                             published_date = start_dt
-                        
+
                         # Calculate relevance score
                         relevance_score = self._calculate_relevance(title, snippet, ticker)
-                        
+
                         # Only include if relevance score > 0
                         if relevance_score > 0:
                             result = {
@@ -573,46 +577,46 @@ class GoogleSearchNewsTool:
                                 'url_pattern_source': source_name
                             }
                             all_results.append(result)
-                
+
                 elif response.status_code == 429:
                     logger.warning(f"Rate limit hit for {source_name}")
                     break  # Stop trying other sources if we hit rate limit
                 else:
                     logger.warning(f"{source_name} search failed: {response.status_code}")
-                    
+
             except Exception as e:
                 logger.error(f"Error searching {source_name}: {e}")
                 continue
-        
+
         if all_results:
             df = pd.DataFrame(all_results)
-            
+
             # Remove duplicates by URL
             df = df.drop_duplicates(subset=['url'], keep='first')
-            
+
             # Apply content filtering for ambiguous tickers
             df = self.filter_results_by_context(df, ticker)
-            
+
             # Sort by relevance score and date
-            df = df.sort_values(['relevance_score', 'published_date'], 
-                               ascending=[False, False], na_position='last')
-            
+            df = df.sort_values(['relevance_score', 'published_date'],
+                                ascending=[False, False], na_position='last')
+
             # Cache the filtered results
             if len(df) > 0:
                 query_summary = f"URL_patterns_{len(source_queries)}_sources_filtered"
                 self.cache.set(ticker, start_date, end_date, df, query_summary)
                 logger.info(f"Cached {len(df)} filtered articles from URL pattern search")
-            
+
             logger.info(f"URL pattern search found {len(df)} quality articles for {ticker}")
             return df.head(max_results)
         else:
             logger.info(f"No results found via URL pattern search for {ticker}")
             return pd.DataFrame()
-    
+
     def _extract_date_from_url(self, url: str) -> Optional[datetime]:
         """Extract publication date from URL patterns of reliable sources"""
         import re
-        
+
         # CNBC: /yyyy/mm/dd/
         cnbc_pattern = r'cnbc\.com/(\d{4})/(\d{2})/(\d{2})/'
         match = re.search(cnbc_pattern, url)
@@ -622,7 +626,7 @@ class GoogleSearchNewsTool:
                 return datetime(int(year), int(month), int(day))
             except:
                 pass
-        
+
         # Bloomberg: /news/articles/yyyy-mm-dd/
         bloomberg_pattern = r'bloomberg\.com/news/articles/(\d{4})-(\d{2})-(\d{2})'
         match = re.search(bloomberg_pattern, url)
@@ -632,7 +636,7 @@ class GoogleSearchNewsTool:
                 return datetime(int(year), int(month), int(day))
             except:
                 pass
-        
+
         # Reuters: article-name-yyyy-mm-dd/ at the end
         reuters_pattern = r'reuters\.com/.*-(\d{4})-(\d{2})-(\d{2})/?$'
         match = re.search(reuters_pattern, url)
@@ -642,7 +646,7 @@ class GoogleSearchNewsTool:
                 return datetime(int(year), int(month), int(day))
             except:
                 pass
-        
+
         # Business Wire: /home/YYYYMMDD#####/
         businesswire_pattern = r'businesswire\.com/news/home/(\d{4})(\d{2})(\d{2})\d+/'
         match = re.search(businesswire_pattern, url)
@@ -652,8 +656,9 @@ class GoogleSearchNewsTool:
                 return datetime(int(year), int(month), int(day))
             except:
                 pass
-        
+
         return None
+
     def _extract_date_from_item(self, item: Dict, start_date: str, end_date: str) -> datetime:
         """Extract publication date from Google search result with strict validation"""
 
