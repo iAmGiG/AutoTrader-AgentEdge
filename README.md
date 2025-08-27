@@ -4,7 +4,7 @@
 
 RH2MAS (Reflective Hybrid-Head Multi-Agent System) is a research framework demonstrating the **gradual introduction of LLM capabilities** in financial trading through a 5-phase sentiment analysis comparison study (V0-V4). Built on [AutoGen](https://github.com/microsoft/autogen) 0.7.x, the system measures the incremental value of increasingly sophisticated sentiment approaches applied to a consistent MACD-based trading strategy.
 
-**🚀 Performance Optimized**: V1-V3 agents now feature 90%+ performance improvements through direct tool access with systematic LLM fallback, enabling full-year continuous backtesting that previously timed out.
+**🚀 Production Ready**: Unified cache-optimized agent system with 90%+ performance improvements. Complete continuous backtesting framework with checkpoint/resume capabilities for V4 LLM processing.
 
 ## Research Focus: V0-V4 Framework
 
@@ -16,16 +16,21 @@ This project implements a systematic comparison of 5 sentiment approaches:
 - **V3 (Hybrid)**: Weighted combination of V1 + V2 - Heuristic blending
 - **V4 (LLM)**: GPT-4o-mini reasoning - Only version using LLM for decisions
 
-All versions use identical MACD crossover signals with AAPL as the test symbol across 5 quarters (2024 Q1-Q4, 2025 Q1).
+All versions use identical MACD crossover signals across multiple symbols (AAPL, SPY, QQQ, AMZN, etc.) with full-year 2024 backtesting capability.
 
 ### Performance Architecture
 
-**Optimized Agent Design (V1-V3)**:
-1. **Direct Tool Access** (fast path): Bypass LLM routing when data is cached → 90%+ speed improvement
-2. **LLM Tool Calling** (systematic fallback): Use LLM to fetch data when cache is empty → Full functionality 
+**Unified Cache-Optimized Agents (V0-V4)**:
+1. **Direct Tool Access** (cache hit): Instant data retrieval from UnifiedCacheManager → 90%+ speed improvement
+2. **LLM Tool Calling** (cache miss): Systematic data fetching with LLM routing → Full functionality 
 3. **Neutral Sentiment** (emergency fallback): Graceful degradation in extreme failure cases
 
-This 3-tier approach enables blazing fast performance when cached, while maintaining systematic functionality without cache dependency.
+**V4 LLM Processing**:
+- Weekly batch processing with date sanitization (prevents training data leakage)
+- Checkpoint/resume system for long-running backtests
+- Incremental progress tracking with research artifact preservation
+
+This architecture enables instant V0-V3 responses when cached, while V4 processes intelligently with temporal safeguards.
 
 ## Simplified Architecture
 
@@ -41,9 +46,11 @@ This 3-tier approach enables blazing fast performance when cached, while maintai
 - **Market Data**:
   - Primary: [Polygon.io](https://polygon.io) API (5 calls/min, 1-year history)
   - Fallback: [Alpha Vantage](https://www.alphavantage.co/) API (25 calls/day)
+  - **UnifiedCacheManager**: Smart caching with automatic source routing
 - **News Data**:
   - [Google Custom Search](https://developers.google.com/custom-search) API (100 calls/day)
   - Premium sources: WSJ, Bloomberg, Barrons, Reuters
+  - **NewsGovernor**: Smart sampling reduces API usage 80-90%
 
 ## Installation
 
@@ -74,17 +81,33 @@ Note: This file is excluded from version control for security.
 
 ## Usage
 
+### Continuous Backtesting (Primary Interface)
+
+```bash
+# Check status of all V0-V4 backtests
+python scripts/runs/backtest.py --status
+
+# Run all versions for full-year 2024
+python scripts/runs/backtest.py --all-versions
+
+# Test specific version
+python scripts/runs/backtest.py --version V4
+
+# Monthly testing
+python scripts/runs/backtest.py --all-versions --month 1  # January 2024
+```
+
 ### V4 Date Obfuscation Testing
 
 ```bash
-python scripts/obfuscation_test.py
+python scripts/validation/obfuscation_test.py
 ```
 
-### Future: V0-V4 Quarterly Backtesting
+### Advanced Analysis
 
 ```bash
-# To be implemented (Issue #187)
-python scripts/backtest_v0_v4.py AAPL 2024-01-01 2024-03-31  # Q1 2024
+# Generate comprehensive metrics report
+python scripts/analysis/generate_results_summary.py --advanced
 ```
 
 ## Project Structure
@@ -92,18 +115,23 @@ python scripts/backtest_v0_v4.py AAPL 2024-01-01 2024-03-31  # Q1 2024
 ```bash
 RH2MAS/
 ├── src/
-│   ├── agents/           # V0-V4 agent implementations
-│   ├── tools/            # Data sources (Polygon, Google Search)
-│   └── validation/       # V4 obfuscation validator
+│   ├── agents/           # Unified V0-V4 agent implementations
+│   ├── tools/            # Data sources with unified caching
+│   │   ├── cache/        # UnifiedCacheManager system
+│   │   └── data_sources/ # Market data and news tools
+│   └── utils/            # Date sanitizer, metrics system
 ├── scripts/
-│   └── obfuscation_test.py  # V4 validation script
+│   ├── runs/             # Primary testing interface
+│   ├── analysis/         # Results analysis and reporting
+│   └── validation/       # V4 obfuscation testing
 ├── docs/
 │   ├── architecture/     # V0-V4 framework design
 │   ├── implementation/   # Component details
 │   └── reference/        # Commands, terminology
-├── tests/                # V0-V4 component tests
+├── reports/
+│   └── continuous_backtests/  # V0-V4 results and checkpoints
 ├── config/               # API configuration (local only)
-└── reports/              # V0-V4 analysis results
+└── .cache/               # Unified caching system
 ```
 
 ## Documentation
@@ -118,16 +146,19 @@ RH2MAS/
 
 ### Completed ✅
 
-- Repository cleanup (Issues #186, #190-193)
-- Simplified multi-agent architecture
-- V0-V4 framework design
-- Data infrastructure (Polygon.io + Google Search)
+- **V0-V4 Framework**: Complete sentiment analysis comparison system
+- **Unified Agent System**: Cache-optimized agents with 90%+ performance improvement
+- **Continuous Backtesting**: Full-year testing capability with checkpoint/resume
+- **Advanced Metrics**: Comprehensive performance analysis with statistical validation
+- **Cache Unification**: UnifiedCacheManager with smart source routing
+- **Date Sanitization**: V4 temporal knowledge leakage prevention
+- **Multi-Symbol Testing**: AAPL, SPY, QQQ, AMZN validation complete
 
-### In Progress 🚧
+### Active Development 🚧
 
-- V0-V4 sentiment agent implementations (Issues #181-185)
-- Quarterly testing framework (Issue #187)
-- Statistical comparison analysis
+- V4 Performance optimization (Issue #221) - Reduce LLM processing time
+- Portfolio-level statistics enhancements (Issue #162)
+- Executive reporting tools (Issue #130)
 
 ### Repository Cleanup Note
 
