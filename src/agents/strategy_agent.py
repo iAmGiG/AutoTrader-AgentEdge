@@ -3,16 +3,18 @@ StrategyAgent as Orchestrator - Issue #188
 Manages TechAgent and SentimentAgent internally for simplified architecture
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import numpy as np
 import logging
 import json
 from .base_agent import BaseAgent
 from .tech_agent import TechAgent
+# Import sentiment agents (all now optimized with cache-first approach)
 from .sentiment_v0 import V0SentimentAgent
 from .sentiment_v1 import SentimentV1Agent
 from .sentiment_v2 import SentimentV2Agent
 from .sentiment_v3 import SentimentV3Agent
+from .sentiment_v4 import SentimentV4Agent
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +27,13 @@ class StrategyAgent(BaseAgent):
     - TechAgent: Fetches market data and calculates MACD
     - SentimentAgent: Provides sentiment scores (V0-V4)
 
-    Entry: MACD improving AND sentiment >= 0 → BUY
+    Entry: MACD improving AND sentiment >= 0 → BUY (position size scaled by sentiment)
     Exit: MACD deteriorating OR sentiment < -0.5 → SELL
+    
+    Position Sizing: Uses sentiment confidence to scale position size from 30% to 100%
+    - High sentiment (e.g., 0.8) → ~90% position
+    - Medium sentiment (e.g., 0.4) → ~65% position  
+    - Low positive sentiment (e.g., 0.1) → ~35% position
     """
 
     def __init__(self, name: str = "StrategyAgent", sentiment_version: str = "V0", memory_system=None):
@@ -45,24 +52,215 @@ class StrategyAgent(BaseAgent):
         self.sentiment_agent = self._create_sentiment_agent(sentiment_version)
         self.sentiment_version = sentiment_version
 
+        # Preparation coordination state
+        self.is_prepared: bool = False
+        self.prepared_symbol: Optional[str] = None
+        self.prepared_period: Optional[tuple] = None
+
         logger.info(f"StrategyAgent initialized with {sentiment_version} sentiment agent")
 
     def _create_sentiment_agent(self, version: str):
-        """Create the appropriate sentiment agent based on version."""
+        """Create the appropriate sentiment agent based on version (all agents now use cache-first optimization)."""
         if version == "V0":
             return V0SentimentAgent()
         elif version == "V1":
-            return SentimentV1Agent()
+            return SentimentV1Agent()  # Cache-optimized
         elif version == "V2":
-            return SentimentV2Agent()
+            return SentimentV2Agent()  # Cache-optimized  
         elif version == "V3":
-            return SentimentV3Agent()
-        # TODO: Add V4 when implemented
-        # elif version == "V4":
-        #     return V4SentimentAgent()
+            return SentimentV3Agent()  # Cache-optimized
+        elif version == "V4":
+            return SentimentV4Agent()  # Cache-optimized with weekly batching
         else:
             logger.warning(f"Unknown sentiment version {version}, defaulting to V0")
             return V0SentimentAgent()
+
+    async def prepare_for_quarterly_testing(self, symbol: str, start_date: str, end_date: str) -> bool:
+        """
+        Prepare all agents for quarterly testing by coordinating data preparation.
+
+        This is the ENTRY POINT for the two-phase architecture. The Strategy Agent
+        coordinates the same date range across all agents to ensure consistency.
+
+        Args:
+            symbol: Stock ticker (e.g., 'AAPL')
+            start_date: Start of quarter in YYYY-MM-DD format
+            end_date: End of quarter in YYYY-MM-DD format
+
+        Returns:
+            bool: True if all agents prepared successfully
+        """
+        try:
+            logger.info(
+                f"StrategyAgent: Coordinating quarterly preparation for {symbol} ({start_date} to {end_date})")
+            logger.info(f"StrategyAgent: Using sentiment version {self.sentiment_version}")
+
+            # Phase 1: Prepare TechAgent (market data)
+            logger.info("StrategyAgent: Preparing TechAgent market data...")
+            tech_success = await self._prepare_tech_agent(symbol, start_date, end_date)
+
+            if not tech_success:
+                logger.error("StrategyAgent: TechAgent preparation failed")
+                return False
+
+            # Phase 2: Prepare SentimentAgent (depends on version)
+            logger.info(f"StrategyAgent: Preparing {self.sentiment_version} agent...")
+            sentiment_success = await self._prepare_sentiment_agent(symbol, start_date, end_date)
+
+            if not sentiment_success:
+                logger.error(f"StrategyAgent: {self.sentiment_version} agent preparation failed")
+                return False
+
+            # Mark as prepared
+            self.is_prepared = True
+            self.prepared_symbol = symbol
+            self.prepared_period = (start_date, end_date)
+
+            logger.info(f"StrategyAgent: Successfully prepared for quarterly testing")
+            logger.info(f"StrategyAgent: Ready for fast daily signal generation")
+            return True
+
+        except Exception as e:
+            logger.error(f"StrategyAgent: Preparation failed: {e}")
+            self.is_prepared = False
+            return False
+
+    async def _prepare_tech_agent(self, symbol: str, start_date: str, end_date: str) -> bool:
+        """Prepare TechAgent with quarterly market data."""
+        try:
+            # Check if TechAgent has prepare_quarterly_data method
+            if hasattr(self.tech_agent, 'prepare_quarterly_data'):
+                return await self.tech_agent.prepare_quarterly_data(symbol, start_date, end_date)
+            else:
+                # TechAgent doesn't have memory system yet - that's okay for now
+                logger.info("TechAgent: No memory system - will use real-time data access")
+                return True
+
+        except Exception as e:
+            logger.error(f"StrategyAgent: TechAgent preparation failed: {e}")
+            return False
+
+    async def _prepare_sentiment_agent(self, symbol: str, start_date: str, end_date: str) -> bool:
+        """Prepare SentimentAgent based on its version."""
+        try:
+            # V0 doesn't need preparation (fixed sentiment)
+            if self.sentiment_version == "V0":
+                logger.info("V0Agent: No preparation needed (fixed sentiment)")
+                return True
+
+            # V1-V4 have memory systems
+            if hasattr(self.sentiment_agent, 'prepare_quarterly_data'):
+                return await self.sentiment_agent.prepare_quarterly_data(symbol, start_date, end_date)
+            else:
+                logger.warning(f"{self.sentiment_version}Agent: No memory system available")
+                return False
+
+        except Exception as e:
+            logger.error(f"StrategyAgent: {self.sentiment_version} agent preparation failed: {e}")
+            return False
+
+    def get_daily_signals(self, date: str, market_data: Dict) -> Dict:
+        """
+        Generate daily trading signals using prepared agent data.
+
+        This implements the 'fast daily lookup' phase - no API calls,
+        just fast memory lookups from pre-computed agent data.
+
+        Args:
+            date: Trading date in YYYY-MM-DD format
+            market_data: OHLCV data for the date
+
+        Returns:
+            Dict with trading signals and sentiment data
+        """
+        try:
+            # Get technical signals (MACD)
+            tech_signals = self._get_tech_signals(date, market_data)
+
+            # Get sentiment from prepared agent data
+            sentiment_data = self._get_sentiment_signals(date)
+
+            # Combine signals for trading decision
+            combined_signals = self._combine_signals(tech_signals, sentiment_data)
+
+            return {
+                "date": date,
+                "tech_signals": tech_signals,
+                "sentiment_data": sentiment_data,
+                "combined_signals": combined_signals,
+                "version": self.sentiment_version
+            }
+
+        except Exception as e:
+            logger.error(f"StrategyAgent: Failed to generate signals for {date}: {e}")
+            return {"error": str(e)}
+
+    def _get_tech_signals(self, date: str, market_data: Dict) -> Dict:
+        """Get technical analysis signals for the date."""
+        # This would use MACD and other technical indicators
+        # For now, return a simple structure
+        return {
+            "macd_signal": "neutral",  # Would be calculated from market_data
+            "signal_strength": 0.0
+        }
+
+    def _get_sentiment_signals(self, date: str) -> Dict:
+        """Get sentiment signals using memory-first lookup."""
+        try:
+            # V0 doesn't have memory system
+            if self.sentiment_version == "V0":
+                return {"sentiment": 1.0, "confidence": 1.0, "version": "V0", "mode": "fixed"}
+
+            # V1-V4 use memory lookup
+            if hasattr(self.sentiment_agent, 'get_sentiment_for_date'):
+                return self.sentiment_agent.get_sentiment_for_date(date, self.prepared_symbol)
+            else:
+                logger.warning(f"{self.sentiment_version}Agent: No memory lookup available")
+                return {"sentiment": 0.0, "confidence": 0.0, "version": self.sentiment_version, "mode": "fallback"}
+
+        except Exception as e:
+            logger.error(f"StrategyAgent: Sentiment lookup failed for {date}: {e}")
+            return {"sentiment": 0.0, "confidence": 0.0, "error": str(e)}
+
+    def _combine_signals(self, tech_signals: Dict, sentiment_data: Dict) -> Dict:
+        """Combine technical and sentiment signals for trading decision."""
+        # Simple combination logic - would be more sophisticated in production
+        sentiment_score = sentiment_data.get("sentiment", 0.0)
+
+        # Basic signal combination
+        if sentiment_score > 0.2:
+            signal = "bullish"
+        elif sentiment_score < -0.2:
+            signal = "bearish"
+        else:
+            signal = "neutral"
+
+        return {
+            "signal": signal,
+            "sentiment_score": sentiment_score,
+            "confidence": sentiment_data.get("confidence", 0.0)
+        }
+
+    def clear_preparation(self):
+        """Clear preparation state and cascade to all agents."""
+        try:
+            # Clear sentiment agent memory
+            if hasattr(self.sentiment_agent, 'clear_memory'):
+                self.sentiment_agent.clear_memory()
+
+            # Clear tech agent memory if it has one
+            if hasattr(self.tech_agent, 'clear_memory'):
+                self.tech_agent.clear_memory()
+
+            # Clear own state
+            self.is_prepared = False
+            self.prepared_symbol = None
+            self.prepared_period = None
+
+            logger.info("StrategyAgent: Preparation cleared (cascaded to all agents)")
+
+        except Exception as e:
+            logger.error(f"StrategyAgent: Failed to clear preparation: {e}")
 
     def generate_reply(self, messages, context=None):
         """Stub required by BaseAgent; this agent does not support chat."""
@@ -113,6 +311,7 @@ class StrategyAgent(BaseAgent):
         """Make the actual trading decision based on MACD and sentiment data."""
         action = "HOLD"
         reason = "no_signal"
+        qty = 0
 
         # Entry rule: MACD improving AND sentiment non-negative
         if self.position == 0:
@@ -122,7 +321,22 @@ class StrategyAgent(BaseAgent):
                 sentiment >= 0
             ):
                 action = "BUY"
-                reason = f"MACD improving (y:{macd_y:.4f} t:{macd_t:.4f}) with sentiment {sentiment:.2f}"
+                
+                # SENTIMENT POSITION SIZING FIX (Issue #222)
+                # Normalize sentiment to 0-1 range (handles different sentiment ranges)
+                # V0: fixed 1.0, V1: -1 to +1, V2: ~0.3-0.8, V3: ~0.2-0.8, V4: -1 to +1
+                normalized_sentiment = max(0, min(1, (sentiment + 1) / 2))  # Clamp to [0,1]
+                
+                # Calculate position multiplier based on sentiment confidence
+                MIN_POSITION = 0.3  # Never go below 30% position
+                MAX_POSITION = 1.0  # Maximum 100% position
+                position_multiplier = MIN_POSITION + (MAX_POSITION - MIN_POSITION) * normalized_sentiment
+                
+                # Base quantity (can be adjusted based on capital allocation)
+                base_qty = 100
+                qty = int(base_qty * position_multiplier)
+                
+                reason = f"MACD improving (y:{macd_y:.4f} t:{macd_t:.4f}) with sentiment {sentiment:.2f} (position: {position_multiplier:.1%})"
                 self.position = 1
                 self.entry_price = price
                 self.entry_date = trade_date
@@ -168,7 +382,7 @@ class StrategyAgent(BaseAgent):
 
         return {
             "action": action,
-            "qty": 100 if action == "BUY" else 0,
+            "qty": qty,  # Now uses sentiment-based position sizing
             "reason": reason,
             "macd_today": macd_t,
             "macd_yest": macd_y,

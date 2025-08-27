@@ -1,0 +1,17 @@
+{
+  "date": "2024-12-31",
+  "portfolio_value": 206733.91,
+  "cash": 10804.8,
+  "position": 1459,
+  "position_avg_cost": 140.22,
+  "stock_price": 134.29,
+  "last_sentiment": 1.0,
+  "last_macd_signal": "1",
+  "last_trade_date": "2024-12-24",
+  "cumulative_return": 106.73,
+  "high_water_mark": 237421.57,
+  "initial_cash": 100000.0,
+  "symbol": "NVDA",
+  "version": "V0",
+  "framework_version": "SimpleContinuousBacktest_v1.0"
+}

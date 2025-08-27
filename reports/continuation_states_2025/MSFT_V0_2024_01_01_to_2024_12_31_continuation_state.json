@@ -1,0 +1,17 @@
+{
+  "date": "2024-12-31",
+  "portfolio_value": 105763.37,
+  "cash": 105763.37,
+  "position": 0,
+  "position_avg_cost": 0.0,
+  "stock_price": 421.5,
+  "last_sentiment": 1.0,
+  "last_macd_signal": "-1",
+  "last_trade_date": "2024-12-19",
+  "cumulative_return": 5.76,
+  "high_water_mark": 115768.36,
+  "initial_cash": 100000.0,
+  "symbol": "MSFT",
+  "version": "V0",
+  "framework_version": "SimpleContinuousBacktest_v1.0"
+}

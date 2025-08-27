@@ -1,0 +1,17 @@
+{
+  "date": "2024-12-31",
+  "portfolio_value": 113243.29,
+  "cash": 113243.29,
+  "position": 0,
+  "position_avg_cost": 0.0,
+  "stock_price": 219.39,
+  "last_sentiment": 0.0,
+  "last_macd_signal": "-1",
+  "last_trade_date": "2024-12-19",
+  "cumulative_return": 13.24,
+  "high_water_mark": 116501.61,
+  "initial_cash": 100000.0,
+  "symbol": "AMZN",
+  "version": "V1",
+  "framework_version": "SimpleContinuousBacktest_v1.0"
+}
