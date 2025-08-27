@@ -63,10 +63,10 @@ reports/
 
 ```bash
 # Generate basic summary
-python scripts/generate_results_summary.py
+python scripts/analysis/generate_results_summary.py
 
 # Generate advanced metrics analysis
-python scripts/generate_results_summary.py --advanced
+python scripts/analysis/generate_results_summary.py --advanced
 
 # View analysis report
 cat reports/analysis/V0-V4_Framework_Results.md

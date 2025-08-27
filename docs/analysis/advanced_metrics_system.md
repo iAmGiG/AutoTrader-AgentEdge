@@ -11,7 +11,7 @@ The Advanced Metrics System provides comprehensive analysis capabilities for bac
 
 ```bash
 # Run comprehensive analysis on all V0-V4 results
-python scripts/generate_results_summary.py --advanced
+python scripts/analysis/generate_results_summary.py --advanced
 
 # Or use the analyzer directly
 python src/analysis/metrics_analyzer.py
@@ -193,7 +193,7 @@ src/analysis/
 ├── metrics_capture.py      # Real-time metrics (future)
 └── __init__.py
 
-scripts/
+scripts/analysis/
 └── generate_results_summary.py       # Enhanced with --advanced flag
 
 reports/

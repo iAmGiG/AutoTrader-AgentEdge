@@ -17,6 +17,14 @@ scripts/
 
 ## Production Scripts
 
+### Analysis Tools (`analysis/`)
+
+**Core analysis and reporting scripts:**
+
+- `generate_results_summary.py` - Generate V0-V4 results summary with basic and advanced metrics
+  - `--basic`: Simple performance summary (default)
+  - `--advanced`: Comprehensive metrics with sentiment effectiveness analysis
+
 ### Analysis (`runs/analysis/`)
 
 **Reusable analysis frameworks:**

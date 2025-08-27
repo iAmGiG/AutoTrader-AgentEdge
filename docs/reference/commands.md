@@ -62,10 +62,10 @@ python -m pytest tests/test_market_data_tool.py
 
 ```bash
 # V0-V4 Results Summary (basic)
-python scripts/generate_results_summary.py
+python scripts/analysis/generate_results_summary.py
 
 # Advanced Metrics Analysis 
-python scripts/generate_results_summary.py --advanced
+python scripts/analysis/generate_results_summary.py --advanced
 
 # Three-way strategy comparison (legacy)
 python scripts/validation/analyze_cached_performance.py
@@ -114,7 +114,7 @@ tail -f .cache/backtests/nohup.out
 
 ```bash
 # Generate comprehensive analysis of all V0-V4 results
-python scripts/generate_results_summary.py --advanced
+python scripts/analysis/generate_results_summary.py --advanced
 
 # Outputs generated:
 # - reports/backtest_analysis_2024.json (comprehensive analysis)

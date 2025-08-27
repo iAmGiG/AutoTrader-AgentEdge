@@ -41,6 +41,6 @@ The project implements 5 sentiment approaches (V0-V4) applied to a consistent MA
 ## Quick Links
 
 - **V0-V4 Testing**: `python scripts/runs/simple_continuous_backtest.py --all-versions`
-- **Advanced Metrics**: `python scripts/generate_results_summary.py --advanced`
+- **Advanced Metrics**: `python scripts/analysis/generate_results_summary.py --advanced`
 - **Data Sources**: Polygon.io (market), Google Search (news)
 - **Base Strategy**: MACD crossover signals (consistent across V0-V4)
