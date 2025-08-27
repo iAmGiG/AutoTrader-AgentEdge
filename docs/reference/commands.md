@@ -12,19 +12,19 @@
 
 ```bash
 # Simple continuous backtest with checkpoint/resume
-python scripts/runs/simple_continuous_backtest.py --version V0 --symbol AAPL --year 2024
+python scripts/runs/backtest.py --version V0 --symbol AAPL --year 2024
 
 # Run all versions for a symbol
-python scripts/runs/simple_continuous_backtest.py --all-versions --symbol AAPL --year 2024
+python scripts/runs/backtest.py --all-versions --symbol AAPL --year 2024
 
 # Single month testing
-python scripts/runs/simple_continuous_backtest.py --version V2 --symbol AAPL --month 1
+python scripts/runs/backtest.py --version V2 --symbol AAPL --month 1
 
 # Check status of all versions
-python scripts/runs/simple_continuous_backtest.py --status
+python scripts/runs/backtest.py --status
 
 # V4 date obfuscation testing
-python scripts/obfuscation_test.py
+python scripts/validation/obfuscation_test.py
 ```
 
 ### Single Backtesting (Legacy)

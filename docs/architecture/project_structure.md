@@ -41,9 +41,11 @@
 ### `scripts/` - Executable Scripts
 
 - **`runs/`** - Main testing scripts
-  - `simple_continuous_backtest.py` - Primary V0-V4 backtesting framework
-- `generate_results_summary.py` - Results analysis (basic and --advanced)
-- `obfuscation_test.py` - V4 date obfuscation testing
+  - `backtest.py` - Primary V0-V4 backtesting framework
+- **`validation/`** - Validation and testing scripts
+  - `obfuscation_test.py` - V4 date obfuscation testing
+- **`analysis/`** - Results analysis scripts  
+  - `generate_results_summary.py` - Results analysis (basic and --advanced)
 
 ### `reports/` - Analysis Results
 
