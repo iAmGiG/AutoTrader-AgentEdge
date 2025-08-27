@@ -116,8 +116,9 @@ ipython_config.py
 # Cache directory (contains backtest results and market data)
 .cache/
 
-# CSV files (data outputs)
-*.csv
+# CSV files from cache/deprecated (data outputs, not research results)
+.cache/**/*.csv
+deprecated/**/*.csv
 
 # Configuration files (contain API keys)
 config/
@@ -164,11 +165,18 @@ scripts/deprecated_backtest_scripts/
 # Deprecated code archive (local only)
 deprecated/
 
+# Background Services (server-specific)
+services/background_cache_service.py
+services/start_cache_service.sh
+services/stop_cache_service.sh
+services/cache_service_status.sh
+
 # SEC Edgar data
 sec-edgar-filings/
 
-# Logs
+# Logs & Runtime Files
 *.log
+logs/
 
 # Database
 db.sqlite3

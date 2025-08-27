@@ -29,9 +29,7 @@ from autogen_core._cancellation_token import CancellationToken
 from src.tools.tools import ALL_TOOLS
 # Import only functions that are still active (minimal architecture)
 from src.tools.tools import (
-    fetch_market_data,
-    fetch_alpha_vantage_data,
-    fetch_polygon_historical_data
+    fetch_unified_market_data,
 )
 
 # Yahoo functions removed - no longer used
@@ -47,9 +45,7 @@ open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
 
 # Fallback map for tool execution (build dynamically to handle conditional imports)
 TOOL_FUNCTION_MAP = {
-    "fetch_market_data": fetch_market_data,
-    "fetch_alpha_vantage_data": fetch_alpha_vantage_data,
-    "fetch_polygon_historical_data": fetch_polygon_historical_data,
+    "fetch_unified_market_data": fetch_unified_market_data,
     # Minimal architecture - only essential tools
 }
 
@@ -266,6 +262,9 @@ class BaseAgent(AssistantAgent, ABC):
                 loop = asyncio.get_event_loop()
                 return await loop.run_in_executor(None, lambda: exec_fn(*args, **kwargs))
 
+        # Tool access control should be handled by proper tool configuration in tools.py
+        # Sentiment agents should only have access to sentiment tools via their initialization
+
         # Strategy 1: Use function map if available (most reliable fallback)
         if tool_name in TOOL_FUNCTION_MAP:
             try:
@@ -356,7 +355,7 @@ class BaseAgent(AssistantAgent, ABC):
                 for col in result_copy.columns:
                     if result_copy[col].dtype == 'datetime64[ns]' or 'datetime' in str(result_copy[col].dtype):
                         result_copy[col] = result_copy[col].astype(str)
-                
+
                 result_dict = result_copy.to_dict(orient='records')
                 # Add context for empty DataFrames to help LLM provide better responses
                 if len(result_dict) == 0:

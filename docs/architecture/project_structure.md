@@ -6,9 +6,13 @@
 
 - **`agents/`** - Agent implementations for V0-V4 framework
   - `base_agent.py` - Base class for all agents
-  - `sentiment_agent.py` - V0-V4 sentiment implementations
+  - `sentiment_v0.py` through `sentiment_v4.py` - Individual sentiment implementations
   - `tech_agent.py` - Technical analysis agent (MACD)
   - `strategy_agent.py` - Orchestrator combining tech + sentiment
+
+- **`analysis/`** - Advanced metrics and analysis
+  - `metrics_analyzer.py` - Post-hoc analysis of existing backtest results
+  - `metrics_capture.py` - Real-time metrics collection during backtesting
 
 - **`tools/`** - Data sources and processing
   - **`data_sources/`** - API integrations
@@ -36,14 +40,21 @@
 
 ### `scripts/` - Executable Scripts
 
-- `obfuscation_test.py` - V4 date obfuscation testing
-- Future: `backtest_v0_v4.py` - Quarterly backtesting runner
+- **`runs/`** - Main testing scripts
+  - `backtest.py` - Primary V0-V4 backtesting framework
+- **`validation/`** - Validation and testing scripts
+  - `obfuscation_test.py` - V4 date obfuscation testing
+- **`analysis/`** - Results analysis scripts  
+  - `generate_results_summary.py` - Results analysis (basic and --advanced)
 
 ### `reports/` - Analysis Results
 
-- `README.md` - V0-V4 report organization
-- `TEMPLATE.md` - Report template
-- Future: Quarterly V0-V4 comparison reports
+- **`continuous_backtests/`** - V0-V4 backtest results by version and symbol
+  - `V0/`, `V1/`, `V2/`, `V3/`, `V4/` - Results organized by strategy version
+- **`continuation_states_2025/`** - Portfolio states for continuing 2024→2025 tests
+- `backtest_analysis_2024.json` - Comprehensive advanced metrics analysis
+- `strategy_comparison_2024.csv` - Comparative metrics across all strategies  
+- `V0-V4_Framework_Results.md` - Summary report
 
 ### `tests/` - Test Suite
 

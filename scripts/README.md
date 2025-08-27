@@ -1,99 +1,63 @@
 # Scripts Directory
 
-The scripts directory is organized into 3 clear layers matching the system architecture:
+The scripts directory contains V0-V4 sentiment analysis validation and production runs.
 
-## Layer 1: Experiment Entry Points
-
-**Main scripts for running experiments and analysis:**
-
-### `backtest.py` - Primary Backtesting
+## Directory Structure
 
 ```bash
-python backtest.py SYMBOL START_DATE END_DATE
-# Example: python backtest.py AAPL 2023-01-01 2023-12-31
+scripts/
+├── README.md
+├── analysis/                # SPY/QQQ analysis utilities  
+├── data/                   # Data collection scripts
+└── runs/                   # V0-V4 sentiment framework runs
+    ├── validation/         # Production validation scripts
+    ├── analysis/          # Performance analysis scripts  
+    └── comparison/        # Cross-version comparison runs
 ```
 
-Single stock backtesting with full LLM reasoning capture.
+## Production Scripts
 
-### `analyze_results.py` - Results Analysis  
+### Analysis Tools (`analysis/`)
 
-```bash
-python analyze_results.py
-```
+**Core analysis and reporting scripts:**
 
-Analyzes cached backtest data and generates performance reports.
+- `generate_results_summary.py` - Generate V0-V4 results summary with basic and advanced metrics
+  - `--basic`: Simple performance summary (default)
+  - `--advanced`: Comprehensive metrics with sentiment effectiveness analysis
 
-### `run_experiments.py` - Batch Experiments
+### Analysis (`runs/analysis/`)
 
-```bash
-python run_experiments.py
-```
+**Reusable analysis frameworks:**
 
-Automated batch processing with rate limiting and resume capability.
+- `comprehensive_2024_v0_v4_analysis.py` - Full V0-V4 comparison framework
+- `run_2024_full_analysis.py` - Complete yearly analysis
+- `simple_2024_analysis.py` - Streamlined analysis framework
+- `v0_v4_comparison_summary.py` - Performance comparison utilities
 
-## Layer 2: Agent Operations (`agents/`)
+### Validation (`runs/validation/`)
 
-**Scripts for working directly with agents:**
+**Core validation scripts:**
 
-### `compare_strategies.py` - Strategy Comparison
+- `run_v0_pipeline_validation.py` - V0 baseline validation  
+- `run_v4_data_leakage_detection.py` - V4 obfuscation testing
 
-Three-way comparison demo: Buy & Hold vs Mechanical vs LLM
+## Archived Tools
 
-### `demo_parallel.py` - Parallel Strategy Demo
+**One-off debugging and development tools moved to `deprecated/scripts/`:**
 
-Real-time parallel execution of multiple strategies
+- Debug utilities (cache debugging, async troubleshooting)
+- Maintenance scripts (cache fixes, data refreshing)
+- Quick test scripts (exploratory testing)
+- Development analysis scripts (one-time investigations)
 
-### `test_agents.py` - Agent Testing
+## V0-V4 Research Framework
 
-Validation and testing of agent functionality
+**Objective**: Demonstrate incremental value of LLM introduction.
 
-## Layer 3: Tools & Utilities (`tools/`)
+- **V0**: Fixed Baseline (sentiment = 1.0) - Pure MACD strategy
+- **V1**: NLP Analysis (VADER + Google Search news)  
+- **V2**: Market Fear (VXX/VIX volatility-based sentiment)
+- **V3**: Heuristic Combination (V1 + V2 with adaptive weighting)
+- **V4**: Enhanced LLM Analysis (GPT-4o-mini + SPY/QQQ market context)
 
-**Supporting tools and utilities:**
-
-### Data Tools (`tools/data/`)
-
-- `build_cache.py` - Build market data cache
-- `collect_data.py` - Collect fresh market data
-
-### Validation Tools (`tools/validation/`)
-
-- `obfuscation_test.py` - Data integrity validation
-
-### General Utils (`tools/utils/`)
-
-- `examine_cached_results.py` - Analyze Google Search news cache contents
-- `organize_news_cache.py` - Organize news cache by publication date
-- Other maintenance and utility scripts
-
-## Quick Start
-
-1. **Run a single backtest:**
-
-   ```bash
-   python backtest.py NVDA 2023-01-01 2023-12-31
-   ```
-
-2. **Analyze results:**
-
-   ```bash
-   python analyze_results.py
-   ```
-
-3. **Compare strategies:**
-
-   ```bash
-   python agents/compare_strategies.py
-   ```
-
-## Architecture Notes
-
-- **Layer 1**: What users interact with directly
-- **Layer 2**: Agent-specific operations and demos  
-- **Layer 3**: Supporting infrastructure
-
-This structure mirrors the system architecture: experiment entry points → agent operations → underlying tools and utilities.
-
-## Legacy Scripts
-
-The old directory structure (`backtesting/`, `analysis/`, `strategies/`, etc.) is preserved for reference but the new 3-layer structure provides clearer entry points.
+**Current Status**: ✅ All V0-V4 agents operational with enhanced market context integration

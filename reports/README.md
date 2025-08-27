@@ -1,56 +1,76 @@
-# Reports Structure (V0-V4 Framework)
+# Reports Directory Structure
 
-**Branch**: ToolArchChange  
-**Framework**: V0-V4 Sentiment Analysis Comparison Study
+**Framework**: V0-V4 Sentiment Analysis Comparison Study  
+**Status**: ✅ Complete 2024 Testing with Advanced Metrics
 
-## Folder Structure
+## Current Structure
 
 ```
 reports/
-├── v0_v4/           # V0-V4 comparison results and analysis
-│   ├── quarterly/  # AAPL quarterly test results
-│   └── analysis/   # Statistical comparisons between versions
-├── sessions/        # Work session summaries
-│   └── TEMPLATE.md # Template for session reports
-├── technical/       # Technical implementation reports
-├── validation/      # Testing and validation results
-└── README.md       # This file
+├── analysis/                   # Analysis reports and summaries
+│   ├── V0-V4_Framework_Results.md    # Comprehensive summary report
+│   └── backtest_analysis_2024.json   # Advanced metrics analysis
+├── data/                       # CSV data exports
+│   ├── strategy_comparison_2024.csv  # Comparative metrics
+│   └── V0-V4_results_summary.csv     # Quick summary
+├── continuous_backtests/      # Raw V0-V4 backtest results
+│   ├── V0/                   # Baseline (9 symbols tested)
+│   ├── V1/                   # VADER news sentiment
+│   ├── V2/                   # VXX volatility fear
+│   ├── V3/                   # Combined heuristic
+│   └── V4/                   # LLM intelligent reasoning
+├── continuation_states_2025/  # Portfolio states for 2025 continuation
+└── README.md                  # This file
 ```
 
-## Naming Convention
+## Key Reports
 
-All reports follow: `title_yy_mm_dd.ext`
+### Analysis Reports (`analysis/`)
+- **V0-V4_Framework_Results.md**: Complete performance summary with detailed metrics
+- **backtest_analysis_2024.json**: Advanced metrics including sentiment effectiveness
 
-- **lowercase** throughout
-- **2-3 word** descriptive title
-- **yy_mm_dd** date format
-- Include **version** (V0-V4) when relevant
-- Include **issue numbers** for traceability
+### Data Exports (`data/`)
+- **strategy_comparison_2024.csv**: Spreadsheet-ready comparative analysis
+- **V0-V4_results_summary.csv**: Quick summary table
 
-## Report Types
+### Raw Results (`continuous_backtests/`)
+- Raw JSON results for each version/symbol combination
+- Checkpoint files for resume capability
 
-### V0-V4 Analysis Reports
+### Continuation States (`continuation_states_2025/`)
+- Final portfolio states for continuing into 2025
 
-- Quarterly performance comparisons
-- Sentiment approach effectiveness
-- Statistical significance testing
-- Trade frequency analysis
+## Test Coverage
 
-### Technical Reports  
+### Symbols Tested (8 tickers + 2 ETFs)
+- **Tech Giants**: AAPL, MSFT, NVDA, META, GOOGL
+- **Others**: AMZN, TSLA, GOOG
+- **ETFs**: SPY, QQQ
 
-- Implementation details for each version
-- Architecture decisions
-- Tool integration documentation
+### Performance Highlights
+- **Best Overall**: NVDA V0 (+106.73%)
+- **Best V4**: NVDA (+89.82%)
+- **Most Consistent**: SPY (all versions positive)
 
-### Validation Reports
+## Advanced Metrics Available
+- Sharpe/Calmar ratios
+- Sentiment effectiveness by bucket
+- Market regime analysis
+- Trade quality metrics
+- Risk-adjusted performance
 
-- Date obfuscation testing (V4)
-- Performance metrics validation
-- Data integrity checks
+## Access Commands
 
-## Important Notes
+```bash
+# Generate basic summary
+python scripts/analysis/generate_results_summary.py
 
-- Issues #181-190 define the V0-V4 implementation roadmap
-- Focus on gradual LLM introduction demonstration
-- All legacy reports archived to deprecated/ (gitignored)
-- Quarterly testing periods: AAPL 2024 Q1-Q4, 2025 Q1
+# Generate advanced metrics analysis
+python scripts/analysis/generate_results_summary.py --advanced
+
+# View analysis report
+cat reports/analysis/V0-V4_Framework_Results.md
+
+# View specific results
+cat reports/continuous_backtests/V4/AAPL_2024_results.json
+```

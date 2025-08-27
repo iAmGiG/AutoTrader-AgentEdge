@@ -44,6 +44,36 @@
 
 - **Solution**: Convert numpy types to Python native types before serialization
 
+## Cache System Issues
+
+### Cache Fragmentation
+
+- **Issue**: Multiple small cache files for same symbol/date range causing incomplete data
+- **Symptoms**: Backtests showing date jumps (e.g., Jan → June), missing trading days
+- **Solution**: Run cache consolidation scripts, ensure UnifiedCacheManager uses consolidated files
+- **Prevention**: Use UnifiedCacheManager for all market data access
+
+### Incomplete Daily Values in Results
+
+- **Issue**: Results files only showing last 50 days instead of full year
+- **Symptoms**: daily_values array truncated despite checkpoint having all days
+- **Solution**: Fixed in simple_continuous_backtest.py - remove [-50:] slice
+- **Verification**: Check len(results['daily_values']) equals trading days count
+
+### Cache File Not Found
+
+- **Issue**: UnifiedCacheManager not finding consolidated cache files
+- **Symptoms**: "No cache found" despite files existing
+- **Solution**: Update pattern matching to include both regular and _consolidated.json files
+- **Code Fix**: See src/tools/cache/unified_cache.py lines 209-211
+
+### Monthly Backtests Failing
+
+- **Issue**: Cache validation rejecting valid monthly data (< 200 days)
+- **Symptoms**: Month-specific backtests fail with "No market data available"
+- **Solution**: Dynamic threshold based on requested date range (fixed in unified_cache.py)
+- **Calculation**: min_threshold = max(expected_days * 0.5, 5)
+
 ## API and Data Issues
 
 ### Empty DataFrames
