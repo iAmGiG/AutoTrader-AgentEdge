@@ -116,8 +116,9 @@ ipython_config.py
 # Cache directory (contains backtest results and market data)
 .cache/
 
-# CSV files (data outputs)
-*.csv
+# CSV files from cache/deprecated (data outputs, not research results)
+.cache/**/*.csv
+deprecated/**/*.csv
 
 # Configuration files (contain API keys)
 config/
