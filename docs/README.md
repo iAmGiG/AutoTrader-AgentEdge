@@ -1,12 +1,16 @@
-# RH2MAS Documentation (V0-V4 Framework)
+# RH2MAS Documentation
 
-This directory contains documentation for the V0-V4 sentiment analysis framework - a research study demonstrating the gradual introduction of LLM capabilities in financial trading decisions.
-
-## V0-V4 Framework Overview
-
-The project implements 5 sentiment approaches (V0-V4) applied to a consistent MACD-based trading strategy, measuring the incremental value of each approach through quarterly backtesting on AAPL.
+This directory contains comprehensive documentation for RH2MAS - a practical trading platform with powerful backtesting capabilities and multi-agent architecture.
 
 ## Documentation Structure
+
+### 🎯 [backtesting/](backtesting/) - Enhanced Backtesting Laboratory
+- **[README.md](backtesting/README.md)** - Backtesting framework overview
+- **[practical_filters.md](backtesting/practical_filters.md)** - Volume, spread, event-based filters
+- **[execution_reality.md](backtesting/execution_reality.md)** - Slippage, commissions, market impact
+- **[leverage_testing.md](backtesting/leverage_testing.md)** - 2x/3x ETF comparison framework *(coming soon)*
+- **[monte_carlo_framework.md](backtesting/monte_carlo_framework.md)** - Confidence intervals and robustness *(coming soon)*
+- **[parameter_optimization.md](backtesting/parameter_optimization.md)** - Grid search and genetic algorithms *(coming soon)*
 
 ### [architecture/](architecture/) - System Design
 - **[V0-V4_ARCHITECTURE.md](architecture/V0-V4_ARCHITECTURE.md)** - Complete framework architecture
@@ -38,9 +42,24 @@ The project implements 5 sentiment approaches (V0-V4) applied to a consistent MA
 ### Project Reports
 - **[project_rebuild_summary.md](project_rebuild_summary.md)** - ✅ **Complete MAG7 + benchmarks data infrastructure rebuild (2025-08-26)**
 
-## Quick Links
+## Quick Start
 
-- **V0-V4 Testing**: `python scripts/runs/simple_continuous_backtest.py --all-versions`
+### Current Capabilities
+- **V0-V4 Testing**: `python scripts/runs/backtest.py --all-versions`
 - **Advanced Metrics**: `python scripts/analysis/generate_results_summary.py --advanced`
-- **Data Sources**: Polygon.io (market), Google Search (news)
-- **Base Strategy**: MACD crossover signals (consistent across V0-V4)
+- **Single Strategy**: `python scripts/runs/backtest.py --version V4 --symbol AAPL`
+
+### Coming Soon (Enhanced Backtesting)
+- **Leverage ETFs**: `python scripts/runs/backtest.py --leverage-comparison QQQ`
+- **Trading Filters**: `python scripts/runs/backtest.py --filters enabled`
+- **Execution Costs**: `python scripts/runs/backtest.py --slippage realistic`
+- **Optimization**: `python scripts/runs/backtest.py --optimize-params`
+
+## Development Focus
+
+The project has pivoted from academic research to building a **powerful personal backtesting laboratory** without constraints. Current priorities:
+
+1. **Phase 1**: Practical trading filters and execution reality (#264, #267)
+2. **Phase 2**: Leverage ETF testing and technical variations (#265, #266)
+3. **Phase 3**: Monte Carlo and parameter optimization (#268, #269)
+4. **Phase 4**: Production trading capabilities (#258-263)
