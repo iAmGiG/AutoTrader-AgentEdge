@@ -1,22 +1,27 @@
-# RH2MAS: V0-V4 Sentiment Analysis Framework
+# RH2MAS: Practical Multi-Agent Trading Platform
 
 ## Overview
 
-RH2MAS (Reflective Hybrid-Head Multi-Agent System) is a research framework demonstrating the **gradual introduction of LLM capabilities** in financial trading through a 5-phase sentiment analysis comparison study (V0-V4). Built on [AutoGen](https://github.com/microsoft/autogen) 0.7.x, the system measures the incremental value of increasingly sophisticated sentiment approaches applied to a consistent MACD-based trading strategy.
+RH2MAS (Reflective Hybrid-Head Multi-Agent System) is a **production-ready trading platform** that combines sophisticated multi-agent architecture with advanced risk management for real-world trading applications. Originally developed as a research framework for gradual LLM introduction (V0-V4 sentiment analysis), it has evolved into a comprehensive backtesting and trading system.
 
-**🚀 Production Ready**: Unified cache-optimized agent system with 90%+ performance improvements. Complete continuous backtesting framework with checkpoint/resume capabilities for V4 LLM processing.
+**🚀 Production Features**: 
+- Multi-strategy ensemble system with V0-V4 agents
+- Real-time paper trading with Alpaca API integration
+- Advanced risk management and portfolio optimization
+- Comprehensive performance analytics and alerting
+- 90%+ performance improvements through cache optimization
 
-## Research Focus: V0-V4 Framework
+## Core Strategy Agents: V0-V4 Framework
 
-This project implements a systematic comparison of 5 sentiment approaches:
+The platform implements a multi-strategy system with 5 progressively sophisticated agents:
 
-- **V0 (Baseline)**: Fixed sentiment = 1.0 - Pure MACD strategy
-- **V1 (NLP)**: VADER sentiment analysis on news - Mechanical text processing
-- **V2 (Market Fear)**: VXX/VIX volatility-based sentiment - Fear gauge approach
-- **V3 (Hybrid)**: Weighted combination of V1 + V2 - Heuristic blending
-- **V4 (LLM)**: GPT-4o-mini reasoning - Only version using LLM for decisions
+- **V0 (Baseline)**: Fixed sentiment = 1.0 - Pure MACD strategy foundation  
+- **V1 (NLP)**: VADER sentiment analysis on news - Traditional sentiment processing
+- **V2 (Market Fear)**: VXX/VIX volatility-based sentiment - Market regime detection
+- **V3 (Hybrid)**: Weighted combination of V1 + V2 - Mechanical ensemble approach
+- **V4 (LLM)**: GPT-4o-mini reasoning - AI-enhanced market psychology understanding
 
-All versions use identical MACD crossover signals across multiple symbols (AAPL, SPY, QQQ, AMZN, etc.) with full-year 2024 backtesting capability.
+**Production Integration**: These agents serve as strategy components in an ensemble orchestration system, with dynamic weighting based on market conditions and performance attribution.
 
 ### Performance Architecture
 
@@ -32,25 +37,32 @@ All versions use identical MACD crossover signals across multiple symbols (AAPL,
 
 This architecture enables instant V0-V3 responses when cached, while V4 processes intelligently with temporal safeguards.
 
-## Simplified Architecture
+## Production Architecture
 
-### Core Agents
+### Core Components
 
-1. **StrategyAgent**: Orchestrator combining TechAgent + SentimentAgent[V0-V4]
-2. **TechAgent**: Fetches market data and calculates MACD indicators
-3. **SentimentAgent**: Implements V0-V4 sentiment approaches (5 versions)
-4. **BaseAgent**: Common interface for all agents
+1. **StrategyOrchestrator**: Ensemble management with weighted voting and dynamic rebalancing
+2. **RiskAgent**: Comprehensive risk management with position sizing and portfolio controls
+3. **V0-V4 Agents**: Multi-strategy sentiment analysis (5 specialized agents)
+4. **ExecutionAgent**: Alpaca API integration for paper/live trading
+5. **TechAgent**: Market data processing and technical indicator calculation
+6. **AlertAgent**: Multi-channel notifications and monitoring
 
-### Data Sources (V0-V4 Infrastructure)
+### Data Infrastructure
 
-- **Market Data**:
-  - Primary: [Polygon.io](https://polygon.io) API (5 calls/min, 1-year history)
-  - Fallback: [Alpha Vantage](https://www.alphavantage.co/) API (25 calls/day)
-  - **UnifiedCacheManager**: Smart caching with automatic source routing
-- **News Data**:
-  - [Google Custom Search](https://developers.google.com/custom-search) API (100 calls/day)
-  - Premium sources: WSJ, Bloomberg, Barrons, Reuters
-  - **NewsGovernor**: Smart sampling reduces API usage 80-90%
+**Trading APIs**:
+- **Alpaca**: Paper and live trading execution (real-time order management)
+- **Polygon.io**: Real-time and historical market data (WebSocket + REST)
+- **Alpha Vantage**: Fallback market data source
+
+**Analysis APIs**:
+- **Google Custom Search**: News sentiment analysis (smart sampling)
+- **OpenAI**: V4 agent LLM processing and advanced analysis
+
+**Data Management**:
+- **UnifiedCacheManager**: 90%+ performance improvement through intelligent caching
+- **NewsGovernor**: API usage reduction (80-90%) through smart news sampling
+- **Real-time Pipeline**: WebSocket data streaming for live decision making
 
 ## Installation
 
@@ -69,10 +81,13 @@ Create `config/config.json` with required API keys:
 
 ```json
 {
-  "OPENAI_API_KEY": "sk-...",      // For V4 LLM analysis
-  "POLYGON_API_KEY": "...",        // Primary market data
+  "ALPACA_API_KEY": "...",         // Paper/live trading
+  "ALPACA_SECRET_KEY": "...",      // Trading authentication
+  "ALPACA_BASE_URL": "paper-api.alpaca.markets",  // Paper trading URL
+  "OPENAI_API_KEY": "sk-...",      // V4 LLM analysis
+  "POLYGON_API_KEY": "...",        // Real-time market data
   "ALPHA_VANTAGE_KEY": "...",      // Fallback market data
-  "GOOGLE_API_KEY": "...",         // News data
+  "GOOGLE_API_KEY": "...",         // News sentiment analysis
   "GOOGLE_CSE_ID": "..."           // Custom search engine ID
 }
 ```
@@ -81,33 +96,40 @@ Note: This file is excluded from version control for security.
 
 ## Usage
 
-### Continuous Backtesting (Primary Interface)
+### Production Trading (Coming Soon)
 
 ```bash
-# Check status of all V0-V4 backtests
-python scripts/runs/backtest.py --status
+# Start paper trading with ensemble strategies
+python scripts/trading/live_trading.py --mode paper
 
-# Run all versions for full-year 2024
-python scripts/runs/backtest.py --all-versions
+# Real-time performance monitoring
+python scripts/monitoring/dashboard.py
 
-# Test specific version
+# Portfolio analysis and risk metrics
+python scripts/analysis/portfolio_analysis.py
+```
+
+### Backtesting and Strategy Development
+
+```bash
+# Strategy ensemble backtesting
+python scripts/runs/backtest.py --ensemble --all-versions
+
+# Individual strategy testing
 python scripts/runs/backtest.py --version V4
 
-# Monthly testing
-python scripts/runs/backtest.py --all-versions --month 1  # January 2024
-```
-
-### V4 Date Obfuscation Testing
-
-```bash
-python scripts/validation/obfuscation_test.py
-```
-
-### Advanced Analysis
-
-```bash
-# Generate comprehensive metrics report
+# Performance comparison and analysis
 python scripts/analysis/generate_results_summary.py --advanced
+```
+
+### Risk Management and Alerts
+
+```bash
+# Configure risk parameters
+python scripts/risk/configure_risk_limits.py
+
+# Test alert system
+python scripts/alerts/test_notifications.py
 ```
 
 ## Project Structure
@@ -115,58 +137,80 @@ python scripts/analysis/generate_results_summary.py --advanced
 ```bash
 RH2MAS/
 ├── src/
-│   ├── agents/           # Unified V0-V4 agent implementations
+│   ├── agents/           # V0-V4 strategy agents + Risk/Execution agents
+│   ├── orchestration/    # Strategy ensemble and portfolio management
+│   ├── risk/             # Risk management and position sizing
+│   ├── execution/        # Alpaca API integration and order management
+│   ├── monitoring/       # Performance analytics and alerting
 │   ├── tools/            # Data sources with unified caching
-│   │   ├── cache/        # UnifiedCacheManager system
-│   │   └── data_sources/ # Market data and news tools
-│   └── utils/            # Date sanitizer, metrics system
+│   └── utils/            # Common utilities and helpers
 ├── scripts/
-│   ├── runs/             # Primary testing interface
-│   ├── analysis/         # Results analysis and reporting
-│   └── validation/       # V4 obfuscation testing
+│   ├── trading/          # Live trading and paper trading
+│   ├── monitoring/       # Performance dashboards and alerts
+│   ├── risk/             # Risk parameter configuration
+│   ├── runs/             # Backtesting and strategy development
+│   └── analysis/         # Results analysis and reporting
 ├── docs/
-│   ├── architecture/     # V0-V4 framework design
-│   ├── implementation/   # Component details
-│   └── reference/        # Commands, terminology
-├── reports/
-│   └── continuous_backtests/  # V0-V4 results and checkpoints
+│   ├── architecture/     # System design and component structure
+│   ├── trading/          # Trading setup and risk management
+│   └── api/              # API integration guides
 ├── config/               # API configuration (local only)
+├── reports/              # Trading results and performance analytics
 └── .cache/               # Unified caching system
 ```
 
 ## Documentation
 
-- [V0-V4 Architecture](docs/architecture/V0-V4_ARCHITECTURE.md) - Framework design
-- [Project Structure](docs/architecture/project_structure.md) - Repository organization
-- [Commands](docs/reference/commands.md) - Setup and usage
-- [Terminology](docs/reference/terminology.md) - Glossary
-- [Troubleshooting](docs/reference/troubleshooting.md) - Common issues
+**Trading Setup**:
+- [Trading Guide](docs/trading/setup.md) - Paper and live trading setup
+- [Risk Management](docs/trading/risk_management.md) - Position sizing and portfolio controls
+- [API Integration](docs/api/alpaca_setup.md) - Alpaca and data provider setup
+
+**System Architecture**:
+- [V0-V4 Architecture](docs/architecture/V0-V4_ARCHITECTURE.md) - Core strategy framework
+- [Production Architecture](docs/architecture/production_system.md) - Trading system design
+- [Agent Orchestration](docs/architecture/agent_orchestration.md) - Ensemble management
+
+**Reference**:
+- [Commands](docs/reference/commands.md) - All available scripts and commands
+- [Troubleshooting](docs/reference/troubleshooting.md) - Common issues and solutions
 
 ## Development Status
 
-### Completed ✅
+### Production-Ready Foundation ✅
 
-- **V0-V4 Framework**: Complete sentiment analysis comparison system
-- **Unified Agent System**: Cache-optimized agents with 90%+ performance improvement
-- **Continuous Backtesting**: Full-year testing capability with checkpoint/resume
-- **Advanced Metrics**: Comprehensive performance analysis with statistical validation
-- **Cache Unification**: UnifiedCacheManager with smart source routing
-- **Date Sanitization**: V4 temporal knowledge leakage prevention
-- **Multi-Symbol Testing**: AAPL, SPY, QQQ, AMZN validation complete
+- **V0-V4 Strategy Framework**: Complete multi-agent strategy system  
+- **Advanced Backtesting**: Full-year testing with checkpoint/resume capabilities
+- **Cache-Optimized Architecture**: 90%+ performance improvement through intelligent caching
+- **Multi-Asset Support**: Stocks, ETFs, and portfolio-level testing capabilities
+- **News Integration**: Smart sampling and sentiment analysis infrastructure
+- **Performance Analytics**: Comprehensive metrics and statistical validation
 
-### Active Development 🚧
+### Active Production Development 🚧
 
-- V4 Performance optimization (Issue #221) - Reduce LLM processing time
-- Portfolio-level statistics enhancements (Issue #162)
-- Executive reporting tools (Issue #130)
+**Priority 1 (Foundation)**:
+- [Alpaca API Integration](https://github.com/iAmGiG/RH2MAS/issues/258) - Paper trading implementation
+- [Comprehensive Risk Agent](https://github.com/iAmGiG/RH2MAS/issues/177) - Position sizing and risk controls  
+- [Real-time Data Pipeline](https://github.com/iAmGiG/RH2MAS/issues/259) - WebSocket integration
 
-### Repository Cleanup Note
+**Priority 2 (Enhancement)**:
+- [Strategy Orchestration](https://github.com/iAmGiG/RH2MAS/issues/260) - Ensemble management system
+- [Performance Dashboard](https://github.com/iAmGiG/RH2MAS/issues/261) - Real-time monitoring interface
+- [Alert System](https://github.com/iAmGiG/RH2MAS/issues/262) - Multi-channel notifications
 
-All deprecated code from the original complex multi-agent system has been moved to an untracked `deprecated/` folder, preserving it for reference while keeping the main codebase focused on the V0-V4 framework.
+**Priority 3 (Advanced)**:
+- [Portfolio Management](https://github.com/iAmGiG/RH2MAS/issues/263) - Multi-asset portfolio optimization
 
-## Academic Context
+### Project Evolution
 
-This is an academic research project exploring the gradual introduction of LLM capabilities in financial trading decisions. The V0-V4 framework provides measurable evidence of the incremental value each approach adds to a consistent base strategy.
+Originally developed as an academic research framework for studying gradual LLM introduction in trading decisions, RH2MAS has evolved into a practical trading platform. The V0-V4 foundation provides a robust multi-strategy base for production trading applications.
+
+**Key Advantages**:
+
+- **Proven Framework**: V0-V4 strategies tested across full-year market conditions
+- **Risk-First Design**: Built with comprehensive risk management from the ground up  
+- **Scalable Architecture**: Designed for both individual trading and institutional use
+- **Open Source**: Complete transparency in strategy logic and risk controls
 
 ## License
 
