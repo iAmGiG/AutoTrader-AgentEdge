@@ -87,11 +87,78 @@ class MetricsAnalyzer:
 
         return analysis
 
+    def calculate_execution_costs(self, trades: List[Dict], cost_model: Dict = None) -> Dict:
+        """Calculate execution costs and net performance after costs."""
+        if cost_model is None:
+            # Default cost model - typical retail brokerage costs
+            cost_model = {
+                'commission_per_trade': 0.50,  # $0.50 per trade (many brokers now $0)
+                'spread_bps': 2.0,  # 2 basis points spread cost
+                'market_impact_bps': 1.0,  # 1 basis point market impact
+                'slippage_bps': 0.5  # 0.5 basis points slippage
+            }
+        
+        buy_trades = [t for t in trades if t['action'] == 'BUY']
+        sell_trades = [t for t in trades if t['action'] == 'SELL']
+        
+        total_commission = (len(buy_trades) + len(sell_trades)) * cost_model['commission_per_trade']
+        
+        # Calculate spread, impact, and slippage costs
+        total_spread_cost = 0
+        total_impact_cost = 0 
+        total_slippage_cost = 0
+        total_trade_value = 0
+        
+        for trade in trades:
+            trade_value = trade.get('shares', 0) * trade.get('price', 0)
+            if trade_value > 0:
+                total_trade_value += trade_value
+                
+                # Spread cost (paid on both buy and sell)
+                spread_cost = trade_value * (cost_model['spread_bps'] / 10000)
+                total_spread_cost += spread_cost
+                
+                # Market impact (varies by trade size, simplified linear model)
+                impact_multiplier = min(2.0, trade_value / 10000)  # Higher impact for larger trades
+                impact_cost = trade_value * (cost_model['market_impact_bps'] / 10000) * impact_multiplier
+                total_impact_cost += impact_cost
+                
+                # Slippage cost
+                slippage_cost = trade_value * (cost_model['slippage_bps'] / 10000)
+                total_slippage_cost += slippage_cost
+        
+        total_execution_cost = total_commission + total_spread_cost + total_impact_cost + total_slippage_cost
+        
+        # Calculate net returns after costs
+        gross_pnl = sum([t.get('return_pct', 0) for t in sell_trades if 'return_pct' in t])
+        
+        # Estimate cost impact on returns (approximate)
+        cost_impact_pct = (total_execution_cost / total_trade_value * 100) if total_trade_value > 0 else 0
+        net_pnl_estimate = gross_pnl - cost_impact_pct * len(sell_trades)
+        
+        return {
+            'total_execution_cost': total_execution_cost,
+            'commission_cost': total_commission,
+            'spread_cost': total_spread_cost,
+            'market_impact_cost': total_impact_cost,
+            'slippage_cost': total_slippage_cost,
+            'cost_as_pct_of_trades': cost_impact_pct,
+            'gross_pnl': gross_pnl,
+            'estimated_net_pnl': net_pnl_estimate,
+            'cost_drag_pct': cost_impact_pct,
+            'total_trades': len(trades),
+            'round_trips': len(sell_trades),
+            'avg_cost_per_round_trip': total_execution_cost / len(sell_trades) if sell_trades else 0,
+            'cost_model_used': cost_model
+        }
+
     def calculate_trade_quality_metrics(self, trades: List[Dict]) -> Dict:
         """Calculate comprehensive trade quality metrics."""
         sell_trades = [t for t in trades if t['action'] == 'SELL' and 'return_pct' in t]
 
         if not sell_trades:
+            # Still calculate execution costs for empty case
+            execution_costs = self.calculate_execution_costs(trades) if trades else {}
             return {
                 'holding_periods': {'avg': 0, 'min': 0, 'max': 0},
                 'profit_factor': 0,
@@ -101,7 +168,10 @@ class MetricsAnalyzer:
                 'avg_loser': 0,
                 'win_loss_ratio': 0,
                 'consecutive_wins': 0,
-                'consecutive_losses': 0
+                'consecutive_losses': 0,
+                'total_winning_trades': 0,
+                'total_losing_trades': 0,
+                'execution_costs': execution_costs
             }
 
         returns = [t['return_pct'] for t in sell_trades]
@@ -137,6 +207,10 @@ class MetricsAnalyzer:
                 current_win_streak = 0
                 max_loss_streak = max(max_loss_streak, current_loss_streak)
 
+        # Calculate execution costs for all trades (including buys)
+        all_trades = trades if isinstance(trades, list) else []
+        execution_costs = self.calculate_execution_costs(all_trades)
+
         return {
             'holding_periods': {
                 'avg': np.mean(holding_periods) if holding_periods else 0,
@@ -152,7 +226,8 @@ class MetricsAnalyzer:
             'consecutive_wins': max_win_streak,
             'consecutive_losses': max_loss_streak,
             'total_winning_trades': len(winners),
-            'total_losing_trades': len(losers)
+            'total_losing_trades': len(losers),
+            'execution_costs': execution_costs
         }
 
     def calculate_risk_metrics(self, daily_values: List[Dict], initial_cash: float) -> Dict:
@@ -401,6 +476,7 @@ class MetricsAnalyzer:
                     all_results[key] = analysis
 
                     # Add to comparison data
+                    execution_costs = analysis['trade_quality'].get('execution_costs', {})
                     row = {
                         'Symbol': symbol,
                         'Version': version,
@@ -411,7 +487,11 @@ class MetricsAnalyzer:
                         'Profit_Factor': analysis['trade_quality']['profit_factor'],
                         'Win_Rate': analysis['basic_performance'].get('win_rate', 0),
                         'Num_Trades': analysis['basic_performance'].get('num_trades', 0),
-                        'Avg_Holding_Days': analysis['trade_quality']['holding_periods']['avg']
+                        'Avg_Holding_Days': analysis['trade_quality']['holding_periods']['avg'],
+                        'Total_Execution_Cost': execution_costs.get('total_execution_cost', 0),
+                        'Cost_Drag_Pct': execution_costs.get('cost_drag_pct', 0),
+                        'Net_Return_Estimate': execution_costs.get('estimated_net_pnl', 0),
+                        'Avg_Cost_Per_Round_Trip': execution_costs.get('avg_cost_per_round_trip', 0)
                     }
                     comparison_data.append(row)
 
@@ -424,6 +504,11 @@ class MetricsAnalyzer:
         # Best strategy per ticker
         best_strategies = self.identify_best_strategies(comparison_df)
 
+        # Generate execution cost analysis
+        execution_cost_analysis = self.generate_execution_cost_report({
+            'individual_analyses': all_results
+        })
+
         comprehensive_analysis = {
             'analysis_timestamp': datetime.now().isoformat(),
             'total_files_analyzed': len(all_results),
@@ -431,7 +516,8 @@ class MetricsAnalyzer:
             'comparative_analysis': comparison_data,
             'strategy_rankings': strategy_rankings,
             'best_strategy_per_ticker': best_strategies,
-            'summary_statistics': self.calculate_summary_statistics(comparison_df)
+            'summary_statistics': self.calculate_summary_statistics(comparison_df),
+            'execution_cost_analysis': execution_cost_analysis
         }
 
         return comprehensive_analysis
@@ -548,5 +634,122 @@ class MetricsAnalyzer:
 
         print(f"💾 Saved {len(saved_checkpoints)} checkpoint files to: {checkpoint_dir}")
         return saved_checkpoints
+
+    def generate_execution_cost_report(self, analysis: Dict) -> Dict:
+        """Generate detailed execution cost analysis across all strategies."""
+        individual_analyses = analysis.get('individual_analyses', {})
+        
+        cost_summary = {
+            'total_strategies_analyzed': len(individual_analyses),
+            'cost_breakdown': {},
+            'cost_impact_by_version': {},
+            'cost_efficiency_rankings': [],
+            'recommendations': []
+        }
+        
+        version_costs = {}
+        
+        for key, result in individual_analyses.items():
+            execution_costs = result.get('trade_quality', {}).get('execution_costs', {})
+            if not execution_costs:
+                continue
+                
+            version = result.get('file_info', {}).get('version', '')
+            symbol = result.get('file_info', {}).get('symbol', '')
+            
+            if version not in version_costs:
+                version_costs[version] = {
+                    'total_cost': 0,
+                    'total_trades': 0,
+                    'cost_drag_sum': 0,
+                    'strategies': 0
+                }
+            
+            version_costs[version]['total_cost'] += execution_costs.get('total_execution_cost', 0)
+            version_costs[version]['total_trades'] += execution_costs.get('total_trades', 0)
+            version_costs[version]['cost_drag_sum'] += execution_costs.get('cost_drag_pct', 0)
+            version_costs[version]['strategies'] += 1
+            
+            # Store individual strategy cost efficiency (return per $ of cost)
+            total_return = result.get('basic_performance', {}).get('total_return_pct', 0)
+            total_cost = execution_costs.get('total_execution_cost', 0)
+            cost_efficiency = total_return / total_cost if total_cost > 0 else 0
+            
+            cost_summary['cost_efficiency_rankings'].append({
+                'strategy': f"{symbol}_{version}",
+                'symbol': symbol,
+                'version': version,
+                'cost_efficiency': cost_efficiency,
+                'total_return': total_return,
+                'total_cost': total_cost,
+                'cost_drag_pct': execution_costs.get('cost_drag_pct', 0)
+            })
+        
+        # Calculate version averages
+        for version, data in version_costs.items():
+            if data['strategies'] > 0:
+                cost_summary['cost_impact_by_version'][version] = {
+                    'avg_cost_per_strategy': data['total_cost'] / data['strategies'],
+                    'avg_trades_per_strategy': data['total_trades'] / data['strategies'],
+                    'avg_cost_drag_pct': data['cost_drag_sum'] / data['strategies'],
+                    'total_strategies': data['strategies']
+                }
+        
+        # Sort cost efficiency rankings
+        cost_summary['cost_efficiency_rankings'].sort(
+            key=lambda x: x['cost_efficiency'], reverse=True
+        )
+        
+        # Generate recommendations
+        if version_costs:
+            most_efficient_version = max(
+                cost_summary['cost_impact_by_version'].items(),
+                key=lambda x: -x[1]['avg_cost_drag_pct']  # Lower drag is better
+            )[0]
+            
+            least_efficient_version = min(
+                cost_summary['cost_impact_by_version'].items(), 
+                key=lambda x: -x[1]['avg_cost_drag_pct']
+            )[0]
+            
+            cost_summary['recommendations'] = [
+                f"Most cost-efficient version: {most_efficient_version}",
+                f"Least cost-efficient version: {least_efficient_version}",
+                f"Average execution cost impact: {sum(v['avg_cost_drag_pct'] for v in cost_summary['cost_impact_by_version'].values()) / len(cost_summary['cost_impact_by_version']):.2f}%",
+                "Consider commission-free brokers to reduce fixed costs",
+                "High-frequency strategies may suffer more from execution costs",
+                "Focus on strategies with longer holding periods to amortize costs"
+            ]
+        
+        # Overall cost breakdown
+        total_commission = sum([
+            result.get('trade_quality', {}).get('execution_costs', {}).get('commission_cost', 0)
+            for result in individual_analyses.values()
+        ])
+        total_spread = sum([
+            result.get('trade_quality', {}).get('execution_costs', {}).get('spread_cost', 0)
+            for result in individual_analyses.values()
+        ])
+        total_impact = sum([
+            result.get('trade_quality', {}).get('execution_costs', {}).get('market_impact_cost', 0)
+            for result in individual_analyses.values()
+        ])
+        total_slippage = sum([
+            result.get('trade_quality', {}).get('execution_costs', {}).get('slippage_cost', 0)
+            for result in individual_analyses.values()
+        ])
+        
+        total_all_costs = total_commission + total_spread + total_impact + total_slippage
+        
+        if total_all_costs > 0:
+            cost_summary['cost_breakdown'] = {
+                'commission_pct': (total_commission / total_all_costs) * 100,
+                'spread_pct': (total_spread / total_all_costs) * 100,
+                'market_impact_pct': (total_impact / total_all_costs) * 100,
+                'slippage_pct': (total_slippage / total_all_costs) * 100,
+                'total_cost': total_all_costs
+            }
+        
+        return cost_summary
 
 

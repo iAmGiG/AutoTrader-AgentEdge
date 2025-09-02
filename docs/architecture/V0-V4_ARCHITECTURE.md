@@ -142,3 +142,30 @@ All sentiment agents (V1-V4) implement intelligent cache-first optimization with
 - **Academic Rigor**: Date filtering prevents contamination  
 - **Performance**: All agents now complete full-year backtesting within reasonable timeframes
 - **Status**: Ready for comprehensive V0-V4 comparative analysis
+
+## Next Generation Architecture (Under Development)
+
+### Key Insights from V0-V4 Analysis
+
+**Execution Cost Impact**: Recent analysis shows sentiment adjustments may increase trading costs without proportional alpha improvement, leading to architectural reconsideration.
+
+**Tool Specialization Need**: General LLMs (like VADER) are too primitive for financial sentiment, while LLMs excel at complex reasoning and orchestration.
+
+### Future Architecture: Specialized Models + LLM Orchestration
+
+#### Specialized Components
+- **TechAgent**: Pure MACD + technical indicators (no LLM overhead)
+- **SentimentAgent**: FinBERT-based financial sentiment (domain-specific accuracy)
+- **NewsAgent**: Efficient news filtering with financial context
+
+#### LLM Orchestration Layer  
+- **StrategyOrchestrator**: Complex decision making when signals conflict
+- **RiskManager**: Portfolio risk assessment and override decisions
+- **MarketRegimeDetector**: Advanced market condition analysis
+
+#### Development Philosophy
+- **Phase 1**: Simulation Validation (current focus)
+- **Phase 2**: Paper Trading Integration  
+- **Phase 3**: Production Considerations
+
+**Related Issues**: #273 (FinBERT Integration), #274 (Architecture Redesign), #275 (Sentiment ROI Analysis)

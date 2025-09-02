@@ -25,11 +25,10 @@ class UnifiedCacheManager:
         """Initialize unified cache manager."""
         self.base_dir = Path(base_dir)
         self.market_dir = self.base_dir / "market_data"
-        self.news_dir = self.base_dir / "news"
-        self.metadata_dir = self.base_dir / "metadata"
+        self.news_dir = self.base_dir / "news_filtered"  # Use consistent news_filtered directory
 
         # Create directories
-        for dir_path in [self.market_dir, self.news_dir, self.metadata_dir]:
+        for dir_path in [self.market_dir, self.news_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
 
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -563,7 +562,6 @@ class UnifiedCacheManager:
             "total_size_mb": round(total_size / (1024 * 1024), 2),
             "cache_dirs": {
                 "market_data": str(self.market_dir),
-                "news": str(self.news_dir),
-                "metadata": str(self.metadata_dir)
+                "news_filtered": str(self.news_dir)
             }
         }

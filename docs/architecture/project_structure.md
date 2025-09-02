@@ -19,7 +19,7 @@
     - `market/` - Market data tools
       - `polygon_market.py` - Primary market data (5 calls/min)
       - `alpha_vantage_market.py` - Fallback data (25 calls/day)
-    - `news/` - News sources
+    - `news/` - News sources (stores in news_filtered/)
       - `google_search_simple.py` - Main news interface
       - `google_search_api.py` - Google Custom Search implementation
   - **`processors/`** - Data processing utilities
@@ -85,7 +85,7 @@
 ### `.cache/` - Data Cache (not in repo)
 
 - `market_data/` - Cached market data files
-- `news/` - Cached news articles
+- `news_filtered/` - Cached news articles (filtered reliable sources)
 - `backtests/` - Historical backtest results
 
 ## Deprecated Code

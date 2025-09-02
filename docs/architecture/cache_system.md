@@ -24,10 +24,8 @@ Primary cache interface that handles:
 │   ├── AAPL_2024-01-01_2024-12-31_polygon_consolidated.json
 │   ├── VXX_2024-01-01_2024-12-31_alpha_vantage_consolidated.json
 │   └── backup_fragments/  # Old fragmented files
-├── news/
-│   └── monthly cache files
-└── metadata/
-    └── cache statistics
+└── news_filtered/
+    └── monthly cache files (filtered reliable sources)
 ```
 
 ## Key Features
