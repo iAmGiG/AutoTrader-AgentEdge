@@ -15,14 +15,15 @@ Research Foundation:
 - Equal weighting provides stable baseline before confidence weighting
 """
 
-import logging
 import json
-from typing import Dict, Any, List, Optional
-import pandas as pd
+import logging
+from typing import Any, Dict, Optional
 
 from .base_voting_strategy import (
-    BaseVotingStrategy, IndicatorSignal, VotingDecision, 
-    SignalStrength, MarketRegime
+    BaseVotingStrategy,
+    IndicatorSignal,
+    MarketRegime,
+    VotingDecision,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,9 @@ class BasicVotingStrategy(BaseVotingStrategy):
         
         logger.info(f"Initialized {name} with equal-weighted voting")
     
-    def calculate_indicator_signals(self, symbol: str, date: str, market_data: Dict[str, Any]) -> Dict[str, IndicatorSignal]:
+    def calculate_indicator_signals(
+        self, symbol: str, date: str, market_data: Dict[str, Any]
+    ) -> Dict[str, IndicatorSignal]:
         """
         Calculate all available indicator signals.
         
@@ -125,7 +128,9 @@ class BasicVotingStrategy(BaseVotingStrategy):
         # - Use volatility metrics for regime classification
         # - Integrate VXX data for volatility regime detection
     
-    def calculate_weighted_vote(self, signals: Dict[str, IndicatorSignal], regime: MarketRegime) -> VotingDecision:
+    def calculate_weighted_vote(
+        self, signals: Dict[str, IndicatorSignal], regime: MarketRegime
+    ) -> VotingDecision:
         """
         Calculate basic equal-weighted voting decision.
         
@@ -160,15 +165,22 @@ class BasicVotingStrategy(BaseVotingStrategy):
             decision.weighted_score = 0.0
             
         # Average confidence
-        decision.confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0.0
+        if confidence_scores:
+            decision.confidence = sum(confidence_scores) / len(confidence_scores)
+        else:
+            decision.confidence = 0.0
         
         # Voting decision based on thresholds
         if decision.weighted_score >= self.buy_threshold:
             decision.action = "BUY"
-            decision.reasoning = f"Bullish consensus: {decision.weighted_score:.1f} >= {self.buy_threshold}"
+            decision.reasoning = (
+                f"Bullish consensus: {decision.weighted_score:.1f} >= {self.buy_threshold}"
+            )
         elif decision.weighted_score <= self.sell_threshold:
             decision.action = "SELL"
-            decision.reasoning = f"Bearish consensus: {decision.weighted_score:.1f} <= {self.sell_threshold}"
+            decision.reasoning = (
+                f"Bearish consensus: {decision.weighted_score:.1f} <= {self.sell_threshold}"
+            )
         else:
             decision.action = "HOLD"
             decision.reasoning = f"Neutral zone: {decision.weighted_score:.1f} between thresholds"
@@ -180,13 +192,18 @@ class BasicVotingStrategy(BaseVotingStrategy):
         ])
         decision.reasoning += f" | Signals: {signal_summary}"
         
-        logger.info(f"Voting decision: {decision.action} (score: {decision.weighted_score:.1f}, confidence: {decision.confidence:.2f})")
+        logger.info(
+            f"Voting decision: {decision.action} "
+            f"(score: {decision.weighted_score:.1f}, confidence: {decision.confidence:.2f})"
+        )
         return decision
     
     # ==================== Future Indicator Methods ====================
     # These will be implemented in Issues #277-279
     
-    def get_rsi_signal(self, symbol: str, date: str, market_data: Dict[str, Any]) -> Optional[IndicatorSignal]:
+    def get_rsi_signal(
+        self, symbol: str, date: str, market_data: Dict[str, Any]
+    ) -> Optional[IndicatorSignal]:
         """
         Get RSI signal - Implementation in Issue #277
         
@@ -195,7 +212,9 @@ class BasicVotingStrategy(BaseVotingStrategy):
         # Placeholder for Issue #277 implementation
         return None
     
-    def get_bollinger_signal(self, symbol: str, date: str, market_data: Dict[str, Any]) -> Optional[IndicatorSignal]:
+    def get_bollinger_signal(
+        self, symbol: str, date: str, market_data: Dict[str, Any]
+    ) -> Optional[IndicatorSignal]:
         """
         Get Bollinger Bands signal - Implementation in Issue #278
         
@@ -204,7 +223,9 @@ class BasicVotingStrategy(BaseVotingStrategy):
         # Placeholder for Issue #278 implementation
         return None
         
-    def get_volume_signal(self, symbol: str, date: str, market_data: Dict[str, Any]) -> Optional[IndicatorSignal]:
+    def get_volume_signal(
+        self, symbol: str, date: str, market_data: Dict[str, Any]
+    ) -> Optional[IndicatorSignal]:
         """
         Get volume confirmation signal - Implementation in Issue #279
         
@@ -245,7 +266,10 @@ class BasicVotingStrategy(BaseVotingStrategy):
                 "test_date": date
             }
             
-            logger.info(f"Basic test completed: {result['action']} (confidence: {result['confidence']})")
+            logger.info(
+                f"Basic test completed: {result['action']} "
+                f"(confidence: {result['confidence']})"
+            )
             return result
             
         except Exception as e:
