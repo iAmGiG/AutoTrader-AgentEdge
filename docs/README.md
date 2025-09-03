@@ -14,6 +14,7 @@ This directory contains comprehensive documentation for RH2MAS - a practical tra
 - **Phase 4** - Production readiness (Issues #287-289)
 
 ### [architecture/](architecture/) - System Design
+- **[agent_transformation_guide.md](architecture/agent_transformation_guide.md)** - **🎯 V0-V4 to Multi-Indicator Evolution (NEW)**
 - **[new_voting_system_structure.md](architecture/new_voting_system_structure.md)** - Multi-indicator voting architecture (NEW)
 - **[cache_system.md](architecture/cache_system.md)** - ✅ **Cache system architecture (overhauled 2025-08-26)**
 
