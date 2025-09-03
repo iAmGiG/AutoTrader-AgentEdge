@@ -8,7 +8,7 @@
 
 The original V0-V4 system was a **linear sentiment research study**:
 
-```
+```bash
 Single Decision Path (V0-V4):
 Market Data → TechAgent → MACD Signal → StrategyAgent → Decision
                 ↓
