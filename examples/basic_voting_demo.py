@@ -14,10 +14,8 @@ Expected Output:
     - Performance metrics
 """
 
-import sys
-import os
-import json
 import logging
+import sys
 from pathlib import Path
 
 # Add project root to path
@@ -41,8 +39,8 @@ def main():
     
     try:
         # Import voting system
-        from src.voting import BasicVotingStrategy
         from src.agents.tech_agent import TechAgent
+        from src.voting import BasicVotingStrategy
         
         print("\n1. Initializing Basic Voting Strategy...")
         
@@ -59,7 +57,7 @@ def main():
         
         # Validate integration with existing system
         validation = voting_strategy.validate_integration()
-        print(f"   ✓ Integration Status:")
+        print("   ✓ Integration Status:")
         print(f"     - MACD Available: {validation['integration_health']['macd_available']}")
         print(f"     - Sentiment Agents: {validation['sentiment_agents']['total_count']}")
         print(f"     - Tools Loaded: {len(validation['tools_available'])}")
@@ -76,9 +74,11 @@ def main():
         print(f"     - Reasoning: {test_result.get('reasoning', 'N/A')}")
         
         if 'signal_breakdown' in test_result:
-            print(f"   ✓ Signal Breakdown:")
+            print("   ✓ Signal Breakdown:")
             for signal_name, signal_data in test_result['signal_breakdown'].items():
-                print(f"     - {signal_name}: {signal_data.get('strength', 0)} (conf: {signal_data.get('confidence', 0.0):.2f})")
+                strength = signal_data.get('strength', 0)
+                confidence = signal_data.get('confidence', 0.0)
+                print(f"     - {signal_name}: {strength} (conf: {confidence:.2f})")
         
         print("\n4. Performance Metrics...")
         

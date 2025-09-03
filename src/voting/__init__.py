@@ -20,11 +20,10 @@ Future Components (Issues #277-289):
 from .base_voting_strategy import (
     BaseVotingStrategy,
     IndicatorSignal,
-    VotingDecision,
+    MarketRegime,
     SignalStrength,
-    MarketRegime
+    VotingDecision,
 )
-
 from .basic_voting_strategy import BasicVotingStrategy
 
 __all__ = [

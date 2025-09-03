@@ -11,17 +11,17 @@ Key Features:
 - Integration with existing TechAgent and sentiment agents
 """
 
-import logging
 import json
+import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, Optional
+
 import pandas as pd
 
 from src.agents.base_agent import BaseAgent
-from src.tools.tools import get_tools_for_agent, STRATEGY_AGENT
-from src.tools.processors.indicator_library import macd
+from src.tools.tools import STRATEGY_AGENT, get_tools_for_agent
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,9 @@ class BaseVotingStrategy(BaseAgent, ABC):
     # ==================== Core Voting Methods ====================
         
     @abstractmethod
-    def calculate_indicator_signals(self, symbol: str, date: str, market_data: Dict[str, Any]) -> Dict[str, IndicatorSignal]:
+    def calculate_indicator_signals(
+        self, symbol: str, date: str, market_data: Dict[str, Any]
+    ) -> Dict[str, IndicatorSignal]:
         """
         Calculate all indicator signals for voting.
         Must be implemented by subclasses.
@@ -149,7 +151,9 @@ class BaseVotingStrategy(BaseAgent, ABC):
         pass
     
     @abstractmethod
-    def calculate_weighted_vote(self, signals: Dict[str, IndicatorSignal], regime: MarketRegime) -> VotingDecision:
+    def calculate_weighted_vote(
+        self, signals: Dict[str, IndicatorSignal], regime: MarketRegime
+    ) -> VotingDecision:
         """
         Calculate final weighted voting decision.
         Must be implemented by subclasses.
@@ -200,18 +204,19 @@ class BaseVotingStrategy(BaseAgent, ABC):
             logger.error(f"Error getting MACD signal: {e}")
             return None
     
-    def get_sentiment_signal(self, version: str, symbol: str, date: str) -> Optional[IndicatorSignal]:
+    def get_sentiment_signal(
+        self, version: str, symbol: str, date: str
+    ) -> Optional[IndicatorSignal]:
         """Get sentiment signal from V0-V4 agents"""
         if version not in self.sentiment_agents:
             logger.warning(f"No sentiment agent registered for V{version}")
             return None
             
         try:
-            sentiment_agent = self.sentiment_agents[version]
-            request = f"Analyze sentiment for {symbol} on {date}"
-            
             # This would integrate with existing sentiment agent patterns
             # Implementation will be completed as sentiment agents are integrated
+            # sentiment_agent = self.sentiment_agents[version]
+            # request = f"Analyze sentiment for {symbol} on {date}"
             
             # Placeholder for now - will be implemented with Issue #277+ 
             return IndicatorSignal(
@@ -268,7 +273,10 @@ class BaseVotingStrategy(BaseAgent, ABC):
             "total_decisions": len(decisions),
             "action_distribution": decisions['decision'].value_counts().to_dict(),
             "average_confidence": decisions['confidence'].mean(),
-            "regime_distribution": decisions['regime'].value_counts().to_dict() if 'regime' in decisions else {},
+            "regime_distribution": (
+                decisions['regime'].value_counts().to_dict() 
+                if 'regime' in decisions else {}
+            ),
             "recent_decisions": decisions.tail(10).to_dict('records')
         }
     
