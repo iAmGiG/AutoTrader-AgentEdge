@@ -20,7 +20,7 @@ warnings.filterwarnings('ignore')
 # Import indicator library
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from src.tools.processors.indicator_library import macd
+from ...core.indicators.indicator_library import macd
 
 
 class MACDParameterOptimizer:

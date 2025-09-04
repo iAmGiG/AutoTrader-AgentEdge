@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 from autogen_core.tools import FunctionTool
-from src.tools.cache.unified_cache import UnifiedCacheManager
+from ...cache.unified_cache import UnifiedCacheManager
 
 logger = logging.getLogger(__name__)
 

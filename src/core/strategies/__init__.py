@@ -1,7 +1,7 @@
 """
-Multi-Indicator Voting System for RH2MAS
+Multi-Indicator Strategy System for RH2MAS
 
-Core voting architecture implementing ensemble decision-making for trading strategies.
+Core strategy architecture implementing ensemble decision-making for trading.
 Transforms single MACD approach to multi-indicator voting system targeting 90% accuracy.
 
 Key Components:
@@ -9,12 +9,9 @@ Key Components:
 - BasicVotingStrategy: Equal-weighted voting implementation (Issue #250)
 
 Future Components (Issues #277-289):
-- RSI integration (#277)
-- Bollinger Bands (#278) 
-- Volume confirmation (#279)
-- Weighted voting (#281)
-- Market regime adaptation (#284)
-- Production readiness (#287-289)
+- WeightedVotingStrategy: Confidence-based weighted voting (#281)
+- AdaptiveStrategy: Market regime-based adaptation (#284)
+- Production-ready strategies with risk management (#287-289)
 """
 
 from .base_voting_strategy import (

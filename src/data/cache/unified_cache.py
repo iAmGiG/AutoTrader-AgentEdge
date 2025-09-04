@@ -83,14 +83,25 @@ class UnifiedCacheManager:
                 with open(cache_path, 'r') as f:
                     cache_data = json.load(f)
 
-                # Check expiration using date-aware logic
-                start_date = cache_data['metadata']['start_date']
-                end_date = cache_data['metadata']['end_date']
+                # Check expiration using date-aware logic - handle both formats
+                if 'metadata' in cache_data:
+                    # New format with nested metadata
+                    start_date = cache_data['metadata']['start_date']
+                    end_date = cache_data['metadata']['end_date']
+                    expires_at_key = 'expires_at' in cache_data['metadata']
+                    expires_at_value = cache_data['metadata'].get('expires_at') if expires_at_key else None
+                else:
+                    # Legacy format with flat structure
+                    start_date = cache_data.get('start_date')
+                    end_date = cache_data.get('end_date')
+                    expires_at_key = 'expires_at' in cache_data
+                    expires_at_value = cache_data.get('expires_at') if expires_at_key else None
+
                 expected_expiry = self._calculate_market_data_expiration(start_date, end_date)
 
                 # Use stored expiry if available, otherwise calculate
-                if 'expires_at' in cache_data['metadata']:
-                    expires_at = datetime.fromisoformat(cache_data['metadata']['expires_at'])
+                if expires_at_value:
+                    expires_at = datetime.fromisoformat(expires_at_value)
                 else:
                     expires_at = expected_expiry
 

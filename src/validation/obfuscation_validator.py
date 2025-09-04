@@ -20,7 +20,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.utils.data_obfuscation import DataObfuscator
-from src.agents.sentiment_v4 import SentimentV4Agent
+from src.deprecated.v0_v4_agents.sentiment_v4 import SentimentV4Agent
 from config.config_loader import ConfigLoader
 
 

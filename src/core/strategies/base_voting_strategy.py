@@ -20,8 +20,8 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from src.agents.base_agent import BaseAgent
-from src.tools.tools import STRATEGY_AGENT, get_tools_for_agent
+from ..agents.base_agent import BaseAgent
+from ...data.tools import STRATEGY_AGENT, get_tools_for_agent
 
 logger = logging.getLogger(__name__)
 

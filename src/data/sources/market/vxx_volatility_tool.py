@@ -18,7 +18,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
-from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
+from .alpha_vantage_market import AlphaVantageMarketTool
 
 logger = logging.getLogger(__name__)
 

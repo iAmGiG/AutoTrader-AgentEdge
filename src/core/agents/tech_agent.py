@@ -9,10 +9,10 @@ from typing import Any
 import json
 import pandas as pd
 
-from src.agents.base_agent import BaseAgent
+from .base_agent import BaseAgent
 from autogen_core.models import AssistantMessage, FunctionExecutionResultMessage
-from src.tools.tools import TECH_AGENT, get_tools_for_agent
-from src.tools.processors.indicator_library import macd
+from ...data.tools import TECH_AGENT, get_tools_for_agent
+from ..indicators.indicator_library import macd
 
 logger = logging.getLogger(__name__)
 

@@ -26,9 +26,9 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core._cancellation_token import CancellationToken
 
 # Import tool dictionary for dynamic tool access
-from src.tools.tools import ALL_TOOLS
+from ...data.tools import ALL_TOOLS
 # Import only functions that are still active (minimal architecture)
-from src.tools.tools import (
+from ...data.tools import (
     fetch_unified_market_data,
 )
 

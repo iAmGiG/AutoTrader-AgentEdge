@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple, Optional
 from datetime import datetime
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from src.tools.processors.indicator_library import macd
+from ...core.indicators.indicator_library import macd
 
 
 class MACDResultsOptimizer:
