@@ -89,7 +89,7 @@ class SimpleVotingOrchestrator:
             logger.error(f"Error getting market data for {symbol} on {date}: {e}")
             return None
             
-    def calculate_simple_macd(self, data: pd.DataFrame, fast=12, slow=26, signal=9) -> Dict[str, Any]:
+    def calculate_simple_macd(self, data: pd.DataFrame, fast=13, slow=34, signal=8) -> Dict[str, Any]:
         """
         Calculate MACD signal directly from price data.
         
