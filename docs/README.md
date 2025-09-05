@@ -1,72 +1,89 @@
 # RH2MAS Documentation
 
-This directory contains comprehensive documentation for RH2MAS - a practical trading platform with powerful backtesting capabilities and multi-agent architecture.
+This directory contains comprehensive documentation for RH2MAS - a validated trading platform with Fibonacci-based regime detection and proven voting strategies.
 
 ## Documentation Structure
 
-### 🗳️ Multi-Indicator Voting System (New Implementation)
-- **[research_papers.md](research_papers.md)** - Academic research foundation (90% accuracy with ensembles)
-- **[issue_relationship_map.md](issue_relationship_map.md)** - Dependencies, integration points, and development workflow
-- **Multi-Indicator Architecture**: MACD + RSI + Bollinger Bands + Volume + V0-V4 Sentiment
-- **Phase 1** - Basic voting foundation (Issues #250, #277-280)
-- **Phase 2** - Weighted confidence voting (Issues #281-283)
-- **Phase 3** - Market regime adaptation (Issues #284-286)
-- **Phase 4** - Production readiness (Issues #287-289)
+### 🎯 **Current Focus: Fibonacci Regime Detection** (Issues #297-#301)
+- **[fibonacci_regime/](fibonacci_regime/)** - Phase-based Fibonacci regime implementation guide
+- **[architecture/voting_system_validated.md](architecture/voting_system_validated.md)** - Validated 2-way voting architecture
+- **Phase 1**: Core Fibonacci Module with 34 EMA filtering (Issue #298)
+- **Phase 2**: CCI Filter Integration per Borden methodology (Issue #299) 
+- **Phase 3**: Symmetry Break Detection for trend changes (Issue #300)
+- **Phase 4**: Full modular integration with regime-adaptive sizing (Issue #301)
 
-### [architecture/](architecture/) - System Design
-- **[agent_transformation_guide.md](architecture/agent_transformation_guide.md)** - **🎯 V0-V4 to Multi-Indicator Evolution (NEW)**
-- **[new_voting_system_structure.md](architecture/new_voting_system_structure.md)** - Multi-indicator voting architecture (NEW)
-- **[cache_system.md](architecture/cache_system.md)** - ✅ **Cache system architecture (overhauled 2025-08-26)**
+### ✅ **Validated Systems Documentation**
 
-### [New System Documentation] (In Development)
-- **Multi-Indicator Implementation Guides** - Coming with Issue #250+ development
-- **Ensemble Voting Patterns** - Voting architecture documentation  
-- **Production Integration Guides** - Order management, risk controls
-- **Advanced Analytics** - Ensemble metrics and performance tracking
+#### **[voting_strategy/](voting_strategy/)** - Proven Voting System
+- **[validation_results.md](voting_strategy/validation_results.md)** - Experiment #293 validation proof
+- **[fibonacci_macd_optimization.md](voting_strategy/fibonacci_macd_optimization.md)** - 13/34/8 parameter validation
+- **[market_regime_insights.md](voting_strategy/market_regime_insights.md)** - Bull vs volatile market performance
+- **Configuration**: MACD (13/34/8) + RSI (14/30/70), 2-way consensus voting
 
-### [reference/](reference/) - Quick Reference
-- **[commands.md](reference/commands.md)** - Command reference and setup
-- **[terminology.md](reference/terminology.md)** - Glossary of terms and acronyms
+#### **[architecture/](architecture/)** - System Design  
+- **[modular_agent_system.md](architecture/modular_agent_system.md)** - Component-based enhancement architecture
+- **[cache_system.md](architecture/cache_system.md)** - Market data caching (90% performance boost)
+- **[phase_based_development.md](architecture/phase_based_development.md)** - Incremental enhancement methodology
+
+### 📊 **Performance Documentation**
+- **[results_analysis/](results_analysis/)** - Key findings and performance metrics
+- **Validated Performance**: 0.856 Sharpe, -10.10% max drawdown, 51.4% win rate
+- **Market Regime Insight**: Better performance in volatile (-14.6% gap) vs bull (-25.8% gap) markets
+- **Fibonacci Parameters**: 13/34/8 MACD optimal across 7 tech stocks
+
+### 🗂️ **Archived Documentation**
+
+#### **[archived/v0_v4_deprecated/](archived/v0_v4_deprecated/)** - Legacy System Documentation
+- **V0-V4 Sentiment Framework**: Original research direction (deprecated for complexity)
+- **Migration Guide**: How V0-V4 insights informed current voting system
+- **Historical Results**: Complete performance analysis of sentiment-based approach
+
+### 📚 **Reference Documentation**
+
+#### **[reference/](reference/)** - Quick Reference
+- **[commands.md](reference/commands.md)** - Updated command reference for voting + Fibonacci system
+- **[terminology.md](reference/terminology.md)** - Glossary including Fibonacci regime terms
 - **[troubleshooting.md](reference/troubleshooting.md)** - Common issues and solutions
-- **[news_limitations.md](reference/news_limitations.md)** - News data constraints
+- **[configuration.md](reference/configuration.md)** - Validated parameter settings
 
-### 📚 Deprecated Documentation (Reference Only)
-- **[deprecated/README.md](deprecated/README.md)** - Overview of deprecated V0-V4 system  
-- **[deprecated/V0-V4_ARCHITECTURE.md](deprecated/V0-V4_ARCHITECTURE.md)** - Complete original system architecture
-- **[deprecated/project_structure.md](deprecated/project_structure.md)** - V0-V4 repository organization
-- **[deprecated/sentiment_agent_v0_v4.md](deprecated/sentiment_agent_v0_v4.md)** - V0-V4 sentiment implementations
-- **[deprecated/advanced_metrics_system.md](deprecated/advanced_metrics_system.md)** - V0-V4 metrics analysis
-- **[deprecated/project_rebuild_summary.md](deprecated/project_rebuild_summary.md)** - V0-V4 data infrastructure rebuild
-- **[deprecated/backtesting_v0_v4/](deprecated/backtesting_v0_v4/)** - V0-V4 backtesting enhancements  
-- **[deprecated/implementation_v0_v4/](deprecated/implementation_v0_v4/)** - Complete V0-V4 implementation docs
-- **Note**: These files are preserved for reference but replaced by multi-indicator voting system
+## Quick Navigation
 
-## Quick Start
+### 🚀 **Getting Started**
+1. **[validation_results.md](voting_strategy/validation_results.md)** - Understand proven voting system
+2. **[fibonacci_regime/phase_1_guide.md](fibonacci_regime/phase_1_guide.md)** - Current development focus
+3. **[reference/commands.md](reference/commands.md)** - Run experiments and tests
 
-### Current Capabilities (Deprecated V0-V4 System)
-- **V0-V4 Testing**: `python scripts/runs/backtest.py --all-versions`
-- **Advanced Metrics**: `python scripts/analysis/generate_results_summary.py --advanced`
-- **Single Strategy**: `python scripts/runs/backtest.py --version V4 --symbol AAPL`
+### 📈 **Key Results**
+- **Voting Validation**: `docs/voting_strategy/validation_results.md`
+- **Fibonacci Parameters**: `docs/voting_strategy/fibonacci_macd_optimization.md`  
+- **Market Regime Analysis**: `docs/voting_strategy/market_regime_insights.md`
+- **Current Development**: `docs/fibonacci_regime/README.md`
 
-### New Multi-Indicator Voting System (In Development)
-- **Basic Ensemble**: Start with Issue #250 (Core Voting Architecture)
-- **RSI Integration**: Issue #277 (15% win rate improvement target)
-- **Weighted Voting**: Issue #281 (Sharpe ratio 0.71 → 1.43 target)
-- **Production Ready**: Issues #287-289 (Order management, risk controls)
+### 🛠️ **Development Guide**
+- **Architecture Overview**: `docs/architecture/modular_agent_system.md`
+- **Phase Development**: `docs/architecture/phase_based_development.md`
+- **Testing Protocols**: `docs/reference/testing_guide.md`
 
-### Enhanced Backtesting (Future Development)
-- **Leverage ETFs**: Issue #265 - 2x/3x ETF comparison framework
-- **Trading Filters**: Issue #264 - Volume, spread, event-based filters  
-- **Execution Costs**: Issue #267 - Slippage, commissions, market impact
-- **Optimization**: Issue #269 - Grid search, genetic algorithms
+## Current Status
 
-## Development Focus
+### ✅ **Completed & Validated**
+- **Voting Strategy**: MACD + RSI consensus outperforms single indicators
+- **Parameter Optimization**: Fibonacci 13/34/8 MACD proven across multiple tickers
+- **Market Regime Research**: Identified voting's volatile market advantage
+- **Modular Architecture**: Foundation ready for Fibonacci enhancements
 
-The project has pivoted from academic V0-V4 research to building a **production-ready multi-indicator ensemble trading system** targeting 90% accuracy. Current priorities:
+### 🔄 **Active Development**  
+- **Phase 1**: Core Fibonacci Module (34 EMA filtering)
+- **Goal**: Reduce bull market gap from -25.8% to <-15%
+- **Approach**: Modular enhancements without disrupting validated foundation
 
-1. **Phase 1A**: Multi-indicator voting system (Issues #250, #277-289) - **PRIORITY 1**
-2. **Phase 1B**: Enhanced backtesting improvements (#264, #267, #265) - Parallel development  
-3. **Phase 2**: Advanced analytics and optimization (#268, #269)
-4. **Phase 3**: Production trading capabilities (#258-263)
+### 📋 **Documentation Maintenance**
+- **Active**: All files in main directories reflect current development
+- **Archived**: Historical V0-V4 research preserved in `/archived/`
+- **Updated**: Command references, terminology, and troubleshooting current
 
-**Research Target**: Transform single MACD (~60% accuracy) to ensemble voting system (90% accuracy based on academic studies)
+---
+
+*Documentation reflects the strategic shift from sentiment complexity to validated voting + Fibonacci regime enhancement*
+
+*Last Updated: September 5, 2025 - Post-validation, Pre-Fibonacci Phase 1*

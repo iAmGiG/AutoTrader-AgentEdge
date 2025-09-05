@@ -1,0 +1,159 @@
+{
+  "timestamp": "2025-09-04T21:38:22.299238",
+  "standard_macd": [
+    12,
+    26,
+    9
+  ],
+  "optimized_macd": [
+    13,
+    34,
+    8
+  ],
+  "results": {
+    "standard": [
+      {
+        "symbol": "AAPL",
+        "macd_params": "12/26/9",
+        "total_return": 10.431555209431972,
+        "sharpe": 0.7385996026502647,
+        "max_drawdown": -10.037446916305473,
+        "num_trades": 141,
+        "buy_hold": 34.89549666020255,
+        "outperform": -24.463941450770577
+      },
+      {
+        "symbol": "MSFT",
+        "macd_params": "12/26/9",
+        "total_return": 5.682171527624068,
+        "sharpe": 0.47584754311138916,
+        "max_drawdown": -10.996508406997085,
+        "num_trades": 180,
+        "buy_hold": 13.651683878447972,
+        "outperform": -7.969512350823904
+      },
+      {
+        "symbol": "NVDA",
+        "macd_params": "12/26/9",
+        "total_return": 111.63665376748955,
+        "sharpe": 2.47182290420928,
+        "max_drawdown": -20.058302149359424,
+        "num_trades": 169,
+        "buy_hold": 178.79505065603718,
+        "outperform": -67.15839688854763
+      },
+      {
+        "symbol": "GOOGL",
+        "macd_params": "12/26/9",
+        "total_return": 21.738768429503143,
+        "sharpe": 1.2242451816026607,
+        "max_drawdown": -10.201878080403027,
+        "num_trades": 154,
+        "buy_hold": 37.00513859738006,
+        "outperform": -15.266370167876918
+      },
+      {
+        "symbol": "META",
+        "macd_params": "12/26/9",
+        "total_return": 44.86728668826691,
+        "sharpe": 1.5185109591922683,
+        "max_drawdown": -9.340079426136109,
+        "num_trades": 145,
+        "buy_hold": 69.08082820757167,
+        "outperform": -24.213541519304762
+      },
+      {
+        "symbol": "AMZN",
+        "macd_params": "12/26/9",
+        "total_return": 21.529241087421376,
+        "sharpe": 1.1449299713229584,
+        "max_drawdown": -8.198343705114693,
+        "num_trades": 163,
+        "buy_hold": 46.32828653371572,
+        "outperform": -24.799045446294343
+      },
+      {
+        "symbol": "TSLA",
+        "macd_params": "12/26/9",
+        "total_return": 56.64460523247495,
+        "sharpe": 1.2615295797945916,
+        "max_drawdown": -24.11765232811075,
+        "num_trades": 153,
+        "buy_hold": 62.563400692375815,
+        "outperform": -5.918795459900863
+      }
+    ],
+    "optimized": [
+      {
+        "symbol": "AAPL",
+        "macd_params": "13/34/8",
+        "total_return": 20.278001079437853,
+        "sharpe": 1.1490786054299325,
+        "max_drawdown": -10.524968818942963,
+        "num_trades": 149,
+        "buy_hold": 34.89549666020255,
+        "outperform": -14.617495580764693
+      },
+      {
+        "symbol": "MSFT",
+        "macd_params": "13/34/8",
+        "total_return": 5.242493973847577,
+        "sharpe": 0.44538922732344194,
+        "max_drawdown": -11.692621841731105,
+        "num_trades": 176,
+        "buy_hold": 13.651683878447972,
+        "outperform": -8.409189904600396
+      },
+      {
+        "symbol": "NVDA",
+        "macd_params": "13/34/8",
+        "total_return": 102.97741489249219,
+        "sharpe": 2.2647498747120207,
+        "max_drawdown": -21.837347680196057,
+        "num_trades": 164,
+        "buy_hold": 178.79505065603718,
+        "outperform": -75.81763576354498
+      },
+      {
+        "symbol": "GOOGL",
+        "macd_params": "13/34/8",
+        "total_return": 22.27866187036112,
+        "sharpe": 1.2079510822655228,
+        "max_drawdown": -10.43661155915561,
+        "num_trades": 157,
+        "buy_hold": 37.00513859738006,
+        "outperform": -14.726476727018941
+      },
+      {
+        "symbol": "META",
+        "macd_params": "13/34/8",
+        "total_return": 55.43599788956859,
+        "sharpe": 1.7355988117317103,
+        "max_drawdown": -9.76636103048235,
+        "num_trades": 178,
+        "buy_hold": 69.08082820757167,
+        "outperform": -13.64483031800308
+      },
+      {
+        "symbol": "AMZN",
+        "macd_params": "13/34/8",
+        "total_return": 18.931343349940345,
+        "sharpe": 1.0149071256374493,
+        "max_drawdown": -8.34686170891544,
+        "num_trades": 165,
+        "buy_hold": 46.32828653371572,
+        "outperform": -27.396943183775374
+      },
+      {
+        "symbol": "TSLA",
+        "macd_params": "13/34/8",
+        "total_return": 53.718514655382755,
+        "sharpe": 1.207981771556615,
+        "max_drawdown": -24.117537538465182,
+        "num_trades": 154,
+        "buy_hold": 62.563400692375815,
+        "outperform": -8.84488603699306
+      }
+    ]
+  }
+}

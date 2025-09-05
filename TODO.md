@@ -2,164 +2,141 @@
 
 **NOW TRACKED IN REPO** - Shared across environments for consistent development
 
-## 🎯 SINGLE FOCUS: One Working Voting Strategy
+## 🎯 CURRENT FOCUS: Fibonacci-Based Regime Detection System
 
-**Goal**: Prove the voting concept with ONE strategy that works on 2024 data.
+**Status**: ✅ Voting strategy VALIDATED - Moving to enhancement phase
 
-### Success Criteria
-- ✅ **Positive returns** over 2024 (+12.6% achieved)
-- ❌ **Better Sharpe ratio** than buy-and-hold (12.6% vs 34.9% buy-hold)
-- ✅ **At least 10 trades** executed (140 trades executed)
-- ✅ **Documented configuration** that worked
-- ✅ **AutoGen framework integration** complete
+### Voting Strategy Results ✅ COMPLETE
+- ✅ **Voting validated**: 0.856 Sharpe beats single MACD (0.841)
+- ✅ **Risk management**: -10.10% drawdown beats MACD (-10.58%)  
+- ✅ **Extended testing**: 36.6% return over 2024-2025 period
+- ✅ **Market regime insight**: Performs better in volatile (-14.6% gap) vs bull markets (-25.8% gap)
+- ✅ **Fibonacci MACD**: 13/34/8 parameters optimized across 7 tech stocks
 
-**RESULT**: Voting strategy operational but needs tuning to beat buy-and-hold.
-
----
-
-## Current Sprint: Minimal Voting Implementation
-
-### 🚀 Implementation Tasks
-
-#### 1. Create Minimal Voting Strategy ✅ COMPLETE
-- ✅ Use existing `src/strategies/basic_voting_strategy.py` as foundation
-- ✅ Integrate with `TechAgent` (MACD) as single voter
-- ✅ Add simple RSI as second voter (basic implementation, uses indicator_library.rsi())
-- ✅ 2-indicator voting: MACD + RSI
-
-#### 2. Create Voting Orchestrator ✅ COMPLETE
-- ✅ Simple coordinator that collects 2 signals (`SimpleVotingOrchestrator`)
-- ✅ Basic decision logic: both agree = strong signal, one agrees = weak signal
-- ✅ Position sizing: strong signal = full position, weak = half position
-
-#### 3. AutoGen Framework Integration ✅ COMPLETE
-- ✅ Import dependencies resolved (conditional imports for missing nltk)
-- ✅ Cache system compatibility (backward compatible with existing data)
-- ✅ Full AutoGen tooling operational for scalability
-
-#### 4. Validation ✅ COMPLETE
-- ✅ Compare against buy-and-hold AAPL 2024 (12.6% vs 34.9%)
-- ✅ Ensure at least 10 trades executed (140 trades)
-- ✅ Measure actual performance vs baseline (documented)
+**RESULT**: Foundation proven, now implementing Fibonacci regime enhancement from main chat collaboration (Issue #297)
 
 ---
 
-## Technical Architecture (Minimal)
+## 🔬 Phase-Based Implementation Roadmap
 
-### What We Built ✅
-- **SimpleVotingOrchestrator**: MACD + RSI voting coordinator
-- **SimpleRSI**: 14-period RSI using efficient indicator_library.rsi()
-- **AutoGen Integration**: Full framework compatibility achieved
-- **UnifiedCache**: Backward compatible with existing market data
+### Phase 1: Core Fibonacci Module ⏳ IN PROGRESS
+**GitHub Issue**: [#298](https://github.com/iAmGiG/RH2MAS/issues/298)
+**Goal**: Add 34 EMA filter without disrupting proven voting system
 
-### What We're NOT Building
-- No complex multi-indicator systems
-- No sentiment agents (V0-V4 deprecated)
-- No market regime detection
-- No weighted confidence scoring
-- No LLM orchestration
+#### Tasks:
+- 🔄 Create `FibonacciRegimeModule` class with Fibonacci periods [8, 13, 21, 34, 55, 89, 144, 233]
+- 🔄 Implement 34 EMA filter: Price > EMA34 for buys, < EMA34 for sells  
+- 🔄 Test integration with existing MACD (13/34/8) + RSI voting
+- 🔄 Backtest on AAPL/NVDA 2024-2025 data
 
-### File Structure ✅ REORGANIZED
-```
-src/
-├── core/                               # 🆕 Core trading components
-│   ├── agents/
-│   │   ├── simple_voting_orchestrator.py # ✅ MACD + RSI voting coordinator
-│   │   ├── tech_agent.py                 # ✅ MACD signals  
-│   │   └── base_agent.py                 # ✅ Common agent interface
-│   ├── indicators/                       # 🆕 All indicators consolidated
-│   │   ├── indicator_library.py          # ✅ Efficient calculations (MACD, RSI, etc.)
-│   │   ├── simple_rsi.py                 # ✅ RSI with IndicatorSignal interface
-│   │   └── base_indicator.py             # ✅ IndicatorSignal interface
-│   └── strategies/
-│       └── base_voting_strategy.py       # ✅ Voting strategy framework
-├── data/                               # 🆕 Flattened data access layer
-│   ├── cache/                            # ✅ Cache implementations
-│   ├── sources/market/                   # ✅ Market data sources (flattened)
-│   ├── sources/news/                     # ✅ News data sources
-│   └── processors/                       # ✅ Data processing utilities
-└── analysis/
-    └── optimization/                     # ✅ MACD parameter optimization
-```
+#### Success Target:
+- Reduce bull market gap from -25.8% to -20%
+- Maintain volatile market performance (-14.6% gap)
 
-**✅ Benefits**: Eliminated duplication, clearer separation of concerns, cross-platform compatibility
+### Phase 2: CCI Filter Integration ⏸️ PENDING  
+**GitHub Issue**: [#299](https://github.com/iAmGiG/RH2MAS/issues/299)
+**Goal**: Add Commodity Channel Index filters per Borden methodology
 
----
+#### Tasks:
+- ⏸️ Implement CCI calculation: (Typical Price - SMA) / (0.015 * Mean Deviation)
+- ⏸️ Create `CCIFilterModule` with 14 & 50-period filters
+- ⏸️ Integration: 14-period CCI > 0 for buys, < 0 for sells
+- ⏸️ Integration: 50-period CCI > 0 for buys, < 0 for sells
 
-## Development Environment
+#### Success Target:
+- Higher win rate: >55% (vs current 51.4%)
+- More strong consensus signals, fewer weak trades
 
-**Requirements**:
-- Python 3.10+ with conda environment  
-- Existing RH2MAS dependencies
-- 2024 AAPL data (should exist in cache)
+### Phase 3: Symmetry Break Detection ⏸️ PENDING
+**GitHub Issue**: [#300](https://github.com/iAmGiG/RH2MAS/issues/300)  
+**Goal**: Implement trend change prediction via symmetry analysis
 
-**Testing Commands**:
-```bash
-# Isolated test (bypasses complex dependencies)
-python tests/test_voting_isolated.py
+#### Key Insight:
+> "Important trend changes will most often be preceded by a break in symmetry" - Borden
 
-# Full AutoGen framework test (with reorganized imports)
-python tests/test_voting_autogen.py
-```
+#### Tasks:
+- ⏸️ Swing identification over 55-period lookback (Fibonacci)
+- ⏸️ Symmetry break detection: swing_ratio outside 0.8-1.2 range
+- ⏸️ Apply to stop-loss tightening and position sizing
 
-**Import Pattern** (post-reorganization):
-```python
-# New clean import structure
-from src.core.agents.simple_voting_orchestrator import SimpleVotingOrchestrator
-from src.core.indicators.simple_rsi import SimpleRSI
-from src.data.cache.unified_cache import UnifiedCacheManager
-```
+#### Success Target:
+- Improved drawdown control during trend reversals
+- Early warning for major market shifts
 
-**Actual Results**:
-- Total return: +12.6% ✅
-- Trades executed: 140 ✅  
-- Buy-hold comparison: 12.6% vs 34.9% ❌
-- AutoGen integration: Fully operational ✅
+### Phase 4: Full Integration & Testing ⏸️ PENDING
+**GitHub Issue**: [#301](https://github.com/iAmGiG/RH2MAS/issues/301)
+**Goal**: Complete modular system with regime-adaptive position sizing
+
+#### Modular Architecture:
+- `VotingModule` (existing MACD/RSI) ✅
+- `FibonacciRegimeModule` (34 EMA filtering)
+- `CCIFilterModule` (14/50 period filters)  
+- `SymmetryAnalyzer` (break detection)
+
+#### Regime-Adaptive Sizing:
+- **STRONG_BULL**: 120% position size, RSI oversold = 35
+- **STRONG_BEAR**: 60% position size, RSI oversold = 25
+- **TRANSITIONAL**: Standard parameters
+
+#### Final Success Targets:
+- **Bull market gap**: < -15% (vs current -25.8%)
+- **Volatile market**: Maintain -14.6% gap or better  
+- **Sharpe ratio**: > 0.9 (vs current 0.771)
+- **Max drawdown**: < -15% (vs current -23.4%)
 
 ---
 
-## Success Definition
+## 📊 Experiment Results Archive
 
-**ACTUAL RESULTS** from implemented voting strategy:
-```
-=== VOTING STRATEGY RESULTS ===
-Symbol: AAPL
-Period: 2024-01-01 to 2024-12-31
-Strategy Return: +12.6% ✅
-Buy-Hold Return: +34.9% ❌
-Total Trades: 140 ✅
-Trading Activity: 57.1%
-AutoGen Framework: Fully Operational ✅
+### ✅ Completed Experiments:
+1. **Experiment #293**: MACD vs Voting comparison → **Voting validated** (reports/voting_experiments/experiment_293_report.md)
+2. **MACD Optimization**: Found universal Fibonacci parameters 13/34/8 (reports/voting_experiments/macd_optimization/)
+3. **Ichimoku Testing**: Confirmed visual indicator only, adds noise to voting (reports/voting_experiments/ichimoku/)
+4. **Extended Period**: 2024-2025 testing revealed regime-dependent performance (reports/voting_experiments/extended_period/)
 
-🟡 PARTIAL SUCCESS: Strategy works, needs tuning to beat buy-and-hold
-```
-
-**Configuration Documented ✅**:
-- MACD: 12/26/9 with ±0.1 histogram thresholds
-- RSI: 14-period, 30/70 oversold/overbought thresholds  
-- Voting: Strong signal (both agree) = 1.0 size, Weak signal = 0.5 size
-- Cache: polygon_consolidated source, backward compatible format
-- Framework: Full AutoGen 0.7.x integration with resolved dependencies
+### 🔄 Active Development:
+- **Fibonacci Regime System** (Issue #297): Phase-based implementation
+- **Modular Architecture**: Add/remove components without disrupting core voting
 
 ---
 
-## Experiment Queue (Next Phase)
+## 🛠️ Technical Architecture
 
-**Current Status**: ✅ Voting strategy operational with AutoGen framework + Clean reorganized codebase
-**Performance Gap**: Strategy +12.6% vs Buy-Hold +34.9% (22.3% gap)
+### Current Proven Stack:
+- **Indicators**: MACD (13/34/8) + RSI (14/30/70) 
+- **Voting Logic**: 2-way consensus (strong/weak/hold)
+- **Position Sizing**: Dynamic based on signal strength
+- **Cache System**: UnifiedCacheManager with 90% performance boost
+- **Framework**: Full AutoGen integration for scalability
 
-**Systematic Experiments** (GitHub Issues Created):
-1. **🔬 [#293](https://github.com/iAmGiG/RH2MAS/issues/293)**: Voting vs Single Indicator (HIGH priority)
-2. **🔬 [#294](https://github.com/iAmGiG/RH2MAS/issues/294)**: Optimal vote thresholds (2/4 vs 3/4 vs 4/4)
-3. **🔬 [#295](https://github.com/iAmGiG/RH2MAS/issues/295)**: Confidence weighting vs equal votes
-4. **🔬 [#296](https://github.com/iAmGiG/RH2MAS/issues/296)**: Market regime detection & adaptation
-
-**Infrastructure Complete**: 
-- AutoGen scaling ready for production deployment
-- Reorganized codebase eliminates duplication
-- Cross-platform Linux/Windows compatibility
+### Proposed Enhancements:
+- **Fibonacci Regime Detection**: EMA + CCI filters
+- **Modular Agents**: Easy component addition/removal
+- **Adaptive Sizing**: Regime-aware position management
+- **Symmetry Analysis**: Trend change prediction
 
 ---
 
-*This TODO is now tracked in repo for cross-environment consistency*
-*Last Updated: September 4, 2025 - Voting Strategy Implementation Complete*
+## 📋 Development Workflow
+
+### Current Phase (1):
+1. **Implement** `FibonacciRegimeModule` class
+2. **Test** 34 EMA filtering on existing data
+3. **Compare** baseline vs Fib-enhanced performance
+4. **Document** results before Phase 2
+
+### Cross-Platform Support:
+- ✅ Windows/Linux compatibility maintained
+- ✅ Relative imports for portability  
+- ✅ Cache system cross-platform paths
+
+### Quality Gates:
+- All phases must improve or maintain current metrics
+- Modular design allows easy rollback if phase fails
+- A/B testing required for each component addition
+
+---
+
+*This TODO reflects the strategic shift from "prove voting works" to "enhance proven voting with Fibonacci regime detection"*
+
+*Last Updated: September 5, 2025 - Post-main chat collaboration*
