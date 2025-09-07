@@ -2,7 +2,9 @@
 
 **Current Status**: 🎯 **GitHub Issue #297 Phase 2 Ready**
 
-**Baseline Performance**: MACD(13/34/8) + RSI = 2.207 Sharpe ratio ✅
+**Baseline Performance**: MACD(13/34/8) + RSI = 2.207 Sharpe ratio ✅  
+**Target**: Beat savings account (2-5% APY), NOT buy-and-hold  
+**Purpose**: Manage human-initiated trades, NOT autonomous trading
 
 ---
 
@@ -27,7 +29,13 @@
 **Phase 2 Tasks**:
 - [ ] Implement CCI(14) and CCI(50) filters in fibonacci_regime_module.py
 - [ ] Test with same rigor as Phase 1 (backtest performance)
-- [ ] If no improvement, pivot to execution tools per main chat recommendation  
+- [ ] If no improvement, pivot to execution tools (Scanner/Manager) - LIKELY OUTCOME
+
+**More Valuable Direction (Trade Management Tools)**:
+- [ ] Order Scanner - Monitor and track human-initiated orders
+- [ ] Position Manager - Size and manage trades from external signals
+- [ ] Risk Controls - Stop losses, position limits, drawdown protection
+- [ ] Execution Optimizer - Better entries/exits for human trades  
 - [ ] Integration: CCI > 0 for buys, < 0 for sells (both periods)
 - [ ] Test CCI + Fibonacci combinations using proven framework
 - [ ] Multi-ticker validation of CCI-enhanced configurations
