@@ -3,7 +3,7 @@ from .base_agent import BaseAgent
 from .tech_agent import TechAgent
 
 # Current voting implementation  
-from .simple_voting_orchestrator import SimpleVotingOrchestrator
+from .macd_rsi_voting_agent import SimpleVotingOrchestrator
 
 # Legacy agents (may have dependencies on deprecated components)
 try:

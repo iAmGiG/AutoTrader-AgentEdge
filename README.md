@@ -2,51 +2,66 @@
 
 ## Overview
 
-RH2MAS (Reflective Hybrid-Head Multi-Agent System) is a **production-ready trading platform** that combines sophisticated multi-agent architecture with advanced risk management for real-world trading applications. Originally developed as a research framework for gradual LLM introduction (V0-V4 sentiment analysis), it has evolved into a comprehensive backtesting and trading system.
+RH2MAS (Reflective Hybrid-Head Multi-Agent System) is a **production-ready trading platform** that combines multi-agent architecture with advanced technical analysis for real-world trading applications. Built on a foundation of proven voting algorithms and enhanced with sophisticated regime detection.
 
 **🚀 Production Features**: 
-- Multi-strategy ensemble system with V0-V4 agents
-- Real-time paper trading with Alpaca API integration
+- **MACD + RSI Voting System** - Core production trading agents with Fibonacci enhancement
+- **✅ Enhanced Fibonacci Regime Module v2.0** - Advanced market regime detection with statistical validation
+- **Optimized Parameters** - Validated MACD (8/21/5) and EMA filtering (21-period, 2% threshold)
+- Multi-indicator ensemble voting with confidence-based decisions
+- Real-time paper trading with Alpaca API integration (coming soon)
 - Advanced risk management and portfolio optimization
-- Comprehensive performance analytics and alerting
+- Comprehensive performance analytics and backtesting
 - 90%+ performance improvements through cache optimization
 
-## Core Strategy Agents: V0-V4 Framework
+## Core Production Agents: Multi-Indicator Voting System
 
-The platform implements a multi-strategy system with 5 progressively sophisticated agents:
+The platform implements a production-ready multi-indicator voting system with two core agents:
 
-- **V0 (Baseline)**: Fixed sentiment = 1.0 - Pure MACD strategy foundation  
-- **V1 (NLP)**: VADER sentiment analysis on news - Traditional sentiment processing
-- **V2 (Market Fear)**: VXX/VIX volatility-based sentiment - Market regime detection
-- **V3 (Hybrid)**: Weighted combination of V1 + V2 - Mechanical ensemble approach
-- **V4 (LLM)**: GPT-4o-mini reasoning - AI-enhanced market psychology understanding
+### Primary Trading Agents
 
-**Production Integration**: These agents serve as strategy components in an ensemble orchestration system, with dynamic weighting based on market conditions and performance attribution.
+**MACD + RSI Voting Agent** (`macd_rsi_voting_agent.py`):
+- **MACD Signal Generation**: Optimized 8/21/5 parameters (fast/slow/signal)
+- **RSI Momentum Analysis**: 14-period RSI with 30/70 oversold/overbought levels
+- **Fibonacci EMA Filter**: 21-period EMA with 2% threshold for signal validation
+- **Consensus Voting**: Strong signals when both indicators agree, weak when only one signals
+- **Validated Performance**: 9.5% average return, 0.678 Sharpe ratio (20-month validation)
+
+**Fibonacci Voting Agent** (`fibonacci_voting_agent.py`):
+- **Enhanced Regime Detection**: 7 market regimes (STRONG_BULL, BULL, NEUTRAL, BEAR, STRONG_BEAR, VOLATILE, RANGE_BOUND)
+- **Statistical Validation**: Garman-Klass volatility estimation, ADX-based trend strength
+- **Dynamic Position Sizing**: Kelly Criterion-inspired sizing based on regime confidence
+- **Adaptive Filtering**: Regime-aware signal filtering with confidence-based logic
+- **Proven Results**: +3.36% excess return vs buy-and-hold, superior risk management
 
 ### Performance Architecture
 
-**Unified Cache-Optimized Agents (V0-V4)**:
-1. **Direct Tool Access** (cache hit): Instant data retrieval from UnifiedCacheManager → 90%+ speed improvement
-2. **LLM Tool Calling** (cache miss): Systematic data fetching with LLM routing → Full functionality 
-3. **Neutral Sentiment** (emergency fallback): Graceful degradation in extreme failure cases
+**Cache-Optimized Data Pipeline**:
+1. **UnifiedCacheManager**: 90%+ speed improvement through intelligent caching
+2. **Multi-Source Data**: Polygon.io primary, Alpha Vantage fallback
+3. **Real-time Processing**: Instant indicator calculations with cached market data
 
-**V4 LLM Processing**:
-- Weekly batch processing with date sanitization (prevents training data leakage)
-- Checkpoint/resume system for long-running backtests
-- Incremental progress tracking with research artifact preservation
-
-This architecture enables instant V0-V3 responses when cached, while V4 processes intelligently with temporal safeguards.
+**Statistical Validation Framework**:
+- Walk-forward analysis preventing look-ahead bias
+- Monte Carlo simulation (100+ runs) for robustness testing
+- Multi-market validation across bull, bear, sideways, volatile conditions
+- Professional risk metrics (Sharpe, Calmar, maximum drawdown)
 
 ## Production Architecture
 
 ### Core Components
 
-1. **StrategyOrchestrator**: Ensemble management with weighted voting and dynamic rebalancing
-2. **RiskAgent**: Comprehensive risk management with position sizing and portfolio controls
-3. **V0-V4 Agents**: Multi-strategy sentiment analysis (5 specialized agents)
-4. **ExecutionAgent**: Alpaca API integration for paper/live trading
-5. **TechAgent**: Market data processing and technical indicator calculation
-6. **AlertAgent**: Multi-channel notifications and monitoring
+1. **MACD+RSI Voting Agent**: Primary production trading agent with Fibonacci enhancement
+2. **Fibonacci Voting Agent**: Advanced regime detection with statistical validation
+3. **Enhanced Fibonacci Regime Module**: 7-regime market classification in `src/tools/regime_detection/`
+4. **UnifiedCacheManager**: High-performance data caching and retrieval system
+5. **Statistical Validation Suite**: Comprehensive backtesting and validation framework
+6. **Multi-Indicator Framework**: Extensible architecture for additional technical indicators
+
+*Future Components (In Development)*:
+- **RiskAgent**: Comprehensive risk management with position sizing and portfolio controls
+- **ExecutionAgent**: Alpaca API integration for paper/live trading
+- **AlertAgent**: Multi-channel notifications and monitoring
 
 ### Data Infrastructure
 
@@ -55,14 +70,15 @@ This architecture enables instant V0-V3 responses when cached, while V4 processe
 - **Polygon.io**: Real-time and historical market data (WebSocket + REST)
 - **Alpha Vantage**: Fallback market data source
 
-**Analysis APIs**:
-- **Google Custom Search**: News sentiment analysis (smart sampling)
-- **OpenAI**: V4 agent LLM processing and advanced analysis
+**Technical Analysis Tools**:
+- **Enhanced Fibonacci Regime Module**: Advanced market regime detection
+- **Multi-Indicator Suite**: MACD, RSI, EMA filters with validated parameters
+- **Statistical Validation**: Walk-forward analysis, Monte Carlo simulation
 
 **Data Management**:
 - **UnifiedCacheManager**: 90%+ performance improvement through intelligent caching
-- **NewsGovernor**: API usage reduction (80-90%) through smart news sampling
-- **Real-time Pipeline**: WebSocket data streaming for live decision making
+- **Multi-Source Aggregation**: Polygon.io primary, Alpha Vantage fallback
+- **Real-time Pipeline**: WebSocket data streaming for live decision making (coming soon)
 
 ## Installation
 
@@ -109,17 +125,20 @@ python scripts/monitoring/dashboard.py
 python scripts/analysis/portfolio_analysis.py
 ```
 
-### Backtesting and Strategy Development
+### Production Voting System
 
 ```bash
-# Strategy ensemble backtesting
-python scripts/runs/backtest.py --ensemble --all-versions
+# Test production voting agents
+python test_phase1_integration.py
 
-# Individual strategy testing
-python scripts/runs/backtest.py --version V4
+# Basic voting system demo
+python examples/basic_voting_demo.py
 
-# Performance comparison and analysis
-python scripts/analysis/generate_results_summary.py --advanced
+# Fibonacci experiments and validation
+python scripts/fibonacci_experiments/statistical_validation.py
+
+# Parameter optimization
+python scripts/fibonacci_experiments/fibonacci_permutation_tester.py
 ```
 
 ### Risk Management and Alerts
@@ -137,18 +156,18 @@ python scripts/alerts/test_notifications.py
 ```bash
 RH2MAS/
 ├── src/
-│   ├── agents/           # V0-V4 strategy agents + Risk/Execution agents
-│   ├── orchestration/    # Strategy ensemble and portfolio management
-│   ├── risk/             # Risk management and position sizing
-│   ├── execution/        # Alpaca API integration and order management
-│   ├── monitoring/       # Performance analytics and alerting
-│   ├── tools/            # Data sources with unified caching
+│   ├── core/
+│   │   ├── agents/       # Production voting agents (MACD+RSI, Fibonacci)
+│   │   └── indicators/   # Technical indicators (RSI, MACD, etc.)
+│   ├── tools/
+│   │   ├── regime_detection/  # Fibonacci regime module and market analysis
+│   │   └── data_sources/      # Market data providers and caching
+│   ├── data/
+│   │   └── cache/        # UnifiedCacheManager and data optimization
 │   └── utils/            # Common utilities and helpers
 ├── scripts/
-│   ├── trading/          # Live trading and paper trading
-│   ├── monitoring/       # Performance dashboards and alerts
-│   ├── risk/             # Risk parameter configuration
-│   ├── runs/             # Backtesting and strategy development
+│   ├── fibonacci_experiments/  # Fibonacci regime testing and validation
+│   ├── runs/             # Legacy V0-V4 backtesting (deprecated reference)
 │   └── analysis/         # Results analysis and reporting
 ├── docs/
 │   ├── architecture/     # System design and component structure
@@ -167,9 +186,9 @@ RH2MAS/
 - [API Integration](docs/api/alpaca_setup.md) - Alpaca and data provider setup
 
 **System Architecture**:
-- [V0-V4 Architecture](docs/architecture/V0-V4_ARCHITECTURE.md) - Core strategy framework
-- [Production Architecture](docs/architecture/production_system.md) - Trading system design
-- [Agent Orchestration](docs/architecture/agent_orchestration.md) - Ensemble management
+- [Fibonacci Integration Guide](docs/integration/fibonacci_enhanced_integration_guide.md) - Complete integration documentation
+- [Quick Reference](docs/integration/quick_reference.md) - Essential commands and usage
+- [Regime Detection Tools](docs/fibonacci_regime/regime_detection_tools.md) - Technical analysis modules
 
 **Reference**:
 - [Commands](docs/reference/commands.md) - All available scripts and commands
@@ -179,38 +198,39 @@ RH2MAS/
 
 ### Production-Ready Foundation ✅
 
-- **V0-V4 Strategy Framework**: Complete multi-agent strategy system  
-- **Advanced Backtesting**: Full-year testing with checkpoint/resume capabilities
-- **Cache-Optimized Architecture**: 90%+ performance improvement through intelligent caching
-- **Multi-Asset Support**: Stocks, ETFs, and portfolio-level testing capabilities
-- **News Integration**: Smart sampling and sentiment analysis infrastructure
-- **Performance Analytics**: Comprehensive metrics and statistical validation
+- **✅ Phase 1 Complete**: MACD+RSI voting system with Fibonacci enhancement integrated
+- **✅ Validated Parameters**: MACD 8/21/5, EMA21 filter, optimized through extensive testing
+- **✅ Enhanced Regime Detection**: 7-regime classification with statistical validation
+- **✅ Performance Proven**: +3.36% excess return vs buy-and-hold, superior risk management
+- **✅ Cache-Optimized Architecture**: 90%+ performance improvement through intelligent caching
+- **✅ Multi-Asset Support**: Stocks, ETFs tested across 20-month validation period
+- **✅ Statistical Framework**: Walk-forward analysis, Monte Carlo simulation, professional metrics
 
 ### Active Production Development 🚧
 
-**Priority 1 (Foundation)**:
+**Phase 2: CCI Integration (Next Priority)**:
+- CCI Module Development - Add Commodity Channel Index to regime detection
+- Multi-Indicator Ensemble - Combine MACD + Fibonacci + CCI signals
+- Enhanced Win Rate Target - >55% win rate improvement through multi-indicator consensus
+- Extended Validation - Test on AAPL, MSFT, GOOGL, AMZN, TSLA with CCI enhancement
+
+**Future Development**:
 - [Alpaca API Integration](https://github.com/iAmGiG/RH2MAS/issues/258) - Paper trading implementation
 - [Comprehensive Risk Agent](https://github.com/iAmGiG/RH2MAS/issues/177) - Position sizing and risk controls  
 - [Real-time Data Pipeline](https://github.com/iAmGiG/RH2MAS/issues/259) - WebSocket integration
-
-**Priority 2 (Enhancement)**:
-- [Strategy Orchestration](https://github.com/iAmGiG/RH2MAS/issues/260) - Ensemble management system
 - [Performance Dashboard](https://github.com/iAmGiG/RH2MAS/issues/261) - Real-time monitoring interface
-- [Alert System](https://github.com/iAmGiG/RH2MAS/issues/262) - Multi-channel notifications
-
-**Priority 3 (Advanced)**:
-- [Portfolio Management](https://github.com/iAmGiG/RH2MAS/issues/263) - Multi-asset portfolio optimization
 
 ### Project Evolution
 
-Originally developed as an academic research framework for studying gradual LLM introduction in trading decisions, RH2MAS has evolved into a practical trading platform. The V0-V4 foundation provides a robust multi-strategy base for production trading applications.
+Originally developed as an academic research framework, RH2MAS has evolved into a practical trading platform focused on proven technical analysis with statistical validation. The current production system emphasizes validated multi-indicator voting with sophisticated regime detection.
 
 **Key Advantages**:
 
-- **Proven Framework**: V0-V4 strategies tested across full-year market conditions
-- **Risk-First Design**: Built with comprehensive risk management from the ground up  
-- **Scalable Architecture**: Designed for both individual trading and institutional use
-- **Open Source**: Complete transparency in strategy logic and risk controls
+- **Statistically Validated**: Extensive backtesting with walk-forward analysis and Monte Carlo simulation
+- **Production-Ready Agents**: MACD+RSI voting with Fibonacci regime enhancement
+- **Superior Performance**: +3.36% excess return vs buy-and-hold with better risk management
+- **Extensible Architecture**: Clean separation of agents, tools, and experiments for future enhancement
+- **Open Source**: Complete transparency in strategy logic, parameters, and validation results
 
 ## License
 

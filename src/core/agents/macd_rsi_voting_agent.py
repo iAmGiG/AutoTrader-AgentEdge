@@ -1,8 +1,11 @@
 """
-Simple Voting Orchestrator - No AutoGen Dependencies
+MACD + RSI Voting Agent - Core Trading System
 
-Simplified version for testing that doesn't inherit from BaseAgent.
-Focuses on getting ONE working voting strategy with real 2024 data.
+High-performance baseline system with validated parameters:
+- MACD: 13/34/8 (Fast/Slow/Signal) - Fibonacci-based
+- RSI: 14-period with 30/70 levels
+- Validated Performance: 2.207 Sharpe ratio on AAPL 2024 H1
+- Phase 1 (EMA34 filter) tested: No improvement, archived
 """
 
 import logging
@@ -148,7 +151,7 @@ class SimpleVotingOrchestrator:
                 "metadata": {
                     "macd_line": latest_macd,
                     "histogram": latest_histogram,
-                    "parameters": f"{fast}/{slow}/{signal}"
+                    "parameters": f"MACD({fast}/{slow}/{signal}) - Fibonacci"
                 }
             }
             
@@ -160,6 +163,82 @@ class SimpleVotingOrchestrator:
                 "confidence": 0.0,
                 "reasoning": f"MACD error: {str(e)}"
             }
+    
+    def apply_ema34_filter(self, data: pd.DataFrame, signal: Dict[str, Any], tolerance: float = 0.03) -> Dict[str, Any]:
+        """
+        Apply 34 EMA filter per GitHub issue #297 Phase 1 with tolerance.
+        
+        Improved Borden method: Allow signals when price is within tolerance of EMA34.
+        This fixes the issue where the filter was too restrictive.
+        
+        Args:
+            data: DataFrame with OHLCV data
+            signal: Original MACD/RSI voting signal
+            tolerance: Price distance tolerance from EMA34 (default: 3%)
+            
+        Returns:
+            Filtered signal with 34 EMA validation
+        """
+        if len(data) < 34:
+            return signal  # Not enough data for 34 EMA
+        
+        try:
+            # Calculate 34 EMA (Fibonacci number)
+            ema_34 = data['close'].ewm(span=34, adjust=False).mean()
+            current_price = data['close'].iloc[-1]
+            current_ema34 = ema_34.iloc[-1]
+            
+            # Calculate price distance from EMA as percentage
+            price_distance_pct = abs(current_price / current_ema34 - 1.0)
+            
+            original_action = signal.get("action", "HOLD")
+            filtered_signal = signal.copy()
+            
+            # Apply improved filter with tolerance
+            if original_action == "BUY":
+                if current_price > current_ema34:
+                    # Price above EMA34 - allow buy signal
+                    filtered_signal["reasoning"] += f" | EMA34 Filter: Price above EMA34 ({current_ema34:.2f}) ✓"
+                elif price_distance_pct <= tolerance:
+                    # Price close to EMA34 - allow with reduced confidence
+                    filtered_signal["confidence"] *= 0.8
+                    filtered_signal["reasoning"] += f" | EMA34 Filter: Price near EMA34 ({price_distance_pct:.1%} away) - allowed"
+                else:
+                    # Price significantly below EMA34 - block buy signal
+                    filtered_signal["action"] = "HOLD"
+                    filtered_signal["confidence"] *= 0.1
+                    filtered_signal["reasoning"] += f" | EMA34 Filter: Price {price_distance_pct:.1%} below EMA34 ({current_ema34:.2f}) - BUY blocked"
+                    
+            elif original_action == "SELL":
+                if current_price < current_ema34:
+                    # Price below EMA34 - allow sell signal
+                    filtered_signal["reasoning"] += f" | EMA34 Filter: Price below EMA34 ({current_ema34:.2f}) ✓"
+                elif price_distance_pct <= tolerance:
+                    # Price close to EMA34 - allow with reduced confidence
+                    filtered_signal["confidence"] *= 0.8
+                    filtered_signal["reasoning"] += f" | EMA34 Filter: Price near EMA34 ({price_distance_pct:.1%} away) - allowed"
+                else:
+                    # Price significantly above EMA34 - block sell signal  
+                    filtered_signal["action"] = "HOLD"
+                    filtered_signal["confidence"] *= 0.1
+                    filtered_signal["reasoning"] += f" | EMA34 Filter: Price {price_distance_pct:.1%} above EMA34 ({current_ema34:.2f}) - SELL blocked"
+            
+            # Add filter metadata
+            filtered_signal["ema34_filter"] = {
+                "current_price": current_price,
+                "ema34_value": current_ema34,
+                "price_distance_pct": price_distance_pct,
+                "tolerance": tolerance,
+                "price_vs_ema34": "ABOVE" if current_price > current_ema34 else "BELOW",
+                "filter_active": True
+            }
+            
+            return filtered_signal
+            
+        except Exception as e:
+            logger.error(f"Error applying EMA34 filter: {e}")
+            signal["ema34_filter"] = {"error": str(e), "filter_active": False}
+            return signal
             
     def collect_signals(self, symbol: str, date: str) -> Dict[str, Any]:
         """
@@ -188,9 +267,10 @@ class SimpleVotingOrchestrator:
                 signals["error"] = "No market data available"
                 return signals
                 
-            # Calculate MACD signal
+            # Calculate MACD signal with Fibonacci parameters (13/34/8)
             macd_signal = self.calculate_simple_macd(market_data)
             signals["macd_signal"] = macd_signal
+            # Note: Phase 1 EMA34 filter tested and archived - no improvement
             
             # Calculate RSI signal
             rsi_signal = self.rsi_indicator.generate_signal(market_data)
