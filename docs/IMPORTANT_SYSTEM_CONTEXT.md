@@ -19,16 +19,17 @@
 - Our system: 8-12% annual return = SUCCESS
 - Risk-adjusted returns matter more than raw returns
 
-### System Architecture Intent
-1. **Human decides**: "I want to trade AAPL based on external signal"
-2. **System manages**: Entry timing, position sizing, exit strategy
-3. **Tools provide**: Risk management, regime awareness, execution optimization
+### System Architecture Intent (Simplified September 7, 2025)
+1. **Human decides**: "I want to trade based on external signals"
+2. **System provides**: Simple MACD+RSI voting for entry timing
+3. **System exits**: Fixed percentages (+8%/-5%) or momentum reversals
+4. **NO COMPLEXITY**: No Fibonacci, no percentiles, no ensembles
 
-### Development Priorities
-1. **Trade Management Tools** - Help execute human decisions better
-2. **Risk Controls** - Protect capital during trades
-3. **Execution Optimization** - Better entries/exits for human-initiated trades
-4. **NOT**: Autonomous signal generation
+### Development Priorities (Reality Check)
+1. **Keep It Simple** - Complex systems failed (17.7% win rate, -1.260 Sharpe)
+2. **Use What Works** - MACD+RSI voting = 0.856 Sharpe, 51.4% win rate
+3. **Fixed Exit Rules** - No adaptive/complex exit strategies
+4. **Test Reality** - Validate on 2024-2025 data with simple rules only
 
 ### For GitHub Issues
 When creating new issues, remember:

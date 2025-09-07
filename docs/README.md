@@ -1,24 +1,23 @@
 # RH2MAS Documentation
 
-This directory contains comprehensive documentation for RH2MAS - a validated trading platform with Fibonacci-based regime detection and proven voting strategies.
+This directory contains comprehensive documentation for RH2MAS - a simplified trading platform focused on proven MACD+RSI voting strategy.
 
 ## Documentation Structure
 
-### 🎯 **Current Focus: Fibonacci Regime Detection** (Issues #297-#301)
-- **[fibonacci_regime/](fibonacci_regime/)** - Phase-based Fibonacci regime implementation guide
-- **[architecture/voting_system_validated.md](architecture/voting_system_validated.md)** - Validated 2-way voting architecture
-- **Phase 1**: Core Fibonacci Module with 34 EMA filtering (Issue #298)
-- **Phase 2**: CCI Filter Integration per Borden methodology (Issue #299) 
-- **Phase 3**: Symmetry Break Detection for trend changes (Issue #300)
-- **Phase 4**: Full modular integration with regime-adaptive sizing (Issue #301)
+### 🎯 **Current Focus: Simplified Trading System** (September 7, 2025)
+- **Reality Check Complete**: Closed 16 complexity trap issues (#272, #278-286, #291, #297-301)
+- **Performance Validation**: Simple MACD+RSI voting = 0.856 Sharpe, 51.4% win rate
+- **Complex Systems Failed**: Percentile exits = 17.7% win rate, -1.260 Sharpe (TERRIBLE)
+- **Fibonacci Abandoned**: All Fibonacci levels (38.2%, 61.8%, 161.8%) proven ineffective
+- **Path Forward**: MACD(13/34/8) + RSI voting + fixed percentage exits ONLY
 
 ### ✅ **Validated Systems Documentation**
 
-#### **[voting_strategy/](voting_strategy/)** - Proven Voting System
+#### **[voting_strategy/](voting_strategy/)** - Simple Proven System (KEEP THIS)
 - **[validation_results.md](voting_strategy/validation_results.md)** - Experiment #293 validation proof
-- **[fibonacci_macd_optimization.md](voting_strategy/fibonacci_macd_optimization.md)** - 13/34/8 parameter validation
-- **[market_regime_insights.md](voting_strategy/market_regime_insights.md)** - Bull vs volatile market performance
 - **Configuration**: MACD (13/34/8) + RSI (14/30/70), 2-way consensus voting
+- **Performance**: 0.856 Sharpe, 12.62% return, 51.4% win rate, -10.10% max drawdown
+- **Exit Strategy**: Fixed percentages (+8% take profit, -5% stop loss) or momentum reversals
 
 #### **[architecture/](architecture/)** - System Design  
 - **[modular_agent_system.md](architecture/modular_agent_system.md)** - Component-based enhancement architecture
@@ -26,10 +25,10 @@ This directory contains comprehensive documentation for RH2MAS - a validated tra
 - **[phase_based_development.md](architecture/phase_based_development.md)** - Incremental enhancement methodology
 
 ### 📊 **Performance Documentation**
-- **[results_analysis/](results_analysis/)** - Key findings and performance metrics
-- **Validated Performance**: 0.856 Sharpe, -10.10% max drawdown, 51.4% win rate
-- **Market Regime Insight**: Better performance in volatile (-14.6% gap) vs bull (-25.8% gap) markets
-- **Fibonacci Parameters**: 13/34/8 MACD optimal across 7 tech stocks
+- **Simple System Performance**: 0.856 Sharpe, -10.10% max drawdown, 51.4% win rate
+- **Reality Check Results**: Complex systems FAILED (17.7% win rate vs 51.4% simple)
+- **Parameters**: MACD (13/34/8) + RSI (14/30/70) voting consensus
+- **Exit Rules**: Fixed +8%/-5% targets OR momentum reversal signals only
 
 ### 🗂️ **Archived Documentation**
 
@@ -38,11 +37,19 @@ This directory contains comprehensive documentation for RH2MAS - a validated tra
 - **Migration Guide**: How V0-V4 insights informed current voting system
 - **Historical Results**: Complete performance analysis of sentiment-based approach
 
+#### **Complexity Traps Archived (September 7, 2025)**
+- **Fibonacci Regime Detection**: Issues #297-301 closed (docs removed)
+- **Percentile Exit Systems**: Issues #291 archived - performed terribly
+- **Multi-Indicator Ensembles**: Issues #278-286 closed - unnecessary complexity
+- **Elliott Wave Patterns**: Issue #272 closed - more Fibonacci nonsense
+- **Scripts Archived**: `scripts/validation/archived_complexity_traps/`
+- **Code Archived**: `src/trading/archived_complexity_traps/`
+
 ### 📚 **Reference Documentation**
 
 #### **[reference/](reference/)** - Quick Reference
-- **[commands.md](reference/commands.md)** - Updated command reference for voting + Fibonacci system
-- **[terminology.md](reference/terminology.md)** - Glossary including Fibonacci regime terms
+- **[commands.md](reference/commands.md)** - Simple system commands and testing
+- **[terminology.md](reference/terminology.md)** - Simplified trading terminology (NO Fibonacci)
 - **[troubleshooting.md](reference/troubleshooting.md)** - Common issues and solutions
 - **[configuration.md](reference/configuration.md)** - Validated parameter settings
 
