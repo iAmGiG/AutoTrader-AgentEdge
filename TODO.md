@@ -31,18 +31,20 @@
 - ✅ **Better Risk Management**: -10.10% drawdown vs -10.58% single indicator
 - ✅ **Proven Approach**: Documented in GitHub Issue #293 comments
 
-**Simplified System Tasks**:
-- [ ] Keep MACD(13/34/8) + RSI voting for entry detection
-- [ ] Use fixed percentage targets for exits (e.g., +8% take profit, -5% stop loss)
-- [ ] OR use momentum reversal signals for exits (voting consensus shifts)
-- [ ] Test on 2024-2025 data with simple rules only
-- [ ] NO Fibonacci levels, NO percentile calculations, NO adaptive weights
+**Validated System Configuration** (September 7, 2025):
+- ✅ **MACD(13/34/8) + RSI(14/30/70)**: Proven parameters
+- ✅ **Balanced Exits (8% TP / 5% SL)**: Best expected value (+1.5% at 50% WR)
+- ✅ **Actual Performance**: 27.48% annual return, 1.288 Sharpe ratio
+- ❌ **AVOID Conservative (6%/8%)**: Negative EV at realistic win rates
+- 🎯 **Issue #303**: Configuration system for flexible parameters
 
-**Simple Exit Strategy Options**:
-- [ ] **Fixed Targets**: +8% take profit, -5% stop loss
-- [ ] **Momentum Reversal**: Exit when MACD+RSI voting flips from bullish to bearish
-- [ ] **Trailing Stop**: Simple percentage-based trailing stop (e.g., -3% from high)
-- [ ] Test all three approaches against buy & hold benchmark
+**Implementation Tasks**:
+- [x] Validate simple system works better than complex (CONFIRMED)
+- [x] Test different exit strategies (Balanced wins: 8%/5%)
+- [x] Clarify per-trade vs annual returns (27.48% annual from ~6 trades)
+- [ ] Implement configuration system (Issue #303)
+- [ ] Test on live 2024-2025 market data
+- [ ] NO Fibonacci, NO percentiles, NO complex calculations
 
 ---
 
@@ -89,10 +91,10 @@
 
 ## 🚀 IMMEDIATE NEXT STEPS
 
-1. **Test Simple System**: MACD(13/34/8) + RSI voting for entries only
-2. **Simple Exits**: Fixed percentages (+8%/-5%) OR momentum reversals  
-3. **NO Complexity**: No Fibonacci, no percentiles, no ensembles, no adaptive anything
-4. **Reality Check**: Test on 2024-2025 data to validate simplification works
+1. **Implement Configuration System**: Issue #303 - make parameters adjustable
+2. **Use Balanced Exits**: 8% take profit, 5% stop loss (best expected value)
+3. **Test on Live Data**: Validate 27.48% annual return on 2024-2025 market
+4. **NO Complexity**: Simple MACD+RSI voting with fixed exits ONLY
 
 ---
 

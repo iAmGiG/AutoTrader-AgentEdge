@@ -29,7 +29,7 @@ class TechnicalIndicators:
             'macd': macd,
             'signal': signal_line,
             'histogram': histogram
-        })
+        }, index=prices.index)
     
     @staticmethod
     def calculate_rsi(prices: pd.Series, period=14) -> pd.Series:

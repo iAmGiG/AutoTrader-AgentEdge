@@ -17,7 +17,8 @@ This directory contains comprehensive documentation for RH2MAS - a simplified tr
 - **[validation_results.md](voting_strategy/validation_results.md)** - Experiment #293 validation proof
 - **Configuration**: MACD (13/34/8) + RSI (14/30/70), 2-way consensus voting
 - **Performance**: 0.856 Sharpe, 12.62% return, 51.4% win rate, -10.10% max drawdown
-- **Exit Strategy**: Fixed percentages (+8% take profit, -5% stop loss) or momentum reversals
+- **Balanced Exits**: 8% TP / 5% SL = 27.48% annual return, 1.288 Sharpe
+- **Configuration System**: Issue #303 - flexible parameter management
 
 #### **[architecture/](architecture/)** - System Design  
 - **[modular_agent_system.md](architecture/modular_agent_system.md)** - Component-based enhancement architecture
