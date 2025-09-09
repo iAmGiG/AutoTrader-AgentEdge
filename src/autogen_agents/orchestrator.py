@@ -16,7 +16,7 @@ from src.autogen_agents.voter_agent import create_voter_agent
 from src.autogen_agents.risk_agent import create_risk_agent
 from src.autogen_agents.executor_agent import create_executor_agent
 from src.human_interface.decision_formatter import DecisionFormatter
-from config.trading_config import TradingConfig
+from config_defaults.trading_config import TradingConfig
 
 
 class TradingOrchestrator:
