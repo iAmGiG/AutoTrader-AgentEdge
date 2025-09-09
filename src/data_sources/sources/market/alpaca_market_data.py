@@ -1,0 +1,399 @@
+"""
+Alpaca Market Data API integration using official alpaca-py SDK.
+
+This implementation replaces the raw REST approach with the official SDK
+for better error handling, automatic pagination, and proper data parsing.
+"""
+
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
+import pandas as pd
+import logging
+
+try:
+    from alpaca.data import StockHistoricalDataClient
+    from alpaca.data.requests import (
+        StockBarsRequest, StockLatestQuoteRequest, StockLatestTradeRequest,
+        StockSnapshotRequest
+    )
+    from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+    from alpaca.data.models import Bar, Quote, Trade, Snapshot
+except ImportError:
+    raise ImportError(
+        "alpaca-py SDK is required. Install with: pip install alpaca-py"
+    )
+
+from config.config_loader import ConfigLoader
+from src.data_sources.cache.unified_cache import UnifiedCacheManager
+
+
+logger = logging.getLogger(__name__)
+
+
+class AlpacaMarketData:
+    """
+    Alpaca market data manager using official alpaca-py SDK.
+    
+    Provides unified market data retrieval with intelligent caching,
+    proper error handling, and automatic pagination via the official SDK.
+    """
+    
+    # Map string timeframes to Alpaca TimeFrame objects
+    TIMEFRAME_MAP = {
+        "1Min": TimeFrame(1, TimeFrameUnit.Minute),
+        "5Min": TimeFrame(5, TimeFrameUnit.Minute),
+        "15Min": TimeFrame(15, TimeFrameUnit.Minute),
+        "30Min": TimeFrame(30, TimeFrameUnit.Minute),
+        "1Hour": TimeFrame(1, TimeFrameUnit.Hour),
+        "1Day": TimeFrame(1, TimeFrameUnit.Day),
+    }
+    
+    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
+        """
+        Initialize with official Alpaca SDK.
+        
+        Args:
+            cache_manager: Optional cache manager (creates new if None)
+        """
+        config_loader = ConfigLoader()
+        api_key = config_loader.get('ALPACA_PAPER_API_KEY')
+        secret_key = config_loader.get('ALPHACA_PAPER_SECRET')  # Note: typo in config key
+        
+        if not api_key or not secret_key:
+            raise ValueError(
+                "Alpaca API credentials required. Check ALPACA_PAPER_API_KEY "
+                "and ALPHACA_PAPER_SECRET in config.json"
+            )
+        
+        # Initialize the official SDK client
+        self.client = StockHistoricalDataClient(
+            api_key=api_key,
+            secret_key=secret_key,
+            raw_data=False  # Get parsed models instead of raw dicts
+        )
+        
+        self.cache = cache_manager or UnifiedCacheManager()
+        logger.info("Alpaca market data manager initialized with official SDK")
+    
+    def get_bars(
+        self,
+        symbols: List[str],
+        start: str,  # YYYY-MM-DD format
+        end: str,
+        timeframe: str = "1Day",
+        adjustment: str = "all",
+        feed: str = "iex",  # Paper accounts must use IEX
+        use_cache: bool = True
+    ) -> pd.DataFrame:
+        """
+        Fetch OHLCV bars using official SDK.
+        
+        Args:
+            symbols: List of stock symbols
+            start: Start date (YYYY-MM-DD)
+            end: End date (YYYY-MM-DD)  
+            timeframe: Bar timeframe (1Min, 5Min, 15Min, 30Min, 1Hour, 1Day)
+            adjustment: Adjustment type (raw, split, dividend, all)
+            feed: Data feed (iex for paper accounts, sip requires subscription)
+            use_cache: Whether to use cache
+            
+        Returns:
+            DataFrame with OHLCV data
+            
+        Note: Paper accounts should use feed='iex' for free data.
+        Using feed='sip' requires a subscription and won't work with paper accounts.
+        """
+        # Check cache first
+        cached_data = []
+        symbols_to_fetch = []
+        
+        if use_cache:
+            for symbol in symbols:
+                cached = self.cache.get_market_data(symbol, start, end, "alpaca")
+                
+                if cached is not None and not cached.empty:
+                    # Ensure required columns exist
+                    if 'symbol' not in cached.columns:
+                        cached['symbol'] = symbol
+                    if 'source' not in cached.columns:
+                        cached['source'] = 'alpaca'
+                    cached_data.append(cached)
+                    logger.debug(f"Cache hit for {symbol}")
+                else:
+                    symbols_to_fetch.append(symbol)
+        else:
+            symbols_to_fetch = symbols
+        
+        # Fetch missing data using SDK
+        fetched_data = []
+        if symbols_to_fetch:
+            try:
+                # Convert string dates to datetime
+                start_dt = pd.to_datetime(start)
+                end_dt = pd.to_datetime(end)
+                
+                # Get TimeFrame object
+                tf = self.TIMEFRAME_MAP.get(timeframe)
+                if not tf:
+                    raise ValueError(f"Invalid timeframe: {timeframe}. Must be one of: {list(self.TIMEFRAME_MAP.keys())}")
+                
+                # Create request using SDK
+                request_params = StockBarsRequest(
+                    symbol_or_symbols=symbols_to_fetch,
+                    timeframe=tf,
+                    start=start_dt,
+                    end=end_dt,
+                    adjustment=adjustment,
+                    feed=feed,  # Use 'iex' for paper accounts
+                    asof=None,
+                    page_limit=10000
+                )
+                
+                # Fetch bars using SDK - automatically handles pagination
+                logger.info(f"Fetching bars for {symbols_to_fetch} using SDK...")
+                bars_response = self.client.get_stock_bars(request_params)
+                
+                # Convert to DataFrame
+                if bars_response and bars_response.data:
+                    # The SDK returns a BarSet with .data attribute containing symbol -> list of Bar objects
+                    all_bars = []
+                    for symbol, bars_list in bars_response.data.items():
+                        for bar in bars_list:
+                            # Bar object has attributes: timestamp, open, high, low, close, volume, trade_count, vwap
+                            bar_dict = {
+                                'timestamp': bar.timestamp,
+                                'symbol': symbol,
+                                'open': float(bar.open),
+                                'high': float(bar.high),
+                                'low': float(bar.low),
+                                'close': float(bar.close),
+                                'volume': int(bar.volume) if bar.volume else 0,
+                                'vwap': float(bar.vwap) if bar.vwap else float(bar.close),
+                                'trade_count': int(bar.trade_count) if bar.trade_count else 0,
+                                'source': 'alpaca'
+                            }
+                            all_bars.append(bar_dict)
+                    
+                    if all_bars:
+                        df = pd.DataFrame(all_bars)
+                        df['date'] = df['timestamp']
+                        df = df.set_index('timestamp')
+                        df = df.sort_index()
+                        
+                        # Cache individual symbols
+                        if use_cache:
+                            for symbol in symbols_to_fetch:
+                                symbol_data = df[df['symbol'] == symbol].copy()
+                                if not symbol_data.empty:
+                                    self.cache.set_market_data(
+                                        symbol, start, end, "alpaca", symbol_data
+                                    )
+                        
+                        fetched_data.append(df)
+                        logger.info(
+                            f"Fetched {len(df)} bars for {len(symbols_to_fetch)} symbols from Alpaca"
+                        )
+                
+            except Exception as e:
+                logger.error(f"Failed to fetch bars from Alpaca: {e}")
+                if not cached_data:
+                    raise
+        
+        # Combine all data
+        all_data = cached_data + fetched_data
+        
+        if not all_data:
+            return pd.DataFrame()
+        
+        combined_df = pd.concat(all_data, ignore_index=False)
+        combined_df = combined_df.sort_index()
+        combined_df = combined_df.drop_duplicates()
+        
+        return combined_df
+    
+    def get_latest_quote(self, symbol: str) -> Dict[str, Any]:
+        """
+        Get latest quote using SDK.
+        
+        Args:
+            symbol: Stock symbol
+            
+        Returns:
+            Dictionary with latest quote data
+        """
+        try:
+            request = StockLatestQuoteRequest(
+                symbol_or_symbols=symbol,
+                feed='iex'  # Use IEX for paper accounts
+            )
+            quote_response = self.client.get_stock_latest_quote(request)
+            
+            if symbol in quote_response:
+                quote = quote_response[symbol]
+                return {
+                    'symbol': symbol,
+                    'quote': {
+                        'bp': float(quote.bid_price) if quote.bid_price else None,
+                        'bs': int(quote.bid_size) if quote.bid_size else None,
+                        'ap': float(quote.ask_price) if quote.ask_price else None,
+                        'as': int(quote.ask_size) if quote.ask_size else None,
+                        't': quote.timestamp.isoformat() if quote.timestamp else None
+                    }
+                }
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Failed to get latest quote for {symbol}: {e}")
+            return {}
+    
+    def get_latest_trade(self, symbol: str) -> Dict[str, Any]:
+        """
+        Get latest trade using SDK.
+        
+        Args:
+            symbol: Stock symbol
+            
+        Returns:
+            Dictionary with latest trade data
+        """
+        try:
+            request = StockLatestTradeRequest(
+                symbol_or_symbols=symbol,
+                feed='iex'  # Use IEX for paper accounts
+            )
+            trade_response = self.client.get_stock_latest_trade(request)
+            
+            if symbol in trade_response:
+                trade = trade_response[symbol]
+                return {
+                    'symbol': symbol,
+                    'trade': {
+                        'p': float(trade.price) if trade.price else None,
+                        's': int(trade.size) if trade.size else None,
+                        't': trade.timestamp.isoformat() if trade.timestamp else None
+                    }
+                }
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Failed to get latest trade for {symbol}: {e}")
+            return {}
+    
+    def get_snapshot(self, symbols: List[str]) -> Dict[str, Any]:
+        """
+        Get snapshot using SDK.
+        
+        Args:
+            symbols: List of stock symbols
+            
+        Returns:
+            Dictionary with snapshot data for each symbol
+        """
+        try:
+            request = StockSnapshotRequest(
+                symbol_or_symbols=symbols,
+                feed='iex'  # Use IEX for paper accounts
+            )
+            snapshots = self.client.get_stock_snapshot(request)
+            
+            result = {}
+            for symbol, snapshot in snapshots.items():
+                result[symbol] = {
+                    'latest_trade': {
+                        'p': float(snapshot.latest_trade.price) if snapshot.latest_trade and snapshot.latest_trade.price else None,
+                        's': int(snapshot.latest_trade.size) if snapshot.latest_trade and snapshot.latest_trade.size else None,
+                        't': snapshot.latest_trade.timestamp.isoformat() if snapshot.latest_trade and snapshot.latest_trade.timestamp else None
+                    } if snapshot.latest_trade else None,
+                    'latest_quote': {
+                        'bp': float(snapshot.latest_quote.bid_price) if snapshot.latest_quote and snapshot.latest_quote.bid_price else None,
+                        'ap': float(snapshot.latest_quote.ask_price) if snapshot.latest_quote and snapshot.latest_quote.ask_price else None,
+                        'bs': int(snapshot.latest_quote.bid_size) if snapshot.latest_quote and snapshot.latest_quote.bid_size else None,
+                        'as': int(snapshot.latest_quote.ask_size) if snapshot.latest_quote and snapshot.latest_quote.ask_size else None,
+                    } if snapshot.latest_quote else None,
+                    'minute_bar': {
+                        'o': float(snapshot.minute_bar.open) if snapshot.minute_bar and snapshot.minute_bar.open else None,
+                        'h': float(snapshot.minute_bar.high) if snapshot.minute_bar and snapshot.minute_bar.high else None,
+                        'l': float(snapshot.minute_bar.low) if snapshot.minute_bar and snapshot.minute_bar.low else None,
+                        'c': float(snapshot.minute_bar.close) if snapshot.minute_bar and snapshot.minute_bar.close else None,
+                        'v': int(snapshot.minute_bar.volume) if snapshot.minute_bar and snapshot.minute_bar.volume else None,
+                    } if snapshot.minute_bar else None,
+                    'daily_bar': {
+                        'o': float(snapshot.daily_bar.open) if snapshot.daily_bar and snapshot.daily_bar.open else None,
+                        'h': float(snapshot.daily_bar.high) if snapshot.daily_bar and snapshot.daily_bar.high else None,
+                        'l': float(snapshot.daily_bar.low) if snapshot.daily_bar and snapshot.daily_bar.low else None,
+                        'c': float(snapshot.daily_bar.close) if snapshot.daily_bar and snapshot.daily_bar.close else None,
+                        'v': int(snapshot.daily_bar.volume) if snapshot.daily_bar and snapshot.daily_bar.volume else None,
+                    } if snapshot.daily_bar else None
+                }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get snapshot for {symbols}: {e}")
+            return {}
+
+
+# Tool wrapper for AutoGen integration
+def create_alpaca_market_data_tool(
+    cache_manager: Optional[UnifiedCacheManager] = None
+) -> 'AlpacaMarketDataTool':
+    """
+    Create Alpaca market data tool using SDK for AutoGen agents.
+    
+    Args:
+        cache_manager: Optional cache manager instance
+        
+    Returns:
+        AlpacaMarketDataTool instance
+    """
+    return AlpacaMarketDataTool(cache_manager)
+
+
+class AlpacaMarketDataTool:
+    """Tool wrapper for Alpaca market data access by AutoGen agents using SDK."""
+    
+    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
+        """Initialize the Alpaca market data tool with SDK."""
+        self.alpaca_client = AlpacaMarketData(cache_manager)
+        self.name = "alpaca_market_data"
+        self.description = (
+            "Fetch real-time and historical market data (bars, quotes, trades, snapshots) "
+            "from Alpaca Markets using official SDK with intelligent caching"
+        )
+    
+    def get_bars(
+        self,
+        symbols: List[str],
+        start: str,
+        end: str,
+        timeframe: str = "1Day",
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Get OHLCV bars for symbols using SDK."""
+        df = self.alpaca_client.get_bars(symbols, start, end, timeframe, **kwargs)
+        return {
+            'bars': df.to_dict(orient='records') if not df.empty else [],
+            'symbols': symbols,
+            'timeframe': timeframe,
+            'start': start,
+            'end': end,
+            'count': len(df)
+        }
+    
+    def get_latest_quotes(self, symbols: List[str]) -> Dict[str, Any]:
+        """Get latest quotes for symbols using SDK."""
+        quotes = {}
+        for symbol in symbols:
+            quotes[symbol] = self.alpaca_client.get_latest_quote(symbol)
+        return quotes
+    
+    def get_latest_trades(self, symbols: List[str]) -> Dict[str, Any]:
+        """Get latest trades for symbols using SDK."""
+        trades = {}
+        for symbol in symbols:
+            trades[symbol] = self.alpaca_client.get_latest_trade(symbol)
+        return trades
+    
+    def get_snapshots(self, symbols: List[str]) -> Dict[str, Any]:
+        """Get snapshots for symbols using SDK."""
+        return self.alpaca_client.get_snapshot(symbols)
