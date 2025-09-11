@@ -57,12 +57,12 @@ class AlpacaMarketData:
         """
         config_loader = ConfigLoader()
         api_key = config_loader.get('ALPACA_PAPER_API_KEY')
-        secret_key = config_loader.get('ALPHACA_PAPER_SECRET')  # Note: typo in config key
+        secret_key = config_loader.get('ALPACA_PAPER_SECRET')
         
         if not api_key or not secret_key:
             raise ValueError(
                 "Alpaca API credentials required. Check ALPACA_PAPER_API_KEY "
-                "and ALPHACA_PAPER_SECRET in config.json"
+                "and ALPACA_PAPER_SECRET in config.json"
             )
         
         # Initialize the official SDK client

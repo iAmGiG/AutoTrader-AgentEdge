@@ -144,10 +144,19 @@ pytest.ini
 **/test_*.py
 enhanced_sentiment_comparison_*.json
 
-# Legacy test files
+# Legacy test files  
 test_*.py
 sentiment_agent_cli.py
 sentiment_agent_cli_improved.py
+
+# Demo files at root (temporary/development only)
+demo_*.py
+*_demo.py
+test_critical_fixes.py
+test_core_fixes.py
+test_api_methods.py
+test_market_awareness.py
+test_trade_cycle_manual.py
 
 # Deprecated agent versions
 src/agents/deprecated/

@@ -1,73 +1,103 @@
 # Reports Organization
 
-This directory contains all experimental results and analysis reports for RH2MAS.
+This directory contains system reports and analysis results for the unified RH2MAS trading platform.
 
 ## Directory Structure
 
+### `/scans/` - Market Analysis Reports
+Real-time market scanning and technical analysis results from the unified system.
+
+**Current Scan Types:**
+- **Market Scanner**: Opportunity detection across watchlist symbols
+- **Technical Scanner**: MACD+RSI analysis with actionable insights
+- **Position Scanner**: Current position analysis and exit recommendations
+
+**Report Format**: `YYYYMMDD_HHMM_scan_type.md`
+
+### `/daily/` - Daily Trading Reports  
+Automated daily reports from the trading cycle system.
+
+**Report Types:**
+- **Morning Routine**: Position reconciliation, stop adjustments, account status
+- **Evening Review**: EOD position analysis, P&L summary, next day preparation
+- **Risk Assessment**: Portfolio exposure, concentration limits, stop loss coverage
+
+**Report Format**: `YYYYMMDD_HHMM_routine_type.md`
+
+### `/performance/` - Trading Performance Analysis
+Backtesting results and live trading performance tracking.
+
+**Analysis Types:**
+- **Monthly Performance**: P&L analysis, Sharpe ratio, win rate statistics
+- **Strategy Validation**: Signal accuracy, entry/exit timing analysis  
+- **Risk Metrics**: Drawdown analysis, position sizing effectiveness
+
 ### `/active/` - Current Development Results
-Results from ongoing Fibonacci regime detection development.
+Historical results from strategy development and validation.
 
 #### `/active/voting_strategy/`
-**Core validated voting system results**
-- `experiment_293_validation/` - MACD vs Voting comparison (✅ VOTING VALIDATED)
-- `macd_optimization/` - Parameter optimization across tech stocks (13/34/8 optimal)
-- `extended_period_analysis/` - 2024-2025 bull vs volatile market performance
-- `indicator_comparisons/` - Ichimoku vs other indicators
+**Core validated voting system results** (Archive - system now implemented)
+- `experiment_293_validation/` - ✅ MACD vs Voting comparison (0.856 Sharpe validated)
+- `macd_optimization/` - Parameter optimization (13/34/8 proven optimal)
+- `extended_period_analysis/` - 2024-2025 performance validation
 
-#### `/active/fibonacci_regime/`
-**Fibonacci regime detection development** (Issues #297-#301)
-- `phase_1_results/` - Core Fibonacci Module (34 EMA filtering)
-- `phase_2_results/` - CCI Filter Integration  
-- `phase_3_results/` - Symmetry Break Detection
-- `phase_4_results/` - Full Integration Testing
+### `/archived/` - Historical Development
+Preserved results from previous system iterations and experiments.
 
-### `/archived/` - Historical and Deprecated Results
-Results from completed or deprecated research.
+### `/legacy/` - Pre-Unified System Reports  
+Reports from the old fragmented system architecture (pre-September 10, 2025).
 
-#### `/archived/v0_v4_deprecated/`
-**Legacy V0-V4 sentiment framework** (moved from active development)
-- Original sentiment-based trading research
-- Complexity vs ROI analysis
-- Migration path documentation
+**Contains:**
+- Old crash recovery reports (obsolete - PositionManager handles this automatically)
+- Failed scan reports with date parsing errors (fixed in unified system)
+- Manual state reconstruction attempts (unified state management eliminates need)
 
-## File Naming Convention
+## Current Reporting System
 
-### Experiment Results:
-`{experiment_id}_{description}_{date}.json`
-- `293_voting_validation_2024_09_05.json`
-- `macd_optimization_tech_stocks_2024_09_05.json`
+### Automated Report Generation
+The unified system automatically generates reports through:
 
-### Analysis Reports:  
-`{experiment_id}_{description}_report.md`
-- `293_voting_validation_report.md`
-- `extended_period_analysis_report.md`
+**Market Scanner** (`src/trading/market_scanner.py`):
+```bash
+python -c "from src.trading.market_scanner import MarketScanner; MarketScanner().scan_watchlist()"
+```
 
-### Summary Files:
-`{category}_summary_{period}.md`
-- `voting_strategy_summary_2024.md`
-- `fibonacci_regime_progress_2024.md`
+**Technical Scanner** (`src/trading/technical_scanner.py`):
+```bash  
+python -c "from src.trading.technical_scanner import TechnicalScanner; TechnicalScanner().analyze_opportunities()"
+```
 
-## Key Results Quick Reference
+**Trading Cycle** (`src/trading/trading_cycle.py`):
+```bash
+python -c "from src.trading.trading_cycle import TradingCycle; TradingCycle().morning_routine()"
+```
 
-### ✅ Validated Systems:
-1. **Voting Strategy**: 0.856 Sharpe, better risk management than single indicators
-2. **Fibonacci MACD**: 13/34/8 parameters optimal across tech stocks  
-3. **Market Regime Insight**: Better performance in volatile (-14.6% gap) vs bull (-25.8% gap)
+### Report Quality
+- **Data Accuracy**: All reports use unified data sources with proper error handling
+- **Consistent Format**: Standardized markdown format with clear sections
+- **Actionable Insights**: Focus on specific next actions rather than just data dumps
+- **Error-Free**: Proper date handling and market hours management
 
-### 🔄 In Development:
-1. **Fibonacci Regime Detection**: 4-phase implementation (Issues #298-#301)
-2. **Modular Architecture**: Component-based enhancement system
+## Benefits Over Legacy System
 
-### ❌ Deprecated:
-1. **V0-V4 Sentiment**: Complex system moved to archived (unproven ROI)
-2. **Ichimoku Integration**: Confirmed better as visual aid only
+### 1. **Reliable Data Sources**
+- **Old**: Scattered data fetching with parsing errors
+- **New**: Unified price fetcher with consistent error handling
 
-## Usage Notes
+### 2. **Automatic State Management**  
+- **Old**: Manual crash recovery and state reconstruction
+- **New**: PositionManager automatically syncs with broker
 
-- **Keep active results**: All files in `/active/` are current development
-- **Archive old experiments**: Move completed research to `/archived/`
-- **Use clear naming**: Follow convention for easy identification
-- **Include metadata**: Each result file should have experiment context
+### 3. **Professional Format**
+- **Old**: Cryptic filenames and unclear content
+- **New**: Clear naming conventions and structured content
+
+### 4. **Actionable Content**
+- **Old**: Raw data dumps with no clear next steps
+- **New**: Specific recommendations and threshold-based insights
 
 ---
-*Last Updated: September 5, 2025 - Post-reorganization*
+
+*Reports reflect the unified trading system architecture with reliable data sources and professional formatting standards.*
+
+*Last Updated: September 10, 2025 - Post Unified System Implementation*

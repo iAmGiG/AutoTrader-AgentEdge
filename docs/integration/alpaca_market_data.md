@@ -149,7 +149,7 @@ count = result['count']     # Number of bars retrieved
 ```json
 {
     "ALPACA_PAPER_API_KEY": "your_api_key", 
-    "ALPHACA_PAPER_SECRET": "your_secret_key"
+    "ALPACA_PAPER_SECRET": "your_secret_key"
 }
 ```
 
