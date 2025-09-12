@@ -7,6 +7,7 @@ This directory contains state files for the RH2MAS trading system.
 The system uses simple JSON files for state persistence:
 
 ### **positions.json** (TradeCycle)
+
 - **Purpose**: Trade lifecycle state persistence (SIGNAL → ORDER → POSITION → CLOSED)
 - **Managed By**: `TradeCycle` class in `src/trading/trade_lifecycle.py`
 - **Contains**: Individual trade data by symbol with order IDs, prices, timestamps
@@ -16,16 +17,19 @@ The system uses simple JSON files for state persistence:
 ## State Management Implementation
 
 ### **Simple JSON Persistence**
+
 - **Primary Source**: Alpaca broker API (live data)
 - **Local Files**: State persistence across restarts only
 - **No Complex Caching**: Direct API calls with rate limiting
 
 ### **Trade Lifecycle States**
-```
+
+```bash
 SIGNAL_GENERATED → ORDER_PENDING → POSITION_OPEN → POSITION_CLOSED
 ```
 
 ### **Usage Example**
+
 ```python
 # Create trade cycle
 trade = TradeCycle('TQQQ', 'BULLISH', 0.75)
@@ -43,6 +47,7 @@ trade.save_state()
 ```
 
 ### **State File Structure**
+
 ```json
 {
   "TQQQ": {

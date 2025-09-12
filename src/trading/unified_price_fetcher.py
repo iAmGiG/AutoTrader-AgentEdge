@@ -104,14 +104,14 @@ class UnifiedPriceFetcher:
         except Exception as e:
             logger.error(f"Error fetching price for {symbol}: {e}")
         
-        # Last resort: default prices
+        # Last resort: default prices (updated to 2025 levels)
         default_prices = {
             "TQQQ": 85.50,
             "SQQQ": 12.30, 
             "SPXL": 140.00,
             "SPXS": 10.50,
-            "SPY": 450.00,
-            "QQQ": 380.00,
+            "SPY": 660.00,  # Updated to current market level
+            "QQQ": 510.00,  # Updated to current market level
             "SOXL": 28.40
         }
         

@@ -210,6 +210,9 @@ Desktop.ini
 # Other
 # =====
 
+# state operations
+state/
+
 # mypy
 .mypy_cache/
 .dmypy.json
