@@ -7,7 +7,13 @@ a comprehensive summary table.
 
 Options:
   --basic: Generate basic summary (default - original functionality)
-  --advanced: Generate advanced metrics analysis with sentiment effectiveness
+  --advanced: Generate advanced metrics analysis including:
+    • Sentiment effectiveness analysis
+    • Risk-adjusted performance metrics  
+    • Market regime analysis
+    • Trade quality metrics
+    • Execution cost modeling and analysis
+    • Cost efficiency rankings
 """
 
 import json
@@ -303,6 +309,46 @@ def run_advanced_analysis():
         print(f"\n📈 Strategy Rankings by Total Return:")
         for i, (version, return_pct) in enumerate(strategy_rankings['Total_Return'].items(), 1):
             print(f"  {i}. {version}: {return_pct:.2f}%")
+    
+    # Execution Cost Analysis
+    execution_cost_analysis = analysis.get('execution_cost_analysis', {})
+    if execution_cost_analysis:
+        print(f"\n💰 EXECUTION COST ANALYSIS")
+        print("=" * 40)
+        
+        cost_impact_by_version = execution_cost_analysis.get('cost_impact_by_version', {})
+        if cost_impact_by_version:
+            print(f"\n📊 Average Cost Impact by Strategy Version:")
+            for version, data in sorted(cost_impact_by_version.items()):
+                avg_cost_drag = data['avg_cost_drag_pct']
+                avg_trades = data['avg_trades_per_strategy']
+                avg_cost = data['avg_cost_per_strategy']
+                print(f"  • {version}: {avg_cost_drag:.2f}% drag, {avg_trades:.1f} trades/strategy, ${avg_cost:.2f} total cost")
+        
+        cost_breakdown = execution_cost_analysis.get('cost_breakdown', {})
+        if cost_breakdown:
+            print(f"\n🧾 Overall Cost Breakdown:")
+            print(f"  • Commission costs: {cost_breakdown['commission_pct']:.1f}%")
+            print(f"  • Bid-ask spreads: {cost_breakdown['spread_pct']:.1f}%")
+            print(f"  • Market impact: {cost_breakdown['market_impact_pct']:.1f}%")
+            print(f"  • Slippage: {cost_breakdown['slippage_pct']:.1f}%")
+            print(f"  • Total execution costs: ${cost_breakdown['total_cost']:.2f}")
+        
+        cost_efficiency_rankings = execution_cost_analysis.get('cost_efficiency_rankings', [])[:5]
+        if cost_efficiency_rankings:
+            print(f"\n🎯 Top 5 Most Cost-Efficient Strategies:")
+            for i, strategy in enumerate(cost_efficiency_rankings, 1):
+                efficiency = strategy['cost_efficiency']
+                total_return = strategy['total_return']
+                cost_drag = strategy['cost_drag_pct']
+                print(f"  {i}. {strategy['strategy']}: {efficiency:.1f}% return per $1 cost")
+                print(f"     (Return: {total_return:.2f}%, Cost drag: {cost_drag:.2f}%)")
+        
+        recommendations = execution_cost_analysis.get('recommendations', [])
+        if recommendations:
+            print(f"\n💡 Cost Management Recommendations:")
+            for rec in recommendations:
+                print(f"  • {rec}")
 
 def main():
     parser = argparse.ArgumentParser(description='Generate V0-V4 backtest results summary')
@@ -373,6 +419,8 @@ def main():
         print(f"   • Risk-adjusted performance (Sharpe, Calmar ratios)")
         print(f"   • Market regime analysis")
         print(f"   • Trade quality metrics")
+        print(f"   • Execution cost modeling and analysis")
+        print(f"   • Cost efficiency rankings and recommendations")
 
 if __name__ == "__main__":
     main()

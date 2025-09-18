@@ -2,164 +2,172 @@
 
 ## Environment Setup
 
-- **Python version**: 3.10.16
-- **Conda environment**: `conda activate AutoGen`
+- **Python version**: 3.10+
+- **Conda environment**: `conda activate RH2MAS`
 - **Install dependencies**: `pip install -e .`
 
-## Core Commands
+## Current Development Commands
 
-### Continuous Backtesting (V0-V4 Framework)
+### Voting Strategy Testing (Validated System) ✅
 
 ```bash
-# Simple continuous backtest with checkpoint/resume
-python scripts/runs/backtest.py --version V0 --symbol AAPL --year 2024
+# Core validation experiments  
+python tests/experiment_293_macd_vs_voting.py       # Voting vs single MACD comparison
+python tests/experiment_extended_period_voting.py  # 2024-2025 bull vs volatile analysis
+python tests/experiment_voting_optimized.py        # Fibonacci MACD optimization test
 
-# Run all versions for a symbol
-python scripts/runs/backtest.py --all-versions --symbol AAPL --year 2024
+# Parameter optimization
+python tests/experiment_macd_optimization.py       # Multi-ticker parameter optimization
 
-# Single month testing
-python scripts/runs/backtest.py --version V2 --symbol AAPL --month 1
-
-# Check status of all versions
-python scripts/runs/backtest.py --status
-
-# V4 date obfuscation testing
-python scripts/validation/obfuscation_test.py
+# Individual component tests
+python tests/experiment_ichimoku_standalone.py     # Ichimoku solo vs voting comparison
 ```
 
-### Single Backtesting (Legacy)
+### Fibonacci Regime Development (In Progress) 🔄
 
 ```bash
-# Single backtest for specific symbol/dates
-python scripts/backtest_mas.py SYMBOL START END
-# Example: python scripts/backtest_mas.py AAPL 2024-01-01 2024-01-31
+# Phase 1: Core Fibonacci Module (Issue #298)
+python tests/fibonacci_regime/test_phase_1.py      # 34 EMA filtering validation
+
+# Phase 2: CCI Integration (Issue #299) 
+python tests/fibonacci_regime/test_cci_integration.py
+
+# Phase 3: Symmetry Break Detection (Issue #300)
+python tests/fibonacci_regime/test_symmetry_breaks.py
+
+# Phase 4: Full Integration (Issue #301)
+python tests/fibonacci_regime/test_full_integration.py
 ```
 
-### Automated Backtesting Service
+### Code Quality & Validation
 
 ```bash
-# Start intelligent backtest service (recommended for multiple tests)
-python scripts/start_backtest_service.py
+# Lint and format code
+ruff check src/ scripts/ tests/
+black src/ scripts/ tests/
 
-# Market conditions report
-python scripts/generate_market_conditions_report.py --resume --parallel
+# Type checking (if available)
+mypy src/ --ignore-missing-imports
 
-# Skip backtests, generate report from existing data
-python scripts/generate_market_conditions_report.py --skip-backtests
-```
-
-### Testing
-
-```bash
-# Run all unit tests
+# Run unit tests
 python -m unittest discover tests
-
-# Run specific test
-python -m pytest tests/test_market_data_tool.py
 ```
 
-### Analysis Tools
+## Configuration Commands
 
+### Market Data Cache
 ```bash
-# V0-V4 Results Summary (basic)
-python scripts/analysis/generate_results_summary.py
-
-# Advanced Metrics Analysis 
-python scripts/analysis/generate_results_summary.py --advanced
-
-# Three-way strategy comparison (legacy)
-python scripts/validation/analyze_cached_performance.py
-
-# Build FMP data cache
-python scripts/utils/build_fmp_cache.py
-
-# Run obfuscation validation
-python scripts/validation/run_obfuscation_validation.py
-```
-
-### Interactive Tools
-
-```bash
-# Sentiment agent CLI
-python sentiment_cli.py
-```
-
-## Service Management
-
-### Screen (Recommended for Remote)
-
-```bash
-# Start service in screen
-python scripts/start_backtest_service.py
-# Choose option 1 (screen)
-
-# Reconnect to view
-screen -r backtest_service
-
-# Detach (keep running): Ctrl+A, then D
-```
-
-### Nohup (Alternative)
-
-```bash
-# Start with nohup
-python scripts/start_backtest_service.py
-# Choose option 3 (nohup)
-
-# View logs
-tail -f .cache/backtests/nohup.out
-```
-
-## Advanced Metrics Analysis
-
-```bash
-# Generate comprehensive analysis of all V0-V4 results
-python scripts/analysis/generate_results_summary.py --advanced
-
-# Outputs generated:
-# - reports/backtest_analysis_2024.json (comprehensive analysis)
-# - reports/strategy_comparison_2024.csv (comparative metrics)
-# - reports/continuation_states_2025/ (40 continuation state files)
-```
-
-## Recent Performance Results (2024)
-
-### AAPL
-- **V0** (Fixed baseline): +8.73% return (24 trades)
-- **V1** (News sentiment): -3.83% return
-- **V2** (VXX volatility): +5.49% return
-- **V3** (Combined heuristic): +2.73% return
-- **V4** (LLM reasoning): ~50-60 mins processing time
-
-### AMZN
-- **V0**: +22.98% return
-- **V1**: +13.24% return
-- **V2**: +6.09% return
-- **V3**: +11.46% return
-
-### SPY
-- **V0**: +6.86% return
-- **V1**: +2.70% return
-- **V2**: +1.89% return
-- **V3**: +1.55% return
-
-## Cache Management
-
-```bash
-# Check cache directory structure
+# Check cache status
 ls -la .cache/market_data/
 
-# Consolidated cache files should be named:
-# SYMBOL_YYYY-MM-DD_YYYY-MM-DD_source_consolidated.json
-# Example: AAPL_2024-01-01_2024-12-31_polygon_consolidated.json
+# Verify data availability for 2024-2025 testing
+ls .cache/market_data/*2024* .cache/market_data/*2025*
+```
 
-# Clear old checkpoints after cache fixes
-rm reports/continuous_backtests/V*/*.json
+### API Configuration
+```bash
+# Create config file
+mkdir -p config
+cat > config/config.json << EOF
+{
+  "POLYGON_API_KEY": "your_key_here",
+  "ALPHA_VANTAGE_KEY": "your_key_here"
+}
+EOF
+```
+
+## Results Analysis Commands
+
+### Active Results (Current Development)
+```bash
+# View voting strategy validation
+cat reports/active/voting_strategy/experiment_293_validation/293_voting_validation_report.md
+
+# Check MACD optimization results  
+cat reports/active/voting_strategy/macd_optimization/optimization_report.md
+
+# Review extended period analysis
+cat reports/active/voting_strategy/extended_period_analysis/results.json
+
+# Monitor Fibonacci regime development
+ls reports/active/fibonacci_regime/
+```
+
+### Historical Analysis (Archived)
+```bash
+# View archived V0-V4 results
+cat reports/archived/v0_v4_deprecated/analysis/V0-V4_Framework_Results.md
+
+# Check legacy backtest data
+ls reports/archived/v0_v4_deprecated/continuous_backtests/
+```
+
+## Development Workflow Commands
+
+### GitHub Issue Management
+```bash
+# View active Fibonacci regime issues
+gh issue list --repo iAmGiG/RH2MAS --label "fibonacci-regime"
+
+# Check phase development status
+gh issue view 298 --repo iAmGiG/RH2MAS  # Phase 1
+gh issue view 299 --repo iAmGiG/RH2MAS  # Phase 2
+gh issue view 300 --repo iAmGiG/RH2MAS  # Phase 3
+gh issue view 301 --repo iAmGiG/RH2MAS  # Phase 4
+```
+
+### Documentation Updates
+```bash
+# View current documentation structure
+tree docs/ -I "__pycache__"
+
+# Check documentation status
+cat docs/README.md
+cat docs/voting_strategy/validation_results.md
+cat docs/fibonacci_regime/README.md
 ```
 
 ## Legacy Commands (Deprecated)
 
+### V0-V4 Sentiment Framework ❌
 ```bash
-# Old batch runner (use backtest service instead)
-python scripts/run_backtest_suite.py comprehensive --parallel
+# These commands are deprecated - system moved to archived
+python scripts/runs/backtest.py --version V0 --symbol AAPL --year 2024
+python scripts/runs/backtest.py --all-versions --symbol AAPL --year 2024
+python scripts/analysis/generate_results_summary.py --advanced
 ```
+
+**Note**: V0-V4 framework deprecated in favor of validated voting + Fibonacci regime approach.
+
+## Troubleshooting Commands
+
+### Common Issues
+```bash
+# Check Python environment
+python --version
+conda info --envs
+
+# Verify imports work
+python -c "from src.core.agents.simple_voting_orchestrator import SimpleVotingOrchestrator; print('Import successful')"
+
+# Test data loading
+python -c "import json; data = json.load(open('.cache/market_data/AAPL_2024-01-01_2024-12-31_polygon_consolidated.json')); print(f'Loaded {len(data.get(\"data\", []))} records')"
+
+# Check disk space for cache
+du -sh .cache/
+```
+
+### Performance Monitoring
+```bash
+# Monitor test execution time
+time python tests/experiment_293_macd_vs_voting.py
+
+# Check memory usage during backtests
+/usr/bin/time -v python tests/experiment_extended_period_voting.py
+```
+
+---
+
+*Commands updated for validated voting system + Fibonacci regime development*
+
+*Current Focus: Phase 1 implementation (Issue #298) - Core Fibonacci Module*

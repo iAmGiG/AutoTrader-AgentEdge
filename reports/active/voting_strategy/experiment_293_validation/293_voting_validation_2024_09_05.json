@@ -1,0 +1,22 @@
+{
+  "experiment": "293_macd_vs_voting",
+  "date": "2025-09-04T21:20:51.262830",
+  "macd_only": {
+    "total_return": 13.341461597333454,
+    "sharpe_ratio": 0.8407394238291739,
+    "max_drawdown": -10.57707563466175,
+    "num_trades": 18,
+    "win_rate": 31.872509960159363
+  },
+  "voting_strategy": {
+    "total_return": 12.617135802758185,
+    "sharpe_ratio": 0.8558652696339438,
+    "max_drawdown": -10.095712986175204,
+    "num_trades": 140,
+    "win_rate": 51.39442231075697
+  },
+  "buy_hold": {
+    "total_return": 34.89549666020255
+  },
+  "verdict": "VOTING_WINS"
+}

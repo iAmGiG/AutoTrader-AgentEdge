@@ -1,0 +1,114 @@
+{
+  "timestamp": "2025-09-04T21:55:24.995678",
+  "ichimoku_params": {
+    "tenkan": 9,
+    "kijun": 26,
+    "senkou": 52
+  },
+  "results": [
+    {
+      "symbol": "AAPL",
+      "ichimoku_return": 36.557967062929436,
+      "ichimoku_sharpe": 1.8364826734142718,
+      "ichimoku_drawdown": -11.749425091559491,
+      "num_trades": 1,
+      "buy_hold": 34.89549666020255,
+      "outperform": 1.662470402726889,
+      "trade_reasons": {
+        "strong_bullish": 1
+      }
+    },
+    {
+      "symbol": "MSFT",
+      "ichimoku_return": -11.176500288411026,
+      "ichimoku_sharpe": -0.8526246846432952,
+      "ichimoku_drawdown": -19.626473055909273,
+      "num_trades": 25,
+      "buy_hold": 13.651683878447972,
+      "outperform": -24.828184166858996,
+      "trade_reasons": {
+        "strong_bullish": 4,
+        "strong_bearish": 2,
+        "weak_bearish": 7,
+        "weak_bullish": 12
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "ichimoku_return": 58.118574020238135,
+      "ichimoku_sharpe": 1.6739830217699385,
+      "ichimoku_drawdown": -13.41348737238045,
+      "num_trades": 7,
+      "buy_hold": 178.79505065603718,
+      "outperform": -120.67647663579905,
+      "trade_reasons": {
+        "weak_bullish": 4,
+        "strong_bullish": 2,
+        "strong_bearish": 1
+      }
+    },
+    {
+      "symbol": "GOOGL",
+      "ichimoku_return": 17.48439223514704,
+      "ichimoku_sharpe": 0.8696316521638916,
+      "ichimoku_drawdown": -15.35329679606135,
+      "num_trades": 3,
+      "buy_hold": 37.00513859738006,
+      "outperform": -19.52074636223302,
+      "trade_reasons": {
+        "strong_bullish": 2,
+        "strong_bearish": 1
+      }
+    },
+    {
+      "symbol": "META",
+      "ichimoku_return": 2.553080226915099,
+      "ichimoku_sharpe": 0.22504908366674492,
+      "ichimoku_drawdown": -18.097504616668438,
+      "num_trades": 12,
+      "buy_hold": 69.08082820757167,
+      "outperform": -66.52774798065657,
+      "trade_reasons": {
+        "weak_bullish": 7,
+        "strong_bearish": 2,
+        "strong_bullish": 2,
+        "weak_bearish": 1
+      }
+    },
+    {
+      "symbol": "AMZN",
+      "ichimoku_return": 10.442822087370642,
+      "ichimoku_sharpe": 0.5701434062335218,
+      "ichimoku_drawdown": -17.742466941252978,
+      "num_trades": 24,
+      "buy_hold": 46.32828653371572,
+      "outperform": -35.885464446345075,
+      "trade_reasons": {
+        "weak_bullish": 19,
+        "strong_bullish": 3,
+        "weak_bearish": 1,
+        "strong_bearish": 1
+      }
+    },
+    {
+      "symbol": "TSLA",
+      "ichimoku_return": 58.743089001640215,
+      "ichimoku_sharpe": 1.24905742151626,
+      "ichimoku_drawdown": -32.330159179461965,
+      "num_trades": 13,
+      "buy_hold": 62.563400692375815,
+      "outperform": -3.8203116907356005,
+      "trade_reasons": {
+        "strong_bullish": 3,
+        "strong_bearish": 2,
+        "weak_bullish": 8
+      }
+    }
+  ],
+  "summary": {
+    "avg_return": 24.674774906547075,
+    "avg_sharpe": 0.7959603677316192,
+    "profitable_count": 6,
+    "beat_buy_hold": 1
+  }
+}

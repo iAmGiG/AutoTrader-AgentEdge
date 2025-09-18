@@ -1,76 +1,103 @@
-# Reports Directory Structure
+# Reports Organization
 
-**Framework**: V0-V4 Sentiment Analysis Comparison Study  
-**Status**: ✅ Complete 2024 Testing with Advanced Metrics
+This directory contains system reports and analysis results for the unified RH2MAS trading platform.
 
-## Current Structure
+## Directory Structure
 
-```
-reports/
-├── analysis/                   # Analysis reports and summaries
-│   ├── V0-V4_Framework_Results.md    # Comprehensive summary report
-│   └── backtest_analysis_2024.json   # Advanced metrics analysis
-├── data/                       # CSV data exports
-│   ├── strategy_comparison_2024.csv  # Comparative metrics
-│   └── V0-V4_results_summary.csv     # Quick summary
-├── continuous_backtests/      # Raw V0-V4 backtest results
-│   ├── V0/                   # Baseline (9 symbols tested)
-│   ├── V1/                   # VADER news sentiment
-│   ├── V2/                   # VXX volatility fear
-│   ├── V3/                   # Combined heuristic
-│   └── V4/                   # LLM intelligent reasoning
-├── continuation_states_2025/  # Portfolio states for 2025 continuation
-└── README.md                  # This file
-```
+### `/scans/` - Market Analysis Reports
+Real-time market scanning and technical analysis results from the unified system.
 
-## Key Reports
+**Current Scan Types:**
+- **Market Scanner**: Opportunity detection across watchlist symbols
+- **Technical Scanner**: MACD+RSI analysis with actionable insights
+- **Position Scanner**: Current position analysis and exit recommendations
 
-### Analysis Reports (`analysis/`)
-- **V0-V4_Framework_Results.md**: Complete performance summary with detailed metrics
-- **backtest_analysis_2024.json**: Advanced metrics including sentiment effectiveness
+**Report Format**: `YYYYMMDD_HHMM_scan_type.md`
 
-### Data Exports (`data/`)
-- **strategy_comparison_2024.csv**: Spreadsheet-ready comparative analysis
-- **V0-V4_results_summary.csv**: Quick summary table
+### `/daily/` - Daily Trading Reports  
+Automated daily reports from the trading cycle system.
 
-### Raw Results (`continuous_backtests/`)
-- Raw JSON results for each version/symbol combination
-- Checkpoint files for resume capability
+**Report Types:**
+- **Morning Routine**: Position reconciliation, stop adjustments, account status
+- **Evening Review**: EOD position analysis, P&L summary, next day preparation
+- **Risk Assessment**: Portfolio exposure, concentration limits, stop loss coverage
 
-### Continuation States (`continuation_states_2025/`)
-- Final portfolio states for continuing into 2025
+**Report Format**: `YYYYMMDD_HHMM_routine_type.md`
 
-## Test Coverage
+### `/performance/` - Trading Performance Analysis
+Backtesting results and live trading performance tracking.
 
-### Symbols Tested (8 tickers + 2 ETFs)
-- **Tech Giants**: AAPL, MSFT, NVDA, META, GOOGL
-- **Others**: AMZN, TSLA, GOOG
-- **ETFs**: SPY, QQQ
+**Analysis Types:**
+- **Monthly Performance**: P&L analysis, Sharpe ratio, win rate statistics
+- **Strategy Validation**: Signal accuracy, entry/exit timing analysis  
+- **Risk Metrics**: Drawdown analysis, position sizing effectiveness
 
-### Performance Highlights
-- **Best Overall**: NVDA V0 (+106.73%)
-- **Best V4**: NVDA (+89.82%)
-- **Most Consistent**: SPY (all versions positive)
+### `/active/` - Current Development Results
+Historical results from strategy development and validation.
 
-## Advanced Metrics Available
-- Sharpe/Calmar ratios
-- Sentiment effectiveness by bucket
-- Market regime analysis
-- Trade quality metrics
-- Risk-adjusted performance
+#### `/active/voting_strategy/`
+**Core validated voting system results** (Archive - system now implemented)
+- `experiment_293_validation/` - ✅ MACD vs Voting comparison (0.856 Sharpe validated)
+- `macd_optimization/` - Parameter optimization (13/34/8 proven optimal)
+- `extended_period_analysis/` - 2024-2025 performance validation
 
-## Access Commands
+### `/archived/` - Historical Development
+Preserved results from previous system iterations and experiments.
 
+### `/legacy/` - Pre-Unified System Reports  
+Reports from the old fragmented system architecture (pre-September 10, 2025).
+
+**Contains:**
+- Old crash recovery reports (obsolete - PositionManager handles this automatically)
+- Failed scan reports with date parsing errors (fixed in unified system)
+- Manual state reconstruction attempts (unified state management eliminates need)
+
+## Current Reporting System
+
+### Automated Report Generation
+The unified system automatically generates reports through:
+
+**Market Scanner** (`src/trading/market_scanner.py`):
 ```bash
-# Generate basic summary
-python scripts/analysis/generate_results_summary.py
-
-# Generate advanced metrics analysis
-python scripts/analysis/generate_results_summary.py --advanced
-
-# View analysis report
-cat reports/analysis/V0-V4_Framework_Results.md
-
-# View specific results
-cat reports/continuous_backtests/V4/AAPL_2024_results.json
+python -c "from src.trading.market_scanner import MarketScanner; MarketScanner().scan_watchlist()"
 ```
+
+**Technical Scanner** (`src/trading/technical_scanner.py`):
+```bash  
+python -c "from src.trading.technical_scanner import TechnicalScanner; TechnicalScanner().analyze_opportunities()"
+```
+
+**Trading Cycle** (`src/trading/trading_cycle.py`):
+```bash
+python -c "from src.trading.trading_cycle import TradingCycle; TradingCycle().morning_routine()"
+```
+
+### Report Quality
+- **Data Accuracy**: All reports use unified data sources with proper error handling
+- **Consistent Format**: Standardized markdown format with clear sections
+- **Actionable Insights**: Focus on specific next actions rather than just data dumps
+- **Error-Free**: Proper date handling and market hours management
+
+## Benefits Over Legacy System
+
+### 1. **Reliable Data Sources**
+- **Old**: Scattered data fetching with parsing errors
+- **New**: Unified price fetcher with consistent error handling
+
+### 2. **Automatic State Management**  
+- **Old**: Manual crash recovery and state reconstruction
+- **New**: PositionManager automatically syncs with broker
+
+### 3. **Professional Format**
+- **Old**: Cryptic filenames and unclear content
+- **New**: Clear naming conventions and structured content
+
+### 4. **Actionable Content**
+- **Old**: Raw data dumps with no clear next steps
+- **New**: Specific recommendations and threshold-based insights
+
+---
+
+*Reports reflect the unified trading system architecture with reliable data sources and professional formatting standards.*
+
+*Last Updated: September 10, 2025 - Post Unified System Implementation*

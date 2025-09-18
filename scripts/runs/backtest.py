@@ -24,12 +24,12 @@ import asyncio
 import argparse
 from dataclasses import dataclass
 
-# Import sentiment agents - using optimized versions for better performance
-from src.agents.sentiment_v0 import V0SentimentAgent
-from src.agents.sentiment_v1 import SentimentV1Agent
-from src.agents.sentiment_v2 import SentimentV2Agent
-from src.agents.sentiment_v3 import SentimentV3Agent
-from src.agents.sentiment_v4 import SentimentV4Agent
+# Import deprecated sentiment agents - preserved for backtesting comparison
+from src.deprecated.v0_v4_agents.sentiment_v0 import V0SentimentAgent
+from src.deprecated.v0_v4_agents.sentiment_v1 import SentimentV1Agent
+from src.deprecated.v0_v4_agents.sentiment_v2 import SentimentV2Agent
+from src.deprecated.v0_v4_agents.sentiment_v3 import SentimentV3Agent
+from src.deprecated.v0_v4_agents.sentiment_v4 import SentimentV4Agent
 from src.agents.tech_agent import TechAgent  # Add tech agent for market data
 
 # Import tools
