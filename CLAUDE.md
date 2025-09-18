@@ -19,15 +19,16 @@ pip install -e .
 # Run all unit tests
 python -m unittest discover tests
 
-# Test voting strategy (validated)
-python tests/experiment_293_macd_vs_voting.py       # Voting validation experiment
+# Test AutoGen VoterAgent (current primary agent)
+python scripts/experiments/experiment_293_validation/test_voter_agent.py  # VoterAgent validation
+python scripts/experiments/experiment_293_validation/experiment_293_retest.py  # Voting vs single indicators
+python scripts/experiments/experiment_293_validation/experiment_294_vote_thresholds.py  # Threshold optimization
+
+# Historical validation experiments
+python tests/experiment_293_macd_vs_voting.py       # Original voting validation
 python tests/experiment_extended_period_voting.py  # 2024-2025 extended period test
-python tests/experiment_voting_optimized.py        # Fibonacci MACD optimization
 
-# Test individual components
-python tests/experiment_macd_optimization.py       # Parameter optimization across tickers
-
-# Generate comprehensive analysis  
+# Generate comprehensive analysis
 python scripts/analysis/generate_results_summary.py --advanced
 ```
 
@@ -46,11 +47,19 @@ mypy src/ --ignore-missing-imports
 
 ## Architecture Overview
 
-**AutoGen-TradingSystem** is a production-ready automated trading platform with **validated MACD + RSI voting strategies** and complete **AutoGen multi-agent architecture**. Built from proven research, it delivers a robust trading system with live Alpaca integration.
+**AutoGen-TradingSystem** is a production-ready automated trading platform built on **Microsoft AutoGen** multi-agent framework with **validated MACD + RSI voting strategies**. The system uses specialized AutoGen agents working together for coordinated trading decisions.
 
 ### Current Architecture (AutoGen Multi-Agent Trading System - PRODUCTION READY ✅)
 
-**Status**: Production-ready automated trading system with validated voting strategy (0.856 Sharpe) and complete AutoGen agent architecture. Fibonacci regime experiments (Issues #297-#301) were closed as over-engineering.
+**Status**: Production-ready AutoGen-based trading system with validated VoterAgent (0.856 Sharpe) as the core decision-making agent.
+
+**Core AutoGen Agents**:
+
+- **VoterAgent** (`src/autogen_agents/voter_agent.py`): ✅ **PRODUCTION READY** - Fully parameterizable MACD+RSI voting with validated 0.856 Sharpe performance
+- **ScannerAgent** (`src/autogen_agents/scanner_agent.py`): 🚧 **IN DEVELOPMENT** - Market scanning and opportunity identification
+- **RiskAgent** (`src/autogen_agents/risk_agent.py`): 🚧 **IN DEVELOPMENT** - Risk management and position sizing
+- **ExecutorAgent** (`src/autogen_agents/executor_agent.py`): 🚧 **IN DEVELOPMENT** - Trade execution and order management
+- **TradingOrchestrator** (`src/autogen_agents/trading_orchestrator.py`): 🚧 **IN DEVELOPMENT** - Coordination and workflow management
 
 **Validated Voting Foundation**:
 
@@ -73,13 +82,20 @@ mypy src/ --ignore-missing-imports
 
 ### Current Implementation Files
 
-**Validated Voting Components ✅**:
+**AutoGen Agent Architecture ✅**:
 
-- `src/core/agents/simple_voting_orchestrator.py` - MACD + RSI voting coordinator (VALIDATED)
-- `src/core/indicators/simple_rsi.py` - RSI using efficient calculations (COMPLETE)
-- `src/core/indicators/indicator_library.py` - Fibonacci MACD (13/34/8) + RSI calculations
-- `src/core/agents/tech_agent.py` - MACD signals (existing, proven)
-- `src/data/cache/unified_cache.py` - Market data caching system (90% performance boost)
+- `src/autogen_agents/voter_agent.py` - **PRODUCTION READY** - Fully parameterizable MACD+RSI voting agent with validated 0.856 Sharpe
+- `src/autogen_agents/base_agent.py` - Base AutoGen agent class with tool integration
+- `src/autogen_agents/scanner_agent.py` - Market scanning agent (in development)
+- `src/autogen_agents/risk_agent.py` - Risk management agent (in development)
+- `src/autogen_agents/executor_agent.py` - Trade execution agent (in development)
+- `src/autogen_agents/trading_orchestrator.py` - Multi-agent coordination (in development)
+
+**Supporting Infrastructure ✅**:
+
+- `src/trading_tools/indicators.py` - MACD and RSI calculation functions used by VoterAgent
+- `src/data_sources/tools.py` - Market data fetching tools integrated with AutoGen agents
+- `config_defaults/trading_config.py` - Flexible parameter management for agent configuration
 
 **Fibonacci Regime Components** ❌ **CLOSED**:
 
@@ -159,13 +175,14 @@ Market data operations check cache first with intelligent warming. Uses consolid
 
 **Current Priority Issues**:
 
+- **Issue #310**: Complete remaining AutoGen agents (Scanner, Risk, Executor, Orchestrator)
+- **LLM Orchestration**: Autonomous trading system using GPT o3/o4-mini for complex orchestration
 - **Issue #324**: Forward testing protocol implementation
 - **Issue #323**: Full trading pipeline workflow
 - **Issue #322**: Live execution layer enhancements
 - **Issue #321**: Dynamic trailing stop logic
-- **Issue #320**: Expand sample size for statistical confidence
 
-**System Status**: Ready for production trading with continuous enhancement
+**System Status**: AutoGen VoterAgent production-ready, multi-agent system in development
 
 ## Configuration Requirements
 
@@ -184,28 +201,33 @@ Create `config/config.json` with required API keys:
 
 ## Important Files and Patterns
 
-**Current Active Files**:
-- `test_voting_standalone.py` - Component testing (works)
-- `test_voting_2024.py` - Real data testing (blocked on imports)
-- `src/agents/simple_voting_orchestrator.py` - Main voting coordinator
-- `src/indicators/simple_rsi.py` - RSI implementation  
-- `src/agents/tech_agent.py` - MACD signals (preserved from V0-V4)
+**Current Active Files (AutoGen-based)**:
+- `scripts/experiments/experiment_293_validation/test_voter_agent.py` - VoterAgent validation testing (current primary)
+- `src/autogen_agents/voter_agent.py` - Production-ready AutoGen MACD+RSI voting agent
+- `src/autogen_agents/base_agent.py` - Base AutoGen agent with tool integration
+- `src/trading_tools/indicators.py` - MACD and RSI calculations for agents
+- `config_defaults/trading_config.py` - Flexible parameter management
+
+**Legacy Testing Files**:
+- `test_voting_standalone.py` - Original component testing
+- `test_voting_2024.py` - Real data testing (may need updates for AutoGen)
 
 **Deprecated Files** (in `src/deprecated/v0_v4_agents/`):
 - `sentiment_v0.py` through `sentiment_v4.py` - Complex sentiment agents
 - All V0-V4 related processing and LLM components
+- Old non-AutoGen agent implementations
 
 **Still Active Infrastructure**:
-- `src/tools/cache/unified_cache.py` - Central cache manager (90% performance boost)
-- `src/tools/processors/indicator_library.py` - MACD calculations (used by TechAgent)
+- `src/data_sources/tools.py` - Market data fetching integrated with AutoGen
 - Cache files in `.cache/` directory (not tracked in git)
 
 ## Development Workflow
 
-**Current Focus**: 
-1. **Fix imports** - Resolve dependency issues for real data testing
-2. **Validate strategy** - Test voting approach on 2024 AAPL data  
-3. **Document success** - Record exact configuration that works
-4. **Then iterate** - Add complexity only if simple approach works
+**Current Focus**:
+1. **Complete AutoGen Agents** - Finish development of Scanner, Risk, Executor, and Orchestrator agents
+2. **Forward Testing** - Implement forward testing protocol (Issue #324)
+3. **Live Trading Pipeline** - Build complete trading workflow (Issue #323)
+4. **Paper Trading Integration** - Connect VoterAgent to Alpaca paper trading
+5. **Multi-Agent Coordination** - Enable agents to work together effectively
 
 **Cross-Platform**: System works on both Windows and Linux environments.

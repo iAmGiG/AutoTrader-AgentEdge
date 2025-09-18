@@ -1,67 +1,91 @@
-# RH2MAS: Practical Multi-Agent Trading Platform
+# AutoGen-TradingSystem: Microsoft AutoGen Multi-Agent Trading Platform
 
 ## Overview
 
-RH2MAS (Reflective Hybrid-Head Multi-Agent System) is a **production-ready trading platform** that combines multi-agent architecture with advanced technical analysis for real-world trading applications. Built on a foundation of proven voting algorithms and enhanced with sophisticated regime detection.
+AutoGen-TradingSystem is a **production-ready trading platform** built on **Microsoft AutoGen** multi-agent framework. The system combines validated MACD+RSI voting strategies with sophisticated multi-agent coordination for real-world trading applications.
 
-**🚀 Production Features**: 
-- **MACD + RSI Voting System** - Core production trading agents with Fibonacci enhancement
-- **✅ Enhanced Fibonacci Regime Module v2.0** - Advanced market regime detection with statistical validation
-- **Optimized Parameters** - Validated MACD (8/21/5) and EMA filtering (21-period, 2% threshold)
-- Multi-indicator ensemble voting with confidence-based decisions
-- Real-time paper trading with Alpaca API integration (coming soon)
-- Advanced risk management and portfolio optimization
-- Comprehensive performance analytics and backtesting
-- 90%+ performance improvements through cache optimization
+**🚀 Production Features**:
+- **✅ VoterAgent** - Production-ready AutoGen agent with validated 0.856 Sharpe MACD+RSI voting
+- **🚧 Multi-Agent System** - Scanner, Risk, Executor, and Orchestrator agents (in development)
+- **Optimized Parameters** - Validated MACD (13/34/8) Fibonacci parameters across tech stocks
+- **AutoGen Framework** - Built on Microsoft AutoGen for agent coordination and communication
+- **Flexible Configuration** - Dynamic parameter adjustment without code changes
+- **Paper Trading Ready** - Integration with Alpaca API (development in progress)
+- **Comprehensive Testing** - Extensive validation and backtesting framework
+- **Tool Integration** - Market data fetching and analysis tools for AutoGen agents
 
-## Core Production Agents: Multi-Indicator Voting System
+## Core AutoGen Agents: Multi-Agent Trading System
 
-The platform implements a production-ready multi-indicator voting system with two core agents:
+The platform implements a Microsoft AutoGen-based multi-agent architecture with specialized agents:
 
-### Primary Trading Agents
+### Production-Ready Agents
 
-**MACD + RSI Voting Agent** (`macd_rsi_voting_agent.py`):
-- **MACD Signal Generation**: Optimized 8/21/5 parameters (fast/slow/signal)
+**VoterAgent** (`src/autogen_agents/voter_agent.py`) - ✅ **PRODUCTION READY**:
+- **MACD Signal Generation**: Optimized 13/34/8 Fibonacci parameters (fast/slow/signal)
 - **RSI Momentum Analysis**: 14-period RSI with 30/70 oversold/overbought levels
-- **Fibonacci EMA Filter**: 21-period EMA with 2% threshold for signal validation
 - **Consensus Voting**: Strong signals when both indicators agree, weak when only one signals
-- **Validated Performance**: 9.5% average return, 0.678 Sharpe ratio (20-month validation)
+- **Parameterizable Design**: Flexible parameter adjustment for testing and optimization
+- **Validated Performance**: 0.856 Sharpe ratio, 36.6% return over 2024-2025 testing period
+- **AutoGen Integration**: Full message handling and tool integration capabilities
 
-**Fibonacci Voting Agent** (`fibonacci_voting_agent.py`):
-- **Enhanced Regime Detection**: 7 market regimes (STRONG_BULL, BULL, NEUTRAL, BEAR, STRONG_BEAR, VOLATILE, RANGE_BOUND)
-- **Statistical Validation**: Garman-Klass volatility estimation, ADX-based trend strength
-- **Dynamic Position Sizing**: Kelly Criterion-inspired sizing based on regime confidence
-- **Adaptive Filtering**: Regime-aware signal filtering with confidence-based logic
-- **Proven Results**: +3.36% excess return vs buy-and-hold, superior risk management
+### Agents in Development
 
-### Performance Architecture
+**ScannerAgent** (`src/autogen_agents/scanner_agent.py`) - 🚧 **IN DEVELOPMENT**:
+- Market opportunity identification and screening
+- Multi-symbol analysis and ranking
+- Real-time market scanning capabilities
 
-**Cache-Optimized Data Pipeline**:
-1. **UnifiedCacheManager**: 90%+ speed improvement through intelligent caching
-2. **Multi-Source Data**: Polygon.io primary, Alpha Vantage fallback
-3. **Real-time Processing**: Instant indicator calculations with cached market data
+**RiskAgent** (`src/autogen_agents/risk_agent.py`) - 🚧 **IN DEVELOPMENT**:
+- Position sizing and risk management
+- Portfolio-level risk monitoring
+- Stop-loss and risk mitigation strategies
 
-**Statistical Validation Framework**:
-- Walk-forward analysis preventing look-ahead bias
-- Monte Carlo simulation (100+ runs) for robustness testing
-- Multi-market validation across bull, bear, sideways, volatile conditions
-- Professional risk metrics (Sharpe, Calmar, maximum drawdown)
+**ExecutorAgent** (`src/autogen_agents/executor_agent.py`) - 🚧 **IN DEVELOPMENT**:
+- Trade execution and order management
+- Alpaca API integration for paper/live trading
+- Order status monitoring and reporting
+
+**TradingOrchestrator** (`src/autogen_agents/trading_orchestrator.py`) - 🚧 **IN DEVELOPMENT**:
+- Multi-agent coordination and workflow management
+- Decision aggregation and conflict resolution
+- System-wide monitoring and reporting
+
+### AutoGen Architecture
+
+**Agent Communication Framework**:
+1. **Base Agent Class**: Common AutoGen agent foundation with tool integration
+2. **Message Handling**: Structured JSON communication between agents
+3. **Tool Integration**: Market data fetching and analysis tools accessible to all agents
+4. **Parameter Management**: Flexible configuration system for dynamic agent adjustment
+
+**Data Infrastructure**:
+- **Market Data Tools**: Polygon.io integration through AutoGen tool system
+- **Indicator Calculations**: MACD and RSI functions integrated with agents
+- **Cache Optimization**: Intelligent caching for improved performance
+- **Configuration System**: Flexible parameter management without code changes
+
+**Validation Framework**:
+- **VoterAgent Testing**: Comprehensive validation with 0.856 Sharpe performance
+- **Parameter Optimization**: Systematic testing across multiple configurations
+- **Multi-market Testing**: Validation across different market conditions
+- **AutoGen Integration Testing**: Agent communication and coordination validation
 
 ## Production Architecture
 
 ### Core Components
 
-1. **MACD+RSI Voting Agent**: Primary production trading agent with Fibonacci enhancement
-2. **Fibonacci Voting Agent**: Advanced regime detection with statistical validation
-3. **Enhanced Fibonacci Regime Module**: 7-regime market classification in `src/tools/regime_detection/`
-4. **UnifiedCacheManager**: High-performance data caching and retrieval system
-5. **Statistical Validation Suite**: Comprehensive backtesting and validation framework
-6. **Multi-Indicator Framework**: Extensible architecture for additional technical indicators
+1. **VoterAgent**: ✅ Production-ready AutoGen agent with validated MACD+RSI voting (0.856 Sharpe)
+2. **Base Agent Framework**: AutoGen agent foundation with tool integration and message handling
+3. **Trading Tools**: MACD and RSI calculation functions optimized for AutoGen agents
+4. **Configuration System**: Flexible parameter management enabling dynamic agent adjustment
+5. **Market Data Integration**: Polygon.io API integration through AutoGen tool framework
+6. **Validation Suite**: Comprehensive testing framework for agent performance validation
 
-*Future Components (In Development)*:
-- **RiskAgent**: Comprehensive risk management with position sizing and portfolio controls
-- **ExecutionAgent**: Alpaca API integration for paper/live trading
-- **AlertAgent**: Multi-channel notifications and monitoring
+*AutoGen Agents in Development*:
+- **ScannerAgent**: Market opportunity identification and multi-symbol analysis
+- **RiskAgent**: Portfolio risk management and position sizing
+- **ExecutorAgent**: Trade execution and Alpaca API integration
+- **TradingOrchestrator**: Multi-agent coordination and workflow management
 
 ### Data Infrastructure
 
@@ -97,48 +121,55 @@ Create `config/config.json` with required API keys:
 
 ```json
 {
-  "ALPACA_API_KEY": "...",         // Paper/live trading
-  "ALPACA_SECRET_KEY": "...",      // Trading authentication
-  "ALPACA_BASE_URL": "paper-api.alpaca.markets",  // Paper trading URL
-  "OPENAI_API_KEY": "sk-...",      // V4 LLM analysis
-  "POLYGON_API_KEY": "...",        // Real-time market data
-  "ALPHA_VANTAGE_KEY": "...",      // Fallback market data
-  "GOOGLE_API_KEY": "...",         // News sentiment analysis
-  "GOOGLE_CSE_ID": "..."           // Custom search engine ID
+  "POLYGON_API_KEY": "...",        // Primary market data for AutoGen agents
+  "ALPHA_VANTAGE_KEY": "...",      // Fallback market data source
+  "OPENAI_API_KEY": "sk-...",      // For AutoGen agent LLM capabilities
+  "ALPACA_API_KEY": "...",         // Paper/live trading (future)
+  "ALPACA_SECRET_KEY": "...",      // Trading authentication (future)
+  "ALPACA_BASE_URL": "paper-api.alpaca.markets"  // Paper trading URL (future)
 }
 ```
 
-Note: This file is excluded from version control for security.
+Note: This file is excluded from version control for security. Currently only POLYGON_API_KEY and OPENAI_API_KEY are actively used by the VoterAgent.
 
 ## Usage
 
-### Production Trading (Coming Soon)
+### AutoGen Agent Testing
 
 ```bash
-# Start paper trading with ensemble strategies
-python scripts/trading/live_trading.py --mode paper
+# Test production VoterAgent (primary)
+python scripts/experiments/experiment_293_validation/test_voter_agent.py
 
-# Real-time performance monitoring
-python scripts/monitoring/dashboard.py
+# VoterAgent validation experiments
+python scripts/experiments/experiment_293_validation/experiment_293_retest.py
+python scripts/experiments/experiment_293_validation/experiment_294_vote_thresholds.py
 
-# Portfolio analysis and risk metrics
-python scripts/analysis/portfolio_analysis.py
+# Configuration system demonstration
+python scripts/experiments/configuration_system/config_usage_demo.py
 ```
 
-### Production Voting System
+### Legacy Validation Scripts
 
 ```bash
-# Test production voting agents
-python test_phase1_integration.py
+# Historical validation experiments
+python tests/experiment_293_macd_vs_voting.py       # Original voting validation
+python tests/experiment_extended_period_voting.py  # Extended period testing
 
-# Basic voting system demo
-python examples/basic_voting_demo.py
+# Generate comprehensive analysis
+python scripts/analysis/generate_results_summary.py --advanced
+```
 
-# Fibonacci experiments and validation
-python scripts/fibonacci_experiments/statistical_validation.py
+### Multi-Agent Development (Coming Soon)
 
-# Parameter optimization
-python scripts/fibonacci_experiments/fibonacci_permutation_tester.py
+```bash
+# Start AutoGen multi-agent trading system
+python scripts/trading/autogen_trading_system.py --mode paper
+
+# Test agent coordination
+python scripts/testing/test_multi_agent_coordination.py
+
+# Monitor agent communication
+python scripts/monitoring/agent_dashboard.py
 ```
 
 ### Risk Management and Alerts
@@ -154,28 +185,31 @@ python scripts/alerts/test_notifications.py
 ## Project Structure
 
 ```bash
-RH2MAS/
+AutoGen-TradingSystem/
 ├── src/
-│   ├── core/
-│   │   ├── agents/       # Production voting agents (MACD+RSI, Fibonacci)
-│   │   └── indicators/   # Technical indicators (RSI, MACD, etc.)
-│   ├── tools/
-│   │   ├── regime_detection/  # Fibonacci regime module and market analysis
-│   │   └── data_sources/      # Market data providers and caching
-│   ├── data/
-│   │   └── cache/        # UnifiedCacheManager and data optimization
-│   └── utils/            # Common utilities and helpers
+│   ├── autogen_agents/        # AutoGen agent implementations
+│   │   ├── voter_agent.py     # ✅ Production-ready MACD+RSI voting agent
+│   │   ├── base_agent.py      # Base AutoGen agent with tool integration
+│   │   ├── scanner_agent.py   # 🚧 Market scanning agent (in development)
+│   │   ├── risk_agent.py      # 🚧 Risk management agent (in development)
+│   │   ├── executor_agent.py  # 🚧 Trade execution agent (in development)
+│   │   └── trading_orchestrator.py  # 🚧 Multi-agent coordinator
+│   ├── trading_tools/         # Tools and functions for AutoGen agents
+│   │   └── indicators.py      # MACD and RSI calculation functions
+│   ├── data_sources/          # Market data integration
+│   │   └── tools.py           # Market data fetching tools for agents
+│   ├── deprecated/            # Legacy V0-V4 sentiment system (archived)
+│   └── utils/                 # Common utilities and helpers
 ├── scripts/
-│   ├── fibonacci_experiments/  # Fibonacci regime testing and validation
-│   ├── runs/             # Legacy V0-V4 backtesting (deprecated reference)
-│   └── analysis/         # Results analysis and reporting
-├── docs/
-│   ├── architecture/     # System design and component structure
-│   ├── trading/          # Trading setup and risk management
-│   └── api/              # API integration guides
-├── config/               # API configuration (local only)
-├── reports/              # Trading results and performance analytics
-└── .cache/               # Unified caching system
+│   ├── experiments/           # Organized experiment validation
+│   │   ├── experiment_293_validation/  # VoterAgent testing and validation
+│   │   └── configuration_system/       # Parameter management demos
+│   ├── analysis/              # Results analysis and reporting
+│   └── validation/            # General validation scripts
+├── config/                    # API configuration (local only)
+├── config_defaults/           # Default configuration management
+├── tests/                     # Legacy test scripts
+└── .cache/                    # Market data caching system
 ```
 
 ## Documentation
@@ -198,39 +232,41 @@ RH2MAS/
 
 ### Production-Ready Foundation ✅
 
-- **✅ Phase 1 Complete**: MACD+RSI voting system with Fibonacci enhancement integrated
-- **✅ Validated Parameters**: MACD 8/21/5, EMA21 filter, optimized through extensive testing
-- **✅ Enhanced Regime Detection**: 7-regime classification with statistical validation
-- **✅ Performance Proven**: +3.36% excess return vs buy-and-hold, superior risk management
-- **✅ Cache-Optimized Architecture**: 90%+ performance improvement through intelligent caching
-- **✅ Multi-Asset Support**: Stocks, ETFs tested across 20-month validation period
-- **✅ Statistical Framework**: Walk-forward analysis, Monte Carlo simulation, professional metrics
+- **✅ VoterAgent Production Ready**: AutoGen-based MACD+RSI voting agent with validated 0.856 Sharpe performance
+- **✅ Validated Parameters**: MACD 13/34/8 Fibonacci parameters optimized across tech stocks
+- **✅ AutoGen Integration**: Full Microsoft AutoGen framework integration with message handling and tool access
+- **✅ Flexible Configuration**: Dynamic parameter adjustment system without code modifications
+- **✅ Performance Proven**: 36.6% return over 2024-2025, superior performance in volatile markets
+- **✅ Tool Integration**: Market data fetching and analysis tools accessible to AutoGen agents
+- **✅ Testing Framework**: Comprehensive validation suite for agent performance testing
 
-### Active Production Development 🚧
+### Active Development 🚧
 
-**Phase 2: CCI Integration (Next Priority)**:
-- CCI Module Development - Add Commodity Channel Index to regime detection
-- Multi-Indicator Ensemble - Combine MACD + Fibonacci + CCI signals
-- Enhanced Win Rate Target - >55% win rate improvement through multi-indicator consensus
-- Extended Validation - Test on AAPL, MSFT, GOOGL, AMZN, TSLA with CCI enhancement
+**Phase 2: Multi-Agent System Completion**:
+- **ScannerAgent** - Market opportunity identification and multi-symbol analysis
+- **RiskAgent** - Portfolio risk management and position sizing logic
+- **ExecutorAgent** - Trade execution and Alpaca API integration
+- **TradingOrchestrator** - Multi-agent coordination and workflow management
 
-**Future Development**:
-- [Alpaca API Integration](https://github.com/iAmGiG/RH2MAS/issues/258) - Paper trading implementation
-- [Comprehensive Risk Agent](https://github.com/iAmGiG/RH2MAS/issues/177) - Position sizing and risk controls  
-- [Real-time Data Pipeline](https://github.com/iAmGiG/RH2MAS/issues/259) - WebSocket integration
-- [Performance Dashboard](https://github.com/iAmGiG/RH2MAS/issues/261) - Real-time monitoring interface
+**Priority Development Issues**:
+- [Issue #324](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/324) - Forward testing protocol implementation
+- [Issue #323](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/323) - Full trading pipeline workflow
+- [Issue #322](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/322) - Live execution layer enhancements
+- [Issue #321](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/321) - Dynamic trailing stop logic
+- [Issue #320](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/320) - Expand sample size for statistical confidence
 
 ### Project Evolution
 
-Originally developed as an academic research framework, RH2MAS has evolved into a practical trading platform focused on proven technical analysis with statistical validation. The current production system emphasizes validated multi-indicator voting with sophisticated regime detection.
+Originally developed as a research framework (RH2MAS), this project has evolved into AutoGen-TradingSystem - a production-ready trading platform built on Microsoft AutoGen multi-agent framework. The system combines validated MACD+RSI voting strategies with sophisticated multi-agent coordination.
 
 **Key Advantages**:
 
-- **Statistically Validated**: Extensive backtesting with walk-forward analysis and Monte Carlo simulation
-- **Production-Ready Agents**: MACD+RSI voting with Fibonacci regime enhancement
-- **Superior Performance**: +3.36% excess return vs buy-and-hold with better risk management
-- **Extensible Architecture**: Clean separation of agents, tools, and experiments for future enhancement
-- **Open Source**: Complete transparency in strategy logic, parameters, and validation results
+- **AutoGen-Based Architecture**: Built on Microsoft AutoGen framework for robust multi-agent communication
+- **Production-Ready VoterAgent**: Validated 0.856 Sharpe performance with MACD+RSI voting logic
+- **Flexible Parameter System**: Dynamic configuration without code modifications
+- **Extensible Multi-Agent Design**: Clean separation enabling easy addition of new specialized agents
+- **Tool Integration**: Market data and analysis tools seamlessly integrated with AutoGen agents
+- **Open Source**: Complete transparency in agent logic, parameters, and validation results
 
 ## License
 

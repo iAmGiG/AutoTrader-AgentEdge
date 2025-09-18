@@ -18,8 +18,13 @@ src/
 │   ├── position_tracker.py         # Position management utilities
 │   └── risk_calculator.py          # Risk assessment functions
 │
-├── autogen_agents/            # AutoGen Agent Implementations
-│   └── voter_agent.py              # MACD+RSI voting agent
+├── autogen_agents/            # Microsoft AutoGen Agent Implementations
+│   ├── voter_agent.py              # Production-ready MACD+RSI voting agent (0.856 Sharpe)
+│   ├── base_agent.py               # Base AutoGen agent with tool integration
+│   ├── scanner_agent.py            # Market scanning agent (in development)
+│   ├── risk_agent.py               # Risk management agent (in development)
+│   ├── executor_agent.py           # Trade execution agent (in development)
+│   └── trading_orchestrator.py     # Multi-agent coordination (in development)
 │
 └── data_sources/              # Market Data Infrastructure
     └── sources/market/
@@ -44,11 +49,15 @@ src/
 - **Data Utilities**: Market data fetching and processing
 - **Position Tracking**: Portfolio state calculations
 
-### 3. Agent Layer (`src/autogen_agents/`)
-**Purpose**: Decision-making agents using AutoGen framework
+### 3. AutoGen Agent Layer (`src/autogen_agents/`)
+**Purpose**: Multi-agent trading system using Microsoft AutoGen framework
 
-- **VoterAgent**: MACD+RSI voting logic (validated: 0.856 Sharpe)
-- **Future Agents**: Scanner, Risk Manager, Executor, Human Interface
+- **VoterAgent**: ✅ Production-ready MACD+RSI voting logic (validated: 0.856 Sharpe)
+- **BaseAgent**: ✅ Foundation class with tool integration and message handling
+- **ScannerAgent**: 🚧 Market opportunity identification (in development)
+- **RiskAgent**: 🚧 Portfolio risk management (in development)
+- **ExecutorAgent**: 🚧 Trade execution coordination (in development)
+- **TradingOrchestrator**: 🚧 Multi-agent workflow management (in development)
 
 ### 4. Data Layer (`src/data_sources/`)
 **Purpose**: Market data acquisition and normalization
@@ -57,15 +66,18 @@ src/
 - **Multi-provider Support**: Polygon, Alpha Vantage fallbacks
 - **Intelligent Caching**: >90% API call reduction
 
-## Data Flow
+## AutoGen Multi-Agent Data Flow
 
 ```
-Market Data → Agents → Trading Tools → Trading Operations
-     ↓           ↓           ↓              ↓
-1. Real-time  2. MACD+RSI  3. Risk        4. Order
-   market        voting       calculation    placement
-   data          decisions    position       via Alpaca
-                              sizing         API
+Market Data → AutoGen Agents → Trading Tools → Trading Operations
+     ↓             ↓               ↓              ↓
+1. Real-time   2. VoterAgent    3. Risk        4. Order
+   market         MACD+RSI        calculation    placement
+   data           decisions       position       via Alpaca
+                     ↓             sizing         API
+                 3. Multi-Agent
+                    Coordination
+                    (Future)
 ```
 
 ## Complete Trading Infrastructure
@@ -84,10 +96,11 @@ Market Data → Agents → Trading Tools → Trading Operations
 - Unified live/paper architecture
 - Comprehensive safety features
 
-**Voting System Foundation**:
-- VoterAgent with validated MACD+RSI logic
-- Configuration system for parameters
-- AutoGen BaseAgent integration
+**AutoGen Agent System Foundation**:
+- VoterAgent with validated MACD+RSI logic (0.856 Sharpe)
+- BaseAgent foundation with tool integration
+- Configuration system for dynamic parameter adjustment
+- Message handling and agent communication framework
 
 ### 🔄 Next Phase: Complete Agent Ecosystem
 

@@ -1,6 +1,6 @@
-# RH2MAS Documentation
+# AutoGen-TradingSystem Documentation
 
-Professional documentation for RH2MAS - a unified trading platform with proven MACD+RSI voting strategy and comprehensive order management.
+Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based trading platform with proven MACD+RSI voting strategy and comprehensive multi-agent architecture.
 
 ## Documentation Structure
 
@@ -47,17 +47,17 @@ Professional documentation for RH2MAS - a unified trading platform with proven M
 
 ## Key Features
 
-### ✅ **Validated Trading System**
-- **MACD+RSI Voting**: Proven 0.856 Sharpe ratio performance
-- **Order Management**: Complete order lifecycle tracking
-- **Position Tracking**: Real-time position and P&L monitoring
-- **Risk Controls**: Automated stop losses and position sizing
+### ✅ **AutoGen Multi-Agent System**
+- **VoterAgent**: Production-ready MACD+RSI voting with 0.856 Sharpe ratio performance
+- **Agent Architecture**: Microsoft AutoGen framework for agent coordination
+- **Multi-Agent Trading**: Scanner, Risk, Executor, and Orchestrator agents (in development)
+- **Tool Integration**: Market data and trading tools accessible to all agents
 
 ### ✅ **Professional Architecture**
-- **Unified Components**: Single source of truth for all operations
+- **Agent Communication**: Structured message passing between AutoGen agents
+- **Unified Tools**: Single source of truth accessible to all agents
 - **Error Handling**: Comprehensive error recovery and logging
-- **Rate Limiting**: API throttling protection
-- **State Management**: Persistent trade state across restarts
+- **State Management**: Persistent trade state across restarts and agent coordination
 
 ### ✅ **Production Ready**
 - **Paper Trading**: Safe testing environment
@@ -85,10 +85,10 @@ Professional documentation for RH2MAS - a unified trading platform with proven M
 ## Current Status
 
 ### ✅ **Production Components**
-- **Position Manager**: Unified position and account tracking
-- **Order Manager**: Complete order placement and monitoring
-- **Signal Generator**: Proven MACD+RSI voting system
-- **Market Scanner**: Technical analysis and opportunity detection
+- **VoterAgent**: Production-ready AutoGen agent with validated MACD+RSI voting
+- **Position Manager**: Unified position and account tracking accessible to agents
+- **Order Manager**: Complete order placement and monitoring via AutoGen tools
+- **Trading Cycle**: Comprehensive position monitoring and stop management
 
 ### ✅ **Integration Complete**
 - **Alpaca Markets**: Full paper and live trading support
@@ -104,6 +104,6 @@ Professional documentation for RH2MAS - a unified trading platform with proven M
 
 ---
 
-*Documentation follows professional standards with clear organization, consistent naming, and comprehensive coverage of all system components.*
+*Documentation follows professional standards with clear organization, consistent naming, and comprehensive coverage of all AutoGen agents and system components.*
 
-*Last Updated: September 10, 2025 - Production-Ready Release*
+*Last Updated: September 17, 2025 - AutoGen Multi-Agent System*
