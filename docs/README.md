@@ -24,6 +24,7 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 - **[Risk Management](strategy/risk_management.md)** - Position sizing and stops
 - **[Performance Analysis](strategy/performance_analysis.md)** - Backtesting results
 
+<<<<<<< HEAD
 ### 🎯 **API Reference**
 - **[Position Manager](api/position_manager.md)** - Position and account management
 - **[Order Manager](api/order_manager.md)** - Order placement and tracking
