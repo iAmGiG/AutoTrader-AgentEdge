@@ -7,10 +7,12 @@
 ## 📊 Issue Categories & Phases
 
 ### Phase 1A: Multi-Indicator Voting System (Priority 1)
+
 **Target**: Transform single MACD to 90% accuracy ensemble
 
 #### Week 1: Foundation Architecture
-- **#250** 🏗️ **Core Voting Architecture** 
+
+- **#250** 🏗️ **Core Voting Architecture**
   - **Depends on**: Current V0-V4 framework
   - **Enables**: All voting system issues (#277-289)
   - **Integration**: CoordinatorAgent, StrategyAgent
@@ -20,13 +22,13 @@
   - **Integrates with**: Technical indicators, MACD system
   - **Enables**: #281 (weighted voting)
 
-- **#278** 📊 **Bollinger Bands Implementation** 
+- **#278** 📊 **Bollinger Bands Implementation**
   - **Depends on**: #250 (voting architecture)
   - **Parallel with**: #277 (RSI)
   - **Enables**: #281 (weighted voting)
 
 - **#279** 📈 **Volume Confirmation**
-  - **Depends on**: #250 (voting architecture) 
+  - **Depends on**: #250 (voting architecture)
   - **Enhances**: #277, #278 (reduces false signals)
   - **Integration**: Market data pipeline
 
@@ -36,6 +38,7 @@
   - **Enables**: Performance tracking for all phases
 
 #### Week 2: Weighted Intelligence
+
 - **#281** ⚖️ **Weighted Voting System**
   - **Depends on**: #250, #277, #278, #279 (all indicators operational)
   - **Enables**: #282, #283 (advanced scoring)
@@ -52,6 +55,7 @@
   - **Integration**: Historical performance analysis
 
 #### Week 3: Market Regime Adaptation  
+
 - **#284** 🔄 **Market Regime Detection**
   - **Depends on**: #250 (voting system)
   - **Integration**: V2 agent (VIX/volatility analysis)
@@ -68,6 +72,7 @@
   - **Integration**: Market data pipeline (multiple timeframes)
 
 #### Week 4: Production Readiness
+
 - **#287** 🎯 **Order Management System**
   - **Depends on**: #250, #281 (voting decisions)
   - **Integrates with**: #258 (Alpaca API)
@@ -88,6 +93,7 @@
 ### Phase 1B: Enhanced Backtesting (Parallel Development)
 
 #### Practical Trading Reality
+
 - **#264** 🔍 **Practical Trading Filters**
   - **Independent**: Can run parallel with voting system
   - **Enhances**: All backtesting (V0-V4, voting system)
@@ -108,6 +114,7 @@
 ### Phase 2: Advanced Analytics (Future)
 
 #### Performance Analysis Framework
+
 - **#268** 🎲 **Monte Carlo Framework**
   - **Depends on**: #280 (ensemble metrics), #250 (voting system)
   - **Enhances**: Confidence intervals for all strategies
@@ -123,6 +130,7 @@
 ### Phase 3: Production Trading (Future)
 
 #### Real-Time Trading Infrastructure
+
 - **#258** 🔗 **Alpaca API Integration**
   - **Depends on**: #287 (order management)
   - **Enables**: #259 (real-time pipeline)
@@ -134,12 +142,14 @@
   - **Integration**: WebSocket market data
 
 #### Strategy Orchestration
+
 - **#260** 🎭 **Strategy Orchestration**
   - **Depends on**: #250 (voting system), #258 (Alpaca)
   - **Integrates**: V0-V4 agents, voting ensemble
   - **Enables**: Dynamic strategy weighting
 
 #### Monitoring & Management
+
 - **#261** 📊 **Performance Dashboard**
   - **Depends on**: #289 (monitoring), #258 (live data)
   - **Integration**: Real-time visualization
@@ -160,6 +170,7 @@
 ## 🔄 Development Workflow Dependencies
 
 ### Critical Path (Must Complete First)
+
 ```
 #250 (Core Voting) → #277 (RSI) → #278 (Bollinger) → #279 (Volume) → 
 #280 (Metrics) → #281 (Weighted) → #287 (Orders) → Paper Trading Ready
@@ -168,23 +179,27 @@
 ### Parallel Development Paths
 
 #### Path A: Voting Intelligence
+
 ```
 #250 → [#277, #278, #279] → #281 → [#282, #283] → #285
 ```
 
 #### Path B: Market Awareness  
+
 ```
 #250 → #284 → #285 ← #283 (performance data)
 #250 → #286 (can develop independently)
 ```
 
 #### Path C: Production Preparation
+
 ```
 #281 → #287 → #288 → #289
 #287 → #258 → #259 → #260
 ```
 
 #### Path D: Enhanced Backtesting (Independent)
+
 ```
 [#264, #267, #265] → Can enhance any strategy
 ```
@@ -194,21 +209,25 @@
 ## 🎯 Strategic Integration Points
 
 ### V0-V4 Framework Integration
+
 - **#250**: Core voting system integrates with existing V0-V4 agents
 - **#285**: Adaptive weights enhance V4 LLM decision making
 - **#260**: Strategy orchestration manages V0-V4 + voting ensemble
 
 ### Data Pipeline Integration
+
 - **#279**: Volume analysis extends market data pipeline
 - **#286**: Multi-timeframe requires enhanced data fetching
 - **#259**: Real-time pipeline serves all agents
 
 ### Risk Management Integration  
+
 - **#288**: Enhanced risk layer builds on existing sentiment-based controls
 - **#282**: Signal strength feeds into Kelly Criterion position sizing
 - **#262**: Alert system monitors all risk metrics
 
 ### Analytics Integration
+
 - **#280**: Ensemble metrics extend existing advanced metrics system
 - **#268**: Monte Carlo enhances statistical analysis framework
 - **#283**: Performance tracking feeds optimization systems
@@ -218,17 +237,20 @@
 ## 📋 Implementation Recommendations
 
 ### Week 1 Start (Immediate)
+
 1. **Begin with #250** - Core voting architecture (foundation for everything)
 2. **Parallel #277** - RSI implementation (builds on existing technical)
 3. **Research #264** - Practical filters (independent, high value)
 
 ### Development Strategy
+
 1. **Minimum Viable Ensemble**: #250 + #277 + #278 + simple majority voting
 2. **Enhanced Ensemble**: Add #279 (volume), #280 (metrics), #281 (weighting)
 3. **Intelligent Ensemble**: Add #284 (regime), #285 (adaptive), #286 (timeframes)
 4. **Production Ready**: Add #287 (orders), #288 (risk), #289 (monitoring)
 
 ### Risk Mitigation
+
 - **Parallel backtesting work** (#264, #267, #265) provides value if voting system faces delays
 - **Modular architecture** allows incremental improvement without breaking existing V0-V4
 - **Metrics first** (#280) enables data-driven development decisions

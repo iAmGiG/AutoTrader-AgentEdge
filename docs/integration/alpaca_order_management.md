@@ -11,7 +11,7 @@ Complete order management system built on the official Alpaca Markets SDK with a
 
 ## Architecture
 
-```
+```bash
 src/trading/
 ├── alpaca_trading_client.py     # Core order management classes
 └── alpaca_autogen_tools.py      # AutoGen agent integration
@@ -25,6 +25,7 @@ Classes:
 ## Core Features
 
 ### Order Types
+
 - **Market Orders**: Immediate execution at current market price
 - **Limit Orders**: Execute at specified price or better (GTC/DAY support)
 - **Stop Orders**: Trigger market order when price reaches stop level
@@ -32,6 +33,7 @@ Classes:
 - **Bracket Orders**: Entry + take profit + stop loss combinations
 
 ### Risk Management
+
 - **Market Hours Validation**: Timezone-aware trading session checking
 - **Daily Trade Limits**: Configurable maximum orders per market day
 - **Position Validation**: Automatic position requirement checks for sell orders
@@ -39,6 +41,7 @@ Classes:
 - **Order Size Limits**: Configurable maximum order size enforcement
 
 ### Safety Features
+
 - **Unified Live/Paper Architecture**: Single codebase, different credentials
 - **Multi-level Confirmations**: Extra safety for live trading operations
 - **Mode-aware Logging**: Clear indicators for live vs paper operations
@@ -129,6 +132,7 @@ result = order_tool.place_market_order("AAPL", 100, "buy")
 ## Configuration
 
 ### Risk Limits
+
 ```python
 risk_limits = {
     'max_order_size': 1000,        # Maximum shares per order
@@ -138,6 +142,7 @@ risk_limits = {
 ```
 
 ### Market Hours Behavior
+
 - **Regular Hours**: 9:30 AM - 4:00 PM ET
 - **Extended Hours**: 4:00 AM - 8:00 PM ET (configurable)
 - **Closed Market**: Orders queued with warnings
@@ -146,6 +151,7 @@ risk_limits = {
 ## Error Handling
 
 All methods return standardized response format:
+
 ```python
 {
     'status': 'submitted|error|cancelled',
@@ -160,6 +166,7 @@ All methods return standardized response format:
 ## Testing
 
 ### Test Coverage: 29/29 Passing
+
 - **Basic Orders**: Market, limit, validation, risk limits
 - **Advanced Orders**: Stop, trailing stop, bracket orders
 - **Market Hours**: Timezone handling, session validation
@@ -168,6 +175,7 @@ All methods return standardized response format:
 - **Mode Awareness**: Paper vs live operation validation
 
 ### Run Tests
+
 ```bash
 python tests/test_alpaca_order_manager.py      # Basic functionality
 python tests/test_alpaca_advanced_orders.py    # Advanced order types
@@ -176,7 +184,9 @@ python tests/test_alpaca_advanced_orders.py    # Advanced order types
 ## Production Deployment
 
 ### Live Trading Setup
+
 1. Add live credentials to `config/config.json`:
+
    ```json
    {
      "ALPACA_LIVE_API_KEY": "your_live_key",
@@ -185,6 +195,7 @@ python tests/test_alpaca_advanced_orders.py    # Advanced order types
    ```
 
 2. Initialize with live mode:
+
    ```python
    manager = AlpacaOrderManager(mode="live")
    ```
@@ -192,6 +203,7 @@ python tests/test_alpaca_advanced_orders.py    # Advanced order types
 3. **Safety Confirmations**: All live operations require explicit confirmation
 
 ### Paper Trading (Default)
+
 - Uses paper account credentials
 - Full feature compatibility
 - No confirmations required

@@ -7,9 +7,11 @@ The RH2MAS cache system provides unified data storage and retrieval for market d
 ## Components
 
 ### UnifiedCacheManager
+
 **Location**: `src/tools/cache/unified_cache.py`
 
 Primary cache interface that handles:
+
 - Market data caching (OHLCV)
 - News data caching
 - Source-agnostic storage format
@@ -18,7 +20,7 @@ Primary cache interface that handles:
 
 ### Cache Directory Structure
 
-```
+```bash
 .cache/
 ├── market_data/
 │   ├── AAPL_2024-01-01_2024-12-31_polygon_consolidated.json
@@ -31,7 +33,9 @@ Primary cache interface that handles:
 ## Key Features
 
 ### 1. Pattern Matching
+
 The cache manager searches for both regular and consolidated files:
+
 ```python
 pattern1 = f"{symbol}_*_{source}.json"
 pattern2 = f"{symbol}_*_{source}_consolidated.json"
@@ -39,7 +43,9 @@ matching_files = list(self.market_dir.glob(pattern1)) + list(self.market_dir.glo
 ```
 
 ### 2. Dynamic Validation
+
 Thresholds adapt based on requested date range:
+
 ```python
 calendar_days = (end_dt - start_dt).days + 1
 expected_trading_days = calendar_days * 0.7  # ~70% of calendar days are trading days
@@ -47,7 +53,9 @@ min_threshold = max(expected_trading_days * 0.5, 5)  # At least 50% coverage
 ```
 
 ### 3. Cache Consolidation
+
 Fragmented cache files are merged using union operations:
+
 - Removes duplicates
 - Sorts by date
 - Preserves all unique records
@@ -56,6 +64,7 @@ Fragmented cache files are merged using union operations:
 ## Data Sources
 
 ### Market Data
+
 1. **Polygon.io** (Primary)
    - 5 calls/minute rate limit
    - 2 years historical data
@@ -67,6 +76,7 @@ Fragmented cache files are merged using union operations:
    - Format: `_alpha_vantage.json` or `_alpha_vantage_consolidated.json`
 
 ### News Data
+
 1. **Google Custom Search API**
    - 100 calls/day limit
    - Smart sampling via NewsGovernor
@@ -76,16 +86,19 @@ Fragmented cache files are merged using union operations:
 ## Common Issues and Solutions
 
 ### Issue: Cache Fragmentation
+
 **Symptoms**: Date jumps in backtests, missing trading days
 **Solution**: Consolidate cache files using union operations
 **Prevention**: Always use UnifiedCacheManager for data access
 
 ### Issue: Monthly Backtest Failures
+
 **Symptoms**: "No market data available" for month-specific tests
 **Solution**: Dynamic validation thresholds based on date range
 **Fix Location**: `unified_cache.py` lines 119-128
 
 ### Issue: File Not Found
+
 **Symptoms**: Cache exists but not found by manager
 **Solution**: Update pattern matching to include consolidated files
 **Fix Location**: `unified_cache.py` lines 209-211
@@ -100,6 +113,7 @@ Fragmented cache files are merged using union operations:
 ## Testing Validation
 
 Successfully tested with:
+
 - AAPL: 252 trading days, continuous progression
 - AMZN: All V0-V3 versions completed
 - SPY: All V0-V3 versions completed

@@ -6,7 +6,8 @@
 ## System Architecture
 
 ### Directory Structure
-```
+
+```bash
 src/
 ├── trading/                    # Trading Operations & Integrations
 │   ├── alpaca_trading_client.py    # Order management, account monitoring
@@ -34,6 +35,7 @@ src/
 ## Layer Separation
 
 ### 1. Integration Layer (`src/trading/`)
+
 **Purpose**: External service integrations, stateful operations
 
 - **Alpaca Trading Client**: Order placement, account management, position monitoring
@@ -42,6 +44,7 @@ src/
 - **State Management**: Account state, order tracking
 
 ### 2. Business Logic Layer (`src/trading_tools/`)
+
 **Purpose**: Pure functions, calculations, utilities
 
 - **Technical Indicators**: MACD, RSI calculation functions
@@ -50,6 +53,7 @@ src/
 - **Position Tracking**: Portfolio state calculations
 
 ### 3. AutoGen Agent Layer (`src/autogen_agents/`)
+
 **Purpose**: Multi-agent trading system using Microsoft AutoGen framework
 
 - **VoterAgent**: ✅ Production-ready MACD+RSI voting logic (validated: 0.856 Sharpe)
@@ -60,6 +64,7 @@ src/
 - **TradingOrchestrator**: 🚧 Multi-agent workflow management (in development)
 
 ### 4. Data Layer (`src/data_sources/`)
+
 **Purpose**: Market data acquisition and normalization
 
 - **Alpaca Market Data**: Real-time bars, quotes, trades, snapshots
@@ -68,7 +73,7 @@ src/
 
 ## AutoGen Multi-Agent Data Flow
 
-```
+```bash
 Market Data → AutoGen Agents → Trading Tools → Trading Operations
      ↓             ↓               ↓              ↓
 1. Real-time   2. VoterAgent    3. Risk        4. Order
@@ -85,18 +90,21 @@ Market Data → AutoGen Agents → Trading Tools → Trading Operations
 ### ✅ Completed Components
 
 **Market Data Integration (#312)**:
+
 - Real-time market data via Alpaca SDK
 - Intelligent caching system
 - Multi-provider data normalization
 - AutoGen tool wrappers
 
 **Order Management (#313)**:
+
 - Advanced order types (market, limit, stop, trailing, bracket)
 - Risk management (market hours, daily limits, position validation)
 - Unified live/paper architecture
 - Comprehensive safety features
 
 **AutoGen Agent System Foundation**:
+
 - VoterAgent with validated MACD+RSI logic (0.856 Sharpe)
 - BaseAgent foundation with tool integration
 - Configuration system for dynamic parameter adjustment
@@ -105,6 +113,7 @@ Market Data → AutoGen Agents → Trading Tools → Trading Operations
 ### 🔄 Next Phase: Complete Agent Ecosystem
 
 **Remaining Agents (Issue #310)**:
+
 1. **Scanner Agent**: Multi-ticker market scanning
 2. **Risk Agent**: Portfolio risk management  
 3. **Executor Agent**: Trade execution coordination
@@ -113,21 +122,25 @@ Market Data → AutoGen Agents → Trading Tools → Trading Operations
 ## Key Design Principles
 
 ### 1. **Separation of Concerns**
+
 - **Integration** ≠ **Business Logic** ≠ **Decisions**
 - Clean boundaries between layers
 - Pure functions where possible
 
 ### 2. **Unified Architecture**
+
 - Single codebase for paper and live trading
 - Consistent interfaces across all components
 - Mode-aware behavior with safety rails
 
 ### 3. **Production Safety**
+
 - Multi-level confirmations for live trading
 - Comprehensive validation and error handling
 - Risk management at every layer
 
 ### 4. **Agent-Ready Design**
+
 - AutoGen tool wrappers for all functionality
 - Standardized response formats
 - Agent-friendly error handling
@@ -135,7 +148,8 @@ Market Data → AutoGen Agents → Trading Tools → Trading Operations
 ## Configuration Management
 
 ### Trading Configuration
-```
+
+```bash
 config_defaults/
 ├── voting_config.yaml          # MACD+RSI parameters
 ├── risk_management.yaml        # Risk limits and controls
@@ -143,7 +157,8 @@ config_defaults/
 ```
 
 ### API Configuration
-```
+
+```bash
 config/
 └── config.json                 # API keys (gitignored)
     ├── ALPACA_PAPER_API_KEY
@@ -155,13 +170,15 @@ config/
 ## Testing Strategy
 
 ### Comprehensive Test Coverage: 35/35 Tests Passing
+
 - **Market Data**: 3/3 tests (connection, data retrieval, caching)
 - **Basic Orders**: 9/9 tests (market, limit, validation, risk)
 - **Advanced Orders**: 6/6 tests (stop, trailing, bracket)
 - **Advanced Features**: 17/17 tests (modification, cancellation, hours)
 
 ### Test Organization
-```
+
+```bash
 tests/
 ├── test_alpaca_basic.py            # Market data integration
 ├── test_alpaca_connection.py       # API authentication
@@ -172,11 +189,13 @@ tests/
 ## Performance Characteristics
 
 ### Market Data
+
 - **>90% Cache Hit Rate**: Intelligent caching reduces API calls
 - **Multi-provider Fallback**: Resilient data acquisition
 - **Real-time Capability**: Live bars, quotes, trades
 
 ### Order Management
+
 - **Sub-second Validation**: Fast risk checks and parameter validation
 - **Unified Performance**: No penalty for paper vs live mode switching
 - **Scalable Architecture**: Handles multiple concurrent operations
@@ -184,6 +203,7 @@ tests/
 ## Integration Points
 
 ### AutoGen Agents
+
 ```python
 from src.trading.alpaca_autogen_tools import AlpacaAccountTool, AlpacaOrderTool
 
@@ -195,6 +215,7 @@ order_tool = AlpacaOrderTool(mode="paper")
 ```
 
 ### Direct Usage
+
 ```python
 from src.trading.alpaca_trading_client import AlpacaOrderManager
 
@@ -205,6 +226,7 @@ manager = AlpacaOrderManager(mode="paper")
 ## Production Readiness
 
 ### Live Trading Checklist
+
 - ✅ **Safety Rails**: Multi-level confirmations
 - ✅ **Risk Management**: Position limits, daily limits, buying power
 - ✅ **Error Handling**: Comprehensive validation and recovery
@@ -213,6 +235,7 @@ manager = AlpacaOrderManager(mode="paper")
 - ✅ **Documentation**: Complete usage and API documentation
 
 ### Monitoring & Observability
+
 - **Structured Logging**: All operations logged with context
 - **Error Tracking**: Comprehensive error handling and reporting
 - **Performance Metrics**: Order execution times, success rates

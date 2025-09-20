@@ -5,6 +5,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 ## File Naming
 
 ### Core Trading Components
+
 - `src/trading/position_manager.py` - Position and account management
 - `src/trading/order_manager.py` - Order placement and tracking
 - `src/trading/trade_lifecycle.py` - Individual trade state machine
@@ -15,10 +16,12 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 - `src/trading/error_handling.py` - Error handling utilities
 
 ### Data Components
+
 - `src/trading/unified_price_fetcher.py` - Centralized price data
 - `src/trading/unified_state_manager.py` - Centralized state management
 
 ### Integration Components
+
 - `src/trading/alpaca_trading_client.py` - Alpaca broker integration
 - `src/trading/alpaca_autogen_tools.py` - AutoGen tool wrappers
 - `src/trading/llm_trading_assistant.py` - LLM trading interface
@@ -26,6 +29,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 ## Class Naming
 
 ### Core Classes
+
 - `PositionManager` - Manages positions and account data
 - `OrderManager` - Handles order placement and tracking
 - `TradeCycle` - Individual trade lifecycle
@@ -35,6 +39,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 - `SimpleSignalGenerator` - Signal generation
 
 ### Support Classes
+
 - `UnifiedPriceFetcher` - Price data fetching
 - `UnifiedStateManager` - State management
 - `AlpacaOrderManager` - Alpaca order management
@@ -43,6 +48,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 ## Method Naming
 
 ### Action Methods
+
 - `place_order()` - Place trading orders
 - `monitor_fills()` - Check for order fills
 - `update_positions()` - Update position data
@@ -50,12 +56,14 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 - `generate_signals()` - Create trading signals
 
 ### Query Methods
+
 - `get_positions()` - Retrieve position data
 - `get_account_info()` - Get account information
 - `check_order_status()` - Check order status
 - `evaluate_signals()` - Evaluate trading signals
 
 ### State Methods
+
 - `save_state()` - Persist state data
 - `load_state()` - Load state data
 - `refresh_cache()` - Update cached data
@@ -63,6 +71,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 ## Variable Naming
 
 ### Financial Data
+
 - `symbol` - Ticker symbol (e.g., "AAPL")
 - `price` - Current price
 - `entry_price` - Entry price for position
@@ -72,6 +81,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 - `market_value` - Current market value
 
 ### Trading State
+
 - `trade_state` - Current trade state
 - `order_id` - Broker order identifier
 - `fill_price` - Actual fill price
@@ -79,6 +89,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 - `signal_action` - Trading action ('BUY', 'SELL', 'HOLD')
 
 ### Technical Indicators
+
 - `macd_line` - MACD line value
 - `macd_signal` - MACD signal line
 - `rsi_value` - RSI indicator value
@@ -86,7 +97,7 @@ This document establishes consistent naming patterns for the RH2MAS trading syst
 
 ## Directory Structure
 
-```
+```bash
 src/trading/
 ├── position_manager.py        # Position & account management
 ├── order_manager.py           # Order placement & tracking
@@ -116,6 +127,7 @@ tests/
 ## Anti-Patterns to Avoid
 
 ### Bad File Names
+
 ❌ `critical_fixes.py` - Too generic, unclear purpose
 ❌ `cost_efficient_cycle.py` - Redundant qualifiers
 ❌ `useful_scanner.py` - Meaningless qualifier
@@ -123,12 +135,14 @@ tests/
 ❌ `demo_something.py` - Should be in examples/
 
 ### Bad Class Names
+
 ❌ `CostEfficientTradeCycle` - Too verbose
 ❌ `UsefulScanner` - Meaningless qualifier
 ❌ `CriticalFixer` - Not descriptive
 ❌ `UtilityHelper` - Too generic
 
 ### Bad Method Names
+
 ❌ `do_trading_stuff()` - Not descriptive
 ❌ `fix_things()` - Too generic
 ❌ `handle_request()` - Too broad
@@ -146,6 +160,7 @@ tests/
 ## Examples
 
 ### Good Naming
+
 ```python
 # Files
 position_manager.py
@@ -164,6 +179,7 @@ def calculate_position_size(account_balance: float) -> int:
 ```
 
 ### Bad Naming
+
 ```python
 # Files
 critical_fixes.py

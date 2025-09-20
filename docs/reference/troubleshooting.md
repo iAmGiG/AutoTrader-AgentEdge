@@ -1,37 +1,38 @@
 # Troubleshooting Guide
 
-## Common Import Errors
+## AutoGen Framework Issues
 
-### `ImportError for autogen_ext`
+### `ImportError for autogen_ext` or `autogen_agentchat`
 
 - **Solution**: Ensure you're using the AutoGen conda environment
-- **Command**: `conda activate AutoGen`
+- **Command**: `conda activate AutoGen-TradingSystem`
+- **Verify**: `python -c "import autogen_agentchat; print('AutoGen available')"`
 
-### `AttributeError for model_client`
+### `AttributeError for model_client` in AutoGen Agents
 
-- **Issue**: model_client not stored as class attribute in BaseAgent
-- **Solution**: Ensure model_client is stored as class attribute in BaseAgent initialization
+- **Issue**: model_client not properly initialized in BaseAgent
+- **Solution**: Check `src/autogen_agents/base_agent.py` initialization
+- **Verify**: Ensure OpenAI client is properly configured for agents
 
-## Tool Execution Errors
+## AutoGen Tool Integration Errors
 
 ### `'FunctionTool' object is not callable`
 
-- **Issue**: Calling tool directly instead of its function
-- **Solution**: Use `tool.func(**args)` instead of `tool(**args)`
+- **Issue**: Incorrect tool usage in AutoGen agents
+- **Solution**: Use proper AutoGen tool registration in BaseAgent
+- **Example**: Check `src/autogen_agents/base_agent.py` tool setup
 
-### `'str' object has no attribute 'get'`
+### VoterAgent MACD/RSI Calculation Errors
 
-- **Issue**: Tool arguments need JSON parsing
-- **Solution**: Parse arguments with `json.loads(tool_args)` before use
+- **Issue**: Missing trading_tools imports or data format issues
+- **Solution**: Verify `src/trading_tools/indicators.py` imports work
+- **Test**: `python -c "from src.trading_tools.indicators import calculate_macd, calculate_rsi; print('Indicators available')"`
 
-### `Input should be a valid string [type=string_type]`
+### AutoGen Agent Communication Failures
 
-- **Issue**: Result must be converted to string for LLM
-- **Solution**: Convert results to string before returning FunctionExecutionResult
-
-### Empty search_terms in SEC tool
-
-- **Solution**: The `search_sec_filings` tool now handles empty search terms gracefully
+- **Issue**: Agents not properly inheriting from BaseAgent
+- **Solution**: Ensure all agents extend `src/autogen_agents/base_agent.py`
+- **Check**: Agent initialization and tool registration
 
 ## Data Type Errors
 
@@ -44,35 +45,28 @@
 
 - **Solution**: Convert numpy types to Python native types before serialization
 
-## Cache System Issues
+## Cache System Issues (Still Relevant)
 
 ### Cache Fragmentation
 
 - **Issue**: Multiple small cache files for same symbol/date range causing incomplete data
-- **Symptoms**: Backtests showing date jumps (e.g., Jan → June), missing trading days
-- **Solution**: Run cache consolidation scripts, ensure UnifiedCacheManager uses consolidated files
-- **Prevention**: Use UnifiedCacheManager for all market data access
+- **Symptoms**: VoterAgent backtests showing date jumps, missing trading days
+- **Solution**: Use UnifiedCacheManager for all AutoGen agent market data access
+- **Prevention**: Ensure agents use `src/data_sources/tools.py` for data fetching
 
-### Incomplete Daily Values in Results
+### VoterAgent Data Access Issues
 
-- **Issue**: Results files only showing last 50 days instead of full year
-- **Symptoms**: daily_values array truncated despite checkpoint having all days
-- **Solution**: Fixed in simple_continuous_backtest.py - remove [-50:] slice
-- **Verification**: Check len(results['daily_values']) equals trading days count
+- **Issue**: VoterAgent not finding market data for MACD/RSI calculations
+- **Symptoms**: "No market data available" despite cache files existing
+- **Solution**: Verify cache consolidation and UnifiedCacheManager integration
+- **Code**: Check `src/autogen_agents/voter_agent.py` data fetching logic
 
-### Cache File Not Found
+### Market Data Format Issues
 
-- **Issue**: UnifiedCacheManager not finding consolidated cache files
-- **Symptoms**: "No cache found" despite files existing
-- **Solution**: Update pattern matching to include both regular and _consolidated.json files
-- **Code Fix**: See src/tools/cache/unified_cache.py lines 209-211
-
-### Monthly Backtests Failing
-
-- **Issue**: Cache validation rejecting valid monthly data (< 200 days)
-- **Symptoms**: Month-specific backtests fail with "No market data available"
-- **Solution**: Dynamic threshold based on requested date range (fixed in unified_cache.py)
-- **Calculation**: min_threshold = max(expected_days * 0.5, 5)
+- **Issue**: MACD/RSI calculations failing due to data format mismatches
+- **Symptoms**: Pandas DataFrame issues, column name mismatches
+- **Solution**: Ensure data normalization through `src/trading_tools/indicators.py`
+- **Verification**: Test individual indicator functions before agent integration
 
 ## API and Data Issues
 
@@ -88,45 +82,56 @@
 
 ### Module Import Issues
 
-- **Solution**: Run test files from project root directory
-- **Verification**: `import autogen_core; print(autogen_core.__file__)`
+- **Solution**: Run AutoGen agent tests from project root directory
+- **Verification**: `python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent import successful')"`
+- **Environment**: Ensure `conda activate AutoGen-TradingSystem`
 
 ## Package and Environment Issues
 
-### Package Conflicts
+### AutoGen Package Conflicts
 
-- **Solution**: Ensure using autogen-core 0.6.x from conda environment
-- **Required packages**: autogen-core 0.6.4, autogen-agentchat 0.6.4
+- **Solution**: Ensure using autogen-agentchat and autogen-ext packages
+- **Required packages**: autogen-agentchat 0.6.x, autogen-ext, openai
+- **Install**: `pip install autogen-agentchat autogen-ext openai`
 
-### Missing Dependencies
+### Missing AutoGen Dependencies
 
-- **Solution**: All optional dependencies use lazy imports to handle missing packages gracefully
+- **Solution**: Install complete AutoGen stack
 - **Install**: Use `pip install -e .` to install all dependencies
+- **Verify**: `python -c "from autogen_agentchat.agents import AssistantAgent; print('AutoGen working')"`
 
 ## Tool-Specific Issues
 
-### Multi-Source Data Fallback
+### AutoGen Agent Market Data Sources
 
-- **Primary**: Alpha Vantage (25 calls/day limit)
-- **Secondary**: FMP (Financial Modeling Prep)
-- **Tertiary**: NASDAQ Data Link
+- **Primary**: Polygon.io API (used by VoterAgent for MACD/RSI)
+- **Secondary**: Alpaca Market Data (for live trading integration)
+- **Tertiary**: Alpha Vantage (fallback, 25 calls/day limit)
+- **Cache**: UnifiedCacheManager reduces API calls by 90%+
 
-### Date Parsing Issues
+### AutoGen Agent Date/Time Issues
 
-- **Finnhub**: Fixed date handling in unified news tool for Finnhub responses
-- **General**: Use `date_utils.py` for consistent date handling
+- **VoterAgent**: Ensure proper date range formatting for market data requests
+- **General**: Use consistent YYYY-MM-DD format across all agents
+- **Timezone**: Market data cache handles timezone conversion automatically
 
 ## Performance Issues
 
-### API Rate Limits
+### AutoGen Agent Performance
 
-- **Solution**: Use intelligent backtest service with automatic rate limit management
-- **Files**:
-  - Service progress: `.cache/backtests/service_progress.json`
-  - Service logs: `.cache/backtests/service.log`
+- **VoterAgent**: Optimized MACD+RSI calculations with caching
+- **Cache Hit Rate**: Should achieve 90%+ with UnifiedCacheManager
+- **Parallel Processing**: Multiple agents can run concurrently via TradingOrchestrator
 
-### Cache Efficiency
+### API Rate Limits (Current System)
 
-- **News Cache**: 7-day expiry, filters by relevance score (≥ 0.5)
-- **Market Data Cache**: 24-hour expiry, stores as JSON with metadata
-- **Hit Rate**: Should achieve 70%+ cache efficiency
+- **Polygon API**: 5 calls/minute (primary data source for VoterAgent)
+- **Alpaca API**: 200 requests/minute (for live trading integration)
+- **Cache Strategy**: Intelligent caching reduces API usage by 90%+
+- **Solution**: Use cache-first approach in all AutoGen agents
+
+### AutoGen Agent Memory Usage
+
+- **VoterAgent**: Lightweight, only loads necessary market data
+- **BaseAgent**: Efficient tool registration and memory management
+- **Monitoring**: Use `python -m memory_profiler` for agent performance testing

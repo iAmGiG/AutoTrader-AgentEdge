@@ -1,14 +1,20 @@
 # News Data Limitations & Usage Guidance
 
-## Overview
+## ⚠️ DEPRECATED SYSTEM WARNING
 
-This document outlines known limitations of the news data pipeline and provides guidance for interpreting sentiment outputs and troubleshooting common issues.
+**Status**: The V0-V4 sentiment framework (including news data analysis) has been **DEPRECATED** as of the AutoGen-TradingSystem architecture transition.
 
-## Current News Architecture
+**Current System**: Production-ready **AutoGen VoterAgent** using **validated MACD+RSI voting** (0.856 Sharpe ratio) without sentiment dependencies.
 
-### Unified News Tool Implementation
+**Reason for Deprecation**: Complex sentiment analysis proved to have unproven ROI compared to simple, validated technical indicators.
 
-The system uses a **UnifiedNewsTool** that replaced the individual source scoring approach mentioned in issue #36. This provides:
+## Historical Context (Archived Information)
+
+This document is preserved for historical reference only. The described news architecture was part of the deprecated V0-V4 sentiment framework.
+
+### Former Unified News Tool Implementation (Deprecated)
+
+The deprecated system used a **UnifiedNewsTool** that provided:
 
 - **Multiple Source Integration**: Finnhub (priority 1), NewsAPI (priority 2), AlphaVantage (priority 3)
 - **Consistent Sentiment Scoring**: Single-pass sentiment analysis across all sources
@@ -174,10 +180,20 @@ The system uses a **UnifiedNewsTool** that replaced the individual source scorin
 - **Performance Correlation**: Monitor sentiment accuracy vs actual returns
 - **API Health**: Automated monitoring of news source availability
 
+## Migration to Current System
+
+**Current Production System**: AutoGen VoterAgent with MACD+RSI voting
+- **File**: `src/autogen_agents/voter_agent.py`
+- **Validation**: 0.856 Sharpe ratio, 36.6% return over 2024-2025
+- **Testing**: `scripts/experiments/experiment_293_validation/test_voter_agent.py`
+- **Dependencies**: No news APIs, only market data (Polygon, Alpaca)
+
 ## Related Issues & Documentation
 
-- **Issue #36**: Original external scoring framework (replaced by UnifiedNewsTool)
-- **Issue #42**: Documentation of limitations (this document)  
-- **Issue #139**: Fix for sentiment pipeline showing 0.0 values (CLOSED)
-- [Troubleshooting Guide](docs/troubleshooting.md): Technical issues and solutions
-- [Commands Reference](docs/commands.md): News tool usage examples
+- **Issue #36**: Original external scoring framework (DEPRECATED)
+- **Issue #42**: Documentation of limitations (historical reference)
+- **Issue #139**: Fix for sentiment pipeline showing 0.0 values (OBSOLETE)
+- **Issue #310**: Complete remaining AutoGen agents (CURRENT FOCUS)
+- [Architecture Guide](../system/architecture.md): Current vs deprecated systems
+- [Commands Reference](commands.md): Updated for AutoGen system
+- [Terminology](terminology.md): Updated agent architecture

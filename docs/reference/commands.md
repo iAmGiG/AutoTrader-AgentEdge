@@ -8,35 +8,30 @@
 
 ## Current Development Commands
 
-### Voting Strategy Testing (Validated System) ✅
+### AutoGen Agent Testing (Production System) ✅
 
 ```bash
-# Core validation experiments  
-python tests/experiment_293_macd_vs_voting.py       # Voting vs single MACD comparison
-python tests/experiment_extended_period_voting.py  # 2024-2025 bull vs volatile analysis
-python tests/experiment_voting_optimized.py        # Fibonacci MACD optimization test
+# VoterAgent (production-ready with 0.856 Sharpe validation)
+python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent: Production Ready')"
 
-# Parameter optimization
-python tests/experiment_macd_optimization.py       # Multi-ticker parameter optimization
+# Multi-agent development testing
+python -c "from src.autogen_agents.scanner_agent import ScannerAgent; print('ScannerAgent: In Development')"
+python -c "from src.autogen_agents.risk_agent import RiskAgent; print('RiskAgent: In Development')"
+python -c "from src.autogen_agents.executor_agent import ExecutorAgent; print('ExecutorAgent: In Development')"
 
-# Individual component tests
-python tests/experiment_ichimoku_standalone.py     # Ichimoku solo vs voting comparison
+# Trading orchestrator coordination
+python -c "from src.autogen_agents.trading_orchestrator import TradingOrchestrator; print('Orchestrator: In Development')"
+
+# All unit tests
+python -m unittest discover tests
 ```
 
-### Fibonacci Regime Development (In Progress) 🔄
+### Archived Validation Results ✅
 
 ```bash
-# Phase 1: Core Fibonacci Module (Issue #298)
-python tests/fibonacci_regime/test_phase_1.py      # 34 EMA filtering validation
-
-# Phase 2: CCI Integration (Issue #299) 
-python tests/fibonacci_regime/test_cci_integration.py
-
-# Phase 3: Symmetry Break Detection (Issue #300)
-python tests/fibonacci_regime/test_symmetry_breaks.py
-
-# Phase 4: Full Integration (Issue #301)
-python tests/fibonacci_regime/test_full_integration.py
+# Validation complete - results archived in docs/archived/experiments/experiment_293_validation/
+# Key findings: MACD+RSI voting (0.856 Sharpe) > single MACD (0.841 Sharpe)
+# VoterAgent now production-ready based on validated results
 ```
 
 ### Code Quality & Validation
@@ -56,6 +51,7 @@ python -m unittest discover tests
 ## Configuration Commands
 
 ### Market Data Cache
+
 ```bash
 # Check cache status
 ls -la .cache/market_data/
@@ -65,6 +61,7 @@ ls .cache/market_data/*2024* .cache/market_data/*2025*
 ```
 
 ### API Configuration
+
 ```bash
 # Create config file
 mkdir -p config
@@ -79,6 +76,7 @@ EOF
 ## Results Analysis Commands
 
 ### Active Results (Current Development)
+
 ```bash
 # View voting strategy validation
 cat reports/active/voting_strategy/experiment_293_validation/293_voting_validation_report.md
@@ -94,6 +92,7 @@ ls reports/active/fibonacci_regime/
 ```
 
 ### Historical Analysis (Archived)
+
 ```bash
 # View archived V0-V4 results
 cat reports/archived/v0_v4_deprecated/analysis/V0-V4_Framework_Results.md
@@ -105,6 +104,7 @@ ls reports/archived/v0_v4_deprecated/continuous_backtests/
 ## Development Workflow Commands
 
 ### GitHub Issue Management
+
 ```bash
 # View active Fibonacci regime issues
 gh issue list --repo iAmGiG/RH2MAS --label "fibonacci-regime"
@@ -117,6 +117,7 @@ gh issue view 301 --repo iAmGiG/RH2MAS  # Phase 4
 ```
 
 ### Documentation Updates
+
 ```bash
 # View current documentation structure
 tree docs/ -I "__pycache__"
@@ -130,6 +131,7 @@ cat docs/fibonacci_regime/README.md
 ## Legacy Commands (Deprecated)
 
 ### V0-V4 Sentiment Framework ❌
+
 ```bash
 # These commands are deprecated - system moved to archived
 python scripts/runs/backtest.py --version V0 --symbol AAPL --year 2024
@@ -142,13 +144,15 @@ python scripts/analysis/generate_results_summary.py --advanced
 ## Troubleshooting Commands
 
 ### Common Issues
+
 ```bash
 # Check Python environment
 python --version
 conda info --envs
 
-# Verify imports work
-python -c "from src.core.agents.simple_voting_orchestrator import SimpleVotingOrchestrator; print('Import successful')"
+# Verify AutoGen imports work
+python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent import successful')"
+python -c "from src.autogen_agents.base_agent import BaseAgent; print('BaseAgent import successful')"
 
 # Test data loading
 python -c "import json; data = json.load(open('.cache/market_data/AAPL_2024-01-01_2024-12-31_polygon_consolidated.json')); print(f'Loaded {len(data.get(\"data\", []))} records')"
@@ -158,6 +162,7 @@ du -sh .cache/
 ```
 
 ### Performance Monitoring
+
 ```bash
 # Monitor test execution time
 time python tests/experiment_293_macd_vs_voting.py

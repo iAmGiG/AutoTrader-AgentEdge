@@ -6,7 +6,7 @@
 
 ## Current Folder Structure (Minimal)
 
-```
+```bash
 src/
 ├── voting/                           # NEW: Core voting system (Issue #250)
 │   └── __init__.py                   # Ready for base_voting_strategy.py
@@ -33,16 +33,20 @@ src/
 ## Progressive Directory Creation Strategy
 
 ### Phase 1: Core Voting (Issue #250)
+
 **Only create when implementing**:
-```
+
+```bash
 src/voting/
 ├── base_voting_strategy.py          # Core voting interface
 └── majority_voter.py                # Simple 3/5 majority voting
 ```
 
 ### Phase 2: Add Indicators (Issues #277-279)  
+
 **Create when adding RSI/Bollinger/Volume**:
-```
+
+```bash
 src/indicators/                       # Create when implementing #277
 ├── base_indicator.py                 # Common indicator interface
 ├── rsi_indicator.py                  # Issue #277
@@ -51,48 +55,61 @@ src/indicators/                       # Create when implementing #277
 ```
 
 ### Phase 3: Advanced Features (Issues #281-289)
+
 **Create directories as features are implemented**:
+
 - `src/regime/` - When implementing market regime detection (#284)
-- `src/execution/` - When implementing order management (#287) 
+- `src/execution/` - When implementing order management (#287)
 - `src/analytics/` - When enhancing metrics for ensemble (#280)
 
 ### Phase 4: Production Integration (Issues #258-263)
+
 **Create when ready for live trading**:
+
 - `src/integration/` - Alpaca API, real-time pipeline
 - `src/monitoring/` - Performance tracking, alerts
-```
+
+```bash
 
 ## Implementation Flow (Critical Path)
 
 ### Week 1: Foundation (Issues #250, #277-280)
 ```
+
 1. src/voting/base_voting_strategy.py     # Core voting interface
 2. src/indicators/rsi_indicator.py        # First additional indicator  
 3. src/indicators/bollinger_indicator.py  # Second additional indicator
 4. src/indicators/volume_indicator.py     # Third additional indicator
 5. src/analytics/ensemble_metrics.py      # Track performance
-```
+
+```bash
 
 ### Week 2: Intelligence (Issues #281-283)
 ```
+
 1. src/voting/weighted_voter.py           # Confidence-based decisions
 2. src/utils/signal_strength.py           # Granular scoring
 3. src/analytics/indicator_performance.py # Track individual accuracy
-```
+
+```bash
 
 ### Week 3: Adaptation (Issues #284-286)
 ```
+
 1. src/regime/regime_detector.py          # Market regime detection
 2. src/regime/regime_adapter.py           # Dynamic weight adjustment
 3. src/timeframe/timeframe_manager.py     # Multi-timeframe confirmation
-```
+
+```bash
 
 ### Week 4: Production (Issues #287-289)
 ```
+
 1. src/execution/order_manager.py         # GTC order system
 2. src/execution/risk_manager.py          # Risk controls
 3. src/analytics/performance_monitor.py   # Real-time monitoring
-```
+
+```bash
 
 ## Key Design Principles
 

@@ -11,6 +11,7 @@ The 2-way voting strategy (MACD + RSI) has been validated as superior to single 
 ## Experiment #293 Results
 
 ### Primary Success Metrics ✅
+
 | Metric | MACD-Only | Voting (MACD+RSI) | Winner |
 |--------|-----------|-------------------|--------|
 | **Sharpe Ratio** | 0.841 | **0.856** | **Voting** |
@@ -18,6 +19,7 @@ The 2-way voting strategy (MACD + RSI) has been validated as superior to single 
 | **Win Rate** | 31.9% | **51.4%** | **Voting** |
 
 ### Secondary Metrics
+
 | Metric | MACD-Only | Voting (MACD+RSI) | Winner |
 |--------|-----------|-------------------|--------|
 | Total Return | **13.34%** | 12.62% | MACD |
@@ -25,6 +27,7 @@ The 2-way voting strategy (MACD + RSI) has been validated as superior to single 
 | Volatility | 16.58% | **15.30%** | **Voting** |
 
 ### Validation Criteria Met
+
 - ✅ **Better Risk-Adjusted Returns**: Sharpe ratio improvement
 - ✅ **Lower Drawdown**: Risk management superiority  
 - ✅ **Statistical Significance**: Tested on 252 trading days (full year)
@@ -52,6 +55,7 @@ def make_voting_decision(macd_signal, rsi_signal):
 ## Extended Period Validation (2024-2025)
 
 ### Market Regime Performance Discovery 🔥
+
 **Critical Finding**: Voting performs **relatively better** in volatile markets
 
 | Market Regime | Voting Gap vs Buy-Hold | Performance |
@@ -62,6 +66,7 @@ def make_voting_decision(macd_signal, rsi_signal):
 **Strategic Insight**: The smaller gap in volatile markets (2025) validates voting's risk management value during corrections and uncertainty.
 
 ### Overall Extended Period Results
+
 - **Period**: 2024-01-02 to 2025-08-29 (417 trading days)
 - **Voting Return**: +36.6%  
 - **Buy-Hold Return**: +90.6%
@@ -71,29 +76,35 @@ def make_voting_decision(macd_signal, rsi_signal):
 ## Why Voting Works
 
 ### 1. **Signal Confirmation**
+
 Requiring consensus between MACD (momentum) and RSI (overbought/oversold) filters false signals.
 
 ### 2. **Dynamic Position Sizing**
+
 - **Strong signals** (both agree): 100% position size
 - **Weak signals** (one agrees): 50% position size  
 - **No signals** (conflict): 0% position size (stay in cash)
 
 ### 3. **Complementary Indicators**
+
 - **MACD**: Captures trend momentum and direction
 - **RSI**: Identifies overbought/oversold extremes
 - **Together**: Reduce whipsaws and false breakouts
 
 ### 4. **Risk Management**
+
 Lower drawdown and volatility demonstrate superior risk control, critical for long-term sustainability.
 
 ## Comparison with Alternatives
 
 ### vs Single Indicators ✅
+
 - **MACD-only**: Voting wins on risk metrics
 - **RSI-only**: Not tested directly, but expected similar pattern
 - **Moving Averages**: Not tested, but voting approach validated
 
 ### vs Complex Systems ❌  
+
 - **Ichimoku 3-way**: Degraded performance (added noise)
 - **V0-V4 Sentiment**: Deprecated due to complexity without proven ROI
 - **Conclusion**: Quality over quantity in indicator selection
@@ -101,12 +112,14 @@ Lower drawdown and volatility demonstrate superior risk control, critical for lo
 ## Implementation Status
 
 ### ✅ **Operational Components**
+
 - `SimpleVotingOrchestrator`: MACD + RSI coordination
 - `TechAgent`: Fibonacci MACD (13/34/8) signals
 - `SimpleRSI`: 14-period RSI with confidence scoring
 - `UnifiedCacheManager`: Market data caching (90% performance improvement)
 
 ### ❌ **Fibonacci Regime Experiment Closed**
+
 Issues #297-#301 (Fibonacci regime detection) were closed after analysis showed the approach was too complex and not additive to the validated voting strategy.
 
 ## Next Steps
@@ -120,7 +133,8 @@ Issues #297-#301 (Fibonacci regime detection) were closed after analysis showed 
 
 *Validation complete - Simple voting strategy proven effective and production-ready*
 
-**Files**: 
+**Files**:
+
 - Raw results: `reports/active/voting_strategy/experiment_293_validation/`
 - Extended analysis: `reports/active/voting_strategy/extended_period_analysis/`
 - Test scripts: `tests/experiment_293_macd_vs_voting.py`
