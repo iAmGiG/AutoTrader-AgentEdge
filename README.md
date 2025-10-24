@@ -1,18 +1,28 @@
-# AutoGen-TradingSystem: Microsoft AutoGen Multi-Agent Trading Platform
+# AutoGen-TradingSystem: Human-in-Loop Multi-Agent Trading Platform
 
 ## Overview
 
-AutoGen-TradingSystem is a **production-ready trading platform** built on **Microsoft AutoGen** multi-agent framework. The system combines validated MACD+RSI voting strategies with sophisticated multi-agent coordination for real-world trading applications.
+AutoGen-TradingSystem is a **production-ready trading platform** built on **Microsoft AutoGen 0.7.x** framework. The system combines validated pure-math MACD+RSI strategies with human oversight for paper/live trading via Alpaca Markets.
 
-**🚀 Production Features**:
-- **✅ VoterAgent** - Production-ready AutoGen agent with validated 0.856 Sharpe MACD+RSI voting
-- **🚧 Multi-Agent System** - Scanner, Risk, Executor, and Orchestrator agents (in development)
-- **Optimized Parameters** - Validated MACD (13/34/8) Fibonacci parameters across tech stocks
-- **AutoGen Framework** - Built on Microsoft AutoGen for agent coordination and communication
-- **Flexible Configuration** - Dynamic parameter adjustment without code changes
-- **Paper Trading Ready** - Integration with Alpaca API (development in progress)
-- **Comprehensive Testing** - Extensive validation and backtesting framework
-- **Tool Integration** - Market data fetching and analysis tools for AutoGen agents
+**💡 Core Philosophy**: Pure mathematical indicators + human decision making > complex LLM sentiment analysis
+
+**🚀 Production Status** (Updated 2025-10-23):
+
+- **✅ VoterAgent** - Production-ready with validated 0.856 Sharpe ratio, 36.6% return
+- **✅ main.py Runner** - Fully functional CLI for paper trading operations
+- **✅ Alpaca Integration** - Paper trading validated and operational
+- **✅ Position Management** - Real-time tracking with broker-as-truth reconciliation
+- **✅ Trading Cycle** - Cost-efficient daily routines (90% fewer API calls)
+- **🚧 Multi-Agent System** - Scanner, Risk, Executor agents (planned)
+- **🚧 Human-in-Loop CLI** - Trade approval interface (Issue #308)
+
+**Key Metrics**:
+
+- **Sharpe Ratio**: 0.856 (excellent risk-adjusted returns)
+- **Total Return**: 36.6% (2024-2025 validation period)
+- **Win Rate**: 51.4%
+- **Max Drawdown**: -10.10%
+- **Strategy**: Pure MACD(13/34/8) + RSI(14/30/70) voting - NO LLM calls
 
 ## Core AutoGen Agents: Multi-Agent Trading System
 
@@ -21,6 +31,7 @@ The platform implements a Microsoft AutoGen-based multi-agent architecture with 
 ### Production-Ready Agents
 
 **VoterAgent** (`src/autogen_agents/voter_agent.py`) - ✅ **PRODUCTION READY**:
+
 - **MACD Signal Generation**: Optimized 13/34/8 Fibonacci parameters (fast/slow/signal)
 - **RSI Momentum Analysis**: 14-period RSI with 30/70 oversold/overbought levels
 - **Consensus Voting**: Strong signals when both indicators agree, weak when only one signals
@@ -31,21 +42,25 @@ The platform implements a Microsoft AutoGen-based multi-agent architecture with 
 ### Agents in Development
 
 **ScannerAgent** (`src/autogen_agents/scanner_agent.py`) - 🚧 **IN DEVELOPMENT**:
+
 - Market opportunity identification and screening
 - Multi-symbol analysis and ranking
 - Real-time market scanning capabilities
 
 **RiskAgent** (`src/autogen_agents/risk_agent.py`) - 🚧 **IN DEVELOPMENT**:
+
 - Position sizing and risk management
 - Portfolio-level risk monitoring
 - Stop-loss and risk mitigation strategies
 
 **ExecutorAgent** (`src/autogen_agents/executor_agent.py`) - 🚧 **IN DEVELOPMENT**:
+
 - Trade execution and order management
 - Alpaca API integration for paper/live trading
 - Order status monitoring and reporting
 
 **TradingOrchestrator** (`src/autogen_agents/trading_orchestrator.py`) - 🚧 **IN DEVELOPMENT**:
+
 - Multi-agent coordination and workflow management
 - Decision aggregation and conflict resolution
 - System-wide monitoring and reporting
@@ -53,18 +68,21 @@ The platform implements a Microsoft AutoGen-based multi-agent architecture with 
 ### AutoGen Architecture
 
 **Agent Communication Framework**:
+
 1. **Base Agent Class**: Common AutoGen agent foundation with tool integration
 2. **Message Handling**: Structured JSON communication between agents
 3. **Tool Integration**: Market data fetching and analysis tools accessible to all agents
 4. **Parameter Management**: Flexible configuration system for dynamic agent adjustment
 
 **Data Infrastructure**:
+
 - **Market Data Tools**: Polygon.io integration through AutoGen tool system
 - **Indicator Calculations**: MACD and RSI functions integrated with agents
 - **Cache Optimization**: Intelligent caching for improved performance
 - **Configuration System**: Flexible parameter management without code changes
 
 **Validation Framework**:
+
 - **VoterAgent Testing**: Comprehensive validation with 0.856 Sharpe performance
 - **Parameter Optimization**: Systematic testing across multiple configurations
 - **Multi-market Testing**: Validation across different market conditions
@@ -82,23 +100,28 @@ The platform implements a Microsoft AutoGen-based multi-agent architecture with 
 6. **Validation Suite**: Comprehensive testing framework for agent performance validation
 
 *AutoGen Agents in Development*:
+
 - **ScannerAgent**: Market opportunity identification and multi-symbol analysis
 - **RiskAgent**: Portfolio risk management and position sizing
 - **ExecutorAgent**: Trade execution and Alpaca API integration
 - **TradingOrchestrator**: Multi-agent coordination and workflow management
 
 ### Data Infrastructure
+
 **Trading APIs**:
+
 - **Alpaca**: Paper and live trading execution (real-time order management)
 - **Polygon.io**: Real-time and historical market data (WebSocket + REST)
 - **Alpha Vantage**: Fallback market data source
 
 **Technical Analysis Tools**:
+
 - **Enhanced Fibonacci Regime Module**: Advanced market regime detection
 - **Multi-Indicator Suite**: MACD, RSI, EMA filters with validated parameters
 - **Statistical Validation**: Walk-forward analysis, Monte Carlo simulation
 
 **Data Management**:
+
 - **UnifiedCacheManager**: 90%+ performance improvement through intelligent caching
 - **Multi-Source Aggregation**: Polygon.io primary, Alpha Vantage fallback
 - **Real-time Pipeline**: WebSocket data streaming for live decision making (coming soon)
@@ -116,68 +139,80 @@ pip install -e .
 
 ## Configuration
 
-Create `config/config.json` with required API keys:
+All API credentials in `config/config.json`:
 
 ```json
 {
-  "POLYGON_API_KEY": "...",        // Primary market data for AutoGen agents
-  "ALPHA_VANTAGE_KEY": "...",      // Fallback market data source
-  "OPENAI_API_KEY": "sk-...",      // For AutoGen agent LLM capabilities
-  "ALPACA_API_KEY": "...",         // Paper/live trading (future)
-  "ALPACA_SECRET_KEY": "...",      // Trading authentication (future)
-  "ALPACA_BASE_URL": "paper-api.alpaca.markets"  // Paper trading URL (future)
+  "POLYGON_IO": "your_key_here",              // ✅ Required: Primary market data
+  "ALPHA_VANTAGE_KEY": "your_key_here",       // ✅ Required: Fallback market data
+  "ALPACA_PAPER_API_KEY": "your_key_here",    // ✅ Required: Paper trading
+  "ALPACA_PAPER_SECRET": "your_key_here",     // ✅ Required: Paper trading secret
+  "ALPACA_ENDPOINT": "https://paper-api.alpaca.markets/v2",  // ✅ Paper trading URL
+
+  "OPEN_AI_KEY": "sk-...",                    // Optional: For future LLM-based agents
+  "OPENAI_TOOL_MODEL": "gpt-4o-mini",         // Optional: Tool calling model
+  "OPENAI_PROMPT_MODEL": "o3-mini",           // Optional: Reasoning model
+
+  "GOOGLE_SEARCH_API_KEY": "...",             // Legacy: Deprecated sentiment system
+  "NEWSAPI_KEY": "...",                       // Legacy: Deprecated sentiment system
+  "FINNHUB_KEY": "..."                        // Legacy: Deprecated sentiment system
 }
 ```
 
-Note: This file is excluded from version control for security. Currently only POLYGON_API_KEY and OPENAI_API_KEY are actively used by the VoterAgent.
+**Note**:
 
-## Usage
+- VoterAgent uses **pure math calculations** (MACD+RSI) - OpenAI keys NOT required for trading
+- LLM sentiment analysis was tested and deprecated as ineffective vs. technical indicators
+- This file is excluded from version control for security
 
-### AutoGen Agent Testing
+## Quick Start
+
+### Main Trading Interface (✅ Fully Functional)
 
 ```bash
-# Test production VoterAgent (primary)
-python scripts/experiments/experiment_293_validation/test_voter_agent.py
+# Test VoterAgent with AAPL
+python main.py test-voter
 
-# VoterAgent validation experiments
-python scripts/experiments/experiment_293_validation/experiment_293_retest.py
-python scripts/experiments/experiment_293_validation/experiment_294_vote_thresholds.py
+# Check current paper trading positions
+python main.py check-positions
 
-# Configuration system demonstration
-python scripts/experiments/configuration_system/config_usage_demo.py
+# Run full trading cycle for SPY
+python main.py paper-trade SPY
+
+# Generate performance analysis
+python main.py analysis
 ```
 
-### Legacy Validation Scripts
+**Example Output**:
+
+```
+✅ VoterAgent configured: MACD: (13/34/8), RSI: 14 period, 30/70 levels
+✅ Loaded 42 data points
+📊 Trading Decision: BUY (Confidence: 65.0%)
+   Reasoning: Weak signal: Only MACD signals BUY
+   MACD: BUY (Histogram: 0.111064)
+   RSI: HOLD (Value: 51.6)
+```
+
+### Validation & Backtesting
 
 ```bash
-# Historical validation experiments
-python tests/experiment_293_macd_vs_voting.py       # Original voting validation
-python tests/experiment_extended_period_voting.py  # Extended period testing
+# VoterAgent validation experiments
+python scripts/experiments/experiment_293_validation/test_voter_agent.py
+python scripts/experiments/experiment_293_validation/experiment_293_retest.py
 
-# Generate comprehensive analysis
+# Generate comprehensive analysis with advanced metrics
 python scripts/analysis/generate_results_summary.py --advanced
 ```
 
-### Multi-Agent Development (Coming Soon)
+### Coming Soon
 
 ```bash
-# Start AutoGen multi-agent trading system
+# Multi-agent coordination (Issue #310)
 python scripts/trading/autogen_trading_system.py --mode paper
 
-# Test agent coordination
-python scripts/testing/test_multi_agent_coordination.py
-
-# Monitor agent communication
-python scripts/monitoring/agent_dashboard.py
-```
-### Risk Management and Alerts
-
-```bash
-# Configure risk parameters
-python scripts/risk/configure_risk_limits.py
-
-# Test alert system
-python scripts/alerts/test_notifications.py
+# Human-in-loop CLI for trade approval (Issue #308)
+python main.py --interactive
 ```
 
 ## Project Structure
@@ -213,16 +248,19 @@ AutoGen-TradingSystem/
 ## Documentation
 
 **Trading Setup**:
+
 - [Trading Guide](docs/trading/setup.md) - Paper and live trading setup
 - [Risk Management](docs/trading/risk_management.md) - Position sizing and portfolio controls
 - [API Integration](docs/api/alpaca_setup.md) - Alpaca and data provider setup
 
 **System Architecture**:
+
 - [Fibonacci Integration Guide](docs/integration/fibonacci_enhanced_integration_guide.md) - Complete integration documentation
 - [Quick Reference](docs/integration/quick_reference.md) - Essential commands and usage
 - [Regime Detection Tools](docs/fibonacci_regime/regime_detection_tools.md) - Technical analysis modules
 
 **Reference**:
+
 - [Commands](docs/reference/commands.md) - All available scripts and commands
 - [Troubleshooting](docs/reference/troubleshooting.md) - Common issues and solutions
 
@@ -241,17 +279,21 @@ AutoGen-TradingSystem/
 ### Active Production Development 🚧
 
 **Phase 2: Multi-Agent System Completion**:
+
 - **ScannerAgent** - Market opportunity identification and multi-symbol analysis
 - **RiskAgent** - Portfolio risk management and position sizing logic
 - **ExecutorAgent** - Trade execution and Alpaca API integration
 - **TradingOrchestrator** - Multi-agent coordination and workflow management
 
 **Priority Development Issues**:
-- [Issue #324](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/324) - Forward testing protocol implementation
-- [Issue #323](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/323) - Full trading pipeline workflow
-- [Issue #322](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/322) - Live execution layer enhancements
+
+- [Issue #327](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/327) - ✅ Make main.py functional (COMPLETED 2025-10-23)
+- [Issue #328](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/328) - JSON→YAML token optimization (future)
+- [Issue #310](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/310) - Complete remaining AutoGen agents
+- [Issue #316](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/316) - Event bus for agent communication
+- [Issue #308](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/308) - CLI human-in-loop interface (CRITICAL)
+- [Issue #324](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/324) - Forward testing protocol
 - [Issue #321](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/321) - Dynamic trailing stop logic
-- [Issue #320](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/320) - Expand sample size for statistical confidence
 
 ### Project Evolution
 
@@ -265,6 +307,28 @@ Originally developed as a research framework (RH2MAS), this project has evolved 
 - **Extensible Multi-Agent Design**: Clean separation enabling easy addition of new specialized agents
 - **Tool Integration**: Market data and analysis tools seamlessly integrated with AutoGen agents
 - **Open Source**: Complete transparency in agent logic, parameters, and validation results
+
+## Recent Updates
+
+### October 23, 2025 - main.py Production Ready
+
+**✅ Completed**:
+
+- Fixed all import errors and function signature issues in main.py
+- Validated Alpaca paper trading integration (14 shares SPY @ $657.60, +2.2% P&L)
+- Implemented dual OpenAI model configuration (4o-mini for tools, o3-mini for reasoning)
+- Updated documentation to clarify pure-math approach (no LLM sentiment)
+
+**🎯 Key Insights**:
+
+- VoterAgent uses pure MACD+RSI calculations (no LLM calls) - faster, cheaper, validated
+- LLM sentiment analysis was tested extensively and deprecated as ineffective
+- Human-in-loop design: System assists humans, doesn't trade autonomously
+- Cost-efficient: 90% fewer API calls through intelligent batching and GTC orders
+
+**See**: [Issue #327](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/327) for complete details
+
+---
 
 ## License
 

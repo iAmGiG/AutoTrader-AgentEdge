@@ -43,6 +43,12 @@ config_loader = ConfigLoader()
 model_name = os.getenv("OPEN_MODEL", config_loader.get("OPEN_MODEL"))
 open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
 
+# Dual model configuration for cost optimization
+# Tool calling: Use gpt-4o-mini (fast, cheap, efficient for structured outputs)
+# Prompt/Reasoning: Use o3-mini (enhanced reasoning for trading decisions)
+tool_model_name = os.getenv("OPENAI_TOOL_MODEL", config_loader.get("OPENAI_TOOL_MODEL", model_name))
+prompt_model_name = os.getenv("OPENAI_PROMPT_MODEL", config_loader.get("OPENAI_PROMPT_MODEL", model_name))
+
 # Fallback map for tool execution (build dynamically to handle conditional imports)
 TOOL_FUNCTION_MAP = {
     "fetch_unified_market_data": fetch_unified_market_data,
@@ -66,7 +72,7 @@ class BaseAgent(AssistantAgent, ABC):
       - Tool registration and usage
     """
 
-    def __init__(self, name: str, tools=None, memory_system: Optional[Any] = None, llm_config: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str, tools=None, memory_system: Optional[Any] = None, llm_config: Optional[Dict[str, Any]] = None, use_dual_models: bool = False):
         """
         Initialize the agent with tools, memory system, and LLM configuration.
 
@@ -74,6 +80,8 @@ class BaseAgent(AssistantAgent, ABC):
         :param tools: List of tools the agent can use.
         :param memory_system: Optional memory interface for knowledge storage and retrieval.
         :param llm_config: Optional dictionary containing LLM settings (temperature, etc).
+        :param use_dual_models: If True, uses separate models for tool calling (4o-mini) and reasoning (o3-mini).
+                                Default False - most agents use pure calculations without LLM calls.
         """
         # 1. Merge default LLM config with any provided config
         llm_params = DEFAULT_LLM_CONFIG.copy()
@@ -86,8 +94,11 @@ class BaseAgent(AssistantAgent, ABC):
                 "OpenAI API key not found. Set the OPEN_AI_KEY environment variable or update your Codex config."
             )
 
+        # Select model based on dual model configuration
+        selected_model = tool_model_name if use_dual_models else model_name
+
         client_config = {
-            "model": model_name,
+            "model": selected_model,
             "api_key": open_ai_key,
             # LLM parameters
             "temperature": llm_params.get("temperature", 0.2),
@@ -123,6 +134,15 @@ class BaseAgent(AssistantAgent, ABC):
         # 7. Store the LLM configuration and model client
         self.llm_config = llm_params
         self.model_client = model_client_instance
+
+        # 8. Create optional reasoning model client (o3-mini for enhanced reasoning)
+        self.use_dual_models = use_dual_models
+        if use_dual_models:
+            reasoning_config = client_config.copy()
+            reasoning_config["model"] = prompt_model_name
+            self.reasoning_model_client = OpenAIChatCompletionClient(**reasoning_config)
+        else:
+            self.reasoning_model_client = None
 
     def log(self, message: str) -> None:
         """

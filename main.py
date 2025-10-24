@@ -14,7 +14,7 @@ Usage:
 import sys
 import os
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 import traceback
@@ -26,7 +26,6 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from src.autogen_agents.voter_agent import VoterAgent
 from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
-from src.trading_tools.data_fetch import get_market_data
 from src.data_sources.tools import fetch_unified_market_data
 from config_defaults.trading_config import TradingConfig
 
@@ -53,11 +52,14 @@ def test_voter_agent():
 
         # Test with AAPL data
         print("\nFetching AAPL market data...")
-        market_data = fetch_unified_market_data("AAPL", period="60d")
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+        market_data = fetch_unified_market_data("AAPL", start_date=start_date, end_date=end_date)
 
-        if market_data and len(market_data) >= 42:
-            df = pd.DataFrame(market_data)
-            df['Close'] = df['close']
+        if market_data is not None and not market_data.empty and len(market_data) >= 42:
+            df = market_data
+            if 'Close' not in df.columns and 'close' in df.columns:
+                df['Close'] = df['close']
 
             print(f"✅ Loaded {len(df)} data points")
             print(f"   Price range: ${df['Close'].min():.2f} - ${df['Close'].max():.2f}")
@@ -235,8 +237,10 @@ def run_paper_trading_check(symbol: str = None):
 
                     try:
                         # Get fresh market data
-                        market_data = get_market_data(pos_symbol, period="60d")
-                        if market_data and len(market_data) >= 42:
+                        end_date = datetime.now().strftime("%Y-%m-%d")
+                        start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+                        market_data = fetch_unified_market_data(pos_symbol, start_date=start_date, end_date=end_date)
+                        if market_data is not None and len(market_data) >= 42:
                             df = pd.DataFrame(market_data)
                             if 'Close' not in df.columns:
                                 df['Close'] = df.get('close', df.get('c', 0))

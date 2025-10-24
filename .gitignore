@@ -125,6 +125,7 @@ config/
 
 # Internal documentation
 CLAUDE.md
+Claude.md
 .claude_archive/
 ADVISOR_REQUIREMENTS_MET.md
 docs/internalREADME.md
@@ -236,3 +237,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+CODEBASE_ANALYSIS.md
+PROJECT_STATUS.md
