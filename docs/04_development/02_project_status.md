@@ -168,11 +168,23 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### Critical Path (Must Complete for Production)
 
-**#308 - CLI Human-in-Loop Interface**
+**#308 - CLI Human-in-Loop Interface** (P0 - IN PROGRESS)
+- **Scope**: User-initiated conversational trade assistant
+- **Features**: Natural language input, VoterAgent analysis, entry/stop/target suggestions, GTC orders
 - **Why Critical**: Core design principle is human oversight
-- **Blocker For**: Live trading deployment
-- **Target**: Q4 2025
-- **Status**: Not started
+- **Blocker For**: Live trading deployment, #324 (Forward Testing)
+- **Target**: Q4 2025 (next 2-4 weeks)
+- **Status**: Design complete, implementation starting
+
+**#333 - Portfolio Manager Agent** (P1 - NEW)
+- **Scope**: Risk management, position sizing, portfolio allocation checks
+- **Features**: Buying power checks, portfolio % limits, risk-based sizing, existing position handling
+- **Why Important**: Safe trading requires intelligent portfolio management
+- **Depends On**: #308 (needs basic trade interface first)
+- **Target**: Q1 2026
+- **Status**: Design phase
+
+### High Priority (Multi-Agent System)
 
 **#310 - Complete Remaining AutoGen Agents**
 - **Why Critical**: Multi-agent coordination needed for scale
@@ -181,34 +193,60 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Target**: Q1 2026
 - **Status**: Placeholders exist
 
-### High Priority (Quality of Life)
+**#331 - Multi-Agent Coordination & Debate System** (P2 - NEW)
+- **Scope**: Agent collaboration patterns (sequential, group chat, voting)
+- **Features**: Multi-agent analysis, consensus building, dissenting opinions
+- **Why Important**: Enables sophisticated multi-perspective analysis
+- **Depends On**: #308, #310 (needs core agents implemented)
+- **Target**: Q1-Q2 2026
+- **Status**: Exploration phase, needs design discussion
+
+**#316 - Event Bus for Agent Communication**
+- **Why Important**: Scalable agent coordination infrastructure
+- **Integrates With**: #331 (multi-agent), #333 (portfolio events)
+- **Target**: Q1 2026
+
+### Medium Priority (Feature Enhancements)
+
+**#330 - Options Analysis Support** (P2 - NEW)
+- **Scope**: Options contracts analysis (Greeks, IV, OI)
+- **Features**: Call/put analysis, unusual activity detection, liquidity checks
+- **Why Useful**: Expands trading beyond commons
+- **Depends On**: #308 (commons version must work first)
+- **Target**: Q1 2026
+- **Status**: Data access validation needed (Alpaca options API)
+
+**#321 - Dynamic Trailing Stop Logic**
+- **Why Important**: Enhanced profit protection
+- **Integrates With**: #308 (order lifecycle), #333 (risk management)
+- **Target**: Q1 2026
+
+**#332 - Autonomy Levels Expansion** (P2 - NEW)
+- **Scope**: Expand beyond basic confirm/auto to conditional execution
+- **Features**: Per-ticker whitelists, conditional auto-execute, risk-based autonomy
+- **Why Useful**: Power users can delegate routine decisions
+- **Depends On**: #308 (Levels 0 & 1 must work first)
+- **Target**: Q2 2026
+- **Status**: Design phase
+
+**#324 - Forward Testing Protocol**
+- **Why Useful**: Statistical validation before live trading
+- **Depends On**: #308 (needs human-in-loop CLI complete)
+- **Target**: Q2 2026
+
+### Low Priority (Optimization)
+
+**#328 - JSON→YAML Token Optimization**
+- **Why Useful**: Cost reduction for LLM agents
+- **Depends On**: LLM-based agents active (#331)
+- **Target**: Q2 2026
+
+### Completed
 
 **#327 - ✅ Make main.py Functional (COMPLETED Oct 2025)**
 - Fixed all import errors
 - Validated Alpaca integration
 - All 4 commands working
-
-**#316 - Event Bus for Agent Communication**
-- **Why Important**: Scalable agent coordination
-- **Dependencies**: None
-- **Target**: Q1 2026
-
-**#321 - Dynamic Trailing Stop Logic**
-- **Why Important**: Enhanced profit protection
-- **Dependencies**: None
-- **Target**: Q1 2026
-
-### Medium Priority (Future Enhancements)
-
-**#328 - JSON→YAML Token Optimization**
-- **Why Useful**: Cost reduction for LLM agents
-- **Dependencies**: LLM-based agents (#310)
-- **Target**: Q2 2026
-
-**#324 - Forward Testing Protocol**
-- **Why Useful**: Statistical validation
-- **Dependencies**: None
-- **Target**: Q2 2026
 
 ---
 
@@ -346,14 +384,22 @@ python main.py test-voter
 
 ## Recent Milestones
 
-### November 2025 - Documentation Restructure
+### November 2025 - Documentation & Issue Organization
 
-- Consolidated 7 folders into 3 main sections
+**Documentation Restructure**:
+- Consolidated 7 folders into 4 organized sections
 - Added numerical sequencing (01-06 files)
 - Created 5 new consolidated documents
 - Removed "new" terminology throughout
 - Enhanced research_papers.md with abstract and introduction
 - Updated cross-references and navigation
+
+**GitHub Issue Cleanup**:
+- Closed 20 obsolete/completed issues (42 → 23 open)
+- Created 4 new Phase 2 issues (#330, #331, #332, #333)
+- Updated all key issues with dependency relationships
+- Organized project board with priority/size/component fields
+- Simplified #308 to focused MVP scope
 
 ### October 2025 - Production Ready
 
@@ -374,23 +420,67 @@ python main.py test-voter
 
 ## Next Actions
 
-### Immediate (Production Ready)
+### Immediate (Next 2-4 Weeks) - P0 CRITICAL
 
-1. System is production-ready - Core trading validated and operational
-2. Configure live trading credentials when ready for production deployment
-3. Set up monitoring dashboard for live position tracking
+**#308 - CLI Human-in-Loop MVP**:
+1. Implement interactive CLI session (REPL loop)
+2. Build natural language parser (gpt-4o-mini)
+3. Integrate VoterAgent for MACD+RSI analysis
+4. Create entry suggestion formatter (entry/stop/target)
+5. Add simple portfolio % display
+6. Implement confirmation workflow (yes/no/modify)
+7. Enforce GTC order type (auto-adjust, note in output)
+8. Test in paper trading with real scenarios
 
-### Short Term (Next 2 Weeks)
+**Target**: Q4 2025 completion → **Unblocks live trading deployment**
 
-1. Implement event bus for decoupled agent communication (#316)
-2. Build CLI interface for trade approval workflow (#308)
-3. Connect AutoGen agents to validated trading infrastructure
+### Short Term (Q1 2026)
 
-### Medium Term (Next Month)
+**#333 - Portfolio Manager Agent**:
+1. Design risk management and position sizing system
+2. Implement buying power and portfolio % checks
+3. Build configuration system (portfolio.yaml)
+4. Add existing position conflict detection
 
-1. Deploy live trading with production monitoring
-2. Implement advanced portfolio analytics and reporting
-3. Add dynamic trailing stop algorithms for enhanced risk management
+**#316 - Event Bus**:
+1. Design decoupled agent communication architecture
+2. Implement message queue and routing
+3. Integrate with #308 CLI for agent events
+
+**#321 - Dynamic Trailing Stops**:
+1. Design stop adjustment algorithms
+2. Integrate with order lifecycle management
+
+### Medium Term (Q1-Q2 2026)
+
+**#310 - Complete Remaining Agents**:
+1. Implement RiskAgent (position sizing, stop-loss)
+2. Implement ScannerAgent (opportunity identification)
+3. Implement ExecutorAgent (order coordination)
+4. Build TradingOrchestrator (workflow management)
+
+**#330 - Options Analysis** (after #308 commons stable):
+1. Validate Alpaca options data access
+2. Build options-specific analysis (Greeks, IV, OI)
+3. Extend CLI to accept options requests
+
+**#331 - Multi-Agent Coordination** (after #310 complete):
+1. Design coordination pattern (sequential vs group chat vs voting)
+2. Implement agent debate/consensus system
+3. Test multi-agent workflow with paper trading
+
+### Long Term (Q2 2026+)
+
+**Live Trading Deployment** (after #308 + #324 complete):
+1. Complete forward testing protocol (#324)
+2. Configure production credentials
+3. Set up monitoring dashboard
+4. Deploy with initial capital allocation
+
+**#332 - Autonomy Expansion** (after #308 L0/L1 stable):
+1. Implement conditional auto-execute
+2. Add per-ticker whitelists
+3. Build rule-based autonomy system
 
 ---
 
