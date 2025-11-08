@@ -1,15 +1,11 @@
 """
 Core trading system architecture.
 
-This package contains:
-- Foundational interfaces, models, and orchestrator (new plugin architecture)
-- Legacy agents, indicators, and strategies (existing components)
-"""
+This package contains the foundational interfaces, models, and orchestrator
+for the new plugin-based architecture.
 
-# Legacy components (existing)
-from .agents import *
-from .indicators import *
-from .strategies import *
+Legacy components (autogen_agents, old strategies) are imported separately.
+"""
 
 # New plugin architecture
 from .models import (

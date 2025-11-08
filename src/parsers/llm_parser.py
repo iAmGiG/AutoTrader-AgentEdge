@@ -8,9 +8,9 @@ import logging
 import re
 from typing import Optional
 
-from src.core.interfaces import InputParser
-from src.core.models import TradeRequest, AssetType
-from src.services.llm import LLMService
+from core.interfaces import InputParser
+from core.models import TradeRequest, AssetType
+from services.llm import LLMService
 
 
 logger = logging.getLogger(__name__)
