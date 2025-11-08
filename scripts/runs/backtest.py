@@ -98,7 +98,7 @@ class SimpleContinuousBacktest:
             'V3': SentimentV3Agent(),
             'V4': SentimentV4Agent(enable_date_sanitization=True)
         }
-        
+
         # Initialize tech agent for fetching market data
         self.tech_agent = TechAgent()
 
@@ -247,7 +247,7 @@ class SimpleContinuousBacktest:
         """
 
         logger.info(f"🚀 Starting continuous backtest: {version} {symbol} {year}")
-        
+
         # Initialize advanced metrics capture if available
         metrics_capture = None
         if METRICS_CAPTURE_AVAILABLE:
@@ -297,13 +297,14 @@ class SimpleContinuousBacktest:
                         f"fetch historical market data for {symbol} from {start_date} to {end_date}"
                     )
                     response = future.result(timeout=60)  # 60 second timeout
-                    
+
                 # Parse response and get data from cache (tech agent should have cached it)
-                market_data = self.cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
+                market_data = self.cache_manager.get_market_data(
+                    symbol, start_date, end_date, "polygon")
                 if market_data is None or market_data.empty:
                     market_data = self.cache_manager.get_market_data(
                         symbol, start_date, end_date, "alpha_vantage")
-                        
+
             except Exception as e:
                 logger.error(f"❌ Tech agent failed to fetch data: {e}")
 
@@ -418,14 +419,14 @@ class SimpleContinuousBacktest:
 
             # Get signals
             macd_signal = macd_signals.get(date, 0)
-            
+
             # Use V4 batch sentiment data when available to avoid redundant API calls
             if version == 'V4' and hasattr(agent, 'prepared_sentiments') and date_str in agent.prepared_sentiments:
                 sentiment_score = agent.prepared_sentiments[date_str]
                 logger.debug(f"🤖 V4: Using batch sentiment for {date_str}: {sentiment_score:.3f}")
             else:
                 sentiment_score = await self.get_sentiment(agent, symbol, date_str)
-            
+
             sentiment_scores.append(sentiment_score)
 
             # Trading logic: MACD + Sentiment
@@ -437,17 +438,18 @@ class SimpleContinuousBacktest:
                 # Normalize sentiment to 0-1 range (handles different sentiment ranges)
                 # V0: fixed 1.0, V1: -1 to +1, V2: ~0.3-0.8, V3: ~0.2-0.8, V4: -1 to +1
                 normalized_sentiment = max(0, min(1, (sentiment_score + 1) / 2))  # Clamp to [0,1]
-                
+
                 # Calculate position multiplier based on sentiment confidence
                 MIN_POSITION = 0.3  # Never go below 30% position
                 MAX_POSITION = 1.0  # Maximum 100% position
-                position_multiplier = MIN_POSITION + (MAX_POSITION - MIN_POSITION) * normalized_sentiment
-                
+                position_multiplier = MIN_POSITION + \
+                    (MAX_POSITION - MIN_POSITION) * normalized_sentiment
+
                 # Capital-aware position sizing - calculate affordable shares first
                 max_affordable_shares = int(cash * 0.95 / current_price)  # Keep 5% cash buffer
                 target_shares = max(1, int(max_affordable_shares * position_multiplier))
                 shares = min(target_shares, max_affordable_shares)
-                
+
                 # Ensure we have enough cash for this position
                 required_cash = shares * current_price
                 if shares > 0 and required_cash <= cash:
@@ -469,7 +471,7 @@ class SimpleContinuousBacktest:
                         'macd_signal': macd_signal,
                         'position_avg_cost': position_avg_cost  # Enhanced tracking
                     })
-                    
+
                     # Record trade in advanced metrics capture
                     if metrics_capture:
                         metrics_capture.record_trade(
@@ -504,7 +506,7 @@ class SimpleContinuousBacktest:
                     'entry_date': entry_date,
                     'entry_avg_cost': position_avg_cost
                 })
-                
+
                 # Record trade in advanced metrics capture
                 if metrics_capture:
                     metrics_capture.record_trade(
@@ -523,7 +525,7 @@ class SimpleContinuousBacktest:
                 # Update position tracking before resetting (pass shares sold, not position count)
                 position_avg_cost, total_cost_basis = self.update_position_tracking(
                     'SELL', position, current_price, position_avg_cost, total_cost_basis)
-                
+
                 # Reset position tracking
                 position = 0
                 entry_price = 0
@@ -565,7 +567,7 @@ class SimpleContinuousBacktest:
                 'is_averaging_up': position_avg_cost > 0 and current_price > position_avg_cost,
                 'is_averaging_down': position_avg_cost > 0 and current_price < position_avg_cost
             })
-            
+
             # Update advanced metrics capture with daily data
             if metrics_capture:
                 # Note: Volume not available in current data, will be None
@@ -610,16 +612,17 @@ class SimpleContinuousBacktest:
                 share_counts = [t['shares'] for t in buy_trades]
                 unique_shares = set(share_counts)
                 avg_sentiment = np.mean([t['sentiment'] for t in buy_trades])
-                
+
                 logger.info(f"📊 Position sizing verification:")
                 logger.info(f"   - Unique share counts: {sorted(unique_shares)}")
                 logger.info(f"   - Share count range: {min(share_counts)} to {max(share_counts)}")
                 logger.info(f"   - Average sentiment: {avg_sentiment:.3f}")
                 logger.info(f"   - Total buy trades: {len(buy_trades)}")
-                
+
                 # Warn if all trades have identical shares (position sizing not working)
                 if len(unique_shares) == 1:
-                    logger.warning("⚠️ All trades have identical share count - position sizing may not be working!")
+                    logger.warning(
+                        "⚠️ All trades have identical share count - position sizing may not be working!")
                 else:
                     logger.info("✅ Position sizing working - different share counts detected")
 
@@ -649,20 +652,20 @@ class SimpleContinuousBacktest:
                 'max': np.max(sentiment_scores)
             }
         }
-        
+
         # Add enhanced metrics if MetricsCapture was used
         if metrics_capture:
             enhanced_data = metrics_capture.export_enhanced_results()
             results['enhanced_metrics'] = enhanced_data['enhanced_daily_data']
-            results['enhanced_trades'] = enhanced_data['enhanced_trade_data'] 
+            results['enhanced_trades'] = enhanced_data['enhanced_trade_data']
             results['sentiment_effectiveness'] = enhanced_data['sentiment_effectiveness']
             results['market_regime_analysis'] = enhanced_data['market_regime_summary']
             results['real_time_metrics'] = enhanced_data['real_time_metrics']
-            
+
             # Mark as having enhanced metrics
             results['metadata']['enhanced_capture'] = True
             results['metadata']['capture_framework'] = 'MetricsCapture_v1.0'
-            
+
             logger.info("📊 Enhanced metrics added to results")
 
         # Save final results

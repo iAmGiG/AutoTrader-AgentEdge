@@ -239,7 +239,8 @@ def run_paper_trading_check(symbol: str = None):
                         # Get fresh market data
                         end_date = datetime.now().strftime("%Y-%m-%d")
                         start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
-                        market_data = fetch_unified_market_data(pos_symbol, start_date=start_date, end_date=end_date)
+                        market_data = fetch_unified_market_data(
+                            pos_symbol, start_date=start_date, end_date=end_date)
                         if market_data is not None and len(market_data) >= 42:
                             df = pd.DataFrame(market_data)
                             if 'Close' not in df.columns:

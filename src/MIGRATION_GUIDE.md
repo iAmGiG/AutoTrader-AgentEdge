@@ -7,24 +7,28 @@
 ## Overview: What's Changing
 
 ### From Single Strategy → Ensemble Voting
+
 - **Old**: Single MACD with V0-V4 sentiment overlay (~60% accuracy)
 - **New**: Multi-indicator ensemble with voting mechanism (90% target accuracy)
 
 ### From Academic Research → Production Trading
+
 - **Old**: Built for papers and backtesting
 - **New**: Production-ready with order management and risk controls
 
 ## Folder Structure Migration
 
 ### What's Being Deprecated (Reference Only)
-```
+
+```bash
 src/deprecated/
 ├── README.md                    # Why we moved on + performance baseline
 └── v0_v4_original_system/       # Original files (DO NOT MODIFY)
 ```
 
 ### New Structure (Progressive Development)
-```
+
+```bash
 src/
 ├── voting/          # NEW: Core ensemble voting system (#250) - CREATED
 ├── agents/          # ENHANCED: V0-V4 become voting members - EXISTING
@@ -45,6 +49,7 @@ src/
 ### Phase 1A: Core Voting System (Week 1)
 
 #### Step 1: Implement Base Voting Architecture (#250)
+
 ```python
 # NEW FILE: src/voting/base_voting_strategy.py
 class BaseVotingStrategy:
@@ -56,6 +61,7 @@ class BaseVotingStrategy:
 ```
 
 #### Step 2: Add RSI Indicator (#277)  
+
 ```python
 # NEW FILE: src/indicators/rsi_indicator.py
 class RSIIndicator(BaseIndicator):
@@ -67,6 +73,7 @@ class RSIIndicator(BaseIndicator):
 ```
 
 #### Step 3: Keep V0-V4 as Voting Members
+
 ```python
 # ENHANCED: src/agents/voting_coordinator.py  
 class VotingCoordinator:
@@ -81,6 +88,7 @@ class VotingCoordinator:
 ### Phase 1B: Weighted Intelligence (Week 2)
 
 #### Upgrade to Confidence Voting (#281)
+
 ```python
 # NEW FILE: src/voting/weighted_voter.py
 class WeightedVoter(BaseVotingStrategy):
@@ -94,6 +102,7 @@ class WeightedVoter(BaseVotingStrategy):
 ### Phase 2: Market Intelligence (Week 3)
 
 #### Add Regime Detection (#284)
+
 ```python
 # NEW FILE: src/regime/regime_detector.py
 class RegimeDetector:
@@ -107,6 +116,7 @@ class RegimeDetector:
 ### Phase 3: Production Ready (Week 4)
 
 #### Order Management (#287)
+
 ```python  
 # NEW FILE: src/execution/order_manager.py
 class OrderManager:
@@ -120,12 +130,14 @@ class OrderManager:
 ## Code Migration Strategy
 
 ### What to Keep (DON'T Change)
+
 1. **Cache System** - 90% performance improvement preserved
 2. **Data Sources** - Market data, news tools work unchanged  
 3. **Advanced Metrics** - Extend for ensemble tracking
 4. **V0-V4 Logic** - Becomes voting ensemble members
 
 ### What to Replace (NEW Implementation)
+
 1. **Single MACD Strategy** → Multi-indicator ensemble
 2. **Fixed Position Sizing** → Confidence-weighted sizing
 3. **Static Parameters** → Regime-adaptive behavior
@@ -134,6 +146,7 @@ class OrderManager:
 ### Integration Points
 
 #### With Existing Cache System
+
 ```python
 # All new indicators use existing cache
 from src.tools.cache.unified_cache import UnifiedCacheManager
@@ -144,6 +157,7 @@ class RSIIndicator:
 ```
 
 #### With V0-V4 Agents  
+
 ```python
 # V0-V4 become ensemble voting members
 class VotingEnsemble:
@@ -158,12 +172,14 @@ class VotingEnsemble:
 ## Testing Strategy
 
 ### Parallel Testing (Recommended)
+
 1. **Keep old system running** - For comparison and fallback
 2. **A/B test new components** - Individual indicators first
 3. **Gradual ensemble build** - Add indicators one by one
 4. **Performance comparison** - New vs old system metrics
 
 ### Validation Approach
+
 ```python
 # Test individual components
 def test_rsi_indicator():
@@ -179,29 +195,34 @@ def test_regime_detection():
 ## Performance Expectations
 
 ### Week 1 Targets
+
 - **Basic ensemble operational** - Simple majority voting
 - **Improved win rate** - RSI+MACD should show 15% improvement
 - **Maintained speed** - Cache optimizations preserved
 
 ### Week 4 Targets  
+
 - **90% accuracy ensemble** - Research-backed target
 - **Sharpe ratio >1.0** - Significant improvement over ~0.8
 - **Production ready** - Order management, risk controls
 
 ### Fallback Plan
-- **Old system remains** - Available in src/deprecated/ 
+
+- **Old system remains** - Available in src/deprecated/
 - **Gradual migration** - Can revert individual components
 - **Performance monitoring** - Continuous comparison
 
 ## Success Metrics
 
 ### Technical Milestones
+
 - [ ] Week 1: Basic voting system operational (Issues #250, #277-280)
 - [ ] Week 2: Weighted confidence improves Sharpe ratio (Issues #281-283)  
 - [ ] Week 3: Market regime adaptation reduces drawdown (Issues #284-286)
 - [ ] Week 4: Production-ready with order management (Issues #287-289)
 
 ### Performance Validation
+
 - [ ] Ensemble accuracy >70% (target 90%)
 - [ ] Individual indicator tracking functional  
 - [ ] Regime detection reduces drawdown

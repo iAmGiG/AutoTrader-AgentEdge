@@ -15,16 +15,19 @@ experiments/
 ## Experiment Categories
 
 ### `experiment_293_validation/`
+
 **Purpose**: Validate MACD+RSI voting system performance vs single indicators
 **Key Finding**: Voting system achieves 0.856 Sharpe vs 0.841 for MACD-only
 **Related Issue**: #293
 
 ### `exit_strategy_analysis/`
+
 **Purpose**: Analyze different exit strategies and their expected values
 **Key Finding**: Balanced exits (8% TP / 5% SL) optimal with 27.48% annual return
 **Critical Discovery**: Conservative exits (6% TP / 8% SL) have negative expected value
 
 ### `configuration_system/`
+
 **Purpose**: Demonstrate flexible configuration management for trading parameters
 **Key Benefit**: Enables parameter tuning without code changes
 **Related Issue**: #303
@@ -57,6 +60,7 @@ python config_usage_demo.py
 ## General Tools
 
 For experiment-agnostic tools (data collection, analysis utilities, validation frameworks), see parent directories:
+
 - `scripts/analysis/` - General analysis tools
 - `scripts/validation/` - General validation scripts (V4 obfuscation testing)
 - `scripts/runs/` - V0-V4 sentiment framework runs

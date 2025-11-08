@@ -3,7 +3,9 @@
 **Research Question**: How can we make trading parameters flexible and adjustable without code changes?
 
 ## Problem Statement
+
 Trading parameters are currently hardcoded throughout the codebase:
+
 - MACD(13/34/8) hardcoded in multiple files
 - RSI(14/30/70) fixed in agent code  
 - Exit strategies not configurable
@@ -12,6 +14,7 @@ Trading parameters are currently hardcoded throughout the codebase:
 ## Solution: Centralized Configuration System
 
 ### Benefits Demonstrated
+
 1. **Easy Parameter Tuning** - Change JSON, not code
 2. **A/B Testing** - Run parallel configs
 3. **Environment-Specific Settings** - dev/test/prod configs
@@ -21,8 +24,10 @@ Trading parameters are currently hardcoded throughout the codebase:
 ## Scripts
 
 ### `config_usage_demo.py`
+
 **Purpose**: Demonstrate configuration system capabilities
 **Features**:
+
 - Load parameters from JSON
 - Compare exit strategies
 - Show dynamic parameter adjustment
@@ -31,14 +36,18 @@ Trading parameters are currently hardcoded throughout the codebase:
 ## Configuration Files
 
 ### `/config/trading_config.json`
+
 Central configuration with:
+
 - MACD parameters (13/34/8)
 - RSI parameters (14/30/70)
 - Exit strategies (balanced, conservative, aggressive)
 - Expected values and breakeven rates
 
 ### `/config/trading_config.py`
+
 Configuration management class with:
+
 - Type-safe parameter loading
 - Validation methods
 - Environment switching
@@ -47,6 +56,7 @@ Configuration management class with:
 ## Key Insights from Demo
 
 ### Exit Strategy Comparison
+
 | Strategy | TP | SL | EV@50% | Breakeven |
 |----------|----|----|--------|-----------|
 | Balanced | 8% | 5% | +1.5% | 38.5% |
@@ -56,6 +66,7 @@ Configuration management class with:
 **Clear Winner**: Balanced strategy has best expected value at realistic win rates.
 
 ### Usage Example
+
 ```python
 from config.trading_config import get_config
 
@@ -70,6 +81,7 @@ fast_ema = prices.ewm(span=macd.fast).mean()
 ## Production Benefits
 
 ### Before Configuration System
+
 ```python
 # Scattered hardcoded values
 def calculate_macd(prices, fast=13, slow=34, signal=8):
@@ -77,6 +89,7 @@ def calculate_macd(prices, fast=13, slow=34, signal=8):
 ```
 
 ### After Configuration System
+
 ```python
 # Centralized, flexible parameters
 config = get_config()
@@ -93,16 +106,19 @@ def calculate_macd(prices, fast=macd.fast, slow=macd.slow, signal=macd.signal):
 4. **Version Control Configs** to track parameter evolution
 
 ## Implementation Status
+
 ✅ Configuration files created
 ✅ Configuration manager implemented  
 ✅ Usage demonstration complete
 ⏳ **Issue #303**: Integration with existing codebase
 
 ## Related Issues
+
 - Issue #303 - Configuration system implementation
 - Issue #293 - Uses these validated parameters
 
 ## Usage
+
 ```bash
 python config_usage_demo.py
 ```
