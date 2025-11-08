@@ -4,30 +4,30 @@
 **Implementation**: Issues #250, #277-289  
 **Status**: Simplified Design - Create directories as needed
 
-## Current Folder Structure (Minimal)
+## System Folder Structure
 
 ```bash
 src/
-├── voting/                           # NEW: Core voting system (Issue #250)
-│   └── __init__.py                   # Ready for base_voting_strategy.py
+├── voting/                           # Core voting system (Issue #250)
+│   └── __init__.py                   # Foundation for base_voting_strategy.py
 │
-├── agents/                           # EXISTING: Keep as voting members
-│   ├── sentiment_v0.py               # V0-V4 agents become ensemble voters  
+├── agents/                           # Agent ensemble members
+│   ├── sentiment_v0.py               # V0-V4 agents as ensemble voters
 │   ├── sentiment_v1.py               # Enhanced for voting integration
 │   ├── sentiment_v2.py               # Market fear → regime input
 │   ├── sentiment_v3.py               # Heuristic ensemble member
 │   ├── sentiment_v4.py               # LLM reasoning member
-│   └── tech_agent.py                 # Enhanced for multi-indicator support
+│   └── tech_agent.py                 # Multi-indicator support
 │
-├── tools/                            # EXISTING: Keep all data sources
+├── tools/                            # Market data and tools
 │   ├── data_sources/                 # Market data, news APIs
-│   ├── cache/                        # Keep 90% performance optimizations!
-│   └── news_governor.py              # Keep smart API sampling
+│   ├── cache/                        # Performance optimizations (90% improvement)
+│   └── news_governor.py              # Smart API sampling
 │
-├── utils/                            # EXISTING: Keep existing utilities
-├── analysis/                         # EXISTING: Keep metrics system  
-├── validation/                       # EXISTING: Keep V4 validation
-└── deprecated/                       # REFERENCE: V0-V4 system docs
+├── utils/                            # Utility functions
+├── analysis/                         # Metrics system
+├── validation/                       # V4 validation framework
+└── deprecated/                       # V0-V4 system reference documentation
 ```
 
 ## Progressive Directory Creation Strategy
@@ -124,15 +124,15 @@ src/indicators/                       # Create when implementing #277
 - **Existing tools unchanged** - data sources, news governor, etc.
 
 ### 3. Progressive Enhancement
-- **Start with majority voting** - 3/5 indicators need to agree
-- **Add confidence weighting** - better indicators get more influence
-- **Add regime adaptation** - behavior changes with market conditions
-- **Add production features** - order management, risk controls
+- **Phase 1**: Majority voting - 3/5 indicators need to agree
+- **Phase 2**: Confidence weighting - better indicators get more influence
+- **Phase 3**: Regime adaptation - behavior changes with market conditions
+- **Phase 4**: Production features - order management, risk controls
 
 ### 4. Testing Strategy
 - **Individual indicator testing** - Each indicator tested standalone
 - **Ensemble backtesting** - Compare ensemble vs individual performance
-- **A/B testing** - New system vs deprecated system comparison
+- **A/B testing** - Current system vs deprecated system comparison
 - **Production validation** - Paper trading before live deployment
 
 ## Integration Points
@@ -141,9 +141,9 @@ src/indicators/                       # Create when implementing #277
 - **Cache Integration**: All indicators use existing cache framework
 - **Data Pipeline**: Leverage existing market data and news tools
 - **Metrics System**: Extend advanced metrics for ensemble tracking
-- **V0-V4 Agents**: Become voting members in new architecture
+- **V0-V4 Agents**: Become voting members in current architecture
 
-### With New Production Features
+### With Production Features
 - **Alpaca Integration**: Order manager connects to Alpaca API (#258)
 - **Real-time Pipeline**: Voting system receives live market data (#259)
 - **Strategy Orchestration**: Multiple voting strategies run simultaneously (#260)
@@ -164,7 +164,7 @@ src/indicators/                       # Create when implementing #277
 
 ## Next Steps
 
-1. **Create folder structure** - Set up new directories
+1. **Create folder structure** - Set up additional directories as needed
 2. **Start with Issue #250** - Implement base voting architecture
 3. **Add RSI (#277)** - First additional indicator for ensemble
 4. **Parallel development** - Bollinger Bands (#278) and Volume (#279)
