@@ -27,6 +27,11 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 - **[05. Naming Conventions](03_reference/05_naming_conventions.md)** - Code and file naming standards
 - **[06. News Limitations](03_reference/06_news_limitations.md)** - API constraints and considerations
 
+### 📂 **04 - Development** (For Contributors)
+
+- **[01. Codebase Structure](04_development/01_codebase_structure.md)** - File organization and component layout
+- **[02. Project Status](04_development/02_project_status.md)** - Current development status, roadmap, and priorities
+
 ## Key Features
 
 ### ✅ **AutoGen Multi-Agent System**
