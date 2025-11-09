@@ -15,6 +15,14 @@ from strategies import VoterStrategy, RealVoterStrategy
 from risk import SimpleRiskManager
 from execution import AlpacaExecutionManager
 
+# Import existing OrderManager for real integration
+try:
+    from trading.alpaca_trading_client import AlpacaOrderManager
+    ALPACA_AVAILABLE = True
+except ImportError:
+    ALPACA_AVAILABLE = False
+    logger.warning("AlpacaOrderManager not available - will use stub mode")
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +59,8 @@ class OrchestratorFactory:
             logger.error(f"Invalid JSON in config file: {e}")
             return {}
 
-    def create(self, order_manager=None, use_real_voter: bool = True) -> TradingOrchestrator:
+    def create(self, order_manager=None, use_real_voter: bool = True,
+               use_real_alpaca: bool = True, alpaca_mode: str = "paper") -> TradingOrchestrator:
         """
         Create TradingOrchestrator with all components wired.
 
@@ -59,9 +68,12 @@ class OrchestratorFactory:
         Future: Load from YAML config.
 
         Args:
-            order_manager: Optional OrderManager for execution (None = stub mode)
+            order_manager: Optional OrderManager for execution (None = auto-create or stub)
             use_real_voter: If True, use real VoterAgent with MACD+RSI analysis (default: True)
                           If False, use stub VoterStrategy for testing
+            use_real_alpaca: If True, create real AlpacaOrderManager (default: True)
+                           If False, use stub execution
+            alpaca_mode: "paper" or "live" trading mode (default: "paper")
 
         Returns:
             Fully wired TradingOrchestrator ready to use
@@ -107,10 +119,22 @@ class OrchestratorFactory:
 
         # 5. Create Execution Manager
         logger.info("  - Creating AlpacaExecutionManager...")
-        if order_manager:
+
+        # Auto-create OrderManager if requested and not provided
+        if order_manager is None and use_real_alpaca and ALPACA_AVAILABLE:
+            logger.info(f"    Auto-creating AlpacaOrderManager (mode: {alpaca_mode})...")
+            try:
+                order_manager = AlpacaOrderManager(mode=alpaca_mode)
+                logger.info(f"    ✅ AlpacaOrderManager created successfully")
+            except Exception as e:
+                logger.error(f"    ❌ Failed to create AlpacaOrderManager: {e}")
+                logger.warning("    Falling back to stub mode")
+                order_manager = None
+        elif order_manager:
             logger.info("    Using provided OrderManager")
         else:
-            logger.warning("    No OrderManager provided - stub mode")
+            logger.warning("    No OrderManager - using stub mode")
+
         execution_manager = AlpacaExecutionManager(order_manager=order_manager)
 
         # 6. Create TradingOrchestrator

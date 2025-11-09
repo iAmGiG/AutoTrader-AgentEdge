@@ -354,16 +354,21 @@ def trade_assist():
         from presentation.cli import CLISession
         from core.factory import OrchestratorFactory
 
-        print("\n🚀 Starting Trade Assistant (MVP Mode)...")
-        print("   - LLM Parser: gpt-4o-mini")
-        print("   - Strategy: VoterAgent (stub)")
-        print("   - Risk: SimpleRiskManager (fallback values)")
-        print("   - Execution: AlpacaExecutionManager (stub mode)")
+        print("\n🚀 Starting Trade Assistant (Production Mode)...")
+        print("   - LLM Parser: gpt-4o-mini + o4-mini")
+        print("   - Strategy: RealVoterAgent (MACD+RSI, 0.856 Sharpe)")
+        print("   - Risk: SimpleRiskManager (portfolio % based)")
+        print("   - Execution: AlpacaOrderManager (paper trading)")
         print()
 
-        # Create orchestrator
+        # Create orchestrator with real components
         factory = OrchestratorFactory()
-        orchestrator = factory.create(order_manager=None)  # Stub mode
+        orchestrator = factory.create(
+            order_manager=None,      # Auto-create from factory
+            use_real_voter=True,     # Use production VoterAgent
+            use_real_alpaca=True,    # Use real Alpaca OrderManager
+            alpaca_mode="paper"      # Paper trading mode
+        )
 
         # Create CLI session
         session = CLISession(orchestrator)

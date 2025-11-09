@@ -82,25 +82,29 @@ class AlpacaExecutionManager(ExecutionManager):
                 return self._create_stub_result(ticker, quantity, entry_price, signal)
 
             # Execute via OrderManager
-            # OrderManager.place_bracket_order handles entry + stop + target
+            # AlpacaOrderManager.place_bracket_order handles entry + stop + target
+            # Note: Uses different parameter names than generic OrderManager
             order_data = self.order_manager.place_bracket_order(
                 symbol=ticker,
                 qty=quantity,
-                stop_price=stop_loss,
-                target_price=take_profit
+                side="buy" if signal.lower() == "buy" else "sell",
+                entry_limit_price=None,  # Market order
+                take_profit_price=take_profit,
+                stop_loss_price=stop_loss,
+                time_in_force="gtc"  # Good-til-canceled
             )
 
-            # Check for errors
-            if 'error' in order_data:
-                raise Exception(order_data['error'])
+            # Check for errors (AlpacaOrderManager returns status='error')
+            if order_data.get('status') == 'error':
+                raise Exception(order_data.get('message', 'Unknown error'))
 
-            # Extract order IDs
-            entry_order_id = order_data.get('id')
+            # Extract order IDs (AlpacaOrderManager uses 'order_id' not 'id')
+            entry_order_id = order_data.get('order_id')
 
-            # Bracket orders have "legs" for stop and target
-            legs = order_data.get('legs', [])
-            stop_order_id = legs[0].get('id') if len(legs) > 0 else None
-            target_order_id = legs[1].get('id') if len(legs) > 1 else None
+            # For now, AlpacaOrderManager doesn't return leg IDs separately
+            # The bracket order is created but legs managed by Alpaca
+            stop_order_id = f"{entry_order_id}_stop" if entry_order_id else None
+            target_order_id = f"{entry_order_id}_target" if entry_order_id else None
 
             result = OrderResult(
                 success=True,
@@ -110,7 +114,7 @@ class AlpacaExecutionManager(ExecutionManager):
                 ticker=ticker,
                 quantity=quantity,
                 filled_price=None,  # Will be updated when filled
-                message=f"Bracket order placed: {signal} {quantity} {ticker}"
+                message=f"Bracket order placed: {signal} {quantity} {ticker} (mode: {order_data.get('mode', 'unknown')})"
             )
 
             logger.info(

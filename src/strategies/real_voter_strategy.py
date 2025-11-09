@@ -118,19 +118,19 @@ class RealVoterStrategy(StrategyAnalyzer):
             }
             signal = signal_map.get(result['action'], Signal.HOLD)
 
-            # Calculate entry/stop/target prices
+            # Calculate entry/stop/target prices (rounded to cents for Alpaca)
             if signal == Signal.BUY:
-                entry_price = current_price
-                stop_loss = current_price * 0.98  # -2% stop
-                take_profit = current_price * 1.035  # +3.5% target
+                entry_price = round(current_price, 2)
+                stop_loss = round(current_price * 0.98, 2)  # -2% stop
+                take_profit = round(current_price * 1.035, 2)  # +3.5% target
             elif signal == Signal.SELL:
-                entry_price = current_price
-                stop_loss = current_price * 1.02  # +2% stop (inverse)
-                take_profit = current_price * 0.965  # -3.5% target (inverse)
+                entry_price = round(current_price, 2)
+                stop_loss = round(current_price * 1.02, 2)  # +2% stop (inverse)
+                take_profit = round(current_price * 0.965, 2)  # -3.5% target (inverse)
             else:
-                entry_price = current_price
-                stop_loss = current_price * 0.98
-                take_profit = current_price * 1.02
+                entry_price = round(current_price, 2)
+                stop_loss = round(current_price * 0.98, 2)
+                take_profit = round(current_price * 1.02, 2)
 
             # Build reasoning list
             reasoning = [result['reasoning']]
