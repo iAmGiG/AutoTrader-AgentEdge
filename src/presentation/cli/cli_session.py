@@ -165,7 +165,17 @@ class CLISession:
                 print("\n❌ Trade cancelled")
 
         except Exception as e:
-            print(f"\n❌ Error processing request: {e}")
+            error_msg = str(e)
+
+            # Provide helpful suggestions for common errors
+            if "asset" in error_msg.lower() and "not found" in error_msg.lower():
+                print(f"\n❌ Invalid ticker symbol")
+                print(f"   The ticker you entered was not recognized by the market.")
+                print(f"   Please check the spelling and try again.")
+                print(f"   Example: AAPL (not APPL), TSLA, SPY, MSFT")
+            else:
+                print(f"\n❌ Error processing request: {e}")
+
             logger.error(f"Request processing error: {e}", exc_info=True)
             # Traceback logged but not shown to user
 
