@@ -6,6 +6,7 @@ MVP: Hardcoded component creation (YAML config deferred to later iteration).
 
 import logging
 import os
+import json
 
 from core.trading_orchestrator import TradingOrchestrator
 from services.llm import OpenAIService
@@ -26,9 +27,29 @@ class OrchestratorFactory:
     Components created with sensible defaults.
     """
 
-    def __init__(self):
-        """Initialize factory."""
+    def __init__(self, config_path: str = "config/config.json"):
+        """Initialize factory.
+
+        Args:
+            config_path: Path to config.json file
+        """
+        self.config_path = config_path
+        self.config = self._load_config()
         logger.info("OrchestratorFactory initialized")
+
+    def _load_config(self) -> dict:
+        """Load configuration from config.json."""
+        try:
+            with open(self.config_path, 'r') as f:
+                config = json.load(f)
+            logger.info(f"Loaded config from {self.config_path}")
+            return config
+        except FileNotFoundError:
+            logger.warning(f"Config file not found: {self.config_path}, using environment variables")
+            return {}
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in config file: {e}")
+            return {}
 
     def create(self, order_manager=None) -> TradingOrchestrator:
         """
@@ -43,14 +64,19 @@ class OrchestratorFactory:
         Returns:
             Fully wired TradingOrchestrator ready to use
         """
-        logger.info("Creating TradingOrchestrator with hardcoded config...")
+        logger.info("Creating TradingOrchestrator with config from config.json...")
+
+        # Load API key and models from config
+        api_key = self.config.get("OPEN_AI_KEY") or os.getenv("OPENAI_API_KEY")
+        tool_model = self.config.get("OPENAI_TOOL_MODEL", "gpt-4o-mini")
+        reasoning_model = self.config.get("OPENAI_PROMPT_MODEL", "gpt-4o-mini")
 
         # 1. Create LLM Service
-        logger.info("  - Creating OpenAIService (gpt-4o-mini)...")
+        logger.info(f"  - Creating OpenAIService (tool: {tool_model}, reasoning: {reasoning_model})...")
         llm_service = OpenAIService(
-            tool_calling_model="gpt-4o-mini",
-            reasoning_model="gpt-4o-mini",  # o3-mini is expensive
-            api_key=os.getenv("OPENAI_API_KEY")
+            tool_calling_model=tool_model,
+            reasoning_model=reasoning_model,
+            api_key=api_key
         )
 
         # 2. Create Input Parser
