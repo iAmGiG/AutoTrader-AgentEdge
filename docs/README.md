@@ -79,7 +79,13 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 
 ### ✅ **Production Components**
 
-- **VoterAgent**: Production-ready AutoGen agent with validated MACD+RSI voting
+- **VoterAgent**: Production-ready AutoGen agent with validated MACD+RSI voting (0.856 Sharpe)
+- **CLI Trade Assistant** (#308): Human-in-loop interactive trading interface ✅ NEW
+  - Natural language parsing with OpenAI (gpt-4o-mini + o4-mini)
+  - Real MACD+RSI analysis with market data fetching
+  - Portfolio % risk management and position sizing
+  - Interactive REPL with confirm/auto autonomy modes
+  - Usage: `python main.py trade-assist`
 - **Position Manager**: Unified position and account tracking accessible to agents
 - **Order Manager**: Complete order placement and monitoring via AutoGen tools
 - **Trading Cycle**: Comprehensive position monitoring and stop management
@@ -87,9 +93,10 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 ### ✅ **Integration Complete**
 
 - **Alpaca Markets**: Full paper and live trading support
-- **Market Data**: Real-time and historical data feeds
+- **Market Data**: Real-time and historical data feeds (Alpaca, Polygon, Alpha Vantage)
 - **Order Types**: Market, limit, stop, and bracket orders
 - **Fill Monitoring**: Automatic state transitions
+- **OpenAI API**: Natural language parsing and tool calling ✅ NEW
 
 ### 📊 **Validated Performance**
 
