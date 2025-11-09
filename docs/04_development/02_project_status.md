@@ -168,13 +168,16 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### Critical Path (Must Complete for Production)
 
-**#308 - CLI Human-in-Loop Interface** (P0 - IN PROGRESS)
+**#308 - CLI Human-in-Loop Interface** (P0 - 70% COMPLETE)
 - **Scope**: User-initiated conversational trade assistant
 - **Features**: Natural language input, VoterAgent analysis, entry/stop/target suggestions, GTC orders
 - **Why Critical**: Core design principle is human oversight
 - **Blocker For**: Live trading deployment, #324 (Forward Testing)
-- **Target**: Q4 2025 (next 2-4 weeks)
-- **Status**: Design complete, implementation starting
+- **Target**: Q4 2025
+- **Status**: Plugin architecture complete (70%), need CLI/config/wiring (30%)
+- **Completed**: Core interfaces, models, orchestrator, LLMParser, VoterStrategy stub, SimpleRiskManager, AlpacaExecutionManager, tests (4/4 passing)
+- **Remaining**: Configuration system, CLI REPL, main.py integration, end-to-end tests
+- **ETA**: 5-7 hours to MVP
 
 **#333 - Portfolio Manager Agent** (P1 - NEW)
 - **Scope**: Risk management, position sizing, portfolio allocation checks

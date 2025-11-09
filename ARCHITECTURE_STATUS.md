@@ -51,30 +51,40 @@
 - ✅ Returns placeholder analysis for architecture testing
 - ⏳ Full VoterAgent integration deferred (needs market data service)
 
----
+### 5. Risk Manager (`src/risk/`) ✅ COMPLETED
 
-## 🚧 In Progress / Remaining
+**SimpleRiskManager** (`src/risk/simple_risk_manager.py`):
+- ✅ Portfolio value lookup (fallback: $100k)
+- ✅ Buying power check (fallback: 50% of portfolio)
+- ✅ Position % calculation
+- ✅ Warnings only (no blocking - always approves)
+- ✅ Default position sizing (5% portfolio if qty not specified)
+- ✅ Max loss calculation (entry - stop) * qty
+- ✅ Risk/reward ratio calculation
 
-### 5. Risk Manager (`src/risk/` - NOT STARTED)
-
-**SimpleRiskManager** (MVP):
-- [ ] Portfolio value lookup (via Alpaca API)
-- [ ] Buying power check
-- [ ] Position % calculation
-- [ ] Simple warnings (no blocking)
-- [ ] Default position sizing (5% portfolio if qty not specified)
+**Tested**:
+- Auto-sizing: 5% of $100k @ $600 = 8 shares (4.8% allocation)
+- User quantity respected: 200 shares @ $150 = 30% (warning generated)
+- Risk metrics: Max loss $96, R/R 1.67
 
 **Later Upgrade**:
 - Full Portfolio Manager (#333) - risk-based sizing, sector limits, correlation
 
-### 6. Execution Manager (`src/execution/` - NOT STARTED)
+### 6. Execution Manager (`src/execution/`) ✅ COMPLETED
 
-**AlpacaExecutionManager** (MVP):
-- [ ] Integrate with existing OrderManager
-- [ ] Place bracket orders (entry + stop + target)
-- [ ] Enforce GTC time in force
-- [ ] Return order IDs for tracking
-- [ ] Order status queries
+**AlpacaExecutionManager** (`src/execution/alpaca_execution_manager.py`):
+- ✅ Integrates with existing OrderManager
+- ✅ Places bracket orders (entry + stop + target)
+- ✅ Enforces GTC time in force (via TradingOrchestrator)
+- ✅ Returns order IDs for tracking (entry, stop, target)
+- ✅ Order status queries (get_order_status)
+- ✅ Cancel order support
+- ✅ Stub mode for testing without broker
+
+**Tested**:
+- Stub execution returns proper OrderResult
+- Order IDs tracked correctly
+- Ready for OrderManager integration
 
 ### 7. Session Store (`src/persistence/` - DEFERRED)
 
@@ -176,7 +186,9 @@ Required libraries (all present):
    - Add trade-assist command
    - Error handling
 
-**Total Estimated Time**: 13-16 hours to working MVP
+**Total Estimated Time**: ~~13-16 hours~~ → **5-7 hours remaining** to working MVP
+
+**Progress**: ~70% complete (components done, need wiring/CLI)
 
 ### Testing & Iteration
 
@@ -265,15 +277,16 @@ Required libraries (all present):
 - [x] TradingOrchestrator
 - [x] LLM service + parser
 - [x] VoterStrategy (stub)
-- [ ] SimpleRiskManager
-- [ ] AlpacaExecutionManager
+- [x] SimpleRiskManager ✅ NEW
+- [x] AlpacaExecutionManager ✅ NEW
+- [x] Foundation tests (4/4 passing) ✅ NEW
 - [ ] CLI presentation layer
 - [ ] Configuration system
 - [ ] Main integration
-- [ ] Tests
+- [ ] End-to-end tests
 - [ ] Paper trading validation
 
-**Progress**: ~40% complete (foundation solid, implementations remain)
+**Progress**: ~70% complete (all components done, need wiring/CLI/config)
 
 ---
 
