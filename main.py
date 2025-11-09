@@ -344,6 +344,41 @@ def generate_analysis():
         return False
 
 
+def trade_assist():
+    """Interactive CLI trading assistant."""
+    import asyncio
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+    try:
+        from presentation.cli import CLISession
+        from core.factory import OrchestratorFactory
+
+        print("\n🚀 Starting Trade Assistant (MVP Mode)...")
+        print("   - LLM Parser: gpt-4o-mini")
+        print("   - Strategy: VoterAgent (stub)")
+        print("   - Risk: SimpleRiskManager (fallback values)")
+        print("   - Execution: AlpacaExecutionManager (stub mode)")
+        print()
+
+        # Create orchestrator
+        factory = OrchestratorFactory()
+        orchestrator = factory.create(order_manager=None)  # Stub mode
+
+        # Create CLI session
+        session = CLISession(orchestrator)
+
+        # Run REPL
+        asyncio.run(session.run())
+
+        return True
+    except Exception as e:
+        print(f"❌ Error starting trade assistant: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -355,11 +390,12 @@ Examples:
   python main.py check-positions              # Check paper positions
   python main.py paper-trade AAPL             # Full trading check for AAPL
   python main.py analysis                     # Generate reports
+  python main.py trade-assist                 # Interactive trading assistant (NEW)
         """
     )
 
     parser.add_argument('command', choices=[
-        'test-voter', 'check-positions', 'paper-trade', 'analysis'
+        'test-voter', 'check-positions', 'paper-trade', 'analysis', 'trade-assist'
     ], help='Command to execute')
 
     parser.add_argument('symbol', nargs='?', default='AAPL',
@@ -388,6 +424,8 @@ Examples:
             success = run_paper_trading_check(args.symbol)
         elif args.command == 'analysis':
             success = generate_analysis()
+        elif args.command == 'trade-assist':
+            success = trade_assist()
         else:
             print(f"❌ Unknown command: {args.command}")
             success = False
