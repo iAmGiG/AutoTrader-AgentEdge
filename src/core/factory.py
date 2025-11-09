@@ -11,7 +11,7 @@ import json
 from core.trading_orchestrator import TradingOrchestrator
 from services.llm import OpenAIService
 from parsers import LLMParser
-from strategies import VoterStrategy
+from strategies import VoterStrategy, RealVoterStrategy
 from risk import SimpleRiskManager
 from execution import AlpacaExecutionManager
 
@@ -51,7 +51,7 @@ class OrchestratorFactory:
             logger.error(f"Invalid JSON in config file: {e}")
             return {}
 
-    def create(self, order_manager=None) -> TradingOrchestrator:
+    def create(self, order_manager=None, use_real_voter: bool = True) -> TradingOrchestrator:
         """
         Create TradingOrchestrator with all components wired.
 
@@ -60,6 +60,8 @@ class OrchestratorFactory:
 
         Args:
             order_manager: Optional OrderManager for execution (None = stub mode)
+            use_real_voter: If True, use real VoterAgent with MACD+RSI analysis (default: True)
+                          If False, use stub VoterStrategy for testing
 
         Returns:
             Fully wired TradingOrchestrator ready to use
@@ -84,8 +86,16 @@ class OrchestratorFactory:
         input_parser = LLMParser(llm_service=llm_service)
 
         # 3. Create Strategy Analyzer
-        logger.info("  - Creating VoterStrategy (stub)...")
-        strategy_analyzer = VoterStrategy()
+        if use_real_voter:
+            logger.info("  - Creating RealVoterStrategy (production MACD+RSI)...")
+            strategy_analyzer = RealVoterStrategy(
+                macd_params={'fast': 13, 'slow': 34, 'signal': 8},  # Validated Fibonacci parameters
+                rsi_params={'period': 14, 'oversold': 30, 'overbought': 70},
+                lookback_days=60
+            )
+        else:
+            logger.info("  - Creating VoterStrategy (stub)...")
+            strategy_analyzer = VoterStrategy()
 
         # 4. Create Risk Manager
         logger.info("  - Creating SimpleRiskManager...")
