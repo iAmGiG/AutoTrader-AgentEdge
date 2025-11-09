@@ -67,11 +67,12 @@ class CLISession:
                 await self._process_request(user_input)
 
             except KeyboardInterrupt:
-                print("\n\nExiting...")
+                print("\n\n👋 Exiting...")
                 break
             except Exception as e:
                 print(f"\n❌ Error: {e}")
                 logger.error(f"CLI error: {e}", exc_info=True)
+                # Don't show traceback to user - it's logged
 
     def _print_welcome(self):
         """Print welcome message."""
@@ -80,13 +81,14 @@ class CLISession:
         print("=" * 70)
         print(f"Mode: {self.autonomy_mode.upper()}")
         print("\nCommands:")
-        print("  /help   - Show help")
-        print("  /exit   - Exit")
-        print("  /auto   - Enable auto-execute mode")
+        print("  /help    - Show help")
+        print("  /exit    - Exit (or Ctrl+C)")
+        print("  /auto    - Enable auto-execute mode")
         print("  /confirm - Enable confirm mode (default)")
         print("\nExample:")
         print("  > is SPY at 600 a good entry?")
         print("  > buy 10 AAPL")
+        print("\nNote: In auto mode, you can still exit with /exit or Ctrl+C")
         print("")
 
     async def _handle_command(self, command: str) -> bool:
@@ -134,7 +136,16 @@ class CLISession:
             # Step 1: Process request via orchestrator
             decision = await self.orchestrator.process_request(user_input, self.user_id)
 
-            # Step 2: Display suggestion
+            # Step 2: Check for SELL signal without position (prevent unintentional shorting)
+            if decision.suggestion.signal.value.upper() == "SELL":
+                # TODO: Check if we actually hold this position
+                # For now, warn the user
+                print("\n⚠️  WARNING: SELL signal detected.")
+                print("   This system does not support short selling.")
+                print("   Only SELL if you currently hold this position.")
+                print("   Otherwise, ignore this signal.\n")
+
+            # Step 3: Display suggestion
             self._display_suggestion(decision.suggestion)
 
             # Step 3: Get user confirmation (if confirm mode)
@@ -156,6 +167,7 @@ class CLISession:
         except Exception as e:
             print(f"\n❌ Error processing request: {e}")
             logger.error(f"Request processing error: {e}", exc_info=True)
+            # Traceback logged but not shown to user
 
     def _display_suggestion(self, suggestion):
         """

@@ -77,17 +77,32 @@ class AlpacaExecutionManager(ExecutionManager):
         )
 
         try:
+            # Prevent short selling - only allow BUY orders for new positions
+            if signal.lower() == "sell":
+                logger.warning(f"SELL signal rejected for {ticker} - short selling not supported")
+                return OrderResult(
+                    success=False,
+                    entry_order_id=None,
+                    stop_order_id=None,
+                    target_order_id=None,
+                    ticker=ticker,
+                    quantity=quantity,
+                    filled_price=None,
+                    message="SELL signal rejected: Short selling not supported. Only BUY signals allowed for new positions.",
+                    error="Short selling not supported"
+                )
+
             if not self.order_manager:
                 # Stub mode: Return mock order result
                 return self._create_stub_result(ticker, quantity, entry_price, signal)
 
-            # Execute via OrderManager
+            # Execute via OrderManager (only BUY orders reach here)
             # AlpacaOrderManager.place_bracket_order handles entry + stop + target
             # Note: Uses different parameter names than generic OrderManager
             order_data = self.order_manager.place_bracket_order(
                 symbol=ticker,
                 qty=quantity,
-                side="buy" if signal.lower() == "buy" else "sell",
+                side="buy",  # Always BUY (SELL signals filtered above)
                 entry_limit_price=None,  # Market order
                 take_profit_price=take_profit,
                 stop_loss_price=stop_loss,
