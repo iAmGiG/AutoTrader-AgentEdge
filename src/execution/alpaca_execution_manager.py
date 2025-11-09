@@ -10,6 +10,18 @@ from typing import Optional
 from core.interfaces import ExecutionManager
 from core.models import TradeSuggestion, OrderResult, TradeDecision, TimeInForce
 
+# Import price fetcher for current market prices
+try:
+    from src.trading.unified_price_fetcher import UnifiedPriceFetcher
+    PRICE_FETCHER_AVAILABLE = True
+except ImportError:
+    try:
+        from trading.unified_price_fetcher import UnifiedPriceFetcher
+        PRICE_FETCHER_AVAILABLE = True
+    except ImportError:
+        PRICE_FETCHER_AVAILABLE = False
+        logging.warning("UnifiedPriceFetcher not available - will use suggestion prices")
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +50,12 @@ class AlpacaExecutionManager(ExecutionManager):
             logger.info("AlpacaExecutionManager initialized with OrderManager")
         else:
             logger.warning("AlpacaExecutionManager initialized without OrderManager (stub mode)")
+
+        # Log price fetcher availability
+        if PRICE_FETCHER_AVAILABLE:
+            logger.info("UnifiedPriceFetcher available - will fetch current prices before execution")
+        else:
+            logger.warning("UnifiedPriceFetcher NOT available - will use suggestion prices")
 
     async def execute_trade(
         self,
@@ -77,6 +95,63 @@ class AlpacaExecutionManager(ExecutionManager):
         )
 
         try:
+            # Fetch current market price for bracket order validation
+            # Critical: Alpaca validates bracket prices against their internal quote prices
+            # We need to use the same price to avoid validation errors
+            current_market_price = None
+
+            # Try to get current price from OrderManager's market data client
+            if self.order_manager and hasattr(self.order_manager, 'client'):
+                try:
+                    # Use Alpaca's market data client for most accurate price
+                    from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+                    market_data = AlpacaMarketData()
+
+                    # Try latest trade first
+                    trade = market_data.get_latest_trade(ticker)
+                    if trade and 'price' in trade and trade['price'] > 0:
+                        current_market_price = float(trade['price'])
+                        logger.info(f"Got latest trade price for {ticker}: ${current_market_price:.2f}")
+                    else:
+                        # Fallback to quote mid-price
+                        quote = market_data.get_latest_quote(ticker)
+                        if quote and 'bid_price' in quote and 'ask_price' in quote:
+                            bid = float(quote['bid_price'])
+                            ask = float(quote['ask_price'])
+                            if bid > 0 and ask > 0:
+                                current_market_price = round((bid + ask) / 2, 2)
+                                logger.info(f"Got quote mid-price for {ticker}: ${current_market_price:.2f}")
+                except Exception as e:
+                    logger.warning(f"Could not fetch current price from Alpaca market data: {e}")
+
+            # Fallback to UnifiedPriceFetcher if Alpaca failed
+            if current_market_price is None and PRICE_FETCHER_AVAILABLE:
+                try:
+                    price_fetcher = UnifiedPriceFetcher()
+                    fetched_price = price_fetcher.get_current_price(ticker, use_cache=False)
+                    # Only use if not the fallback default price
+                    if fetched_price != 100.0:
+                        current_market_price = fetched_price
+                        logger.info(f"Got price from UnifiedPriceFetcher: ${current_market_price:.2f}")
+                except Exception as e:
+                    logger.warning(f"UnifiedPriceFetcher failed: {e}")
+
+            # Recalculate bracket prices using current market price if available
+            if current_market_price and current_market_price > 0 and signal.lower() == "buy":
+                entry_price = round(current_market_price, 2)
+                stop_loss = round(current_market_price * 0.98, 2)  # -2% stop
+                take_profit = round(current_market_price * 1.035, 2)  # +3.5% target
+
+                logger.info(
+                    f"Recalculated bracket prices using current market price ${current_market_price:.2f}: "
+                    f"entry=${entry_price:.2f}, stop=${stop_loss:.2f}, target=${take_profit:.2f}"
+                )
+            else:
+                logger.warning(
+                    f"Using suggestion prices for {ticker} (could not fetch current market price) - "
+                    f"may cause validation errors during off-hours"
+                )
+
             # Prevent short selling - only allow BUY orders for new positions
             if signal.lower() == "sell":
                 logger.warning(f"SELL signal rejected for {ticker} - short selling not supported")
