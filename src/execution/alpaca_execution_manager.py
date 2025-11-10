@@ -152,20 +152,55 @@ class AlpacaExecutionManager(ExecutionManager):
                     f"may cause validation errors during off-hours"
                 )
 
-            # Prevent short selling - only allow BUY orders for new positions
+            # Check if SELL signal - need to verify we have a position before allowing
             if signal.lower() == "sell":
-                logger.warning(f"SELL signal rejected for {ticker} - short selling not supported")
-                return OrderResult(
-                    success=False,
-                    entry_order_id=None,
-                    stop_order_id=None,
-                    target_order_id=None,
-                    ticker=ticker,
-                    quantity=quantity,
-                    filled_price=None,
-                    message="SELL signal rejected: Short selling not supported. Only BUY signals allowed for new positions.",
-                    error="Short selling not supported"
-                )
+                # Check if we have a position in this ticker
+                has_position = False
+                position_qty = 0
+
+                if self.order_manager and hasattr(self.order_manager, 'get_positions'):
+                    try:
+                        positions = self.order_manager.get_positions()
+                        position = next((p for p in positions if p['symbol'] == ticker), None)
+
+                        if position and position['qty'] > 0:
+                            has_position = True
+                            position_qty = int(position['qty'])
+                            logger.info(f"Found position: {position_qty} shares of {ticker}")
+                    except Exception as e:
+                        logger.warning(f"Could not check positions: {e}")
+
+                # If no position, reject SELL to prevent short selling
+                if not has_position:
+                    logger.warning(f"SELL signal rejected for {ticker} - no position held (prevents short selling)")
+                    return OrderResult(
+                        success=False,
+                        entry_order_id=None,
+                        stop_order_id=None,
+                        target_order_id=None,
+                        ticker=ticker,
+                        quantity=quantity,
+                        filled_price=None,
+                        message=f"SELL signal rejected: No position in {ticker}. Short selling not supported.",
+                        error="No position - short selling not supported"
+                    )
+
+                # Verify quantity doesn't exceed position
+                if quantity > position_qty:
+                    logger.warning(f"SELL quantity {quantity} exceeds position {position_qty} for {ticker}")
+                    return OrderResult(
+                        success=False,
+                        entry_order_id=None,
+                        stop_order_id=None,
+                        target_order_id=None,
+                        ticker=ticker,
+                        quantity=quantity,
+                        filled_price=None,
+                        message=f"SELL quantity ({quantity}) exceeds position ({position_qty} shares)",
+                        error="Insufficient position"
+                    )
+
+                logger.info(f"SELL signal approved - have {position_qty} shares of {ticker}, selling {quantity}")
 
             if not self.order_manager:
                 # Stub mode: Return mock order result

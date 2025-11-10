@@ -87,7 +87,7 @@ class SimpleRiskManager(RiskManager):
         try:
             # Get portfolio info
             portfolio_value = await self.get_portfolio_value(user_id)
-            buying_power = await self.get_buying_power(user_id)
+            buying_power = await self.get_buying_power(user_id, portfolio_value=portfolio_value)
 
             # Determine quantity
             if request.quantity:
@@ -193,7 +193,7 @@ class SimpleRiskManager(RiskManager):
         logger.warning("Using fallback portfolio value: $100,000")
         return 100000.0
 
-    async def get_buying_power(self, user_id: str = "default") -> float:
+    async def get_buying_power(self, user_id: str = "default", portfolio_value: Optional[float] = None) -> float:
         """
         Get available buying power for user.
 
@@ -201,6 +201,7 @@ class SimpleRiskManager(RiskManager):
 
         Args:
             user_id: User ID
+            portfolio_value: Optional pre-calculated portfolio value to avoid duplicate logging
 
         Returns:
             Available cash in USD
@@ -212,7 +213,9 @@ class SimpleRiskManager(RiskManager):
                 logger.warning(f"Failed to get buying power: {e}")
 
         # MVP fallback: Assume 50% cash available
-        portfolio_value = await self.get_portfolio_value(user_id)
+        # Use provided portfolio_value to avoid duplicate get_portfolio_value call
+        if portfolio_value is None:
+            portfolio_value = await self.get_portfolio_value(user_id)
         buying_power = portfolio_value * 0.5
         logger.warning(f"Using fallback buying power: ${buying_power:,.0f}")
         return buying_power

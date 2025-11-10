@@ -111,6 +111,15 @@ class TradingOrchestrator:
             # Step 2: Validate request
             is_valid = await self.parser.validate(request)
             if not is_valid:
+                # Check if this looks like a portfolio query (no ticker)
+                if not request.ticker or request.ticker.strip() == '':
+                    portfolio_keywords = ['position', 'portfolio', 'holding', 'open', 'what do i have']
+                    if any(keyword in user_input.lower() for keyword in portfolio_keywords):
+                        raise ValueError(
+                            f"Portfolio queries not yet supported. "
+                            f"Please ask about a specific ticker (e.g., 'any positions in AAPL?')"
+                        )
+
                 raise ValueError(f"Invalid request: {request}")
 
             # Step 3: Strategy analysis
