@@ -351,7 +351,7 @@ def trade_assist():
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
     try:
-        from presentation.cli import CLISession
+        from cli import CLISession
         from core.factory import OrchestratorFactory
 
         print("\n🚀 Starting Trade Assistant (Production Mode)...")

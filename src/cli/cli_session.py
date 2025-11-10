@@ -203,8 +203,10 @@ class CLISession:
         # Entry plan
         print("\n💰 Entry Plan:")
         print(f"   Entry:  ${suggestion.entry_price:.2f}")
-        print(f"   Stop:   ${suggestion.stop_loss:.2f} ({self._calc_pct(suggestion.entry_price, suggestion.stop_loss):+.1f}%)")
-        print(f"   Target: ${suggestion.take_profit:.2f} ({self._calc_pct(suggestion.entry_price, suggestion.take_profit):+.1f}%)")
+        print(
+            f"   Stop:   ${suggestion.stop_loss:.2f} ({self._calc_pct(suggestion.entry_price, suggestion.stop_loss):+.1f}%)")
+        print(
+            f"   Target: ${suggestion.take_profit:.2f} ({self._calc_pct(suggestion.entry_price, suggestion.take_profit):+.1f}%)")
         print(f"   Qty:    {suggestion.recommended_quantity} shares")
         print(f"   Order:  {suggestion.time_in_force.value.upper()}")
 

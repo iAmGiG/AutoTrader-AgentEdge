@@ -15,6 +15,8 @@ from strategies import VoterStrategy, RealVoterStrategy
 from risk import SimpleRiskManager
 from execution import AlpacaExecutionManager
 
+logger = logging.getLogger(__name__)
+
 # Import existing OrderManager for real integration
 try:
     from trading.alpaca_trading_client import AlpacaOrderManager
@@ -22,9 +24,6 @@ try:
 except ImportError:
     ALPACA_AVAILABLE = False
     logger.warning("AlpacaOrderManager not available - will use stub mode")
-
-
-logger = logging.getLogger(__name__)
 
 
 class OrchestratorFactory:

@@ -592,39 +592,39 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             from alpaca.trading.enums import OrderStatus
             from datetime import datetime, timezone
             import pytz
-            
+
             # Get ET timezone for market day calculation
             et_tz = pytz.timezone('America/New_York')
             now_et = datetime.now(et_tz)
-            
+
             # Market day starts at market open (usually 4:00 AM ET for pre-market)
             market_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)
             if now_et < market_start:
                 # Before 4 AM, consider it previous market day
                 market_start = market_start.replace(day=market_start.day - 1)
-            
+
             # Convert to UTC for API call
             market_start_utc = market_start.astimezone(timezone.utc)
-            
+
             # Get orders from market start of today
             request = GetOrdersRequest(
                 status=OrderStatus.ALL,
                 after=market_start_utc
             )
             today_orders = self.client.trading.get_orders(request)
-            
+
             order_count = len(today_orders)
             max_trades = self.risk_limits.get('max_daily_trades', 100)  # Default 100
-            
+
             logger.info(f"Daily trade count: {order_count}/{max_trades}")
-            
+
             if order_count >= max_trades:
                 raise ValueError(
                     f"Daily trade limit exceeded: {order_count}/{max_trades} orders placed today"
                 )
-            
+
             return True
-            
+
         except ValueError:
             # Re-raise validation errors
             raise
@@ -655,7 +655,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Validate order parameters
             self._validate_order(symbol, qty, side)
-            
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -754,7 +754,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if limit_price <= 0:
                 raise ValueError(f"Limit price must be positive, got {limit_price}")
-            
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -966,7 +966,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if stop_price <= 0:
                 raise ValueError(f"Stop price must be positive, got {stop_price}")
-                
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -1084,7 +1084,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if trail_price and trail_price <= 0:
                 raise ValueError(f"Trail price must be positive, got {trail_price}")
-                
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -1204,7 +1204,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if stop_loss_price and stop_loss_price <= 0:
                 raise ValueError(f"Stop loss price must be positive, got {stop_loss_price}")
-                
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -1345,25 +1345,25 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Build replacement order request
             from alpaca.trading.requests import ReplaceOrderRequest
             from alpaca.trading.enums import TimeInForce
-            
+
             # Start with current order values
             replace_request_params = {}
-            
+
             if qty is not None:
                 if qty <= 0:
                     raise ValueError(f"Quantity must be positive, got {qty}")
                 replace_request_params['qty'] = qty
-                
+
             if limit_price is not None:
                 if limit_price <= 0:
                     raise ValueError(f"Limit price must be positive, got {limit_price}")
                 replace_request_params['limit_price'] = limit_price
-                
+
             if stop_price is not None:
                 if stop_price <= 0:
                     raise ValueError(f"Stop price must be positive, got {stop_price}")
                 replace_request_params['stop_price'] = stop_price
-                
+
             if time_in_force is not None:
                 tif_map = {
                     "day": TimeInForce.DAY,
@@ -1377,12 +1377,13 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Create replacement request
             replace_request = ReplaceOrderRequest(**replace_request_params)
-            
+
             # Mode-aware logging
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE ORDER MODIFICATION: {order_id}")
                 if self.require_confirmation:
-                    confirmation = input(f"Confirm LIVE order modification for {order_id}? (yes/no): ")
+                    confirmation = input(
+                        f"Confirm LIVE order modification for {order_id}? (yes/no): ")
                     if confirmation.lower() != 'yes':
                         return {
                             'status': 'cancelled',
@@ -1391,10 +1392,10 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                         }
             else:
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
-                
+
             # Replace the order
             updated_order = self.client.trading.replace_order_by_id(order_id, replace_request)
-            
+
             return {
                 'status': 'submitted',
                 'message': 'Order modified successfully',
@@ -1434,7 +1435,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE ORDER CANCELLATION: {order_id}")
                 if self.require_confirmation:
-                    confirmation = input(f"Confirm LIVE order cancellation for {order_id}? (yes/no): ")
+                    confirmation = input(
+                        f"Confirm LIVE order cancellation for {order_id}? (yes/no): ")
                     if confirmation.lower() != 'yes':
                         return {
                             'status': 'cancelled',
@@ -1446,7 +1448,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Cancel the order
             self.client.trading.cancel_order_by_id(order_id)
-            
+
             return {
                 'status': 'cancelled',
                 'message': 'Order cancelled successfully',
@@ -1477,7 +1479,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if symbol:
                 from alpaca.trading.requests import GetOrdersRequest
                 from alpaca.trading.enums import OrderStatus
-                
+
                 request = GetOrdersRequest(
                     status=OrderStatus.OPEN,
                     symbols=[symbol]
@@ -1490,7 +1492,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                     # These are our formatted orders, we need the raw ones
                     from alpaca.trading.requests import GetOrdersRequest
                     from alpaca.trading.enums import OrderStatus
-                    
+
                     request = GetOrdersRequest(status=OrderStatus.OPEN)
                     orders = self.client.trading.get_orders(request)
 
@@ -1505,11 +1507,12 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Mode-aware logging and confirmation
             order_count = len(orders)
             symbol_desc = f" for {symbol}" if symbol else ""
-            
+
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE BULK CANCELLATION: {order_count} orders{symbol_desc}")
                 if self.require_confirmation:
-                    confirmation = input(f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): ")
+                    confirmation = input(
+                        f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): ")
                     if confirmation.lower() != 'yes':
                         return {
                             'status': 'cancelled',
@@ -1523,7 +1526,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Cancel all orders
             cancelled_orders = []
             errors = []
-            
+
             for order in orders:
                 try:
                     self.client.trading.cancel_order_by_id(order.id)
@@ -1537,10 +1540,10 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 'cancelled_orders': cancelled_orders,
                 'mode': self.client.mode
             }
-            
+
             if errors:
                 result['errors'] = errors
-                
+
             return result
 
         except Exception as e:

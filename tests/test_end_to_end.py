@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from presentation.cli import CLISession
+from cli import CLISession
 from core.factory import OrchestratorFactory
 from core.trading_orchestrator import TradingOrchestrator
 from core.models import *

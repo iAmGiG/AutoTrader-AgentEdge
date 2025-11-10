@@ -14,8 +14,9 @@ from autogen_core.tools import FunctionTool
 from .sources.market.unified_market_tool import fetch_unified_market_data
 from .sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from .sources.market.market_context_tool import market_context_tool
-from .sources.news.google_search_simple import google_search_smart_tool, set_news_governor
+from .sources.news.google_search_simple import google_search_smart_tool, set_news_governor, _news_governor
 from .sources.news.hierarchical_news_tool import fetch_hierarchical_news
+from src.tools.news_governor import create_balanced_governor
 
 logger = logging.getLogger(__name__)
 
@@ -142,8 +143,6 @@ def enable_smart_news_sampling(governor=None):
     Args:
         governor: NewsGovernor instance, or None for balanced default
     """
-    from src.tools.news_governor import create_balanced_governor
-
     if governor is None:
         governor = create_balanced_governor()
 
@@ -159,8 +158,6 @@ def disable_smart_news_sampling():
 
 def get_news_quota_status():
     """Get current news quota status if NewsGovernor is enabled."""
-    from src.tools.data_sources.news.google_search_simple import _news_governor
-
     if _news_governor is not None:
         return _news_governor.get_quota_status()
     else:

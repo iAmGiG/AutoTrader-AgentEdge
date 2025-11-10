@@ -58,7 +58,8 @@ class RealVoterStrategy(StrategyAnalyzer):
             use_config_file=True
         )
 
-        logger.info(f"RealVoterStrategy initialized with MACD({self.macd_params['fast']}/{self.macd_params['slow']}/{self.macd_params['signal']}) + RSI({self.rsi_params['period']})")
+        logger.info(
+            f"RealVoterStrategy initialized with MACD({self.macd_params['fast']}/{self.macd_params['slow']}/{self.macd_params['signal']}) + RSI({self.rsi_params['period']})")
 
     @property
     def name(self) -> str:
@@ -88,7 +89,8 @@ class RealVoterStrategy(StrategyAnalyzer):
             end_date = datetime.now().strftime("%Y-%m-%d")
             start_date = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%Y-%m-%d")
 
-            market_data = fetch_unified_market_data(ticker, start_date=start_date, end_date=end_date)
+            market_data = fetch_unified_market_data(
+                ticker, start_date=start_date, end_date=end_date)
 
             if market_data is None or market_data.empty:
                 logger.warning(f"No market data available for {ticker}")
@@ -99,7 +101,8 @@ class RealVoterStrategy(StrategyAnalyzer):
                 market_data['Close'] = market_data['close']
 
             if len(market_data) < 42:
-                logger.warning(f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)")
+                logger.warning(
+                    f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)")
                 return self._create_fallback_result(ticker, request.price, f"Insufficient data ({len(market_data)} points)")
 
             logger.info(f"✅ Loaded {len(market_data)} data points for {ticker}")
