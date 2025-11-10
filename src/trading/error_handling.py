@@ -7,7 +7,7 @@ Provides decorators and context managers for safe state modifications.
 
 import functools
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
