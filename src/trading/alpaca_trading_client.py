@@ -23,9 +23,28 @@ try:
         ClosePositionRequest, TakeProfitRequest, StopLossRequest
     )
     from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus, OrderClass
+    ALPACA_TRADING_AVAILABLE = True
 except ImportError:
-    raise ImportError(
-        "alpaca-py SDK is required. Install with: pip install alpaca-py"
+    TradingClient = None
+    GetOrdersRequest = None
+    MarketOrderRequest = None
+    LimitOrderRequest = None
+    StopOrderRequest = None
+    StopLimitOrderRequest = None
+    TrailingStopOrderRequest = None
+    ClosePositionRequest = None
+    TakeProfitRequest = None
+    StopLossRequest = None
+    OrderSide = None
+    OrderType = None
+    TimeInForce = None
+    QueryOrderStatus = None
+    OrderClass = None
+    ALPACA_TRADING_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "alpaca-py SDK not installed. Alpaca trading client will be unavailable. "
+        "Install with: pip install alpaca-py"
     )
 
 from src.utils.config_loader import ConfigLoader

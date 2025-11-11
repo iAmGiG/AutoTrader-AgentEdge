@@ -52,6 +52,12 @@ class PolygonHistoricalData:
             api_key: Polygon API key (defaults to POLYGON_IO from config.json)
             cache_dir: Directory for caching data (defaults to .cache/polygon/)
         """
+        if not POLYGON_AVAILABLE:
+            raise ImportError(
+                "polygon-api-client is required for PolygonHistoricalData. "
+                "Install with: pip install polygon-api-client"
+            )
+
         if api_key:
             self.api_key = api_key
         else:
