@@ -167,31 +167,79 @@ All API credentials in `config/config.json`:
 
 ## Quick Start
 
-### Main Trading Interface (✅ Fully Functional)
+### Unified Interactive CLI (✅ NEW - Priority #1)
+
+**Default: Interactive Trading Assistant**
 
 ```bash
-# Test VoterAgent with AAPL
-python main.py test-voter
+# Launch unified interactive CLI (default)
+python main.py
 
-# Check current paper trading positions
-python main.py check-positions
-
-# Run full trading cycle for SPY
-python main.py paper-trade SPY
-
-# Generate performance analysis
-python main.py analysis
+# Interactive session with all features:
+> buy 10 AAPL              # Execute trades
+> check my alerts          # Position alerts
+> show scheduler status    # View daily scheduler
+> show portfolio           # Account status
+> /help                    # Show all commands
+> /exit                    # Exit
 ```
 
-**Example Output**:
+**Daemon Mode: Background Scheduler**
+
+```bash
+# Run daily scheduler in background
+python main.py --daemon
+
+# Executes twice daily:
+#   - Morning: 9:20 AM ET (position reconciliation + alerts)
+#   - Evening: 3:50 PM ET (performance review)
+```
+
+**Legacy Commands (Deprecated)**
+
+```bash
+# Legacy one-shot commands (will be removed)
+python main.py --legacy test-voter
+python main.py --legacy check-positions
+python main.py --legacy paper-trade SPY
+```
+
+**Example Interactive Session**:
 
 ```
-✅ VoterAgent configured: MACD: (13/34/8), RSI: 14 period, 30/70 levels
-✅ Loaded 42 data points
-📊 Trading Decision: BUY (Confidence: 65.0%)
-   Reasoning: Weak signal: Only MACD signals BUY
-   MACD: BUY (Histogram: 0.111064)
-   RSI: HOLD (Value: 51.6)
+🚀 Launching Interactive Trading Assistant...
+
+======================================================================
+   AutoGen Trading Assistant - Unified Interactive CLI
+======================================================================
+
+> buy 10 AAPL
+⏳ Analyzing trade...
+📊 AAPL @ $185.50
+✅ BUY SUGGESTED
+   Confidence: 65.0%
+   Entry:  $185.50
+   Stop:   $176.23 (-5.0%)
+   Target: $200.34 (+8.0%)
+
+Continue? [yes/no]: yes
+✅ ORDER PLACED SUCCESSFULLY
+
+> check my alerts
+📊 Checking Position Alerts...
+🔔 1 Alert(s) Generated:
+   ⚠️  TQQQ: approaching_take_profit
+      Current: $53.85
+      distance_pct: 1.85%
+
+> show portfolio
+💼 Portfolio Status...
+💰 Account:
+   Equity: $102,450.00
+   Buying Power: $52,000.00
+📊 Positions (3):
+   🟢 AAPL: 10 shares @ $185.50
+      P/L: +$85.00 (+4.58%)
 ```
 
 ### Validation & Backtesting
@@ -203,16 +251,6 @@ python scripts/experiments/experiment_293_validation/experiment_293_retest.py
 
 # Generate comprehensive analysis with advanced metrics
 python scripts/analysis/generate_results_summary.py --advanced
-```
-
-### Coming Soon
-
-```bash
-# Multi-agent coordination (Issue #310)
-python scripts/trading/autogen_trading_system.py --mode paper
-
-# Human-in-loop CLI for trade approval (Issue #308)
-python main.py --interactive
 ```
 
 ## Project Structure

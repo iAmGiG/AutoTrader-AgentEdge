@@ -396,68 +396,118 @@ def trade_assist():
 
 
 def main():
-    """Main entry point."""
+    """
+    Main entry point - Unified Interactive CLI.
+
+    Default: Launches interactive trading assistant
+    --daemon: Runs scheduler in background
+    --legacy: Access legacy one-shot commands
+    """
     parser = argparse.ArgumentParser(
-        description="AutoGen-TradingSystem Main Runner",
+        description="AutoGen Trading System - Unified Interactive CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python main.py test-voter                    # Test production VoterAgent
-  python main.py check-positions              # Check paper positions
-  python main.py paper-trade AAPL             # Full trading check for AAPL
-  python main.py analysis                     # Generate reports
-  python main.py trade-assist                 # Interactive trading assistant (NEW)
+  python main.py                               # Interactive CLI (default)
+  python main.py --daemon                      # Run scheduler in background
+  python main.py --legacy test-voter           # Legacy: test voter agent
+  python main.py --legacy check-positions      # Legacy: check positions
+
+Interactive CLI Usage:
+  > buy 10 AAPL                # Execute trade
+  > check my alerts            # Show position alerts
+  > show scheduler status      # View scheduler
+  > show portfolio             # Account status
+  > /help                      # Show all commands
+  > /exit                      # Exit
         """
     )
 
-    parser.add_argument('command', choices=[
-        'test-voter', 'check-positions', 'paper-trade', 'analysis', 'trade-assist'
-    ], help='Command to execute')
+    parser.add_argument('--daemon', action='store_true',
+                        help='Run daily scheduler in background (daemon mode)')
 
-    parser.add_argument('symbol', nargs='?', default='AAPL',
-                        help='Stock symbol (for paper-trade command)')
+    parser.add_argument('--legacy', nargs='+', metavar='COMMAND',
+                        help='Run legacy one-shot command (deprecated)')
 
+    # If no arguments, launch interactive CLI
     if len(sys.argv) == 1:
-        parser.print_help()
-        return
+        print("🚀 Launching Interactive Trading Assistant...")
+        print("   (Use --help to see all options)")
+        print()
+        try:
+            success = trade_assist()
+            sys.exit(0 if success else 1)
+        except KeyboardInterrupt:
+            print("\n🛑 Cancelled by user")
+            sys.exit(0)
+        except Exception as e:
+            print(f"\n💥 Error: {e}")
+            sys.exit(1)
 
     args = parser.parse_args()
 
-    print("AutoGen-TradingSystem")
-    print("=" * 30)
-    print(f"Command: {args.command}")
-    if args.command == 'paper-trade':
-        print(f"Symbol: {args.symbol}")
-    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 30)
-
-    try:
-        if args.command == 'test-voter':
-            success = test_voter_agent()
-        elif args.command == 'check-positions':
-            success = check_paper_positions()
-        elif args.command == 'paper-trade':
-            success = run_paper_trading_check(args.symbol)
-        elif args.command == 'analysis':
-            success = generate_analysis()
-        elif args.command == 'trade-assist':
-            success = trade_assist()
-        else:
-            print(f"❌ Unknown command: {args.command}")
-            success = False
-
-        if success:
-            print(f"\n✅ '{args.command}' completed successfully")
-        else:
-            print(f"\n❌ '{args.command}' failed")
+    # Daemon mode - run scheduler
+    if args.daemon:
+        print("🤖 Starting Daily Scheduler Daemon...")
+        print("   Press Ctrl+C to stop")
+        print()
+        try:
+            from src.trading.daily_scheduler import DailyScheduler
+            scheduler = DailyScheduler()
+            import asyncio
+            asyncio.run(scheduler.run_daemon(check_interval_seconds=60))
+            sys.exit(0)
+        except KeyboardInterrupt:
+            print("\n🛑 Scheduler stopped by user")
+            sys.exit(0)
+        except Exception as e:
+            print(f"\n💥 Scheduler error: {e}")
             sys.exit(1)
 
-    except KeyboardInterrupt:
-        print("\n🛑 Cancelled by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n💥 Error: {e}")
-        sys.exit(1)
+    # Legacy mode - one-shot commands (deprecated)
+    if args.legacy:
+        command = args.legacy[0]
+        symbol = args.legacy[1] if len(args.legacy) > 1 else 'AAPL'
+
+        print("⚠️  DEPRECATED: Legacy commands will be removed in future version")
+        print("   Please use interactive CLI instead (python main.py)")
+        print()
+        print("AutoGen-TradingSystem")
+        print("=" * 30)
+        print(f"Command: {command}")
+        if command == 'paper-trade':
+            print(f"Symbol: {symbol}")
+        print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("=" * 30)
+
+        try:
+            if command == 'test-voter':
+                success = test_voter_agent()
+            elif command == 'check-positions':
+                success = check_paper_positions()
+            elif command == 'paper-trade':
+                success = run_paper_trading_check(symbol)
+            elif command == 'analysis':
+                success = generate_analysis()
+            elif command == 'trade-assist':
+                success = trade_assist()
+            else:
+                print(f"❌ Unknown command: {command}")
+                print("Available: test-voter, check-positions, paper-trade, analysis, trade-assist")
+                success = False
+
+            if success:
+                print(f"\n✅ '{command}' completed successfully")
+            else:
+                print(f"\n❌ '{command}' failed")
+                sys.exit(1)
+
+        except KeyboardInterrupt:
+            print("\n🛑 Cancelled by user")
+            sys.exit(1)
+        except Exception as e:
+            print(f"\n💥 Error: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

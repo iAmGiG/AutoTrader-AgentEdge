@@ -16,7 +16,7 @@ from .sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from .sources.market.market_context_tool import market_context_tool
 from .sources.news.google_search_simple import google_search_smart_tool, set_news_governor, _news_governor
 from .sources.news.hierarchical_news_tool import fetch_hierarchical_news
-from src.tools.news_governor import create_balanced_governor
+from src.data_sources.processors.news_governor import create_balanced_governor
 
 # Load tool descriptions from YAML
 import sys
