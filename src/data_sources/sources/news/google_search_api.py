@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 import re
 from autogen_core.tools import FunctionTool
 # Quota management removed for simplified V0-V4 framework
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 

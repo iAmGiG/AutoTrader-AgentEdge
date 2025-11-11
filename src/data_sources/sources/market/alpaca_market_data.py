@@ -23,7 +23,7 @@ except ImportError:
         "alpaca-py SDK is required. Install with: pip install alpaca-py"
     )
 
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 from src.data_sources.cache.unified_cache import UnifiedCacheManager
 
 

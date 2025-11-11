@@ -5,7 +5,7 @@ Utilities for dynamic date handling in data tools.
 import re
 import datetime
 import os
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
 config = ConfigLoader()
 

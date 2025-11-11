@@ -13,7 +13,7 @@ import logging
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
 # Configure logging
 logging.basicConfig(
