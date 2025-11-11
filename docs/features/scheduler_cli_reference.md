@@ -204,8 +204,26 @@ Scheduler> test morning
 🧪 Testing morning routine...
 
 ✅ Morning routine completed
-   Orders placed: 2
-   Alerts checked: 5
+
+Report preview:
+----------------------------------------------------------------------
+# Morning Routine Report - 2025-11-11 09:20
+
+## Broker State
+- Positions: 2
+- Open Orders: 4
+- Buying Power: $50,000.00
+
+## Alerts
+⚠️ SPY approaching take profit (2.1% away)
+✅ TQQQ position healthy
+
+## Actions Taken
+- Adjusted 1 stop loss order
+...
+----------------------------------------------------------------------
+
+Full report saved to: reports/daily/
 ```
 
 #### `test evening`
@@ -217,8 +235,19 @@ Scheduler> test evening
 🧪 Testing evening routine...
 
 ✅ Evening routine completed
-   Orders placed: 0
-   Alerts checked: 3
+
+Report preview:
+----------------------------------------------------------------------
+# Evening Routine Report - 2025-11-11 15:50
+
+## End of Day Summary
+- P/L Today: +$125.50 (+0.25%)
+- Positions: 2 open, 1 closed
+- Orders: 3 pending overnight
+...
+----------------------------------------------------------------------
+
+Full report saved to: reports/daily/
 ```
 
 ### Other Commands

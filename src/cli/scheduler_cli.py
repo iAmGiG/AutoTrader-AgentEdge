@@ -373,15 +373,21 @@ class SchedulerCLI:
             print("❌ Scheduler not initialized")
             return
 
-        from src.trading.trading_cycle import RoutineType
-
         try:
-            routine = RoutineType.MORNING if routine_type == "morning" else RoutineType.EVENING
-            result = await self.scheduler.trading_cycle.execute_routine(routine)
+            # Call the correct method based on routine type
+            if routine_type == "morning":
+                report = self.scheduler.trading_cycle.morning_routine()
+            else:
+                report = self.scheduler.trading_cycle.evening_routine()
 
             print(f"\n✅ {routine_type.capitalize()} routine completed")
-            print(f"   Orders placed: {len(result.get('orders', []))}")
-            print(f"   Alerts checked: {len(result.get('alerts', []))}")
+            print("\nReport preview:")
+            print("-" * 70)
+            # Show first 500 chars of report
+            preview = report[:500] + "..." if len(report) > 500 else report
+            print(preview)
+            print("-" * 70)
+            print(f"\nFull report saved to: reports/daily/")
         except Exception as e:
             print(f"❌ Test failed: {e}")
             logger.error(f"Routine test error: {e}", exc_info=True)
