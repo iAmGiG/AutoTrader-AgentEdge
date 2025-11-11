@@ -74,6 +74,12 @@ class AlpacaTradingClient:
         Raises:
             ValueError: If mode is not "paper" or "live"
         """
+        if not ALPACA_TRADING_AVAILABLE:
+            raise ImportError(
+                "alpaca-py SDK is required for AlpacaTradingClient. "
+                "Install with: pip install alpaca-py"
+            )
+
         if mode not in ["paper", "live"]:
             raise ValueError("Mode must be explicitly 'paper' or 'live'")
 
