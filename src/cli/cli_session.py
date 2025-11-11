@@ -76,8 +76,9 @@ class CLISession:
 
         while True:
             try:
-                # Get user input
-                user_input = input("\n> ").strip()
+                # Get user input with mode indicator
+                mode_indicator = "🤖 AUTO" if self.autonomy_mode == "auto" else "✋ CONFIRM"
+                user_input = input(f"\n({mode_indicator}) > ").strip()
 
                 if not user_input:
                     continue
@@ -108,8 +109,7 @@ class CLISession:
         print("\nSystem Commands:")
         print("  /help    - Show help")
         print("  /exit    - Exit (or Ctrl+C)")
-        print("  /auto    - Enable auto-execute mode")
-        print("  /confirm - Enable confirm mode (default)")
+        print("  /toggle  - Toggle between CONFIRM and AUTO modes")
         print("\nTrading:")
         print("  > buy 10 AAPL")
         print("  > is SPY at 600 a good entry?")
@@ -142,13 +142,14 @@ class CLISession:
         elif cmd == "/help":
             self._print_welcome()
 
-        elif cmd == "/auto":
-            self.autonomy_mode = "auto"
-            print("✅ Auto-execute mode enabled")
-
-        elif cmd == "/confirm":
-            self.autonomy_mode = "confirm"
-            print("✅ Confirm mode enabled (default)")
+        elif cmd == "/toggle":
+            # Toggle between confirm and auto modes
+            if self.autonomy_mode == "confirm":
+                self.autonomy_mode = "auto"
+                print("🤖 Mode switched to: AUTO (trades execute immediately)")
+            else:
+                self.autonomy_mode = "confirm"
+                print("✋ Mode switched to: CONFIRM (asks before executing)")
 
         else:
             print(f"Unknown command: {command}")
