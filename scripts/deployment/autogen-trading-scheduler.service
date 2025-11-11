@@ -1,0 +1,45 @@
+[Unit]
+Description=AutoGen Trading System - Daily GTC Order Scheduler
+After=network.target
+Documentation=https://github.com/iAmGiG/AutoGen-TradingSystem
+
+[Service]
+Type=simple
+User=trader
+Group=trader
+WorkingDirectory=/home/trader/AutoGen-TradingSystem
+Environment="PATH=/home/trader/anaconda3/envs/RH2MAS/bin:/usr/local/bin:/usr/bin"
+Environment="PYTHONPATH=/home/trader/AutoGen-TradingSystem"
+
+# Main scheduler daemon
+ExecStart=/home/trader/anaconda3/envs/RH2MAS/bin/python -u src/trading/daily_scheduler.py --mode daemon --interval 60
+
+# Restart policy
+Restart=on-failure
+RestartSec=30
+StartLimitBurst=5
+StartLimitIntervalSec=600
+
+# Logging
+StandardOutput=append:/home/trader/AutoGen-TradingSystem/logs/scheduler-stdout.log
+StandardError=append:/home/trader/AutoGen-TradingSystem/logs/scheduler-stderr.log
+SyslogIdentifier=autogen-scheduler
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/trader/AutoGen-TradingSystem/state /home/trader/AutoGen-TradingSystem/reports /home/trader/AutoGen-TradingSystem/logs
+
+# Resource limits
+CPUQuota=50%
+MemoryLimit=1G
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

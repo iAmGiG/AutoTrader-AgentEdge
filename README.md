@@ -288,6 +288,7 @@ AutoGen-TradingSystem/
 **Priority Development Issues**:
 
 - [Issue #327](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/327) - ✅ Make main.py functional (COMPLETED 2025-10-23)
+- [Issue #287](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/287) - ✅ GTC Daily Execution System (COMPLETED 2025-11-11)
 - [Issue #328](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/328) - JSON→YAML token optimization (future)
 - [Issue #310](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/310) - Complete remaining AutoGen agents
 - [Issue #316](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/316) - Event bus for agent communication
@@ -309,6 +310,42 @@ Originally developed as a research framework (RH2MAS), this project has evolved 
 - **Open Source**: Complete transparency in agent logic, parameters, and validation results
 
 ## Recent Updates
+
+### November 11, 2025 - GTC Daily Execution System (Issue #287)
+
+**✅ Completed**:
+
+- Automated "set it and forget it" daily trading system
+- Morning (9:20 AM ET) and evening (3:50 PM ET) routines
+- Comprehensive retry logic with exponential backoff
+- Robust error handling and crash recovery
+- systemd service and crontab deployment options
+- 90% API call reduction through GTC orders
+
+**🚀 Key Features**:
+
+- **Daily Scheduling**: Automated position reconciliation and stop adjustments
+- **Retry Logic**: Exponential backoff (60s, 120s, 240s) with 10% jitter
+- **Error Handling**: Task, execution, and system-level exception management
+- **Monitoring**: Detailed execution logs and status reports
+- **Cost-Efficient**: 6-10 API calls per day vs. 1,000+ with traditional polling
+
+**Quick Start**:
+```bash
+# Test the scheduler
+python src/trading/daily_scheduler.py --mode once --task morning_routine
+
+# Install as service (systemd)
+sudo scripts/deployment/install_scheduler.sh
+
+# Or setup cron jobs
+./scripts/deployment/setup_cron.sh
+```
+
+**See**:
+- [Issue #287](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/287) for requirements
+- [Quick Start Guide](docs/features/QUICKSTART_ISSUE_287.md) for setup
+- [Full Documentation](docs/features/issue_287_gtc_daily_execution.md) for details
 
 ### October 23, 2025 - main.py Production Ready
 
