@@ -156,10 +156,27 @@ class SchedulerCLI:
             print("❌ Scheduler not initialized")
             return
 
+        # Check if daemon is actually running
+        daemon_running = self._is_daemon_running()
         enabled = self.scheduler.config.get('enabled', False)
-        status_emoji = "🟢" if enabled else "🔴"
 
-        print(f"\n{status_emoji} Status: {'ENABLED' if enabled else 'DISABLED'}")
+        # Config status
+        config_emoji = "🟢" if enabled else "🔴"
+        print(f"\n{config_emoji} Config: {'ENABLED' if enabled else 'DISABLED'}")
+
+        # Daemon/service status (actual execution)
+        if daemon_running:
+            print(f"✅ Service: RUNNING (automatic execution active)")
+        else:
+            print(f"❌ Service: NOT RUNNING (no automatic execution)")
+            if enabled:
+                print(f"\n💡 Config is enabled but daemon is not running.")
+                print(f"   To start automatic execution:")
+                print(f"   1. Exit this CLI")
+                print(f"   2. Run: python main.py --daemon")
+                print(f"   3. Scheduler will run automatically at scheduled times")
+                print(f"\n   Or use 'test morning/evening' to run manually now")
+
         print(f"\n⚙️  Configuration:")
         print(f"   Morning: {self.scheduler.config.get('morning_routine_time', 'N/A')} ET")
         print(f"   Evening: {self.scheduler.config.get('evening_routine_time', 'N/A')} ET")
@@ -176,6 +193,34 @@ class SchedulerCLI:
                 print(f"   {status} {entry.task_name} - {entry.status}")
         else:
             print("\n📋 No executions today")
+            if enabled and not daemon_running:
+                print("   (Daemon not running - no automatic executions)")
+
+    def _is_daemon_running(self) -> bool:
+        """Check if scheduler daemon is actually running."""
+        import psutil
+
+        # Check for process running main.py --daemon
+        try:
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = proc.info.get('cmdline', [])
+                    if cmdline and 'main.py' in ' '.join(cmdline) and '--daemon' in cmdline:
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+        except ImportError:
+            # psutil not installed, check PID file as fallback
+            pid_file = Path('state/scheduler.pid')
+            if pid_file.exists():
+                try:
+                    pid = int(pid_file.read_text())
+                    os.kill(pid, 0)  # Check if process exists
+                    return True
+                except (OSError, ValueError):
+                    pass
+
+        return False
 
     def _show_config(self):
         """Display current scheduler configuration."""
