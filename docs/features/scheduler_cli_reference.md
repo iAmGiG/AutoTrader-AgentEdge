@@ -23,19 +23,53 @@ python -m src.cli.scheduler_cli
 
 #### `status`
 Show detailed scheduler status including:
-- Current enabled/disabled state
+- **Config status** (enabled/disabled in config file)
+- **Service status** (daemon actually running or not)
 - Configuration summary (times, retries, timezone)
 - Today's execution count
 - Recent execution results
 
-**Example:**
+**IMPORTANT:** "Config: ENABLED" does NOT mean the scheduler is running automatically!
+You must start the daemon process for automatic execution.
+
+**Example (config enabled, daemon NOT running):**
 ```
 Scheduler> status
 
 ⏰ Scheduler Status
 ======================================================================
 
-🟢 Status: ENABLED
+🟢 Config: ENABLED
+❌ Service: NOT RUNNING (no automatic execution)
+
+💡 Config is enabled but daemon is not running.
+   To start automatic execution:
+   1. Exit this CLI
+   2. Run: python main.py --daemon
+   3. Scheduler will run automatically at scheduled times
+
+   Or use 'test morning/evening' to run manually now
+
+⚙️  Configuration:
+   Morning: 09:20:00 ET
+   Evening: 15:50:00 ET
+   Timezone: America/New_York
+   Max Retries: 3
+   Dry Run: False
+
+📋 No executions today
+   (Daemon not running - no automatic executions)
+```
+
+**Example (config enabled, daemon RUNNING):**
+```
+Scheduler> status
+
+⏰ Scheduler Status
+======================================================================
+
+🟢 Config: ENABLED
+✅ Service: RUNNING (automatic execution active)
 
 ⚙️  Configuration:
    Morning: 09:20:00 ET
