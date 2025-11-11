@@ -32,6 +32,13 @@ This directory contains comprehensive documentation for all integrated features 
    - Integration verification
    - Performance metrics
 
+5. **[Interactive CLI Test Plan](05_interactive_cli_test_plan.md)** (Issue #334)
+   - **Live testing guide** with real user prompts
+   - 25+ test cases based on manual testing
+   - Known issues from #334 documented
+   - Bug fixes and improvements needed
+   - **Use this** for live validation testing
+
 ---
 
 ## Feature Summary
