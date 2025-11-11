@@ -272,6 +272,150 @@ Add to existing position? [yes/no]
 
 ---
 
+---
+
+## Test Case 2: "what is my stop level on meta"
+
+### User Intent
+- **Query:** Check stop loss level for existing META position
+- **Expected:** Show stop loss order details (price, status)
+- **Context:** User has META position with bracket orders (stop + take profit)
+
+### System Response
+```
+💼 Portfolio Status...
+
+📊 Positions (2):
+   🔴 META: 8 shares @ $0.00
+      Value: $4,999.52
+      P/L: $-25.00 (-0.50%)
+   🟢 SPY: 14 shares @ $0.00
+      Value: $9,536.94
+      P/L: $330.61 (+3.59%)
+```
+
+### Issues Identified
+
+#### ❌ Issue 4: Stop Level Query Shows Portfolio, Not Orders
+**Severity:** High
+**Category:** Router / Handler
+
+**Problem:**
+- User asked about "stop level" (order info)
+- System routed to portfolio handler (position info)
+- Didn't show actual stop loss orders set on Alpaca
+
+**Root Cause:**
+- Router doesn't recognize "stop level" as order query
+- No dedicated handler for position-specific orders
+- Keywords like "stop", "target", "take profit" not in routing
+
+**Expected Behavior:**
+```
+📋 META Orders:
+
+✅ ENTRY (Filled)
+   BUY 8 shares @ $625.12
+   Filled: 2025-01-11 09:35:00
+
+🔴 STOP LOSS (Open)
+   Stop Price: $610.00 (-2.4% from entry)
+   Order ID: abc123...
+   Status: PENDING
+
+🟢 TAKE PROFIT (Open)
+   Limit Price: $675.00 (+8.0% from entry)
+   Order ID: def456...
+   Status: PENDING
+
+📊 Current: META @ $624.96
+   Distance to stop: -2.4%
+   Distance to target: +8.0%
+```
+
+**Created Issue:** #348 - CLI: Show order details when asking about stops/targets
+
+---
+
+#### ❌ Issue 5: Entry Price Shows $0.00 (BUG)
+**Severity:** High
+**Category:** Data / Bug
+
+**Problem:**
+```
+🔴 META: 8 shares @ $0.00    <-- Should show actual entry price
+   P/L: $-25.00 (-0.50%)
+```
+
+This is mathematically impossible:
+- If entry = $0.00, P/L would be +∞%
+- Shows -0.50% loss but entry is $0.00?
+- Can't calculate accurate P/L without entry price
+
+**Root Cause (Investigation Needed):**
+- Alpaca API not returning 'avg_entry_price' field?
+- Field name mismatch ('cost_basis' instead?)
+- Paper trading quirk?
+- Data not being parsed correctly
+
+**Expected Behavior:**
+```
+🔴 META: 8 shares @ $625.12 (avg entry)
+   Current: $624.96
+   Value: $4,999.68
+   P/L: $-1.28 (-0.20%)
+```
+
+**Created Issue:** #349 - BUG: Portfolio shows entry price as $0.00 instead of actual entry
+
+---
+
+#### ❌ Issue 6: Can't Distinguish Filled vs Open Orders
+**Severity:** Medium
+**Category:** UX / Data Display
+
+**Problem:**
+- System shows positions but not order history
+- Can't see which orders are filled vs pending
+- No visibility into bracket order legs (stop/target)
+
+**Expected Behavior:**
+```
+📋 Order History for META:
+
+✅ FILLED
+   BUY 8 META @ $625.12 (market)
+   Filled: 2025-01-11 09:35:00
+
+🟡 PENDING
+   STOP LOSS @ $610.00 (stop)
+   Order ID: abc123...
+
+🟡 PENDING
+   TAKE PROFIT @ $675.00 (limit)
+   Order ID: def456...
+```
+
+**Covered by Issue:** #348 (order details handler)
+
+---
+
+## Test Results Summary (Updated)
+
+| Test Case | Issue Found | Severity | Issue # |
+|-----------|-------------|----------|---------|
+| "buy qqq at pullback" | User intent ignored | High | #347 |
+| "buy qqq at pullback" | Pullback not understood | High | #344 |
+| "buy qqq at pullback" | No position context | Medium | #345 |
+| General | No local cache | Medium | #346 |
+| "stop level on meta" | Shows portfolio not orders | High | #348 |
+| Portfolio display | Entry price = $0.00 | High | #349 |
+| Order visibility | Can't see filled vs open | Medium | #348 |
+
+**Total Issues Found:** 7 issues across 6 unique problems
+
+---
+
 ## Related Documents
 
 - Test Plan: `docs/features/05_interactive_cli_test_plan.md`
@@ -279,8 +423,10 @@ Add to existing position? [yes/no]
 - Parser: `src/parsers/llm_parser.py`
 - Orchestrator: `src/core/trading_orchestrator.py`
 
-**Issues Created:**
+**Issues Created (Testing Session):**
 - #344 - Parser: Pullback/timing context
 - #345 - Position context in suggestions
 - #346 - Local broker cache
 - #347 - Respect user intent priority
+- #348 - Show order details for stop/target queries
+- #349 - BUG: Entry price shows $0.00
