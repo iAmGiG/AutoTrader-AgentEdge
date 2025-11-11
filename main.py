@@ -175,6 +175,17 @@ def run_paper_trading_check(symbol: str = None):
         else:
             print("   ✅ Local and remote states synchronized")
 
+        # Step 2.5: Check for position alerts
+        print("\n📊 Checking Position Alerts...")
+        alerts = cycle.check_position_alerts(broker_state)
+
+        if alerts:
+            print(f"   🔔 {len(alerts)} Alert(s) Generated:")
+            for alert in alerts:
+                print(f"      {alert.message}")
+        else:
+            print("   ✅ No alerts - all positions within safe ranges")
+
         # Step 3: Review positions and execute stop updates
         print("\n3️⃣ Reviewing Positions and Executing Updates...")
         actions_taken = []
