@@ -492,12 +492,12 @@ class CostEfficientTradeCycle:
         for symbol, broker_pos in broker_state["positions"].items():
             if symbol not in self.local_state["positions"]:
                 continue
-            
+
             local_pos = self.local_state["positions"][symbol]
-            current_price = broker_pos["current_price"]
-            entry_price = float(local_pos.get("entry_price", 0))
-            quantity = broker_pos["quantity"]
-            
+            current_price = float(broker_pos.get("current_price") or 0)
+            entry_price = float(local_pos.get("entry_price") or 0)
+            quantity = int(broker_pos.get("quantity") or 0)
+
             # Calculate P&L
             unrealized_pl = (current_price - entry_price) * quantity
             unrealized_percent = ((current_price - entry_price) / entry_price) if entry_price else 0
@@ -511,8 +511,8 @@ class CostEfficientTradeCycle:
                 symbol=symbol,
                 entry_price=entry_price,
                 current_price=current_price,
-                stop_price=local_pos.get("stop_price", 0),
-                target_price=local_pos.get("target_price", 0),
+                stop_price=float(local_pos.get("stop_price") or 0),
+                target_price=float(local_pos.get("target_price") or 0),
                 quantity=quantity,
                 unrealized_pl=unrealized_pl,
                 unrealized_percent=unrealized_percent,
@@ -537,11 +537,15 @@ class CostEfficientTradeCycle:
         
         # Account summary
         account = broker_state.get("account", {})
+        portfolio_value = float(account.get('portfolio_value') or 0)
+        cash = float(account.get('cash') or 0)
+        buying_power = float(account.get('buying_power') or 0)
+
         report_lines.extend([
             "## Account Summary",
-            f"Portfolio Value: ${account.get('portfolio_value', 0):,.2f}",
-            f"Available Cash: ${account.get('cash', 0):,.2f}",
-            f"Buying Power: ${account.get('buying_power', 0):,.2f}",
+            f"Portfolio Value: ${portfolio_value:,.2f}",
+            f"Available Cash: ${cash:,.2f}",
+            f"Buying Power: ${buying_power:,.2f}",
             ""
         ])
         
