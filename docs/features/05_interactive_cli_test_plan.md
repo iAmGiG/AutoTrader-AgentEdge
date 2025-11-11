@@ -46,11 +46,13 @@ The CLI uses **LLM-based classification** instead of hardcoded keyword patterns:
 ### Test 1.1: Simple Buy Request
 
 **Input:**
+
 ```
 > buy 10 AAPL
 ```
 
 **Expected Behavior:**
+
 - ✅ Routes to trade handler (not alerts/scheduler/portfolio)
 - ✅ Fetches current AAPL price
 - ✅ Calculates entry/stop/target
@@ -59,11 +61,13 @@ The CLI uses **LLM-based classification** instead of hardcoded keyword patterns:
 - ✅ Places bracket order if confirmed
 
 **Known Issues from #334:**
+
 - ⚠️ Off-hours: Shows "could not fetch current market price" → OK (expected)
 - ⚠️ Bracket order validation: `take_profit.limit_price must be >= base_price + 0.01`
   - **Fix needed:** Ensure target price is at least $0.01 above entry
 
 **Success Criteria:**
+
 - [ ] Order places successfully during market hours
 - [ ] Appropriate error message during off-hours
 - [ ] Bracket order meets Alpaca validation rules
@@ -73,11 +77,13 @@ The CLI uses **LLM-based classification** instead of hardcoded keyword patterns:
 ### Test 1.2: Natural Language Buy
 
 **Input:**
+
 ```
 > is apple at market price a good entry?
 ```
 
 **Expected Behavior:**
+
 - ✅ Interprets "apple" as AAPL
 - ✅ Fetches current market price
 - ✅ Runs VoterAgent analysis (MACD+RSI)
@@ -85,9 +91,11 @@ The CLI uses **LLM-based classification** instead of hardcoded keyword patterns:
 - ✅ Shows entry plan with stop/target
 
 **Known Issues from #334:**
+
 - ⚠️ Bracket order validation error (same as 1.1)
 
 **Success Criteria:**
+
 - [ ] Correctly parses "apple" → AAPL
 - [ ] VoterAgent provides decision
 - [ ] Order validation passes
@@ -97,21 +105,25 @@ The CLI uses **LLM-based classification** instead of hardcoded keyword patterns:
 ### Test 1.3: Sell Signal Handling
 
 **Input:**
+
 ```
 > what about spy at market
 ```
 
 **Expected Behavior:**
+
 - ⚠️ **IMPORTANT:** System currently rejects SELL signals (no shorting)
 - ✅ Should check if SPY position exists
 - ✅ If position exists → allow sell
 - ✅ If no position → reject with clear message
 
 **Known Issues from #334:**
+
 - ❌ System tries to short sell instead of checking existing positions
 - ❌ Error: "Short selling not supported" even when shares owned
 
 **Fix Needed:**
+
 ```python
 # In _handle_trade_request() or execution layer
 if signal == "SELL":
@@ -127,6 +139,7 @@ if signal == "SELL":
 ```
 
 **Success Criteria:**
+
 - [ ] Checks for existing position before SELL
 - [ ] Allows sell if position exists
 - [ ] Rejects sell with clear message if no position
@@ -136,12 +149,14 @@ if signal == "SELL":
 ### Test 1.4: Sell Existing Position
 
 **Input (assuming SPY position exists):**
+
 ```
 > sell all spy
 > close my spy position
 ```
 
 **Expected Behavior:**
+
 - ✅ Detects sell intent
 - ✅ Checks for existing SPY position
 - ✅ Shows current P/L
@@ -149,6 +164,7 @@ if signal == "SELL":
 - ✅ Places market sell order
 
 **Success Criteria:**
+
 - [ ] Natural language "sell all" parsed correctly
 - [ ] Position check works
 - [ ] Sell order places successfully
@@ -160,6 +176,7 @@ if signal == "SELL":
 ### Test 2.1: Check Alerts
 
 **Input:**
+
 ```
 > check my alerts
 > show alerts
@@ -167,6 +184,7 @@ if signal == "SELL":
 ```
 
 **Expected Behavior:**
+
 - ✅ Routes to `_handle_alerts_request()` (not trade handler)
 - ✅ Fetches current broker state
 - ✅ Runs `position_tracker.check_alerts()`
@@ -174,6 +192,7 @@ if signal == "SELL":
 - ✅ Shows alert history (last 5)
 
 **Output Example:**
+
 ```
 📊 Checking Position Alerts...
 ✅ No active alerts
@@ -185,6 +204,7 @@ if signal == "SELL":
 ```
 
 **Success Criteria:**
+
 - [ ] Keyword "alerts" routes correctly
 - [ ] Alert check executes without errors
 - [ ] Alert history persists across restarts
@@ -194,6 +214,7 @@ if signal == "SELL":
 ### Test 2.2: Position Status Query
 
 **Input:**
+
 ```
 > any positions open
 > what positions do I have?
@@ -201,18 +222,22 @@ if signal == "SELL":
 ```
 
 **Expected Behavior:**
+
 - ⚠️ **KNOWN BUG from #334:** Fails with "Invalid ticker format"
 - ✅ Should route to portfolio handler (not trade handler)
 - ✅ Shows list of open positions with P/L
 
 **Known Issues from #334:**
+
 ```
 ValueError: Invalid request: TradeRequest(ticker='', action='review', ...)
 ```
+
 - **Root cause:** Parser tries to extract ticker, fails, creates invalid TradeRequest
 - **Fix needed:** Add "status" routing keyword to bypass trade parser
 
 **Fix Needed:**
+
 ```python
 # In _process_request()
 if any(word in input_lower for word in ["positions", "position status", "what positions"]):
@@ -221,6 +246,7 @@ if any(word in input_lower for word in ["positions", "position status", "what po
 ```
 
 **Success Criteria:**
+
 - [ ] "any positions open" routes to portfolio (not trade)
 - [ ] Shows position list correctly
 - [ ] No parser errors
@@ -230,26 +256,31 @@ if any(word in input_lower for word in ["positions", "position status", "what po
 ### Test 2.3: Price Target Query
 
 **Input:**
+
 ```
 > is there a price target on spy
 > what's the target for my aapl position?
 ```
 
 **Expected Behavior:**
+
 - ✅ Checks existing positions
 - ✅ Shows take-profit price for that position
 - ✅ Shows stop-loss price
 - ✅ Shows distance to targets
 
 **Known Issues from #334:**
+
 - ❌ Parser interprets as new trade request (SELL signal)
 - ❌ Tries to short sell instead of checking position details
 
 **Fix Needed:**
+
 - Route "price target" queries to portfolio handler
 - Check position details, don't create new trade
 
 **Success Criteria:**
+
 - [ ] Detects query about existing position
 - [ ] Shows target/stop prices
 - [ ] No unwanted trade suggestions
@@ -261,6 +292,7 @@ if any(word in input_lower for word in ["positions", "position status", "what po
 ### Test 3.1: Scheduler Status
 
 **Input:**
+
 ```
 > show scheduler status
 > what's the scheduler doing?
@@ -268,12 +300,14 @@ if any(word in input_lower for word in ["positions", "position status", "what po
 ```
 
 **Expected Behavior:**
+
 - ✅ Routes to `_handle_scheduler_request()`
 - ✅ Shows configuration (enabled, times)
 - ✅ Shows recent execution history
 - ✅ Shows next scheduled tasks
 
 **Output Example:**
+
 ```
 🤖 Daily Scheduler Status...
 
@@ -293,6 +327,7 @@ Configuration:
 ```
 
 **Success Criteria:**
+
 - [ ] Keyword "scheduler" routes correctly
 - [ ] Configuration displayed
 - [ ] Execution history shown
@@ -302,17 +337,20 @@ Configuration:
 ### Test 3.2: Execution History
 
 **Input:**
+
 ```
 > show execution history
 > what did the scheduler do today?
 ```
 
 **Expected Behavior:**
+
 - ✅ Shows today's executions
 - ✅ Status for each (completed/failed/pending)
 - ✅ Timestamps and error messages if any
 
 **Success Criteria:**
+
 - [ ] History retrieval works
 - [ ] Displays last 7 days by default
 
@@ -323,6 +361,7 @@ Configuration:
 ### Test 4.1: Account Status
 
 **Input:**
+
 ```
 > show portfolio
 > what's my account balance?
@@ -330,12 +369,14 @@ Configuration:
 ```
 
 **Expected Behavior:**
+
 - ✅ Routes to `_handle_portfolio_request()`
 - ✅ Shows equity, cash, buying power
 - ✅ Shows PDT status
 - ✅ Lists all positions with P/L
 
 **Output Example:**
+
 ```
 💼 Portfolio Status...
 
@@ -355,6 +396,7 @@ Configuration:
 ```
 
 **Success Criteria:**
+
 - [ ] Account data fetches correctly
 - [ ] Position list with P/L shown
 - [ ] Emojis display correctly (🟢/🔴)
@@ -364,21 +406,25 @@ Configuration:
 ### Test 4.2: Buying Power Query
 
 **Input:**
+
 ```
 > how much buying power do I have?
 > what's my available cash?
 ```
 
 **Expected Behavior:**
+
 - ✅ Routes to portfolio handler
 - ✅ Shows buying power prominently
 - ✅ Explains PDT restrictions if applicable
 
 **Known Issues from #334:**
+
 - ⚠️ Fallback values shown: "Using fallback buying power: $50,000"
 - **Fix:** Ensure Alpaca API credentials valid
 
 **Success Criteria:**
+
 - [ ] Real buying power from Alpaca (no fallback)
 - [ ] Clear display
 
@@ -389,16 +435,19 @@ Configuration:
 ### Test 5.1: Invalid Ticker
 
 **Input:**
+
 ```
 > buy 10 INVALIDTICKER
 ```
 
 **Expected Behavior:**
+
 - ✅ Attempts to fetch data
 - ✅ Detects invalid ticker
 - ✅ Shows helpful error message
 
 **Current Behavior from #334:**
+
 ```
 ❌ Invalid ticker symbol
    The ticker you entered was not recognized by the market.
@@ -407,6 +456,7 @@ Configuration:
 ```
 
 **Success Criteria:**
+
 - [ ] Helpful error message shown
 - [ ] Suggests valid alternatives
 - [ ] Doesn't crash
@@ -416,20 +466,24 @@ Configuration:
 ### Test 5.2: Out of Scope Request
 
 **Input:**
+
 ```
 > what's the weather today?
 > tell me a joke
 ```
 
 **Expected Behavior:**
+
 - ⚠️ **Currently:** Tries to parse as trade request → fails
 - ✅ **Should:** Detect out-of-scope, show help message
 
 **Fix Needed:**
+
 - Add fallback handler for unrecognized intents
 - Show available command categories
 
 **Success Criteria:**
+
 - [ ] Graceful handling of non-trading requests
 - [ ] Suggests valid commands
 
@@ -438,16 +492,19 @@ Configuration:
 ### Test 5.3: Ambiguous Request
 
 **Input:**
+
 ```
 > spy
 > aapl?
 ```
 
 **Expected Behavior:**
+
 - ✅ Detects insufficient context
 - ✅ Asks clarifying question: "Did you mean buy, sell, or check status for SPY?"
 
 **Success Criteria:**
+
 - [ ] Doesn't assume action
 - [ ] Prompts for clarification
 
@@ -458,6 +515,7 @@ Configuration:
 ### Test 6.1: Various Buy Phrasings
 
 **Inputs to test:**
+
 ```
 > buy 10 shares of apple
 > purchase aapl
@@ -467,11 +525,13 @@ Configuration:
 ```
 
 **Expected Behavior:**
+
 - ✅ All interpreted as BUY intent
 - ✅ Ticker extracted correctly
 - ✅ Same trade flow triggered
 
 **Success Criteria:**
+
 - [ ] 5/5 phrasings work correctly
 
 ---
@@ -479,6 +539,7 @@ Configuration:
 ### Test 6.2: Various Status Phrasings
 
 **Inputs to test:**
+
 ```
 > check my positions
 > show me what I own
@@ -488,10 +549,12 @@ Configuration:
 ```
 
 **Expected Behavior:**
+
 - ✅ All route to portfolio handler
 - ✅ Show position list
 
 **Success Criteria:**
+
 - [ ] 5/5 phrasings route correctly
 - [ ] No parser errors
 
@@ -500,6 +563,7 @@ Configuration:
 ### Test 6.3: Various Alert Phrasings
 
 **Inputs to test:**
+
 ```
 > check alerts
 > show position alerts
@@ -509,10 +573,12 @@ Configuration:
 ```
 
 **Expected Behavior:**
+
 - ✅ All route to alerts handler
 - ✅ Check alerts successfully
 
 **Success Criteria:**
+
 - [ ] 5/5 phrasings route correctly
 
 ---
@@ -522,6 +588,7 @@ Configuration:
 ### Phase 1: Core Functionality (Priority 1)
 
 Run tests in market hours:
+
 1. Test 1.1 - Simple buy ✅
 2. Test 2.1 - Check alerts ✅
 3. Test 3.1 - Scheduler status ✅
@@ -534,6 +601,7 @@ Run tests in market hours:
 ### Phase 2: Bug Fixes (Priority 2)
 
 Fix known issues from #334:
+
 1. Test 1.3 - Sell signal handling (fix position check)
 2. Test 2.2 - Position status query (fix routing)
 3. Test 2.3 - Price target query (fix routing)
@@ -671,6 +739,7 @@ python main.py
 ### Test 7.1: "ANY" as Status Query
 
 **Input:**
+
 ```
 > any open orders?
 > any positions?
@@ -678,17 +747,20 @@ python main.py
 ```
 
 **Expected Behavior:**
+
 - ✅ LLM classifies as `request_type = "status_query"`
 - ✅ Routes to appropriate status handler (orders/positions/alerts)
 - ✅ Does NOT attempt to analyze ticker "ANY"
 - ✅ No "could not fetch data for ANY" errors
 
 **LLM Classification:**
+
 - Context: Question word "any" + status keywords
 - No trading intent (buy/sell/analyze)
 - Result: status_query
 
 **Success Criteria:**
+
 - [ ] All 3 variations route to status handlers
 - [ ] No ticker parsing errors
 - [ ] Shows correct status information
@@ -698,6 +770,7 @@ python main.py
 ### Test 7.2: "ANY" as Ticker Symbol
 
 **Input:**
+
 ```
 > buy ANY
 > is ANY a good buy?
@@ -705,17 +778,20 @@ python main.py
 ```
 
 **Expected Behavior:**
+
 - ✅ LLM classifies as `request_type = "trade"`
 - ✅ Extracts ticker = "ANY"
 - ✅ Routes to trade handler
 - ✅ Fetches market data for ticker ANY (if exists)
 
 **LLM Classification:**
+
 - Context: Trading action verbs (buy/analyze)
 - Specific ticker mentioned in trading context
 - Result: trade request with ticker=ANY
 
 **Success Criteria:**
+
 - [ ] All 3 variations route to trade handler
 - [ ] Ticker extracted as "ANY"
 - [ ] Attempts to analyze/execute trade
@@ -725,11 +801,13 @@ python main.py
 ### Test 7.3: Other Ambiguous Tickers
 
 **Tickers to Test:**
+
 - WHAT, WHO, WHEN, WHERE, WHY, HOW
 - ALL, SOME, EVERY
 - CHECK, SHOW, LIST
 
 **Status Query Inputs:**
+
 ```
 > what positions do I have?
 > what's my portfolio?
@@ -739,6 +817,7 @@ python main.py
 **Expected:** Routes to status handlers (not ticker lookup)
 
 **Trade Request Inputs:**
+
 ```
 > buy WHAT at market
 > is WHO a good investment?
@@ -748,6 +827,7 @@ python main.py
 **Expected:** Routes to trade handler with ticker extracted
 
 **Success Criteria:**
+
 - [ ] Status queries: 0% ticker misinterpretation
 - [ ] Trade requests: 100% correct ticker extraction
 - [ ] LLM uses context, not just word matching
@@ -757,6 +837,7 @@ python main.py
 ### Test 7.4: Compound Queries
 
 **Input:**
+
 ```
 > show me my SPY position
 > what's the price target on AAPL?
@@ -764,17 +845,20 @@ python main.py
 ```
 
 **Expected Behavior:**
+
 - ✅ LLM classifies as `request_type = "status_query"`
 - ✅ Extracts specific ticker: SPY, AAPL, TQQQ
 - ✅ Routes to portfolio handler
 - ✅ Shows position details for that ticker
 
 **LLM Classification:**
+
 - Context: Asking about existing position/orders
 - No intent to create new trade
 - Result: status_query with ticker specified
 
 **Success Criteria:**
+
 - [ ] Routes to status handler (not trade)
 - [ ] Ticker extracted correctly
 - [ ] Shows specific ticker's status
@@ -784,39 +868,46 @@ python main.py
 ### Test 7.5: Edge Cases
 
 **Input 1:** "any"
+
 ```
 > any
 ```
 
 **Expected:**
+
 - LLM classifies as ambiguous/insufficient
 - Asks for clarification OR defaults to status query
 
 ---
 
 **Input 2:** "buy anything"
+
 ```
 > buy anything
 ```
 
 **Expected:**
+
 - LLM interprets "anything" as unclear ticker
 - Should error with "please specify ticker"
 
 ---
 
 **Input 3:** "is there anything I should know?"
+
 ```
 > is there anything I should know?
 ```
 
 **Expected:**
+
 - LLM classifies as general status query
 - Routes to portfolio/alerts summary
 
 ---
 
 **Success Criteria:**
+
 - [ ] Graceful handling of ambiguous inputs
 - [ ] Clear error messages when ticker unclear
 - [ ] No false positives on ticker extraction
@@ -830,24 +921,28 @@ python main.py
 **Test Pairs:** Same word, different contexts
 
 **Pair 1: "check"**
+
 ```
 > check my alerts          → status_query (system feature)
 > check ticker CHECK       → trade (ticker lookup)
 ```
 
 **Pair 2: "what"**
+
 ```
 > what positions?          → status_query
 > buy WHAT                 → trade (ticker=WHAT)
 ```
 
 **Pair 3: "show"**
+
 ```
 > show portfolio           → status_query
 > show me analysis of SHOW → trade (ticker=SHOW)
 ```
 
 **Success Criteria:**
+
 - [ ] 100% accuracy on paired tests
 - [ ] Context determines routing, not keyword alone
 - [ ] LLM logs show correct reasoning
@@ -859,6 +954,7 @@ python main.py
 **Total Test Cases:** 25+ routing scenarios
 
 **Categories Covered:**
+
 1. Ambiguous ticker words (ANY, WHAT, etc.)
 2. Status queries vs trade requests
 3. Compound queries (ticker + status)
@@ -866,12 +962,14 @@ python main.py
 5. Context-based disambiguation
 
 **Success Metrics:**
+
 - Status query accuracy: ≥ 95%
 - Trade request accuracy: ≥ 95%
 - Zero ticker misinterpretations for common words
 - Fast keyword routing still works (scheduler/alerts)
 
 **Regression Testing:**
+
 - All previous tests (Categories 1-6) must still pass
 - No performance degradation
 - LLM calls only when needed (not for scheduler/alerts)
@@ -881,18 +979,21 @@ python main.py
 ## Success Metrics
 
 **Test Suite Completion:**
+
 - [ ] 15+ core test cases executed
 - [ ] All Priority 1 tests passing
 - [ ] Known bugs from #334 fixed
 - [ ] Natural language variations working
 
 **User Experience:**
+
 - [ ] No confusing errors
 - [ ] Clear routing to correct handlers
 - [ ] Helpful error messages
 - [ ] Intuitive command flow
 
 **Documentation:**
+
 - [ ] Test results documented
 - [ ] Known issues tracked
 - [ ] Fix recommendations provided

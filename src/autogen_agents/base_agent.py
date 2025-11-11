@@ -34,7 +34,7 @@ from ..data_sources.tools import (
 
 # Yahoo functions removed - no longer used
 import os
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
 # Load configuration file for fallback values
 config_loader = ConfigLoader()

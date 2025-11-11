@@ -21,7 +21,7 @@ from src.trading_tools.data_fetch import MarketDataFetcher
 from src.trading_tools.position_tracker import PositionTracker, Position
 from src.trading_tools.risk_calculator import RiskCalculator
 from config.trading_config import TradingConfig
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 

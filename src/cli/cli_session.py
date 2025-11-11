@@ -23,6 +23,16 @@ from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.trading.daily_scheduler import DailyScheduler
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor
 
+# Import CLI messages configuration
+from config_defaults.cli_messages import (
+    CLIMessages as MSG,
+    get_signal_emoji,
+    get_pl_emoji,
+    get_side_emoji,
+    get_status_emoji,
+    get_alert_severity_emoji
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +87,7 @@ class CLISession:
         while True:
             try:
                 # Get user input with mode indicator
-                mode_indicator = "🤖 AUTO" if self.autonomy_mode == "auto" else "✋ CONFIRM"
+                mode_indicator = f"{MSG.EMOJI['auto_mode']} AUTO" if self.autonomy_mode == "auto" else f"{MSG.EMOJI['confirm_mode']} CONFIRM"
                 user_input = input(f"\n({mode_indicator}) > ").strip()
 
                 if not user_input:
@@ -93,37 +103,20 @@ class CLISession:
                 await self._process_request(user_input)
 
             except KeyboardInterrupt:
-                print("\n\n👋 Exiting...")
+                print(MSG.EXIT_MESSAGE)
                 break
             except Exception as e:
-                print(f"\n❌ Error: {e}")
+                print(f"\n{MSG.EMOJI['error']} Error: {e}")
                 logger.error(f"CLI error: {e}", exc_info=True)
                 # Don't show traceback to user - it's logged
 
     def _print_welcome(self):
         """Print welcome message."""
-        print("=" * 70)
-        print("   AutoGen Trading Assistant - Unified Interactive CLI")
-        print("=" * 70)
+        print(MSG.WELCOME_BANNER)
+        print(MSG.WELCOME_TITLE)
+        print(MSG.WELCOME_BANNER)
         print(f"Mode: {self.autonomy_mode.upper()}")
-        print("\nSystem Commands:")
-        print("  /help    - Show help")
-        print("  /exit    - Exit (or Ctrl+C)")
-        print("  /toggle  - Toggle between CONFIRM and AUTO modes")
-        print("\nTrading:")
-        print("  > buy 10 AAPL")
-        print("  > is SPY at 600 a good entry?")
-        print("  > sell all TQQQ")
-        print("\nMonitoring:")
-        print("  > check my alerts")
-        print("  > show portfolio")
-        print("  > any open orders")
-        print("  > what's my position status?")
-        print("\nScheduler:")
-        print("  > show scheduler status")
-        print("  > show execution history")
-        print("\nTip: Just type naturally - the LLM will understand!")
-        print("")
+        print(MSG.HELP_COMMANDS)
 
     async def _handle_command(self, command: str) -> bool:
         """
@@ -147,14 +140,20 @@ class CLISession:
             # Toggle between confirm and auto modes
             if self.autonomy_mode == "confirm":
                 self.autonomy_mode = "auto"
-                print("🤖 Mode switched to: AUTO (trades execute immediately)")
+                print(MSG.MODE_SWITCHED_AUTO)
             else:
                 self.autonomy_mode = "confirm"
-                print("✋ Mode switched to: CONFIRM (asks before executing)")
+                print(MSG.MODE_SWITCHED_CONFIRM)
+
+        elif cmd == "/schedule":
+            # Enter scheduler management mode
+            from src.cli.scheduler_cli import SchedulerCLI
+            scheduler_cli = SchedulerCLI(self.scheduler)
+            await scheduler_cli.run()
 
         else:
-            print(f"Unknown command: {command}")
-            print("Use /help to see available commands")
+            print(MSG.UNKNOWN_COMMAND.format(command=command))
+            print(MSG.USE_HELP)
 
         return True
 
@@ -230,7 +229,7 @@ class CLISession:
         Args:
             user_input: User's natural language input
         """
-        print("\n⏳ Analyzing trade...")
+        print(MSG.ANALYZING_TRADE)
 
         try:
             # Step 1: Process request via orchestrator
@@ -240,10 +239,7 @@ class CLISession:
             if decision.suggestion.signal.value.upper() == "SELL":
                 # TODO: Check if we actually hold this position
                 # For now, warn the user
-                print("\n⚠️  WARNING: SELL signal detected.")
-                print("   This system does not support short selling.")
-                print("   Only SELL if you currently hold this position.")
-                print("   Otherwise, ignore this signal.\n")
+                print(MSG.SELL_WARNING)
 
             # Step 3: Display suggestion
             self._display_suggestion(decision.suggestion)
@@ -255,26 +251,23 @@ class CLISession:
             else:
                 # Auto mode - execute immediately
                 decision.approved = True
-                print("\n⚡ Auto-executing...")
+                print(MSG.AUTO_EXECUTING)
 
             # Step 4: Execute if approved
             if decision.approved:
                 result = await self.orchestrator.execute_decision(decision)
                 self._display_result(result)
             else:
-                print("\n❌ Trade cancelled")
+                print(MSG.TRADE_CANCELLED)
 
         except Exception as e:
             error_msg = str(e)
 
             # Provide helpful suggestions for common errors
             if "asset" in error_msg.lower() and "not found" in error_msg.lower():
-                print(f"\n❌ Invalid ticker symbol")
-                print(f"   The ticker you entered was not recognized by the market.")
-                print(f"   Please check the spelling and try again.")
-                print(f"   Example: AAPL (not APPL), TSLA, SPY, MSFT")
+                print(MSG.ERROR_INVALID_TICKER)
             else:
-                print(f"\n❌ Error processing request: {e}")
+                print(MSG.ERROR_PROCESSING.format(error=e))
 
             logger.error(f"Request processing error: {e}", exc_info=True)
             # Traceback logged but not shown to user
@@ -286,42 +279,46 @@ class CLISession:
         Args:
             suggestion: TradeSuggestion object
         """
-        print("\n" + "=" * 70)
-        print(f"📊 {suggestion.ticker} @ ${suggestion.entry_price:.2f}")
-        print("=" * 70)
+        print("\n" + MSG.SUGGESTION_SEPARATOR)
+        print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=suggestion.entry_price))
+        print(MSG.SUGGESTION_SEPARATOR)
 
         # Signal
-        signal_emoji = "✅" if suggestion.signal == Signal.BUY else "⬇️"
-        print(f"{signal_emoji} {suggestion.signal.value.upper()} SUGGESTED")
-        print(f"   Confidence: {suggestion.confidence:.1%}")
+        signal_emoji = get_signal_emoji(suggestion.signal.value)
+        print(MSG.SIGNAL_DISPLAY.format(emoji=signal_emoji, signal=suggestion.signal.value.upper()))
+        print(MSG.CONFIDENCE_DISPLAY.format(confidence=suggestion.confidence))
 
         # Technical analysis
-        print("\n📈 Analysis:")
+        print(MSG.ANALYSIS_HEADER)
         for reason in suggestion.reasoning:
-            print(f"   • {reason}")
+            print(MSG.ANALYSIS_ITEM.format(reason=reason))
 
         # Entry plan
-        print("\n💰 Entry Plan:")
-        print(f"   Entry:  ${suggestion.entry_price:.2f}")
-        print(
-            f"   Stop:   ${suggestion.stop_loss:.2f} ({self._calc_pct(suggestion.entry_price, suggestion.stop_loss):+.1f}%)")
-        print(
-            f"   Target: ${suggestion.take_profit:.2f} ({self._calc_pct(suggestion.entry_price, suggestion.take_profit):+.1f}%)")
-        print(f"   Qty:    {suggestion.recommended_quantity} shares")
-        print(f"   Order:  {suggestion.time_in_force.value.upper()}")
+        print(MSG.ENTRY_PLAN_HEADER)
+        print(MSG.ENTRY_PLAN.format(
+            entry=suggestion.entry_price,
+            stop=suggestion.stop_loss,
+            stop_pct=self._calc_pct(suggestion.entry_price, suggestion.stop_loss),
+            target=suggestion.take_profit,
+            target_pct=self._calc_pct(suggestion.entry_price, suggestion.take_profit),
+            qty=suggestion.recommended_quantity,
+            tif=suggestion.time_in_force.value.upper()
+        ))
 
         # Portfolio impact
-        print("\n📊 Portfolio Impact:")
-        print(f"   Trade Value: ${suggestion.recommended_quantity * suggestion.entry_price:,.2f}")
-        print(f"   Portfolio %: {suggestion.portfolio_pct:.1f}% (after transaction)")
-        print(f"   Max Loss:    ${suggestion.max_loss_usd:.2f}")
-        print(f"   Risk/Reward: {suggestion.risk_reward_ratio:.2f}")
+        print(MSG.PORTFOLIO_IMPACT_HEADER)
+        print(MSG.PORTFOLIO_IMPACT.format(
+            trade_value=suggestion.recommended_quantity * suggestion.entry_price,
+            portfolio_pct=suggestion.portfolio_pct,
+            max_loss=suggestion.max_loss_usd,
+            risk_reward=suggestion.risk_reward_ratio
+        ))
 
         # Warnings
         if suggestion.warnings:
-            print("\n⚠️  Warnings:")
+            print(MSG.WARNINGS_HEADER)
             for warning in suggestion.warnings:
-                print(f"   {warning}")
+                print(MSG.WARNING_ITEM.format(warning=warning))
 
     def _get_confirmation(self) -> bool:
         """
@@ -331,14 +328,14 @@ class CLISession:
             True if user approves, False otherwise
         """
         while True:
-            response = input("\nContinue? [yes/no]: ").strip().lower()
+            response = input(MSG.CONFIRM_PROMPT).strip().lower()
 
             if response in ["yes", "y"]:
                 return True
             elif response in ["no", "n"]:
                 return False
             else:
-                print("Please enter 'yes' or 'no'")
+                print(MSG.CONFIRM_INVALID)
 
     def _display_result(self, result):
         """
@@ -347,22 +344,25 @@ class CLISession:
         Args:
             result: OrderResult object
         """
-        print("\n" + "=" * 70)
+        print("\n" + MSG.RESULT_SEPARATOR)
 
         if result.success:
-            print("✅ ORDER PLACED SUCCESSFULLY")
-            print(f"\n   {result.quantity} shares {result.ticker}")
-            print(f"   Entry Order:  {result.entry_order_id}")
-            print(f"   Stop Order:   {result.stop_order_id}")
-            print(f"   Target Order: {result.target_order_id}")
-            print(f"\n   {result.message}")
+            print(MSG.ORDER_SUCCESS_HEADER)
+            print(MSG.ORDER_SUCCESS.format(
+                qty=result.quantity,
+                ticker=result.ticker,
+                entry_id=result.entry_order_id,
+                stop_id=result.stop_order_id,
+                target_id=result.target_order_id,
+                message=result.message
+            ))
         else:
-            print("❌ ORDER FAILED")
-            print(f"\n   {result.message}")
+            print(MSG.ORDER_FAILED_HEADER)
+            print(MSG.ORDER_FAILED.format(message=result.message))
             if result.error:
-                print(f"   Error: {result.error}")
+                print(MSG.ORDER_ERROR.format(error=result.error))
 
-        print("=" * 70)
+        print(MSG.RESULT_SEPARATOR)
 
     def _calc_pct(self, base: float, value: float) -> float:
         """Calculate percentage change."""
@@ -375,11 +375,11 @@ class CLISession:
         Args:
             user_input: User's natural language input
         """
-        print("\n📊 Checking Position Alerts...")
+        print(MSG.CHECKING_ALERTS)
 
         try:
             if not self.trading_cycle:
-                print("❌ Trading cycle not initialized")
+                print(MSG.ALERTS_NOT_INITIALIZED)
                 return
 
             # Fetch current broker state
@@ -389,27 +389,35 @@ class CLISession:
             alerts = self.trading_cycle.position_tracker.check_alerts(broker_state)
 
             if not alerts:
-                print("✅ No active alerts")
-                print(f"   {len(broker_state.get('positions', []))} position(s) monitored")
+                print(MSG.NO_ALERTS)
+                print(MSG.POSITIONS_MONITORED.format(count=len(broker_state.get('positions', []))))
             else:
-                print(f"\n🔔 {len(alerts)} Alert(s) Generated:")
+                print(MSG.ALERTS_HEADER.format(count=len(alerts)))
                 for alert in alerts:
-                    severity_emoji = {"INFO": "📊", "WARNING": "⚠️", "CRITICAL": "🚨"}.get(alert.severity, "⚠️")
-                    print(f"   {severity_emoji} {alert.ticker}: {alert.alert_type.value}")
-                    print(f"      Current: ${alert.current_price:.2f}")
+                    severity_emoji = get_alert_severity_emoji(alert.severity)
+                    print(MSG.ALERT_ITEM.format(
+                        emoji=severity_emoji,
+                        ticker=alert.ticker,
+                        alert_type=alert.alert_type.value,
+                        price=alert.current_price
+                    ))
                     if alert.details:
                         for key, value in alert.details.items():
-                            print(f"      {key}: {value}")
+                            print(MSG.ALERT_DETAIL.format(key=key, value=value))
 
             # Show alert history
             history = self.trading_cycle.position_tracker.get_alert_history()
             if history:
-                print(f"\n📜 Alert History ({len(history)} total):")
+                print(MSG.ALERT_HISTORY_HEADER.format(count=len(history)))
                 for alert in history[-5:]:  # Last 5
-                    print(f"   • {alert.ticker} - {alert.alert_type.value} at {alert.timestamp.strftime('%H:%M:%S')}")
+                    print(MSG.ALERT_HISTORY_ITEM.format(
+                        ticker=alert.ticker,
+                        alert_type=alert.alert_type.value,
+                        time=alert.timestamp.strftime('%H:%M:%S')
+                    ))
 
         except Exception as e:
-            print(f"❌ Error checking alerts: {e}")
+            print(MSG.ERROR_CHECKING_ALERTS.format(error=e))
             logger.error(f"Alerts error: {e}", exc_info=True)
 
     async def _handle_scheduler_request(self, user_input: str):
@@ -419,58 +427,39 @@ class CLISession:
         Args:
             user_input: User's natural language input
         """
-        print("\n⏰ Daily Scheduler Status")
-        print("=" * 70)
+        print(MSG.SCHEDULER_HEADER)
+        print(MSG.SCHEDULER_SEPARATOR)
 
         try:
             if not self.scheduler:
-                print("❌ Scheduler not initialized - not running in daemon mode")
-                print("\n💡 To start scheduler:")
-                print("   python main.py --daemon")
-                print("\n📖 What the scheduler does:")
-                print("   • Morning (9:20 AM ET): Check positions, place new orders")
-                print("   • Evening (3:50 PM ET): Review positions, adjust stops")
+                print(MSG.SCHEDULER_NOT_INITIALIZED)
                 return
 
             # Show scheduler configuration with clear status
             enabled = self.scheduler.config.get('enabled', False)
-            status_emoji = "🟢" if enabled else "🔴"
-            print(f"\n{status_emoji} Status: {'ENABLED' if enabled else 'DISABLED'}")
-            print(f"\n⚙️  Configuration:")
-            print(f"   Morning Routine: {self.scheduler.config.get('morning_routine_time', '09:20')} ET")
-            print(f"   Evening Routine: {self.scheduler.config.get('evening_routine_time', '15:50')} ET")
-            print(f"   Max Retries: {self.scheduler.config.get('max_retries', 3)}")
-            print(f"   Timezone: US/Eastern")
+            status_emoji = MSG.EMOJI["profit"] if enabled else MSG.EMOJI["loss"]
+            status_text = 'ENABLED' if enabled else 'DISABLED'
+            print(MSG.SCHEDULER_STATUS.format(emoji=status_emoji, status=status_text))
+
+            print(MSG.SCHEDULER_CONFIG_HEADER)
+            print(MSG.SCHEDULER_CONFIG.format(
+                morning=self.scheduler.config.get('morning_routine_time', '09:20'),
+                evening=self.scheduler.config.get('evening_routine_time', '15:50'),
+                retries=self.scheduler.config.get('max_retries', 3)
+            ))
 
             # Show what each routine does
-            print(f"\n📅 Scheduled Routines:")
-            print(f"\n   🌅 Morning Routine (9:20 AM ET):")
-            print(f"      • Fetch current broker state")
-            print(f"      • Check position alerts (approaching TP/SL)")
-            print(f"      • Analyze market conditions")
-            print(f"      • Place new GTC orders if signals present")
-            print(f"      • Log execution status")
-
-            print(f"\n   🌆 Evening Routine (3:50 PM ET):")
-            print(f"      • Review all open positions")
-            print(f"      • Check alert triggers")
-            print(f"      • Adjust trailing stops if profitable")
-            print(f"      • Update position tracker state")
-            print(f"      • Log daily summary")
+            print(MSG.SCHEDULER_ROUTINES_HEADER)
+            print(MSG.MORNING_ROUTINE)
+            print(MSG.EVENING_ROUTINE)
 
             # Show recent execution history with more detail
             recent = self.scheduler.get_execution_history(days=7)
             if recent:
-                print(f"\n📋 Recent Execution History:")
-                print(f"   (Last 7 days, showing up to 10 most recent)")
+                print(MSG.SCHEDULER_HISTORY_HEADER)
 
                 for entry in recent[:10]:
-                    status_emoji = {
-                        "completed": "✅",
-                        "failed": "❌",
-                        "retrying": "🔄",
-                        "partial": "⚠️"
-                    }.get(entry.status, "⚪")
+                    status_emoji = get_status_emoji(entry.status)
 
                     # Format timestamp
                     if entry.actual_end_time:
@@ -478,22 +467,24 @@ class CLISession:
                     else:
                         time_str = "In Progress"
 
-                    print(f"\n   {status_emoji} {entry.task_name}")
-                    print(f"      Status: {entry.status.upper()}")
-                    print(f"      Time: {time_str}")
+                    print(MSG.SCHEDULER_HISTORY_ITEM.format(
+                        emoji=status_emoji,
+                        task=entry.task_name,
+                        status=entry.status.upper(),
+                        time=time_str
+                    ))
 
                     if entry.error_message:
-                        print(f"      ⚠️  Error: {entry.error_message[:80]}...")
+                        print(MSG.SCHEDULER_ERROR.format(error=entry.error_message[:80]))
 
                     # Show retry info if applicable
                     if hasattr(entry, 'retry_count') and entry.retry_count > 0:
-                        print(f"      🔄 Retries: {entry.retry_count}")
+                        print(MSG.SCHEDULER_RETRIES.format(count=entry.retry_count))
             else:
-                print("\n📋 No execution history found")
-                print("   Scheduler hasn't run yet or history is empty")
+                print(MSG.SCHEDULER_NO_HISTORY)
 
             # Calculate next scheduled run
-            print(f"\n🔮 Next Scheduled Execution:")
+            print(MSG.SCHEDULER_NEXT_HEADER)
             try:
                 from datetime import datetime, time
                 import pytz
@@ -522,22 +513,20 @@ class CLISession:
                 hours = int(time_until.total_seconds() // 3600)
                 minutes = int((time_until.total_seconds() % 3600) // 60)
 
-                print(f"   {next_task}")
-                print(f"   Time: {next_run.strftime('%H:%M %p')} ET")
-                print(f"   Countdown: {hours}h {minutes}m from now")
+                print(MSG.SCHEDULER_NEXT.format(
+                    task=next_task,
+                    time=next_run.strftime('%H:%M %p'),
+                    hours=hours,
+                    minutes=minutes
+                ))
             except Exception as calc_error:
-                print(f"   Unable to calculate next run: {calc_error}")
+                print(MSG.SCHEDULER_NEXT_ERROR.format(error=calc_error))
 
             # Usage instructions
-            print(f"\n💡 Scheduler Commands:")
-            print(f"   python main.py --daemon      # Run scheduler in background")
-            print(f"   python main.py --help        # See all options")
-            print(f"\n📖 Documentation:")
-            print(f"   docs/features/02_gtc_scheduler_quickstart.md")
-            print(f"   docs/features/03_gtc_scheduler_technical.md")
+            print(MSG.SCHEDULER_COMMANDS)
 
         except Exception as e:
-            print(f"❌ Error checking scheduler: {e}")
+            print(MSG.ERROR_CHECKING_SCHEDULER.format(error=e))
             logger.error(f"Scheduler error: {e}", exc_info=True)
 
     async def _handle_portfolio_request(self, user_input: str):
@@ -564,22 +553,24 @@ class CLISession:
                     specific_ticker = word
                     break
 
-        print("\n💼 Portfolio Status...")
+        print(MSG.PORTFOLIO_HEADER)
 
         try:
             if not self.account_monitor:
-                print("❌ Account monitor not initialized")
+                print(MSG.PORTFOLIO_NOT_INITIALIZED)
                 return
 
             # Get account status (unless querying specific ticker)
             if not specific_ticker:
                 account = self.account_monitor.get_account_status()
 
-                print(f"\n💰 Account:")
-                print(f"   Equity: ${float(account.get('equity', 0)):,.2f}")
-                print(f"   Cash: ${float(account.get('cash', 0)):,.2f}")
-                print(f"   Buying Power: ${float(account.get('buying_power', 0)):,.2f}")
-                print(f"   Pattern Day Trader: {account.get('pattern_day_trader', False)}")
+                print(MSG.ACCOUNT_HEADER)
+                print(MSG.ACCOUNT_INFO.format(
+                    equity=float(account.get('equity', 0)),
+                    cash=float(account.get('cash', 0)),
+                    buying_power=float(account.get('buying_power', 0)),
+                    pdt=account.get('pattern_day_trader', False)
+                ))
 
             # Get positions
             positions = self.account_monitor.get_positions()
@@ -604,32 +595,37 @@ class CLISession:
                     unrealized_pl = float(position.get('unrealized_pl', 0))
                     unrealized_plpc = float(position.get('unrealized_plpc', 0)) * 100
 
-                    pl_emoji = "🟢" if unrealized_pl >= 0 else "🔴"
-                    print(f"\n{pl_emoji} {symbol} Position Details:")
-                    print(f"   Quantity: {qty} shares")
-                    print(f"   Entry Price: ${avg_entry:.2f}")
-                    print(f"   Current Price: ${current_price:.2f}")
-                    print(f"   P/L: ${unrealized_pl:,.2f} ({unrealized_plpc:+.2f}%)")
+                    pl_emoji = get_pl_emoji(unrealized_pl)
+                    print(MSG.POSITION_DETAILS_HEADER.format(emoji=pl_emoji, symbol=symbol))
+                    print(MSG.POSITION_DETAILS.format(
+                        qty=qty,
+                        entry=avg_entry,
+                        current=current_price,
+                        pl=unrealized_pl,
+                        pl_pct=unrealized_plpc
+                    ))
 
                     # Show targets if available (from position tracker)
                     if self.trading_cycle and self.trading_cycle.position_tracker:
                         position_id = f"{symbol}_{avg_entry}"
                         tracked_pos = self.trading_cycle.position_tracker.positions.get(position_id)
                         if tracked_pos:
-                            print(f"\n🎯 Price Targets:")
-                            print(f"   Take Profit: ${tracked_pos.take_profit_price:.2f}")
-                            print(f"   Stop Loss: ${tracked_pos.stop_loss_price:.2f}")
                             distance_to_tp = ((tracked_pos.take_profit_price - current_price) / current_price) * 100
                             distance_to_sl = ((current_price - tracked_pos.stop_loss_price) / current_price) * 100
-                            print(f"   Distance to TP: {distance_to_tp:+.2f}%")
-                            print(f"   Distance to SL: {distance_to_sl:+.2f}%")
+                            print(MSG.PRICE_TARGETS_HEADER)
+                            print(MSG.PRICE_TARGETS.format(
+                                tp=tracked_pos.take_profit_price,
+                                sl=tracked_pos.stop_loss_price,
+                                tp_dist=distance_to_tp,
+                                sl_dist=distance_to_sl
+                            ))
                         else:
-                            print(f"\n💡 No price targets set for {symbol}")
+                            print(MSG.NO_TARGETS.format(symbol=symbol))
                 else:
-                    print(f"\n❌ No position found for {specific_ticker}")
+                    print(MSG.NO_POSITION.format(ticker=specific_ticker))
 
             elif positions:
-                print(f"\n📊 Positions ({len(positions)}):")
+                print(MSG.POSITIONS_HEADER.format(count=len(positions)))
                 for pos in positions:
                     qty = int(pos.get('qty', 0))
                     symbol = pos.get('symbol', 'UNKNOWN')
@@ -647,16 +643,22 @@ class CLISession:
                     unrealized_pl = float(pos.get('unrealized_pl', 0))
                     unrealized_plpc = float(pos.get('unrealized_plpc', 0)) * 100
 
-                    pl_emoji = "🟢" if unrealized_pl >= 0 else "🔴"
-                    print(f"   {pl_emoji} {symbol}: {qty} shares @ ${avg_entry:.2f} (avg entry)")
-                    print(f"      Current: ${current_price:.2f}")
-                    print(f"      Value: ${market_value:,.2f}")
-                    print(f"      P/L: ${unrealized_pl:,.2f} ({unrealized_plpc:+.2f}%)")
+                    pl_emoji = get_pl_emoji(unrealized_pl)
+                    print(MSG.POSITION_ITEM.format(
+                        emoji=pl_emoji,
+                        symbol=symbol,
+                        qty=qty,
+                        entry=avg_entry,
+                        current=current_price,
+                        value=market_value,
+                        pl=unrealized_pl,
+                        pl_pct=unrealized_plpc
+                    ))
             else:
-                print("\n📊 No open positions")
+                print(MSG.NO_POSITIONS)
 
         except Exception as e:
-            print(f"❌ Error checking portfolio: {e}")
+            print(MSG.ERROR_CHECKING_PORTFOLIO.format(error=e))
             logger.error(f"Portfolio error: {e}", exc_info=True)
 
     async def _handle_orders_request(self, user_input: str):
@@ -666,20 +668,20 @@ class CLISession:
         Args:
             user_input: User's natural language input
         """
-        print("\n📋 Checking Open Orders...")
+        print(MSG.CHECKING_ORDERS)
 
         try:
             if not self.account_monitor:
-                print("❌ Account monitor not initialized")
+                print(MSG.ORDERS_NOT_INITIALIZED)
                 return
 
             # Get open orders
             orders = self.account_monitor.get_orders(status="open")
 
             if not orders:
-                print("✅ No open orders")
+                print(MSG.NO_ORDERS)
             else:
-                print(f"\n📊 {len(orders)} Open Order(s):")
+                print(MSG.ORDERS_HEADER.format(count=len(orders)))
                 for order in orders:
                     symbol = order.get('symbol', 'UNKNOWN')
                     side = order.get('side', 'UNKNOWN')
@@ -698,11 +700,18 @@ class CLISession:
                     else:
                         price_str = "market"
 
-                    side_emoji = "🟢" if side.upper() == "BUY" else "🔴"
-                    print(f"   {side_emoji} {side.upper()} {qty} {symbol} {price_str}")
-                    print(f"      Type: {order_type.upper()}, Status: {status.upper()}")
-                    print(f"      Order ID: {order_id[:8]}...")
+                    side_emoji = get_side_emoji(side)
+                    print(MSG.ORDER_ITEM.format(
+                        emoji=side_emoji,
+                        side=side.upper(),
+                        qty=qty,
+                        symbol=symbol,
+                        price=price_str,
+                        type=order_type.upper(),
+                        status=status.upper(),
+                        order_id=order_id[:8]
+                    ))
 
         except Exception as e:
-            print(f"❌ Error checking orders: {e}")
+            print(MSG.ERROR_CHECKING_ORDERS.format(error=e))
             logger.error(f"Orders error: {e}", exc_info=True)

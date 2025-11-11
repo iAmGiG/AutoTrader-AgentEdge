@@ -23,12 +23,31 @@ try:
         ClosePositionRequest, TakeProfitRequest, StopLossRequest
     )
     from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus, OrderClass
+    ALPACA_TRADING_AVAILABLE = True
 except ImportError:
-    raise ImportError(
-        "alpaca-py SDK is required. Install with: pip install alpaca-py"
+    TradingClient = None
+    GetOrdersRequest = None
+    MarketOrderRequest = None
+    LimitOrderRequest = None
+    StopOrderRequest = None
+    StopLimitOrderRequest = None
+    TrailingStopOrderRequest = None
+    ClosePositionRequest = None
+    TakeProfitRequest = None
+    StopLossRequest = None
+    OrderSide = None
+    OrderType = None
+    TimeInForce = None
+    QueryOrderStatus = None
+    OrderClass = None
+    ALPACA_TRADING_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "alpaca-py SDK not installed. Alpaca trading client will be unavailable. "
+        "Install with: pip install alpaca-py"
     )
 
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +74,12 @@ class AlpacaTradingClient:
         Raises:
             ValueError: If mode is not "paper" or "live"
         """
+        if not ALPACA_TRADING_AVAILABLE:
+            raise ImportError(
+                "alpaca-py SDK is required for AlpacaTradingClient. "
+                "Install with: pip install alpaca-py"
+            )
+
         if mode not in ["paper", "live"]:
             raise ValueError("Mode must be explicitly 'paper' or 'live'")
 

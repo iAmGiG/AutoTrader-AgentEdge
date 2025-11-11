@@ -23,6 +23,11 @@ import json
 import os
 from pathlib import Path
 
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
@@ -78,13 +83,24 @@ class DailyScheduler:
     - Minimal API calls (3-5 per routine)
     """
 
-    def __init__(self, config_file: str = "config_defaults/scheduler_config.json"):
+    def __init__(self, config_file: str = None):
         """
         Initialize the daily scheduler.
 
         Args:
-            config_file: Path to scheduler configuration file
+            config_file: Path to scheduler configuration file (YAML or JSON)
         """
+        if config_file is None:
+            # Try YAML first, fallback to JSON
+            yaml_file = "config_defaults/scheduler_config.yaml"
+            json_file = "config_defaults/scheduler_config.json"
+            if os.path.exists(yaml_file):
+                config_file = yaml_file
+            elif os.path.exists(json_file):
+                config_file = json_file
+            else:
+                config_file = yaml_file  # Default to YAML
+
         self.config = self._load_config(config_file)
         self.trading_cycle = CostEfficientTradeCycle()
         self.execution_log: List[ExecutionLog] = []
@@ -116,7 +132,12 @@ class DailyScheduler:
         if os.path.exists(config_file):
             try:
                 with open(config_file, 'r') as f:
-                    user_config = json.load(f)
+                    if config_file.endswith('.yaml') or config_file.endswith('.yml'):
+                        if yaml is None:
+                            raise ImportError("PyYAML not installed. Install with: pip install pyyaml")
+                        user_config = yaml.safe_load(f)
+                    else:
+                        user_config = json.load(f)
                     default_config.update(user_config)
                     logger.info("Loaded scheduler config from %s", config_file)
             except Exception as e:
