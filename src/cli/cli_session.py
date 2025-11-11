@@ -1,15 +1,27 @@
 """
 CLI Session - Interactive REPL for trading assistant.
 
-MVP: Basic input/output loop with simple formatting.
+Unified interactive CLI with LLM-driven routing for:
+- Trade execution (buy/sell)
+- Position alerts
+- Scheduler management
+- Portfolio status
 """
 
 import asyncio
 import logging
 from typing import Optional
+import sys
+import os
 
 from core.trading_orchestrator import TradingOrchestrator
 from core.models import Signal
+
+# Add imports for new features
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+from src.trading.trading_cycle import CostEfficientTradeCycle
+from src.trading.daily_scheduler import DailyScheduler
+from src.trading.alpaca_trading_client import AlpacaAccountMonitor
 
 
 logger = logging.getLogger(__name__)
@@ -17,15 +29,18 @@ logger = logging.getLogger(__name__)
 
 class CLISession:
     """
-    Interactive CLI session for trade assistant.
+    Interactive CLI session for unified trading assistant.
 
-    MVP: Simple input/output loop.
-    Future: Rich formatting, better UX.
+    Handles:
+    - Trade execution via TradingOrchestrator
+    - Position alerts via PositionTracker
+    - Scheduler management via DailyScheduler
+    - Portfolio status via AlpacaAccountMonitor
     """
 
     def __init__(self, orchestrator: TradingOrchestrator):
         """
-        Initialize CLI session.
+        Initialize CLI session with all features.
 
         Args:
             orchestrator: Wired TradingOrchestrator
@@ -34,7 +49,17 @@ class CLISession:
         self.autonomy_mode = "confirm"  # or "auto"
         self.user_id = "cli_user"
 
-        logger.info("CLISession initialized")
+        # Initialize additional components for unified CLI
+        try:
+            self.trading_cycle = CostEfficientTradeCycle()
+            self.scheduler = DailyScheduler()
+            self.account_monitor = AlpacaAccountMonitor(mode="paper")
+            logger.info("CLISession initialized with all features")
+        except Exception as e:
+            logger.warning(f"Some features unavailable: {e}")
+            self.trading_cycle = None
+            self.scheduler = None
+            self.account_monitor = None
 
     async def run(self):
         """
@@ -77,18 +102,26 @@ class CLISession:
     def _print_welcome(self):
         """Print welcome message."""
         print("=" * 70)
-        print("   AutoGen Trading Assistant")
+        print("   AutoGen Trading Assistant - Unified Interactive CLI")
         print("=" * 70)
-        print(f"Mode: {self.autonomy_mode.upper()}")
-        print("\nCommands:")
+        print(f"Mode: {self.autonomy_mode.UPPER()}")
+        print("\nSystem Commands:")
         print("  /help    - Show help")
         print("  /exit    - Exit (or Ctrl+C)")
         print("  /auto    - Enable auto-execute mode")
         print("  /confirm - Enable confirm mode (default)")
-        print("\nExample:")
-        print("  > is SPY at 600 a good entry?")
+        print("\nTrading:")
         print("  > buy 10 AAPL")
-        print("\nNote: In auto mode, you can still exit with /exit or Ctrl+C")
+        print("  > is SPY at 600 a good entry?")
+        print("  > sell all TQQQ")
+        print("\nMonitoring:")
+        print("  > check my alerts")
+        print("  > show portfolio")
+        print("  > what's my position status?")
+        print("\nScheduler:")
+        print("  > show scheduler status")
+        print("  > show execution history")
+        print("\nTip: Just type naturally - the LLM will understand!")
         print("")
 
     async def _handle_command(self, command: str) -> bool:
@@ -125,12 +158,42 @@ class CLISession:
 
     async def _process_request(self, user_input: str):
         """
-        Process user trade request.
+        Process user request with intelligent routing.
+
+        Routes to:
+        - Alert checker for "alerts", "check position"
+        - Scheduler for "scheduler", "execution", "morning", "evening"
+        - Portfolio for "portfolio", "account", "status"
+        - Trading orchestrator for buy/sell requests
 
         Args:
             user_input: User's natural language input
         """
-        print("\n⏳ Analyzing...")
+        # Smart routing based on keywords
+        input_lower = user_input.lower()
+
+        # Route to appropriate handler
+        if any(word in input_lower for word in ["alert", "check position", "approaching"]):
+            await self._handle_alerts_request(user_input)
+
+        elif any(word in input_lower for word in ["scheduler", "schedule", "execution", "morning", "evening", "routine"]):
+            await self._handle_scheduler_request(user_input)
+
+        elif any(word in input_lower for word in ["portfolio", "account", "balance", "buying power", "what's my"]):
+            await self._handle_portfolio_request(user_input)
+
+        else:
+            # Default to trade request
+            await self._handle_trade_request(user_input)
+
+    async def _handle_trade_request(self, user_input: str):
+        """
+        Process user trade request via orchestrator.
+
+        Args:
+            user_input: User's natural language input
+        """
+        print("\n⏳ Analyzing trade...")
 
         try:
             # Step 1: Process request via orchestrator
@@ -267,3 +330,138 @@ class CLISession:
     def _calc_pct(self, base: float, value: float) -> float:
         """Calculate percentage change."""
         return ((value - base) / base) * 100.0
+
+    async def _handle_alerts_request(self, user_input: str):
+        """
+        Handle position alerts request.
+
+        Args:
+            user_input: User's natural language input
+        """
+        print("\n📊 Checking Position Alerts...")
+
+        try:
+            if not self.trading_cycle:
+                print("❌ Trading cycle not initialized")
+                return
+
+            # Fetch current broker state
+            broker_state = self.trading_cycle.fetch_broker_state()
+
+            # Check alerts using position tracker
+            alerts = self.trading_cycle.position_tracker.check_alerts(broker_state)
+
+            if not alerts:
+                print("✅ No active alerts")
+                print(f"   {len(broker_state.get('positions', []))} position(s) monitored")
+            else:
+                print(f"\n🔔 {len(alerts)} Alert(s) Generated:")
+                for alert in alerts:
+                    severity_emoji = {"INFO": "📊", "WARNING": "⚠️", "CRITICAL": "🚨"}.get(alert.severity, "⚠️")
+                    print(f"   {severity_emoji} {alert.ticker}: {alert.alert_type.value}")
+                    print(f"      Current: ${alert.current_price:.2f}")
+                    if alert.details:
+                        for key, value in alert.details.items():
+                            print(f"      {key}: {value}")
+
+            # Show alert history
+            history = self.trading_cycle.position_tracker.get_alert_history()
+            if history:
+                print(f"\n📜 Alert History ({len(history)} total):")
+                for alert in history[-5:]:  # Last 5
+                    print(f"   • {alert.ticker} - {alert.alert_type.value} at {alert.timestamp.strftime('%H:%M:%S')}")
+
+        except Exception as e:
+            print(f"❌ Error checking alerts: {e}")
+            logger.error(f"Alerts error: {e}", exc_info=True)
+
+    async def _handle_scheduler_request(self, user_input: str):
+        """
+        Handle scheduler status/management request.
+
+        Args:
+            user_input: User's natural language input
+        """
+        print("\n🤖 Daily Scheduler Status...")
+
+        try:
+            if not self.scheduler:
+                print("❌ Scheduler not initialized")
+                return
+
+            # Show scheduler configuration
+            print(f"\nConfiguration:")
+            print(f"   Enabled: {self.scheduler.config.get('enabled', False)}")
+            print(f"   Morning routine: {self.scheduler.config.get('morning_routine_time')} ET")
+            print(f"   Evening routine: {self.scheduler.config.get('evening_routine_time')} ET")
+            print(f"   Max retries: {self.scheduler.config.get('max_retries')}")
+
+            # Show recent execution history
+            recent = self.scheduler.get_execution_history(days=1)
+            if recent:
+                print(f"\n📋 Recent Executions (today):")
+                for entry in recent[:5]:
+                    status_emoji = {"completed": "✅", "failed": "❌", "retrying": "🔄"}.get(entry.status, "⚠️")
+                    print(f"   {status_emoji} {entry.task_name} - {entry.status}")
+                    if entry.actual_end_time:
+                        print(f"      Completed: {entry.actual_end_time}")
+                    if entry.error_message:
+                        print(f"      Error: {entry.error_message}")
+            else:
+                print("\n📋 No executions today")
+
+            # Show what's scheduled next
+            print(f"\n⏰ Scheduled Tasks:")
+            for task in self.scheduler.tasks:
+                print(f"   • {task.name}: {task.scheduled_time.strftime('%H:%M')} ET")
+
+        except Exception as e:
+            print(f"❌ Error checking scheduler: {e}")
+            logger.error(f"Scheduler error: {e}", exc_info=True)
+
+    async def _handle_portfolio_request(self, user_input: str):
+        """
+        Handle portfolio/account status request.
+
+        Args:
+            user_input: User's natural language input
+        """
+        print("\n💼 Portfolio Status...")
+
+        try:
+            if not self.account_monitor:
+                print("❌ Account monitor not initialized")
+                return
+
+            # Get account status
+            account = self.account_monitor.get_account_status()
+
+            print(f"\n💰 Account:")
+            print(f"   Equity: ${float(account.get('equity', 0)):,.2f}")
+            print(f"   Cash: ${float(account.get('cash', 0)):,.2f}")
+            print(f"   Buying Power: ${float(account.get('buying_power', 0)):,.2f}")
+            print(f"   Pattern Day Trader: {account.get('pattern_day_trader', False)}")
+
+            # Get positions
+            positions = self.account_monitor.get_positions()
+
+            if positions:
+                print(f"\n📊 Positions ({len(positions)}):")
+                for pos in positions:
+                    qty = int(pos.get('qty', 0))
+                    symbol = pos.get('symbol', 'UNKNOWN')
+                    current_price = float(pos.get('current_price', 0))
+                    market_value = float(pos.get('market_value', 0))
+                    unrealized_pl = float(pos.get('unrealized_pl', 0))
+                    unrealized_plpc = float(pos.get('unrealized_plpc', 0)) * 100
+
+                    pl_emoji = "🟢" if unrealized_pl >= 0 else "🔴"
+                    print(f"   {pl_emoji} {symbol}: {qty} shares @ ${current_price:.2f}")
+                    print(f"      Value: ${market_value:,.2f}")
+                    print(f"      P/L: ${unrealized_pl:,.2f} ({unrealized_plpc:+.2f}%)")
+            else:
+                print("\n📊 No open positions")
+
+        except Exception as e:
+            print(f"❌ Error checking portfolio: {e}")
+            logger.error(f"Portfolio error: {e}", exc_info=True)
