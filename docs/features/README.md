@@ -103,27 +103,39 @@ python main.py
 
 ### Unified Interactive CLI (#339)
 
-**What:** Single interactive interface for all features
+**What:** Single interactive interface for all features with LLM-based intelligent routing
 
 **Why:** Eliminate fragmented commands, enable natural language interaction
 
 **Key Features:**
-- Natural language: "check my alerts", "show portfolio"
-- Smart routing to appropriate handlers
-- All features in one session
-- Zero friction: just `python main.py`
+- **LLM-Based Routing:** Context-aware classification (trade vs status query)
+- **Natural Language:** "check my alerts", "show portfolio", "any open orders?"
+- **No Hardcoded Patterns:** Handles ambiguous tickers (ANY, WHAT, etc.) automatically
+- **All Features in One Session:** Zero friction, just `python main.py`
+- **Mode Indicator:** Visual prompt shows CONFIRM/AUTO mode like conda environments
+
+**Architecture:**
+- LLM parser determines `request_type` before ticker extraction
+- Prevents "any open orders?" from being parsed as ticker "ANY"
+- Fast keyword routing for scheduler/alerts (no LLM overhead)
+- Scalable: No special cases needed for individual tickers
 
 **Usage:**
 ```bash
 python main.py    # Just works!
 
-> buy 10 AAPL           # Execute trade
-> check my alerts       # Position alerts
-> show scheduler status # Scheduler management
-> show portfolio        # Account status
+(✋ CONFIRM) > buy 10 AAPL           # Execute trade
+(✋ CONFIRM) > check my alerts       # Position alerts
+(✋ CONFIRM) > any open orders?      # Shows orders (NOT ticker "ANY")
+(✋ CONFIRM) > show scheduler status # Scheduler management
+(✋ CONFIRM) > /toggle               # Switch to AUTO mode
+(🤖 AUTO) > show portfolio           # Account status
 ```
 
-**Documentation:** See main README.md
+**Documentation:**
+- Architecture: `docs/architecture/llm_routing_architecture.md`
+- Test Plan: `docs/features/05_interactive_cli_test_plan.md` (Category 7)
+- Main README: See main README.md
 
 ---
 

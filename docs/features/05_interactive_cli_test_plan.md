@@ -6,6 +6,27 @@
 
 **Test Environment:** Paper trading mode (Alpaca)
 
+**Architecture:** LLM-based intelligent routing (see `docs/architecture/llm_routing_architecture.md`)
+
+---
+
+## Routing Architecture Overview
+
+The CLI uses **LLM-based classification** instead of hardcoded keyword patterns:
+
+1. **LLM Parser** determines `request_type`:
+   - `"trade"` → Buy/sell/analyze specific ticker
+   - `"status_query"` → Account/orders/positions queries
+
+2. **Benefits:**
+   - No special cases for ambiguous tickers (ANY, ALL, WHAT, etc.)
+   - Natural language understanding via context
+   - Scalable without code changes
+
+3. **Fast Keyword Routing** for system features:
+   - Scheduler queries → direct routing (no LLM)
+   - Alert queries → direct routing (no LLM)
+
 ---
 
 ## Test Categories
@@ -16,6 +37,7 @@
 4. **Portfolio Queries** - Account information
 5. **Error Handling** - Invalid inputs and edge cases
 6. **Natural Language** - Various phrasings
+7. **LLM Routing** - Ambiguous ticker names (NEW)
 
 ---
 
@@ -635,6 +657,224 @@ python main.py
 **Location:** Unknown - needs investigation
 
 **Fix:** Check logging configuration
+
+---
+
+## Category 7: LLM Routing - Ambiguous Tickers (NEW)
+
+**Purpose:** Test LLM's ability to distinguish between status queries and ticker names
+
+**Architecture:** LLM parser classifies `request_type` before extracting ticker
+
+---
+
+### Test 7.1: "ANY" as Status Query
+
+**Input:**
+```
+> any open orders?
+> any positions?
+> any alerts?
+```
+
+**Expected Behavior:**
+- ✅ LLM classifies as `request_type = "status_query"`
+- ✅ Routes to appropriate status handler (orders/positions/alerts)
+- ✅ Does NOT attempt to analyze ticker "ANY"
+- ✅ No "could not fetch data for ANY" errors
+
+**LLM Classification:**
+- Context: Question word "any" + status keywords
+- No trading intent (buy/sell/analyze)
+- Result: status_query
+
+**Success Criteria:**
+- [ ] All 3 variations route to status handlers
+- [ ] No ticker parsing errors
+- [ ] Shows correct status information
+
+---
+
+### Test 7.2: "ANY" as Ticker Symbol
+
+**Input:**
+```
+> buy ANY
+> is ANY a good buy?
+> analyze ticker ANY
+```
+
+**Expected Behavior:**
+- ✅ LLM classifies as `request_type = "trade"`
+- ✅ Extracts ticker = "ANY"
+- ✅ Routes to trade handler
+- ✅ Fetches market data for ticker ANY (if exists)
+
+**LLM Classification:**
+- Context: Trading action verbs (buy/analyze)
+- Specific ticker mentioned in trading context
+- Result: trade request with ticker=ANY
+
+**Success Criteria:**
+- [ ] All 3 variations route to trade handler
+- [ ] Ticker extracted as "ANY"
+- [ ] Attempts to analyze/execute trade
+
+---
+
+### Test 7.3: Other Ambiguous Tickers
+
+**Tickers to Test:**
+- WHAT, WHO, WHEN, WHERE, WHY, HOW
+- ALL, SOME, EVERY
+- CHECK, SHOW, LIST
+
+**Status Query Inputs:**
+```
+> what positions do I have?
+> what's my portfolio?
+> show me my orders
+```
+
+**Expected:** Routes to status handlers (not ticker lookup)
+
+**Trade Request Inputs:**
+```
+> buy WHAT at market
+> is WHO a good investment?
+> analyze ticker SHOW
+```
+
+**Expected:** Routes to trade handler with ticker extracted
+
+**Success Criteria:**
+- [ ] Status queries: 0% ticker misinterpretation
+- [ ] Trade requests: 100% correct ticker extraction
+- [ ] LLM uses context, not just word matching
+
+---
+
+### Test 7.4: Compound Queries
+
+**Input:**
+```
+> show me my SPY position
+> what's the price target on AAPL?
+> any open orders for TQQQ?
+```
+
+**Expected Behavior:**
+- ✅ LLM classifies as `request_type = "status_query"`
+- ✅ Extracts specific ticker: SPY, AAPL, TQQQ
+- ✅ Routes to portfolio handler
+- ✅ Shows position details for that ticker
+
+**LLM Classification:**
+- Context: Asking about existing position/orders
+- No intent to create new trade
+- Result: status_query with ticker specified
+
+**Success Criteria:**
+- [ ] Routes to status handler (not trade)
+- [ ] Ticker extracted correctly
+- [ ] Shows specific ticker's status
+
+---
+
+### Test 7.5: Edge Cases
+
+**Input 1:** "any"
+```
+> any
+```
+
+**Expected:**
+- LLM classifies as ambiguous/insufficient
+- Asks for clarification OR defaults to status query
+
+---
+
+**Input 2:** "buy anything"
+```
+> buy anything
+```
+
+**Expected:**
+- LLM interprets "anything" as unclear ticker
+- Should error with "please specify ticker"
+
+---
+
+**Input 3:** "is there anything I should know?"
+```
+> is there anything I should know?
+```
+
+**Expected:**
+- LLM classifies as general status query
+- Routes to portfolio/alerts summary
+
+---
+
+**Success Criteria:**
+- [ ] Graceful handling of ambiguous inputs
+- [ ] Clear error messages when ticker unclear
+- [ ] No false positives on ticker extraction
+
+---
+
+### Test 7.6: LLM Reasoning Verification
+
+**Purpose:** Verify LLM is using context, not just keywords
+
+**Test Pairs:** Same word, different contexts
+
+**Pair 1: "check"**
+```
+> check my alerts          → status_query (system feature)
+> check ticker CHECK       → trade (ticker lookup)
+```
+
+**Pair 2: "what"**
+```
+> what positions?          → status_query
+> buy WHAT                 → trade (ticker=WHAT)
+```
+
+**Pair 3: "show"**
+```
+> show portfolio           → status_query
+> show me analysis of SHOW → trade (ticker=SHOW)
+```
+
+**Success Criteria:**
+- [ ] 100% accuracy on paired tests
+- [ ] Context determines routing, not keyword alone
+- [ ] LLM logs show correct reasoning
+
+---
+
+## LLM Routing Test Summary
+
+**Total Test Cases:** 25+ routing scenarios
+
+**Categories Covered:**
+1. Ambiguous ticker words (ANY, WHAT, etc.)
+2. Status queries vs trade requests
+3. Compound queries (ticker + status)
+4. Edge cases and clarifications
+5. Context-based disambiguation
+
+**Success Metrics:**
+- Status query accuracy: ≥ 95%
+- Trade request accuracy: ≥ 95%
+- Zero ticker misinterpretations for common words
+- Fast keyword routing still works (scheduler/alerts)
+
+**Regression Testing:**
+- All previous tests (Categories 1-6) must still pass
+- No performance degradation
+- LLM calls only when needed (not for scheduler/alerts)
 
 ---
 
