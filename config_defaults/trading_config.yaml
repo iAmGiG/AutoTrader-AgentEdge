@@ -1,0 +1,64 @@
+# Trading Configuration
+# Centralized configuration for all trading parameters
+# Converted from JSON for better readability and consistency with other configs
+
+strategy_parameters:
+  macd:
+    fast: 13
+    slow: 34
+    signal: 8
+    description: "Validated MACD parameters (13/34/8)"
+
+  rsi:
+    period: 14
+    oversold: 30
+    overbought: 70
+    description: "Standard RSI with 30/70 levels"
+
+  exits:
+    balanced:
+      take_profit: 0.08
+      stop_loss: 0.05
+      description: "Balanced 8% TP / 5% SL (Best EV)"
+      expected_value_50wr: 0.015
+      breakeven_win_rate: 0.385
+
+    conservative:
+      take_profit: 0.06
+      stop_loss: 0.08
+      description: "Conservative 6% TP / 8% SL (Needs high WR)"
+      expected_value_50wr: -0.01
+      breakeven_win_rate: 0.571
+
+    aggressive:
+      take_profit: 0.10
+      stop_loss: 0.03
+      description: "Aggressive 10% TP / 3% SL"
+      expected_value_50wr: 0.035
+      breakeven_win_rate: 0.231
+
+    default: "balanced"
+
+  position_sizing:
+    mode: "fixed"
+    size: 1.0
+    description: "100% capital per trade (all-in)"
+
+backtest_defaults:
+  initial_capital: 10000
+  commission: 0.001
+  slippage: 0.001
+
+validated_performance:
+  macd_rsi_voting:
+    sharpe_ratio: 0.856
+    win_rate: 0.514
+    annual_return: 0.1262
+    max_drawdown: -0.101
+    test_period: "2024 AAPL"
+    note: "Simple system outperforms complex approaches"
+
+  complex_percentile:
+    sharpe_ratio: -1.260
+    win_rate: 0.177
+    note: "Failed complexity trap - DO NOT USE"

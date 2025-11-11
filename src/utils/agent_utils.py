@@ -31,7 +31,7 @@ def load_agent_config(agent_key: str) -> dict:
         # Get the project root directory (up two levels from this file)
         config_dir = os.path.dirname(os.path.dirname(
             os.path.dirname(os.path.abspath(__file__))))
-        config_file = os.path.join(config_dir, 'config', 'agent_prompts.yaml')
+        config_file = os.path.join(config_dir, 'config_defaults', 'agent_prompts.yaml')
 
         with open(config_file, 'r') as f:
             all_configs = yaml.safe_load(f)

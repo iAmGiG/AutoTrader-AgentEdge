@@ -1,0 +1,39 @@
+# API Keys and Secrets Configuration
+#
+# IMPORTANT: This is just an EXAMPLE template
+# Copy this to config/config.yaml and fill in your actual keys
+#
+# The config/ folder is gitignored to protect your secrets
+# NEVER commit actual API keys to the repository!
+
+# OpenAI Configuration
+OPEN_AI_KEY: "your-openai-api-key-here"
+OPEN_MODEL: "gpt-4o-mini"
+OPENAI_TOOL_MODEL: "gpt-4o-mini"
+OPENAI_PROMPT_MODEL: "o4-mini"
+
+# News & Data APIs
+NEWSAPI_KEY: "your-newsapi-key"
+FINNHUB_KEY: "your-finnhub-key"
+ALPHA_VANTAGE_KEY: "your-alpha-vantage-key"
+FREDAPI: "your-fred-api-key"
+FMP: "your-fmp-key"
+
+# Search APIs
+GOOGLE_SEARCH_API_KEY: "your-google-search-api-key"
+GOOGLE_SEARCH_ENGINE_ID: "your-search-engine-id"
+
+# Market Data
+POLYGON_IO: "your-polygon-io-key"
+NASDAQLINK: "your-nasdaq-link"
+
+# Trading Broker (Alpaca)
+ALPACA_ENDPOINT: "https://paper-api.alpaca.markets/v2"
+ALPACA_PAPER_API_KEY: "your-alpaca-paper-key"
+ALPACA_PAPER_SECRET: "your-alpaca-paper-secret"
+
+# Claude API
+ClaudeCodeMaxHPCC: "your-claude-api-key"
+
+# Contact Info
+VALIDEMAIL: "your-email@example.com"
