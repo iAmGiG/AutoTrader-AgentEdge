@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 from src.trading.simple_signals import SimpleSignalGenerator
 from src.trading.alpaca_trading_client import AlpacaOrderManager
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+from src.utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
 
@@ -622,21 +623,27 @@ class LLMTradingAssistant:
     
     def handle_unknown_request(self, request: TradingRequest) -> str:
         """Handle unknown request types."""
-        response = "❓ I didn't understand that request.\n\n"
-        response += "**Available Commands:**\n"
-        response += "  • `add [SYMBOL]` - Open a new position\n"
-        response += "  • `close [SYMBOL]` - Close a position\n"
-        response += "  • `adjust stop [SYMBOL]` - Adjust stop loss\n"
-        response += "  • `status` - Show portfolio status\n"
-        response += "  • `scan` - Scan for opportunities\n"
-        response += "  • `evaluate [SYMBOL]` - Evaluate a ticker\n\n"
-        response += "**Examples:**\n"
-        response += "  • 'add TQQQ'\n"
-        response += "  • 'close all positions'\n"
-        response += "  • 'what's my portfolio status?'\n"
-        response += "  • 'scan for opportunities'"
-        
-        return response
+        # Load help text from YAML configuration
+        interface_config = load_agent_config("interface")
+        help_text = interface_config.get("llm_assistant", {}).get("help_text", "")
+
+        # Fallback to default if YAML not available
+        if not help_text:
+            help_text = "❓ I didn't understand that request.\n\n"
+            help_text += "**Available Commands:**\n"
+            help_text += "  • `add [SYMBOL]` - Open a new position\n"
+            help_text += "  • `close [SYMBOL]` - Close a position\n"
+            help_text += "  • `adjust stop [SYMBOL]` - Adjust stop loss\n"
+            help_text += "  • `status` - Show portfolio status\n"
+            help_text += "  • `scan` - Scan for opportunities\n"
+            help_text += "  • `evaluate [SYMBOL]` - Evaluate a ticker\n\n"
+            help_text += "**Examples:**\n"
+            help_text += "  • 'add TQQQ'\n"
+            help_text += "  • 'close all positions'\n"
+            help_text += "  • 'what's my portfolio status?'\n"
+            help_text += "  • 'scan for opportunities'"
+
+        return help_text
     
     # Helper methods
     
