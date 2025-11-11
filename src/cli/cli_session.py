@@ -145,6 +145,12 @@ class CLISession:
                 self.autonomy_mode = "confirm"
                 print(MSG.MODE_SWITCHED_CONFIRM)
 
+        elif cmd == "/schedule":
+            # Enter scheduler management mode
+            from src.cli.scheduler_cli import SchedulerCLI
+            scheduler_cli = SchedulerCLI(self.scheduler)
+            await scheduler_cli.run()
+
         else:
             print(MSG.UNKNOWN_COMMAND.format(command=command))
             print(MSG.USE_HELP)

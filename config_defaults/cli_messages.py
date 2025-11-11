@@ -68,9 +68,10 @@ class CLIMessages:
 
     HELP_COMMANDS = """
 System Commands:
-  /help    - Show help
-  /exit    - Exit (or Ctrl+C)
-  /toggle  - Toggle between CONFIRM and AUTO modes
+  /help      - Show help
+  /exit      - Exit (or Ctrl+C)
+  /toggle    - Toggle between CONFIRM and AUTO modes
+  /schedule  - Enter scheduler management mode
 
 Trading:
   > buy 10 AAPL
@@ -86,6 +87,7 @@ Monitoring:
 Scheduler:
   > show scheduler status
   > show execution history
+  Or use /schedule for full scheduler CLI
 
 Tip: Just type naturally - the LLM will understand!
 """

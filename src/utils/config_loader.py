@@ -12,8 +12,9 @@ class ConfigLoader:
         # Determine the config file path relative to this file
         if config_path is None:
             # Assuming config folder is in the project root
+            # This file is at src/utils/config_loader.py, so go up 3 levels to project root
             base_dir = os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__)))
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             # Try YAML first, fallback to JSON
             yaml_path = os.path.join(base_dir, "config", "config.yaml")
             json_path = os.path.join(base_dir, "config", "config.json")

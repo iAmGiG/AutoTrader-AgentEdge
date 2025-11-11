@@ -19,9 +19,14 @@ from src.utils.config_loader import ConfigLoader
 
 try:
     from polygon import RESTClient
+    POLYGON_AVAILABLE = True
 except ImportError:
-    raise ImportError(
-        "polygon-api-client is required. Install with: pip install polygon-api-client"
+    RESTClient = None
+    POLYGON_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "polygon-api-client not installed. Polygon data source will be unavailable. "
+        "Install with: pip install polygon-api-client"
     )
 
 logger = logging.getLogger(__name__)
