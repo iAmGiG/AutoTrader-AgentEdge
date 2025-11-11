@@ -75,7 +75,7 @@ System Commands:
 
 Trading:
   > buy 10 AAPL
-  > is SPY at 600 a good entry?
+  > is SPY at $XXX.XX a good entry?
   > sell all TQQQ
 
 Monitoring:
