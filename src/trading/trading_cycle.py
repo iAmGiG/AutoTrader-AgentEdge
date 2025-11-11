@@ -114,18 +114,33 @@ class CostEfficientTradeCycle:
         if os.path.exists(self.state_file):
             try:
                 with open(self.state_file, 'r') as f:
-                    return json.load(f)
+                    state = json.load(f)
+
+                # Restore position tracker with alert history
+                if 'position_tracker_state' in state:
+                    try:
+                        self.position_tracker.restore_from_dict(state['position_tracker_state'])
+                        logger.info("Restored position tracker with alert history")
+                    except Exception as e:
+                        logger.warning(f"Failed to restore position tracker state: {e}")
+
+                return state
             except (json.JSONDecodeError, IOError) as e:
                 logger.warning(f"Failed to load state file: {e}")
                 return {"positions": {}, "last_update": None, "discrepancies": []}
         return {"positions": {}, "last_update": None, "discrepancies": []}
     
     def save_local_state(self):
-        """Save local state to JSON"""
+        """Save local state to JSON including position tracker with alert history"""
         self.local_state["last_update"] = datetime.now().isoformat()
+
+        # Persist position tracker state (including alert history)
+        self.local_state["position_tracker_state"] = self.position_tracker.to_dict()
+
         try:
             with open(self.state_file, 'w') as f:
                 json.dump(self.local_state, f, indent=2)
+            logger.debug(f"Saved local state with {len(self.position_tracker.positions)} tracked positions")
         except IOError as e:
             logger.error(f"Failed to save state: {e}")
     

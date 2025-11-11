@@ -506,3 +506,71 @@ class PositionTracker:
             'total_unrealized_pnl': total_pnl,
             'positions': position_details
         }
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize tracker state including all positions and alert history.
+
+        Returns:
+            Dictionary containing tracker configuration and all position data
+        """
+        return {
+            'config': {
+                'take_profit_pct': self.take_profit_pct,
+                'stop_loss_pct': self.stop_loss_pct,
+                'alert_cooldown_seconds': self.alert_cooldown_seconds
+            },
+            'alert_counter': self.alert_counter,
+            'positions': {
+                position_id: position.to_dict()
+                for position_id, position in self.positions.items()
+            }
+        }
+
+    def restore_from_dict(self, data: Dict[str, Any]) -> None:
+        """
+        Restore tracker state from serialized data.
+
+        Args:
+            data: Dictionary from to_dict()
+        """
+        # Restore counter
+        self.alert_counter = data.get('alert_counter', 0)
+
+        # Restore positions
+        for position_id, pos_data in data.get('positions', {}).items():
+            # Reconstruct PositionAlert objects
+            alert_history = []
+            for alert_data in pos_data.get('alert_history', []):
+                alert = PositionAlert(
+                    alert_id=alert_data['alert_id'],
+                    position_id=alert_data['position_id'],
+                    ticker=alert_data['ticker'],
+                    alert_type=AlertType(alert_data['alert_type']),
+                    timestamp=datetime.fromisoformat(alert_data['timestamp']),
+                    current_price=alert_data['current_price'],
+                    details=alert_data['details'],
+                    severity=alert_data['severity']
+                )
+                alert_history.append(alert)
+
+            # Reconstruct Position object
+            position = Position(
+                position_id=pos_data['position_id'],
+                ticker=pos_data['ticker'],
+                entry_date=datetime.fromisoformat(pos_data['entry_date']),
+                entry_price=pos_data['entry_price'],
+                quantity=pos_data['quantity'],
+                take_profit_price=pos_data['take_profit_price'],
+                stop_loss_price=pos_data['stop_loss_price'],
+                status=pos_data['status'],
+                exit_date=datetime.fromisoformat(pos_data['exit_date']) if pos_data.get('exit_date') else None,
+                exit_price=pos_data.get('exit_price'),
+                exit_reason=ExitReason(pos_data['exit_reason']) if pos_data.get('exit_reason') else None,
+                alert_history=alert_history,
+                last_alert_time=datetime.fromisoformat(pos_data['last_alert_time']) if pos_data.get('last_alert_time') else None
+            )
+
+            self.positions[position_id] = position
+
+        logger.info(f"Restored {len(self.positions)} positions with alert history from state")
