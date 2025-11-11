@@ -163,7 +163,7 @@ class CLISession:
         Routes to:
         - Alert checker for "alerts", "check position"
         - Scheduler for "scheduler", "execution", "morning", "evening"
-        - Portfolio for "portfolio", "account", "status"
+        - Portfolio for "portfolio", "account", "status", "positions"
         - Trading orchestrator for buy/sell requests
 
         Args:
@@ -173,17 +173,28 @@ class CLISession:
         input_lower = user_input.lower()
 
         # Route to appropriate handler
-        if any(word in input_lower for word in ["alert", "check position", "approaching"]):
+        # Priority 1: Position status queries (before alerts to catch "check position")
+        if any(phrase in input_lower for phrase in [
+            "any positions", "positions open", "what positions", "show positions",
+            "position status", "open trades", "what do i have", "what do i own",
+            "show me what", "price target on", "target for", "target on"
+        ]):
+            await self._handle_portfolio_request(user_input)
+
+        # Priority 2: Alerts (specific position monitoring)
+        elif any(word in input_lower for word in ["alert", "approaching", "check alert"]):
             await self._handle_alerts_request(user_input)
 
+        # Priority 3: Scheduler
         elif any(word in input_lower for word in ["scheduler", "schedule", "execution", "morning", "evening", "routine"]):
             await self._handle_scheduler_request(user_input)
 
-        elif any(word in input_lower for word in ["portfolio", "account", "balance", "buying power", "what's my"]):
+        # Priority 4: Portfolio/account queries
+        elif any(word in input_lower for word in ["portfolio", "account", "balance", "buying power", "equity", "cash"]):
             await self._handle_portfolio_request(user_input)
 
+        # Default: Trade request
         else:
-            # Default to trade request
             await self._handle_trade_request(user_input)
 
     async def _handle_trade_request(self, user_input: str):
@@ -423,9 +434,26 @@ class CLISession:
         """
         Handle portfolio/account status request.
 
+        Also handles specific position queries like "target on SPY"
+
         Args:
             user_input: User's natural language input
         """
+        # Check if querying specific ticker
+        input_lower = user_input.lower()
+        specific_ticker = None
+
+        # Extract ticker if asking about specific position
+        if "target on" in input_lower or "target for" in input_lower:
+            # Try to extract ticker from query
+            words = user_input.upper().split()
+            # Common tickers to look for
+            common_tickers = ['SPY', 'QQQ', 'TQQQ', 'SQQQ', 'AAPL', 'MSFT', 'TSLA', 'NVDA']
+            for word in words:
+                if word in common_tickers:
+                    specific_ticker = word
+                    break
+
         print("\n💼 Portfolio Status...")
 
         try:
@@ -433,19 +461,55 @@ class CLISession:
                 print("❌ Account monitor not initialized")
                 return
 
-            # Get account status
-            account = self.account_monitor.get_account_status()
+            # Get account status (unless querying specific ticker)
+            if not specific_ticker:
+                account = self.account_monitor.get_account_status()
 
-            print(f"\n💰 Account:")
-            print(f"   Equity: ${float(account.get('equity', 0)):,.2f}")
-            print(f"   Cash: ${float(account.get('cash', 0)):,.2f}")
-            print(f"   Buying Power: ${float(account.get('buying_power', 0)):,.2f}")
-            print(f"   Pattern Day Trader: {account.get('pattern_day_trader', False)}")
+                print(f"\n💰 Account:")
+                print(f"   Equity: ${float(account.get('equity', 0)):,.2f}")
+                print(f"   Cash: ${float(account.get('cash', 0)):,.2f}")
+                print(f"   Buying Power: ${float(account.get('buying_power', 0)):,.2f}")
+                print(f"   Pattern Day Trader: {account.get('pattern_day_trader', False)}")
 
             # Get positions
             positions = self.account_monitor.get_positions()
 
-            if positions:
+            if specific_ticker:
+                # Show details for specific position
+                position = next((p for p in positions if p.get('symbol') == specific_ticker), None)
+                if position:
+                    qty = int(position.get('qty', 0))
+                    symbol = position.get('symbol')
+                    current_price = float(position.get('current_price', 0))
+                    avg_entry = float(position.get('avg_entry_price', 0))
+                    unrealized_pl = float(position.get('unrealized_pl', 0))
+                    unrealized_plpc = float(position.get('unrealized_plpc', 0)) * 100
+
+                    pl_emoji = "🟢" if unrealized_pl >= 0 else "🔴"
+                    print(f"\n{pl_emoji} {symbol} Position Details:")
+                    print(f"   Quantity: {qty} shares")
+                    print(f"   Entry Price: ${avg_entry:.2f}")
+                    print(f"   Current Price: ${current_price:.2f}")
+                    print(f"   P/L: ${unrealized_pl:,.2f} ({unrealized_plpc:+.2f}%)")
+
+                    # Show targets if available (from position tracker)
+                    if self.trading_cycle and self.trading_cycle.position_tracker:
+                        position_id = f"{symbol}_{avg_entry}"
+                        tracked_pos = self.trading_cycle.position_tracker.positions.get(position_id)
+                        if tracked_pos:
+                            print(f"\n🎯 Price Targets:")
+                            print(f"   Take Profit: ${tracked_pos.take_profit_price:.2f}")
+                            print(f"   Stop Loss: ${tracked_pos.stop_loss_price:.2f}")
+                            distance_to_tp = ((tracked_pos.take_profit_price - current_price) / current_price) * 100
+                            distance_to_sl = ((current_price - tracked_pos.stop_loss_price) / current_price) * 100
+                            print(f"   Distance to TP: {distance_to_tp:+.2f}%")
+                            print(f"   Distance to SL: {distance_to_sl:+.2f}%")
+                        else:
+                            print(f"\n💡 No price targets set for {symbol}")
+                else:
+                    print(f"\n❌ No position found for {specific_ticker}")
+
+            elif positions:
                 print(f"\n📊 Positions ({len(positions)}):")
                 for pos in positions:
                     qty = int(pos.get('qty', 0))
