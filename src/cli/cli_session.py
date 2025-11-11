@@ -104,7 +104,7 @@ class CLISession:
         print("=" * 70)
         print("   AutoGen Trading Assistant - Unified Interactive CLI")
         print("=" * 70)
-        print(f"Mode: {self.autonomy_mode.UPPER()}")
+        print(f"Mode: {self.autonomy_mode.upper()}")
         print("\nSystem Commands:")
         print("  /help    - Show help")
         print("  /exit    - Exit (or Ctrl+C)")
