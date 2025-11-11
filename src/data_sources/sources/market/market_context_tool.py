@@ -4,11 +4,17 @@ Fetches SPY/QQQ market context data to enhance sentiment analysis
 """
 
 import logging
+import sys
+import os
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 from autogen_core.tools import FunctionTool
 from ...cache.unified_cache import UnifiedCacheManager
+
+# Add path for agent_utils
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
+from utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
 
@@ -215,13 +221,12 @@ def _create_fallback_data(symbol: str, date: str, error: str = None) -> Dict[str
     }
 
 
-# Create the FunctionTool for AutoGen
-market_context_tool = FunctionTool(
-    fetch_market_context_data,
-    description="""
-Fetch market context data (SPY/QQQ) for enhanced sentiment analysis.
+# Load description from YAML config with fallback
+def _get_market_context_description():
+    """Get market context tool description from YAML or use fallback."""
+    default_desc = """Fetch market context data (SPY/QQQ) for enhanced sentiment analysis.
 
-Provides broader market direction and tech sector sentiment to complement 
+Provides broader market direction and tech sector sentiment to complement
 individual stock analysis. Designed for LLM reasoning about market conditions.
 
 Parameters:
@@ -235,8 +240,19 @@ Returns market context including:
 - Overall market direction summary
 
 Use this to understand if the broader market and tech sector are supportive
-of individual stock decisions.
-""".strip()
+of individual stock decisions."""
+
+    try:
+        tools_config = load_agent_config("tools")
+        desc = tools_config.get("market_context", {}).get("description", "")
+        return desc.strip() if desc else default_desc
+    except Exception:
+        return default_desc
+
+# Create the FunctionTool for AutoGen
+market_context_tool = FunctionTool(
+    fetch_market_context_data,
+    description=_get_market_context_description()
 )
 
 # Set agent type compatibility
