@@ -31,7 +31,32 @@ This document describes the enhancements made to the position management system 
 3. **Formatted Messages** - Human-readable alert messages with emojis for quick scanning
 4. **Alert Summary** - Portfolio-wide alert summaries with counts by severity
 
-#### Example Usage
+#### How Alerts Are Triggered
+
+**Alert Destination:** Console/terminal output, log files, and daily reports only. No email, SMS, or webhooks in this implementation.
+
+**Manual Triggering (Current Branch Only):**
+```bash
+# Run position check manually - alerts checked once
+python main.py paper-trade SYMBOL
+```
+
+**Automatic Triggering (With GTC Daily Execution Branch #287):**
+When merged with Issue #287, alerts run automatically:
+- **9:20 AM ET** - Morning routine checks all positions
+- **3:50 PM ET** - Evening routine checks all positions
+
+Deployment options:
+```bash
+# Option A: systemd daemon (runs continuously)
+sudo systemctl start autogen-trading-scheduler
+
+# Option B: crontab (scheduled runs)
+20 9 * * 1-5 /path/to/python src/trading/daily_scheduler.py --mode once --task morning_routine
+50 15 * * 1-5 /path/to/python src/trading/daily_scheduler.py --mode once --task evening_routine
+```
+
+#### Example Usage (Programmatic)
 
 ```python
 from src.trading_tools.position_tracker import PositionTracker
@@ -40,7 +65,7 @@ from src.trading_tools.position_tracker import PositionTracker
 tracker = PositionTracker(
     take_profit_pct=0.08,
     stop_loss_pct=0.05,
-    alert_cooldown_seconds=300  # 5 minutes
+    alert_cooldown_seconds=300  # 5 minutes between repeated alerts
 )
 
 # Create position
@@ -62,6 +87,41 @@ print(f"Critical: {summary['counts']['critical']}")
 alerts = tracker.get_position_alerts(position.position_id)
 for alert in alerts:
     print(alert.format_message())
+```
+
+#### Alert Output Locations
+
+**1. Console Output (Real-time):**
+```
+📊 Checking Position Alerts...
+   🔔 2 Alert(s) Generated:
+      ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
+      📊 SPY stop adjusted: $448.00 → $450.00
+```
+
+**2. Log Files (Persistent):**
+```
+# logs/trading.log
+2025-01-10 09:30:00 WARNING ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
+2025-01-10 09:30:00 INFO 📊 SPY stop adjusted: $448.00 → $450.00
+```
+
+**3. Daily Reports (Markdown):**
+```markdown
+# reports/morning_routine_2025-01-10.md
+
+## Position Alerts
+Total Alerts: 2 (🚨 0 Critical, ⚠️ 2 Warning, 📊 0 Info)
+
+⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
+📊 SPY stop adjusted: $448.00 → $450.00
+```
+
+**4. In-Memory (During Execution):**
+Each position maintains complete alert history:
+```python
+position.alert_history = [PositionAlert(...), PositionAlert(...)]
+position.last_alert_time = datetime(2025, 1, 10, 9, 30, 0)
 ```
 
 ### 2. Dynamic Stop Integration
@@ -197,6 +257,73 @@ Test coverage:
 - ✅ Alert summary and history
 - ✅ Position summary with multiple positions
 
+## Alert Execution Flow
+
+### Step-by-Step Process
+
+```
+1. Trigger Event
+   ├─> Manual: python main.py paper-trade SYMBOL
+   └─> Auto: Daily scheduler at 9:20 AM / 3:50 PM ET (with Issue #287)
+
+2. Trading Cycle Execution
+   ├─> run_paper_trading_check() OR
+   └─> morning_routine() / evening_routine()
+
+3. Broker State Fetch (1 API call)
+   └─> Get all positions with current prices
+
+4. Alert Check Loop
+   For each position:
+   ├─> Calculate distance to take profit (TP)
+   ├─> Calculate distance to stop loss (SL)
+   ├─> If within 2% of TP:
+   │   └─> Check cooldown → Generate APPROACHING_TP alert
+   ├─> If within 2% of SL:
+   │   └─> Check cooldown → Generate APPROACHING_SL alert
+   ├─> If TP reached:
+   │   └─> Generate PROFIT_TARGET_REACHED alert (CRITICAL)
+   └─> If SL reached:
+       └─> Generate LOSS_THRESHOLD_REACHED alert (CRITICAL)
+
+5. Alert Cooldown Check (Anti-Spam)
+   ├─> Has 5+ minutes passed since last alert for this position?
+   ├─> Yes: Create alert, update last_alert_time
+   └─> No: Skip (prevents spam from price fluctuations)
+
+6. Alert Storage & Display
+   ├─> Add to position.alert_history[]
+   ├─> Log to console (INFO/WARNING/CRITICAL level)
+   ├─> Write to logs/trading.log
+   └─> Include in daily report markdown
+
+7. Continue Trading Cycle
+   └─> Calculate stop adjustments, execute modifications, etc.
+```
+
+### Alert Frequency
+
+**Without GTC Branch:**
+- Only when manually running `python main.py paper-trade`
+- On-demand basis
+
+**With GTC Branch (Issue #287 merged):**
+- Twice daily automatically (9:20 AM, 3:50 PM ET)
+- Plus manual runs anytime
+- Alert history persists across runs
+
+### Alert Cooldown Behavior
+
+**Problem:** Stock price fluctuates near threshold
+```
+09:30:00 - Price: $53.85 (1.85% from TP) → ⚠️ Alert sent
+09:30:30 - Price: $53.80 (1.95% from TP) → ⏭️ Skipped (cooldown)
+09:31:00 - Price: $53.90 (1.75% from TP) → ⏭️ Skipped (cooldown)
+09:35:01 - Price: $53.95 (1.25% from TP) → ⚠️ Alert sent (5 min elapsed)
+```
+
+**Result:** You get updates every 5 minutes max, not every price tick.
+
 ## Benefits for Live Trading
 
 1. **Early Warning System** - Get notified before positions reach exit levels
@@ -206,15 +333,63 @@ Test coverage:
 5. **Enhanced Logging** - Detailed logs for debugging stop adjustments
 6. **Portfolio Overview** - See all alerts across positions at a glance
 
-## Future Enhancements
+## Limitations & Future Enhancements
+
+### Current Limitations
+
+**❌ No External Notifications:**
+- Alerts are **console/log output only**
+- No email, SMS, or push notifications
+- Must actively check logs or run system to see alerts
+- If daemon crashes, alerts are not sent
+
+**⚠️ Twice-Daily Checks Only (with GTC):**
+- Alerts checked at 9:20 AM and 3:50 PM ET only
+- Positions could reach exit levels between checks without alert
+- Not real-time monitoring (by design for API efficiency)
+
+**⚠️ Manual Monitoring Required:**
+- You must view console output or check log files
+- No proactive notification mechanism
+- Alert history in memory is lost on restart (unless persisted)
+
+### Recommended Workflow
+
+**For Active Monitoring:**
+```bash
+# Check positions ad-hoc during trading day
+python main.py paper-trade SYMBOL
+
+# View recent logs
+tail -f logs/trading.log
+
+# Check daily reports
+cat reports/morning_routine_$(date +%Y-%m-%d).md
+```
+
+**For Automated Monitoring (with GTC #287):**
+```bash
+# Start daemon
+sudo systemctl start autogen-trading-scheduler
+
+# Monitor logs in real-time
+sudo journalctl -u autogen-trading-scheduler -f
+
+# Or check scheduled run logs
+tail -f logs/cron-morning.log
+```
+
+### Future Enhancements
 
 Potential improvements for future iterations:
 
-1. **Email/SMS Notifications** - Send critical alerts via external channels
-2. **Alert Webhooks** - Integrate with external monitoring systems
-3. **Custom Alert Rules** - User-defined alert conditions
+1. **Email/SMS Notifications** - Send critical alerts via external channels (Twilio, SendGrid)
+2. **Alert Webhooks** - Integrate with external monitoring systems (PagerDuty, Slack)
+3. **Custom Alert Rules** - User-defined alert conditions beyond 2% threshold
 4. **Alert Analytics** - Statistical analysis of alert patterns
 5. **Mobile App Integration** - Push notifications to mobile devices
+6. **Real-Time WebSocket Alerts** - Continuous monitoring instead of scheduled checks
+7. **Alert Dashboard** - Web UI for viewing alert history and current status
 
 ## Changelog
 
