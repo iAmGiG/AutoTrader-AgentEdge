@@ -160,51 +160,67 @@ class CLISession:
 
     async def _process_request(self, user_input: str):
         """
-        Process user request with intelligent routing.
+        Process user request with LLM-based intelligent routing.
 
-        Routes to:
-        - Order checker for "any open orders", "order status"
-        - Alert checker for "alerts", "check position"
-        - Scheduler for "scheduler", "execution", "morning", "evening"
-        - Portfolio for "portfolio", "account", "status", "positions"
-        - Trading orchestrator for buy/sell requests
+        The LLM parser determines if this is a status_query or trade request.
+        We use minimal keyword hints only for scheduler/alerts (system features).
 
         Args:
             user_input: User's natural language input
         """
-        # Smart routing based on keywords
         input_lower = user_input.lower()
 
-        # Route to appropriate handler
-        # Priority 1: Order status queries (prevent "any" from being parsed as ticker)
-        if any(phrase in input_lower for phrase in [
-            "any open orders", "open orders", "pending orders", "active orders",
-            "show orders", "list orders", "check orders", "order status"
-        ]):
-            await self._handle_orders_request(user_input)
+        # Only use keyword routing for system-specific features (scheduler, alerts)
+        # Let LLM parser handle trade vs status_query distinction
 
-        # Priority 2: Position status queries
-        elif any(phrase in input_lower for phrase in [
-            "any positions", "positions open", "what positions", "show positions",
-            "position status", "open trades", "what do i have", "what do i own",
-            "show me what", "price target on", "target for", "target on"
-        ]):
-            await self._handle_portfolio_request(user_input)
-
-        # Priority 3: Alerts (specific position monitoring)
-        elif any(word in input_lower for word in ["alert", "approaching", "check alert"]):
-            await self._handle_alerts_request(user_input)
-
-        # Priority 3: Scheduler
-        elif any(word in input_lower for word in ["scheduler", "schedule", "execution", "morning", "evening", "routine"]):
+        if any(word in input_lower for word in ["scheduler", "schedule", "execution", "morning", "evening", "routine"]):
+            # Scheduler queries
             await self._handle_scheduler_request(user_input)
 
-        # Priority 4: Portfolio/account queries
-        elif any(word in input_lower for word in ["portfolio", "account", "balance", "buying power", "equity", "cash"]):
-            await self._handle_portfolio_request(user_input)
+        elif any(word in input_lower for word in ["alert", "approaching"]) and "check" in input_lower:
+            # Alert queries
+            await self._handle_alerts_request(user_input)
 
-        # Default: Trade request
         else:
+            # For everything else, let LLM parser decide: trade vs status_query
+            # This includes: orders, positions, portfolio, and actual trades
+            await self._handle_trade_or_status_request(user_input)
+
+    async def _handle_trade_or_status_request(self, user_input: str):
+        """
+        Use LLM parser to determine if this is a trade or status query.
+
+        The LLM will classify as:
+        - "trade" → buy/sell/analyze specific ticker (e.g., "buy AAPL", "is SPY good?")
+        - "status_query" → asking about orders/positions/portfolio (e.g., "any open orders?")
+
+        Args:
+            user_input: User's natural language input
+        """
+        try:
+            # Let LLM parser classify the request type
+            request = await self.orchestrator.parser.parse(user_input, self.user_id)
+
+            if request.request_type == "status_query":
+                # Status query detected - route based on content
+                input_lower = user_input.lower()
+
+                if any(word in input_lower for word in ["order", "orders"]):
+                    await self._handle_orders_request(user_input)
+                elif any(word in input_lower for word in ["position", "positions", "holding", "holdings"]):
+                    await self._handle_portfolio_request(user_input)
+                elif any(word in input_lower for word in ["portfolio", "account", "balance", "buying power", "equity", "cash"]):
+                    await self._handle_portfolio_request(user_input)
+                else:
+                    # Default status query → show portfolio
+                    await self._handle_portfolio_request(user_input)
+            else:
+                # Trade request → process through orchestrator
+                await self._handle_trade_request(user_input)
+
+        except Exception as e:
+            logger.error(f"Error routing request: {e}", exc_info=True)
+            # Fallback to trade handler
             await self._handle_trade_request(user_input)
 
     async def _handle_trade_request(self, user_input: str):

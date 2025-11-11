@@ -51,6 +51,7 @@ class TradeRequest:
     """
     ticker: str
     action: str  # "review", "buy", "sell"
+    request_type: str = "trade"  # "trade" or "status_query" (LLM-determined)
     quantity: Optional[int] = None
     price: Optional[float] = None
     asset_type: AssetType = AssetType.STOCK
