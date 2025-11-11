@@ -414,43 +414,127 @@ class CLISession:
 
     async def _handle_scheduler_request(self, user_input: str):
         """
-        Handle scheduler status/management request.
+        Handle scheduler status/management request with detailed information.
 
         Args:
             user_input: User's natural language input
         """
-        print("\n🤖 Daily Scheduler Status...")
+        print("\n⏰ Daily Scheduler Status")
+        print("=" * 70)
 
         try:
             if not self.scheduler:
-                print("❌ Scheduler not initialized")
+                print("❌ Scheduler not initialized - not running in daemon mode")
+                print("\n💡 To start scheduler:")
+                print("   python main.py --daemon")
+                print("\n📖 What the scheduler does:")
+                print("   • Morning (9:20 AM ET): Check positions, place new orders")
+                print("   • Evening (3:50 PM ET): Review positions, adjust stops")
                 return
 
-            # Show scheduler configuration
-            print(f"\nConfiguration:")
-            print(f"   Enabled: {self.scheduler.config.get('enabled', False)}")
-            print(f"   Morning routine: {self.scheduler.config.get('morning_routine_time')} ET")
-            print(f"   Evening routine: {self.scheduler.config.get('evening_routine_time')} ET")
-            print(f"   Max retries: {self.scheduler.config.get('max_retries')}")
+            # Show scheduler configuration with clear status
+            enabled = self.scheduler.config.get('enabled', False)
+            status_emoji = "🟢" if enabled else "🔴"
+            print(f"\n{status_emoji} Status: {'ENABLED' if enabled else 'DISABLED'}")
+            print(f"\n⚙️  Configuration:")
+            print(f"   Morning Routine: {self.scheduler.config.get('morning_routine_time', '09:20')} ET")
+            print(f"   Evening Routine: {self.scheduler.config.get('evening_routine_time', '15:50')} ET")
+            print(f"   Max Retries: {self.scheduler.config.get('max_retries', 3)}")
+            print(f"   Timezone: US/Eastern")
 
-            # Show recent execution history
-            recent = self.scheduler.get_execution_history(days=1)
+            # Show what each routine does
+            print(f"\n📅 Scheduled Routines:")
+            print(f"\n   🌅 Morning Routine (9:20 AM ET):")
+            print(f"      • Fetch current broker state")
+            print(f"      • Check position alerts (approaching TP/SL)")
+            print(f"      • Analyze market conditions")
+            print(f"      • Place new GTC orders if signals present")
+            print(f"      • Log execution status")
+
+            print(f"\n   🌆 Evening Routine (3:50 PM ET):")
+            print(f"      • Review all open positions")
+            print(f"      • Check alert triggers")
+            print(f"      • Adjust trailing stops if profitable")
+            print(f"      • Update position tracker state")
+            print(f"      • Log daily summary")
+
+            # Show recent execution history with more detail
+            recent = self.scheduler.get_execution_history(days=7)
             if recent:
-                print(f"\n📋 Recent Executions (today):")
-                for entry in recent[:5]:
-                    status_emoji = {"completed": "✅", "failed": "❌", "retrying": "🔄"}.get(entry.status, "⚠️")
-                    print(f"   {status_emoji} {entry.task_name} - {entry.status}")
-                    if entry.actual_end_time:
-                        print(f"      Completed: {entry.actual_end_time}")
-                    if entry.error_message:
-                        print(f"      Error: {entry.error_message}")
-            else:
-                print("\n📋 No executions today")
+                print(f"\n📋 Recent Execution History:")
+                print(f"   (Last 7 days, showing up to 10 most recent)")
 
-            # Show what's scheduled next
-            print(f"\n⏰ Scheduled Tasks:")
-            for task in self.scheduler.tasks:
-                print(f"   • {task.name}: {task.scheduled_time.strftime('%H:%M')} ET")
+                for entry in recent[:10]:
+                    status_emoji = {
+                        "completed": "✅",
+                        "failed": "❌",
+                        "retrying": "🔄",
+                        "partial": "⚠️"
+                    }.get(entry.status, "⚪")
+
+                    # Format timestamp
+                    if entry.actual_end_time:
+                        time_str = entry.actual_end_time.strftime("%Y-%m-%d %H:%M")
+                    else:
+                        time_str = "In Progress"
+
+                    print(f"\n   {status_emoji} {entry.task_name}")
+                    print(f"      Status: {entry.status.upper()}")
+                    print(f"      Time: {time_str}")
+
+                    if entry.error_message:
+                        print(f"      ⚠️  Error: {entry.error_message[:80]}...")
+
+                    # Show retry info if applicable
+                    if hasattr(entry, 'retry_count') and entry.retry_count > 0:
+                        print(f"      🔄 Retries: {entry.retry_count}")
+            else:
+                print("\n📋 No execution history found")
+                print("   Scheduler hasn't run yet or history is empty")
+
+            # Calculate next scheduled run
+            print(f"\n🔮 Next Scheduled Execution:")
+            try:
+                from datetime import datetime, time
+                import pytz
+                et = pytz.timezone('US/Eastern')
+                now = datetime.now(et)
+
+                morning_time = time(9, 20)
+                evening_time = time(15, 50)
+
+                morning_today = now.replace(hour=9, minute=20, second=0, microsecond=0)
+                evening_today = now.replace(hour=15, minute=50, second=0, microsecond=0)
+
+                if now.time() < morning_time:
+                    next_run = morning_today
+                    next_task = "Morning Routine"
+                elif now.time() < evening_time:
+                    next_run = evening_today
+                    next_task = "Evening Routine"
+                else:
+                    # After evening, next is tomorrow morning
+                    from datetime import timedelta
+                    next_run = morning_today + timedelta(days=1)
+                    next_task = "Morning Routine (tomorrow)"
+
+                time_until = next_run - now
+                hours = int(time_until.total_seconds() // 3600)
+                minutes = int((time_until.total_seconds() % 3600) // 60)
+
+                print(f"   {next_task}")
+                print(f"   Time: {next_run.strftime('%H:%M %p')} ET")
+                print(f"   Countdown: {hours}h {minutes}m from now")
+            except Exception as calc_error:
+                print(f"   Unable to calculate next run: {calc_error}")
+
+            # Usage instructions
+            print(f"\n💡 Scheduler Commands:")
+            print(f"   python main.py --daemon      # Run scheduler in background")
+            print(f"   python main.py --help        # See all options")
+            print(f"\n📖 Documentation:")
+            print(f"   docs/features/02_gtc_scheduler_quickstart.md")
+            print(f"   docs/features/03_gtc_scheduler_technical.md")
 
         except Exception as e:
             print(f"❌ Error checking scheduler: {e}")
@@ -506,8 +590,17 @@ class CLISession:
                 if position:
                     qty = int(position.get('qty', 0))
                     symbol = position.get('symbol')
-                    current_price = float(position.get('current_price', 0))
                     avg_entry = float(position.get('avg_entry_price', 0))
+
+                    # Calculate current price from market value
+                    market_value = float(position.get('market_value', 0))
+                    current_price = (market_value / qty) if qty > 0 else 0.0
+
+                    # Use cost_basis as fallback if avg_entry_price is 0
+                    if avg_entry == 0.0:
+                        cost_basis = float(position.get('cost_basis', 0))
+                        avg_entry = (cost_basis / qty) if qty > 0 else 0.0
+
                     unrealized_pl = float(position.get('unrealized_pl', 0))
                     unrealized_plpc = float(position.get('unrealized_plpc', 0)) * 100
 
@@ -540,13 +633,23 @@ class CLISession:
                 for pos in positions:
                     qty = int(pos.get('qty', 0))
                     symbol = pos.get('symbol', 'UNKNOWN')
-                    current_price = float(pos.get('current_price', 0))
+                    avg_entry = float(pos.get('avg_entry_price', 0))
+
+                    # Calculate current price from market value (Alpaca doesn't provide current_price directly)
                     market_value = float(pos.get('market_value', 0))
+                    current_price = (market_value / qty) if qty > 0 else 0.0
+
+                    # Use cost_basis as fallback if avg_entry_price is 0
+                    if avg_entry == 0.0:
+                        cost_basis = float(pos.get('cost_basis', 0))
+                        avg_entry = (cost_basis / qty) if qty > 0 else 0.0
+
                     unrealized_pl = float(pos.get('unrealized_pl', 0))
                     unrealized_plpc = float(pos.get('unrealized_plpc', 0)) * 100
 
                     pl_emoji = "🟢" if unrealized_pl >= 0 else "🔴"
-                    print(f"   {pl_emoji} {symbol}: {qty} shares @ ${current_price:.2f}")
+                    print(f"   {pl_emoji} {symbol}: {qty} shares @ ${avg_entry:.2f} (avg entry)")
+                    print(f"      Current: ${current_price:.2f}")
                     print(f"      Value: ${market_value:,.2f}")
                     print(f"      P/L: ${unrealized_pl:,.2f} ({unrealized_plpc:+.2f}%)")
             else:
