@@ -117,6 +117,7 @@ class CLISession:
         print("\nMonitoring:")
         print("  > check my alerts")
         print("  > show portfolio")
+        print("  > any open orders")
         print("  > what's my position status?")
         print("\nScheduler:")
         print("  > show scheduler status")
@@ -162,6 +163,7 @@ class CLISession:
         Process user request with intelligent routing.
 
         Routes to:
+        - Order checker for "any open orders", "order status"
         - Alert checker for "alerts", "check position"
         - Scheduler for "scheduler", "execution", "morning", "evening"
         - Portfolio for "portfolio", "account", "status", "positions"
@@ -174,15 +176,22 @@ class CLISession:
         input_lower = user_input.lower()
 
         # Route to appropriate handler
-        # Priority 1: Position status queries (before alerts to catch "check position")
+        # Priority 1: Order status queries (prevent "any" from being parsed as ticker)
         if any(phrase in input_lower for phrase in [
+            "any open orders", "open orders", "pending orders", "active orders",
+            "show orders", "list orders", "check orders", "order status"
+        ]):
+            await self._handle_orders_request(user_input)
+
+        # Priority 2: Position status queries
+        elif any(phrase in input_lower for phrase in [
             "any positions", "positions open", "what positions", "show positions",
             "position status", "open trades", "what do i have", "what do i own",
             "show me what", "price target on", "target for", "target on"
         ]):
             await self._handle_portfolio_request(user_input)
 
-        # Priority 2: Alerts (specific position monitoring)
+        # Priority 3: Alerts (specific position monitoring)
         elif any(word in input_lower for word in ["alert", "approaching", "check alert"]):
             await self._handle_alerts_request(user_input)
 
@@ -530,3 +539,51 @@ class CLISession:
         except Exception as e:
             print(f"❌ Error checking portfolio: {e}")
             logger.error(f"Portfolio error: {e}", exc_info=True)
+
+    async def _handle_orders_request(self, user_input: str):
+        """
+        Handle order status request - shows pending/open orders.
+
+        Args:
+            user_input: User's natural language input
+        """
+        print("\n📋 Checking Open Orders...")
+
+        try:
+            if not self.account_monitor:
+                print("❌ Account monitor not initialized")
+                return
+
+            # Get open orders
+            orders = self.account_monitor.get_orders(status="open")
+
+            if not orders:
+                print("✅ No open orders")
+            else:
+                print(f"\n📊 {len(orders)} Open Order(s):")
+                for order in orders:
+                    symbol = order.get('symbol', 'UNKNOWN')
+                    side = order.get('side', 'UNKNOWN')
+                    qty = order.get('qty', 0)
+                    order_type = order.get('type', 'UNKNOWN')
+                    status = order.get('status', 'UNKNOWN')
+                    order_id = order.get('id', 'N/A')
+
+                    # Get price info based on order type
+                    if order_type == 'limit':
+                        price_str = f"@ ${float(order.get('limit_price', 0)):.2f}"
+                    elif order_type == 'stop':
+                        price_str = f"stop ${float(order.get('stop_price', 0)):.2f}"
+                    elif order_type == 'stop_limit':
+                        price_str = f"stop ${float(order.get('stop_price', 0)):.2f}, limit ${float(order.get('limit_price', 0)):.2f}"
+                    else:
+                        price_str = "market"
+
+                    side_emoji = "🟢" if side.upper() == "BUY" else "🔴"
+                    print(f"   {side_emoji} {side.upper()} {qty} {symbol} {price_str}")
+                    print(f"      Type: {order_type.upper()}, Status: {status.upper()}")
+                    print(f"      Order ID: {order_id[:8]}...")
+
+        except Exception as e:
+            print(f"❌ Error checking orders: {e}")
+            logger.error(f"Orders error: {e}", exc_info=True)
