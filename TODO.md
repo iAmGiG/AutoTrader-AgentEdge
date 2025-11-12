@@ -1,8 +1,41 @@
 # TODO - Complete #308 CLI Human-in-Loop MVP
 
-**Last Updated**: November 8, 2025
-**Progress**: ~70% Complete
+**Last Updated**: January 12, 2025
+**Progress**: ~70% Complete (on hold - UX improvements prioritized)
 **Remaining**: 5-7 hours
+
+## Recent Work (Jan 12, 2025)
+
+### Interactive CLI - Beginner UX Improvements (#357)
+- ✅ Fixed bare ticker parsing (e.g., "meta", "pltr" now work)
+- ✅ Added intelligent clarification for ambiguous inputs
+- ✅ Implemented layman terminology support ("get out", "cash out", etc.)
+- ✅ Created plain English prompts (no jargon)
+- ✅ Added `/tips` command for trading education
+- ✅ Flexible response acceptance (numbers, keywords, casual language)
+- ✅ Updated documentation with new test cases
+- ✅ Created custom `/code-review` command for grooming
+
+**Key Improvements:**
+- Bare ticker "pltr" → reformats to "analyze PLTR"
+- SELL signal + no position → asks "BUY or SHORT or REVIEW?"
+- Recognizes 10+ layman sell terms
+- Educational tips for non-traders
+
+See issue #357 for full details.
+
+## Previous Work (Nov 10-11, 2025)
+
+### Scheduler System Improvements
+- ✅ Created dedicated scheduler CLI (`/schedule` command)
+- ✅ Fixed entry price display bug (#349)
+- ✅ Implemented "carbon copy" approach for stop/target prices
+- ✅ Investigated Alpaca bracket order API limitations
+- ✅ Enhanced morning/evening routine reports
+- ✅ Cleaned up debug output
+- ✅ Updated documentation comprehensively
+
+See `docs/sessions/2025-11-11_alpaca_bracket_order_fix.md` for details.
 
 ---
 

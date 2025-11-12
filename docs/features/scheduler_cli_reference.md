@@ -250,6 +250,44 @@ Report preview:
 Full report saved to: reports/daily/
 ```
 
+### Report Details
+
+Reports are saved to `reports/daily/` with human-readable filenames:
+- First run: `2025-11-11_morning.md`
+- Multiple runs: `2025-11-11_morning_2.md`, `2025-11-11_morning_3.md`
+
+**Report Contents**:
+
+1. **Account Summary**
+   - Portfolio value, available cash, buying power
+
+2. **Active Positions Table**
+   ```
+   | Symbol | Entry | Current | Stop | Target | P&L | Action |
+   |--------|-------|---------|------|--------|-----|--------|
+   | META   | $628  | $625    | $597 | $678   | -$24 | No change |
+   | SPY    | $658  | $683    | $625 | $710   | +$350| No change |
+   ```
+   - **Stop/Target prices** synced from Alpaca GTC orders (not $0.00)
+   - **P&L** calculated from current price vs entry
+   - **Action** shows if stops were adjusted
+
+3. **Discrepancies** (if any)
+   - Positions at broker but not in local state
+   - Quantity mismatches (auto-fixed)
+   - Ghost positions (removed)
+
+4. **Stop Adjustments** (morning only)
+   - Which stops were moved higher
+   - New stop prices and modification results
+
+5. **Alerts** (both routines)
+   - Positions approaching stop loss
+   - Positions approaching take profit
+   - Unusual P&L movements
+
+**Note**: Stop and target prices are extracted from your actual GTC orders on Alpaca, ensuring reports always show current exit levels.
+
 ### Other Commands
 
 #### `help`
@@ -371,10 +409,111 @@ Main CLI> show portfolio
 - Background service management requires system integration
 - Execution history limited to 7 days (configurable in future)
 
+## Troubleshooting
+
+### Config Editor Error: "yaml referenced before assignment"
+
+**Problem**: `UnboundLocalError: local variable 'yaml' referenced before assignment` when running `edit` command.
+
+**Fix**: Updated in recent version. If you still see this error, ensure you're on the latest code (post-2025-11-11).
+
+**Root Cause**: Redundant `import yaml` statement inside function conflicted with module-level import.
+
+### Reports Show $0.00 for Stop/Target Prices
+
+**Problem**: Morning/evening reports show `$0.00` in Stop column despite take-profit orders existing on Alpaca.
+
+**Example Report**:
+```
+| Symbol | Entry | Current | Stop | Target | P&L | Action |
+| META | $628.07 | $627.00 | $0.00 | $634.19 | $-9 | No change |
+| SPY | $657.60 | $683.00 | $0.00 | $712.80 | +$356 | No change |
+```
+
+**Root Cause** (2025-11-11): Alpaca's API does NOT return bracket order legs with status "held" (stop-loss orders).
+
+According to [Alpaca forum discussion](https://forum.alpaca.markets/t/half-of-bracket-order-held/2727/5):
+> "When a bracket order is submitted, once the entry order is filled, two exit orders are submitted. **Only one of those two orders will be active at a time**. The other will have a status of 'held'."
+
+**The Problem**:
+- Alpaca implements OCO (One-Cancels-Other) with one active exit order and one "held" order
+- `get_orders()` API (even with `nested=True`) **does not return orders with status="held"**
+- Stop-loss orders exist on Alpaca but are invisible to the API
+- Attempts to fetch via `get_order_by_id()` also failed - leg IDs return empty
+
+**Pragmatic Solution Implemented** (2025-11-11):
+
+Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" approach**:
+
+1. **Priority 1: Use saved stop** from local state (the actual value sent when placing order)
+   ```python
+   # Try to use saved stop from local state first
+   if symbol in self.local_state.get("positions", {}):
+       saved_stop = self.local_state["positions"][symbol].get("stop_price")
+   ```
+
+2. **Priority 2: Calculate from entry** if no saved value exists
+   ```python
+   # Last resort: calculate from entry price × (1 - stop_loss_pct)
+   calculated_stop = round(entry_price * 0.95, 2)
+   ```
+
+3. **Extract take-profit** prices from API (visible as active LIMIT orders)
+
+4. **Display warning** in reports:
+   ```markdown
+   ⚠️ **Note**: Stop prices from local state (Alpaca hides bracket order stop-loss legs from API).
+   Verify stop orders exist on Alpaca dashboard. See Issue #355 for details.
+   ```
+
+**Manual Sync Required**: For AUTO_DISCOVERED positions (not placed by this system), manually update `state/cost_efficient_positions.json` with actual stop prices from Alpaca dashboard.
+
+**Report Example**:
+```
+| Symbol | Entry | Current | Stop | Target | P&L | Action |
+| META | $628.07 | $627.00 | $609.00 | $634.19 | $-9 | No change |
+| SPY | $657.60 | $683.00 | $627.00 | $712.80 | +$356 | No change |
+
+⚠️ Note: Stop prices from local state (Alpaca hides bracket order stop-loss legs).
+```
+
+**User Responsibility**:
+1. Verify stop orders exist on Alpaca web dashboard
+2. For AUTO_DISCOVERED positions, manually update stop prices in `state/cost_efficient_positions.json`
+3. For new orders placed by this system, stop/target will be saved automatically (when Order Manager integration complete)
+
+**Future Enhancement**: Issue #353 proposes automatically saving stop/target when placing orders via Order Manager integration (requires SQLite #336 for proper persistence).
+
+### Report Filenames with Timestamps
+
+**Old Format** (before 2025-11-11): `20251111_1339_morning.md` (hard to read)
+
+**New Format**: `2025-11-11_morning.md` (human-readable)
+- Uses ISO date format with dashes
+- Multiple runs same day: `morning_2.md`, `morning_3.md`
+- Applies to morning, evening, and recovery reports
+
+### Daemon Not Running Despite "Config: ENABLED"
+
+**Problem**: `status` shows `Config: ENABLED` but scheduler not executing automatically.
+
+**Solution**: "Config: ENABLED" means the config file says `enabled: true`, but you must still start the daemon process:
+```bash
+# Exit scheduler CLI
+Scheduler> exit
+
+# Start daemon in background
+python main.py --daemon
+```
+
+The `status` command now shows both:
+- **Config status** (what's in the YAML file)
+- **Service status** (whether daemon is actually running)
+
 ## Future Enhancements
 
 See pending issues for:
-- Background service start/stop from CLI
+- Background service start/stop from CLI (#350)
 - Self-terminating background processes
 - Real-time execution monitoring
 - Custom routine scheduling

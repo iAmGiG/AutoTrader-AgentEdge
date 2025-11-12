@@ -72,11 +72,13 @@ System Commands:
   /exit      - Exit (or Ctrl+C)
   /toggle    - Toggle between CONFIRM and AUTO modes
   /schedule  - Enter scheduler management mode
+  /tips      - Show trading basics for beginners
 
 Trading:
   > buy 10 AAPL
   > is SPY at $XXX.XX a good entry?
   > sell all TQQQ
+  > pltr                        (just type ticker for analysis)
 
 Monitoring:
   > check my alerts
@@ -90,6 +92,7 @@ Scheduler:
   Or use /schedule for full scheduler CLI
 
 Tip: Just type naturally - the LLM will understand!
+     New to trading? Type /tips to learn the basics!
 """
 
     # ========================================================================

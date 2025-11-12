@@ -1,20 +1,38 @@
 # AutoGen-TradingSystem: Human-in-Loop Multi-Agent Trading Platform
 
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Sharpe Ratio](https://img.shields.io/badge/Sharpe-0.856-brightgreen.svg)](docs/validation/)
+[![Total Return](https://img.shields.io/badge/Return-36.6%25-brightgreen.svg)](docs/validation/)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+[![Alpaca Markets](https://img.shields.io/badge/Broker-Alpaca-yellow.svg)](https://alpaca.markets/)
+[![Polygon.io](https://img.shields.io/badge/Data-Polygon.io-purple.svg)](https://polygon.io/)
+[![OpenAI](https://img.shields.io/badge/LLM-OpenAI-412991.svg)](https://openai.com/)
+[![Paper Trading](https://img.shields.io/badge/Trading-Paper%20%26%20Live-orange.svg)](#quick-start)
+
+[![Async/Await](https://img.shields.io/badge/Async-asyncio-blue.svg)](https://docs.python.org/3/library/asyncio.html)
+[![YAML](https://img.shields.io/badge/Config-YAML-red.svg)](https://yaml.org/)
+[![Interactive CLI](https://img.shields.io/badge/Interface-Interactive%20CLI-green.svg)](#quick-start)
+
 ## Overview
 
 AutoGen-TradingSystem is a **production-ready trading platform** built on **Microsoft AutoGen 0.7.x** framework. The system combines validated pure-math MACD+RSI strategies with human oversight for paper/live trading via Alpaca Markets.
 
 **💡 Core Philosophy**: Pure mathematical indicators + human decision making > complex LLM sentiment analysis
 
-**🚀 Production Status** (Updated 2025-10-23):
+**🚀 Production Status** (Updated 2025-11-11):
 
 - **✅ VoterAgent** - Production-ready with validated 0.856 Sharpe ratio, 36.6% return
 - **✅ main.py Runner** - Fully functional CLI for paper trading operations
 - **✅ Alpaca Integration** - Paper trading validated and operational
 - **✅ Position Management** - Real-time tracking with broker-as-truth reconciliation
 - **✅ Trading Cycle** - Cost-efficient daily routines (90% fewer API calls)
+- **✅ Scheduler CLI** - Interactive management interface with daemon detection
+- **✅ YAML Configuration** - All configs migrated to readable YAML format
+- **✅ Human-in-Loop CLI** - Trade approval interface (Issue #308 - COMPLETED)
 - **🚧 Multi-Agent System** - Scanner, Risk, Executor agents (planned)
-- **🚧 Human-in-Loop CLI** - Trade approval interface (Issue #308)
 
 **Key Metrics**:
 
@@ -139,7 +157,9 @@ pip install -e .
 
 ## Configuration
 
-All API credentials in `config/config.json`:
+**NEW**: Configuration files now use YAML format for better readability. JSON format still supported for backward compatibility.
+
+All API credentials in `config/config.yaml` (or `config/config.json`):
 
 ```json
 {
@@ -178,8 +198,8 @@ python main.py
 # Interactive session with all features:
 > buy 10 AAPL              # Execute trades
 > check my alerts          # Position alerts
-> show scheduler status    # View daily scheduler
 > show portfolio           # Account status
+> /schedule                # Enter scheduler management CLI
 > /help                    # Show all commands
 > /exit                    # Exit
 ```
@@ -291,6 +311,13 @@ AutoGen-TradingSystem/
 - [Risk Management](docs/trading/risk_management.md) - Position sizing and portfolio controls
 - [API Integration](docs/api/alpaca_setup.md) - Alpaca and data provider setup
 
+**Scheduler & Automation**:
+
+- [Scheduler CLI Reference](docs/features/scheduler_cli_reference.md) - Interactive scheduler management
+- [GTC Scheduler Technical](docs/features/03_gtc_scheduler_technical.md) - Daily execution system details
+- [Background Service Design](docs/architecture/scheduler_background_service.md) - Future service architecture
+- [Quick Start Guide](docs/features/QUICKSTART_ISSUE_287.md) - Getting started with automation
+
 **System Architecture**:
 
 - [Fibonacci Integration Guide](docs/integration/fibonacci_enhanced_integration_guide.md) - Complete integration documentation
@@ -327,10 +354,12 @@ AutoGen-TradingSystem/
 
 - [Issue #327](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/327) - ✅ Make main.py functional (COMPLETED 2025-10-23)
 - [Issue #287](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/287) - ✅ GTC Daily Execution System (COMPLETED 2025-11-11)
+- [Issue #308](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/308) - ✅ CLI human-in-loop interface (COMPLETED 2025-11-11)
+- [Issue #349](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/349) - ✅ Entry price display fix (COMPLETED 2025-11-11)
+- [Issue #350](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/350) - 🚧 Background scheduler service (planned)
 - [Issue #328](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/328) - JSON→YAML token optimization (future)
 - [Issue #310](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/310) - Complete remaining AutoGen agents
 - [Issue #316](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/316) - Event bus for agent communication
-- [Issue #308](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/308) - CLI human-in-loop interface (CRITICAL)
 - [Issue #324](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/324) - Forward testing protocol
 - [Issue #321](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/321) - Dynamic trailing stop logic
 
@@ -348,6 +377,79 @@ Originally developed as a research framework (RH2MAS), this project has evolved 
 - **Open Source**: Complete transparency in agent logic, parameters, and validation results
 
 ## Recent Updates
+
+### November 2025 - Enhanced Scheduler CLI & YAML Configuration Migration
+
+**✅ Completed**:
+
+- **Dedicated Scheduler Management CLI** with `/schedule` command
+- **Interactive Configuration Editor** - No manual file editing required
+- **Real-time Daemon Status Detection** - Clear distinction between config vs service state
+- **YAML Configuration Migration** - All configs now in readable YAML format
+- **CLI Message Configuration System** - Centralized UI text management
+- **Entry Price Display Fix** (Issue #349) - Accurate position tracking
+- **Complete Documentation** - Scheduler CLI reference and background service design
+
+**🚀 Key Features**:
+
+- **Scheduler CLI Commands**:
+  - `status` - Show config state and daemon status with next run times
+  - `config` - View all scheduler settings
+  - `edit` - Interactive editor with input validation
+  - `enable/disable` - Toggle automated trading
+  - `test morning/evening` - Run routines immediately for testing
+  - `history` - View execution history with success/failure tracking
+  - `next` - See upcoming scheduled runs
+
+- **UX Improvements**:
+  - Fixed "enabled" confusion - now shows both "Config: ENABLED" and "Service: RUNNING" separately
+  - Clear instructions when daemon not running but config enabled
+  - Real-time daemon process detection using psutil
+  - Input validation prevents configuration errors
+
+- **YAML Migration Benefits**:
+  - Better readability for all configuration files
+  - Backward compatible with existing JSON configs
+  - `config_defaults/` now contains: `trading_config.yaml`, `scheduler_config.yaml`, `agent_prompts.yaml`
+  - Template file `config.example.yaml` for easy API key setup
+
+**Quick Start - Scheduler Management**:
+
+```bash
+# Enter scheduler management from main CLI
+python main.py
+> /schedule
+
+# Check status (shows if daemon actually running)
+Scheduler> status
+
+🟢 Config: ENABLED
+❌ Service: NOT RUNNING (no automatic execution)
+
+💡 Config is enabled but daemon is not running.
+   To start automatic execution:
+   1. Exit this CLI
+   2. Run: python main.py --daemon
+
+# Edit configuration interactively
+Scheduler> edit
+
+# Test a routine immediately (don't wait for scheduled time)
+Scheduler> test morning
+
+# View execution history
+Scheduler> history
+```
+
+**Documentation**:
+
+- [Scheduler CLI Reference](docs/features/scheduler_cli_reference.md) - Complete command guide
+- [Background Service Design](docs/architecture/scheduler_background_service.md) - Future self-terminating service architecture
+
+**See Issues**:
+
+- [Issue #349](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/349) - Entry price display fix
+- [Issue #350](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/350) - Background service feature (planned)
 
 ### November 11, 2025 - GTC Daily Execution System (Issue #287)
 

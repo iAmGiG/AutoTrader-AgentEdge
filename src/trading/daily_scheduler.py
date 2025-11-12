@@ -83,12 +83,13 @@ class DailyScheduler:
     - Minimal API calls (3-5 per routine)
     """
 
-    def __init__(self, config_file: str = None):
+    def __init__(self, config_file: str = None, trading_cycle=None):
         """
         Initialize the daily scheduler.
 
         Args:
             config_file: Path to scheduler configuration file (YAML or JSON)
+            trading_cycle: Optional CostEfficientTradeCycle instance to reuse (reduces client instantiation)
         """
         if config_file is None:
             # Try YAML first, fallback to JSON
@@ -102,7 +103,8 @@ class DailyScheduler:
                 config_file = yaml_file  # Default to YAML
 
         self.config = self._load_config(config_file)
-        self.trading_cycle = CostEfficientTradeCycle()
+        # Reuse provided trading_cycle or create new one
+        self.trading_cycle = trading_cycle if trading_cycle is not None else CostEfficientTradeCycle()
         self.execution_log: List[ExecutionLog] = []
         self.log_file = Path("state/scheduler_execution_log.json")
         self.log_file.parent.mkdir(parents=True, exist_ok=True)

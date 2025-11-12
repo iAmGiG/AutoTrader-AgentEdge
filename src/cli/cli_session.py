@@ -362,7 +362,8 @@ class CLISession:
                 # Check if user explicitly wants to BUY/LONG (override signal)
                 explicit_buy_indicators = [
                     'buy', 'long', 'go long', 'going long', 'bullish',
-                    'bet it goes up', 'think it will rise', 'upside'
+                    'bet it goes up', 'think it will rise', 'upside',
+                    'get ', 'acquire', 'purchase', 'pick up', 'grab'  # Note: 'get ' with space to avoid 'target', 'forget'
                 ]
                 user_wants_buy = any(indicator in original_input for indicator in explicit_buy_indicators)
 
@@ -446,11 +447,31 @@ class CLISession:
 
                     # Accept various formats: numbers, keywords, or full words
                     if clarification in ['1', 'buy', 'b', 'long', 'l', 'up', 'bullish']:
-                        # User wants to buy - switch signal to BUY
-                        print(f"\n{MSG.EMOJI['info']} Got it! Analyzing BUY opportunity for {decision.suggestion.ticker}...")
-                        # Reprocess with explicit BUY request
-                        await self._handle_trade_request(f"buy {decision.suggestion.ticker}")
-                        return
+                        # User wants to buy - flip signal in place (don't reprocess!)
+                        print(f"\n{MSG.EMOJI['info']} Got it! Preparing BUY order for {decision.suggestion.ticker}...")
+
+                        # Flip the signal to BUY
+                        from core.models import Signal
+                        decision.suggestion.signal = Signal.BUY
+
+                        # Invert stop/target for BUY (were calculated for SELL)
+                        entry = decision.suggestion.entry_price
+                        old_stop = decision.suggestion.stop_loss
+                        old_target = decision.suggestion.take_profit
+
+                        stop_distance = abs(old_stop - entry)
+                        target_distance = abs(old_target - entry)
+
+                        decision.suggestion.stop_loss = round(entry - stop_distance, 2)
+                        decision.suggestion.take_profit = round(entry + target_distance, 2)
+
+                        print(f"\n   📊 Adjusted for BUY:")
+                        print(f"      Entry:  ${entry:.2f}")
+                        print(f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)")
+                        print(f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)")
+                        print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
+
+                        # Continue to display and confirmation (no return, fall through)
                     elif clarification in ['2', 'short', 's', 'down', 'bearish', 'sell']:
                         # User explicitly wants to short - explain limitation
                         print(f"\n{MSG.EMOJI['warning']} SHORT SELLING is not currently supported by this system.")

@@ -248,7 +248,6 @@ class SchedulerCLI:
                     if yaml is None:
                         print("❌ PyYAML not installed. Install with: pip install pyyaml")
                         return
-                    import yaml
                     config = yaml.safe_load(f)
                 else:
                     import json

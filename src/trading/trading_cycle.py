@@ -152,9 +152,10 @@ class CostEfficientTradeCycle:
         try:
             # Get all positions (one API call)
             positions = self.account_monitor.get_positions()
-            
-            # Get all orders (one API call)  
-            orders = self.account_monitor.get_orders(status='open')
+
+            # Get all orders (one API call)
+            # Use 'all' to include pending_new, accepted, and other statuses
+            orders = self.account_monitor.get_orders(status='all')
             
             # Get account info (one API call)
             account = self.account_monitor.get_account_status()
@@ -184,31 +185,133 @@ class CostEfficientTradeCycle:
                 }
             
             # Process orders (group by symbol)
+            # Only include active orders (not filled, cancelled, expired, etc.)
+            active_statuses = ['new', 'pending_new', 'accepted', 'partially_filled', 'held']
+
             for order in orders:
+                # Filter to only active orders
+                order_status = str(order.get('status', '')).lower()
+                if not any(status in order_status for status in active_statuses):
+                    continue  # Skip filled, cancelled, expired orders
+
                 symbol = order['symbol']
                 if symbol not in broker_state["orders"]:
                     broker_state["orders"][symbol] = []
-                
-                broker_state["orders"][symbol].append({
+
+                # Convert enums to strings for consistent comparison
+                order_entry = {
                     "id": order['id'],
-                    "type": order['order_type'],
-                    "side": order['side'],
+                    "type": str(order['order_type']),  # Convert enum to string
+                    "side": str(order['side']),        # Convert enum to string
                     "quantity": int(order['qty']),
                     "limit_price": float(order.get('limit_price', 0)) if order.get('limit_price') else None,
                     "stop_price": float(order.get('stop_price', 0)) if order.get('stop_price') else None,
-                    "status": order['status'],
-                    "time_in_force": order['time_in_force']
-                })
-            
+                    "status": str(order['status']),    # Convert enum to string
+                    "time_in_force": str(order['time_in_force'])  # Convert enum to string
+                }
+                broker_state["orders"][symbol].append(order_entry)
+                logger.debug(f"Order {symbol}: {order_entry}")
+
+                # Process bracket order legs (stop-loss and take-profit)
+                if 'legs' in order and order['legs']:
+                    for leg in order['legs']:
+                        leg_status = str(leg.get('status', '')).lower()
+                        if not any(status in leg_status for status in active_statuses):
+                            continue  # Skip inactive legs
+
+                        leg_entry = {
+                            "id": leg['id'],
+                            "type": str(leg['order_type']),
+                            "side": str(leg['side']),
+                            "quantity": int(leg['qty']),
+                            "limit_price": float(leg.get('limit_price', 0)) if leg.get('limit_price') else None,
+                            "stop_price": float(leg.get('stop_price', 0)) if leg.get('stop_price') else None,
+                            "status": str(leg['status']),
+                            "time_in_force": str(leg['time_in_force']),
+                            "parent_order_id": order['id']  # Track parent relationship
+                        }
+                        broker_state["orders"][symbol].append(leg_entry)
+                        logger.debug(f"  Bracket leg {symbol}: {leg_entry}")
+
             logger.info(f"Fetched broker state: {len(broker_state['positions'])} positions, "
-                       f"{len(broker_state['orders'])} order groups")
-            
+                       f"{len(broker_state['orders'])} order groups, "
+                       f"total {len(orders)} orders")
+
             return broker_state
             
         except Exception as e:
             logger.error(f"Failed to fetch broker state: {e}")
             raise
     
+    def _extract_stop_target_from_orders(self, symbol: str, broker_state: Dict[str, Any], entry_price: float = None) -> tuple:
+        """
+        Extract stop_price and target_price from broker's open orders for a symbol.
+
+        If orders can't be found (Alpaca hides "held" stop orders), calculate expected
+        stop from entry price and strategy config.
+
+        Args:
+            symbol: Ticker symbol
+            broker_state: Current broker state with orders
+            entry_price: Position entry price (for calculating expected stop if not found)
+
+        Returns:
+            (stop_price, target_price, stop_verified) tuple
+            - stop_verified: True if stop found in API, False if calculated
+        """
+        stop_price = None
+        target_price = None
+        stop_verified = False
+
+        if symbol in broker_state["orders"]:
+            logger.debug(f"{symbol}: Found {len(broker_state['orders'][symbol])} orders")
+            for order in broker_state["orders"][symbol]:
+                order_type = order.get("type", "")
+                side = order.get("side", "")
+
+                # Convert enums to strings for comparison
+                side_str = str(side).lower() if side else ""
+                order_type_str = str(order_type).lower() if order_type else ""
+
+                logger.debug(f"  Order: type={order_type_str}, side={side_str}, stop={order.get('stop_price')}, limit={order.get('limit_price')}")
+
+                # Stop-loss order: sell order with stop_price set (for long positions)
+                # Check both string comparison and if stop_price exists
+                if "sell" in side_str and order.get("stop_price"):
+                    stop_price = order["stop_price"]
+                    stop_verified = True
+                    logger.debug(f"  -> Found stop_price: {stop_price}")
+
+                # Take-profit order: sell order with limit_price set (for long positions)
+                elif "sell" in side_str and order.get("limit_price"):
+                    target_price = order["limit_price"]
+                    logger.debug(f"  -> Found target_price: {target_price}")
+        else:
+            logger.debug(f"{symbol}: No orders found in broker_state")
+
+        # If stop not found via API, try to use saved value from local state first
+        # This preserves the actual stop we sent when placing the order
+        if not stop_price and symbol in self.local_state.get("positions", {}):
+            saved_stop = self.local_state["positions"][symbol].get("stop_price")
+            if saved_stop:
+                stop_price = saved_stop
+                logger.info(f"{symbol}: Using saved stop price from local state: ${stop_price}")
+
+        # Last resort: calculate from entry price if we have no saved value
+        # Alpaca hides "held" bracket order legs from get_orders() API
+        if not stop_price and entry_price:
+            # Use strategy config stop_loss percentage (default 5%)
+            stop_loss_pct = 0.05  # TODO: Load from config
+            calculated_stop = round(entry_price * (1 - stop_loss_pct), 2)
+            stop_price = calculated_stop
+            logger.warning(f"{symbol}: Stop order hidden by Alpaca API, no saved value found. "
+                          f"Calculated from entry: ${calculated_stop}. "
+                          f"Verify actual stop on Alpaca dashboard.")
+
+        logger.info(f"{symbol}: Extracted stop=${stop_price} (verified={stop_verified}), target=${target_price}")
+
+        return stop_price, target_price, stop_verified
+
     def reconcile_state(self, broker_state: Dict[str, Any]) -> List[Discrepancy]:
         """
         Reconcile local JSON with broker reality.
@@ -231,14 +334,20 @@ class CostEfficientTradeCycle:
                     severity="HIGH"
                 ))
                 
+                # Extract stop/target prices from broker's open orders
+                entry_price = pos_data["entry_price"]
+                stop_price, target_price, stop_verified = self._extract_stop_target_from_orders(
+                    symbol, broker_state, entry_price=entry_price
+                )
+
                 # Auto-add to local state for tracking
                 self.local_state["positions"][symbol] = {
                     "entry_price": broker_pos["entry_price"],
                     "quantity": broker_pos["quantity"],
                     "entry_time": datetime.now().isoformat(),
                     "source": "AUTO_DISCOVERED",
-                    "stop_price": None,
-                    "target_price": None
+                    "stop_price": stop_price,
+                    "target_price": target_price
                 }
         
         # Check for ghost positions (in local JSON but not at broker)
@@ -280,7 +389,28 @@ class CostEfficientTradeCycle:
                     
                     # Fix quantity
                     self.local_state["positions"][symbol]["quantity"] = broker_qty
-        
+
+        # Sync stop/target prices from broker orders for all positions
+        # This ensures we always have the latest GTC order prices
+        for symbol in broker_state["positions"]:
+            if symbol in self.local_state["positions"]:
+                entry_price = self.local_state["positions"][symbol].get("entry_price")
+                stop_price, target_price, stop_verified = self._extract_stop_target_from_orders(
+                    symbol, broker_state, entry_price=entry_price
+                )
+
+                # Update local state with broker's stop/target prices
+                local_pos = self.local_state["positions"][symbol]
+                local_stop = local_pos.get("stop_price")
+                local_target = local_pos.get("target_price")
+
+                # Only log discrepancy if there was a change
+                if stop_price != local_stop or target_price != local_target:
+                    logger.info(f"{symbol}: Syncing stop/target from orders - "
+                               f"stop: {local_stop} -> {stop_price}, target: {local_target} -> {target_price}")
+                    local_pos["stop_price"] = stop_price
+                    local_pos["target_price"] = target_price
+
         logger.info(f"Reconciliation found {len(discrepancies)} discrepancies")
         return discrepancies
     
@@ -391,35 +521,40 @@ class CostEfficientTradeCycle:
 
             # Create or update position in tracker
             position_id = f"{symbol}_{entry_price}"
-            if position_id not in self.position_tracker.positions:
-                # Create position for tracking
-                self.position_tracker.create_position(
-                    ticker=symbol,
-                    entry_price=entry_price,
-                    quantity=broker_pos["quantity"]
-                )
-                # Manually set TP/SL prices to match configured values
-                position = self.position_tracker.positions[position_id]
-                position.take_profit_price = take_profit_price
-                position.stop_loss_price = stop_loss_price
+            try:
+                if position_id not in self.position_tracker.positions:
+                    # Create position for tracking
+                    self.position_tracker.create_position(
+                        ticker=symbol,
+                        entry_price=entry_price,
+                        quantity=broker_pos["quantity"]
+                    )
+                    # Manually set TP/SL prices to match configured values
+                    if position_id in self.position_tracker.positions:
+                        position = self.position_tracker.positions[position_id]
+                        position.take_profit_price = take_profit_price
+                        position.stop_loss_price = stop_loss_price
 
-            # Check for exit conditions/alerts
-            exit_check = self.position_tracker.check_exit_conditions(position_id, current_price)
+                # Check for exit conditions/alerts
+                exit_check = self.position_tracker.check_exit_conditions(position_id, current_price)
 
-            if exit_check and exit_check.get('recommendation') == 'ALERT':
-                # Get the most recent alert for this position
-                position = self.position_tracker.positions[position_id]
-                if position.alert_history:
-                    recent_alert = position.alert_history[-1]
-                    alerts.append(PositionAlertSummary(
-                        symbol=symbol,
-                        alert_type=recent_alert.alert_type.value,
-                        severity=recent_alert.severity,
-                        message=recent_alert.format_message(),
-                        timestamp=recent_alert.timestamp.isoformat(),
-                        current_price=current_price,
-                        details=recent_alert.details
-                    ))
+                if exit_check and exit_check.get('recommendation') == 'ALERT':
+                    # Get the most recent alert for this position
+                    if position_id in self.position_tracker.positions:
+                        position = self.position_tracker.positions[position_id]
+                        if position.alert_history:
+                            recent_alert = position.alert_history[-1]
+                            alerts.append(PositionAlertSummary(
+                                symbol=symbol,
+                                alert_type=recent_alert.alert_type.value,
+                                severity=recent_alert.severity,
+                                message=recent_alert.format_message(),
+                                timestamp=recent_alert.timestamp.isoformat(),
+                                current_price=current_price,
+                                details=recent_alert.details
+                            ))
+            except (KeyError, Exception) as e:
+                logger.warning(f"Position tracker error for {symbol}: {e}")
 
         logger.info(f"Found {len(alerts)} position alerts")
         return alerts
@@ -625,7 +760,10 @@ class CostEfficientTradeCycle:
             "---",
             f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S')}",
             f"Next {next_routine} routine: {next_time}",
-            f"Cost: ~3-5 API calls total"
+            f"Cost: ~3-5 API calls total",
+            "",
+            "⚠️ **Note**: Stop prices calculated from entry price (Alpaca hides bracket order stop-loss legs from API).",
+            "   Verify stop orders exist on Alpaca dashboard. See Issue #355 for details."
         ])
         
         return "\n".join(report_lines)
@@ -665,8 +803,19 @@ class CostEfficientTradeCycle:
                 adjustments, alerts, modification_results
             )
             
-            # Save report to file
-            report_file = f"reports/daily/{datetime.now().strftime('%Y%m%d_%H%M')}_morning.md"
+            # Save report to file with human-readable format: 2025-11-11_morning.md
+            # If multiple runs same day, append counter: morning_2.md, morning_3.md
+            now = datetime.now()
+            date_str = now.strftime('%Y-%m-%d')
+            base_name = f"reports/daily/{date_str}_morning"
+
+            # Check for existing files and append counter if needed
+            report_file = f"{base_name}.md"
+            counter = 1
+            while os.path.exists(report_file):
+                counter += 1
+                report_file = f"{base_name}_{counter}.md"
+
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, 'w') as f:
                 f.write(report)
@@ -702,8 +851,20 @@ class CostEfficientTradeCycle:
             report = self.generate_routine_report(
                 RoutineType.EVENING, broker_state, discrepancies, [], alerts
             )
-            
-            report_file = f"reports/daily/{datetime.now().strftime('%Y%m%d_%H%M')}_evening.md"
+
+            # Save report to file with human-readable format: 2025-11-11_evening.md
+            # If multiple runs same day, append counter: evening_2.md, evening_3.md
+            now = datetime.now()
+            date_str = now.strftime('%Y-%m-%d')
+            base_name = f"reports/daily/{date_str}_evening"
+
+            # Check for existing files and append counter if needed
+            report_file = f"{base_name}.md"
+            counter = 1
+            while os.path.exists(report_file):
+                counter += 1
+                report_file = f"{base_name}_{counter}.md"
+
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, 'w') as f:
                 f.write(report)
@@ -771,9 +932,20 @@ class CostEfficientTradeCycle:
             ])
             
             report = "\n".join(recovery_lines)
-            
-            # Save recovery report
-            report_file = f"reports/daily/{datetime.now().strftime('%Y%m%d_%H%M')}_recovery.md"
+
+            # Save recovery report with human-readable format: 2025-11-11_recovery.md
+            # Recovery is ad-hoc, so include counter for multiple recoveries same day
+            now = datetime.now()
+            date_str = now.strftime('%Y-%m-%d')
+            base_name = f"reports/daily/{date_str}_recovery"
+
+            # Check for existing files and append counter if needed
+            report_file = f"{base_name}.md"
+            counter = 1
+            while os.path.exists(report_file):
+                counter += 1
+                report_file = f"{base_name}_{counter}.md"
+
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, 'w') as f:
                 f.write(report)
