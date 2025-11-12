@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """
 Trading Orchestrator - Adapted from existing working MACD+RSI voting system
-Uses autogen-agentchat framework properly with validated trading logic
+Standalone MACD+RSI voting logic with position tracking and risk management
 """
 
-from autogen_agentchat.agents import AssistantAgent
-from autogen_ext.models.openai import OpenAIChatCompletionClient
 from typing import Dict, List, Any, Optional
 import pandas as pd
 import sys
 import os
-import asyncio
 from datetime import datetime, timedelta
 import logging
 
@@ -27,11 +24,10 @@ logger = logging.getLogger(__name__)
 
 class TradingOrchestrator:
     """
-    Adapted from the working SimpleVotingOrchestrator but properly structured
-    for autogen-agentchat framework integration.
-    
+    Standalone MACD+RSI voting orchestrator adapted from SimpleVotingOrchestrator.
+
     This maintains the VALIDATED MACD+RSI voting logic (0.856 Sharpe ratio)
-    while providing clean structure for multi-agent conversations.
+    with position tracking, risk management, and multi-symbol scanning.
     """
     
     def __init__(self, initial_capital: float = 100000):
@@ -43,8 +39,8 @@ class TradingOrchestrator:
         # Decision tracking (adapted from legacy)
         self.decision_history = []
         self.monitored_symbols = ["AAPL", "MSFT", "NVDA", "TSLA", "META"]
-        
-        logger.info("TradingOrchestrator initialized with autogen-agentchat support")
+
+        logger.info("TradingOrchestrator initialized with MACD+RSI voting strategy")
     
     def get_market_data(self, symbol: str, date: str = None) -> Optional[pd.DataFrame]:
         """
