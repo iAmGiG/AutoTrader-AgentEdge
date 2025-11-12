@@ -60,16 +60,70 @@ class CLISession:
         self.user_id = "cli_user"
 
         # Initialize additional components for unified CLI
+        # Share instances to reduce Alpaca client instantiations
         try:
             self.trading_cycle = CostEfficientTradeCycle()
-            self.scheduler = DailyScheduler()
-            self.account_monitor = AlpacaAccountMonitor(mode="paper")
-            logger.info("CLISession initialized with all features")
+            # Reuse trading_cycle's account_monitor instead of creating new one
+            self.account_monitor = self.trading_cycle.account_monitor
+            # Pass trading_cycle to scheduler to reuse instead of creating new one
+            self.scheduler = DailyScheduler(trading_cycle=self.trading_cycle)
+
+            logger.info("CLISession initialized with all features (shared instances)")
         except Exception as e:
             logger.warning(f"Some features unavailable: {e}")
             self.trading_cycle = None
             self.scheduler = None
             self.account_monitor = None
+
+        # Load trading configuration for stop/target display
+        self.trading_config = self._load_trading_config()
+
+        # Educational tips for novice users
+        self.trading_tips = {
+            'buy_vs_short': (
+                "BUY = You think the stock will go UP in value\n"
+                "   Example: Buy META at $500, sell later at $550 → $50 profit per share\n\n"
+                "SHORT = You think the stock will go DOWN in value (advanced/risky)\n"
+                "   Example: Short META at $500, buy back at $450 → $50 profit per share\n"
+                "   ⚠️  Warning: If stock goes UP while shorted, you lose money!"
+            ),
+            'position_required': (
+                "To SELL a stock, you must own it first (have an open position).\n"
+                "Think of it like selling your car - you can't sell what you don't own!"
+            ),
+            'signals': (
+                "The analysis gives a signal based on technical indicators:\n"
+                "  📈 BUY signal = indicators suggest price may go UP\n"
+                "  📉 SELL signal = indicators suggest price may go DOWN\n\n"
+                "⚠️  Remember: These are suggestions, not guarantees!"
+            )
+        }
+
+    def _load_trading_config(self) -> Optional[dict]:
+        """
+        Load trading configuration from YAML for stop/target calculations.
+
+        Returns:
+            Config dict or None if failed to load
+        """
+        try:
+            import yaml
+            # Get path to config_defaults/trading_config.yaml
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            config_path = os.path.join(base_dir, "..", "config_defaults", "trading_config.yaml")
+            config_path = os.path.normpath(config_path)
+
+            if not os.path.exists(config_path):
+                logger.warning(f"Trading config not found at {config_path}")
+                return None
+
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                logger.info(f"Loaded trading config from {config_path}")
+                return config
+        except Exception as e:
+            logger.warning(f"Failed to load trading config: {e}")
+            return None
 
     async def run(self):
         """
@@ -151,11 +205,41 @@ class CLISession:
             scheduler_cli = SchedulerCLI(self.scheduler)
             await scheduler_cli.run()
 
+        elif cmd == "/tips" or cmd == "/learn":
+            # Show educational trading tips
+            self._show_trading_tips()
+
         else:
             print(MSG.UNKNOWN_COMMAND.format(command=command))
             print(MSG.USE_HELP)
 
         return True
+
+    def _show_trading_tips(self):
+        """Display educational trading tips for beginners."""
+        print("\n" + "=" * 70)
+        print("📚 TRADING BASICS FOR BEGINNERS")
+        print("=" * 70)
+
+        print("\n1️⃣  BUY vs SHORT (Long vs Short)")
+        print("-" * 70)
+        print(self.trading_tips['buy_vs_short'])
+
+        print("\n2️⃣  Understanding Signals")
+        print("-" * 70)
+        print(self.trading_tips['signals'])
+
+        print("\n3️⃣  Why You Need a Position to SELL")
+        print("-" * 70)
+        print(self.trading_tips['position_required'])
+
+        print("\n💡 QUICK TIPS:")
+        print("-" * 70)
+        print("• Start small: Test with small amounts until you understand")
+        print("• Use CONFIRM mode: Always review before executing trades")
+        print("• Ask questions: Type naturally, the system will understand")
+        print("• Check analysis: Choose 'review' to see analysis without trading")
+        print("\n" + "=" * 70)
 
     async def _process_request(self, user_input: str):
         """
@@ -185,6 +269,22 @@ class CLISession:
             # This includes: orders, positions, portfolio, and actual trades
             await self._handle_trade_or_status_request(user_input)
 
+    def _reformat_bare_ticker(self, user_input: str) -> str:
+        """
+        Check if input is a bare ticker symbol and reformat if needed.
+
+        Args:
+            user_input: User input string
+
+        Returns:
+            Reformatted string (e.g., "meta" → "analyze META") or original input
+        """
+        input_stripped = user_input.strip().upper()
+        if input_stripped.isalpha() and 1 <= len(input_stripped) <= 5:
+            # Looks like a bare ticker - reformat as explicit trade request
+            return f"analyze {input_stripped}"
+        return user_input
+
     async def _handle_trade_or_status_request(self, user_input: str):
         """
         Use LLM parser to determine if this is a trade or status query.
@@ -197,6 +297,14 @@ class CLISession:
             user_input: User's natural language input
         """
         try:
+            # Check if input looks like a bare ticker symbol (e.g., "ibm", "meta", "SPY")
+            # Reformat to explicit request to prevent LLM parser misclassification
+            formatted_input = self._reformat_bare_ticker(user_input)
+            if formatted_input != user_input:
+                # Was a bare ticker, now reformatted
+                await self._handle_trade_request(formatted_input)
+                return
+
             # Let LLM parser classify the request type
             request = await self.orchestrator.parser.parse(user_input, self.user_id)
 
@@ -206,21 +314,26 @@ class CLISession:
 
                 if any(word in input_lower for word in ["order", "orders"]):
                     await self._handle_orders_request(user_input)
+                elif any(phrase in input_lower for phrase in ["stop", "target", "take profit", "exit level", "stop loss"]):
+                    # Stop/target queries → show portfolio with exit levels
+                    await self._handle_portfolio_request(user_input)
                 elif any(word in input_lower for word in ["position", "positions", "holding", "holdings"]):
                     await self._handle_portfolio_request(user_input)
                 elif any(word in input_lower for word in ["portfolio", "account", "balance", "buying power", "equity", "cash"]):
                     await self._handle_portfolio_request(user_input)
                 else:
-                    # Default status query → show portfolio
-                    await self._handle_portfolio_request(user_input)
+                    # Parser said status_query but no keywords matched
+                    # Likely just a ticker (e.g., "ibm") - treat as trade request
+                    await self._handle_trade_request(user_input)
             else:
                 # Trade request → process through orchestrator
                 await self._handle_trade_request(user_input)
 
         except Exception as e:
             logger.error(f"Error routing request: {e}", exc_info=True)
-            # Fallback to trade handler
-            await self._handle_trade_request(user_input)
+            # Fallback to trade handler (reformat bare tickers first)
+            formatted_input = self._reformat_bare_ticker(user_input)
+            await self._handle_trade_request(formatted_input)
 
     async def _handle_trade_request(self, user_input: str):
         """
@@ -235,14 +348,142 @@ class CLISession:
             # Step 1: Process request via orchestrator
             decision = await self.orchestrator.process_request(user_input, self.user_id)
 
-            # Step 2: Check for SELL signal without position (prevent unintentional shorting)
-            if decision.suggestion.signal.value.upper() == "SELL":
-                # TODO: Check if we actually hold this position
-                # For now, warn the user
-                print(MSG.SELL_WARNING)
+            # Step 2: Check position context before suggestion
+            position = self._check_position_for_ticker(decision.suggestion.ticker)
+
+            # Step 2a: Display position context
+            self._display_position_context(decision.suggestion.ticker, position, decision.suggestion.signal.value)
+
+            # Step 2b: Check for signal vs user intent mismatch
+            # If analyzer suggests SELL but no position exists, check user's explicit intent
+            if decision.suggestion.signal.value.upper() == "SELL" and not position:
+                original_input = user_input.lower().strip()
+
+                # Check if user explicitly wants to BUY/LONG (override signal)
+                explicit_buy_indicators = [
+                    'buy', 'long', 'go long', 'going long', 'bullish',
+                    'bet it goes up', 'think it will rise', 'upside'
+                ]
+                user_wants_buy = any(indicator in original_input for indicator in explicit_buy_indicators)
+
+                # Check if user explicitly wants to SELL/SHORT
+                explicit_sell_indicators = [
+                    # Trading terms
+                    'sell', 'short', 'shorting', 'go short', 'exit',
+                    # Layman terms for selling/closing
+                    'close', 'get out', 'dump', 'liquidate', 'cash out',
+                    # Explicit bearish intent
+                    'bet against', 'profit from decline', 'make money when it falls'
+                ]
+                user_wants_sell = any(indicator in original_input for indicator in explicit_sell_indicators)
+
+                if user_wants_buy:
+                    # User explicitly wants to go LONG despite SELL signal
+                    # Human-in-loop: respect their intent but show them the conflict
+                    print(f"\n{MSG.EMOJI.get('warning', '⚠️')} SIGNAL CONFLICT DETECTED")
+                    print(f"   → You requested: LONG (BUY) position")
+                    print(f"   → Technical analysis suggests: SHORT (SELL)")
+                    print(f"\n📊 Technical Indicators (based on {decision.suggestion.reasoning[0] if decision.suggestion.reasoning else 'MACD+RSI'}):")
+
+                    # Show the actual technical analysis
+                    self._display_suggestion(decision.suggestion, position, override_mode="USER_OVERRIDE_LONG")
+
+                    print(f"\n💡 Human-in-Loop Decision:")
+                    print(f"   → The system recommends SELL, but you want to go LONG")
+                    print(f"   → This could be based on news, fundamentals, or your own analysis")
+                    print(f"   → Remember: Technical indicators are backward-looking")
+
+                    proceed = input(f"\n   Do you still want to BUY {decision.suggestion.ticker}? [yes/no]: ").strip().lower()
+
+                    if proceed in ['yes', 'y', '1']:
+                        # User confirms override
+                        # Don't reprocess! That causes infinite loop. Instead, flip the signal and continue.
+                        print(f"\n{MSG.EMOJI['info']} ✅ User override confirmed - placing BUY order")
+                        print(f"   → Overriding SELL signal from technical analysis")
+
+                        # Flip the signal to BUY (user override)
+                        from core.models import Signal
+                        decision.suggestion.signal = Signal.BUY
+
+                        # Invert stop/target for BUY (were calculated for SELL)
+                        # For BUY: stop < entry, target > entry
+                        # For SELL: stop > entry, target < entry
+                        entry = decision.suggestion.entry_price
+                        old_stop = decision.suggestion.stop_loss
+                        old_target = decision.suggestion.take_profit
+
+                        # Calculate BUY stop/target (inverse of SELL)
+                        stop_distance = abs(old_stop - entry)
+                        target_distance = abs(old_target - entry)
+
+                        decision.suggestion.stop_loss = round(entry - stop_distance, 2)
+                        decision.suggestion.take_profit = round(entry + target_distance, 2)
+
+                        print(f"\n   📊 Adjusted for BUY:")
+                        print(f"      Entry:  ${entry:.2f}")
+                        print(f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)")
+                        print(f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)")
+                        print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
+
+                        # Continue to display and confirmation (no return, fall through)
+                    else:
+                        print(f"\n{MSG.EMOJI['info']} Order cancelled. You can review alternatives:")
+                        print(f"   • Type 'review {decision.suggestion.ticker}' for detailed analysis")
+                        print(f"   • Type 'short {decision.suggestion.ticker}' to follow the SELL signal")
+                        return
+
+                elif not user_wants_sell:
+                    # User didn't explicitly ask to sell - they likely asked for analysis
+                    # Examples: "pltr", "review pltr", "analyze pltr at market price", "is pltr good?"
+                    # Ask for clarification using simple language
+                    print(f"\n{MSG.EMOJI.get('question', '❓')} The analysis suggests {decision.suggestion.ticker} might go DOWN, but you don't own any shares yet.")
+                    print(f"\n   What would you like to do?")
+                    print(f"   1. BUY shares (bet the stock will go UP)")
+                    print(f"   2. SHORT shares (bet the stock will go DOWN - advanced strategy)")
+                    print(f"   3. Just see the analysis (don't trade)")
+
+                    clarification = input("\n   Your choice [1/2/3 or buy/short/review]: ").strip().lower()
+
+                    # Accept various formats: numbers, keywords, or full words
+                    if clarification in ['1', 'buy', 'b', 'long', 'l', 'up', 'bullish']:
+                        # User wants to buy - switch signal to BUY
+                        print(f"\n{MSG.EMOJI['info']} Got it! Analyzing BUY opportunity for {decision.suggestion.ticker}...")
+                        # Reprocess with explicit BUY request
+                        await self._handle_trade_request(f"buy {decision.suggestion.ticker}")
+                        return
+                    elif clarification in ['2', 'short', 's', 'down', 'bearish', 'sell']:
+                        # User explicitly wants to short - explain limitation
+                        print(f"\n{MSG.EMOJI['warning']} SHORT SELLING is not currently supported by this system.")
+                        print(f"   ℹ️  Short selling = betting a stock will go down (advanced/risky)")
+                        print(f"   → This system only supports buying stocks (betting they'll go up)")
+                        print(f"   → Suggestion cancelled")
+                        return
+                    elif clarification in ['3', 'review', 'r', 'analysis', 'just show', 'view', 'look']:
+                        # Just show the analysis, don't execute
+                        print(f"\n{MSG.EMOJI['info']} Showing analysis for {decision.suggestion.ticker} (information only, no trade)")
+                        self._display_suggestion(decision.suggestion, position)
+                        print(f"\n   💡 Tip: If you want to trade on this analysis, type 'buy {decision.suggestion.ticker}' or 'short {decision.suggestion.ticker}'")
+                        return
+                    else:
+                        # Unclear response or cancel
+                        print(f"\n{MSG.EMOJI['info']} No problem! Cancelled.")
+                        print(f"   💡 Tip: You can be specific next time, e.g., 'buy {decision.suggestion.ticker}' or 'analyze {decision.suggestion.ticker}'")
+                        return
+                else:
+                    # User explicitly asked to sell/close - block it since no position exists
+                    print(f"\n{MSG.EMOJI['error']} Cannot SELL or CLOSE position in {decision.suggestion.ticker}")
+                    print(f"   → You don't currently own any shares of {decision.suggestion.ticker}")
+                    print(f"   → To sell a stock, you must buy it first")
+                    print(f"\n   💡 Did you mean to SHORT {decision.suggestion.ticker}? (bet it will go down)")
+                    print(f"      Short selling is not currently supported by this system.")
+                    return  # Exit early
+
+            elif decision.suggestion.signal.value.upper() == "SELL" and position:
+                # Position exists - show brief warning reminder
+                print(f"\n{MSG.EMOJI['warning']} SELL will close your position in {decision.suggestion.ticker}")
 
             # Step 3: Display suggestion
-            self._display_suggestion(decision.suggestion)
+            self._display_suggestion(decision.suggestion, position)
 
             # Step 3: Get user confirmation (if confirm mode)
             if self.autonomy_mode == "confirm":
@@ -272,20 +513,88 @@ class CLISession:
             logger.error(f"Request processing error: {e}", exc_info=True)
             # Traceback logged but not shown to user
 
-    def _display_suggestion(self, suggestion):
+    def _check_position_for_ticker(self, ticker: str) -> Optional[dict]:
+        """
+        Check if user currently holds a position in the ticker.
+
+        Args:
+            ticker: Stock symbol to check
+
+        Returns:
+            Position dict if found, None otherwise
+        """
+        try:
+            if not self.account_monitor:
+                return None
+
+            positions = self.account_monitor.get_positions()
+            return next((p for p in positions if p.get('symbol') == ticker), None)
+        except Exception as e:
+            logger.warning(f"Failed to check position for {ticker}: {e}")
+            return None
+
+    def _display_position_context(self, ticker: str, position: Optional[dict], signal: str):
+        """
+        Display current position context before showing suggestion.
+
+        Args:
+            ticker: Stock symbol
+            position: Position dict if exists, None otherwise
+            signal: Signal type (BUY/SELL/HOLD)
+        """
+        print(f"\n{'='*60}")
+        print(f"📊 Position Context: {ticker}")
+        print(f"{'='*60}")
+
+        if position:
+            # Calculate metrics
+            qty = int(position.get('qty', 0))
+            avg_entry = float(position.get('avg_entry_price', 0))
+            market_value = float(position.get('market_value', 0))
+            current_price = (market_value / qty) if qty > 0 else 0.0
+            unrealized_pl = float(position.get('unrealized_pl', 0))
+            unrealized_plpc = float(position.get('unrealized_plpc', 0)) * 100
+
+            # Use fallback for entry price if needed
+            if avg_entry == 0.0:
+                cost_basis = float(position.get('cost_basis', 0))
+                avg_entry = (cost_basis / qty) if qty > 0 else 0.0
+
+            pl_emoji = get_pl_emoji(unrealized_pl)
+
+            print(f"   Current Position: {qty} shares @ ${avg_entry:.2f} (avg entry)")
+            print(f"   Current Price: ${current_price:.2f}")
+            print(f"   {pl_emoji} Unrealized P/L: ${unrealized_pl:+.2f} ({unrealized_plpc:+.2f}%)")
+            print(f"   Market Value: ${market_value:,.2f}")
+        else:
+            print(f"   ℹ️  No position in {ticker} (0 shares)")
+
+        print(f"{'='*60}\n")
+
+    def _display_suggestion(self, suggestion, position: Optional[dict] = None, override_mode: Optional[str] = None):
         """
         Display trade suggestion to user.
 
         Args:
             suggestion: TradeSuggestion object
+            position: Optional position dict for additional context
+            override_mode: Optional override indicator ("USER_OVERRIDE_LONG", "USER_OVERRIDE_SHORT")
         """
         print("\n" + MSG.SUGGESTION_SEPARATOR)
         print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=suggestion.entry_price))
         print(MSG.SUGGESTION_SEPARATOR)
 
-        # Signal
+        # Signal (with override warning if applicable)
         signal_emoji = get_signal_emoji(suggestion.signal.value)
-        print(MSG.SIGNAL_DISPLAY.format(emoji=signal_emoji, signal=suggestion.signal.value.upper()))
+        if override_mode == "USER_OVERRIDE_LONG":
+            print(f"⚠️  SYSTEM RECOMMENDS: {signal_emoji} {suggestion.signal.value.upper()}")
+            print(f"👤 USER INTENT: ⬆️ BUY (LONG)")
+        elif override_mode == "USER_OVERRIDE_SHORT":
+            print(f"⚠️  SYSTEM RECOMMENDS: {signal_emoji} {suggestion.signal.value.upper()}")
+            print(f"👤 USER INTENT: ⬇️ SELL (SHORT)")
+        else:
+            print(MSG.SIGNAL_DISPLAY.format(emoji=signal_emoji, signal=suggestion.signal.value.upper()))
+
         print(MSG.CONFIDENCE_DISPLAY.format(confidence=suggestion.confidence))
 
         # Technical analysis
@@ -367,6 +676,44 @@ class CLISession:
     def _calc_pct(self, base: float, value: float) -> float:
         """Calculate percentage change."""
         return ((value - base) / base) * 100.0
+
+    def _get_stop_loss_pct(self) -> float:
+        """
+        Get configured stop loss percentage from trading config.
+
+        Returns:
+            Stop loss percentage (default: 0.05 = 5%)
+        """
+        if not self.trading_config:
+            return 0.05  # Default fallback
+
+        try:
+            exits = self.trading_config.get("strategy_parameters", {}).get("exits", {})
+            default_strategy = exits.get("default", "balanced")
+            strategy_config = exits.get(default_strategy, {})
+            return strategy_config.get("stop_loss", 0.05)
+        except Exception as e:
+            logger.warning(f"Failed to get stop_loss from config: {e}")
+            return 0.05
+
+    def _get_take_profit_pct(self) -> float:
+        """
+        Get configured take profit percentage from trading config.
+
+        Returns:
+            Take profit percentage (default: 0.08 = 8%)
+        """
+        if not self.trading_config:
+            return 0.08  # Default fallback
+
+        try:
+            exits = self.trading_config.get("strategy_parameters", {}).get("exits", {})
+            default_strategy = exits.get("default", "balanced")
+            strategy_config = exits.get(default_strategy, {})
+            return strategy_config.get("take_profit", 0.08)
+        except Exception as e:
+            logger.warning(f"Failed to get take_profit from config: {e}")
+            return 0.08
 
     async def _handle_alerts_request(self, user_input: str):
         """
@@ -542,12 +889,15 @@ class CLISession:
         input_lower = user_input.lower()
         specific_ticker = None
 
-        # Extract ticker if asking about specific position
-        if "target on" in input_lower or "target for" in input_lower:
+        # Extract ticker if asking about specific position or stop/target
+        keywords = ["target on", "target for", "stop on", "stop for", "stop level on",
+                    "stop loss on", "exit level", "take profit"]
+
+        if any(keyword in input_lower for keyword in keywords):
             # Try to extract ticker from query
             words = user_input.upper().split()
             # Common tickers to look for
-            common_tickers = ['SPY', 'QQQ', 'TQQQ', 'SQQQ', 'AAPL', 'MSFT', 'TSLA', 'NVDA']
+            common_tickers = ['SPY', 'QQQ', 'TQQQ', 'SQQQ', 'AAPL', 'MSFT', 'TSLA', 'NVDA', 'META']
             for word in words:
                 if word in common_tickers:
                     specific_ticker = word
@@ -605,20 +955,35 @@ class CLISession:
                         pl_pct=unrealized_plpc
                     ))
 
-                    # Show targets if available (from position tracker)
-                    if self.trading_cycle and self.trading_cycle.position_tracker:
-                        position_id = f"{symbol}_{avg_entry}"
-                        tracked_pos = self.trading_cycle.position_tracker.positions.get(position_id)
-                        if tracked_pos:
-                            distance_to_tp = ((tracked_pos.take_profit_price - current_price) / current_price) * 100
-                            distance_to_sl = ((current_price - tracked_pos.stop_loss_price) / current_price) * 100
-                            print(MSG.PRICE_TARGETS_HEADER)
-                            print(MSG.PRICE_TARGETS.format(
-                                tp=tracked_pos.take_profit_price,
-                                sl=tracked_pos.stop_loss_price,
-                                tp_dist=distance_to_tp,
-                                sl_dist=distance_to_sl
-                            ))
+                    # Show stop/target levels from trading_cycle local_state
+                    # This uses the new _extract_stop_target_from_orders() with calculated fallback
+                    if self.trading_cycle:
+                        local_pos = self.trading_cycle.local_state.get("positions", {}).get(symbol)
+                        if local_pos:
+                            stop_price = local_pos.get("stop_price")
+                            target_price = local_pos.get("target_price")
+
+                            # Get configured stop loss percentage
+                            stop_loss_pct = self._get_stop_loss_pct()
+                            take_profit_pct = self._get_take_profit_pct()
+
+                            print(f"\n📍 Exit Levels:")
+                            if stop_price:
+                                distance = ((current_price - stop_price) / current_price) * 100
+                                print(f"   🔴 Stop Loss: ${stop_price:.2f} (-{stop_loss_pct*100:.0f}% from entry, {distance:+.1f}% away)")
+                            else:
+                                print(f"   🔴 Stop Loss: Not set")
+
+                            if target_price:
+                                distance = ((target_price - current_price) / current_price) * 100
+                                print(f"   🟢 Take Profit: ${target_price:.2f} (+{take_profit_pct*100:.0f}% from entry, {distance:+.1f}% away)")
+                            else:
+                                print(f"   🟢 Take Profit: Not set")
+
+                            # Note about calculated stops (Alpaca API limitation)
+                            if stop_price and not target_price:
+                                print(f"\n   ℹ️  Note: Stop calculated from entry (Alpaca hides bracket order legs)")
+                                print(f"      Verify stop order exists on Alpaca dashboard")
                         else:
                             print(MSG.NO_TARGETS.format(symbol=symbol))
                 else:

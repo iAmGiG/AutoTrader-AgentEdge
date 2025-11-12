@@ -337,9 +337,10 @@ Add to existing position? [yes/no]
 
 ---
 
-#### ❌ Issue 5: Entry Price Shows $0.00 (BUG)
+#### ✅ Issue 5: Entry Price Shows $0.00 (BUG) - RESOLVED
 **Severity:** High
 **Category:** Data / Bug
+**Status:** ✅ FIXED in commit 87dbcfb (2025-11-11)
 
 **Problem:**
 ```
@@ -352,13 +353,18 @@ This is mathematically impossible:
 - Shows -0.50% loss but entry is $0.00?
 - Can't calculate accurate P/L without entry price
 
-**Root Cause (Investigation Needed):**
-- Alpaca API not returning 'avg_entry_price' field?
-- Field name mismatch ('cost_basis' instead?)
-- Paper trading quirk?
-- Data not being parsed correctly
+**Root Cause (IDENTIFIED):**
+- Code was displaying `current_price` field instead of `avg_entry_price`
+- Alpaca position dict doesn't provide `current_price` directly
+- Field needed to be calculated from `market_value / qty`
 
-**Expected Behavior:**
+**Solution Implemented:**
+- Extract `avg_entry_price` from position data correctly
+- Calculate `current_price` from `market_value / qty`
+- Use `cost_basis / qty` as fallback if `avg_entry_price` is 0
+- Display both entry and current prices separately with clear labels
+
+**Fixed Behavior:**
 ```
 🔴 META: 8 shares @ $625.12 (avg entry)
    Current: $624.96
@@ -366,7 +372,7 @@ This is mathematically impossible:
    P/L: $-1.28 (-0.20%)
 ```
 
-**Created Issue:** #349 - BUG: Portfolio shows entry price as $0.00 instead of actual entry
+**Issue #349:** ✅ CLOSED - Fixed in commit 87dbcfb
 
 ---
 
@@ -402,17 +408,19 @@ This is mathematically impossible:
 
 ## Test Results Summary (Updated)
 
-| Test Case | Issue Found | Severity | Issue # |
-|-----------|-------------|----------|---------|
-| "buy qqq at pullback" | User intent ignored | High | #347 |
-| "buy qqq at pullback" | Pullback not understood | High | #344 |
-| "buy qqq at pullback" | No position context | Medium | #345 |
-| General | No local cache | Medium | #346 |
-| "stop level on meta" | Shows portfolio not orders | High | #348 |
-| Portfolio display | Entry price = $0.00 | High | #349 |
-| Order visibility | Can't see filled vs open | Medium | #348 |
+| Test Case | Issue Found | Severity | Issue # | Status |
+|-----------|-------------|----------|---------|--------|
+| "buy qqq at pullback" | User intent ignored | High | #347 | Open |
+| "buy qqq at pullback" | Pullback not understood | High | #344 | Open |
+| "buy qqq at pullback" | No position context | Medium | #345 | Open |
+| General | No local cache | Medium | #346 | Open |
+| "stop level on meta" | Shows portfolio not orders | High | #348 | Open |
+| Portfolio display | Entry price = $0.00 | High | #349 | ✅ Fixed |
+| Order visibility | Can't see filled vs open | Medium | #348 | Open |
 
 **Total Issues Found:** 7 issues across 6 unique problems
+**Resolved:** 1 issue (#349)
+**Remaining Open:** 5 unique issues (#344, #345, #346, #347, #348)
 
 ---
 

@@ -246,7 +246,21 @@ class DailyScheduler:
 
                 # Extract report path from report if available
                 # Report path is typically mentioned in the trading_cycle output
-                log_entry.report_path = f"reports/daily/{datetime.now().strftime('%Y%m%d_%H%M')}_{task.name}.md"
+                # Use human-readable format: 2025-11-11_morning.md (or _2.md, _3.md for multiple runs)
+                now = datetime.now()
+                date_str = now.strftime('%Y-%m-%d')
+                # Extract routine type from task name (e.g., "morning_routine" -> "morning")
+                routine_type = task.name.replace('_routine', '')
+                base_path = f"reports/daily/{date_str}_{routine_type}"
+
+                # Check if file exists and find the right counter
+                report_path = f"{base_path}.md"
+                counter = 1
+                while os.path.exists(report_path):
+                    counter += 1
+                    report_path = f"{base_path}_{counter}.md"
+
+                log_entry.report_path = report_path
 
                 logger.info("✅ %s completed successfully", task.name)
                 break

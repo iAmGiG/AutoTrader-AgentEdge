@@ -277,8 +277,9 @@ class AlpacaAccountMonitor:
         """
         try:
             # Create request with filters
+            # IMPORTANT: nested=True includes bracket order legs (stop-loss, take-profit)
             if status == 'all':
-                request = GetOrdersRequest(limit=limit, symbols=symbols)
+                request = GetOrdersRequest(limit=limit, symbols=symbols, nested=True)
             else:
                 # Map status string to enum
                 status_enum = None
@@ -290,27 +291,102 @@ class AlpacaAccountMonitor:
                 request = GetOrdersRequest(
                     status=status_enum,
                     limit=limit,
-                    symbols=symbols
+                    symbols=symbols,
+                    nested=True
                 )
 
             orders = self.client.trading_client.get_orders(filter=request)
 
-            return [{
-                'id': str(order.id),
-                'symbol': order.symbol,
-                'side': str(order.side),
-                'qty': float(order.qty) if order.qty else 0.0,
-                'filled_qty': float(order.filled_qty) if order.filled_qty else 0.0,
-                'status': str(order.status),
-                'order_type': str(order.order_type),
-                'time_in_force': str(order.time_in_force),
-                'limit_price': float(order.limit_price) if order.limit_price else None,
-                'stop_price': float(order.stop_price) if order.stop_price else None,
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'filled_at': order.filled_at.isoformat() if order.filled_at else None,
-                'canceled_at': order.canceled_at.isoformat() if order.canceled_at else None,
-                'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else None
-            } for order in orders]
+            # First pass: collect all orders with their metadata
+            result = []
+            leg_ids = set()  # Track leg order IDs
+            parent_map = {}  # Map leg IDs to parent order IDs
+
+            for order in orders:
+                order_dict = {
+                    'id': str(order.id),
+                    'symbol': order.symbol,
+                    'side': str(order.side),
+                    'qty': float(order.qty) if order.qty else 0.0,
+                    'filled_qty': float(order.filled_qty) if order.filled_qty else 0.0,
+                    'status': str(order.status),
+                    'order_type': str(order.order_type),
+                    'time_in_force': str(order.time_in_force),
+                    'limit_price': float(order.limit_price) if order.limit_price else None,
+                    'stop_price': float(order.stop_price) if order.stop_price else None,
+                    'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
+                    'filled_at': order.filled_at.isoformat() if order.filled_at else None,
+                    'canceled_at': order.canceled_at.isoformat() if order.canceled_at else None,
+                    'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else None,
+                    'order_class': str(order.order_class) if hasattr(order, 'order_class') else None,
+                    'legs': []  # Will be populated in second pass
+                }
+
+                # Track leg IDs from bracket orders
+                if hasattr(order, 'legs') and order.legs:
+                    # order.legs is a list of UUIDs for the leg orders
+                    for leg_id in order.legs:
+                        leg_id_str = str(leg_id)
+                        leg_ids.add(leg_id_str)
+                        parent_map[leg_id_str] = str(order.id)
+                    logger.info(f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}")
+
+                result.append(order_dict)
+
+            # Second pass: match leg orders to their parents
+            legs_found = 0
+            for order_dict in result:
+                order_id = order_dict['id']
+
+                # If this order is a leg of another order
+                if order_id in leg_ids:
+                    parent_id = parent_map.get(order_id)
+                    if parent_id:
+                        # Find parent and add this as a leg
+                        for parent_order in result:
+                            if parent_order['id'] == parent_id:
+                                parent_order['legs'].append(order_dict)
+                                legs_found += 1
+                                logger.info(f"Matched leg {order_id} to parent {parent_id}")
+                                break
+
+            # Third pass: For bracket orders with empty legs, try fetching by ID to get held orders
+            # Alpaca's get_orders() doesn't return "held" orders, but get_order_by_id() might
+            for order_dict in result:
+                if order_dict.get('order_class') == 'OrderClass.BRACKET' and not order_dict.get('legs'):
+                    try:
+                        # Fetch this specific order by ID to see if it includes held legs
+                        full_order = self.client.trading_client.get_order_by_id(order_dict['id'])
+
+                        if hasattr(full_order, 'legs') and full_order.legs:
+                            logger.info(f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id")
+
+                            # Fetch each leg order individually
+                            for leg_id in full_order.legs:
+                                try:
+                                    leg_order = self.client.trading_client.get_order_by_id(str(leg_id))
+                                    leg_dict = {
+                                        'id': str(leg_order.id),
+                                        'symbol': leg_order.symbol,
+                                        'side': str(leg_order.side),
+                                        'qty': float(leg_order.qty) if leg_order.qty else 0.0,
+                                        'status': str(leg_order.status),
+                                        'order_type': str(leg_order.order_type),
+                                        'time_in_force': str(leg_order.time_in_force),
+                                        'limit_price': float(leg_order.limit_price) if leg_order.limit_price else None,
+                                        'stop_price': float(leg_order.stop_price) if leg_order.stop_price else None
+                                    }
+                                    order_dict['legs'].append(leg_dict)
+                                    legs_found += 1
+                                    logger.info(f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}")
+                                except Exception as e:
+                                    logger.warning(f"  Failed to fetch leg {leg_id}: {e}")
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch bracket order {order_dict['id']} by ID: {e}")
+
+            logger.info(f"Processed {len(result)} orders, found {legs_found} bracket legs")
+
+            return result
 
         except Exception as e:
             logger.error(f"Failed to get orders: {e}")
@@ -412,9 +488,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             mode: "paper" or "live" trading mode
             risk_limits: Optional risk management limits
         """
-        super().__init__(mode=mode)
-
-        # Override client to enable confirmations for write operations
+        # Don't call super().__init__() to avoid creating client twice
+        # Instead, create client directly with write permissions
         self.client = AlpacaTradingClient(mode=mode, require_confirmation=(mode == "live"))
 
         # Risk limits for order validation
