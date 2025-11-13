@@ -1,0 +1,80 @@
+name: Check Commit Signatures
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - development
+      - main
+
+jobs:
+  check-signatures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check for Claude Code signatures
+        run: |
+          echo "Checking commits for Claude Code signatures..."
+
+          # Get the base branch to compare against
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+            HEAD_REF="${{ github.event.pull_request.head.sha }}"
+          else
+            # For push events, check the last commit
+            BASE_REF="HEAD~1"
+            HEAD_REF="HEAD"
+          fi
+
+          # Check all commits in the range
+          FOUND_SIGNATURES=0
+
+          while IFS= read -r commit; do
+            message=$(git log --format=%B -n 1 "$commit")
+
+            # Check for Claude Code signature patterns
+            if echo "$message" | grep -q "Generated with \[Claude Code\]"; then
+              echo "❌ ERROR: Found Claude Code signature in commit $commit"
+              echo "Message:"
+              echo "$message"
+              echo ""
+              FOUND_SIGNATURES=1
+            fi
+
+            if echo "$message" | grep -q "Co-Authored-By: Claude <noreply@anthropic.com>"; then
+              echo "❌ ERROR: Found Claude Co-Authored-By signature in commit $commit"
+              echo "Message:"
+              echo "$message"
+              echo ""
+              FOUND_SIGNATURES=1
+            fi
+          done < <(git rev-list "$BASE_REF".."$HEAD_REF")
+
+          if [ $FOUND_SIGNATURES -eq 1 ]; then
+            echo ""
+            echo "=========================================="
+            echo "Claude Code signatures detected!"
+            echo "=========================================="
+            echo ""
+            echo "Please remove these signatures from your commits."
+            echo ""
+            echo "To fix this issue:"
+            echo "1. Use git filter-branch or git rebase to remove the signatures"
+            echo "2. Force push the cleaned history"
+            echo ""
+            echo "Example cleanup script:"
+            echo "  git filter-branch -f --msg-filter '/path/to/remove_signatures.py' HEAD~10..HEAD"
+            echo ""
+            exit 1
+          fi
+
+          echo "✅ No Claude Code signatures found in commits"
+
+      - name: Success
+        if: success()
+        run: echo "All commits are clean - no signatures detected"
