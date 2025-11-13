@@ -352,7 +352,8 @@ class CLISession:
             position = self._check_position_for_ticker(decision.suggestion.ticker)
 
             # Step 2a: Display position context
-            self._display_position_context(decision.suggestion.ticker, position, decision.suggestion.signal.value)
+            self._display_position_context(decision.suggestion.ticker,
+                                           position, decision.suggestion.signal.value)
 
             # Step 2b: Check for signal vs user intent mismatch
             # If analyzer suggests SELL but no position exists, check user's explicit intent
@@ -363,9 +364,11 @@ class CLISession:
                 explicit_buy_indicators = [
                     'buy', 'long', 'go long', 'going long', 'bullish',
                     'bet it goes up', 'think it will rise', 'upside',
-                    'get ', 'acquire', 'purchase', 'pick up', 'grab'  # Note: 'get ' with space to avoid 'target', 'forget'
+                    # Note: 'get ' with space to avoid 'target', 'forget'
+                    'get ', 'acquire', 'purchase', 'pick up', 'grab'
                 ]
-                user_wants_buy = any(indicator in original_input for indicator in explicit_buy_indicators)
+                user_wants_buy = any(
+                    indicator in original_input for indicator in explicit_buy_indicators)
 
                 # Check if user explicitly wants to SELL/SHORT
                 explicit_sell_indicators = [
@@ -376,7 +379,8 @@ class CLISession:
                     # Explicit bearish intent
                     'bet against', 'profit from decline', 'make money when it falls'
                 ]
-                user_wants_sell = any(indicator in original_input for indicator in explicit_sell_indicators)
+                user_wants_sell = any(
+                    indicator in original_input for indicator in explicit_sell_indicators)
 
                 if user_wants_buy:
                     # User explicitly wants to go LONG despite SELL signal
@@ -384,22 +388,26 @@ class CLISession:
                     print(f"\n{MSG.EMOJI.get('warning', '⚠️')} SIGNAL CONFLICT DETECTED")
                     print(f"   → You requested: LONG (BUY) position")
                     print(f"   → Technical analysis suggests: SHORT (SELL)")
-                    print(f"\n📊 Technical Indicators (based on {decision.suggestion.reasoning[0] if decision.suggestion.reasoning else 'MACD+RSI'}):")
+                    print(
+                        f"\n📊 Technical Indicators (based on {decision.suggestion.reasoning[0] if decision.suggestion.reasoning else 'MACD+RSI'}):")
 
                     # Show the actual technical analysis
-                    self._display_suggestion(decision.suggestion, position, override_mode="USER_OVERRIDE_LONG")
+                    self._display_suggestion(decision.suggestion, position,
+                                             override_mode="USER_OVERRIDE_LONG")
 
                     print(f"\n💡 Human-in-Loop Decision:")
                     print(f"   → The system recommends SELL, but you want to go LONG")
                     print(f"   → This could be based on news, fundamentals, or your own analysis")
                     print(f"   → Remember: Technical indicators are backward-looking")
 
-                    proceed = input(f"\n   Do you still want to BUY {decision.suggestion.ticker}? [yes/no]: ").strip().lower()
+                    proceed = input(
+                        f"\n   Do you still want to BUY {decision.suggestion.ticker}? [yes/no]: ").strip().lower()
 
                     if proceed in ['yes', 'y', '1']:
                         # User confirms override
                         # Don't reprocess! That causes infinite loop. Instead, flip the signal and continue.
-                        print(f"\n{MSG.EMOJI['info']} ✅ User override confirmed - placing BUY order")
+                        print(
+                            f"\n{MSG.EMOJI['info']} ✅ User override confirmed - placing BUY order")
                         print(f"   → Overriding SELL signal from technical analysis")
 
                         # Flip the signal to BUY (user override)
@@ -422,33 +430,41 @@ class CLISession:
 
                         print(f"\n   📊 Adjusted for BUY:")
                         print(f"      Entry:  ${entry:.2f}")
-                        print(f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)")
-                        print(f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)")
+                        print(
+                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)")
+                        print(
+                            f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)")
                         print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
 
                         # Continue to display and confirmation (no return, fall through)
                     else:
-                        print(f"\n{MSG.EMOJI['info']} Order cancelled. You can review alternatives:")
-                        print(f"   • Type 'review {decision.suggestion.ticker}' for detailed analysis")
-                        print(f"   • Type 'short {decision.suggestion.ticker}' to follow the SELL signal")
+                        print(
+                            f"\n{MSG.EMOJI['info']} Order cancelled. You can review alternatives:")
+                        print(
+                            f"   • Type 'review {decision.suggestion.ticker}' for detailed analysis")
+                        print(
+                            f"   • Type 'short {decision.suggestion.ticker}' to follow the SELL signal")
                         return
 
                 elif not user_wants_sell:
                     # User didn't explicitly ask to sell - they likely asked for analysis
                     # Examples: "pltr", "review pltr", "analyze pltr at market price", "is pltr good?"
                     # Ask for clarification using simple language
-                    print(f"\n{MSG.EMOJI.get('question', '❓')} The analysis suggests {decision.suggestion.ticker} might go DOWN, but you don't own any shares yet.")
+                    print(
+                        f"\n{MSG.EMOJI.get('question', '❓')} The analysis suggests {decision.suggestion.ticker} might go DOWN, but you don't own any shares yet.")
                     print(f"\n   What would you like to do?")
                     print(f"   1. BUY shares (bet the stock will go UP)")
                     print(f"   2. SHORT shares (bet the stock will go DOWN - advanced strategy)")
                     print(f"   3. Just see the analysis (don't trade)")
 
-                    clarification = input("\n   Your choice [1/2/3 or buy/short/review]: ").strip().lower()
+                    clarification = input(
+                        "\n   Your choice [1/2/3 or buy/short/review]: ").strip().lower()
 
                     # Accept various formats: numbers, keywords, or full words
                     if clarification in ['1', 'buy', 'b', 'long', 'l', 'up', 'bullish']:
                         # User wants to buy - flip signal in place (don't reprocess!)
-                        print(f"\n{MSG.EMOJI['info']} Got it! Preparing BUY order for {decision.suggestion.ticker}...")
+                        print(
+                            f"\n{MSG.EMOJI['info']} Got it! Preparing BUY order for {decision.suggestion.ticker}...")
 
                         # Flip the signal to BUY
                         from core.models import Signal
@@ -467,41 +483,51 @@ class CLISession:
 
                         print(f"\n   📊 Adjusted for BUY:")
                         print(f"      Entry:  ${entry:.2f}")
-                        print(f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)")
-                        print(f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)")
+                        print(
+                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)")
+                        print(
+                            f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)")
                         print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
 
                         # Continue to display and confirmation (no return, fall through)
                     elif clarification in ['2', 'short', 's', 'down', 'bearish', 'sell']:
                         # User explicitly wants to short - explain limitation
-                        print(f"\n{MSG.EMOJI['warning']} SHORT SELLING is not currently supported by this system.")
+                        print(
+                            f"\n{MSG.EMOJI['warning']} SHORT SELLING is not currently supported by this system.")
                         print(f"   ℹ️  Short selling = betting a stock will go down (advanced/risky)")
                         print(f"   → This system only supports buying stocks (betting they'll go up)")
                         print(f"   → Suggestion cancelled")
                         return
                     elif clarification in ['3', 'review', 'r', 'analysis', 'just show', 'view', 'look']:
                         # Just show the analysis, don't execute
-                        print(f"\n{MSG.EMOJI['info']} Showing analysis for {decision.suggestion.ticker} (information only, no trade)")
+                        print(
+                            f"\n{MSG.EMOJI['info']} Showing analysis for {decision.suggestion.ticker} (information only, no trade)")
                         self._display_suggestion(decision.suggestion, position)
-                        print(f"\n   💡 Tip: If you want to trade on this analysis, type 'buy {decision.suggestion.ticker}' or 'short {decision.suggestion.ticker}'")
+                        print(
+                            f"\n   💡 Tip: If you want to trade on this analysis, type 'buy {decision.suggestion.ticker}' or 'short {decision.suggestion.ticker}'")
                         return
                     else:
                         # Unclear response or cancel
                         print(f"\n{MSG.EMOJI['info']} No problem! Cancelled.")
-                        print(f"   💡 Tip: You can be specific next time, e.g., 'buy {decision.suggestion.ticker}' or 'analyze {decision.suggestion.ticker}'")
+                        print(
+                            f"   💡 Tip: You can be specific next time, e.g., 'buy {decision.suggestion.ticker}' or 'analyze {decision.suggestion.ticker}'")
                         return
                 else:
                     # User explicitly asked to sell/close - block it since no position exists
-                    print(f"\n{MSG.EMOJI['error']} Cannot SELL or CLOSE position in {decision.suggestion.ticker}")
-                    print(f"   → You don't currently own any shares of {decision.suggestion.ticker}")
+                    print(
+                        f"\n{MSG.EMOJI['error']} Cannot SELL or CLOSE position in {decision.suggestion.ticker}")
+                    print(
+                        f"   → You don't currently own any shares of {decision.suggestion.ticker}")
                     print(f"   → To sell a stock, you must buy it first")
-                    print(f"\n   💡 Did you mean to SHORT {decision.suggestion.ticker}? (bet it will go down)")
+                    print(
+                        f"\n   💡 Did you mean to SHORT {decision.suggestion.ticker}? (bet it will go down)")
                     print(f"      Short selling is not currently supported by this system.")
                     return  # Exit early
 
             elif decision.suggestion.signal.value.upper() == "SELL" and position:
                 # Position exists - show brief warning reminder
-                print(f"\n{MSG.EMOJI['warning']} SELL will close your position in {decision.suggestion.ticker}")
+                print(
+                    f"\n{MSG.EMOJI['warning']} SELL will close your position in {decision.suggestion.ticker}")
 
             # Step 3: Display suggestion
             self._display_suggestion(decision.suggestion, position)
@@ -761,12 +787,12 @@ class CLISession:
 
             if not alerts:
                 print(MSG.NO_ALERTS)
-                print(MSG.POSITIONS_MONITORED.format(count=len(broker_state.get('positions', []))))
+                print(MSG.POSITIONS_MONITORED(count=len(broker_state.get('positions', []))))
             else:
-                print(MSG.ALERTS_HEADER.format(count=len(alerts)))
+                print(MSG.ALERTS_HEADER(count=len(alerts)))
                 for alert in alerts:
                     severity_emoji = get_alert_severity_emoji(alert.severity)
-                    print(MSG.ALERT_ITEM.format(
+                    print(MSG.ALERT_ITEM(
                         emoji=severity_emoji,
                         ticker=alert.ticker,
                         alert_type=alert.alert_type.value,
@@ -774,21 +800,21 @@ class CLISession:
                     ))
                     if alert.details:
                         for key, value in alert.details.items():
-                            print(MSG.ALERT_DETAIL.format(key=key, value=value))
+                            print(MSG.ALERT_DETAIL(key=key, value=value))
 
             # Show alert history
             history = self.trading_cycle.position_tracker.get_alert_history()
             if history:
-                print(MSG.ALERT_HISTORY_HEADER.format(count=len(history)))
+                print(MSG.ALERT_HISTORY_HEADER(count=len(history)))
                 for alert in history[-5:]:  # Last 5
-                    print(MSG.ALERT_HISTORY_ITEM.format(
+                    print(MSG.ALERT_HISTORY_ITEM(
                         ticker=alert.ticker,
                         alert_type=alert.alert_type.value,
                         time=alert.timestamp.strftime('%H:%M:%S')
                     ))
 
         except Exception as e:
-            print(MSG.ERROR_CHECKING_ALERTS.format(error=e))
+            print(MSG.ERROR_CHECKING_ALERTS(error=e))
             logger.error(f"Alerts error: {e}", exc_info=True)
 
     async def _handle_scheduler_request(self, user_input: str):
@@ -810,10 +836,10 @@ class CLISession:
             enabled = self.scheduler.config.get('enabled', False)
             status_emoji = MSG.EMOJI["profit"] if enabled else MSG.EMOJI["loss"]
             status_text = 'ENABLED' if enabled else 'DISABLED'
-            print(MSG.SCHEDULER_STATUS.format(emoji=status_emoji, status=status_text))
+            print(MSG.SCHEDULER_STATUS(emoji=status_emoji, status=status_text))
 
             print(MSG.SCHEDULER_CONFIG_HEADER)
-            print(MSG.SCHEDULER_CONFIG.format(
+            print(MSG.SCHEDULER_CONFIG(
                 morning=self.scheduler.config.get('morning_routine_time', '09:20'),
                 evening=self.scheduler.config.get('evening_routine_time', '15:50'),
                 retries=self.scheduler.config.get('max_retries', 3)
@@ -838,7 +864,7 @@ class CLISession:
                     else:
                         time_str = "In Progress"
 
-                    print(MSG.SCHEDULER_HISTORY_ITEM.format(
+                    print(MSG.SCHEDULER_HISTORY_ITEM(
                         emoji=status_emoji,
                         task=entry.task_name,
                         status=entry.status.upper(),
@@ -846,11 +872,11 @@ class CLISession:
                     ))
 
                     if entry.error_message:
-                        print(MSG.SCHEDULER_ERROR.format(error=entry.error_message[:80]))
+                        print(MSG.SCHEDULER_ERROR(error=entry.error_message[:80]))
 
                     # Show retry info if applicable
                     if hasattr(entry, 'retry_count') and entry.retry_count > 0:
-                        print(MSG.SCHEDULER_RETRIES.format(count=entry.retry_count))
+                        print(MSG.SCHEDULER_RETRIES(count=entry.retry_count))
             else:
                 print(MSG.SCHEDULER_NO_HISTORY)
 
@@ -884,20 +910,20 @@ class CLISession:
                 hours = int(time_until.total_seconds() // 3600)
                 minutes = int((time_until.total_seconds() % 3600) // 60)
 
-                print(MSG.SCHEDULER_NEXT.format(
+                print(MSG.SCHEDULER_NEXT(
                     task=next_task,
                     time=next_run.strftime('%H:%M %p'),
                     hours=hours,
                     minutes=minutes
                 ))
             except Exception as calc_error:
-                print(MSG.SCHEDULER_NEXT_ERROR.format(error=calc_error))
+                print(MSG.SCHEDULER_NEXT_ERROR(error=calc_error))
 
             # Usage instructions
             print(MSG.SCHEDULER_COMMANDS)
 
         except Exception as e:
-            print(MSG.ERROR_CHECKING_SCHEDULER.format(error=e))
+            print(MSG.ERROR_CHECKING_SCHEDULER(error=e))
             logger.error(f"Scheduler error: {e}", exc_info=True)
 
     async def _handle_portfolio_request(self, user_input: str):
@@ -939,7 +965,7 @@ class CLISession:
                 account = self.account_monitor.get_account_status()
 
                 print(MSG.ACCOUNT_HEADER)
-                print(MSG.ACCOUNT_INFO.format(
+                print(MSG.ACCOUNT_INFO(
                     equity=float(account.get('equity', 0)),
                     cash=float(account.get('cash', 0)),
                     buying_power=float(account.get('buying_power', 0)),
@@ -970,8 +996,8 @@ class CLISession:
                     unrealized_plpc = float(position.get('unrealized_plpc', 0)) * 100
 
                     pl_emoji = get_pl_emoji(unrealized_pl)
-                    print(MSG.POSITION_DETAILS_HEADER.format(emoji=pl_emoji, symbol=symbol))
-                    print(MSG.POSITION_DETAILS.format(
+                    print(MSG.POSITION_DETAILS_HEADER(emoji=pl_emoji, symbol=symbol))
+                    print(MSG.POSITION_DETAILS(
                         qty=qty,
                         entry=avg_entry,
                         current=current_price,
@@ -994,27 +1020,30 @@ class CLISession:
                             print(f"\n📍 Exit Levels:")
                             if stop_price:
                                 distance = ((current_price - stop_price) / current_price) * 100
-                                print(f"   🔴 Stop Loss: ${stop_price:.2f} (-{stop_loss_pct*100:.0f}% from entry, {distance:+.1f}% away)")
+                                print(
+                                    f"   🔴 Stop Loss: ${stop_price:.2f} (-{stop_loss_pct*100:.0f}% from entry, {distance:+.1f}% away)")
                             else:
                                 print(f"   🔴 Stop Loss: Not set")
 
                             if target_price:
                                 distance = ((target_price - current_price) / current_price) * 100
-                                print(f"   🟢 Take Profit: ${target_price:.2f} (+{take_profit_pct*100:.0f}% from entry, {distance:+.1f}% away)")
+                                print(
+                                    f"   🟢 Take Profit: ${target_price:.2f} (+{take_profit_pct*100:.0f}% from entry, {distance:+.1f}% away)")
                             else:
                                 print(f"   🟢 Take Profit: Not set")
 
                             # Note about calculated stops (Alpaca API limitation)
                             if stop_price and not target_price:
-                                print(f"\n   ℹ️  Note: Stop calculated from entry (Alpaca hides bracket order legs)")
+                                print(
+                                    f"\n   ℹ️  Note: Stop calculated from entry (Alpaca hides bracket order legs)")
                                 print(f"      Verify stop order exists on Alpaca dashboard")
                         else:
-                            print(MSG.NO_TARGETS.format(symbol=symbol))
+                            print(MSG.NO_TARGETS(symbol=symbol))
                 else:
-                    print(MSG.NO_POSITION.format(ticker=specific_ticker))
+                    print(MSG.NO_POSITION(ticker=specific_ticker))
 
             elif positions:
-                print(MSG.POSITIONS_HEADER.format(count=len(positions)))
+                print(MSG.POSITIONS_HEADER(count=len(positions)))
                 for pos in positions:
                     qty = int(pos.get('qty', 0))
                     symbol = pos.get('symbol', 'UNKNOWN')
@@ -1033,7 +1062,7 @@ class CLISession:
                     unrealized_plpc = float(pos.get('unrealized_plpc', 0)) * 100
 
                     pl_emoji = get_pl_emoji(unrealized_pl)
-                    print(MSG.POSITION_ITEM.format(
+                    print(MSG.POSITION_ITEM(
                         emoji=pl_emoji,
                         symbol=symbol,
                         qty=qty,
@@ -1047,7 +1076,7 @@ class CLISession:
                 print(MSG.NO_POSITIONS)
 
         except Exception as e:
-            print(MSG.ERROR_CHECKING_PORTFOLIO.format(error=e))
+            print(MSG.ERROR_CHECKING_PORTFOLIO(error=e))
             logger.error(f"Portfolio error: {e}", exc_info=True)
 
     async def _handle_orders_request(self, user_input: str):
@@ -1070,7 +1099,7 @@ class CLISession:
             if not orders:
                 print(MSG.NO_ORDERS)
             else:
-                print(MSG.ORDERS_HEADER.format(count=len(orders)))
+                print(MSG.ORDERS_HEADER(count=len(orders)))
                 for order in orders:
                     symbol = order.get('symbol', 'UNKNOWN')
                     side = order.get('side', 'UNKNOWN')
@@ -1098,7 +1127,7 @@ class CLISession:
                         price_str = "market"
 
                     side_emoji = get_side_emoji(side)
-                    print(MSG.ORDER_ITEM.format(
+                    print(MSG.ORDER_ITEM(
                         emoji=side_emoji,
                         side=side.upper(),
                         qty=qty,
@@ -1110,5 +1139,5 @@ class CLISession:
                     ))
 
         except Exception as e:
-            print(MSG.ERROR_CHECKING_ORDERS.format(error=e))
+            print(MSG.ERROR_CHECKING_ORDERS(error=e))
             logger.error(f"Orders error: {e}", exc_info=True)
