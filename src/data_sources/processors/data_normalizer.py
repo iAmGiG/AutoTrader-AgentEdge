@@ -3,7 +3,7 @@ Data normalization utilities for standardizing data from different sources into 
 """
 
 import pandas as pd
-from datetime import datetime
+from datetime import datetime  # TODO utilze date_utils.py
 from typing import Optional
 import re
 
@@ -357,7 +357,7 @@ def normalize_alpaca_data(raw_df: pd.DataFrame, symbol: str) -> pd.DataFrame:
     # Handle Alpaca's column format
     # Alpaca uses: t (timestamp), o (open), h (high), l (low), c (close), v (volume)
     # Also: vw (VWAP), n (trade_count)
-    
+
     # Map Alpaca columns to standard schema
     if 't' in raw_df.columns:
         # Raw Alpaca format
@@ -365,13 +365,13 @@ def normalize_alpaca_data(raw_df: pd.DataFrame, symbol: str) -> pd.DataFrame:
             't': 'timestamp',
             'o': 'open',
             'h': 'high',
-            'l': 'low', 
+            'l': 'low',
             'c': 'close',
             'v': 'volume',
             'vw': 'vwap',
             'n': 'trade_count'
         }
-        
+
         for alpaca_col, norm_col in column_mapping.items():
             if alpaca_col in raw_df.columns:
                 if norm_col == 'timestamp':
@@ -379,12 +379,12 @@ def normalize_alpaca_data(raw_df: pd.DataFrame, symbol: str) -> pd.DataFrame:
                     normalized_df[norm_col] = pd.to_datetime(raw_df[alpaca_col])
                 else:
                     normalized_df[norm_col] = raw_df[alpaca_col]
-    
+
     elif 'timestamp' in raw_df.columns or 'date' in raw_df.columns:
         # Already normalized or partially normalized format
         time_col = 'timestamp' if 'timestamp' in raw_df.columns else 'date'
         normalized_df['timestamp'] = pd.to_datetime(raw_df[time_col])
-        
+
         # Map standard column names
         std_columns = ['open', 'high', 'low', 'close', 'volume']
         for col in std_columns:
@@ -392,17 +392,17 @@ def normalize_alpaca_data(raw_df: pd.DataFrame, symbol: str) -> pd.DataFrame:
                 normalized_df[col] = raw_df[col]
             elif col.title() in raw_df.columns:
                 normalized_df[col] = raw_df[col.title()]
-        
+
         # Optional columns
         if 'vwap' in raw_df.columns:
             normalized_df['vwap'] = raw_df['vwap']
         if 'trade_count' in raw_df.columns:
             normalized_df['trade_count'] = raw_df['trade_count']
-    
+
     # Add symbol and source
     normalized_df['symbol'] = symbol
     normalized_df['source'] = 'alpaca'
-    
+
     # Fill missing optional columns
     if 'vwap' not in normalized_df.columns:
         normalized_df['vwap'] = normalized_df.get('close', None)

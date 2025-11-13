@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from .base_agent import BaseAgent
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
+from src.utils.agent_utils import load_agent_config
 from config_defaults.trading_config import TradingConfig
 
 logger = logging.getLogger(__name__)
@@ -338,7 +339,13 @@ class VoterAgent(BaseAgent):
 
         except json.JSONDecodeError:
             # Fallback to natural language processing
-            system_prompt = """You are a parameterizable trading decision agent using MACD+RSI voting.
+            # Load system prompt from YAML configuration
+            agent_config = load_agent_config("agents")
+            prompt_template = agent_config.get("voter_agent", {}).get("system_prompt", "")
+
+            # Fallback to default if YAML not available
+            if not prompt_template:
+                prompt_template = """You are a parameterizable trading decision agent using MACD+RSI voting.
 
 Current configuration:
 - MACD: {macd}
@@ -350,7 +357,9 @@ Your role:
 2. Apply the configured MACD+RSI voting logic
 3. Return structured trading decisions
 
-Always return results in JSON format with action, confidence, and reasoning.""".format(
+Always return results in JSON format with action, confidence, and reasoning."""
+
+            system_prompt = prompt_template.format(
                 macd=self.macd_params,
                 rsi=self.rsi_params,
                 thresholds=self.voting_thresholds

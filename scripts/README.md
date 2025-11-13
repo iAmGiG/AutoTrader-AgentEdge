@@ -27,17 +27,20 @@ scripts/
 **NEW**: Organized experiment files grouped by specific research areas.
 
 #### `experiment_293_validation/`
+
 - **Purpose**: MACD+RSI voting system validation vs single indicators
 - **Key Finding**: Voting achieves 0.856 Sharpe vs 0.841 MACD-only
 - **Scripts**: `experiment_293_retest.py`, `experiment_294_vote_thresholds.py`
 
 #### `exit_strategy_analysis/`  
+
 - **Purpose**: Exit strategy performance and expected value analysis
 - **Critical Discovery**: Conservative exits (6%/8%) have negative expected value!
 - **Recommendation**: Use Balanced exits (8%/5%) for 27.48% annual return
 - **Scripts**: `performance_clarification.py`, `expected_value_analysis.py`
 
 #### `configuration_system/`
+
 - **Purpose**: Flexible parameter management demonstration
 - **Benefit**: Change trading parameters without code modifications
 - **Related Issue**: #303
@@ -56,20 +59,25 @@ scripts/
 ### V0-V4 Framework (`runs/`)
 
 #### Analysis (`runs/analysis/`)
+
 **V0-V4 sentiment analysis frameworks:**
+
 - `comprehensive_2024_v0_v4_analysis.py` - Full V0-V4 comparison framework
 - `run_2024_full_analysis.py` - Complete yearly analysis
 - `simple_2024_analysis.py` - Streamlined analysis framework
 - `v0_v4_comparison_summary.py` - Performance comparison utilities
 
 #### Validation (`runs/validation/`)
+
 **V0-V4 validation scripts:**
+
 - `run_v0_pipeline_validation.py` - V0 baseline validation  
 - `run_v4_data_leakage_detection.py` - V4 obfuscation testing
 
 ### General Validation (`validation/`)
 
 **General validation tools (not experiment-specific):**
+
 - `obfuscation_test.py` - V4 date obfuscation validation
 
 ## Archived Tools

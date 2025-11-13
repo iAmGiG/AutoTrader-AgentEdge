@@ -4,56 +4,34 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 
 ## Documentation Structure
 
-### 📋 **Getting Started**
+### 📋 **01 - Overview** (Start Here)
 
-- **[Quick Start Guide](getting_started/quick_start.md)** - Set up and run your first trade
-- **[Installation Guide](getting_started/installation.md)** - System requirements and setup
-- **[Configuration Guide](getting_started/configuration.md)** - API keys and settings
+- **[01. System Overview](01_overview/01_system_overview.md)** - What the system is and what it does
+- **[02. Phases of Operation](01_overview/02_phases_of_operation.md)** - How it works (5 sequential phases)
+- **[03. System Context](01_overview/03_system_context.md)** - Why it was built and design philosophy
 
-### 🏗️ **System Documentation**
+### 🏗️ **02 - Architecture** (Technical Design)
 
-- **[Architecture Overview](system/architecture.md)** - System design and components
-- **[System Context](system/context.md)** - Key concepts and development philosophy
-- **[Trading Lifecycle](system/trading_lifecycle.md)** - Complete trade flow from signal to close
+- **[01. Core Architecture](02_architecture/01_core_architecture.md)** - Layer separation, directory structure, design principles
+- **[02. Agent Ensemble](02_architecture/02_agent_ensemble.md)** - Multi-agent system with VoterAgent, Scanner, Risk, Executor
+- **[03. Voting System](02_architecture/03_voting_system.md)** - Multi-indicator voting structure and implementation
+- **[04. Cache System](02_architecture/04_cache_system.md)** - SQLite-based caching (8-10x performance improvement)
+- **[05. Integration APIs](02_architecture/05_integration_apis.md)** - Alpaca market data and order management
 
-### 🔧 **Integration Documentation**
+### 📚 **03 - Reference** (Lookup & Details)
 
-- **[Alpaca Market Data](integration/alpaca_market_data.md)** - Market data integration
-- **[Alpaca Order Management](integration/alpaca_order_management.md)** - Order placement and tracking
-- **[Data Sources](integration/data_sources.md)** - All supported data providers
+- **[01. Validation Results](03_reference/01_validation_results.md)** - Proven performance metrics and experiment results
+- **[02. Terminology](03_reference/02_terminology.md)** - Glossary of terms and concepts
+- **[03. Commands](03_reference/03_commands.md)** - CLI commands and scripts reference
+- **[04. Troubleshooting](03_reference/04_troubleshooting.md)** - Common issues and solutions
+- **[05. Known Issues](03_reference/05_known_issues.md)** - Current known limitations and workarounds
+- **[06. Naming Conventions](03_reference/05_naming_conventions.md)** - Code and file naming standards
+- **[07. News Limitations](03_reference/06_news_limitations.md)** - API constraints and considerations
 
-### 📊 **Trading Strategy**
+### 📂 **04 - Development** (For Contributors)
 
-- **[Signal Generation](strategy/signal_generation.md)** - MACD+RSI voting system
-- **[Risk Management](strategy/risk_management.md)** - Position sizing and stops
-- **[Performance Analysis](strategy/performance_analysis.md)** - Backtesting results
-
-<<<<<<< HEAD
-
-### 🎯 **API Reference**
-
-- **[Position Manager](api/position_manager.md)** - Position and account management
-- **[Order Manager](api/order_manager.md)** - Order placement and tracking
-- **[Signal Generator](api/signal_generator.md)** - Trading signal generation
-- **[Market Scanner](api/market_scanner.md)** - Market opportunity scanning
-
-### 📐 **Standards & Guidelines**
-
-- **[Naming Conventions](standards/naming_conventions.md)** - Code and file naming standards
-- **[Development Guidelines](standards/development_guidelines.md)** - Coding standards and practices
-- **[Testing Standards](standards/testing_standards.md)** - Test coverage and quality
-
-### 🛠️ **Development Reference**
-
-- **[Commands Reference](reference/commands.md)** - CLI commands and scripts
-- **[Troubleshooting Guide](reference/troubleshooting.md)** - Common issues and solutions
-- **[FAQ](reference/faq.md)** - Frequently asked questions
-
-### 📦 **Examples**
-
-- **[Basic Trading Example](examples/basic_trading.md)** - Simple trading workflow
-- **[Advanced Strategies](examples/advanced_strategies.md)** - Complex trading patterns
-- **[Integration Examples](examples/integrations.md)** - Third-party integrations
+- **[01. Codebase Structure](04_development/01_codebase_structure.md)** - File organization and component layout
+- **[02. Project Status](04_development/02_project_status.md)** - Current development status, roadmap, and priorities
 
 ## Key Features
 
@@ -80,29 +58,35 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 
 ## Quick Navigation
 
-### 🚀 **New Users**
+### 🚀 **Getting Started**
 
-1. Read [System Architecture](system/architecture.md) to understand the platform
-2. Follow [Quick Start Guide](getting_started/quick_start.md) for first trade
-3. Review [Signal Generation](strategy/signal_generation.md) for trading logic
+1. Read [System Overview](01_overview/01_system_overview.md) to understand what the system does
+2. Review [Phases of Operation](01_overview/02_phases_of_operation.md) to see how it works
+3. Check [System Context](01_overview/03_system_context.md) for design philosophy
 
-### 🔧 **Developers**
+### 🔧 **Developers & Technical**
 
-1. Study [Development Guidelines](standards/development_guidelines.md)
-2. Check [API Reference](api/) for component interfaces
-3. Follow [Naming Conventions](standards/naming_conventions.md)
+1. Study [Core Architecture](02_architecture/01_core_architecture.md) for system design
+2. Understand [Agent Ensemble](02_architecture/02_agent_ensemble.md) for multi-agent coordination
+3. Review [Voting System](02_architecture/03_voting_system.md) for trading logic
 
-### 📈 **Traders**
+### 📊 **Performance & Validation**
 
-1. Review [Performance Analysis](strategy/performance_analysis.md) for system results
-2. Understand [Risk Management](strategy/risk_management.md) for safe trading
-3. Use [Market Scanner](api/market_scanner.md) for opportunities
+1. See [Validation Results](03_reference/01_validation_results.md) for proven performance (0.856 Sharpe)
+2. Review [Research Papers](research_papers.md) for academic foundation
+3. Check [Troubleshooting](03_reference/04_troubleshooting.md) for common issues
 
 ## Current Status
 
 ### ✅ **Production Components**
 
-- **VoterAgent**: Production-ready AutoGen agent with validated MACD+RSI voting
+- **VoterAgent**: Production-ready AutoGen agent with validated MACD+RSI voting (0.856 Sharpe)
+- **CLI Trade Assistant** (#308): Human-in-loop interactive trading interface ✅ NEW
+  - Natural language parsing with OpenAI (gpt-4o-mini + o4-mini)
+  - Real MACD+RSI analysis with market data fetching
+  - Portfolio % risk management and position sizing
+  - Interactive REPL with confirm/auto autonomy modes
+  - Usage: `python main.py trade-assist`
 - **Position Manager**: Unified position and account tracking accessible to agents
 - **Order Manager**: Complete order placement and monitoring via AutoGen tools
 - **Trading Cycle**: Comprehensive position monitoring and stop management
@@ -110,9 +94,10 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 ### ✅ **Integration Complete**
 
 - **Alpaca Markets**: Full paper and live trading support
-- **Market Data**: Real-time and historical data feeds
+- **Market Data**: Real-time and historical data feeds (Alpaca, Polygon, Alpha Vantage)
 - **Order Types**: Market, limit, stop, and bracket orders
 - **Fill Monitoring**: Automatic state transitions
+- **OpenAI API**: Natural language parsing and tool calling ✅ NEW
 
 ### 📊 **Validated Performance**
 
@@ -123,6 +108,17 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 
 ---
 
+## Research Foundation
+
+For academic research and citations informing the system architecture:
+
+- **[Research Papers](research_papers.md)** - Academic foundation with abstract, introduction, and citations
+- **[Agent Ensemble](02_architecture/02_agent_ensemble.md)** - Evolution from V0-V4 to current multi-agent system
+- **[Voting System](02_architecture/03_voting_system.md)** - Multi-indicator voting architecture
+- **[Validation Results](03_reference/01_validation_results.md)** - Experiment #293 proving voting superiority (0.856 Sharpe)
+
+---
+
 *Documentation follows professional standards with clear organization, consistent naming, and comprehensive coverage of all AutoGen agents and system components.*
 
-*Last Updated: September 17, 2025 - AutoGen Multi-Agent System*
+*Last Updated: November 2025 - Production-Ready AutoGen Multi-Agent Trading System*

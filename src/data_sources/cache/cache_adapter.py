@@ -1,29 +1,33 @@
 """
-Cache adapter to route all market data through UnifiedCacheManager.
+Cache adapter to route all market data through TradingCacheManager (SQLite).
 
 Simple approach: Instead of complex consolidation, just ensure all tools
-use the same unified cache system with set-based union operations.
+use the same SQLite cache system with set-based union operations.
+
+Updated to use TradingCacheManager for better performance and futures support.
 """
 
 import json
 import pandas as pd
 from pathlib import Path
 from typing import Optional
-from .unified_cache import UnifiedCacheManager
+from .sqlite_cache import TradingCacheManager
 
 
 class CacheAdapter:
     """
-    Adapter to ensure all market data tools use unified caching.
+    Adapter to ensure all market data tools use SQLite caching.
 
     Provides a single interface that:
-    1. Checks existing cache locations for data
-    2. Routes all new data through UnifiedCacheManager
+    1. Checks existing cache (SQLite database)
+    2. Routes all new data through TradingCacheManager
     3. Handles set-based union operations for overlapping data
+
+    Note: UnifiedCacheManager (file-based) is deprecated in favor of SQLite.
     """
 
     def __init__(self):
-        self.unified_cache = UnifiedCacheManager()
+        self.cache = TradingCacheManager()  # SQLite-based cache
         self.legacy_locations = [
             Path(".cache/polygon/prices"),
             Path(".cache/market_data")
@@ -32,29 +36,35 @@ class CacheAdapter:
     def get_market_data(self, symbol: str, start_date: str, end_date: str,
                         source: str = "any") -> Optional[pd.DataFrame]:
         """
-        Get market data from any cache location, preferring unified cache.
+        Get market data from SQLite cache, falling back to legacy file cache.
 
         Args:
             symbol: Stock symbol
             start_date: Start date (YYYY-MM-DD)
-            end_date: End date (YYYY-MM-DD)  
-            source: Data source preference ("any", "polygon", "alpha_vantage")
+            end_date: End date (YYYY-MM-DD)
+            source: Data source preference ("any", "alpaca", "polygon", "alpha_vantage", "auto")
+
+        Returns:
+            DataFrame with OHLCV data, or None if not found
         """
-        # First try unified cache
-        data = self.unified_cache.get_market_data(symbol, start_date, end_date, source)
+        # Normalize source name (handle "any" -> None for TradingCacheManager)
+        cache_source = None if source in ("any", "auto") else source
+
+        # First try SQLite cache
+        data = self.cache.get(symbol, start_date, end_date, source=cache_source)
         if data is not None:
             return data
 
-        # Fallback: check legacy locations
+        # Fallback: check legacy file-based locations (for migration)
         for location in self.legacy_locations:
             if not location.exists():
                 continue
 
             legacy_data = self._check_legacy_cache(location, symbol, start_date, end_date)
             if legacy_data is not None:
-                # Found in legacy cache - migrate to unified cache
-                self.unified_cache.set_market_data(
-                    symbol, start_date, end_date, source, legacy_data)
+                # Found in legacy cache - migrate to SQLite cache
+                detected_source = source if source not in ("any", "auto") else "migrated"
+                self.cache.set(symbol, legacy_data, source=detected_source)
                 return legacy_data
 
         return None
@@ -62,25 +72,25 @@ class CacheAdapter:
     def set_market_data(self, symbol: str, start_date: str, end_date: str,
                         source: str, data: pd.DataFrame) -> None:
         """
-        Store market data using unified cache (with set-based union logic).
+        Store market data using SQLite cache (with set-based union logic).
 
         Args:
             symbol: Stock symbol
-            start_date: Start date 
+            start_date: Start date
             end_date: End date
-            source: Data source
+            source: Data source ("alpaca", "polygon", "alpha_vantage", "auto")
             data: OHLCV DataFrame
-        """
-        # Check if we already have overlapping data
-        existing_data = self.unified_cache.get_market_data(symbol, start_date, end_date, source)
 
-        if existing_data is not None and not existing_data.empty:
-            # Perform set-based union (merge and deduplicate)
-            unified_data = self._union_data(existing_data, data)
-            self.unified_cache.set_market_data(symbol, start_date, end_date, source, unified_data)
-        else:
-            # No existing data - store directly
-            self.unified_cache.set_market_data(symbol, start_date, end_date, source, data)
+        Note: TradingCacheManager handles duplicates with INSERT OR REPLACE,
+        so we don't need explicit union logic. The database will automatically
+        prefer the most recent cached_at timestamp.
+        """
+        if data is None or data.empty:
+            return
+
+        # TradingCacheManager.set() extracts date range from DataFrame,
+        # no need to pass start/end explicitly
+        self.cache.set(symbol, data, source=source)
 
     def _check_legacy_cache(self, cache_dir: Path, symbol: str,
                             start_date: str, end_date: str) -> Optional[pd.DataFrame]:
@@ -159,16 +169,37 @@ class CacheAdapter:
     def clear_legacy_caches(self) -> None:
         """
         Optional: Clear legacy cache locations after migration.
-        Use with caution - only after confirming unified cache works.
+        Use with caution - only after confirming SQLite cache works.
         """
-        print("⚠️  This will permanently delete legacy cache data!")
+        print("⚠️  This will permanently delete legacy JSON cache files!")
+        print("   Make sure you've backed up and migrated to SQLite first!")
         if input("Continue? (y/N): ").lower().startswith('y'):
+            count = 0
             for location in self.legacy_locations:
-                if location.exists() and location.name == "prices":
-                    # Only clear polygon/prices, not the whole polygon dir
+                if location.exists():
                     for file in location.glob("*.json"):
                         file.unlink()
-                    print(f"Cleared {location}")
+                        count += 1
+                    print(f"Cleared {count} files from {location}")
+            print(f"✅ Deleted {count} legacy cache files")
+
+    def get_cache_stats(self):
+        """
+        Get statistics about the cache.
+
+        Returns:
+            Dictionary with cache statistics from TradingCacheManager
+        """
+        return self.cache.get_stats()
+
+    def cleanup_expired(self) -> int:
+        """
+        Remove expired cache entries.
+
+        Returns:
+            Number of entries deleted
+        """
+        return self.cache.cleanup_expired()
 
 
 # Global instance for easy access

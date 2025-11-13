@@ -12,7 +12,7 @@ import os
 import time
 from collections import deque
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone  # TODO date utils
 from enum import Enum
 from threading import Lock
 from typing import Any, Dict, Optional
@@ -169,12 +169,12 @@ class TradeCycle:
             stop_loss: float = 0.05  # 5%
             take_profit: float = 0.08  # 8%
             description: str = "Hardcoded fallback: 8% TP / 5% SL"
-        
+
         @dataclass
         class FallbackConfig:
             def get_exit_config(self):
                 return ExitConfig()
-        
+
         return FallbackConfig()
 
     # Price fetching now handled by unified_price_fetcher.get_current_price()
@@ -223,7 +223,8 @@ class TradeCycle:
                 # Fallback: get all recent orders and filter manually
                 request = GetOrdersRequest(limit=50, after=recent_cutoff)
                 orders = self.position_manager.broker.get_orders(filter=request)
-                orders = [o for o in orders if str(o.status).lower() in ['filled', 'partially_filled']]
+                orders = [o for o in orders if str(o.status).lower() in [
+                    'filled', 'partially_filled']]
 
             for order in orders:
                 if order.symbol == self.symbol and order.id == self.data.order_ids['parent']:
@@ -473,8 +474,9 @@ class TradeCycle:
 
             # Check for successful order submission (handle both string and enum status)
             status = str(result.get('status', '')).lower()
-            success_statuses = ['submitted', 'accepted', 'new', 'pending_new', 'orderstatus.accepted', 'orderstatus.new']
-            
+            success_statuses = ['submitted', 'accepted', 'new',
+                                'pending_new', 'orderstatus.accepted', 'orderstatus.new']
+
             if 'error' not in result and any(success_status in status for success_status in success_statuses):
                 # Order confirmed successful - safe to update state
                 self.data.quantity = quantity
@@ -537,7 +539,7 @@ class TradeCycle:
                 from alpaca.trading.requests import MarketOrderRequest
                 from alpaca.trading.enums import OrderSide, TimeInForce, OrderClass
                 from alpaca.trading.requests import StopLossRequest, TakeProfitRequest
-                
+
                 alpaca_request = MarketOrderRequest(
                     symbol=symbol,
                     qty=qty,
@@ -549,7 +551,8 @@ class TradeCycle:
                 )
 
                 # Submit order through position manager's broker client
-                order_response = self.position_manager.broker.submit_order(order_data=alpaca_request)
+                order_response = self.position_manager.broker.submit_order(
+                    order_data=alpaca_request)
 
                 # Handle Alpaca OrderData object properly
                 result = {

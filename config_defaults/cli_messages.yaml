@@ -1,0 +1,363 @@
+# ============================================================================
+# CLI Messages Configuration
+# Centralized YAML configuration for all CLI user-facing messages
+# ============================================================================
+
+# Emojis used throughout the CLI
+emojis:
+  # Mode indicators
+  auto_mode: "🤖"
+  confirm_mode: "✋"
+
+  # Status indicators
+  success: "✅"
+  error: "❌"
+  warning: "⚠️"
+  info: "📊"
+  critical: "🚨"
+  loading: "⏳"
+  thinking: "💭"
+
+  # Trading signals
+  buy: "⬆️"
+  sell: "⬇️"
+  hold: "➡️"
+  check: "✅"
+
+  # Position status
+  profit: "🟢"
+  loss: "🔴"
+  neutral: "⚪"
+
+  # Feature icons
+  portfolio: "💼"
+  money: "💰"
+  chart: "📈"
+  orders: "📋"
+  alerts: "🔔"
+  scheduler: "⏰"
+  calendar: "📅"
+  clock: "🔮"
+  config: "⚙️"
+  target: "🎯"
+  history: "📜"
+  book: "📖"
+  lightbulb: "💡"
+  wave: "👋"
+  lightning: "⚡"
+  retry: "🔄"
+
+  # Time of day
+  morning: "🌅"
+  evening: "🌆"
+
+# Welcome and help messages
+welcome:
+  banner: "======================================================================"
+  title: "   AutoGen Trading Assistant - Unified Interactive CLI"
+
+help:
+  commands: |
+    System Commands:
+      /help      - Show help
+      /exit      - Exit (or Ctrl+C)
+      /toggle    - Toggle between CONFIRM and AUTO modes
+      /schedule  - Enter scheduler management mode
+      /tips      - Show trading basics for beginners
+
+    Trading:
+      > buy 10 AAPL
+      > is SPY at $XXX.XX a good entry?
+      > sell all TQQQ
+      > pltr                        (just type ticker for analysis)
+
+    Monitoring:
+      > check my alerts
+      > show portfolio
+      > any open orders
+      > what's my position status?
+
+    Scheduler:
+      > show scheduler status
+      > show execution history
+      Or use /schedule for full scheduler CLI
+
+    Tip: Just type naturally - the LLM will understand!
+         New to trading? Type /tips to learn the basics!
+
+# Mode switching messages
+mode:
+  switched_auto: "🤖 Mode switched to: AUTO (trades execute immediately)"
+  switched_confirm: "✋ Mode switched to: CONFIRM (asks before executing)"
+
+# Exit messages
+exit:
+  message: "\n\n👋 Exiting..."
+
+# Command messages
+commands:
+  unknown: "Unknown command: {command}"
+  use_help: "Use /help to see available commands"
+
+# Trade request messages
+trade:
+  analyzing: "\n⏳ Analyzing trade..."
+  auto_executing: "\n⚡ Auto-executing..."
+  cancelled: "\n❌ Trade cancelled"
+
+  sell_warning: |
+    ⚠️  WARNING: SELL signal detected.
+       This system does not support short selling.
+       Only SELL if you currently hold this position.
+       Otherwise, ignore this signal.
+
+# Error messages
+errors:
+  processing: "\n❌ Error processing request: {error}"
+
+  invalid_ticker: |
+    ❌ Invalid ticker symbol
+       The ticker you entered was not recognized by the market.
+       Please check the spelling and try again.
+       Example: AAPL (not APPL), TSLA, SPY, MSFT
+
+  garbage_input: |
+    ❌ I couldn't understand that request.
+       Try:
+       • A ticker symbol: 'AAPL' or 'meta'
+       • A trade request: 'buy 10 SPY' or 'sell all TSLA'
+       • Status query: 'show portfolio' or 'check orders'
+       • Type /help for more options
+
+  empty_ticker: |
+    ❌ No ticker symbol detected.
+       Please specify what you want to trade.
+       Examples: 'AAPL', 'buy META', 'analyze TSLA'
+
+  broker_validation_stop: |
+    Order rejected: Stop loss price (${stop_price:.2f}) doesn't match market price
+
+    The market is closed and price data may be stale. Alpaca expects stop<=${base_price}
+    but we calculated ${stop_price:.2f}. Try again during market hours (9:30 AM - 4:00 PM ET)
+    for accurate pricing.
+
+  broker_validation_target: |
+    Order rejected: Take profit price (${target_price:.2f}) doesn't match market price
+
+    The market is closed and price data may be stale. Alpaca expects target>=${base_price}
+    but we calculated ${target_price:.2f}. Try again during market hours (9:30 AM - 4:00 PM ET)
+    for accurate pricing.
+
+  insufficient_funds: |
+    Order rejected: Not enough cash available
+
+    Check your account balance and reduce the order size.
+
+  market_closed: |
+    Order rejected: Market is closed
+
+    Regular market hours: 9:30 AM - 4:00 PM ET. Your order may execute when the market opens.
+
+# Trade suggestion display
+suggestion:
+  separator: "======================================================================"
+  header: "📊 {ticker} @ ${price:.2f}"
+  signal_display: "{emoji} {signal} SUGGESTED"
+  confidence: "   Confidence: {confidence:.1%}"
+
+  analysis_header: "\n📈 Analysis:"
+  analysis_item: "   • {reason}"
+
+  entry_plan_header: "\n💰 Entry Plan:"
+  entry_plan: |
+       Entry:  ${entry:.2f}
+       Stop:   ${stop:.2f} ({stop_pct:+.1f}%)
+       Target: ${target:.2f} ({target_pct:+.1f}%)
+       Qty:    {qty} shares
+       Order:  {tif}
+
+  portfolio_impact_header: "\n📊 Portfolio Impact:"
+  portfolio_impact: |
+       Trade Value: ${trade_value:,.2f}
+       Portfolio %: {portfolio_pct:.1f}% (after transaction)
+       Max Loss:    ${max_loss:.2f}
+       Risk/Reward: {risk_reward:.2f}
+
+  warnings_header: "\n⚠️  Warnings:"
+  warning_item: "   {warning}"
+
+# Confirmation messages
+confirmation:
+  prompt: "\nContinue? [yes/no]: "
+  invalid: "Please enter 'yes' or 'no'"
+
+# Order result messages
+order_result:
+  separator: "======================================================================"
+
+  success_header: "✅ ORDER PLACED SUCCESSFULLY"
+  success: |
+
+       {qty} shares {ticker}
+       Entry Order:  {entry_id}
+       Stop Order:   {stop_id}
+       Target Order: {target_id}
+
+       {message}
+
+  failed_header: "❌ ORDER FAILED"
+  failed: |
+
+       {message}
+
+  error_detail: "   Error: {error}"
+
+# Alerts messages
+alerts:
+  checking: "\n📊 Checking Position Alerts..."
+  not_initialized: "❌ Trading cycle not initialized"
+  no_alerts: "✅ No active alerts"
+  positions_monitored: "   {count} position(s) monitored"
+
+  header: "\n🔔 {count} Alert(s) Generated:"
+  alert_item: |
+       {emoji} {ticker}: {alert_type}
+          Current: ${price:.2f}
+  alert_detail: "      {key}: {value}"
+
+  history_header: "\n📜 Alert History ({count} total):"
+  history_item: "   • {ticker} - {alert_type} at {time}"
+
+  error: "❌ Error checking alerts: {error}"
+
+# Scheduler messages
+scheduler:
+  header: "\n⏰ Daily Scheduler Status"
+  separator: "======================================================================"
+
+  not_initialized: |
+    ❌ Scheduler not initialized - not running in daemon mode
+
+    💡 To start scheduler:
+       python main.py --daemon
+
+    📖 What the scheduler does:
+       • Morning (9:20 AM ET): Check positions, place new orders
+       • Evening (3:50 PM ET): Review positions, adjust stops
+
+  status: "\n{emoji} Status: {status}"
+
+  config_header: "\n⚙️  Configuration:"
+  config: |
+       Morning Routine: {morning} ET
+       Evening Routine: {evening} ET
+       Max Retries: {retries}
+       Timezone: US/Eastern
+
+  routines_header: "\n📅 Scheduled Routines:"
+
+  morning_routine: |
+
+       🌅 Morning Routine (9:20 AM ET):
+          • Fetch current broker state
+          • Check position alerts (approaching TP/SL)
+          • Analyze market conditions
+          • Place new GTC orders if signals present
+          • Log execution status
+
+  evening_routine: |
+
+       🌆 Evening Routine (3:50 PM ET):
+          • Review all open positions
+          • Check alert triggers
+          • Adjust trailing stops if profitable
+          • Update position tracker state
+          • Log daily summary
+
+  history_header: |
+    📋 Recent Execution History:
+       (Last 7 days, showing up to 10 most recent)
+
+  history_item: |
+
+       {emoji} {task}
+          Status: {status}
+          Time: {time}
+
+  error_detail: "      ⚠️  Error: {error}..."
+  retries: "      🔄 Retries: {count}"
+
+  no_history: |
+    📋 No execution history found
+       Scheduler hasn't run yet or history is empty
+
+  next_header: "\n🔮 Next Scheduled Execution:"
+  next: |
+       {task}
+       Time: {time} ET
+       Countdown: {hours}h {minutes}m from now
+  next_error: "   Unable to calculate next run: {error}"
+
+  commands: |
+    💡 Scheduler Commands:
+       python main.py --daemon      # Run scheduler in background
+       python main.py --help        # See all options
+
+    📖 Documentation:
+       docs/features/02_gtc_scheduler_quickstart.md
+       docs/features/03_gtc_scheduler_technical.md
+
+  error: "❌ Error checking scheduler: {error}"
+
+# Portfolio messages
+portfolio:
+  header: "\n💼 Portfolio Status..."
+  not_initialized: "❌ Account monitor not initialized"
+
+  account_header: "\n💰 Account:"
+  account_info: |
+       Equity: ${equity:,.2f}
+       Cash: ${cash:,.2f}
+       Buying Power: ${buying_power:,.2f}
+       Pattern Day Trader: {pdt}
+
+  positions_header: "\n📊 Positions ({count}):"
+  position_item: |
+       {emoji} {symbol}: {qty} shares @ ${entry:.2f} (avg entry)
+          Current: ${current:.2f}
+          Value: ${value:,.2f}
+          P/L: ${pl:,.2f} ({pl_pct:+.2f}%)
+
+  position_details_header: "\n{emoji} {symbol} Position Details:"
+  position_details: |
+       Quantity: {qty} shares
+       Entry Price: ${entry:.2f}
+       Current Price: ${current:.2f}
+       P/L: ${pl:,.2f} ({pl_pct:+.2f}%)
+
+  price_targets_header: "\n🎯 Price Targets:"
+  price_targets: |
+       Take Profit: ${tp:.2f}
+       Stop Loss: ${sl:.2f}
+       Distance to TP: {tp_dist:+.2f}%
+       Distance to SL: {sl_dist:+.2f}%
+
+  no_targets: "\n💡 No price targets set for {symbol}"
+  no_position: "\n❌ No position found for {ticker}"
+  no_positions: "\n📊 No open positions"
+
+  error: "❌ Error checking portfolio: {error}"
+
+# Orders messages
+orders:
+  checking: "\n📋 Checking Open Orders..."
+  not_initialized: "❌ Account monitor not initialized"
+  no_orders: "✅ No open orders"
+
+  header: "\n📊 {count} Open Order(s):"
+  order_item: |
+       {emoji} {side} {qty} {symbol} {price}
+          Type: {type}, Status: {status}
+          Order ID: {order_id}...
+
+  error: "❌ Error checking orders: {error}"

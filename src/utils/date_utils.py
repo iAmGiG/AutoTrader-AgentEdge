@@ -2,13 +2,12 @@
 Utilities for dynamic date handling in data tools.
 """
 
-from typing import Tuple, Optional
 import re
 import datetime
 import os
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
-config_loader = ConfigLoader()
+config = ConfigLoader()
 
 
 DEFAULT_TIMEZONE = "America/New_York"
@@ -18,11 +17,11 @@ def get_default_timezone() -> str:
     """Return the configured default timezone."""
     return os.getenv(
         "DEFAULT_TIMEZONE",
-        config_loader.get("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE),
+        config.get("DEFAULT_TIMEZONE", DEFAULT_TIMEZONE),
     )
 
 
-def localize_df(df, tz: str):
+def localize_df(df, tz):
     """Ensure a DataFrame index is timezone-aware using the provided timezone."""
     import pandas as pd
 
@@ -43,7 +42,7 @@ def localize_df(df, tz: str):
     return df
 
 
-def get_default_date_range(days_back: int = 5) -> Tuple[str, str]:
+def get_default_date_range(days_back=5):
     """
     Calculate a default date range based on the current date.
     Returns (start_date, end_date) as strings in YYYY-MM-DD format.
@@ -76,7 +75,7 @@ def get_default_date_range(days_back: int = 5) -> Tuple[str, str]:
     return (start_date_str, end_date_str)
 
 
-def process_date_param(date_param: Optional[str]) -> Optional[str]:
+def process_date_param(date_param):
     """
     Process a date parameter that might be a relative date string.
     Handles special strings like "today", "yesterday", "-7d", etc.
@@ -158,10 +157,10 @@ def process_date_param(date_param: Optional[str]) -> Optional[str]:
 
 
 def get_processed_date_range(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    default_days_back: int = 5
-) -> Tuple[str, str]:
+    start_date=None,
+    end_date=None,
+    default_days_back=5
+):
     """
     Process start and end date parameters, applying defaults if needed.
 
@@ -309,3 +308,372 @@ def resolve_anchor(df, anchor_token):
         warning = str(e)
 
     return pd.Timestamp(anchor_ts), warning
+
+
+# === COMMON DATETIME UTILITIES ===
+# Consolidation functions to reduce datetime import duplication across modules
+
+def get_datetime_now() -> datetime.datetime:
+    """
+    Get current datetime object.
+
+    Returns:
+        Current datetime.datetime object
+    """
+    return datetime.datetime.now()
+
+
+def get_datetime_from_timestamp(timestamp: float) -> datetime.datetime:
+    """
+    Convert Unix timestamp to datetime object.
+
+    Args:
+        timestamp: Unix timestamp (seconds since epoch)
+
+    Returns:
+        datetime.datetime object
+    """
+    return datetime.datetime.fromtimestamp(timestamp)
+
+
+def subtract_days(dt: datetime.datetime, days: int) -> datetime.datetime:
+    """
+    Subtract days from a datetime object.
+
+    Args:
+        dt: datetime object
+        days: Number of days to subtract
+
+    Returns:
+        New datetime object with days subtracted
+    """
+    return dt - datetime.timedelta(days=days)
+
+
+def now_iso() -> str:
+    """
+    Get current timestamp as ISO string.
+
+    Returns:
+        Current timestamp in ISO format (YYYY-MM-DDTHH:MM:SS.ffffff)
+    """
+    return datetime.datetime.now().isoformat()
+
+
+def now_timestamp() -> str:
+    """
+    Get current timestamp formatted for filenames/IDs.
+
+    Returns:
+        Current timestamp as YYYYMMDD_HHMMSS string
+    """
+    return datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+
+def today_str() -> str:
+    """
+    Get today's date as string.
+
+    Returns:
+        Today's date in YYYY-MM-DD format
+    """
+    return datetime.datetime.now().strftime('%Y-%m-%d')
+
+
+def add_business_days(date_str, days) -> str:
+    """
+    Add business days to a date string.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+        days: Number of business days to add (can be negative)
+
+    Returns:
+        New date in YYYY-MM-DD format
+    """
+    import pandas as pd
+
+    # Convert to datetime
+    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+
+    # Add business days using pandas
+    result_dt = pd.bdate_range(start=dt, periods=abs(days) + 1, freq='B')
+
+    if days >= 0:
+        return result_dt[-1].strftime('%Y-%m-%d')
+    else:
+        # For negative days, go backwards
+        result_dt = pd.bdate_range(end=dt, periods=abs(days) + 1, freq='B')
+        return result_dt[0].strftime('%Y-%m-%d')
+
+
+def parse_date_string(date_str) -> datetime.datetime:
+    """
+    Parse various date string formats to datetime object.
+
+    Args:
+        date_str: Date string in various formats
+
+    Returns:
+        datetime.datetime object
+
+    Raises:
+        ValueError: If date string cannot be parsed
+    """
+    # Handle standard date formats
+    formats_to_try = [
+        '%Y-%m-%d',
+        '%Y-%m-%d %H:%M:%S',
+        '%Y-%m-%dT%H:%M:%S',
+        '%Y-%m-%dT%H:%M:%S.%f',
+        '%m/%d/%Y',
+        '%d/%m/%Y',
+    ]
+
+    for fmt in formats_to_try:
+        try:
+            return datetime.datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unable to parse date string: {date_str}")
+
+
+def date_range_trading_days(start_date, end_date) -> list:
+    """
+    Generate list of trading days between start and end dates.
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+
+    Returns:
+        List of trading day strings in YYYY-MM-DD format
+    """
+    import pandas as pd
+
+    start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    end_dt = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+
+    # Generate business days
+    trading_days = pd.bdate_range(start=start_dt, end=end_dt, freq='B')
+
+    return [dt.strftime('%Y-%m-%d') for dt in trading_days]
+
+
+def calculate_duration_minutes(start_iso, end_iso) -> float:
+    """
+    Calculate duration in minutes between two ISO timestamp strings.
+
+    Args:
+        start_iso: Start timestamp in ISO format
+        end_iso: End timestamp in ISO format
+
+    Returns:
+        Duration in minutes as float
+    """
+    start_dt = datetime.datetime.fromisoformat(start_iso)
+    end_dt = datetime.datetime.fromisoformat(end_iso)
+
+    return (end_dt - start_dt).total_seconds() / 60
+
+
+def next_business_day(date_str) -> str:
+    """
+    Get the next business day after the given date.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+
+    Returns:
+        Next business day in YYYY-MM-DD format
+    """
+    return add_business_days(date_str, 1)
+
+
+def is_opex_week(date) -> bool:
+    """
+    Check if date is in OPEX week (third Friday of the month).
+
+    Args:
+        date: Date as string (YYYY-MM-DD) or datetime object
+
+    Returns:
+        True if date is in OPEX week
+    """
+    # Ensure date is a datetime object
+    if isinstance(date, str):
+        date = datetime.datetime.strptime(date, '%Y-%m-%d')
+
+    # Third Friday of the month
+    first_day = date.replace(day=1)
+    first_friday = first_day + \
+        datetime.timedelta(days=(4 - first_day.weekday()) % 7)
+    third_friday = first_friday + datetime.timedelta(weeks=2)
+
+    # Check if within OPEX week (Mon-Fri of third Friday week)
+    week_start = third_friday - datetime.timedelta(days=third_friday.weekday())
+    week_end = week_start + datetime.timedelta(days=4)
+
+    return week_start <= date <= week_end
+
+
+def is_business_day(date_str) -> bool:
+    """
+    Check if a date is a business day (Monday-Friday, excluding holidays).
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+
+    Returns:
+        True if it's a business day, False otherwise
+    """
+    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+
+    # Check if it's a weekday
+    if dt.weekday() >= 5:  # Saturday = 5, Sunday = 6
+        return False
+
+    # Check against US market holidays (basic check)
+    # This could be enhanced with a proper holiday calendar
+    return True
+
+
+def is_valid_trading_date(date_str: str, allow_future: bool = False) -> bool:
+    """
+    Check if a date is a valid trading date (business day and not in future).
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+        allow_future: If True, allow future dates (default False)
+
+    Returns:
+        True if valid trading date, False otherwise
+    """
+    try:
+        import pytz
+
+        # Parse the date
+        dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+
+        # Check if it's a business day
+        if not is_business_day(date_str):
+            return False
+
+        # Check if it's in the future
+        if not allow_future:
+            # Get current time in EDT/EST
+            eastern = pytz.timezone('America/New_York')
+            now = datetime.datetime.now(eastern).replace(tzinfo=None)
+
+            # Date is in the future if after today
+            if dt.date() > now.date():
+                return False
+
+        # Check if it's too far in the past (before 2000)
+        if dt.year < 2000:
+            return False
+
+        return True
+
+    except (ValueError, TypeError):
+        return False
+
+
+def format_for_filename(dt: datetime.datetime = None) -> str:
+    """
+    Format datetime for use in filenames (no special characters).
+
+    Args:
+        dt: datetime object (defaults to now)
+
+    Returns:
+        Formatted string safe for filenames
+    """
+    if dt is None:
+        dt = datetime.datetime.now()
+
+    return dt.strftime('%Y%m%d_%H%M%S')
+
+
+def get_market_open_time(date_str, timezone: str = "America/New_York") -> datetime.datetime:
+    """
+    Get market open time for a given date.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+        timezone: Market timezone (default: America/New_York)
+
+    Returns:
+        datetime object for market open (9:30 AM ET)
+    """
+    import pytz
+
+    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+
+    # Set to 9:30 AM
+    market_open = dt.replace(hour=9, minute=30, second=0, microsecond=0)
+
+    # Localize to market timezone
+    tz = pytz.timezone(timezone)
+    return tz.localize(market_open)
+
+
+def get_market_close_time(date_str, timezone: str = "America/New_York") -> datetime.datetime:
+    """
+    Get market close time for a given date.
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+        timezone: Market timezone (default: America/New_York)
+
+    Returns:
+        datetime object for market close (4:00 PM ET)
+    """
+    import pytz
+
+    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+
+    # Set to 4:00 PM
+    market_close = dt.replace(hour=16, minute=0, second=0, microsecond=0)
+
+    # Localize to market timezone
+    tz = pytz.timezone(timezone)
+    return tz.localize(market_close)
+
+
+def calculate_days_to_expiration(expiration_dates, trade_dates):
+    """
+    Calculate days to expiration for options data.
+    Handles both pandas Series and individual dates.
+
+    Args:
+        expiration_dates: pandas Series or single date value representing expiration dates
+        trade_dates: pandas Series or single date value representing trade dates
+
+    Returns:
+        pandas Series or int: Days to expiration for each option contract
+    """
+    import pandas as pd
+
+    # Convert to pandas datetime if not already
+    if not isinstance(expiration_dates, pd.Series):
+        expiration_dates = pd.to_datetime(expiration_dates)
+    if not isinstance(trade_dates, pd.Series):
+        trade_dates = pd.to_datetime(trade_dates)
+
+    # Handle parsing if needed
+    if isinstance(expiration_dates, pd.Series) and expiration_dates.dtype == 'object':
+        expiration_dates = expiration_dates.apply(
+            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x)
+        expiration_dates = pd.to_datetime(expiration_dates)
+
+    if isinstance(trade_dates, pd.Series) and trade_dates.dtype == 'object':
+        trade_dates = trade_dates.apply(
+            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x)
+        trade_dates = pd.to_datetime(trade_dates)
+
+    # Calculate the difference in days
+    days_diff = (expiration_dates - trade_dates).dt.days
+
+    return days_diff

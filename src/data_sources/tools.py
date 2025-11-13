@@ -14,8 +14,15 @@ from autogen_core.tools import FunctionTool
 from .sources.market.unified_market_tool import fetch_unified_market_data
 from .sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
 from .sources.market.market_context_tool import market_context_tool
-from .sources.news.google_search_simple import google_search_smart_tool, set_news_governor
+from .sources.news.google_search_simple import google_search_smart_tool, set_news_governor, _news_governor
 from .sources.news.hierarchical_news_tool import fetch_hierarchical_news
+from src.data_sources.processors.news_governor import create_balanced_governor
+
+# Load tool descriptions from YAML
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +35,43 @@ TECH_AGENT = "tech"
 STRATEGY_AGENT = "strategy"
 ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, STRATEGY_AGENT]
 
+##################################
+# Load Tool Descriptions from YAML
+##################################
+
+
+def _get_tool_description(tool_key: str, fallback: str) -> str:
+    """
+    Get tool description from YAML config with fallback.
+
+    Args:
+        tool_key: The key for the tool in agent_prompts.yaml
+        fallback: Default description if YAML not available
+
+    Returns:
+        Tool description string
+    """
+    try:
+        tools_config = load_agent_config("tools")
+        return tools_config.get(tool_key, {}).get("description", fallback)
+    except Exception:
+        return fallback
+
 # Note: Individual Alpha Vantage and hierarchical market data tools removed
 # All market data access now handled by unified_market_tool for consistency
 
 # Note: Direct Polygon.io tool removed - functionality handled by unified_market_tool
 # with proper caching and fallback management
 
+
 # Unified market data tool using cache adapter
 unified_market_tool = FunctionTool(
     func=fetch_unified_market_data,
     name="fetch_unified_market_data",
-    description="Fetch market data using unified cache system. Routes through cache adapter for consistent data management across Polygon and Alpha Vantage sources."
+    description=_get_tool_description(
+        "unified_market_data",
+        "Fetch market data using unified cache system. Routes through cache adapter for consistent data management across Polygon and Alpha Vantage sources."
+    )
 )
 unified_market_tool.agent_types = [TECH_AGENT]
 
@@ -49,7 +82,10 @@ unified_market_tool.agent_types = [TECH_AGENT]
 vxx_volatility_tool = FunctionTool(
     func=fetch_vxx_volatility_data,
     name="fetch_vxx_volatility_data",
-    description="Fetch VXX volatility data for market fear-based sentiment analysis. Returns VXX-based sentiment scores for V2 Market Fear sentiment agent."
+    description=_get_tool_description(
+        "vxx_volatility_data",
+        "Fetch VXX volatility data for market fear-based sentiment analysis. Returns VXX-based sentiment scores for V2 Market Fear sentiment agent."
+    )
 )
 vxx_volatility_tool.agent_types = [SENTIMENT_AGENT]
 
@@ -60,7 +96,10 @@ vxx_volatility_tool.agent_types = [SENTIMENT_AGENT]
 hierarchical_news_tool = FunctionTool(
     func=fetch_hierarchical_news,
     name="fetch_hierarchical_news",
-    description="Fetch hierarchical adaptive news mix for V4 sentiment analysis. Provides balanced company-specific, sector ETF, and broad market news for intelligent sentiment reasoning."
+    description=_get_tool_description(
+        "hierarchical_news",
+        "Fetch hierarchical adaptive news mix for V4 sentiment analysis. Provides balanced company-specific, sector ETF, and broad market news for intelligent sentiment reasoning."
+    )
 )
 hierarchical_news_tool.agent_types = [SENTIMENT_AGENT]
 
@@ -142,8 +181,6 @@ def enable_smart_news_sampling(governor=None):
     Args:
         governor: NewsGovernor instance, or None for balanced default
     """
-    from src.tools.news_governor import create_balanced_governor
-
     if governor is None:
         governor = create_balanced_governor()
 
@@ -159,8 +196,6 @@ def disable_smart_news_sampling():
 
 def get_news_quota_status():
     """Get current news quota status if NewsGovernor is enabled."""
-    from src.tools.data_sources.news.google_search_simple import _news_governor
-
     if _news_governor is not None:
         return _news_governor.get_quota_status()
     else:

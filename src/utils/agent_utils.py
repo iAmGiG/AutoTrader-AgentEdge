@@ -7,28 +7,36 @@ import os
 import json
 import re
 from collections import Counter
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 
 def load_agent_config(agent_key: str) -> dict:
     """
-    Load an agent's configuration from the agent_prompts.json file.
+    Load an agent's configuration from the agent_prompts.yaml file.
 
     Args:
-        agent_key: The key for the agent (e.g., "sentiment_agent")
+        agent_key: The key for the agent (e.g., "sentiment_agent", "tools", "interface")
 
     Returns:
         The agent's configuration dictionary
     """
     try:
+        if yaml is None:
+            print("Warning: PyYAML not installed. Install with: pip install pyyaml")
+            return {}
+
         # Get the project root directory (up two levels from this file)
         config_dir = os.path.dirname(os.path.dirname(
             os.path.dirname(os.path.abspath(__file__))))
-        config_file = os.path.join(config_dir, 'config', 'agent_prompts.json')
+        config_file = os.path.join(config_dir, 'config_defaults', 'agent_prompts.yaml')
 
         with open(config_file, 'r') as f:
-            all_configs = json.load(f)
+            all_configs = yaml.safe_load(f)
 
-        # Return the config for the requested agent, or an empty dict if not found
+        # Return the config for the requested section, or an empty dict if not found
         return all_configs.get(agent_key, {})
     except Exception as e:
         print(f"Error loading agent config: {e}")

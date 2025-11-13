@@ -1,18 +1,44 @@
-"""Market data caching to reduce API calls during backtesting."""
+"""
+Market data caching to reduce API calls during backtesting.
+
+DEPRECATED: This file-based cache is deprecated in favor of TradingCacheManager (SQLite).
+Use src.data_sources.cache.TradingCacheManager for new code.
+"""
 
 import os
 import json
 import hashlib
+import warnings
 from typing import Optional
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # TODO: utilze @date_utils.py
 
 
 class MarketDataCache:
-    """Simple file-based cache for market data."""
+    """
+    Simple file-based cache for market data.
+
+    **DEPRECATED**: This MD5-hashed file cache is deprecated.
+    Use TradingCacheManager (SQLite) for better performance and human-readable storage.
+
+    Please use:
+        from src.data_sources.cache import TradingCacheManager
+        cache = TradingCacheManager()
+    """
 
     def __init__(self, cache_dir: str = ".cache/market_data"):
-        """Initialize cache with directory."""
+        """
+        Initialize cache with directory.
+
+        **DEPRECATED**: Use TradingCacheManager (SQLite-based) instead.
+        """
+        warnings.warn(
+            "MarketDataCache (MD5-hashed file cache) is deprecated. "
+            "Use TradingCacheManager (SQLite) for better performance.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
 

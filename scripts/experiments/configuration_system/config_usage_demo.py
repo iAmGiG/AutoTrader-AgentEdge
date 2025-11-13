@@ -10,29 +10,30 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.trading_config import get_config, reload_config
 
+
 def demo_basic_usage():
     """Show basic configuration usage."""
-    print("="*60)
+    print("=" * 60)
     print("BASIC CONFIGURATION USAGE")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Get configuration
     config = get_config()
-    
+
     # Get MACD parameters
     macd = config.get_macd_config()
     print(f"\nMACD Configuration:")
     print(f"  Fast: {macd.fast}")
     print(f"  Slow: {macd.slow}")
     print(f"  Signal: {macd.signal}")
-    
+
     # Get RSI parameters
     rsi = config.get_rsi_config()
     print(f"\nRSI Configuration:")
     print(f"  Period: {rsi.period}")
     print(f"  Oversold: {rsi.oversold}")
     print(f"  Overbought: {rsi.overbought}")
-    
+
     # Get exit strategy
     exit_cfg = config.get_exit_config('balanced')
     print(f"\nBalanced Exit Strategy:")
@@ -41,28 +42,30 @@ def demo_basic_usage():
     print(f"  Expected Value (50% WR): {exit_cfg.expected_value_50wr:.1%}")
     print(f"  Breakeven Win Rate: {exit_cfg.breakeven_win_rate:.1%}")
 
+
 def demo_strategy_comparison():
     """Compare different exit strategies."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("EXIT STRATEGY COMPARISON")
-    print("="*60)
-    
+    print("=" * 60)
+
     config = get_config()
     strategies = config.get_all_exit_strategies()
-    
+
     print(f"\n{'Strategy':<15} {'TP':<8} {'SL':<8} {'EV@50%':<10} {'Breakeven'}")
-    print("-"*60)
-    
+    print("-" * 60)
+
     for name, strategy in strategies.items():
         print(f"{name:<15} {strategy.take_profit:>6.1%}  {strategy.stop_loss:>6.1%}  "
               f"{strategy.expected_value_50wr:>8.2%}  {strategy.breakeven_win_rate:>8.1%}")
 
+
 def demo_benefits():
     """Demonstrate the benefits of configuration system."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("BENEFITS OF CONFIGURATION SYSTEM")
-    print("="*60)
-    
+    print("=" * 60)
+
     print("""
 1. EASY PARAMETER TUNING:
    - Change parameters in JSON without touching code
@@ -102,29 +105,31 @@ slow_ema = prices.ewm(span=macd.slow).mean()
 ```
     """)
 
+
 def demo_dynamic_adjustment():
     """Show how to dynamically adjust configuration."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("DYNAMIC CONFIGURATION ADJUSTMENT")
-    print("="*60)
-    
+    print("=" * 60)
+
     config = get_config()
-    
+
     print("\nScenario: Market becomes more volatile")
     print("Action: Switch from balanced to conservative exits")
-    
+
     # Get current strategy
     current = config.get_exit_config('balanced')
     print(f"\nCurrent (Balanced):")
     print(f"  TP: {current.take_profit:.1%}, SL: {current.stop_loss:.1%}")
-    
+
     # Switch to conservative
     conservative = config.get_exit_config('conservative')
     print(f"\nSwitched to Conservative:")
     print(f"  TP: {conservative.take_profit:.1%}, SL: {conservative.stop_loss:.1%}")
     print(f"  Note: Wider stop loss for volatile conditions")
-    
+
     print("\n✅ No code changes needed - just specify different strategy!")
+
 
 def main():
     """Run all demonstrations."""
@@ -132,10 +137,10 @@ def main():
     demo_strategy_comparison()
     demo_benefits()
     demo_dynamic_adjustment()
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("RECOMMENDATION")
-    print("="*60)
+    print("=" * 60)
     print("""
 YES, there are significant benefits to using a configuration system:
 
@@ -148,7 +153,8 @@ YES, there are significant benefits to using a configuration system:
 Start with the 'balanced' exit strategy (8% TP / 5% SL)
 as it has the best expected value at realistic win rates.
 """)
-    print("="*60)
+    print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

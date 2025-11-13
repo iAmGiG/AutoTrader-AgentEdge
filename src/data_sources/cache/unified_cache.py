@@ -3,13 +3,17 @@ Unified cache manager for V0-V4 framework.
 
 Provides standardized caching interface for all data sources, ensuring consistent
 data formats regardless of source (Polygon.io, Alpha Vantage, Google Search).
+
+DEPRECATED: This file-based cache is deprecated in favor of TradingCacheManager (SQLite).
+Use src.data_sources.cache.TradingCacheManager for new code.
 """
 
 import json
+import warnings
 from pathlib import Path
 from typing import Optional, Dict, Any
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # TODO: utilize date_utils.py
 import logging
 
 
@@ -19,10 +23,31 @@ class UnifiedCacheManager:
 
     Provides consistent caching interface regardless of data source.
     All OHLCV data stored in same format whether from Polygon or Alpha Vantage.
+
+    **DEPRECATED**: This file-based cache is deprecated in favor of TradingCacheManager (SQLite).
+
+    Please use:
+        from src.data_sources.cache import TradingCacheManager
+        cache = TradingCacheManager()
+
+    Or use the cache_adapter which automatically uses SQLite:
+        from src.data_sources.cache import cache_adapter
     """
 
     def __init__(self, base_dir: str = ".cache"):
-        """Initialize unified cache manager."""
+        """
+        Initialize unified cache manager.
+
+        **DEPRECATED**: Use TradingCacheManager (SQLite-based) for better performance.
+        """
+        warnings.warn(
+            "UnifiedCacheManager (file-based cache) is deprecated. "
+            "Use TradingCacheManager (SQLite) for better performance and futures support. "
+            "Or use cache_adapter which automatically uses SQLite.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         self.base_dir = Path(base_dir)
         self.market_dir = self.base_dir / "market_data"
         self.news_dir = self.base_dir / "news_filtered"  # Use consistent news_filtered directory
@@ -89,7 +114,8 @@ class UnifiedCacheManager:
                     start_date = cache_data['metadata']['start_date']
                     end_date = cache_data['metadata']['end_date']
                     expires_at_key = 'expires_at' in cache_data['metadata']
-                    expires_at_value = cache_data['metadata'].get('expires_at') if expires_at_key else None
+                    expires_at_value = cache_data['metadata'].get(
+                        'expires_at') if expires_at_key else None
                 else:
                     # Legacy format with flat structure
                     start_date = cache_data.get('start_date')

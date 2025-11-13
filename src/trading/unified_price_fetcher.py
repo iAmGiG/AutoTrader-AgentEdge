@@ -7,8 +7,8 @@ Handles fallbacks and caching consistently.
 """
 
 import logging
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from typing import Optional
+from datetime import datetime, timedelta  # TODO date utils
 import sys
 import os
 
@@ -19,39 +19,40 @@ from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
 
 logger = logging.getLogger(__name__)
 
+
 class UnifiedPriceFetcher:
     """
     Centralized price fetching with consistent fallback logic.
-    
+
     This class provides a single implementation used by all trading modules
     to avoid inconsistent pricing across the system.
     """
-    
+
     _instance = None
     _cache = {}
     _cache_ttl = 60  # Cache for 60 seconds
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance.market_data = AlpacaMarketData()
         return cls._instance
-    
+
     def get_current_price(self, symbol: str, use_cache: bool = True) -> float:
         """
         Get current price with consistent fallback logic.
-        
+
         Priority:
         1. Cached price (if fresh)
         2. Latest trade from Alpaca
         3. Quote mid-price from Alpaca  
         4. Historical close price
         5. Default fallback prices
-        
+
         Args:
             symbol: Stock symbol
             use_cache: Whether to use cached prices
-            
+
         Returns:
             Current price as float
         """
@@ -61,7 +62,7 @@ class UnifiedPriceFetcher:
             if (datetime.now() - cache_entry['timestamp']).seconds < self._cache_ttl:
                 logger.debug(f"Using cached price for {symbol}: ${cache_entry['price']:.2f}")
                 return cache_entry['price']
-        
+
         try:
             # Try latest trade first
             trade_data = self.market_data.get_latest_trade(symbol)
@@ -70,7 +71,7 @@ class UnifiedPriceFetcher:
                 self._update_cache(symbol, price)
                 logger.debug(f"Got trade price for {symbol}: ${price:.2f}")
                 return price
-            
+
             # Fallback to quote mid-price
             quote_data = self.market_data.get_latest_quote(symbol)
             if quote_data and 'bid_price' in quote_data and 'ask_price' in quote_data:
@@ -81,7 +82,7 @@ class UnifiedPriceFetcher:
                     self._update_cache(symbol, price)
                     logger.debug(f"Got quote mid-price for {symbol}: ${price:.2f}")
                     return price
-            
+
             # Try historical data
             end_date = datetime.now()
             start_date = end_date - timedelta(days=5)
@@ -91,7 +92,7 @@ class UnifiedPriceFetcher:
                 end=end_date.strftime('%Y-%m-%d'),
                 timeframe="1Day"
             )
-            
+
             if historical is not None and len(historical) > 0:
                 if isinstance(historical, dict) and symbol in historical:
                     data = historical[symbol]
@@ -100,33 +101,33 @@ class UnifiedPriceFetcher:
                         self._update_cache(symbol, price)
                         logger.warning(f"Using historical close for {symbol}: ${price:.2f}")
                         return price
-                        
+
         except Exception as e:
             logger.error(f"Error fetching price for {symbol}: {e}")
-        
+
         # Last resort: default prices (updated to 2025 levels)
         default_prices = {
             "TQQQ": 85.50,
-            "SQQQ": 12.30, 
+            "SQQQ": 12.30,
             "SPXL": 140.00,
             "SPXS": 10.50,
             "SPY": 660.00,  # Updated to current market level
             "QQQ": 510.00,  # Updated to current market level
             "SOXL": 28.40
         }
-        
+
         price = default_prices.get(symbol, 100.0)
         logger.warning(f"Using default price for {symbol}: ${price:.2f}")
         self._update_cache(symbol, price)
         return price
-    
+
     def _update_cache(self, symbol: str, price: float):
         """Update the price cache."""
         self._cache[symbol] = {
             'price': price,
             'timestamp': datetime.now()
         }
-    
+
     def clear_cache(self, symbol: Optional[str] = None):
         """Clear price cache."""
         if symbol:
@@ -134,13 +135,15 @@ class UnifiedPriceFetcher:
         else:
             self._cache.clear()
 
+
 # Singleton instance
 price_fetcher = UnifiedPriceFetcher()
+
 
 def get_current_price(symbol: str) -> float:
     """
     Convenience function for getting current price.
-    
+
     This is the function that should be imported and used
     throughout the trading system.
     """

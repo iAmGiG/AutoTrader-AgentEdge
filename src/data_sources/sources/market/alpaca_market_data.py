@@ -5,7 +5,7 @@ This implementation replaces the raw REST approach with the official SDK
 for better error handling, automatic pagination, and proper data parsing.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import logging
@@ -18,13 +18,28 @@ try:
     )
     from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
     from alpaca.data.models import Bar, Quote, Trade, Snapshot
+    ALPACA_AVAILABLE = True
 except ImportError:
-    raise ImportError(
-        "alpaca-py SDK is required. Install with: pip install alpaca-py"
+    StockHistoricalDataClient = None
+    StockBarsRequest = None
+    StockLatestQuoteRequest = None
+    StockLatestTradeRequest = None
+    StockSnapshotRequest = None
+    TimeFrame = None
+    TimeFrameUnit = None
+    Bar = None
+    Quote = None
+    Trade = None
+    Snapshot = None
+    ALPACA_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "alpaca-py SDK not installed. Alpaca market data source will be unavailable. "
+        "Install with: pip install alpaca-py"
     )
 
-from config.config_loader import ConfigLoader
-from src.data_sources.cache.unified_cache import UnifiedCacheManager
+from src.utils.config_loader import ConfigLoader
+from src.data_sources.cache.sqlite_cache import TradingCacheManager
 
 
 logger = logging.getLogger(__name__)
@@ -33,28 +48,38 @@ logger = logging.getLogger(__name__)
 class AlpacaMarketData:
     """
     Alpaca market data manager using official alpaca-py SDK.
-    
-    Provides unified market data retrieval with intelligent caching,
+
+    Provides unified market data retrieval with intelligent caching (SQLite),
     proper error handling, and automatic pagination via the official SDK.
     """
-    
-    # Map string timeframes to Alpaca TimeFrame objects
-    TIMEFRAME_MAP = {
-        "1Min": TimeFrame(1, TimeFrameUnit.Minute),
-        "5Min": TimeFrame(5, TimeFrameUnit.Minute),
-        "15Min": TimeFrame(15, TimeFrameUnit.Minute),
-        "30Min": TimeFrame(30, TimeFrameUnit.Minute),
-        "1Hour": TimeFrame(1, TimeFrameUnit.Hour),
-        "1Day": TimeFrame(1, TimeFrameUnit.Day),
-    }
-    
-    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
+
+    # Map string timeframes to Alpaca TimeFrame objects (initialized lazily)
+    TIMEFRAME_MAP = None
+
+    def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
         """
         Initialize with official Alpaca SDK.
-        
+
         Args:
-            cache_manager: Optional cache manager (creates new if None)
+            cache_manager: Optional SQLite cache manager (creates new if None)
         """
+        if not ALPACA_AVAILABLE:
+            raise ImportError(
+                "alpaca-py SDK is required for AlpacaMarketData. "
+                "Install with: pip install alpaca-py"
+            )
+
+        # Initialize TIMEFRAME_MAP now that we know alpaca is available
+        if AlpacaMarketData.TIMEFRAME_MAP is None:
+            AlpacaMarketData.TIMEFRAME_MAP = {
+                "1Min": TimeFrame(1, TimeFrameUnit.Minute),
+                "5Min": TimeFrame(5, TimeFrameUnit.Minute),
+                "15Min": TimeFrame(15, TimeFrameUnit.Minute),
+                "30Min": TimeFrame(30, TimeFrameUnit.Minute),
+                "1Hour": TimeFrame(1, TimeFrameUnit.Hour),
+                "1Day": TimeFrame(1, TimeFrameUnit.Day),
+            }
+
         config_loader = ConfigLoader()
         api_key = config_loader.get('ALPACA_PAPER_API_KEY')
         secret_key = config_loader.get('ALPACA_PAPER_SECRET')
@@ -71,9 +96,9 @@ class AlpacaMarketData:
             secret_key=secret_key,
             raw_data=False  # Get parsed models instead of raw dicts
         )
-        
-        self.cache = cache_manager or UnifiedCacheManager()
-        logger.info("Alpaca market data manager initialized with official SDK")
+
+        self.cache = cache_manager or TradingCacheManager()
+        logger.info("Alpaca market data manager initialized with official SDK and SQLite cache")
     
     def get_bars(
         self,
@@ -109,8 +134,8 @@ class AlpacaMarketData:
         
         if use_cache:
             for symbol in symbols:
-                cached = self.cache.get_market_data(symbol, start, end, "alpaca")
-                
+                cached = self.cache.get(symbol, start, end, source="alpaca")
+
                 if cached is not None and not cached.empty:
                     # Ensure required columns exist
                     if 'symbol' not in cached.columns:
@@ -185,9 +210,10 @@ class AlpacaMarketData:
                             for symbol in symbols_to_fetch:
                                 symbol_data = df[df['symbol'] == symbol].copy()
                                 if not symbol_data.empty:
-                                    self.cache.set_market_data(
-                                        symbol, start, end, "alpaca", symbol_data
-                                    )
+                                    # Remove 'symbol' and 'source' columns before caching
+                                    # (TradingCacheManager stores these separately)
+                                    cache_data = symbol_data.drop(columns=['symbol', 'source'], errors='ignore')
+                                    self.cache.set(symbol, cache_data, source="alpaca")
                         
                         fetched_data.append(df)
                         logger.info(
@@ -335,7 +361,7 @@ class AlpacaMarketData:
 
 # Tool wrapper for AutoGen integration
 def create_alpaca_market_data_tool(
-    cache_manager: Optional[UnifiedCacheManager] = None
+    cache_manager: Optional[TradingCacheManager] = None
 ) -> 'AlpacaMarketDataTool':
     """
     Create Alpaca market data tool using SDK for AutoGen agents.
@@ -352,7 +378,7 @@ def create_alpaca_market_data_tool(
 class AlpacaMarketDataTool:
     """Tool wrapper for Alpaca market data access by AutoGen agents using SDK."""
     
-    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
+    def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
         """Initialize the Alpaca market data tool with SDK."""
         self.alpaca_client = AlpacaMarketData(cache_manager)
         self.name = "alpaca_market_data"

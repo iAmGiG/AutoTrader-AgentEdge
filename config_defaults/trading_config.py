@@ -8,6 +8,11 @@ import os
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
 
 @dataclass
 class MACDConfig:
@@ -51,16 +56,30 @@ class TradingConfig:
         """Load configuration from file or use defaults."""
         if config_file is None:
             config_path = os.path.dirname(__file__)
-            config_file = os.path.join(config_path, 'trading_config.json')
+            # Try YAML first, fallback to JSON
+            yaml_file = os.path.join(config_path, 'trading_config.yaml')
+            json_file = os.path.join(config_path, 'trading_config.json')
+
+            if os.path.exists(yaml_file):
+                config_file = yaml_file
+            elif os.path.exists(json_file):
+                config_file = json_file
+            else:
+                config_file = yaml_file  # Default to YAML for new installs
 
         self.config_file = config_file
         self.config = self._load_config()
 
     def _load_config(self) -> Dict:
-        """Load configuration from JSON file."""
+        """Load configuration from YAML or JSON file."""
         if os.path.exists(self.config_file):
             with open(self.config_file, 'r') as f:
-                return json.load(f)
+                if self.config_file.endswith('.yaml') or self.config_file.endswith('.yml'):
+                    if yaml is None:
+                        raise ImportError("PyYAML not installed. Install with: pip install pyyaml")
+                    return yaml.safe_load(f)
+                else:
+                    return json.load(f)
         else:
             # Return default configuration
             return self._get_default_config()

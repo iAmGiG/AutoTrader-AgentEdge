@@ -2,15 +2,40 @@
 Unified Market Data Tool using CacheAdapter.
 
 Routes all market data requests through the unified cache system,
-regardless of source (Polygon, Alpha Vantage, etc.).
+with Alpaca as the primary data source.
 """
 
 import pandas as pd
 from typing import Optional
+import logging
 
 from ...cache import cache_adapter
-from .polygon_historical_tool import PolygonHistoricalData
-from .alpha_vantage_market import AlphaVantageMarketTool
+
+# Primary data source: Alpaca
+try:
+    from .alpaca_market_data import AlpacaMarketData
+    ALPACA_AVAILABLE = True
+except ImportError:
+    ALPACA_AVAILABLE = False
+    AlpacaMarketData = None
+    logging.warning("Alpaca market data not available")
+
+# Fallback sources (optional)
+try:
+    from .polygon_historical_tool import PolygonHistoricalData
+    POLYGON_AVAILABLE = True
+except ImportError:
+    POLYGON_AVAILABLE = False
+    PolygonHistoricalData = None
+
+try:
+    from .alpha_vantage_market import AlphaVantageMarketTool
+    ALPHA_VANTAGE_AVAILABLE = True
+except ImportError:
+    ALPHA_VANTAGE_AVAILABLE = False
+    AlphaVantageMarketTool = None
+
+logger = logging.getLogger(__name__)
 
 
 def fetch_unified_market_data(
@@ -20,13 +45,13 @@ def fetch_unified_market_data(
     source: str = "auto"
 ) -> pd.DataFrame:
     """
-    Fetch market data using unified cache system.
+    Fetch market data using unified cache system with Alpaca as primary source.
 
     Args:
         symbol: Stock symbol
         start_date: Start date (YYYY-MM-DD)
-        end_date: End date (YYYY-MM-DD) 
-        source: Data source ("auto", "polygon", "alpha_vantage")
+        end_date: End date (YYYY-MM-DD)
+        source: Data source ("auto", "alpaca", "polygon", "alpha_vantage")
 
     Returns:
         DataFrame with OHLCV data
@@ -38,13 +63,19 @@ def fetch_unified_market_data(
 
     # Cache miss - fetch from appropriate source
     if source == "auto":
-        # Try Polygon first, fallback to Alpha Vantage
-        data = _fetch_from_polygon(symbol, start_date, end_date)
-        if data is None or data.empty:
-            data = _fetch_from_alpha_vantage(symbol, start_date, end_date)
-            source = "alpha_vantage"
+        # Priority order: Alpaca -> Polygon -> Alpha Vantage
+        data = _fetch_from_alpaca(symbol, start_date, end_date)
+        if data is not None and not data.empty:
+            source = "alpaca"
         else:
-            source = "polygon"
+            data = _fetch_from_polygon(symbol, start_date, end_date)
+            if data is not None and not data.empty:
+                source = "polygon"
+            else:
+                data = _fetch_from_alpha_vantage(symbol, start_date, end_date)
+                source = "alpha_vantage"
+    elif source == "alpaca":
+        data = _fetch_from_alpaca(symbol, start_date, end_date)
     elif source == "polygon":
         data = _fetch_from_polygon(symbol, start_date, end_date)
     elif source == "alpha_vantage":
@@ -59,23 +90,69 @@ def fetch_unified_market_data(
     return data if data is not None else pd.DataFrame()
 
 
+def _fetch_from_alpaca(symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+    """Fetch from Alpaca Markets API (primary source)."""
+    if not ALPACA_AVAILABLE:
+        logger.debug("Alpaca not available")
+        return None
+
+    try:
+        alpaca_client = AlpacaMarketData()
+        data = alpaca_client.get_bars(
+            symbols=[symbol],
+            start=start_date,
+            end=end_date,
+            timeframe="1Day",
+            use_cache=False  # Cache handled by unified cache
+        )
+
+        if not data.empty:
+            # Normalize column names to match expected format
+            if 'close' in data.columns and 'Close' not in data.columns:
+                data['Close'] = data['close']
+            if 'open' in data.columns and 'Open' not in data.columns:
+                data['Open'] = data['open']
+            if 'high' in data.columns and 'High' not in data.columns:
+                data['High'] = data['high']
+            if 'low' in data.columns and 'Low' not in data.columns:
+                data['Low'] = data['low']
+            if 'volume' in data.columns and 'Volume' not in data.columns:
+                data['Volume'] = data['volume']
+
+            logger.info(f"Fetched {len(data)} bars from Alpaca for {symbol}")
+            return data
+
+        return None
+    except Exception as e:
+        logger.warning(f"Alpaca fetch failed for {symbol}: {e}")
+        return None
+
+
 def _fetch_from_polygon(symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
-    """Fetch from Polygon.io API."""
+    """Fetch from Polygon.io API (fallback source)."""
+    if not POLYGON_AVAILABLE:
+        logger.debug("Polygon not available")
+        return None
+
     try:
         polygon_client = PolygonHistoricalData()
         data = polygon_client.fetch_historical_prices(symbol, start_date, end_date)
         return data
     except Exception as e:
-        print(f"Polygon fetch failed: {e}")
+        logger.warning(f"Polygon fetch failed for {symbol}: {e}")
         return None
 
 
 def _fetch_from_alpha_vantage(symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
-    """Fetch from Alpha Vantage API."""
+    """Fetch from Alpha Vantage API (fallback source)."""
+    if not ALPHA_VANTAGE_AVAILABLE:
+        logger.debug("Alpha Vantage not available")
+        return None
+
     try:
         av_client = AlphaVantageMarketTool()
         data = av_client.fetch_stock_data(symbol, start_date, end_date)
         return data
     except Exception as e:
-        print(f"Alpha Vantage fetch failed: {e}")
+        logger.warning(f"Alpha Vantage fetch failed for {symbol}: {e}")
         return None

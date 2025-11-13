@@ -8,7 +8,7 @@ Phase 1: Read-only operations (account status, positions, orders)
 Phase 2: Write operations (order placement, modification, cancellation)
 """
 
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time  # TODO date utils
 from typing import Dict, List, Any, Optional
 import logging
 import pytz
@@ -23,12 +23,31 @@ try:
         ClosePositionRequest, TakeProfitRequest, StopLossRequest
     )
     from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus, OrderClass
+    ALPACA_TRADING_AVAILABLE = True
 except ImportError:
-    raise ImportError(
-        "alpaca-py SDK is required. Install with: pip install alpaca-py"
+    TradingClient = None
+    GetOrdersRequest = None
+    MarketOrderRequest = None
+    LimitOrderRequest = None
+    StopOrderRequest = None
+    StopLimitOrderRequest = None
+    TrailingStopOrderRequest = None
+    ClosePositionRequest = None
+    TakeProfitRequest = None
+    StopLossRequest = None
+    OrderSide = None
+    OrderType = None
+    TimeInForce = None
+    QueryOrderStatus = None
+    OrderClass = None
+    ALPACA_TRADING_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "alpaca-py SDK not installed. Alpaca trading client will be unavailable. "
+        "Install with: pip install alpaca-py"
     )
 
-from config.config_loader import ConfigLoader
+from src.utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +74,12 @@ class AlpacaTradingClient:
         Raises:
             ValueError: If mode is not "paper" or "live"
         """
+        if not ALPACA_TRADING_AVAILABLE:
+            raise ImportError(
+                "alpaca-py SDK is required for AlpacaTradingClient. "
+                "Install with: pip install alpaca-py"
+            )
+
         if mode not in ["paper", "live"]:
             raise ValueError("Mode must be explicitly 'paper' or 'live'")
 
@@ -252,8 +277,9 @@ class AlpacaAccountMonitor:
         """
         try:
             # Create request with filters
+            # IMPORTANT: nested=True includes bracket order legs (stop-loss, take-profit)
             if status == 'all':
-                request = GetOrdersRequest(limit=limit, symbols=symbols)
+                request = GetOrdersRequest(limit=limit, symbols=symbols, nested=True)
             else:
                 # Map status string to enum
                 status_enum = None
@@ -265,27 +291,108 @@ class AlpacaAccountMonitor:
                 request = GetOrdersRequest(
                     status=status_enum,
                     limit=limit,
-                    symbols=symbols
+                    symbols=symbols,
+                    nested=True
                 )
 
             orders = self.client.trading_client.get_orders(filter=request)
 
-            return [{
-                'id': str(order.id),
-                'symbol': order.symbol,
-                'side': str(order.side),
-                'qty': float(order.qty) if order.qty else 0.0,
-                'filled_qty': float(order.filled_qty) if order.filled_qty else 0.0,
-                'status': str(order.status),
-                'order_type': str(order.order_type),
-                'time_in_force': str(order.time_in_force),
-                'limit_price': float(order.limit_price) if order.limit_price else None,
-                'stop_price': float(order.stop_price) if order.stop_price else None,
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'filled_at': order.filled_at.isoformat() if order.filled_at else None,
-                'canceled_at': order.canceled_at.isoformat() if order.canceled_at else None,
-                'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else None
-            } for order in orders]
+            # First pass: collect all orders with their metadata
+            result = []
+            leg_ids = set()  # Track leg order IDs
+            parent_map = {}  # Map leg IDs to parent order IDs
+
+            for order in orders:
+                order_dict = {
+                    'id': str(order.id),
+                    'symbol': order.symbol,
+                    'side': str(order.side),
+                    'qty': float(order.qty) if order.qty else 0.0,
+                    'filled_qty': float(order.filled_qty) if order.filled_qty else 0.0,
+                    'status': str(order.status),
+                    'order_type': str(order.order_type),
+                    'time_in_force': str(order.time_in_force),
+                    'limit_price': float(order.limit_price) if order.limit_price else None,
+                    'stop_price': float(order.stop_price) if order.stop_price else None,
+                    'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
+                    'filled_at': order.filled_at.isoformat() if order.filled_at else None,
+                    'canceled_at': order.canceled_at.isoformat() if order.canceled_at else None,
+                    'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else None,
+                    'order_class': str(order.order_class) if hasattr(order, 'order_class') else None,
+                    'legs': []  # Will be populated in second pass
+                }
+
+                # Track leg IDs from bracket orders
+                if hasattr(order, 'legs') and order.legs:
+                    # order.legs is a list of UUIDs for the leg orders
+                    for leg_id in order.legs:
+                        leg_id_str = str(leg_id)
+                        leg_ids.add(leg_id_str)
+                        parent_map[leg_id_str] = str(order.id)
+                    logger.info(
+                        f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}")
+
+                result.append(order_dict)
+
+            # Second pass: match leg orders to their parents
+            legs_found = 0
+            for order_dict in result:
+                order_id = order_dict['id']
+
+                # If this order is a leg of another order
+                if order_id in leg_ids:
+                    parent_id = parent_map.get(order_id)
+                    if parent_id:
+                        # Find parent and add this as a leg
+                        for parent_order in result:
+                            if parent_order['id'] == parent_id:
+                                parent_order['legs'].append(order_dict)
+                                legs_found += 1
+                                logger.info(f"Matched leg {order_id} to parent {parent_id}")
+                                break
+
+            # Third pass: For bracket orders with empty legs, try fetching by ID to get held orders
+            # Alpaca's get_orders() doesn't return "held" orders, but get_order_by_id() might
+            for order_dict in result:
+                if order_dict.get('order_class') == 'OrderClass.BRACKET' and not order_dict.get('legs'):
+                    try:
+                        # Fetch this specific order by ID to see if it includes held legs
+                        full_order = self.client.trading_client.get_order_by_id(order_dict['id'])
+
+                        if hasattr(full_order, 'legs') and full_order.legs:
+                            logger.info(
+                                f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id")
+
+                            # Fetch each leg order individually
+                            for leg_id in full_order.legs:
+                                try:
+                                    leg_order = self.client.trading_client.get_order_by_id(
+                                        str(leg_id))
+                                    leg_dict = {
+                                        'id': str(leg_order.id),
+                                        'symbol': leg_order.symbol,
+                                        'side': str(leg_order.side),
+                                        'qty': float(leg_order.qty) if leg_order.qty else 0.0,
+                                        'status': str(leg_order.status),
+                                        'order_type': str(leg_order.order_type),
+                                        'time_in_force': str(leg_order.time_in_force),
+                                        'limit_price': float(leg_order.limit_price) if leg_order.limit_price else None,
+                                        'stop_price': float(leg_order.stop_price) if leg_order.stop_price else None
+                                    }
+                                    order_dict['legs'].append(leg_dict)
+                                    legs_found += 1
+                                    logger.info(
+                                        f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}")
+                                except Exception as e:
+                                    # Don't spam users with leg fetch errors (common for bracket orders)
+                                    logger.debug(f"  Failed to fetch leg {leg_id}: {e}")
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to fetch bracket order {order_dict['id']} by ID: {e}")
+
+            logger.info(f"Processed {len(result)} orders, found {legs_found} bracket legs")
+
+            return result
 
         except Exception as e:
             logger.error(f"Failed to get orders: {e}")
@@ -387,9 +494,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             mode: "paper" or "live" trading mode
             risk_limits: Optional risk management limits
         """
-        super().__init__(mode=mode)
-
-        # Override client to enable confirmations for write operations
+        # Don't call super().__init__() to avoid creating client twice
+        # Instead, create client directly with write permissions
         self.client = AlpacaTradingClient(mode=mode, require_confirmation=(mode == "live"))
 
         # Risk limits for order validation
@@ -568,7 +674,10 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             )
 
             if warn_only:
-                logger.warning(f"⚠️  {message} - Order will be queued")
+                # Note: We submit immediately to Alpaca - THEY queue it, not us
+                # If validation fails, order is rejected (no local queue/retry)
+                logger.warning(
+                    f"⚠️  {message} - Order will be sent to broker (may fail validation)")
                 return True
             else:
                 logger.error(f"❌ {message} - Order blocked")
@@ -592,39 +701,39 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             from alpaca.trading.enums import OrderStatus
             from datetime import datetime, timezone
             import pytz
-            
+
             # Get ET timezone for market day calculation
             et_tz = pytz.timezone('America/New_York')
             now_et = datetime.now(et_tz)
-            
+
             # Market day starts at market open (usually 4:00 AM ET for pre-market)
             market_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)
             if now_et < market_start:
                 # Before 4 AM, consider it previous market day
                 market_start = market_start.replace(day=market_start.day - 1)
-            
+
             # Convert to UTC for API call
             market_start_utc = market_start.astimezone(timezone.utc)
-            
+
             # Get orders from market start of today
             request = GetOrdersRequest(
                 status=OrderStatus.ALL,
                 after=market_start_utc
             )
             today_orders = self.client.trading.get_orders(request)
-            
+
             order_count = len(today_orders)
             max_trades = self.risk_limits.get('max_daily_trades', 100)  # Default 100
-            
+
             logger.info(f"Daily trade count: {order_count}/{max_trades}")
-            
+
             if order_count >= max_trades:
                 raise ValueError(
                     f"Daily trade limit exceeded: {order_count}/{max_trades} orders placed today"
                 )
-            
+
             return True
-            
+
         except ValueError:
             # Re-raise validation errors
             raise
@@ -655,7 +764,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Validate order parameters
             self._validate_order(symbol, qty, side)
-            
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -754,7 +863,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if limit_price <= 0:
                 raise ValueError(f"Limit price must be positive, got {limit_price}")
-            
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -966,7 +1075,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if stop_price <= 0:
                 raise ValueError(f"Stop price must be positive, got {stop_price}")
-                
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -1084,7 +1193,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if trail_price and trail_price <= 0:
                 raise ValueError(f"Trail price must be positive, got {trail_price}")
-                
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -1204,7 +1313,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if stop_loss_price and stop_loss_price <= 0:
                 raise ValueError(f"Stop loss price must be positive, got {stop_loss_price}")
-                
+
             # Validate market hours (warn only for now)
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
@@ -1295,7 +1404,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             }
 
         except Exception as e:
-            logger.error(f"Failed to place bracket order: {e}")
+            # Don't log error here - it will be logged and translated by execution manager
+            logger.debug(f"Bracket order error details: {e}", exc_info=True)
             return {
                 'status': 'error',
                 'message': str(e),
@@ -1345,25 +1455,25 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Build replacement order request
             from alpaca.trading.requests import ReplaceOrderRequest
             from alpaca.trading.enums import TimeInForce
-            
+
             # Start with current order values
             replace_request_params = {}
-            
+
             if qty is not None:
                 if qty <= 0:
                     raise ValueError(f"Quantity must be positive, got {qty}")
                 replace_request_params['qty'] = qty
-                
+
             if limit_price is not None:
                 if limit_price <= 0:
                     raise ValueError(f"Limit price must be positive, got {limit_price}")
                 replace_request_params['limit_price'] = limit_price
-                
+
             if stop_price is not None:
                 if stop_price <= 0:
                     raise ValueError(f"Stop price must be positive, got {stop_price}")
                 replace_request_params['stop_price'] = stop_price
-                
+
             if time_in_force is not None:
                 tif_map = {
                     "day": TimeInForce.DAY,
@@ -1377,12 +1487,13 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Create replacement request
             replace_request = ReplaceOrderRequest(**replace_request_params)
-            
+
             # Mode-aware logging
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE ORDER MODIFICATION: {order_id}")
                 if self.require_confirmation:
-                    confirmation = input(f"Confirm LIVE order modification for {order_id}? (yes/no): ")
+                    confirmation = input(
+                        f"Confirm LIVE order modification for {order_id}? (yes/no): ")
                     if confirmation.lower() != 'yes':
                         return {
                             'status': 'cancelled',
@@ -1391,10 +1502,10 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                         }
             else:
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
-                
+
             # Replace the order
             updated_order = self.client.trading.replace_order_by_id(order_id, replace_request)
-            
+
             return {
                 'status': 'submitted',
                 'message': 'Order modified successfully',
@@ -1434,7 +1545,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE ORDER CANCELLATION: {order_id}")
                 if self.require_confirmation:
-                    confirmation = input(f"Confirm LIVE order cancellation for {order_id}? (yes/no): ")
+                    confirmation = input(
+                        f"Confirm LIVE order cancellation for {order_id}? (yes/no): ")
                     if confirmation.lower() != 'yes':
                         return {
                             'status': 'cancelled',
@@ -1446,7 +1558,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Cancel the order
             self.client.trading.cancel_order_by_id(order_id)
-            
+
             return {
                 'status': 'cancelled',
                 'message': 'Order cancelled successfully',
@@ -1477,7 +1589,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if symbol:
                 from alpaca.trading.requests import GetOrdersRequest
                 from alpaca.trading.enums import OrderStatus
-                
+
                 request = GetOrdersRequest(
                     status=OrderStatus.OPEN,
                     symbols=[symbol]
@@ -1490,7 +1602,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                     # These are our formatted orders, we need the raw ones
                     from alpaca.trading.requests import GetOrdersRequest
                     from alpaca.trading.enums import OrderStatus
-                    
+
                     request = GetOrdersRequest(status=OrderStatus.OPEN)
                     orders = self.client.trading.get_orders(request)
 
@@ -1505,11 +1617,12 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Mode-aware logging and confirmation
             order_count = len(orders)
             symbol_desc = f" for {symbol}" if symbol else ""
-            
+
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE BULK CANCELLATION: {order_count} orders{symbol_desc}")
                 if self.require_confirmation:
-                    confirmation = input(f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): ")
+                    confirmation = input(
+                        f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): ")
                     if confirmation.lower() != 'yes':
                         return {
                             'status': 'cancelled',
@@ -1523,7 +1636,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Cancel all orders
             cancelled_orders = []
             errors = []
-            
+
             for order in orders:
                 try:
                     self.client.trading.cancel_order_by_id(order.id)
@@ -1537,10 +1650,10 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 'cancelled_orders': cancelled_orders,
                 'mode': self.client.mode
             }
-            
+
             if errors:
                 result['errors'] = errors
-                
+
             return result
 
         except Exception as e:
