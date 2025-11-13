@@ -34,10 +34,11 @@ AutoGen-TradingSystem/
 │   │
 │   ├── data_sources/                # Data integration layer
 │   │   ├── tools.py                 # Unified tool configuration
-│   │   ├── cache/                   # Data caching system (>90% improvement)
-│   │   │   ├── cache_adapter.py     # Cache router
-│   │   │   ├── unified_cache.py     # Cache manager
-│   │   │   └── market_data_cache.py # Market-specific caching
+│   │   ├── cache/                   # SQLite caching system (8-10x improvement)
+│   │   │   ├── sqlite_cache.py      # TradingCacheManager (production)
+│   │   │   ├── cache_adapter.py     # Cache router (backward compatibility)
+│   │   │   ├── unified_cache.py     # Deprecated file-based cache
+│   │   │   └── market_data_cache.py # Deprecated legacy cache
 │   │   │
 │   │   ├── sources/market/          # Market data providers
 │   │   │   ├── alpaca_market_data.py      # Primary real-time data
@@ -154,7 +155,10 @@ AutoGen-TradingSystem/
 
 **Structure**:
 
-- `cache/`: 90%+ API call reduction through intelligent caching
+- `cache/`: SQLite-based caching (8-10x performance improvement, 90%+ hit rate)
+  - `sqlite_cache.py`: Production TradingCacheManager (ACID, thread-safe, futures-ready)
+  - `cache_adapter.py`: Transparent upgrade layer
+  - `unified_cache.py`, `market_data_cache.py`: Deprecated file-based caches
 - `sources/market/`: Multiple provider support (Alpaca, Polygon, Alpha Vantage)
 - `processors/`: Data normalization and format standardization
 
@@ -246,7 +250,7 @@ python main.py analysis                 # Generate analysis reports
 └────────────┬───────────────────────┘
              ↓
 ┌────────────────────────────────────┐
-│  Cache Layer (90%+ hit rate)        │
+│  SQLite Cache (8-10x perf, 90%+ hit)│
 └────────────┬───────────────────────┘
              ↓
 ┌────────────────────────────────────┐
@@ -386,7 +390,7 @@ Always reconcile local state with broker:
 
 - GTC orders reduce monitoring
 - Batch data fetches
-- Intelligent caching (>90% hit rate)
+- SQLite caching (8-10x faster, 90%+ hit rate)
 - ~10-15 API calls/day vs 100+ reactive
 
 ### 4. Extensibility

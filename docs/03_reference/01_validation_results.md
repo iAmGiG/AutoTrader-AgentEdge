@@ -116,7 +116,7 @@ Lower drawdown and volatility demonstrate superior risk control, critical for lo
 - `SimpleVotingOrchestrator`: MACD + RSI coordination
 - `TechAgent`: Fibonacci MACD (13/34/8) signals
 - `SimpleRSI`: 14-period RSI with confidence scoring
-- `UnifiedCacheManager`: Market data caching (90% performance improvement)
+- `TradingCacheManager`: SQLite-based market data caching (8-10x performance improvement, 90%+ hit rate)
 
 ### ❌ **Fibonacci Regime Experiment Closed**
 

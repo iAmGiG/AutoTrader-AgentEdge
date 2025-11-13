@@ -12,6 +12,7 @@ Provides dedicated commands for:
 import asyncio
 import logging
 import os
+# TODO: utilize @date_utils.py for more datetime lib usage.
 from datetime import datetime, time as dt_time
 from pathlib import Path
 from typing import Optional
@@ -410,7 +411,8 @@ class SchedulerCLI:
 
         for entry in history[:20]:
             status_emoji = "✅" if entry.status == "completed" else "❌"
-            time_str = entry.actual_end_time.strftime("%Y-%m-%d %H:%M") if entry.actual_end_time else "In Progress"
+            time_str = entry.actual_end_time.strftime(
+                "%Y-%m-%d %H:%M") if entry.actual_end_time else "In Progress"
 
             print(f"{status_emoji} {entry.task_name:20s} {entry.status:12s} {time_str}")
             if entry.error_message:
@@ -435,8 +437,10 @@ class SchedulerCLI:
             morning_time = dt_time.fromisoformat(self.scheduler.config['morning_routine_time'])
             evening_time = dt_time.fromisoformat(self.scheduler.config['evening_routine_time'])
 
-            morning_today = now.replace(hour=morning_time.hour, minute=morning_time.minute, second=0, microsecond=0)
-            evening_today = now.replace(hour=evening_time.hour, minute=evening_time.minute, second=0, microsecond=0)
+            morning_today = now.replace(hour=morning_time.hour,
+                                        minute=morning_time.minute, second=0, microsecond=0)
+            evening_today = now.replace(hour=evening_time.hour,
+                                        minute=evening_time.minute, second=0, microsecond=0)
 
             if now.time() < morning_time:
                 next_run = morning_today

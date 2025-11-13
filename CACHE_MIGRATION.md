@@ -29,6 +29,7 @@ python scripts/migrate_cache_to_sqlite.py --no-backup
 ```
 
 **What the script does:**
+
 - Backs up all JSON files to `.cache/backup_TIMESTAMP/`
 - Converts 3 cache formats: UnifiedCacheManager, MarketDataCache, and raw JSON
 - Removes duplicates automatically
@@ -36,6 +37,7 @@ python scripts/migrate_cache_to_sqlite.py --no-backup
 - Preserves all metadata (sources, timestamps)
 
 **Expected output:**
+
 ```
 === SQLite Cache Migration ===
 Migrating: .cache/market_data_AAPL_2025-01-01_2025-01-31_polygon.json
@@ -64,6 +66,7 @@ cache_adapter.set_market_data("SPY", "2025-01-01", "2025-01-31", "polygon", df)
 ```
 
 **What changed under the hood:**
+
 - CacheAdapter now uses TradingCacheManager (SQLite) instead of UnifiedCacheManager (files)
 - Falls back to legacy file cache during transition period
 - No API changes required
@@ -73,6 +76,7 @@ cache_adapter.set_market_data("SPY", "2025-01-01", "2025-01-31", "polygon", df)
 **Recommended for new code** - Use SQLite cache directly:
 
 **Before:**
+
 ```python
 from src.data_sources.cache import UnifiedCacheManager
 
@@ -96,6 +100,7 @@ df = cache.get_market_data(
 ```
 
 **After:**
+
 ```python
 from src.data_sources.cache import TradingCacheManager
 
@@ -117,6 +122,7 @@ df = cache.get(
 ```
 
 **Key differences:**
+
 1. `set_market_data()` → `set()` (dates extracted from DataFrame)
 2. `get_market_data()` → `get()`
 3. Constructor simpler: `TradingCacheManager()` vs `UnifiedCacheManager(base_dir=...)`
@@ -126,6 +132,7 @@ df = cache.get(
 ### Pattern for Alpaca Data Source
 
 **Before:**
+
 ```python
 from src.data_sources.cache import UnifiedCacheManager
 
@@ -142,6 +149,7 @@ class AlpacaMarketData:
 ```
 
 **After:**
+
 ```python
 from src.data_sources.cache import TradingCacheManager
 
@@ -160,12 +168,14 @@ class AlpacaMarketData:
 ```
 
 **Important notes:**
+
 - Drop 'symbol' and 'source' columns before caching (stored as metadata)
 - TradingCacheManager extracts date range from DataFrame index automatically
 
 ### Pattern for Other Data Sources
 
 Apply the same changes to:
+
 - `src/data_sources/sources/market/alpha_vantage_market.py`
 - `src/data_sources/sources/market/polygon_market.py`
 - `src/data_sources/sources/market/market_context_tool.py`
@@ -180,6 +190,7 @@ python scripts/test_cache_migration.py
 ```
 
 **Expected output:**
+
 ```
 ======================================================================
 SQLite Cache Migration Test Suite
@@ -294,6 +305,7 @@ Use TradingCacheManager (SQLite) for better performance.
 ```
 
 **How to fix:**
+
 1. Replace `UnifiedCacheManager` with `TradingCacheManager`
 2. Replace `MarketDataCache` with `TradingCacheManager`
 3. Update method calls (see Step 2)
@@ -305,6 +317,7 @@ Use TradingCacheManager (SQLite) for better performance.
 **Cause:** SQLite database not initialized
 
 **Fix:**
+
 ```python
 from src.data_sources.cache import TradingCacheManager
 
@@ -313,6 +326,7 @@ cache = TradingCacheManager()
 ```
 
 Or run the migration script:
+
 ```bash
 python scripts/migrate_cache_to_sqlite.py
 ```
@@ -322,6 +336,7 @@ python scripts/migrate_cache_to_sqlite.py
 **Cause:** Date format mismatch or source filter too strict
 
 **Debug:**
+
 ```python
 cache = TradingCacheManager()
 
@@ -338,6 +353,7 @@ df = cache.get("AAPL", "2025-01-01", "2025-01-31")  # No source filter
 **Cause:** Multiple processes writing simultaneously
 
 **Fix:** Increase timeout or serialize writes
+
 ```python
 cache = TradingCacheManager(timeout=30.0)  # 30 second timeout
 ```
@@ -347,11 +363,13 @@ cache = TradingCacheManager(timeout=30.0)  # 30 second timeout
 **Cause:** Database not vacuumed after migration
 
 **Fix:**
+
 ```bash
 python scripts/cache_manager.py vacuum
 ```
 
 Or programmatically:
+
 ```python
 cache = TradingCacheManager()
 cache.vacuum()
@@ -369,6 +387,7 @@ After migration, you should see:
 | Storage size | 2-5 MB | 0.5-1 MB | 2-5x smaller |
 
 If you don't see these improvements:
+
 1. Run `cache.vacuum()` to optimize the database
 2. Check if you're filtering by source unnecessarily
 3. Verify indexes exist: `python scripts/cache_manager.py stats`
@@ -444,17 +463,20 @@ git checkout <commit-hash>
 ## Next Steps After Migration
 
 1. **Monitor Performance**
+
    ```bash
    python scripts/cache_manager.py stats
    ```
 
 2. **Set Up Periodic Maintenance** (crontab example)
+
    ```bash
    # Run cleanup daily at 2am
    0 2 * * * cd /path/to/project && python scripts/cache_manager.py cleanup --vacuum
    ```
 
 3. **Prepare for Options/Futures** (when ready)
+
    ```python
    # The schema already supports this!
    cache.set("AAPL_20250117C150", option_df, source="alpaca", asset_type="option")

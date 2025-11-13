@@ -52,7 +52,8 @@ class OrchestratorFactory:
             logger.info(f"Loaded config from {self.config_path}")
             return config
         except FileNotFoundError:
-            logger.warning(f"Config file not found: {self.config_path}, using environment variables")
+            logger.warning(
+                f"Config file not found: {self.config_path}, using environment variables")
             return {}
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in config file: {e}")
@@ -85,7 +86,8 @@ class OrchestratorFactory:
         reasoning_model = self.config.get("OPENAI_PROMPT_MODEL", "gpt-4o-mini")
 
         # 1. Create LLM Service
-        logger.info(f"  - Creating OpenAIService (tool: {tool_model}, reasoning: {reasoning_model})...")
+        logger.info(
+            f"  - Creating OpenAIService (tool: {tool_model}, reasoning: {reasoning_model})...")
         llm_service = OpenAIService(
             tool_calling_model=tool_model,
             reasoning_model=reasoning_model,

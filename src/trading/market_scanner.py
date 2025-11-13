@@ -13,8 +13,8 @@ import sys
 import os
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime  # TODO date utils
+from typing import Dict, List, Any, Tuple
 from dataclasses import dataclass
 import pandas as pd
 
@@ -22,7 +22,7 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
-from src.trading_tools.indicators import calculate_macd, calculate_rsi, calculate_voting_consensus
+from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from config_defaults.trading_config import TradingConfig
 
 logger = logging.getLogger(__name__)

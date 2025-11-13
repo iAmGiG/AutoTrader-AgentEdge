@@ -17,7 +17,7 @@ import sys
 import time
 from datetime import datetime, time as dt_time, timedelta
 from enum import Enum
-from typing import Optional, Callable, Dict, Any, List
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict
 import json
 import os
@@ -136,7 +136,8 @@ class DailyScheduler:
                 with open(config_file, 'r') as f:
                     if config_file.endswith('.yaml') or config_file.endswith('.yml'):
                         if yaml is None:
-                            raise ImportError("PyYAML not installed. Install with: pip install pyyaml")
+                            raise ImportError(
+                                "PyYAML not installed. Install with: pip install pyyaml")
                         user_config = yaml.safe_load(f)
                     else:
                         user_config = json.load(f)

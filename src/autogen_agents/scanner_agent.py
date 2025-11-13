@@ -11,16 +11,17 @@ and implement market scanning logic.
 # TODO: Implement using proper base_agent.py inheritance
 # from src.legacy.v0_v4_sentiment.agents.base_agent import BaseAgent
 
+
 class ScannerAgent:
     """
     PLACEHOLDER: This agent needs to be properly implemented
     using the base_agent.py framework.
     """
-    
+
     def __init__(self):
         # TODO: Implement using BaseAgent inheritance
         pass
-    
+
     # TODO: Implement market scanning methods
     pass
 

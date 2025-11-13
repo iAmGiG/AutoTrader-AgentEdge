@@ -39,6 +39,7 @@ ALL_AGENTS = [SENTIMENT_AGENT, TECH_AGENT, STRATEGY_AGENT]
 # Load Tool Descriptions from YAML
 ##################################
 
+
 def _get_tool_description(tool_key: str, fallback: str) -> str:
     """
     Get tool description from YAML config with fallback.
@@ -61,6 +62,7 @@ def _get_tool_description(tool_key: str, fallback: str) -> str:
 
 # Note: Direct Polygon.io tool removed - functionality handled by unified_market_tool
 # with proper caching and fallback management
+
 
 # Unified market data tool using cache adapter
 unified_market_tool = FunctionTool(

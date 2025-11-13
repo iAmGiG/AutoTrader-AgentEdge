@@ -13,7 +13,7 @@ import warnings
 from pathlib import Path
 from typing import Optional, Dict, Any
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # TODO: utilize date_utils.py
 import logging
 
 
@@ -114,7 +114,8 @@ class UnifiedCacheManager:
                     start_date = cache_data['metadata']['start_date']
                     end_date = cache_data['metadata']['end_date']
                     expires_at_key = 'expires_at' in cache_data['metadata']
-                    expires_at_value = cache_data['metadata'].get('expires_at') if expires_at_key else None
+                    expires_at_value = cache_data['metadata'].get(
+                        'expires_at') if expires_at_key else None
                 else:
                     # Legacy format with flat structure
                     start_date = cache_data.get('start_date')

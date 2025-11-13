@@ -13,8 +13,8 @@ import sys
 import os
 import json
 import logging
-from datetime import datetime, time, timezone
-from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime  # TODO date utils
+from typing import Dict, List, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -27,6 +27,7 @@ from src.trading_tools.position_tracker import PositionTracker, AlertType
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class Discrepancy:
     """Represents a mismatch between local state and broker reality"""
@@ -35,6 +36,7 @@ class Discrepancy:
     details: Dict[str, Any]
     action: str  # NEEDS_HUMAN_REVIEW, AUTO_FIXED, REMOVED_FROM_JSON
     severity: str = "MEDIUM"  # LOW, MEDIUM, HIGH
+
 
 @dataclass
 class StopAdjustment:
@@ -58,6 +60,7 @@ class PositionAlertSummary:
     current_price: float
     details: Dict[str, Any]
 
+
 @dataclass
 class PositionSummary:
     """Summary of a position for reporting"""
@@ -71,15 +74,17 @@ class PositionSummary:
     unrealized_percent: float
     stop_action: str  # "No change", "Move to breakeven", etc.
 
+
 class RoutineType(Enum):
     MORNING = "morning"
     EVENING = "evening"
     RECOVERY = "recovery"
 
+
 class CostEfficientTradeCycle:
     """
     Redesigned for minimal API calls using GTC orders.
-    
+
     Strategy:
     - Two scheduled routines per day (morning/evening)
     - Single API call to get all positions/orders per routine
@@ -87,7 +92,7 @@ class CostEfficientTradeCycle:
     - Generate human-readable reports for oversight
     - Crash recovery rebuilds state from broker truth
     """
-    
+
     def __init__(self, state_file: str = "state/cost_efficient_positions.json"):
         self.state_file = state_file
         self.market_data = AlpacaMarketData()
@@ -108,7 +113,7 @@ class CostEfficientTradeCycle:
         self.local_state = self.load_local_state()
 
         logger.info("CostEfficientTradeCycle initialized with alert monitoring")
-    
+
     def load_local_state(self) -> Dict[str, Any]:
         """Load local JSON state (for human reference)"""
         if os.path.exists(self.state_file):
@@ -129,7 +134,7 @@ class CostEfficientTradeCycle:
                 logger.warning(f"Failed to load state file: {e}")
                 return {"positions": {}, "last_update": None, "discrepancies": []}
         return {"positions": {}, "last_update": None, "discrepancies": []}
-    
+
     def save_local_state(self):
         """Save local state to JSON including position tracker with alert history"""
         self.local_state["last_update"] = datetime.now().isoformat()
@@ -140,10 +145,11 @@ class CostEfficientTradeCycle:
         try:
             with open(self.state_file, 'w') as f:
                 json.dump(self.local_state, f, indent=2)
-            logger.debug(f"Saved local state with {len(self.position_tracker.positions)} tracked positions")
+            logger.debug(
+                f"Saved local state with {len(self.position_tracker.positions)} tracked positions")
         except IOError as e:
             logger.error(f"Failed to save state: {e}")
-    
+
     def fetch_broker_state(self) -> Dict[str, Any]:
         """
         Single API call to get all positions and orders from broker.
@@ -156,10 +162,10 @@ class CostEfficientTradeCycle:
             # Get all orders (one API call)
             # Use 'all' to include pending_new, accepted, and other statuses
             orders = self.account_monitor.get_orders(status='all')
-            
+
             # Get account info (one API call)
             account = self.account_monitor.get_account_status()
-            
+
             # Organize into clean structure
             broker_state = {
                 "positions": {},
@@ -171,7 +177,7 @@ class CostEfficientTradeCycle:
                 },
                 "timestamp": datetime.now().isoformat()
             }
-            
+
             # Process positions
             for pos in positions:
                 symbol = pos['symbol']
@@ -183,7 +189,7 @@ class CostEfficientTradeCycle:
                     "unrealized_pl": float(pos['unrealized_pl']),
                     "side": pos['side']  # long/short
                 }
-            
+
             # Process orders (group by symbol)
             # Only include active orders (not filled, cancelled, expired, etc.)
             active_statuses = ['new', 'pending_new', 'accepted', 'partially_filled', 'held']
@@ -234,15 +240,15 @@ class CostEfficientTradeCycle:
                         logger.debug(f"  Bracket leg {symbol}: {leg_entry}")
 
             logger.info(f"Fetched broker state: {len(broker_state['positions'])} positions, "
-                       f"{len(broker_state['orders'])} order groups, "
-                       f"total {len(orders)} orders")
+                        f"{len(broker_state['orders'])} order groups, "
+                        f"total {len(orders)} orders")
 
             return broker_state
-            
+
         except Exception as e:
             logger.error(f"Failed to fetch broker state: {e}")
             raise
-    
+
     def _extract_stop_target_from_orders(self, symbol: str, broker_state: Dict[str, Any], entry_price: float = None) -> tuple:
         """
         Extract stop_price and target_price from broker's open orders for a symbol.
@@ -273,7 +279,8 @@ class CostEfficientTradeCycle:
                 side_str = str(side).lower() if side else ""
                 order_type_str = str(order_type).lower() if order_type else ""
 
-                logger.debug(f"  Order: type={order_type_str}, side={side_str}, stop={order.get('stop_price')}, limit={order.get('limit_price')}")
+                logger.debug(
+                    f"  Order: type={order_type_str}, side={side_str}, stop={order.get('stop_price')}, limit={order.get('limit_price')}")
 
                 # Stop-loss order: sell order with stop_price set (for long positions)
                 # Check both string comparison and if stop_price exists
@@ -305,10 +312,11 @@ class CostEfficientTradeCycle:
             calculated_stop = round(entry_price * (1 - stop_loss_pct), 2)
             stop_price = calculated_stop
             logger.warning(f"{symbol}: Stop order hidden by Alpaca API, no saved value found. "
-                          f"Calculated from entry: ${calculated_stop}. "
-                          f"Verify actual stop on Alpaca dashboard.")
+                           f"Calculated from entry: ${calculated_stop}. "
+                           f"Verify actual stop on Alpaca dashboard.")
 
-        logger.info(f"{symbol}: Extracted stop=${stop_price} (verified={stop_verified}), target=${target_price}")
+        logger.info(
+            f"{symbol}: Extracted stop=${stop_price} (verified={stop_verified}), target=${target_price}")
 
         return stop_price, target_price, stop_verified
 
@@ -318,7 +326,7 @@ class CostEfficientTradeCycle:
         JSON is for humans, broker is truth.
         """
         discrepancies = []
-        
+
         # Check for unknown positions (at broker but not in local JSON)
         for symbol, broker_pos in broker_state["positions"].items():
             if symbol not in self.local_state["positions"]:
@@ -333,7 +341,7 @@ class CostEfficientTradeCycle:
                     action="NEEDS_HUMAN_REVIEW",
                     severity="HIGH"
                 ))
-                
+
                 # Extract stop/target prices from broker's open orders
                 entry_price = pos_data["entry_price"]
                 stop_price, target_price, stop_verified = self._extract_stop_target_from_orders(
@@ -349,13 +357,13 @@ class CostEfficientTradeCycle:
                     "stop_price": stop_price,
                     "target_price": target_price
                 }
-        
+
         # Check for ghost positions (in local JSON but not at broker)
         for symbol in list(self.local_state["positions"].keys()):
             if symbol not in broker_state["positions"]:
                 local_pos = self.local_state["positions"][symbol]
                 discrepancies.append(Discrepancy(
-                    type="GHOST_POSITION", 
+                    type="GHOST_POSITION",
                     symbol=symbol,
                     details={
                         "local_quantity": local_pos.get("quantity", 0),
@@ -364,16 +372,16 @@ class CostEfficientTradeCycle:
                     action="REMOVED_FROM_JSON",
                     severity="MEDIUM"
                 ))
-                
+
                 # Remove ghost position
                 del self.local_state["positions"][symbol]
-        
+
         # Check quantity mismatches
         for symbol in broker_state["positions"]:
             if symbol in self.local_state["positions"]:
                 broker_qty = broker_state["positions"][symbol]["quantity"]
                 local_qty = self.local_state["positions"][symbol].get("quantity", 0)
-                
+
                 if broker_qty != local_qty:
                     discrepancies.append(Discrepancy(
                         type="QUANTITY_MISMATCH",
@@ -386,7 +394,7 @@ class CostEfficientTradeCycle:
                         action="AUTO_FIXED",
                         severity="LOW"
                     ))
-                    
+
                     # Fix quantity
                     self.local_state["positions"][symbol]["quantity"] = broker_qty
 
@@ -407,42 +415,43 @@ class CostEfficientTradeCycle:
                 # Only log discrepancy if there was a change
                 if stop_price != local_stop or target_price != local_target:
                     logger.info(f"{symbol}: Syncing stop/target from orders - "
-                               f"stop: {local_stop} -> {stop_price}, target: {local_target} -> {target_price}")
+                                f"stop: {local_stop} -> {stop_price}, target: {local_target} -> {target_price}")
                     local_pos["stop_price"] = stop_price
                     local_pos["target_price"] = target_price
 
         logger.info(f"Reconciliation found {len(discrepancies)} discrepancies")
         return discrepancies
-    
+
     def calculate_stop_adjustments(self, broker_state: Dict[str, Any]) -> List[StopAdjustment]:
         """
         Calculate which stops need adjustment based on current prices.
         Uses the same progressive stop logic from trade_lifecycle.py
         """
         adjustments = []
-        
+
         for symbol, broker_pos in broker_state["positions"].items():
             if symbol not in self.local_state["positions"]:
                 continue  # Skip unknown positions
-            
+
             local_pos = self.local_state["positions"][symbol]
             entry_price = float(local_pos.get("entry_price", 0))
             current_price = broker_pos["current_price"]
             current_stop = local_pos.get("stop_price")
-            
+
             if not entry_price or not current_stop:
                 continue  # No entry price or stop to adjust
-            
+
             # Calculate profit percentage
             profit_percent = (current_price - entry_price) / entry_price
-            
+
             # Progressive stop adjustment logic with enhanced logging
             new_stop = None
             reason = ""
 
             if profit_percent < 0.02:  # Under 2% profit
                 # Don't adjust stop - position too early
-                logger.debug(f"{symbol}: No stop adjustment - profit {profit_percent:.1%} < 2% threshold")
+                logger.debug(
+                    f"{symbol}: No stop adjustment - profit {profit_percent:.1%} < 2% threshold")
                 continue
             elif profit_percent < 0.04:  # 2-4% profit
                 new_stop = entry_price  # Move to breakeven
@@ -456,7 +465,7 @@ class CostEfficientTradeCycle:
                 new_stop = entry_price + (current_price - entry_price) * 0.50  # Trail 50%
                 reason = f"Trail 50% gains ({profit_percent:.1%} profit)"
                 logger.info(f"{symbol}: Stop adjustment recommended - {reason}")
-            
+
             # Only adjust if new stop is higher than current stop
             if new_stop and new_stop > current_stop + 0.01:  # $0.01 minimum move
                 # Find the stop order ID from broker orders
@@ -472,8 +481,8 @@ class CostEfficientTradeCycle:
                     adjustment_amount = new_stop - current_stop
                     adjustment_pct = (adjustment_amount / current_stop) * 100
                     logger.info(f"{symbol}: Creating stop adjustment - "
-                               f"${current_stop:.2f} → ${new_stop:.2f} "
-                               f"(+${adjustment_amount:.2f}, +{adjustment_pct:.1f}%)")
+                                f"${current_stop:.2f} → ${new_stop:.2f} "
+                                f"(+${adjustment_amount:.2f}, +{adjustment_pct:.1f}%)")
 
                     adjustments.append(StopAdjustment(
                         symbol=symbol,
@@ -487,10 +496,12 @@ class CostEfficientTradeCycle:
                     # Update local state
                     self.local_state["positions"][symbol]["stop_price"] = new_stop
                 else:
-                    logger.warning(f"{symbol}: Stop adjustment needed but no stop order found in broker orders")
+                    logger.warning(
+                        f"{symbol}: Stop adjustment needed but no stop order found in broker orders")
             elif new_stop:
-                logger.debug(f"{symbol}: New stop ${new_stop:.2f} not significantly higher than current ${current_stop:.2f}")
-        
+                logger.debug(
+                    f"{symbol}: New stop ${new_stop:.2f} not significantly higher than current ${current_stop:.2f}")
+
         logger.info(f"Found {len(adjustments)} stop adjustments needed")
         return adjustments
 
@@ -558,7 +569,7 @@ class CostEfficientTradeCycle:
 
         logger.info(f"Found {len(alerts)} position alerts")
         return alerts
-    
+
     def batch_modify_orders(self, adjustments: List[StopAdjustment]) -> Dict[str, Any]:
         """
         Batch modify stop orders with enhanced logging.
@@ -592,9 +603,11 @@ class CostEfficientTradeCycle:
 
                 if success:
                     results["modifications"] += 1
-                    profit_locked = adjustment.new_stop - float(self.local_state["positions"][adjustment.symbol].get("entry_price", 0))
+                    profit_locked = adjustment.new_stop - \
+                        float(self.local_state["positions"]
+                              [adjustment.symbol].get("entry_price", 0))
                     detail_msg = (f"✅ {adjustment.symbol}: Stop adjusted to ${adjustment.new_stop:.2f} "
-                                 f"(locking ${profit_locked:+.2f} profit)")
+                                  f"(locking ${profit_locked:+.2f} profit)")
                     results["details"].append(detail_msg)
                     logger.info(detail_msg)
                 else:
@@ -611,19 +624,19 @@ class CostEfficientTradeCycle:
                 results["success"] = False
 
         summary = (f"Stop adjustment batch complete: {results['modifications']}/{len(adjustments)} successful, "
-                  f"{len(results['errors'])} errors")
+                   f"{len(results['errors'])} errors")
         logger.info(summary)
 
         return results
-    
-    def generate_position_summaries(self, broker_state: Dict[str, Any], 
+
+    def generate_position_summaries(self, broker_state: Dict[str, Any],
                                     adjustments: List[StopAdjustment]) -> List[PositionSummary]:
         """Generate position summaries for reporting"""
         summaries = []
-        
+
         # Create adjustment lookup
         adjustment_map = {adj.symbol: adj for adj in adjustments}
-        
+
         for symbol, broker_pos in broker_state["positions"].items():
             if symbol not in self.local_state["positions"]:
                 continue
@@ -636,12 +649,12 @@ class CostEfficientTradeCycle:
             # Calculate P&L
             unrealized_pl = (current_price - entry_price) * quantity
             unrealized_percent = ((current_price - entry_price) / entry_price) if entry_price else 0
-            
+
             # Determine stop action
             stop_action = "No change"
             if symbol in adjustment_map:
                 stop_action = adjustment_map[symbol].reason
-            
+
             summaries.append(PositionSummary(
                 symbol=symbol,
                 entry_price=entry_price,
@@ -653,9 +666,9 @@ class CostEfficientTradeCycle:
                 unrealized_percent=unrealized_percent,
                 stop_action=stop_action
             ))
-        
+
         return summaries
-    
+
     def generate_routine_report(self, routine_type: RoutineType,
                                 broker_state: Dict[str, Any],
                                 discrepancies: List[Discrepancy],
@@ -669,7 +682,7 @@ class CostEfficientTradeCycle:
             f"# {routine_type.value.title()} Trading Report - {now.strftime('%Y-%m-%d %H:%M:%S')}",
             "",
         ]
-        
+
         # Account summary
         account = broker_state.get("account", {})
         portfolio_value = float(account.get('portfolio_value') or 0)
@@ -683,7 +696,7 @@ class CostEfficientTradeCycle:
             f"Buying Power: ${buying_power:,.2f}",
             ""
         ])
-        
+
         # Position summaries
         summaries = self.generate_position_summaries(broker_state, adjustments)
         if summaries:
@@ -692,7 +705,7 @@ class CostEfficientTradeCycle:
                 "| Symbol | Entry | Current | Stop | Target | P&L | Action |",
                 "|--------|-------|---------|------|--------|-----|--------|"
             ])
-            
+
             for summary in summaries:
                 pl_sign = "+" if summary.unrealized_pl >= 0 else ""
                 report_lines.append(
@@ -703,26 +716,27 @@ class CostEfficientTradeCycle:
             report_lines.append("")
         else:
             report_lines.extend(["## Active Positions", "No active positions", ""])
-        
+
         # Discrepancies
         if discrepancies:
             report_lines.extend(["## Discrepancies Found"])
             for disc in discrepancies:
                 severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}[disc.severity]
                 report_lines.append(f"{severity_emoji} {disc.type}: {disc.symbol}")
-                
+
                 if disc.type == "UNKNOWN_POSITION":
                     qty = disc.details["broker_quantity"]
                     entry = disc.details["broker_entry"]
                     report_lines.append(f"   {qty} shares at ${entry:.2f} - {disc.action}")
                 elif disc.type == "GHOST_POSITION":
-                    qty = disc.details["local_quantity"] 
+                    qty = disc.details["local_quantity"]
                     report_lines.append(f"   Phantom {qty} shares - {disc.action}")
                 elif disc.type == "QUANTITY_MISMATCH":
                     broker_qty = disc.details["broker_quantity"]
                     local_qty = disc.details["local_quantity"]
-                    report_lines.append(f"   Broker: {broker_qty}, Local: {local_qty} - {disc.action}")
-                
+                    report_lines.append(
+                        f"   Broker: {broker_qty}, Local: {local_qty} - {disc.action}")
+
                 report_lines.append("")
 
         # Position Alerts
@@ -733,7 +747,8 @@ class CostEfficientTradeCycle:
             warning_count = len([a for a in alerts if a.severity == "WARNING"])
             info_count = len([a for a in alerts if a.severity == "INFO"])
 
-            report_lines.append(f"Total Alerts: {len(alerts)} (🚨 {critical_count} Critical, ⚠️ {warning_count} Warning, 📊 {info_count} Info)")
+            report_lines.append(
+                f"Total Alerts: {len(alerts)} (🚨 {critical_count} Critical, ⚠️ {warning_count} Warning, 📊 {info_count} Info)")
             report_lines.append("")
 
             for alert in alerts:
@@ -745,14 +760,15 @@ class CostEfficientTradeCycle:
         if modification_results:
             report_lines.extend(["## Stop Adjustments"])
             if modification_results["modifications"] > 0:
-                report_lines.append(f"✅ {modification_results['modifications']} stops adjusted successfully")
-            
+                report_lines.append(
+                    f"✅ {modification_results['modifications']} stops adjusted successfully")
+
             if modification_results["errors"]:
                 report_lines.append("❌ Errors:")
                 for error in modification_results["errors"]:
                     report_lines.append(f"   {error}")
             report_lines.append("")
-        
+
         # Footer
         next_routine = "evening" if routine_type == RoutineType.MORNING else "morning"
         next_time = "15:50:00" if routine_type == RoutineType.MORNING else "09:20:00"
@@ -765,20 +781,20 @@ class CostEfficientTradeCycle:
             "⚠️ **Note**: Stop prices calculated from entry price (Alpaca hides bracket order stop-loss legs from API).",
             "   Verify stop orders exist on Alpaca dashboard. See Issue #355 for details."
         ])
-        
+
         return "\n".join(report_lines)
-    
+
     def morning_routine(self) -> str:
         """
         Run once at 9:20 AM ET - before market open.
         Minimal API calls, maximum insight.
         """
         logger.info("Starting morning routine...")
-        
+
         try:
             # Step 1: Single API call to get all positions/orders
             broker_state = self.fetch_broker_state()
-            
+
             # Step 2: Reconcile with local JSON (no API calls)
             discrepancies = self.reconcile_state(broker_state)
 
@@ -802,7 +818,7 @@ class CostEfficientTradeCycle:
                 RoutineType.MORNING, broker_state, discrepancies,
                 adjustments, alerts, modification_results
             )
-            
+
             # Save report to file with human-readable format: 2025-11-11_morning.md
             # If multiple runs same day, append counter: morning_2.md, morning_3.md
             now = datetime.now()
@@ -819,22 +835,22 @@ class CostEfficientTradeCycle:
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, 'w') as f:
                 f.write(report)
-            
+
             logger.info(f"Morning routine complete. Report saved to {report_file}")
             return report
-            
+
         except Exception as e:
             error_msg = f"Morning routine failed: {e}"
             logger.error(error_msg)
             return f"❌ {error_msg}"
-    
+
     def evening_routine(self) -> str:
         """
         Run once at 3:50 PM ET - before market close.
         Focus on EOD position review and preparation for next day.
         """
         logger.info("Starting evening routine...")
-        
+
         try:
             # Similar structure to morning, but focus on EOD analysis
             broker_state = self.fetch_broker_state()
@@ -868,26 +884,26 @@ class CostEfficientTradeCycle:
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, 'w') as f:
                 f.write(report)
-            
+
             logger.info(f"Evening routine complete. Report saved to {report_file}")
             return report
-            
+
         except Exception as e:
             error_msg = f"Evening routine failed: {e}"
             logger.error(error_msg)
             return f"❌ {error_msg}"
-    
+
     def recover_from_crash(self) -> str:
         """
         Rebuild state from broker, minimal API calls.
         Use when system restarts or local state is corrupted.
         """
         logger.info("Starting crash recovery...")
-        
+
         try:
             # One API call to get everything
             broker_state = self.fetch_broker_state()
-            
+
             # Rebuild local state from broker truth
             self.local_state = {
                 "positions": {},
@@ -895,7 +911,7 @@ class CostEfficientTradeCycle:
                 "discrepancies": [],
                 "recovery_timestamp": datetime.now().isoformat()
             }
-            
+
             # Auto-discover all positions
             for symbol, broker_pos in broker_state["positions"].items():
                 self.local_state["positions"][symbol] = {
@@ -906,9 +922,9 @@ class CostEfficientTradeCycle:
                     "stop_price": None,  # Will need human input
                     "target_price": None  # Will need human input
                 }
-            
+
             self.save_local_state()
-            
+
             # Generate recovery report
             recovery_lines = [
                 f"# Crash Recovery Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
@@ -918,19 +934,20 @@ class CostEfficientTradeCycle:
                 "",
                 "## Recovered Positions",
             ]
-            
+
             for symbol, pos in self.local_state["positions"].items():
-                recovery_lines.append(f"- {symbol}: {pos['quantity']} shares @ ${pos['entry_price']:.2f}")
-            
+                recovery_lines.append(
+                    f"- {symbol}: {pos['quantity']} shares @ ${pos['entry_price']:.2f}")
+
             recovery_lines.extend([
                 "",
                 "⚠️ **MANUAL ACTION REQUIRED:**",
-                "- Review all positions for accuracy",  
+                "- Review all positions for accuracy",
                 "- Set stop_price and target_price for each position",
                 "- Verify entry times if needed for tax reporting",
                 ""
             ])
-            
+
             report = "\n".join(recovery_lines)
 
             # Save recovery report with human-readable format: 2025-11-11_recovery.md
@@ -949,10 +966,10 @@ class CostEfficientTradeCycle:
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, 'w') as f:
                 f.write(report)
-            
+
             logger.info(f"Crash recovery complete. Report saved to {report_file}")
             return report
-            
+
         except Exception as e:
             error_msg = f"Crash recovery failed: {e}"
             logger.error(error_msg)
@@ -962,18 +979,18 @@ class CostEfficientTradeCycle:
 def main():
     """Demo the cost-efficient trade cycle"""
     print("=== Cost-Efficient Trade Cycle Demo ===")
-    
+
     try:
         cycle = CostEfficientTradeCycle()
-        
+
         print("\n1. Running morning routine...")
         morning_report = cycle.morning_routine()
         print(morning_report)
-        
-        print("\n" + "="*50)
+
+        print("\n" + "=" * 50)
         print("Morning routine complete!")
         print("Next: Run evening routine at 3:50 PM ET")
-        
+
     except Exception as e:
         print(f"Demo failed: {e}")
         import traceback

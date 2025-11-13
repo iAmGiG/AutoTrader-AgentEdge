@@ -7,11 +7,10 @@ Provides drop-in replacement for UnifiedCacheManager with better performance.
 
 import sqlite3
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # TODO utilze @date_utils.py
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 import logging
-import json
 import threading
 import uuid
 
@@ -233,14 +232,15 @@ class TradingCacheManager:
                 df['expires_at'] = expires_at.isoformat()
             else:
                 # Smart TTL based on data recency
-                df['expires_at'] = df['date'].apply(lambda d: self._calculate_expiration(d, d).isoformat())
+                df['expires_at'] = df['date'].apply(
+                    lambda d: self._calculate_expiration(d, d).isoformat())
 
             # Rename date column to trading_date for DB
             df.rename(columns={'date': 'trading_date'}, inplace=True)
 
             # Select columns that exist in schema
             base_columns = ['asset_type', 'symbol', 'trading_date', 'source',
-                          'cached_at', 'expires_at']
+                            'cached_at', 'expires_at']
             price_columns = ['open', 'high', 'low', 'close', 'volume', 'vwap', 'transactions']
 
             # Include only columns that exist in the data

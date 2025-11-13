@@ -47,18 +47,20 @@
 
 ## Cache System Issues (Still Relevant)
 
-### Cache Fragmentation
+### Cache Issues (SQLite-Based)
 
-- **Issue**: Multiple small cache files for same symbol/date range causing incomplete data
+- **Issue**: Cache misses or incomplete data
 - **Symptoms**: VoterAgent backtests showing date jumps, missing trading days
-- **Solution**: Use UnifiedCacheManager for all AutoGen agent market data access
+- **Solution**: Use TradingCacheManager (SQLite) for all AutoGen agent market data access
 - **Prevention**: Ensure agents use `src/data_sources/tools.py` for data fetching
+- **Check Cache**: Run `python scripts/cache_manager.py stats` to verify cache health
 
 ### VoterAgent Data Access Issues
 
 - **Issue**: VoterAgent not finding market data for MACD/RSI calculations
-- **Symptoms**: "No market data available" despite cache files existing
-- **Solution**: Verify cache consolidation and UnifiedCacheManager integration
+- **Symptoms**: "No market data available" despite cache containing data
+- **Solution**: Verify TradingCacheManager integration and cache hits
+- **Debug**: Check `python scripts/cache_manager.py query SYMBOL --start DATE --end DATE`
 - **Code**: Check `src/autogen_agents/voter_agent.py` data fetching logic
 
 ### Market Data Format Issues
@@ -104,10 +106,10 @@
 
 ### AutoGen Agent Market Data Sources
 
-- **Primary**: Polygon.io API (used by VoterAgent for MACD/RSI)
-- **Secondary**: Alpaca Market Data (for live trading integration)
+- **Primary**: Alpaca Markets (official SDK, real-time and historical)
+- **Secondary**: Polygon.io API (historical data, used by VoterAgent for MACD/RSI)
 - **Tertiary**: Alpha Vantage (fallback, 25 calls/day limit)
-- **Cache**: UnifiedCacheManager reduces API calls by 90%+
+- **Cache**: TradingCacheManager (SQLite) reduces API calls by 90%+ with 8-10x query performance
 
 ### AutoGen Agent Date/Time Issues
 
@@ -119,9 +121,10 @@
 
 ### AutoGen Agent Performance
 
-- **VoterAgent**: Optimized MACD+RSI calculations with caching
-- **Cache Hit Rate**: Should achieve 90%+ with UnifiedCacheManager
+- **VoterAgent**: Optimized MACD+RSI calculations with SQLite caching
+- **Cache Hit Rate**: Should achieve 90%+ with TradingCacheManager (8-10x faster than file-based)
 - **Parallel Processing**: Multiple agents can run concurrently via TradingOrchestrator
+- **Cache Maintenance**: Run `python scripts/cache_manager.py cleanup` weekly to remove expired data
 
 ### API Rate Limits (Current System)
 

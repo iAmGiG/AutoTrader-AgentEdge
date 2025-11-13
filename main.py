@@ -14,10 +14,8 @@ Usage:
 import sys
 import os
 import argparse
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime, timedelta  # TODO date_utils.py maybe?
 import pandas as pd
-import traceback
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -27,7 +25,6 @@ from src.autogen_agents.voter_agent import VoterAgent
 from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
 from src.data_sources.tools import fetch_unified_market_data
-from config_defaults.trading_config import TradingConfig
 
 
 def test_voter_agent():

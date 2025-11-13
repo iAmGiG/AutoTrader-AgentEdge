@@ -382,7 +382,7 @@ rsi_params = {
 - `test_real_voter.py` - Real VoterAgent tests (3/3 passing)
 
 ### Documentation
-- `ARCHITECTURE_STATUS.md` - Implementation tracking
+- `docs/sessions/2025-01-08_plugin_architecture_implementation.md` - Implementation tracking
 - `docs/04_development/03_cli_trade_assistant.md` - This document
 
 ---
@@ -459,7 +459,7 @@ rsi_params = {
 
 1. **Always read files before editing**: Prevents data loss
 2. **Test incrementally**: Foundation tests first, then integration tests
-3. **Document as you build**: ARCHITECTURE_STATUS.md tracked progress
+3. **Document as you build**: `docs/sessions/2025-01-08_plugin_architecture_implementation.md` tracked progress
 4. **Commit frequently**: Small, focused commits with descriptive messages
 5. **Use stubs for MVP**: Defer complex integrations until architecture validated
 

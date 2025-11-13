@@ -15,7 +15,7 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 - **[01. Core Architecture](02_architecture/01_core_architecture.md)** - Layer separation, directory structure, design principles
 - **[02. Agent Ensemble](02_architecture/02_agent_ensemble.md)** - Multi-agent system with VoterAgent, Scanner, Risk, Executor
 - **[03. Voting System](02_architecture/03_voting_system.md)** - Multi-indicator voting structure and implementation
-- **[04. Cache System](02_architecture/04_cache_system.md)** - Performance optimization (>90% improvement)
+- **[04. Cache System](02_architecture/04_cache_system.md)** - SQLite-based caching (8-10x performance improvement)
 - **[05. Integration APIs](02_architecture/05_integration_apis.md)** - Alpaca market data and order management
 
 ### 📚 **03 - Reference** (Lookup & Details)
@@ -24,8 +24,9 @@ Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based
 - **[02. Terminology](03_reference/02_terminology.md)** - Glossary of terms and concepts
 - **[03. Commands](03_reference/03_commands.md)** - CLI commands and scripts reference
 - **[04. Troubleshooting](03_reference/04_troubleshooting.md)** - Common issues and solutions
-- **[05. Naming Conventions](03_reference/05_naming_conventions.md)** - Code and file naming standards
-- **[06. News Limitations](03_reference/06_news_limitations.md)** - API constraints and considerations
+- **[05. Known Issues](03_reference/05_known_issues.md)** - Current known limitations and workarounds
+- **[06. Naming Conventions](03_reference/05_naming_conventions.md)** - Code and file naming standards
+- **[07. News Limitations](03_reference/06_news_limitations.md)** - API constraints and considerations
 
 ### 📂 **04 - Development** (For Contributors)
 

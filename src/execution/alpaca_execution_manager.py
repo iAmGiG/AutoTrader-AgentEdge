@@ -111,7 +111,8 @@ class AlpacaExecutionManager(ExecutionManager):
                     trade = market_data.get_latest_trade(ticker)
                     if trade and 'price' in trade and trade['price'] > 0:
                         current_market_price = float(trade['price'])
-                        logger.info(f"Got latest trade price for {ticker}: ${current_market_price:.2f}")
+                        logger.info(
+                            f"Got latest trade price for {ticker}: ${current_market_price:.2f}")
                     else:
                         # Fallback to quote mid-price
                         quote = market_data.get_latest_quote(ticker)
@@ -120,7 +121,8 @@ class AlpacaExecutionManager(ExecutionManager):
                             ask = float(quote['ask_price'])
                             if bid > 0 and ask > 0:
                                 current_market_price = round((bid + ask) / 2, 2)
-                                logger.info(f"Got quote mid-price for {ticker}: ${current_market_price:.2f}")
+                                logger.info(
+                                    f"Got quote mid-price for {ticker}: ${current_market_price:.2f}")
                 except Exception as e:
                     logger.warning(f"Could not fetch current price from Alpaca market data: {e}")
 
@@ -132,7 +134,8 @@ class AlpacaExecutionManager(ExecutionManager):
                     # Only use if not the fallback default price
                     if fetched_price != 100.0:
                         current_market_price = fetched_price
-                        logger.info(f"Got price from UnifiedPriceFetcher: ${current_market_price:.2f}")
+                        logger.info(
+                            f"Got price from UnifiedPriceFetcher: ${current_market_price:.2f}")
                 except Exception as e:
                     logger.warning(f"UnifiedPriceFetcher failed: {e}")
 
@@ -172,7 +175,8 @@ class AlpacaExecutionManager(ExecutionManager):
 
                 # If no position, reject SELL to prevent short selling
                 if not has_position:
-                    logger.warning(f"SELL signal rejected for {ticker} - no position held (prevents short selling)")
+                    logger.warning(
+                        f"SELL signal rejected for {ticker} - no position held (prevents short selling)")
                     return OrderResult(
                         success=False,
                         entry_order_id=None,
@@ -187,7 +191,8 @@ class AlpacaExecutionManager(ExecutionManager):
 
                 # Verify quantity doesn't exceed position
                 if quantity > position_qty:
-                    logger.warning(f"SELL quantity {quantity} exceeds position {position_qty} for {ticker}")
+                    logger.warning(
+                        f"SELL quantity {quantity} exceeds position {position_qty} for {ticker}")
                     return OrderResult(
                         success=False,
                         entry_order_id=None,
@@ -200,7 +205,8 @@ class AlpacaExecutionManager(ExecutionManager):
                         error="Insufficient position"
                     )
 
-                logger.info(f"SELL signal approved - have {position_qty} shares of {ticker}, selling {quantity}")
+                logger.info(
+                    f"SELL signal approved - have {position_qty} shares of {ticker}, selling {quantity}")
 
             if not self.order_manager:
                 # Stub mode: Return mock order result
@@ -254,7 +260,8 @@ class AlpacaExecutionManager(ExecutionManager):
             logger.debug(f"Execution error for {ticker}: {e}", exc_info=True)
 
             # Translate API errors to user-friendly messages
-            user_message, user_error = self._translate_api_error(str(e), ticker, entry_price, stop_loss, take_profit)
+            user_message, user_error = self._translate_api_error(
+                str(e), ticker, entry_price, stop_loss, take_profit)
 
             return OrderResult(
                 success=False,

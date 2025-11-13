@@ -50,7 +50,7 @@ class SimpleSignalGenerator:
         # Use config values or individual overrides
         macd_config = config.get_macd_config()
         rsi_config = config.get_rsi_config()
-        
+
         self.macd_fast = macd_fast or macd_config.fast
         self.macd_slow = macd_slow or macd_config.slow
         self.macd_signal = macd_signal or macd_config.signal

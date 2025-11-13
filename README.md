@@ -471,6 +471,7 @@ Scheduler> history
 - **Cost-Efficient**: 6-10 API calls per day vs. 1,000+ with traditional polling
 
 **Quick Start**:
+
 ```bash
 # Test the scheduler
 python src/trading/daily_scheduler.py --mode once --task morning_routine
@@ -483,6 +484,7 @@ sudo scripts/deployment/install_scheduler.sh
 ```
 
 **See**:
+
 - [Issue #287](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/287) for requirements
 - [Quick Start Guide](docs/features/QUICKSTART_ISSUE_287.md) for setup
 - [Full Documentation](docs/features/issue_287_gtc_daily_execution.md) for details

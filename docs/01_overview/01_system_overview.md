@@ -164,8 +164,9 @@ See `research_papers.md` for detailed citations and implementation impact.
 - TA-Lib / custom indicators (technical analysis)
 
 **Caching & Performance**:
-- UnifiedCacheManager (>90% performance improvement)
-- JSON file-based caching with smart expiration
+- TradingCacheManager (SQLite: 8-10x performance, 90%+ hit rate)
+- ACID transactions with thread-safe concurrent access
+- Smart expiration: Historical data (10 year TTL), Recent data (24 hour TTL)
 
 ## Current Development Status
 

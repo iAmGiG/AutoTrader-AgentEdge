@@ -5,7 +5,6 @@ Track positions with validated exit parameters (8% TP / 5% SL).
 Enhanced with exit alerts and dynamic stop integration.
 """
 
-import pandas as pd
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -69,28 +68,28 @@ class PositionAlert:
         if self.alert_type == AlertType.APPROACHING_TAKE_PROFIT:
             distance = self.details.get('distance_pct', 0)
             return (f"{emoji} {self.ticker} approaching take profit! "
-                   f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%")
+                    f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%")
 
         elif self.alert_type == AlertType.APPROACHING_STOP_LOSS:
             distance = self.details.get('distance_pct', 0)
             return (f"{emoji} {self.ticker} approaching stop loss! "
-                   f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%")
+                    f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%")
 
         elif self.alert_type == AlertType.STOP_ADJUSTED:
             old_stop = self.details.get('old_stop', 0)
             new_stop = self.details.get('new_stop', 0)
             return (f"{emoji} {self.ticker} stop adjusted: "
-                   f"${old_stop:.2f} → ${new_stop:.2f}")
+                    f"${old_stop:.2f} → ${new_stop:.2f}")
 
         elif self.alert_type == AlertType.PROFIT_TARGET_REACHED:
             profit_pct = self.details.get('profit_pct', 0)
             return (f"{emoji} {self.ticker} profit target reached! "
-                   f"Current: ${self.current_price:.2f}, Profit: {profit_pct:.1f}%")
+                    f"Current: ${self.current_price:.2f}, Profit: {profit_pct:.1f}%")
 
         elif self.alert_type == AlertType.LOSS_THRESHOLD_REACHED:
             loss_pct = self.details.get('loss_pct', 0)
             return (f"{emoji} {self.ticker} loss threshold reached! "
-                   f"Current: ${self.current_price:.2f}, Loss: {loss_pct:.1f}%")
+                    f"Current: ${self.current_price:.2f}, Loss: {loss_pct:.1f}%")
 
         return f"{emoji} {self.ticker} alert: {self.alert_type.value}"
 
@@ -111,7 +110,7 @@ class Position:
     exit_reason: Optional[ExitReason] = None
     alert_history: List[PositionAlert] = field(default_factory=list)
     last_alert_time: Optional[datetime] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -129,28 +128,28 @@ class Position:
             'alert_history': [alert.to_dict() for alert in self.alert_history],
             'last_alert_time': self.last_alert_time.isoformat() if self.last_alert_time else None
         }
-    
+
     def calculate_unrealized_pnl(self, current_price: float) -> Dict[str, float]:
         """Calculate unrealized P&L."""
         if self.status != "ACTIVE":
             return {'unrealized_pnl': 0.0, 'unrealized_pnl_pct': 0.0}
-            
+
         pnl = (current_price - self.entry_price) * self.quantity
         pnl_pct = ((current_price - self.entry_price) / self.entry_price) * 100
-        
+
         return {
             'unrealized_pnl': pnl,
             'unrealized_pnl_pct': pnl_pct
         }
-    
+
     def calculate_realized_pnl(self) -> Dict[str, float]:
         """Calculate realized P&L (for closed positions)."""
         if self.status == "ACTIVE" or self.exit_price is None:
             return {'realized_pnl': 0.0, 'realized_pnl_pct': 0.0}
-            
+
         pnl = (self.exit_price - self.entry_price) * self.quantity
         pnl_pct = ((self.exit_price - self.entry_price) / self.entry_price) * 100
-        
+
         return {
             'realized_pnl': pnl,
             'realized_pnl_pct': pnl_pct
@@ -175,25 +174,25 @@ class PositionTracker:
         self.alert_cooldown_seconds = alert_cooldown_seconds
         self.positions: Dict[str, Position] = {}
         self.alert_counter = 0
-        
+
     def create_position(self, ticker: str, entry_price: float, quantity: int) -> Position:
         """
         Create a new position with validated exit levels.
-        
+
         Args:
             ticker: Stock ticker
             entry_price: Entry price
             quantity: Number of shares
-            
+
         Returns:
             Created position
         """
         position_id = f"{ticker}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         # Calculate exit levels using validated parameters
         take_profit_price = entry_price * (1 + self.take_profit_pct)
         stop_loss_price = entry_price * (1 - self.stop_loss_pct)
-        
+
         position = Position(
             position_id=position_id,
             ticker=ticker,
@@ -203,10 +202,10 @@ class PositionTracker:
             take_profit_price=take_profit_price,
             stop_loss_price=stop_loss_price
         )
-        
+
         self.positions[position_id] = position
         return position
-    
+
     def _should_send_alert(self, position: Position) -> bool:
         """
         Check if enough time has passed since last alert.
@@ -224,8 +223,8 @@ class PositionTracker:
         return time_since_last >= self.alert_cooldown_seconds
 
     def _create_alert(self, position: Position, alert_type: AlertType,
-                     current_price: float, details: Dict[str, Any],
-                     severity: str = "INFO") -> PositionAlert:
+                      current_price: float, details: Dict[str, Any],
+                      severity: str = "INFO") -> PositionAlert:
         """
         Create and log an alert.
 
@@ -370,30 +369,30 @@ class PositionTracker:
             }
 
         return None
-    
+
     def close_position(self, position_id: str, exit_price: float, exit_reason: ExitReason = ExitReason.MANUAL) -> bool:
         """
         Close a position.
-        
+
         Args:
             position_id: Position ID
             exit_price: Exit price
             exit_reason: Reason for exit
-            
+
         Returns:
             True if successful
         """
         position = self.positions.get(position_id)
         if not position or position.status != "ACTIVE":
             return False
-            
+
         position.exit_date = datetime.now()
         position.exit_price = exit_price
         position.exit_reason = exit_reason
         position.status = "CLOSED"
-        
+
         return True
-    
+
     def get_active_positions(self) -> List[Position]:
         """Get all active positions."""
         return [p for p in self.positions.values() if p.status == "ACTIVE"]
@@ -513,34 +512,34 @@ class PositionTracker:
             'recent_alerts': [alert.to_dict() for alert in recent_alerts],
             'alert_messages': [alert.format_message() for alert in recent_alerts]
         }
-    
+
     def get_position_summary(self, current_prices: Dict[str, float]) -> Dict:
         """
         Get portfolio position summary.
-        
+
         Args:
             current_prices: Dictionary of ticker -> current price
-            
+
         Returns:
             Portfolio summary
         """
         active_positions = self.get_active_positions()
-        
+
         total_value = 0.0
         total_pnl = 0.0
         position_count = len(active_positions)
-        
+
         position_details = []
-        
+
         for position in active_positions:
             current_price = current_prices.get(position.ticker)
             if current_price:
                 pnl_data = position.calculate_unrealized_pnl(current_price)
                 position_value = current_price * position.quantity
-                
+
                 total_value += position_value
                 total_pnl += pnl_data['unrealized_pnl']
-                
+
                 position_details.append({
                     'position_id': position.position_id,
                     'ticker': position.ticker,
@@ -553,7 +552,7 @@ class PositionTracker:
                     'take_profit_price': position.take_profit_price,
                     'stop_loss_price': position.stop_loss_price
                 })
-        
+
         return {
             'active_positions': position_count,
             'total_position_value': total_value,
@@ -618,11 +617,14 @@ class PositionTracker:
                 take_profit_price=pos_data['take_profit_price'],
                 stop_loss_price=pos_data['stop_loss_price'],
                 status=pos_data['status'],
-                exit_date=datetime.fromisoformat(pos_data['exit_date']) if pos_data.get('exit_date') else None,
+                exit_date=datetime.fromisoformat(
+                    pos_data['exit_date']) if pos_data.get('exit_date') else None,
                 exit_price=pos_data.get('exit_price'),
-                exit_reason=ExitReason(pos_data['exit_reason']) if pos_data.get('exit_reason') else None,
+                exit_reason=ExitReason(pos_data['exit_reason']) if pos_data.get(
+                    'exit_reason') else None,
                 alert_history=alert_history,
-                last_alert_time=datetime.fromisoformat(pos_data['last_alert_time']) if pos_data.get('last_alert_time') else None
+                last_alert_time=datetime.fromisoformat(
+                    pos_data['last_alert_time']) if pos_data.get('last_alert_time') else None
             )
 
             self.positions[position_id] = position

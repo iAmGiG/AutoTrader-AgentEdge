@@ -47,7 +47,8 @@ open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
 # Tool calling: Use gpt-4o-mini (fast, cheap, efficient for structured outputs)
 # Prompt/Reasoning: Use o3-mini (enhanced reasoning for trading decisions)
 tool_model_name = os.getenv("OPENAI_TOOL_MODEL", config_loader.get("OPENAI_TOOL_MODEL", model_name))
-prompt_model_name = os.getenv("OPENAI_PROMPT_MODEL", config_loader.get("OPENAI_PROMPT_MODEL", model_name))
+prompt_model_name = os.getenv(
+    "OPENAI_PROMPT_MODEL", config_loader.get("OPENAI_PROMPT_MODEL", model_name))
 
 # Fallback map for tool execution (build dynamically to handle conditional imports)
 TOOL_FUNCTION_MAP = {

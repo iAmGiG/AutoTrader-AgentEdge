@@ -8,7 +8,7 @@ Phase 1: Read-only operations (account status, positions, orders)
 Phase 2: Write operations (order placement, modification, cancellation)
 """
 
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time  # TODO date utils
 from typing import Dict, List, Any, Optional
 import logging
 import pytz
@@ -329,7 +329,8 @@ class AlpacaAccountMonitor:
                         leg_id_str = str(leg_id)
                         leg_ids.add(leg_id_str)
                         parent_map[leg_id_str] = str(order.id)
-                    logger.info(f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}")
+                    logger.info(
+                        f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}")
 
                 result.append(order_dict)
 
@@ -359,12 +360,14 @@ class AlpacaAccountMonitor:
                         full_order = self.client.trading_client.get_order_by_id(order_dict['id'])
 
                         if hasattr(full_order, 'legs') and full_order.legs:
-                            logger.info(f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id")
+                            logger.info(
+                                f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id")
 
                             # Fetch each leg order individually
                             for leg_id in full_order.legs:
                                 try:
-                                    leg_order = self.client.trading_client.get_order_by_id(str(leg_id))
+                                    leg_order = self.client.trading_client.get_order_by_id(
+                                        str(leg_id))
                                     leg_dict = {
                                         'id': str(leg_order.id),
                                         'symbol': leg_order.symbol,
@@ -378,12 +381,14 @@ class AlpacaAccountMonitor:
                                     }
                                     order_dict['legs'].append(leg_dict)
                                     legs_found += 1
-                                    logger.info(f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}")
+                                    logger.info(
+                                        f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}")
                                 except Exception as e:
                                     # Don't spam users with leg fetch errors (common for bracket orders)
                                     logger.debug(f"  Failed to fetch leg {leg_id}: {e}")
                     except Exception as e:
-                        logger.warning(f"Failed to fetch bracket order {order_dict['id']} by ID: {e}")
+                        logger.warning(
+                            f"Failed to fetch bracket order {order_dict['id']} by ID: {e}")
 
             logger.info(f"Processed {len(result)} orders, found {legs_found} bracket legs")
 
@@ -671,7 +676,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if warn_only:
                 # Note: We submit immediately to Alpaca - THEY queue it, not us
                 # If validation fails, order is rejected (no local queue/retry)
-                logger.warning(f"⚠️  {message} - Order will be sent to broker (may fail validation)")
+                logger.warning(
+                    f"⚠️  {message} - Order will be sent to broker (may fail validation)")
                 return True
             else:
                 logger.error(f"❌ {message} - Order blocked")

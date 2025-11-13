@@ -17,7 +17,6 @@ from .models import (
     TradeSuggestion,
     TradeDecision,
     OrderResult,
-    Signal,
     TimeInForce,
     OrderType,
 )
@@ -113,7 +112,8 @@ class TradingOrchestrator:
             if not is_valid:
                 # Check if this looks like a portfolio query (no ticker)
                 if not request.ticker or request.ticker.strip() == '':
-                    portfolio_keywords = ['position', 'portfolio', 'holding', 'open', 'what do i have']
+                    portfolio_keywords = ['position', 'portfolio',
+                                          'holding', 'open', 'what do i have']
                     if any(keyword in user_input.lower() for keyword in portfolio_keywords):
                         raise ValueError(
                             f"Portfolio queries not yet supported. "

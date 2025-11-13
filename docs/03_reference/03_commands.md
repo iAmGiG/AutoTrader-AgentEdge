@@ -50,14 +50,23 @@ python -m unittest discover tests
 
 ## Configuration Commands
 
-### Market Data Cache
+### Market Data Cache (SQLite)
 
 ```bash
-# Check cache status
-ls -la .cache/market_data/
+# Check cache status and statistics
+python scripts/cache_manager.py stats
 
-# Verify data availability for 2024-2025 testing
-ls .cache/market_data/*2024* .cache/market_data/*2025*
+# List cached symbols
+python scripts/cache_manager.py symbols
+
+# Query specific symbol data
+python scripts/cache_manager.py query SPY --start 2024-01-01 --end 2024-12-31
+
+# Check database size
+ls -lh .cache/trading_data.db
+
+# Legacy: Check old JSON cache (deprecated)
+ls -la .cache/market_data/ 2>/dev/null || echo "No legacy cache found"
 ```
 
 ### API Configuration
@@ -154,8 +163,11 @@ conda info --envs
 python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent import successful')"
 python -c "from src.autogen_agents.base_agent import BaseAgent; print('BaseAgent import successful')"
 
-# Test data loading
-python -c "import json; data = json.load(open('.cache/market_data/AAPL_2024-01-01_2024-12-31_polygon_consolidated.json')); print(f'Loaded {len(data.get(\"data\", []))} records')"
+# Test cache data loading (SQLite)
+python scripts/cache_manager.py query AAPL --start 2024-01-01 --end 2024-12-31
+
+# Check SQLite cache database
+sqlite3 .cache/trading_data.db "SELECT COUNT(*) FROM market_cache;"
 
 # Check disk space for cache
 du -sh .cache/

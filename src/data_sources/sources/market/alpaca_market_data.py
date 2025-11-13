@@ -5,7 +5,7 @@ This implementation replaces the raw REST approach with the official SDK
 for better error handling, automatic pagination, and proper data parsing.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import logging

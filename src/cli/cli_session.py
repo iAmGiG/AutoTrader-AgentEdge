@@ -8,20 +8,17 @@ Unified interactive CLI with LLM-driven routing for:
 - Portfolio status
 """
 
-import asyncio
 import logging
 from typing import Optional
 import sys
 import os
 
 from core.trading_orchestrator import TradingOrchestrator
-from core.models import Signal
 
 # Add imports for new features
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.trading.daily_scheduler import DailyScheduler
-from src.trading.alpaca_trading_client import AlpacaAccountMonitor
 
 # Import CLI messages configuration
 from config_defaults.message_loader import (
