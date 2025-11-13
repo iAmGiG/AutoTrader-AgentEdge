@@ -159,7 +159,8 @@ class TradingOrchestrator:
             return decision
 
         except Exception as e:
-            logger.error(f"Error processing request: {e}", exc_info=True)
+            # Log error at DEBUG level only (not shown to users)
+            logger.debug(f"Error processing request: {e}", exc_info=True)
             raise
 
     async def execute_decision(
@@ -215,8 +216,17 @@ class TradingOrchestrator:
             return result
 
         except Exception as e:
+            # Log the full error with traceback (for debugging)
             logger.error(f"Error executing trade: {e}", exc_info=True)
-            raise
+
+            # Return error result instead of re-raising (prevents traceback showing to user)
+            return OrderResult(
+                success=False,
+                ticker=decision.suggestion.ticker,
+                quantity=decision.suggestion.recommended_quantity,
+                message="Trade execution failed",
+                error=str(e)
+            )
 
     def _create_suggestion(
         self,

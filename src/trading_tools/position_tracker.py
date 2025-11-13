@@ -435,6 +435,60 @@ class PositionTracker:
             return []
         return position.alert_history
 
+    def check_alerts(self, broker_state: Dict[str, Any]) -> List[PositionAlert]:
+        """
+        Check all positions for alerts based on current broker state.
+
+        This is the main method for CLI alert checking. It iterates through
+        all tracked positions, checks their exit conditions against current
+        market prices, and returns any new alerts generated.
+
+        Args:
+            broker_state: Dictionary containing positions with current prices
+                         Format: {'positions': {'TICKER': {'current_price': float, ...}}}
+
+        Returns:
+            List of newly generated alerts (since last check)
+        """
+        new_alerts = []
+        positions_dict = broker_state.get('positions', {})
+
+        for position in self.get_active_positions():
+            # Get current price from broker state
+            ticker_data = positions_dict.get(position.ticker)
+            if not ticker_data:
+                logger.warning(f"No price data for {position.ticker} in broker state")
+                continue
+
+            current_price = ticker_data.get('current_price')
+            if not current_price:
+                logger.warning(f"No current_price for {position.ticker}")
+                continue
+
+            # Check exit conditions (this generates alerts internally)
+            alerts_before = len(position.alert_history)
+            self.check_exit_conditions(position.position_id, current_price)
+            alerts_after = len(position.alert_history)
+
+            # Collect newly generated alerts
+            if alerts_after > alerts_before:
+                new_alerts.extend(position.alert_history[alerts_before:])
+
+        return new_alerts
+
+    def get_alert_history(self, limit: int = 10) -> List[PositionAlert]:
+        """
+        Get recent alert history across all positions.
+
+        Args:
+            limit: Maximum number of alerts to return (default 10)
+
+        Returns:
+            List of recent alerts, sorted by timestamp (most recent first)
+        """
+        all_alerts = self.get_all_alerts()
+        return all_alerts[:limit]
+
     def get_alert_summary(self) -> Dict[str, Any]:
         """
         Get summary of all alerts.

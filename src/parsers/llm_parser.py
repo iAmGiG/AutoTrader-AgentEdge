@@ -166,7 +166,7 @@ Use the parse_trade_request function."""
         """
         # Ticker validation (basic)
         if not re.match(r'^[A-Z]{1,5}$', request.ticker):
-            logger.warning(f"Invalid ticker format: {request.ticker}")
+            logger.debug(f"Invalid ticker format: {request.ticker}")
             return False
 
         # Quantity validation

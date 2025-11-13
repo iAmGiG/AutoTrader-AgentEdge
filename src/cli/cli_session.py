@@ -24,7 +24,7 @@ from src.trading.daily_scheduler import DailyScheduler
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor
 
 # Import CLI messages configuration
-from config_defaults.cli_messages import (
+from config_defaults.message_loader import (
     CLIMessages as MSG,
     get_signal_emoji,
     get_pl_emoji,
@@ -528,11 +528,14 @@ class CLISession:
             # Provide helpful suggestions for common errors
             if "asset" in error_msg.lower() and "not found" in error_msg.lower():
                 print(MSG.ERROR_INVALID_TICKER)
+            elif "invalid request" in error_msg.lower() and "ticker=''" in error_msg.lower():
+                # Empty ticker from garbage input
+                print(MSG.ERROR_GARBAGE_INPUT)
             else:
                 print(MSG.ERROR_PROCESSING.format(error=e))
 
-            logger.error(f"Request processing error: {e}", exc_info=True)
-            # Traceback logged but not shown to user
+            # Log error at DEBUG level only (not shown to users)
+            logger.debug(f"Request processing error: {e}", exc_info=True)
 
     def _check_position_for_ticker(self, ticker: str) -> Optional[dict]:
         """
@@ -1075,6 +1078,14 @@ class CLISession:
                     order_type = order.get('type', 'UNKNOWN')
                     status = order.get('status', 'UNKNOWN')
                     order_id = order.get('id', 'N/A')
+
+                    # Extract enum values if needed (Alpaca returns enums)
+                    if hasattr(side, 'value'):
+                        side = side.value
+                    if hasattr(order_type, 'value'):
+                        order_type = order_type.value
+                    if hasattr(status, 'value'):
+                        status = status.value
 
                     # Get price info based on order type
                     if order_type == 'limit':

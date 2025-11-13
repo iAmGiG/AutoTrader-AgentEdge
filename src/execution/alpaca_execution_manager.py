@@ -250,15 +250,93 @@ class AlpacaExecutionManager(ExecutionManager):
             return result
 
         except Exception as e:
-            logger.error(f"Execution error for {ticker}: {e}", exc_info=True)
+            # Log full error details at DEBUG level only (not shown to users)
+            logger.debug(f"Execution error for {ticker}: {e}", exc_info=True)
+
+            # Translate API errors to user-friendly messages
+            user_message, user_error = self._translate_api_error(str(e), ticker, entry_price, stop_loss, take_profit)
 
             return OrderResult(
                 success=False,
                 ticker=ticker,
                 quantity=quantity,
-                message=f"Execution failed: {e}",
-                error=str(e)
+                message=user_message,
+                error=user_error
             )
+
+    def _translate_api_error(self, error_str: str, ticker: str, entry: float, stop: float, target: float) -> tuple:
+        """
+        Translate Alpaca API errors into user-friendly messages.
+
+        Args:
+            error_str: The raw error string
+            ticker: Stock ticker
+            entry: Entry price
+            stop: Stop loss price
+            target: Take profit price
+
+        Returns:
+            Tuple of (user_message, user_error)
+        """
+        import json
+        import re
+
+        # Try to parse JSON error from Alpaca
+        try:
+            # Extract JSON if embedded in error string
+            json_match = re.search(r'\{.*\}', error_str)
+            if json_match:
+                error_data = json.loads(json_match.group())
+                code = error_data.get('code')
+                base_price = error_data.get('base_price')
+                api_message = error_data.get('message', '')
+
+                # Bracket order validation errors (42210000 series)
+                if code == 42210000:
+                    if 'stop_loss' in api_message and 'must be <=' in api_message:
+                        return (
+                            f"Order rejected: Stop loss price (${stop:.2f}) doesn't match market price",
+                            f"The market is closed and price data may be stale. "
+                            f"Alpaca expects stop=${base_price} but we calculated ${stop:.2f}. "
+                            f"Try again during market hours (9:30 AM - 4:00 PM ET) for accurate pricing."
+                        )
+                    elif 'take_profit' in api_message and 'must be >=' in api_message:
+                        return (
+                            f"Order rejected: Take profit price (${target:.2f}) doesn't match market price",
+                            f"The market is closed and price data may be stale. "
+                            f"Alpaca expects target>=${base_price} but we calculated ${target:.2f}. "
+                            f"Try again during market hours (9:30 AM - 4:00 PM ET) for accurate pricing."
+                        )
+
+                # Insufficient buying power
+                if 'buying power' in api_message.lower() or 'insufficient' in api_message.lower():
+                    return (
+                        f"Order rejected: Not enough cash available",
+                        f"Check your account balance and reduce the order size."
+                    )
+
+                # Invalid symbol
+                if 'symbol' in api_message.lower() and ('invalid' in api_message.lower() or 'not found' in api_message.lower()):
+                    return (
+                        f"Order rejected: {ticker} is not a valid or tradeable symbol",
+                        f"Double-check the ticker symbol. It may be delisted or not supported by Alpaca."
+                    )
+
+                # Market hours
+                if 'market' in api_message.lower() and 'closed' in api_message.lower():
+                    return (
+                        f"Order rejected: Market is closed",
+                        f"Regular market hours: 9:30 AM - 4:00 PM ET. Your order may execute when the market opens."
+                    )
+
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+        # Generic fallback
+        return (
+            f"Order failed for {ticker}",
+            f"Please try again during market hours or contact support if the issue persists."
+        )
 
     async def cancel_order(self, order_id: str) -> bool:
         """

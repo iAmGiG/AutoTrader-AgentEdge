@@ -380,7 +380,8 @@ class AlpacaAccountMonitor:
                                     legs_found += 1
                                     logger.info(f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}")
                                 except Exception as e:
-                                    logger.warning(f"  Failed to fetch leg {leg_id}: {e}")
+                                    # Don't spam users with leg fetch errors (common for bracket orders)
+                                    logger.debug(f"  Failed to fetch leg {leg_id}: {e}")
                     except Exception as e:
                         logger.warning(f"Failed to fetch bracket order {order_dict['id']} by ID: {e}")
 
@@ -668,7 +669,9 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             )
 
             if warn_only:
-                logger.warning(f"⚠️  {message} - Order will be queued")
+                # Note: We submit immediately to Alpaca - THEY queue it, not us
+                # If validation fails, order is rejected (no local queue/retry)
+                logger.warning(f"⚠️  {message} - Order will be sent to broker (may fail validation)")
                 return True
             else:
                 logger.error(f"❌ {message} - Order blocked")
@@ -1395,7 +1398,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             }
 
         except Exception as e:
-            logger.error(f"Failed to place bracket order: {e}")
+            # Don't log error here - it will be logged and translated by execution manager
+            logger.debug(f"Bracket order error details: {e}", exc_info=True)
             return {
                 'status': 'error',
                 'message': str(e),
