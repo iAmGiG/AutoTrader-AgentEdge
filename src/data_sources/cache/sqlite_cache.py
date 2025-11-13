@@ -12,6 +12,8 @@ from typing import Optional, Dict, Any, List
 from pathlib import Path
 import logging
 import json
+import threading
+import uuid
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ class TradingCacheManager:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.logger = logging.getLogger(self.__class__.__name__)
+        self._write_lock = threading.Lock()  # Serialize write operations
         self._init_database()
 
     def _init_database(self):
@@ -249,28 +252,33 @@ class TradingCacheManager:
                 raise ValueError("Data must have 'close' column")
 
             # Bulk insert using pandas to_sql (much faster than row-by-row)
-            with sqlite3.connect(self.db_path) as conn:
-                # Use INSERT OR REPLACE for idempotent caching
-                df_to_save.to_sql(
-                    'market_cache_temp',
-                    conn,
-                    if_exists='replace',
-                    index=False
-                )
+            # Use lock to prevent concurrent write conflicts with temp table
+            with self._write_lock:
+                # Use unique temp table name to avoid conflicts
+                temp_table = f'market_cache_temp_{uuid.uuid4().hex[:8]}'
 
-                # Build column list for INSERT (exclude id which is auto-increment)
-                columns_list = ', '.join(columns_to_save)
+                with sqlite3.connect(self.db_path) as conn:
+                    # Use INSERT OR REPLACE for idempotent caching
+                    df_to_save.to_sql(
+                        temp_table,
+                        conn,
+                        if_exists='replace',
+                        index=False
+                    )
 
-                # Copy to main table with INSERT OR REPLACE
-                conn.execute(f"""
-                    INSERT OR REPLACE INTO market_cache
-                    ({columns_list})
-                    SELECT {columns_list} FROM market_cache_temp
-                """)
+                    # Build column list for INSERT (exclude id which is auto-increment)
+                    columns_list = ', '.join(columns_to_save)
 
-                # Drop temp table
-                conn.execute("DROP TABLE market_cache_temp")
-                conn.commit()
+                    # Copy to main table with INSERT OR REPLACE
+                    conn.execute(f"""
+                        INSERT OR REPLACE INTO market_cache
+                        ({columns_list})
+                        SELECT {columns_list} FROM {temp_table}
+                    """)
+
+                    # Drop temp table
+                    conn.execute(f"DROP TABLE {temp_table}")
+                    conn.commit()
 
             self.logger.debug(
                 f"Cached {len(df_to_save)} days for {symbol} ({df_to_save['trading_date'].min()} to {df_to_save['trading_date'].max()}) from {source}"
