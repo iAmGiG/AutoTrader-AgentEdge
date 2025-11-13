@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 from autogen_core.tools import FunctionTool
-from ...cache.unified_cache import UnifiedCacheManager
+from ...cache.sqlite_cache import TradingCacheManager
 
 # Add path for agent_utils
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
@@ -39,8 +39,8 @@ def fetch_market_context_data(
     try:
         logger.info(f"Fetching market context for {symbols} on {date}")
 
-        # Initialize unified cache manager for Polygon.io primary + Alpha Vantage fallback
-        cache_manager = UnifiedCacheManager()
+        # Initialize SQLite cache manager for Polygon.io primary + Alpha Vantage fallback
+        cache_manager = TradingCacheManager()
 
         market_data = {}
 
@@ -53,12 +53,11 @@ def fetch_market_context_data(
                             timedelta(days=1)).strftime("%Y-%m-%d")
 
                 # Get market data using Polygon.io primary + Alpha Vantage fallback pattern
-                data = cache_manager.get_market_data(symbol, start_date, end_date, "polygon")
+                data = cache_manager.get(symbol, start_date, end_date, source="polygon")
                 data_source = "Polygon.io"
 
                 if data is None or data.empty:
-                    data = cache_manager.get_market_data(
-                        symbol, start_date, end_date, "alpha_vantage")
+                    data = cache_manager.get(symbol, start_date, end_date, source="alpha_vantage")
                     data_source = "Alpha Vantage"
 
                 if data is None or data.empty:

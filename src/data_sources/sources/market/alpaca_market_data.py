@@ -39,7 +39,7 @@ except ImportError:
     )
 
 from src.utils.config_loader import ConfigLoader
-from src.data_sources.cache.unified_cache import UnifiedCacheManager
+from src.data_sources.cache.sqlite_cache import TradingCacheManager
 
 
 logger = logging.getLogger(__name__)
@@ -49,19 +49,19 @@ class AlpacaMarketData:
     """
     Alpaca market data manager using official alpaca-py SDK.
 
-    Provides unified market data retrieval with intelligent caching,
+    Provides unified market data retrieval with intelligent caching (SQLite),
     proper error handling, and automatic pagination via the official SDK.
     """
 
     # Map string timeframes to Alpaca TimeFrame objects (initialized lazily)
     TIMEFRAME_MAP = None
 
-    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
+    def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
         """
         Initialize with official Alpaca SDK.
 
         Args:
-            cache_manager: Optional cache manager (creates new if None)
+            cache_manager: Optional SQLite cache manager (creates new if None)
         """
         if not ALPACA_AVAILABLE:
             raise ImportError(
@@ -96,9 +96,9 @@ class AlpacaMarketData:
             secret_key=secret_key,
             raw_data=False  # Get parsed models instead of raw dicts
         )
-        
-        self.cache = cache_manager or UnifiedCacheManager()
-        logger.info("Alpaca market data manager initialized with official SDK")
+
+        self.cache = cache_manager or TradingCacheManager()
+        logger.info("Alpaca market data manager initialized with official SDK and SQLite cache")
     
     def get_bars(
         self,
@@ -134,8 +134,8 @@ class AlpacaMarketData:
         
         if use_cache:
             for symbol in symbols:
-                cached = self.cache.get_market_data(symbol, start, end, "alpaca")
-                
+                cached = self.cache.get(symbol, start, end, source="alpaca")
+
                 if cached is not None and not cached.empty:
                     # Ensure required columns exist
                     if 'symbol' not in cached.columns:
@@ -210,9 +210,10 @@ class AlpacaMarketData:
                             for symbol in symbols_to_fetch:
                                 symbol_data = df[df['symbol'] == symbol].copy()
                                 if not symbol_data.empty:
-                                    self.cache.set_market_data(
-                                        symbol, start, end, "alpaca", symbol_data
-                                    )
+                                    # Remove 'symbol' and 'source' columns before caching
+                                    # (TradingCacheManager stores these separately)
+                                    cache_data = symbol_data.drop(columns=['symbol', 'source'], errors='ignore')
+                                    self.cache.set(symbol, cache_data, source="alpaca")
                         
                         fetched_data.append(df)
                         logger.info(
@@ -360,7 +361,7 @@ class AlpacaMarketData:
 
 # Tool wrapper for AutoGen integration
 def create_alpaca_market_data_tool(
-    cache_manager: Optional[UnifiedCacheManager] = None
+    cache_manager: Optional[TradingCacheManager] = None
 ) -> 'AlpacaMarketDataTool':
     """
     Create Alpaca market data tool using SDK for AutoGen agents.
@@ -377,7 +378,7 @@ def create_alpaca_market_data_tool(
 class AlpacaMarketDataTool:
     """Tool wrapper for Alpaca market data access by AutoGen agents using SDK."""
     
-    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
+    def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
         """Initialize the Alpaca market data tool with SDK."""
         self.alpaca_client = AlpacaMarketData(cache_manager)
         self.name = "alpaca_market_data"

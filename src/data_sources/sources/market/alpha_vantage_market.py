@@ -18,7 +18,7 @@ from src.utils.date_utils import (
     localize_df,
     get_default_timezone,
 )
-from ...cache import UnifiedCacheManager
+from ...cache import TradingCacheManager
 
 
 class AlphaVantageMarketTool:
@@ -28,9 +28,11 @@ class AlphaVantageMarketTool:
     This class focuses on market-specific data including:
     - Stock price history
     - Company overview/fundamentals
+
+    Uses SQLite cache (TradingCacheManager) for efficient storage.
     """
 
-    def __init__(self, cache_manager: Optional[UnifiedCacheManager] = None):
+    def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
         # Load API key from environment or config
         config_loader = ConfigLoader()
         self.api_key = os.getenv(
@@ -43,8 +45,8 @@ class AlphaVantageMarketTool:
         self.base_url = "https://www.alphavantage.co/query"
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        # Initialize unified cache
-        self.cache = cache_manager or UnifiedCacheManager()
+        # Initialize SQLite cache
+        self.cache = cache_manager or TradingCacheManager()
 
     def fetch_stock_data(self, symbol: str, start_date: Optional[str] = None,
                          end_date: Optional[str] = None) -> pd.DataFrame:
@@ -67,8 +69,8 @@ class AlphaVantageMarketTool:
                 start_date, end_date)
 
             # Check cache first
-            cached_data = self.cache.get_market_data(
-                symbol, processed_start, processed_end, "alpha_vantage"
+            cached_data = self.cache.get(
+                symbol, processed_start, processed_end, source="alpha_vantage"
             )
             if cached_data is not None:
                 self.logger.info(f"Using cached Alpha Vantage data for {symbol}")
@@ -143,7 +145,7 @@ class AlphaVantageMarketTool:
             df = localize_df(df, get_default_timezone())
 
             # Cache the data for future use
-            self.cache.set_market_data(symbol, processed_start, processed_end, "alpha_vantage", df)
+            self.cache.set(symbol, df, source="alpha_vantage")
 
             return df
 
