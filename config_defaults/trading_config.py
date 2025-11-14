@@ -73,7 +73,7 @@ class TradingConfig:
     def _load_config(self) -> Dict:
         """Load configuration from YAML or JSON file."""
         if os.path.exists(self.config_file):
-            with open(self.config_file, 'r') as f:
+            with open(self.config_file, 'r', encoding='utf-8') as f:
                 if self.config_file.endswith('.yaml') or self.config_file.endswith('.yml'):
                     if yaml is None:
                         raise ImportError("PyYAML not installed. Install with: pip install pyyaml")

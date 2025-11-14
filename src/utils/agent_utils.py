@@ -33,7 +33,7 @@ def load_agent_config(agent_key: str) -> dict:
             os.path.dirname(os.path.abspath(__file__))))
         config_file = os.path.join(config_dir, 'config_defaults', 'agent_prompts.yaml')
 
-        with open(config_file, 'r') as f:
+        with open(config_file, 'r', encoding='utf-8') as f:
             all_configs = yaml.safe_load(f)
 
         # Return the config for the requested section, or an empty dict if not found
@@ -57,7 +57,7 @@ def load_market_sectors() -> dict:
         sectors_file = os.path.join(
             config_dir, 'config', 'market_sectors.json')
 
-        with open(sectors_file, 'r') as f:
+        with open(sectors_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         print(f"Error loading market sectors: {e}")
