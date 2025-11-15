@@ -1,4 +1,4 @@
-# RH2MAS Terminology & Acronyms
+# AutoTrader Terminology & Acronyms
 
 ## AutoGen Agent Architecture
 

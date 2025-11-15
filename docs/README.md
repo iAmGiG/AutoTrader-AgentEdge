@@ -1,6 +1,6 @@
-# AutoGen-TradingSystem Documentation
+# AutoTrader-AgentEdge Documentation
 
-Professional documentation for AutoGen-TradingSystem - a Microsoft AutoGen-based trading platform with proven MACD+RSI voting strategy and comprehensive multi-agent architecture.
+Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based trading platform with proven MACD+RSI voting strategy and comprehensive multi-agent architecture.
 
 ## Documentation Structure
 

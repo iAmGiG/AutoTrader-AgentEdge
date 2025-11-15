@@ -15,10 +15,10 @@ Automated "set it and forget it" daily trading system that:
 
 ```bash
 # Navigate to project root
-cd ~/AutoGen-TradingSystem
+cd ~/AutoTrader-AgentEdge
 
 # Activate environment
-conda activate RH2MAS
+conda activate AutoTrader
 
 # Test morning routine (dry run)
 python src/trading/daily_scheduler.py --mode once --task morning_routine
@@ -261,7 +261,7 @@ Edit `config_defaults/scheduler_config.json`:
 ## Support
 
 Issues or questions:
-- GitHub Issues: https://github.com/iAmGiG/AutoGen-TradingSystem/issues
+- GitHub Issues: https://github.com/iAmGiG/AutoTrader-AgentEdge/issues
 - Documentation: `docs/features/issue_287_gtc_daily_execution.md`
 - Examples: `scripts/deployment/`
 

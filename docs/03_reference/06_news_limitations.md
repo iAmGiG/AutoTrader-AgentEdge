@@ -2,7 +2,7 @@
 
 ## ⚠️ DEPRECATED SYSTEM WARNING
 
-**Status**: The V0-V4 sentiment framework (including news data analysis) has been **DEPRECATED** as of the AutoGen-TradingSystem architecture transition.
+**Status**: The V0-V4 sentiment framework (including news data analysis) has been **DEPRECATED** as of the AutoTrader-AgentEdge architecture transition.
 
 **Current System**: Production-ready **AutoGen VoterAgent** using **validated MACD+RSI voting** (0.856 Sharpe ratio) without sentiment dependencies.
 

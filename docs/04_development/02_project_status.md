@@ -314,8 +314,8 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ```bash
 # Clone and setup
-git clone https://github.com/iAmGiG/AutoGen-TradingSystem.git
-cd AutoGen-TradingSystem
+git clone https://github.com/iAmGiG/AutoTrader-AgentEdge.git
+cd AutoTrader-AgentEdge
 conda create -n trading python=3.10
 conda activate trading
 pip install -e .

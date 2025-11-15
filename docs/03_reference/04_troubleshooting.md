@@ -5,7 +5,7 @@
 ### `ImportError for autogen_ext` or `autogen_agentchat`
 
 - **Solution**: Ensure you're using the AutoGen conda environment
-- **Command**: `conda activate AutoGen-TradingSystem`
+- **Command**: `conda activate AutoTrader-AgentEdge`
 - **Verify**: `python -c "import autogen_agentchat; print('AutoGen available')"`
 
 ### `AttributeError for model_client` in AutoGen Agents
@@ -86,7 +86,7 @@
 
 - **Solution**: Run AutoGen agent tests from project root directory
 - **Verification**: `python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent import successful')"`
-- **Environment**: Ensure `conda activate AutoGen-TradingSystem`
+- **Environment**: Ensure `conda activate AutoTrader-AgentEdge`
 
 ## Package and Environment Issues
 

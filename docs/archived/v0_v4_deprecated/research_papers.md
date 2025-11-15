@@ -1,6 +1,6 @@
 # Research Papers Reference
 
-This document tracks the key academic research papers that inform the multi-indicator voting system implementation in RH2MAS.
+This document tracks the key academic research papers that inform the multi-indicator voting system implementation in AutoTrader.
 
 ## Core Research Foundation
 

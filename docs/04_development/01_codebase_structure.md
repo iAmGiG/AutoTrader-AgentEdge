@@ -7,7 +7,7 @@
 ## Project Structure
 
 ```bash
-AutoGen-TradingSystem/
+AutoTrader-AgentEdge/
 ├── src/                              # Core implementation
 │   ├── autogen_agents/              # AutoGen multi-agent system
 │   │   ├── base_agent.py            # Base AutoGen agent foundation

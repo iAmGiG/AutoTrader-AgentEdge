@@ -1,8 +1,8 @@
 [project]
-name = "RH2MAS"
+name = "AutoTrader-AgentEdge"
 version = "1.0.0"
-description = "Reflective Hybrid Head Multi-Agent System for Financial Analysis"
-authors = [{name = "Academic Research Team"}]
+description = "Multi-agent AI trading platform powered by AgentEdge architecture"
+authors = [{name = "iAmGiG"}]
 requires-python = ">=3.10"
 dependencies = [
     "pandas>=2.2.0",
