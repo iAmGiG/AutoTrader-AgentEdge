@@ -1,4 +1,6 @@
-# AutoGen-TradingSystem: Human-in-Loop Multi-Agent Trading Platform
+# AutoTrader: Multi-Agent Trading System
+
+**Powered by AgentEdge - Autonomous AI agents seeking trading edge**
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
@@ -16,9 +18,25 @@
 [![YAML](https://img.shields.io/badge/Config-YAML-red.svg)](https://yaml.org/)
 [![Interactive CLI](https://img.shields.io/badge/Interface-Interactive%20CLI-green.svg)](#quick-start)
 
+---
+
+## ⚠️ IMPORTANT DISCLAIMER
+
+**THIS SOFTWARE IS FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY.**
+
+- **NOT FINANCIAL ADVICE**: This system does not provide financial, investment, or trading advice. All outputs from technical indicators, AI agents, and automated signals are for informational purposes only.
+- **NOT INVESTMENT ADVICE**: Do not rely on this software for investment decisions. Consult a licensed financial advisor before making any trading or investment decisions.
+- **USE AT YOUR OWN RISK**: Trading stocks and securities involves substantial risk of loss. You are solely responsible for any trading decisions and resulting gains or losses.
+- **NO WARRANTIES**: This software is provided "as-is" without any guarantees of accuracy, reliability, or profitability.
+- **PAST PERFORMANCE ≠ FUTURE RESULTS**: Historical backtesting results (36.6% return, 0.856 Sharpe) do not guarantee future performance.
+
+By using this software, you acknowledge that you understand these risks and agree to use it solely for educational purposes.
+
+---
+
 ## Overview
 
-AutoGen-TradingSystem is a **production-ready trading platform** built on **Microsoft AutoGen 0.7.x** framework. The system combines validated pure-math MACD+RSI strategies with human oversight for paper/live trading via Alpaca Markets.
+**AutoTrader** is a **production-ready trading platform** featuring a multi-agent AI architecture powered by the AgentEdge framework. The system combines validated pure-math MACD+RSI strategies with human oversight for paper/live trading via Alpaca Markets.
 
 **💡 Core Philosophy**: Pure mathematical indicators + human decision making > complex LLM sentiment analysis
 
@@ -276,9 +294,9 @@ python scripts/analysis/generate_results_summary.py --advanced
 ## Project Structure
 
 ```bash
-AutoGen-TradingSystem/
+AutoTrader-AgentEdge/
 ├── src/
-│   ├── autogen_agents/        # AutoGen agent implementations
+│   ├── autogen_agents/        # AI agent implementations (built with AutoGen framework)
 │   │   ├── voter_agent.py     # ✅ Production-ready MACD+RSI voting agent
 │   │   ├── base_agent.py      # Base AutoGen agent with tool integration
 │   │   ├── scanner_agent.py   # 🚧 Market scanning agent (in development)
@@ -365,15 +383,15 @@ AutoGen-TradingSystem/
 
 ### Project Evolution
 
-Originally developed as a research framework (RH2MAS), this project has evolved into AutoGen-TradingSystem - a production-ready trading platform built on Microsoft AutoGen multi-agent framework. The system combines validated MACD+RSI voting strategies with sophisticated multi-agent coordination.
+Originally developed as a research framework (RH2MAS), this project has evolved into **AutoTrader** - a production-ready trading platform featuring the **AgentEdge** multi-agent architecture. The system leverages Microsoft AutoGen framework to coordinate specialized AI agents for trading decisions.
 
 **Key Advantages**:
 
-- **AutoGen-Based Architecture**: Built on Microsoft AutoGen framework for robust multi-agent communication
-- **Production-Ready VoterAgent**: Validated 0.856 Sharpe performance with MACD+RSI voting logic
+- **AgentEdge Multi-Agent Architecture**: Coordinated AI agents working together for trading edge
+- **Production-Ready Foundation**: Validated 0.856 Sharpe performance with MACD+RSI voting logic
 - **Flexible Parameter System**: Dynamic configuration without code modifications
-- **Extensible Multi-Agent Design**: Clean separation enabling easy addition of new specialized agents
-- **Tool Integration**: Market data and analysis tools seamlessly integrated with AutoGen agents
+- **Extensible Design**: Clean separation enabling easy addition of new specialized agents
+- **Framework-Agnostic Core**: Built on AutoGen but designed for potential framework migration
 - **Open Source**: Complete transparency in agent logic, parameters, and validation results
 
 ## Recent Updates
