@@ -306,19 +306,19 @@ class AlpacaAccountMonitor:
                 order_dict = {
                     'id': str(order.id),
                     'symbol': order.symbol,
-                    'side': str(order.side),
+                    'side': order.side.value if hasattr(order.side, 'value') else str(order.side),
                     'qty': float(order.qty) if order.qty else 0.0,
                     'filled_qty': float(order.filled_qty) if order.filled_qty else 0.0,
-                    'status': str(order.status),
-                    'order_type': str(order.order_type),
-                    'time_in_force': str(order.time_in_force),
+                    'status': order.status.value if hasattr(order.status, 'value') else str(order.status),
+                    'order_type': order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type),
+                    'time_in_force': order.time_in_force.value if hasattr(order.time_in_force, 'value') else str(order.time_in_force),
                     'limit_price': float(order.limit_price) if order.limit_price else None,
                     'stop_price': float(order.stop_price) if order.stop_price else None,
                     'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
                     'filled_at': order.filled_at.isoformat() if order.filled_at else None,
                     'canceled_at': order.canceled_at.isoformat() if order.canceled_at else None,
                     'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else None,
-                    'order_class': str(order.order_class) if hasattr(order, 'order_class') else None,
+                    'order_class': order.order_class.value if hasattr(order, 'order_class') and hasattr(order.order_class, 'value') else (str(order.order_class) if hasattr(order, 'order_class') else None),
                     'legs': []  # Will be populated in second pass
                 }
 

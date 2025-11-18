@@ -1,31 +1,24 @@
-# Daily GTC Order Scheduler Configuration
-# Converted from JSON for better readability and consistency
-
-enabled: true
-market_timezone: "America/New_York"
-morning_routine_time: "09:20:00"
-evening_routine_time: "15:50:00"
+enabled: false
+market_timezone: America/New_York
+morning_routine_time: 09:20:00
+evening_routine_time: '15:50:00'
 max_retries: 3
 retry_delay_seconds: 60
 timeout_seconds: 300
 enable_notifications: false
-dry_run: false
-
-description: "Daily GTC Order Scheduler Configuration"
-
+dry_run: true
+description: Daily GTC Order Scheduler Configuration
 notes:
-  - "Morning routine runs at 9:20 AM ET (before market open at 9:30)"
-  - "Evening routine runs at 3:50 PM ET (before market close at 4:00)"
-  - "Max retries: Number of retry attempts for failed executions"
-  - "Retry delay: Initial delay in seconds, uses exponential backoff"
-  - "Timeout: Maximum seconds per routine execution"
-  - "Set enabled=false to pause automated trading"
-
+- Morning routine runs at 9:20 AM ET (before market open at 9:30)
+- Evening routine runs at 3:50 PM ET (before market close at 4:00)
+- 'Max retries: Number of retry attempts for failed executions'
+- 'Retry delay: Initial delay in seconds, uses exponential backoff'
+- 'Timeout: Maximum seconds per routine execution'
+- Set enabled=false to pause automated trading
 monitoring:
   log_retention_days: 30
   alert_on_failures: true
   alert_threshold_consecutive_failures: 2
-
 api_limits:
   max_calls_per_routine: 5
   rate_limit_buffer_seconds: 2

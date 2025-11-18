@@ -1078,6 +1078,7 @@ class CLISession:
     async def _handle_orders_request(self, user_input: str):
         """
         Handle order status request - shows pending/open orders.
+        Groups orders by symbol and enriches with local state data.
 
         Args:
             user_input: User's natural language input
@@ -1089,51 +1090,189 @@ class CLISession:
                 print(MSG.ORDERS_NOT_INITIALIZED)
                 return
 
-            # Get open orders
+            # Get open orders from broker
             orders = self.account_monitor.get_orders(status="open")
 
-            if not orders:
+            # Load local state to get stop/target prices
+            local_state = self._load_local_state()
+
+            if not orders and not local_state.get('positions'):
                 print(MSG.NO_ORDERS)
-            else:
-                print(MSG.ORDERS_HEADER(count=len(orders)))
-                for order in orders:
-                    symbol = order.get('symbol', 'UNKNOWN')
-                    side = order.get('side', 'UNKNOWN')
-                    qty = order.get('qty', 0)
-                    order_type = order.get('type', 'UNKNOWN')
-                    status = order.get('status', 'UNKNOWN')
-                    order_id = order.get('id', 'N/A')
+                return
 
-                    # Extract enum values if needed (Alpaca returns enums)
-                    if hasattr(side, 'value'):
-                        side = side.value
-                    if hasattr(order_type, 'value'):
-                        order_type = order_type.value
-                    if hasattr(status, 'value'):
-                        status = status.value
+            # Group orders by symbol
+            grouped_orders = self._group_orders_by_symbol(orders, local_state)
 
-                    # Get price info based on order type
-                    if order_type == 'limit':
-                        price_str = f"@ ${float(order.get('limit_price', 0)):.2f}"
-                    elif order_type == 'stop':
-                        price_str = f"stop ${float(order.get('stop_price', 0)):.2f}"
-                    elif order_type == 'stop_limit':
-                        price_str = f"stop ${float(order.get('stop_price', 0)):.2f}, limit ${float(order.get('limit_price', 0)):.2f}"
-                    else:
-                        price_str = "market"
+            # Display grouped orders
+            total_count = sum(len(group['api_orders']) + len(group['local_orders'])
+                            for group in grouped_orders.values())
+            print(MSG.ORDERS_HEADER(count=total_count))
 
-                    side_emoji = get_side_emoji(side)
-                    print(MSG.ORDER_ITEM(
-                        emoji=side_emoji,
-                        side=side.upper(),
-                        qty=qty,
-                        symbol=symbol,
-                        price=price_str,
-                        type=order_type.upper(),
-                        status=status.upper(),
-                        order_id=order_id[:8]
-                    ))
+            has_local_orders = False
+            for idx, (symbol, group) in enumerate(grouped_orders.items()):
+                # Position header
+                position_direction = group['direction']
+                order_count = len(group['api_orders']) + len(group['local_orders'])
+
+                # Box drawing characters
+                if idx == 0:
+                    prefix = "┌─"
+                else:
+                    prefix = "\n┌─"
+
+                print(f"{prefix} ${symbol} Position ({order_count} orders) - {position_direction}")
+
+                # Display API orders (from broker)
+                for order in group['api_orders']:
+                    self._print_order_line(order, from_local=False)
+
+                # Display local state orders (stop/target not visible in API)
+                for order in group['local_orders']:
+                    self._print_order_line(order, from_local=True)
+                    has_local_orders = True
+
+            # Footer with explanation
+            if has_local_orders:
+                print("\n" + "─" * 60)
+                print("* Orders marked with * were sent to broker and logged locally.")
+                print("  Please verify on broker portal for confirmation.")
 
         except Exception as e:
             print(MSG.ERROR_CHECKING_ORDERS(error=e))
             logger.error(f"Orders error: {e}", exc_info=True)
+
+    def _load_local_state(self) -> dict:
+        """Load local state from cost_efficient_positions.json"""
+        import json
+        state_file = "state/cost_efficient_positions.json"
+        try:
+            if os.path.exists(state_file):
+                with open(state_file, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not load local state: {e}")
+        return {"positions": {}}
+
+    def _group_orders_by_symbol(self, api_orders: list, local_state: dict) -> dict:
+        """
+        Group orders by symbol and enrich with local state data.
+
+        Returns:
+            Dict with structure: {symbol: {
+                'direction': 'LONG/SHORT',
+                'api_orders': [...],
+                'local_orders': [...]
+            }}
+        """
+        grouped = {}
+
+        # Process API orders
+        for order in api_orders:
+            symbol = order.get('symbol', 'UNKNOWN')
+            side = self._extract_value(order.get('side'))
+
+            if symbol not in grouped:
+                grouped[symbol] = {
+                    'direction': 'LONG' if side == 'buy' else 'SHORT',
+                    'api_orders': [],
+                    'local_orders': []
+                }
+
+            # Normalize order data
+            normalized = self._normalize_order(order)
+            grouped[symbol]['api_orders'].append(normalized)
+
+        # Add local state stop/target orders (not visible in API due to "held" status)
+        positions = local_state.get('positions', {})
+        for symbol, position_data in positions.items():
+            if symbol not in grouped:
+                # Position exists but no API orders - might be entry filled, exits pending
+                grouped[symbol] = {
+                    'direction': 'LONG',  # Default assumption
+                    'api_orders': [],
+                    'local_orders': []
+                }
+
+            # Add stop order from local state if exists
+            if position_data.get('stop_price'):
+                stop_order = {
+                    'symbol': symbol,
+                    'side': 'sell' if grouped[symbol]['direction'] == 'LONG' else 'buy',
+                    'qty': position_data.get('quantity', 0),
+                    'price': position_data['stop_price'],
+                    'order_type': 'stop',
+                    'label': 'SL',
+                    'id': 'local-stop'
+                }
+                grouped[symbol]['local_orders'].append(stop_order)
+
+        return grouped
+
+    def _normalize_order(self, order: dict) -> dict:
+        """Normalize order data from API"""
+        side = self._extract_value(order.get('side'))
+        order_type = self._extract_value(order.get('order_type'))
+        status = self._extract_value(order.get('status'))
+
+        # Determine price based on order type
+        if order_type == 'limit':
+            price = float(order.get('limit_price', 0))
+        elif order_type == 'stop':
+            price = float(order.get('stop_price', 0))
+        elif order_type == 'stop_limit':
+            price = float(order.get('stop_price', 0))
+        else:
+            price = None  # Market order
+
+        # Determine label (PT/SL/Entry)
+        label = None
+        if order_type == 'stop':
+            label = 'SL'
+        elif order_type == 'limit' and side == 'sell':
+            label = 'PT'
+
+        return {
+            'symbol': order.get('symbol'),
+            'side': side,
+            'qty': order.get('qty', 0),
+            'price': price,
+            'order_type': order_type,
+            'status': status,
+            'time_in_force': self._extract_value(order.get('time_in_force', '')),
+            'id': order.get('id', 'N/A'),
+            'label': label
+        }
+
+    def _extract_value(self, field) -> str:
+        """Extract value from enum or return as string"""
+        if hasattr(field, 'value'):
+            return field.value
+        return str(field).lower() if field else ''
+
+    def _print_order_line(self, order: dict, from_local: bool = False):
+        """Print a single order line with formatting"""
+        symbol = order['symbol']
+        side = order['side']
+        qty = order['qty']
+        price = order.get('price')
+        order_type = order['order_type']
+        label = order.get('label', '')
+        order_id = order.get('id', 'N/A')
+
+        # Format price
+        if price:
+            price_str = f"${price:.2f}"
+        else:
+            price_str = "market"
+
+        # Side emoji
+        side_emoji = get_side_emoji(side)
+
+        # Label prefix (PT/SL)
+        label_prefix = f"{label}: " if label else ""
+
+        # Local indicator
+        local_marker = "*" if from_local else " "
+
+        # Format: │  [*] [emoji] [label] [side] [qty] $[symbol] @ [price] ([order_id])
+        print(f"│ {local_marker}{side_emoji} {label_prefix}{side} {qty} @ {price_str} ({order_id[:8]})")

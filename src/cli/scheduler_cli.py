@@ -65,6 +65,10 @@ class SchedulerCLI:
                 if not command:
                     continue
 
+                # Strip leading slash for compatibility with main CLI
+                if command.startswith('/'):
+                    command = command[1:]
+
                 if command in ["exit", "quit", "q"]:
                     print("\n👋 Exiting scheduler CLI...")
                     break
@@ -86,6 +90,7 @@ class SchedulerCLI:
         print("\nCommands:")
         print("  status          - Show detailed scheduler status")
         print("  config          - View current configuration")
+        print("  info            - Explain configuration settings")
         print("  edit            - Edit scheduler configuration")
         print("  enable          - Enable scheduler")
         print("  disable         - Disable scheduler")
@@ -121,6 +126,9 @@ class SchedulerCLI:
 
         elif command == "config":
             self._show_config()
+
+        elif command == "info":
+            self._show_config_info()
 
         elif command == "edit":
             await self._edit_config()
@@ -241,6 +249,86 @@ class SchedulerCLI:
             print(f"❌ Config file not found: {self.config_file}")
             print("💡 Will be created with defaults on first run")
 
+    def _show_config_info(self):
+        """Display explanations for configuration settings."""
+        print("\n📖 Scheduler Configuration Guide")
+        print("=" * 70)
+
+        print("\n🔧 EDITABLE SETTINGS")
+        print("-" * 70)
+
+        print("\n1. enabled (boolean)")
+        print("   Current: {}".format(self.scheduler.config.get('enabled', 'N/A') if self.scheduler else 'N/A'))
+        print("   Purpose: Master switch for automated trading")
+        print("   Values:  true = scheduler runs automatically")
+        print("            false = scheduler paused (safe mode)")
+        print("   Tip:     Set to 'false' when testing or during holidays")
+
+        print("\n2. morning_routine_time (HH:MM:SS)")
+        print("   Current: {}".format(self.scheduler.config.get('morning_routine_time', 'N/A') if self.scheduler else 'N/A'))
+        print("   Purpose: Daily pre-market check and position setup")
+        print("   Default: 09:20:00 (9:20 AM ET, 10 min before market open)")
+        print("   Tip:     Run before market opens to prepare for trading day")
+
+        print("\n3. evening_routine_time (HH:MM:SS)")
+        print("   Current: {}".format(self.scheduler.config.get('evening_routine_time', 'N/A') if self.scheduler else 'N/A'))
+        print("   Purpose: End-of-day position review and trailing stop adjustments")
+        print("   Default: 15:50:00 (3:50 PM ET, 10 min before market close)")
+        print("   Tip:     Run before market closes to lock in profits")
+
+        print("\n4. max_retries (integer 1-10)")
+        print("   Current: {}".format(self.scheduler.config.get('max_retries', 'N/A') if self.scheduler else 'N/A'))
+        print("   Purpose: Number of retry attempts if routine fails")
+        print("   Default: 3")
+        print("   Tip:     Higher values = more resilient to network issues")
+
+        print("\n5. dry_run (boolean)")
+        print("   Current: {}".format(self.scheduler.config.get('dry_run', 'N/A') if self.scheduler else 'N/A'))
+        print("   Purpose: Test mode - simulates actions without placing orders")
+        print("   Values:  true = simulation only (NO real orders)")
+        print("            false = normal operation (places orders)")
+        print("   ⚠️  NOTE: dry_run enforcement is NOT YET IMPLEMENTED")
+        print("   Status:  Currently logs but doesn't prevent order execution")
+        print("   Tip:     Always use paper trading account for testing")
+
+        print("\n\n📋 READ-ONLY SETTINGS (edit config file directly)")
+        print("-" * 70)
+
+        print("\n• market_timezone: America/New_York")
+        print("  All times are in Eastern Time (NYSE timezone)")
+
+        print("\n• retry_delay_seconds: 60")
+        print("  Initial wait time between retries (uses exponential backoff)")
+
+        print("\n• timeout_seconds: 300")
+        print("  Maximum time (5 minutes) for a single routine execution")
+
+        print("\n• monitoring.alert_threshold_consecutive_failures: 2")
+        print("  Number of consecutive failures before raising alert")
+
+        print("\n• api_limits.max_calls_per_routine: 5")
+        print("  Maximum API calls per routine to stay within rate limits")
+
+        print("\n\n💡 QUICK REFERENCE")
+        print("-" * 70)
+        print("\nPaper Trading vs Dry Run:")
+        print("  • Paper Trading (mode='paper'): Places real test orders on Alpaca paper account")
+        print("  • Dry Run (dry_run=true): Simulates logic without any orders [NOT IMPLEMENTED]")
+        print("  • Current system uses: Paper trading account (hardcoded in trading_cycle.py)")
+
+        print("\nSafety Levels (intended design):")
+        print("  1. Live mode + dry_run=false  → Real money, real orders ⚠️")
+        print("  2. Paper mode + dry_run=false → Paper account, test orders ✅ (current)")
+        print("  3. Paper mode + dry_run=true  → No orders, just logging 📝 (not implemented)")
+
+        print("\nRelated Issues:")
+        print("  • #369 - Advanced documentation/man command")
+        print("  • #370 - LLM-powered trade journaling")
+
+        print("\n" + "=" * 70)
+        print("Type 'edit' to modify settings or 'config' to view raw file")
+        print("")
+
     async def _edit_config(self):
         """Interactive configuration editor."""
         print("\n📝 Scheduler Configuration Editor")
@@ -283,7 +371,9 @@ class SchedulerCLI:
                 # Reload scheduler if running
                 if self.scheduler:
                     print("🔄 Reloading scheduler...")
-                    self.scheduler = DailyScheduler(self.config_file)
+                    # Reuse existing trading_cycle to avoid creating duplicate Alpaca clients
+                    existing_cycle = self.scheduler.trading_cycle
+                    self.scheduler = DailyScheduler(self.config_file, trading_cycle=existing_cycle)
                     print("✅ Scheduler reloaded")
                 break
             elif choice == '1':

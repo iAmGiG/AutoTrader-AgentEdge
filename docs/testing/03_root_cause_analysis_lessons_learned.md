@@ -447,7 +447,7 @@ CLISession.__init__()
 ---
 
 ### ADR-004: Verbose Alpaca Client Logging
-**Decision:** Keep multiple "Alpaca client initialized" messages as-is
+**Decision:** Keep multiple "Alpaca client initialized" messages as-is, but minimize unnecessary re-instantiation
 
 **Rationale:**
 - Transparency for LIVE vs PAPER mode
@@ -458,14 +458,16 @@ CLISession.__init__()
 - Each component logs its own client initialization
 - WARNING level for visibility
 - Clear differentiation: "PAPER mode" vs "LIVE TRADING MODE - Real money at risk!"
+- **Fixed (2025-11):** SchedulerCLI now reuses `trading_cycle` on config reload to avoid duplicate client creation
 
 **Trade-offs:**
 - ✅ High visibility for safety
 - ✅ Easy to verify all components in correct mode
-- ❌ Verbose console output (9 messages)
+- ✅ Reduced duplicates on scheduler reload (2 fewer clients per reload)
+- ❌ Verbose console output (still 6-9 messages on initial startup)
 
 **Future Enhancement:**
-- Consider singleton pattern to reduce instantiations
+- Consider singleton pattern to reduce instantiations further
 - Could change to INFO level with verbose flag
 
 ---
