@@ -13,10 +13,9 @@ from typing import Optional
 import sys
 import os
 
-from core.trading_orchestrator import TradingOrchestrator
-
 # Add imports for new features
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.trading.daily_scheduler import DailyScheduler
 
@@ -408,7 +407,7 @@ class CLISession:
                         print(f"   → Overriding SELL signal from technical analysis")
 
                         # Flip the signal to BUY (user override)
-                        from core.models import Signal
+                        from src.core.models import Signal
                         decision.suggestion.signal = Signal.BUY
 
                         # Invert stop/target for BUY (were calculated for SELL)
@@ -464,7 +463,7 @@ class CLISession:
                             f"\n{MSG.EMOJI['info']} Got it! Preparing BUY order for {decision.suggestion.ticker}...")
 
                         # Flip the signal to BUY
-                        from core.models import Signal
+                        from src.core.models import Signal
                         decision.suggestion.signal = Signal.BUY
 
                         # Invert stop/target for BUY (were calculated for SELL)
