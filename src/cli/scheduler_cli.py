@@ -199,10 +199,10 @@ class SchedulerCLI:
 
     def _is_daemon_running(self) -> bool:
         """Check if scheduler daemon is actually running."""
-        import psutil
-
-        # Check for process running main.py --daemon
+        # Try psutil first (if available)
         try:
+            import psutil
+            # Check for process running main.py --daemon
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
                     cmdline = proc.info.get('cmdline', [])
@@ -210,16 +210,20 @@ class SchedulerCLI:
                         return True
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
-        except ImportError:
-            # psutil not installed, check PID file as fallback
-            pid_file = Path('state/scheduler.pid')
-            if pid_file.exists():
-                try:
-                    pid = int(pid_file.read_text())
-                    os.kill(pid, 0)  # Check if process exists
-                    return True
-                except (OSError, ValueError):
-                    pass
+        except (ImportError, Exception):
+            # psutil not installed or error, use PID file fallback
+            pass
+
+        # Fallback: Check PID file
+        pid_file = Path('state/scheduler.pid')
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text())
+                os.kill(pid, 0)  # Check if process exists (0 = no signal, just check)
+                return True
+            except (OSError, ValueError):
+                # Process doesn't exist or PID file corrupted
+                pass
 
         return False
 
