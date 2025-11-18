@@ -343,7 +343,7 @@ class CostEfficientTradeCycle:
                 ))
 
                 # Extract stop/target prices from broker's open orders
-                entry_price = pos_data["entry_price"]
+                entry_price = broker_pos["entry_price"]
                 stop_price, target_price, stop_verified = self._extract_stop_target_from_orders(
                     symbol, broker_state, entry_price=entry_price
                 )
