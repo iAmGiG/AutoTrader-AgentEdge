@@ -9,6 +9,7 @@
 ## 🔴 Critical Issues
 
 ### 1. Hardcoded Market Hours Configuration
+
 **Lines**: 78, 82, 86-87
 
 ```python
@@ -19,11 +20,13 @@ market_close = now_et.replace(hour=16, minute=0)  # Hardcoded close time
 ```
 
 **Issue**: Market hours should be configurable
+
 - Different markets have different hours
 - Holidays not accounted for
 - Extended hours trading not supported
 
 **Recommendation**: Create market hours config
+
 ```python
 # config_defaults/market_hours.py
 MARKET_CONFIG = {
@@ -46,6 +49,7 @@ MARKET_CONFIG = {
 ---
 
 ### 2. Missing pytz Dependency
+
 **Lines**: 75-76
 
 ```python
@@ -56,6 +60,7 @@ import pytz  # NOT in requirements.txt!
 **Issue**: `pytz` imported but not listed in project dependencies
 
 **Recommendation**: Add to requirements.txt or use standard library
+
 ```python
 # Option 1: Add to requirements.txt
 pytz>=2023.3
@@ -70,6 +75,7 @@ et_tz = ZoneInfo('America/New_York')
 ---
 
 ### 3. Magic Number: Default Price Check
+
 **Line**: 170
 
 ```python
@@ -79,6 +85,7 @@ if fetched_price != 100.0:  # What is 100.0? Why this value?
 **Issue**: Magic number with unclear meaning
 
 **Recommendation**: Extract to named constant
+
 ```python
 # At module level
 DEFAULT_FALLBACK_PRICE = 100.0  # UnifiedPriceFetcher default when data unavailable
@@ -94,6 +101,7 @@ if fetched_price != DEFAULT_FALLBACK_PRICE:
 ## 🟡 Medium Priority Issues
 
 ### 4. Hardcoded Time-in-Force
+
 **Line**: 271
 
 ```python
@@ -101,6 +109,7 @@ time_in_force="gtc"  # Always Good-Til-Canceled
 ```
 
 **Issue**: Should be configurable based on strategy
+
 - Day orders vs GTC have different use cases
 - Some strategies prefer DAY orders
 
@@ -111,6 +120,7 @@ time_in_force="gtc"  # Always Good-Til-Canceled
 ---
 
 ### 5. Hardcoded Trade Side in Fallback
+
 **Line**: 267, 293
 
 ```python
@@ -120,6 +130,7 @@ side="buy",  # Always BUY (SELL signals filtered above)
 **Issue**: Comment says SELL filtered above, but hardcoding creates maintenance burden
 
 **Recommendation**: Pass signal through
+
 ```python
 side=signal.lower(),  # Use actual signal
 ```
@@ -131,14 +142,17 @@ Then update logic to handle SELL in fallback path
 ---
 
 ### 6. User-Facing Messages Hardcoded in Logic
+
 **Lines**: 224, 240, 256-258, 284-286, 302-305, 317-320, etc.
 
 **Issue**: All user messages embedded in business logic
+
 - Hard to internationalize
 - Can't customize per user preference
 - Difficult to maintain consistency
 
 **Example**:
+
 ```python
 # Current (BAD):
 message=f"SELL signal rejected: No position in {ticker}. Short selling not supported."
@@ -150,6 +164,7 @@ message=MSG.SELL_REJECTED_NO_POSITION(ticker=ticker)
 ```
 
 **Recommendation**: Extract to message template system
+
 ```python
 # src/messages/execution_messages.py
 class ExecutionMessages:
@@ -176,14 +191,17 @@ class ExecutionMessages:
 ---
 
 ### 7. Long Method: execute_trade()
+
 **Lines**: 95-381 (286 lines!)
 
 **Issue**: Method too long, violates Single Responsibility Principle
+
 - Hard to test individual pieces
 - Difficult to understand flow
 - High cyclomatic complexity
 
 **Recommendation**: Break into smaller methods
+
 ```python
 async def execute_trade(...):
     # High-level orchestration only
@@ -210,6 +228,7 @@ async def _place_order(...): ...
 ---
 
 ### 8. Imports Inside Function
+
 **Lines**: 75-76, 142
 
 ```python
@@ -221,6 +240,7 @@ def _is_market_hours(self):
 **Issue**: Performance overhead, non-standard practice
 
 **Recommendation**: Move to module level
+
 ```python
 # Top of file
 from datetime import datetime
@@ -239,6 +259,7 @@ except ImportError:
 ## 🟢 Minor Issues / Suggestions
 
 ### 9. Error Message Keywords Too Broad
+
 **Line**: 282
 
 ```python
@@ -248,6 +269,7 @@ if not is_market_hours and ('limit_price' in error_msg or 'base_price' in error_
 **Issue**: May catch unrelated errors containing these keywords
 
 **Recommendation**: Use Alpaca error codes instead
+
 ```python
 # Alpaca returns structured errors with codes
 # Use error code 42210000 for bracket validation
@@ -259,9 +281,11 @@ if not is_market_hours and self._is_bracket_validation_error(e):
 ---
 
 ### 10. Missing Type Hints
+
 **Lines**: Various
 
 Missing return type hints and parameter types:
+
 ```python
 # Current:
 def _translate_api_error(self, error_str: str, ticker: str, entry: float, stop: float, target: float) -> tuple:
@@ -282,6 +306,7 @@ def _translate_api_error(
 ---
 
 ### 11. Stub Order IDs Not Random/Unique
+
 **Lines**: 557-559
 
 ```python
@@ -293,6 +318,7 @@ target_order_id="stub_target_123",
 **Issue**: Using hardcoded stub IDs could cause issues in tests
 
 **Recommendation**: Generate unique IDs
+
 ```python
 import uuid
 
@@ -311,6 +337,7 @@ def _create_stub_result(...):
 ---
 
 ### 12. Comment Formatting Inconsistency
+
 **Lines**: Various
 
 ```python
@@ -349,12 +376,14 @@ Based on the code, VS Code with Python linter would likely flag:
 ## 🎯 Immediate Quick Fixes (Can Do Now)
 
 ### Quick Fix #1: Add pytz to requirements
+
 ```bash
 # In requirements.txt, add:
 pytz>=2023.3  # For market hours timezone handling
 ```
 
 ### Quick Fix #2: Extract magic numbers to constants
+
 ```python
 # At top of file after logger
 DEFAULT_FALLBACK_PRICE = 100.0  # UnifiedPriceFetcher default
@@ -367,6 +396,7 @@ MARKET_CLOSE_MINUTE = 0
 ```
 
 ### Quick Fix #3: Move imports to module level
+
 ```python
 # At top of file
 from datetime import datetime
@@ -374,11 +404,13 @@ import pytz
 ```
 
 ### Quick Fix #4: Add type hint to tuple return
+
 ```python
 def _translate_api_error(...) -> tuple[str, str]:
 ```
 
 ### Quick Fix #5: Fix stub order ID generation
+
 ```python
 import uuid
 
@@ -422,10 +454,12 @@ def _create_stub_result(...):
 **Minor**: 4
 
 **Immediate Action Items**:
+
 1. Apply 5 quick fixes above (< 10 minutes)
 2. Create 8 GitHub issues for tracking
 3. Add pytz to requirements.txt before merge
 
 **Before Demo Tomorrow**:
+
 - Quick fixes #1-5 are safe to apply now
 - Rest can be tracked in issues for post-demo cleanup
