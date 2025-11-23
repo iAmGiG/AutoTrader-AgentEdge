@@ -132,11 +132,10 @@ if trade and 'trade' in trade and trade['trade'].get('p'):
 
 | # | Title | Priority | Description |
 |---|-------|----------|-------------|
-| [#374](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/374) | Extract market hours configuration to config file | Medium | Support international markets, holidays, extended hours |
-| [#375](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/375) | Extract user-facing messages to template system | Medium | Enable internationalization, consistent messaging |
-| [#376](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/376) | Refactor execute_trade() for better testability | Medium | Break 286-line method into smaller pieces |
-| [#377](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/377) | Use Alpaca error codes instead of string matching | Low | More robust error detection |
-| [#378](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/378) | ✅ CLOSED - Add modify_stop_order() method | Low | Fixed in commit ecbaa29 |
+| [#379](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/379) | Extract market hours configuration to config file | Medium | Support international markets, holidays, extended hours |
+| [#380](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/380) | Extract user-facing messages to template system | Medium | Enable internationalization, consistent messaging |
+| [#381](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/381) | Refactor execute_trade() for better testability | Medium | Break 286-line method into smaller pieces |
+| [#382](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/382) | Use Alpaca error codes instead of string matching | Low | More robust error detection |
 
 ---
 
