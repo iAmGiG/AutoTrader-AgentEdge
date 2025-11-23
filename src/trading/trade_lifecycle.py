@@ -814,6 +814,10 @@ class TradeCycle:
                 if close_result['status'] == 'submitted':
                     self.data.state = TradeState.EXIT_TRIGGERED.value
                     self.save_state()
+
+                    # Archive completed trade to database for analytics (Issue #373 extension)
+                    self._archive_to_database(reason=reason)
+
                     logger.info(f"Market sell order placed for {self.data.quantity} shares")
                     return True
                 else:
@@ -826,6 +830,83 @@ class TradeCycle:
         except Exception as e:
             logger.error(f"Error closing position: {e}")
             return False
+
+    def _archive_to_database(self, reason: str = "Unknown"):
+        """
+        Archive completed trade to database for analytics (Issue #373 extension).
+
+        This implements the hybrid storage approach:
+        - Active trades stay in JSON (fast, simple)
+        - Completed trades archived to database (analytics, TradingView-style charts)
+
+        Args:
+            reason: Exit reason for the trade
+        """
+        try:
+            from src.data_sources.cache import TradingCacheManager
+
+            cache = TradingCacheManager()
+
+            # Generate unique trade_id
+            trade_id = f"{self.symbol}_{self.data.entry_time}".replace(":", "-")
+
+            # Calculate holding period if we have both entry and exit times
+            holding_period_hours = None
+            if self.data.entry_time:
+                try:
+                    entry_dt = datetime.fromisoformat(
+                        self.data.entry_time.replace('Z', '+00:00')
+                    )
+                    exit_dt = datetime.now(timezone.utc)
+                    holding_period_hours = (exit_dt - entry_dt).total_seconds() / 3600
+                except Exception:
+                    pass
+
+            # Prepare trade data for archival
+            trade_data = {
+                'trade_id': trade_id,
+                'symbol': self.symbol,
+                'asset_type': 'stock',
+                'entry_date': self.data.entry_time,
+                'entry_price': self.data.entry_price,
+                'entry_order_id': self.data.order_ids.get('parent') if self.data.order_ids else None,
+                'quantity': self.data.quantity,
+                'exit_date': datetime.now(timezone.utc).isoformat(),
+                'exit_reason': reason,
+                'initial_stop_loss': self.data.current_stop,
+                'initial_take_profit': self.data.target_price,
+                'strategy_name': 'TradeCycle',
+                'signal_strength': self.data.signal_strength,
+                'signal_confidence': self.data.confidence,
+                'broker_account': 'alpaca_paper',
+                'holding_period_hours': holding_period_hours,
+                'notes': {
+                    'order_ids': self.data.order_ids,
+                    'exit_reason_detail': reason
+                }
+            }
+
+            # Add exit price and P&L if available (will be updated when fill confirmed)
+            if hasattr(self.data, 'exit_price') and self.data.exit_price:
+                trade_data['exit_price'] = self.data.exit_price
+                trade_data['realized_pnl'] = (
+                    (self.data.exit_price - self.data.entry_price) * self.data.quantity
+                )
+                trade_data['realized_pnl_pct'] = (
+                    (self.data.exit_price - self.data.entry_price) /
+                    self.data.entry_price * 100
+                )
+
+            # Archive to database
+            success = cache.archive_trade(trade_data)
+            if success:
+                logger.info(f"Trade {trade_id} archived to database for analytics")
+            else:
+                logger.warning(f"Failed to archive trade {trade_id} to database")
+
+        except Exception as e:
+            logger.warning(f"Failed to archive trade to database: {e}")
+            # Don't fail the close operation if archival fails - this is non-critical
 
     def save_state(self):
         """Save trade state to JSON file."""
