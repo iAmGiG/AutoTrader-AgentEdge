@@ -5,10 +5,33 @@ Integrates existing OrderManager into the plugin architecture.
 """
 
 import logging
-from typing import Optional
+import uuid
+from datetime import datetime
+from typing import Optional, Tuple
 
 from core.interfaces import ExecutionManager
 from core.models import TradeSuggestion, OrderResult, TradeDecision, TimeInForce
+
+# Market hours configuration constants
+MARKET_TIMEZONE = 'America/New_York'
+SATURDAY = 5
+SUNDAY = 6
+MARKET_OPEN_HOUR = 9
+MARKET_OPEN_MINUTE = 30
+MARKET_CLOSE_HOUR = 16
+MARKET_CLOSE_MINUTE = 0
+DEFAULT_FALLBACK_PRICE = 100.0  # UnifiedPriceFetcher default when data unavailable
+
+# Try to import pytz for timezone handling
+try:
+    import pytz
+    PYTZ_AVAILABLE = True
+except ImportError:
+    PYTZ_AVAILABLE = False
+    logging.warning(
+        "pytz not available - market hours detection may fail. "
+        "Install with: pip install pytz"
+    )
 
 # Import price fetcher for current market prices
 try:
@@ -71,20 +94,31 @@ class AlpacaExecutionManager(ExecutionManager):
         Returns:
             True if during market hours, False otherwise
         """
-        try:
-            from datetime import datetime
-            import pytz
+        if not PYTZ_AVAILABLE:
+            logger.warning("pytz not available - cannot determine market hours")
+            return False
 
-            et_tz = pytz.timezone('America/New_York')
+        try:
+            et_tz = pytz.timezone(MARKET_TIMEZONE)
             now_et = datetime.now(et_tz)
 
             # Check if weekend
-            if now_et.weekday() >= 5:  # 5=Saturday, 6=Sunday
+            if now_et.weekday() >= SATURDAY:  # Saturday or Sunday
                 return False
 
-            # Check if within market hours (9:30 AM - 4:00 PM ET)
-            market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
-            market_close = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+            # Check if within market hours
+            market_open = now_et.replace(
+                hour=MARKET_OPEN_HOUR,
+                minute=MARKET_OPEN_MINUTE,
+                second=0,
+                microsecond=0
+            )
+            market_close = now_et.replace(
+                hour=MARKET_CLOSE_HOUR,
+                minute=MARKET_CLOSE_MINUTE,
+                second=0,
+                microsecond=0
+            )
 
             return market_open <= now_et <= market_close
 
@@ -167,7 +201,7 @@ class AlpacaExecutionManager(ExecutionManager):
                     price_fetcher = UnifiedPriceFetcher()
                     fetched_price = price_fetcher.get_current_price(ticker, use_cache=False)
                     # Only use if not the fallback default price
-                    if fetched_price != 100.0:
+                    if fetched_price != DEFAULT_FALLBACK_PRICE:
                         current_market_price = fetched_price
                         logger.info(
                             f"Got price from UnifiedPriceFetcher: ${current_market_price:.2f}")
@@ -380,7 +414,14 @@ class AlpacaExecutionManager(ExecutionManager):
                 error=user_error
             )
 
-    def _translate_api_error(self, error_str: str, ticker: str, entry: float, stop: float, target: float) -> tuple:
+    def _translate_api_error(
+        self,
+        error_str: str,
+        ticker: str,
+        entry: float,
+        stop: float,
+        target: float
+    ) -> Tuple[str, str]:
         """
         Translate Alpaca API errors into user-friendly messages.
 
@@ -552,11 +593,14 @@ class AlpacaExecutionManager(ExecutionManager):
         Returns:
             Mock OrderResult
         """
+        # Generate unique stub ID for each call
+        stub_id = str(uuid.uuid4())[:8]
+
         return OrderResult(
             success=True,
-            entry_order_id="stub_entry_123",
-            stop_order_id="stub_stop_123",
-            target_order_id="stub_target_123",
+            entry_order_id=f"stub_entry_{stub_id}",
+            stop_order_id=f"stub_stop_{stub_id}",
+            target_order_id=f"stub_target_{stub_id}",
             ticker=ticker,
             quantity=quantity,
             filled_price=price,
