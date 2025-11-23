@@ -14,6 +14,7 @@ Usage:
 import sys
 import os
 import argparse
+import traceback
 from datetime import datetime, timedelta  # TODO date_utils.py maybe?
 import pandas as pd
 
@@ -41,7 +42,7 @@ def test_voter_agent():
         )
 
         config = voter.get_current_configuration()
-        print(f"✅ VoterAgent configured:")
+        print("✅ VoterAgent configured:")
         print(
             f"   MACD: ({config['macd']['fast']}/{config['macd']['slow']}/{config['macd']['signal']})")
         print(
@@ -64,7 +65,7 @@ def test_voter_agent():
             # Get trading decision
             result = voter.evaluate_voting('AAPL', df, return_components=True)
 
-            print(f"\n📊 Trading Decision:")
+            print("\n📊 Trading Decision:")
             print(f"   Action: {result['action']} (Confidence: {result['confidence']:.1%})")
             print(f"   Reasoning: {result['reasoning']}")
             print(f"   Current Price: ${result.get('current_price', 0):.2f}")
@@ -72,7 +73,7 @@ def test_voter_agent():
             if 'components' in result:
                 macd = result['components']['macd']
                 rsi = result['components']['rsi']
-                print(f"\n🔧 Component Analysis:")
+                print("\n🔧 Component Analysis:")
                 print(f"   MACD: {macd['action']} (Histogram: {macd['histogram']:.6f})")
                 print(f"   RSI: {rsi['action']} (Value: {rsi['value']:.1f})")
 
@@ -81,7 +82,7 @@ def test_voter_agent():
             print("❌ Insufficient market data")
             return False
 
-    except Exception as e:
+    except (ValueError, KeyError, RuntimeError) as e:
         print(f"❌ Error testing VoterAgent: {e}")
         return False
 
@@ -95,7 +96,7 @@ def check_paper_positions():
 
         # Get comprehensive account status
         account = monitor.get_account_status()
-        print(f"📈 Account Overview:")
+        print("📈 Account Overview:")
         print(f"   Status: {account['status']}")
         print(f"   Buying Power: ${account['buying_power']:,.2f}")
         print(f"   Portfolio Value: ${account['portfolio_value']:,.2f}")
@@ -132,7 +133,7 @@ def check_paper_positions():
             print("\n📋 No recent orders")
 
         return True
-    except Exception as e:
+    except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
         print(f"❌ Error checking positions: {e}")
         print("💡 Make sure Alpaca API keys are configured in config/config.json")
         return False
@@ -211,7 +212,7 @@ def run_paper_trading_check(symbol: str = None):
                         else:
                             print(f"     ❌ Failed to update stop for {adj.symbol}")
 
-                    except Exception as e:
+                    except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
                         print(f"     ❌ Error updating stop for {adj.symbol}: {e}")
 
             # Review each position
@@ -269,25 +270,25 @@ def run_paper_trading_check(symbol: str = None):
                                     # Close the position
                                     result = order_manager.close_position(pos_symbol)
                                     if result:
-                                        print(f"       ✅ Position closed successfully")
+                                        print("       ✅ Position closed successfully")
                                         actions_taken.append(
                                             f"Closed losing position in {pos_symbol}")
                                     else:
-                                        print(f"       ❌ Failed to close position")
+                                        print("       ❌ Failed to close position")
 
-                                except Exception as e:
+                                except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
                                     print(f"       ❌ Error closing position: {e}")
 
                             elif decision['action'] == 'HOLD' or decision['confidence'] < 0.6:
                                 print(
-                                    f"       🟡 HOLDING: Keeping position, insufficient confidence or hold signal")
+                                    "       🟡 HOLDING: Keeping position, insufficient confidence or hold signal")
                             else:
-                                print(f"       🟢 HOLDING: VoterAgent suggests staying in position")
+                                print("       🟢 HOLDING: VoterAgent suggests staying in position")
 
                         else:
-                            print(f"       ❌ Insufficient data for re-evaluation")
+                            print("       ❌ Insufficient data for re-evaluation")
 
-                    except Exception as e:
+                    except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
                         print(f"       ❌ Error re-evaluating {pos_symbol}: {e}")
 
         else:
@@ -299,7 +300,7 @@ def run_paper_trading_check(symbol: str = None):
         print("   💾 Local state synchronized with all updates")
 
         # Step 6: Summary of actions taken
-        print(f"\n📊 Trading Cycle Summary:")
+        print("\n📊 Trading Cycle Summary:")
         print(f"   📈 Active Positions: {len(broker_state['positions'])}")
         print(
             f"   🔄 Stop Adjustments: {len(stop_adjustments) if 'stop_adjustments' in locals() else 0}")
@@ -309,11 +310,11 @@ def run_paper_trading_check(symbol: str = None):
         print(f"   ✅ Actions Executed: {len(actions_taken)}")
 
         if actions_taken:
-            print(f"\n🎯 Actions Taken This Cycle:")
+            print("\n🎯 Actions Taken This Cycle:")
             for i, action in enumerate(actions_taken, 1):
                 print(f"   {i}. {action}")
         else:
-            print(f"\n💤 No actions required this cycle")
+            print("\n💤 No actions required this cycle")
 
         if symbol:
             # If specific symbol requested, provide focused analysis
@@ -328,12 +329,11 @@ def run_paper_trading_check(symbol: str = None):
             else:
                 print(f"\n🎯 No position found for {symbol}")
 
-        print(f"\n✅ Paper trading cycle complete - System updated")
+        print("\n✅ Paper trading cycle complete - System updated")
         return True
 
-    except Exception as e:
+    except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
         print(f"❌ Error in trading cycle: {e}")
-        import traceback
         traceback.print_exc()
         return False
 
@@ -346,7 +346,7 @@ def generate_analysis():
         from scripts.analysis.generate_results_summary import main as generate_summary
         generate_summary(['--advanced'])
         return True
-    except Exception as e:
+    except (ImportError, ValueError, RuntimeError) as e:
         print(f"❌ Error generating analysis: {e}")
         print("💡 Analysis scripts may need configuration")
         return False
@@ -355,7 +355,6 @@ def generate_analysis():
 def trade_assist():
     """Interactive CLI trading assistant."""
     import asyncio
-    import sys
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
     try:
@@ -385,9 +384,8 @@ def trade_assist():
         asyncio.run(session.run())
 
         return True
-    except Exception as e:
+    except (ImportError, ValueError, RuntimeError) as e:
         print(f"❌ Error starting trade assistant: {e}")
-        import traceback
         traceback.print_exc()
         return False
 
@@ -437,7 +435,7 @@ Interactive CLI Usage:
         except KeyboardInterrupt:
             print("\n🛑 Cancelled by user")
             sys.exit(0)
-        except Exception as e:
+        except (ImportError, ValueError, RuntimeError) as e:
             print(f"\n💥 Error: {e}")
             sys.exit(1)
 
@@ -457,7 +455,7 @@ Interactive CLI Usage:
         except KeyboardInterrupt:
             print("\n🛑 Scheduler stopped by user")
             sys.exit(0)
-        except Exception as e:
+        except (ImportError, ValueError, RuntimeError) as e:
             print(f"\n💥 Scheduler error: {e}")
             sys.exit(1)
 
@@ -502,7 +500,7 @@ Interactive CLI Usage:
         except KeyboardInterrupt:
             print("\n🛑 Cancelled by user")
             sys.exit(1)
-        except Exception as e:
+        except (ImportError, ValueError, RuntimeError) as e:
             print(f"\n💥 Error: {e}")
             sys.exit(1)
 
