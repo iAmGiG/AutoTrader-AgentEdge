@@ -144,18 +144,18 @@ class AlpacaExecutionManager(ExecutionManager):
 
                     # Try latest trade first
                     trade = market_data.get_latest_trade(ticker)
-                    if trade and 'price' in trade and trade['price'] > 0:
-                        current_market_price = float(trade['price'])
+                    if trade and 'trade' in trade and trade['trade'].get('p'):
+                        current_market_price = float(trade['trade']['p'])
                         logger.info(
                             f"Got latest trade price for {ticker}: ${current_market_price:.2f}")
                     else:
                         # Fallback to quote mid-price
                         quote = market_data.get_latest_quote(ticker)
-                        if quote and 'bid_price' in quote and 'ask_price' in quote:
-                            bid = float(quote['bid_price'])
-                            ask = float(quote['ask_price'])
-                            if bid > 0 and ask > 0:
-                                current_market_price = round((bid + ask) / 2, 2)
+                        if quote and 'quote' in quote:
+                            bid = quote['quote'].get('bp')
+                            ask = quote['quote'].get('ap')
+                            if bid and ask and bid > 0 and ask > 0:
+                                current_market_price = round((float(bid) + float(ask)) / 2, 2)
                                 logger.info(
                                     f"Got quote mid-price for {ticker}: ${current_market_price:.2f}")
                 except Exception as e:
