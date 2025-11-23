@@ -12,6 +12,15 @@ from typing import Optional, Tuple
 from core.interfaces import ExecutionManager
 from core.models import TradeSuggestion, OrderResult, TradeDecision, TimeInForce
 
+# Import message loader for user-facing messages
+try:
+    from config_defaults.message_loader import MessageLoader
+    _MSG = MessageLoader()
+    MESSAGE_LOADER_AVAILABLE = True
+except ImportError:
+    MESSAGE_LOADER_AVAILABLE = False
+    logging.warning("MessageLoader not available - using fallback messages")
+
 # Load market hours configuration from YAML
 def _load_market_hours_config():
     """Load market hours configuration from config_defaults/market_hours.yaml"""
@@ -102,11 +111,14 @@ class AlpacaExecutionManager(ExecutionManager):
         self.take_profit_pct = take_profit_pct
 
         if order_manager:
-            logger.info("AlpacaExecutionManager initialized with OrderManager")
+            msg = _MSG.get('execution.init_with_manager') if MESSAGE_LOADER_AVAILABLE else "AlpacaExecutionManager initialized with OrderManager"
+            logger.info(msg)
         else:
-            logger.warning("AlpacaExecutionManager initialized without OrderManager (stub mode)")
+            msg = _MSG.get('execution.init_without_manager') if MESSAGE_LOADER_AVAILABLE else "AlpacaExecutionManager initialized without OrderManager (stub mode)"
+            logger.warning(msg)
 
-        logger.info(f"Using strategy config: stop_loss={stop_loss_pct*100}%, take_profit={take_profit_pct*100}%")
+        msg = _MSG.get('execution.strategy_config', stop_loss_pct=stop_loss_pct*100, take_profit_pct=take_profit_pct*100) if MESSAGE_LOADER_AVAILABLE else f"Using strategy config: stop_loss={stop_loss_pct*100}%, take_profit={take_profit_pct*100}%"
+        logger.info(msg)
 
         # Log price fetcher availability
         if PRICE_FETCHER_AVAILABLE:
@@ -318,8 +330,9 @@ class AlpacaExecutionManager(ExecutionManager):
 
                 # If no position, reject SELL to prevent short selling
                 if not has_position:
-                    logger.warning(
-                        f"SELL signal rejected for {ticker} - no position held (prevents short selling)")
+                    log_msg = f"SELL signal rejected for {ticker} - no position held (prevents short selling)"
+                    logger.warning(log_msg)
+                    user_msg = _MSG.get('execution.sell_no_position', ticker=ticker) if MESSAGE_LOADER_AVAILABLE else f"SELL signal rejected: No position in {ticker}. Short selling not supported."
                     return OrderResult(
                         success=False,
                         entry_order_id=None,
@@ -328,14 +341,15 @@ class AlpacaExecutionManager(ExecutionManager):
                         ticker=ticker,
                         quantity=quantity,
                         filled_price=None,
-                        message=f"SELL signal rejected: No position in {ticker}. Short selling not supported.",
+                        message=user_msg,
                         error="No position - short selling not supported"
                     )
 
                 # Verify quantity doesn't exceed position
                 if quantity > position_qty:
-                    logger.warning(
-                        f"SELL quantity {quantity} exceeds position {position_qty} for {ticker}")
+                    log_msg = f"SELL quantity {quantity} exceeds position {position_qty} for {ticker}"
+                    logger.warning(log_msg)
+                    user_msg = _MSG.get('execution.sell_exceeds_position', qty=quantity, position_qty=position_qty) if MESSAGE_LOADER_AVAILABLE else f"SELL quantity ({quantity}) exceeds position ({position_qty} shares)"
                     return OrderResult(
                         success=False,
                         entry_order_id=None,
@@ -344,7 +358,7 @@ class AlpacaExecutionManager(ExecutionManager):
                         ticker=ticker,
                         quantity=quantity,
                         filled_price=None,
-                        message=f"SELL quantity ({quantity}) exceeds position ({position_qty} shares)",
+                        message=user_msg,
                         error="Insufficient position"
                     )
 
@@ -359,10 +373,8 @@ class AlpacaExecutionManager(ExecutionManager):
             is_market_hours = self._is_market_hours()
 
             if not is_market_hours:
-                logger.warning(
-                    f"⚠️  Market is CLOSED (weekend/off-hours). "
-                    f"Bracket orders may fail validation during off-hours."
-                )
+                msg = _MSG.get('execution.market_closed_warning') if MESSAGE_LOADER_AVAILABLE else "⚠️  Market is CLOSED (weekend/off-hours). Bracket orders may fail validation during off-hours."
+                logger.warning(msg)
 
             # Execute via OrderManager (only BUY orders reach here)
             # AlpacaOrderManager.place_bracket_order handles entry + stop + target
@@ -404,12 +416,11 @@ class AlpacaExecutionManager(ExecutionManager):
                 is_bracket_error = self._is_bracket_validation_error(error_data)
 
                 if not is_market_hours and is_bracket_error:
-                    logger.warning(
-                        f"❌ Bracket order validation failed (off-hours): {e}\n"
-                        f"   Error code: {error_data.get('error_code', 'N/A')}, "
-                        f"Status: {error_data.get('status_code', 'N/A')}\n"
-                        f"   🔄 Attempting fallback: simple market order without brackets..."
-                    )
+                    msg = _MSG.get('execution.bracket_validation_failed',
+                                   error=str(e),
+                                   error_code=error_data.get('error_code', 'N/A'),
+                                   status_code=error_data.get('status_code', 'N/A')) if MESSAGE_LOADER_AVAILABLE else f"❌ Bracket order validation failed (off-hours): {e}\nError code: {error_data.get('error_code', 'N/A')}, Status: {error_data.get('status_code', 'N/A')}\n🔄 Attempting fallback: simple market order without brackets..."
+                    logger.warning(msg)
 
                     # Fallback: Place simple market order for demo/testing purposes
                     try:
@@ -424,13 +435,15 @@ class AlpacaExecutionManager(ExecutionManager):
 
                         fallback_order_id = fallback_order.get('order_id') or fallback_order.get('id')
 
-                        logger.info(
-                            f"✅ Simple market order placed: {fallback_order_id}\n"
-                            f"   ⚠️  NOTE: Stop-loss and take-profit NOT set (bracket order failed).\n"
-                            f"   Manual risk management required!\n"
-                            f"   Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f}"
-                        )
+                        msg = _MSG.get('execution.fallback_order_success',
+                                       order_id=fallback_order_id,
+                                       target=take_profit,
+                                       stop=stop_loss) if MESSAGE_LOADER_AVAILABLE else f"✅ Simple market order placed: {fallback_order_id}\n⚠️  NOTE: Stop-loss and take-profit NOT set (bracket order failed).\nManual risk management required!\nTarget: ${take_profit:.2f}, Stop: ${stop_loss:.2f}"
+                        logger.info(msg)
 
+                        user_msg = _MSG.get('execution.fallback_order_warning',
+                                            target=take_profit,
+                                            stop=stop_loss) if MESSAGE_LOADER_AVAILABLE else f"⚠️  Market order placed WITHOUT brackets (off-hours fallback). Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f} (NOT automatically set). Manual risk management required!"
                         return OrderResult(
                             success=True,
                             entry_order_id=fallback_order_id,
@@ -439,16 +452,13 @@ class AlpacaExecutionManager(ExecutionManager):
                             ticker=ticker,
                             quantity=quantity,
                             filled_price=None,
-                            message=(
-                                f"⚠️  Market order placed WITHOUT brackets (off-hours fallback). "
-                                f"Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f} (NOT automatically set). "
-                                f"Manual risk management required!"
-                            ),
+                            message=user_msg,
                             error=None
                         )
 
                     except Exception as fallback_error:
                         logger.error(f"❌ Fallback market order also failed: {fallback_error}")
+                        user_msg = _MSG.get('execution.fallback_order_failed') if MESSAGE_LOADER_AVAILABLE else "Both bracket and fallback market orders failed during off-hours"
                         return OrderResult(
                             success=False,
                             entry_order_id=None,
@@ -457,7 +467,7 @@ class AlpacaExecutionManager(ExecutionManager):
                             ticker=ticker,
                             quantity=quantity,
                             filled_price=None,
-                            message=f"Both bracket and fallback market orders failed during off-hours",
+                            message=user_msg,
                             error=f"Bracket error: {e}; Fallback error: {fallback_error}"
                         )
                 else:
@@ -598,18 +608,21 @@ class AlpacaExecutionManager(ExecutionManager):
             True if cancelled successfully
         """
         if not self.order_manager:
-            logger.warning("Cannot cancel - no OrderManager (stub mode)")
+            msg = _MSG.get('execution.cancel_no_manager') if MESSAGE_LOADER_AVAILABLE else "Cannot cancel - no OrderManager (stub mode)"
+            logger.warning(msg)
             return False
 
         try:
             # OrderManager should have cancel method
             # (or use broker client directly)
             self.order_manager.broker.cancel_order_by_id(order_id)
-            logger.info(f"Order cancelled: {order_id}")
+            msg = _MSG.get('execution.order_cancelled', order_id=order_id) if MESSAGE_LOADER_AVAILABLE else f"Order cancelled: {order_id}"
+            logger.info(msg)
             return True
 
         except Exception as e:
-            logger.error(f"Failed to cancel order {order_id}: {e}")
+            msg = _MSG.get('execution.cancel_failed', order_id=order_id, error=str(e)) if MESSAGE_LOADER_AVAILABLE else f"Failed to cancel order {order_id}: {e}"
+            logger.error(msg)
             return False
 
     async def get_order_status(self, order_id: str) -> dict:
@@ -623,7 +636,8 @@ class AlpacaExecutionManager(ExecutionManager):
             Dict with order status details
         """
         if not self.order_manager:
-            logger.warning("Cannot get status - no OrderManager (stub mode)")
+            msg = _MSG.get('execution.status_no_manager') if MESSAGE_LOADER_AVAILABLE else "Cannot get status - no OrderManager (stub mode)"
+            logger.warning(msg)
             return {"status": "unknown", "error": "No OrderManager"}
 
         try:
@@ -640,7 +654,8 @@ class AlpacaExecutionManager(ExecutionManager):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get order status {order_id}: {e}")
+            msg = _MSG.get('execution.status_failed', order_id=order_id, error=str(e)) if MESSAGE_LOADER_AVAILABLE else f"Failed to get order status {order_id}: {e}"
+            logger.error(msg)
             return {"status": "error", "error": str(e)}
 
     async def modify_order(

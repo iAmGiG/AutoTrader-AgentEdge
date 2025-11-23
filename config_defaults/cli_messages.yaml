@@ -404,16 +404,18 @@ execution:
     Manual risk management required!
     Target: ${target:.2f}, Stop: ${stop:.2f}
 
-  fallback_order_failed: "Fallback market order also failed: {error}"
+  fallback_order_warning: "⚠️  Market order placed WITHOUT brackets (off-hours fallback). Target: ${target:.2f}, Stop: ${stop:.2f} (NOT automatically set). Manual risk management required!"
 
-  both_orders_failed: "Both bracket and fallback market orders failed during off-hours"
+  fallback_order_failed: "Both bracket and fallback market orders failed during off-hours"
 
   # Stub mode
   stub_order: "[STUB] {signal} {qty} {ticker} @ ${price:.2f}"
 
   # Order cancellation
+  cancel_no_manager: "Cannot cancel - no OrderManager (stub mode)"
   order_cancelled: "Order cancelled: {order_id}"
-  order_cancel_failed: "Failed to cancel order {order_id}: {error}"
+  cancel_failed: "Failed to cancel order {order_id}: {error}"
 
   # Order status
-  order_status_failed: "Failed to get order status {order_id}: {error}"
+  status_no_manager: "Cannot get status - no OrderManager (stub mode)"
+  status_failed: "Failed to get order status {order_id}: {error}"
