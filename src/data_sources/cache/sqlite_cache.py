@@ -51,7 +51,7 @@ class TradingCacheManager:
     def _init_database(self):
         """Create tables and indexes if they don't exist."""
         with sqlite3.connect(self.db_path) as conn:
-            # Create main table
+            # Create main market data table
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS market_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,7 +83,48 @@ class TradingCacheManager:
                 )
             """)
 
-            # Create indexes for fast lookups
+            # Create raw options chain table (Issue #373)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS raw_options_chain (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    -- Asset identification
+                    symbol TEXT NOT NULL,
+                    trading_date TEXT NOT NULL,
+
+                    -- Option contract details
+                    strike REAL NOT NULL,
+                    option_type TEXT NOT NULL CHECK(option_type IN ('call', 'put')),
+                    expiration TEXT NOT NULL,
+
+                    -- Pricing data
+                    bid REAL,
+                    ask REAL,
+                    last REAL,
+                    volume INTEGER,
+                    open_interest INTEGER,
+
+                    -- Greeks
+                    implied_volatility REAL,
+                    delta REAL,
+                    gamma REAL,
+                    theta REAL,
+                    vega REAL,
+                    rho REAL,
+
+                    -- Metadata
+                    contract_symbol TEXT,
+                    underlying_price REAL,
+                    source TEXT NOT NULL DEFAULT 'polygon',
+                    cached_at TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                    -- Unique constraint
+                    UNIQUE(symbol, trading_date, strike, option_type, expiration, source)
+                )
+            """)
+
+            # Create indexes for market_cache
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_lookup
                 ON market_cache(asset_type, symbol, trading_date)
@@ -104,6 +145,21 @@ class TradingCacheManager:
                 CREATE INDEX IF NOT EXISTS idx_source
                 ON market_cache(source)
             """)
+
+            # Create indexes for raw_options_chain (Issue #373)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_options_symbol_date
+                ON raw_options_chain(symbol, trading_date)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_options_expiration
+                ON raw_options_chain(expiration)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_options_strike
+                ON raw_options_chain(symbol, trading_date, strike)
+            """)
+
             conn.commit()
 
         self.logger.debug(f"SQLite cache initialized: {self.db_path}")
@@ -531,3 +587,321 @@ class TradingCacheManager:
 
         except Exception as e:
             self.logger.error(f"Error vacuuming database: {e}")
+
+    # === RAW OPTIONS CHAIN METHODS (Issue #373) ===
+
+    def store_raw_options(self, symbol: str, trading_date: str, options_df: pd.DataFrame,
+                          underlying_price: float = None, source: str = "polygon") -> int:
+        """
+        Store raw options chain data to database.
+
+        Args:
+            symbol: Stock symbol (e.g., "SPY")
+            trading_date: Trading date in YYYY-MM-DD format
+            options_df: DataFrame with raw options data
+            underlying_price: Spot price of underlying (optional)
+            source: Data source (default: "polygon")
+
+        Returns:
+            Number of options contracts stored
+
+        Expected DataFrame columns:
+            - strike (required)
+            - option_type or type (required): 'call' or 'put'
+            - expiration (required)
+            - bid, ask, last, volume, open_interest (optional)
+            - implied_volatility, delta, gamma, theta, vega, rho (optional)
+            - contract_symbol (optional)
+
+        Example:
+            >>> options_df = pd.DataFrame({
+            ...     'strike': [400, 405, 410],
+            ...     'type': ['call', 'call', 'put'],
+            ...     'expiration': ['2024-12-20', '2024-12-20', '2024-12-20'],
+            ...     'last': [10.5, 8.2, 3.1]
+            ... })
+            >>> count = cache.store_raw_options("SPY", "2024-01-15", options_df, 412.50)
+        """
+        if options_df is None or options_df.empty:
+            self.logger.warning(f"Empty options data for {symbol} {trading_date}")
+            return 0
+
+        try:
+            # Prepare records for batch insert
+            records = []
+            df = options_df.copy()
+
+            # Normalize option_type column (handle both 'type' and 'option_type')
+            if 'type' in df.columns and 'option_type' not in df.columns:
+                df['option_type'] = df['type']
+            elif 'option_type' not in df.columns:
+                raise ValueError("Options data must have 'type' or 'option_type' column")
+
+            # Normalize option_type values to lowercase
+            df['option_type'] = df['option_type'].str.lower()
+
+            for _, row in df.iterrows():
+                try:
+                    # Handle expiration date conversion
+                    expiration = row['expiration']
+                    if hasattr(expiration, 'strftime'):
+                        expiration_str = expiration.strftime('%Y-%m-%d')
+                    else:
+                        expiration_str = str(expiration)
+
+                    # Handle contract_symbol (may be missing)
+                    contract_sym = row.get('contract_symbol') or row.get('contractID')
+
+                    # Use provided underlying_price or try to get from row
+                    underlying = underlying_price
+                    if underlying is None and 'underlying_price' in row:
+                        underlying = row['underlying_price']
+
+                    record = (
+                        symbol.upper(),
+                        trading_date,
+                        float(row['strike']),
+                        str(row['option_type']),
+                        expiration_str,
+                        float(row['bid']) if pd.notna(row.get('bid')) else None,
+                        float(row['ask']) if pd.notna(row.get('ask')) else None,
+                        float(row['last']) if pd.notna(row.get('last')) else None,
+                        int(row['volume']) if pd.notna(row.get('volume')) else None,
+                        int(row['open_interest']) if pd.notna(row.get('open_interest')) else None,
+                        float(row['implied_volatility']) if pd.notna(row.get('implied_volatility')) else None,
+                        float(row['delta']) if pd.notna(row.get('delta')) else None,
+                        float(row['gamma']) if pd.notna(row.get('gamma')) else None,
+                        float(row['theta']) if pd.notna(row.get('theta')) else None,
+                        float(row['vega']) if pd.notna(row.get('vega')) else None,
+                        float(row['rho']) if pd.notna(row.get('rho')) else None,
+                        contract_sym,
+                        float(underlying) if underlying is not None else None,
+                        source,
+                        datetime.now().isoformat()
+                    )
+                    records.append(record)
+
+                except Exception as e:
+                    self.logger.warning(f"Error preparing option record: {e}")
+                    continue
+
+            if not records:
+                self.logger.warning(f"No valid records prepared for {symbol} {trading_date}")
+                return 0
+
+            # Bulk insert with write lock
+            with self._write_lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.executemany('''
+                        INSERT OR REPLACE INTO raw_options_chain
+                        (symbol, trading_date, strike, option_type, expiration,
+                         bid, ask, last, volume, open_interest,
+                         implied_volatility, delta, gamma, theta, vega, rho,
+                         contract_symbol, underlying_price, source, cached_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', records)
+                    conn.commit()
+                    rows_inserted = cursor.rowcount
+
+            self.logger.info(f"Stored {rows_inserted} raw options for {symbol} {trading_date}")
+            return rows_inserted
+
+        except Exception as e:
+            self.logger.error(f"Error storing raw options for {symbol} {trading_date}: {e}", exc_info=True)
+            return 0
+
+    def get_raw_options(self, symbol: str, trading_date: str,
+                       source: str = None) -> Optional[pd.DataFrame]:
+        """
+        Retrieve raw options chain from database with file cache fallback.
+
+        This implements the database-first architecture from Issue #373.
+        Falls back to file cache if database is empty (for backward compatibility).
+
+        Args:
+            symbol: Stock symbol (e.g., "SPY")
+            trading_date: Trading date in YYYY-MM-DD format
+            source: Data source filter (None = any source)
+
+        Returns:
+            DataFrame with raw options data, or None if not found
+
+        Example:
+            >>> options = cache.get_raw_options("SPY", "2024-01-15")
+            >>> if options is not None:
+            ...     calls = options[options['option_type'] == 'call']
+            ...     puts = options[options['option_type'] == 'put']
+        """
+        try:
+            # Try database first (primary source as of Issue #373)
+            query = """
+                SELECT
+                    strike, option_type, expiration,
+                    bid, ask, last, volume, open_interest,
+                    implied_volatility, delta, gamma, theta, vega, rho,
+                    contract_symbol, underlying_price
+                FROM raw_options_chain
+                WHERE symbol = ? AND trading_date = ?
+            """
+            params = [symbol.upper(), trading_date]
+
+            if source:
+                query += " AND source = ?"
+                params.append(source)
+
+            query += " ORDER BY strike, option_type"
+
+            with sqlite3.connect(self.db_path) as conn:
+                df = pd.read_sql_query(query, conn, params=params)
+
+            if not df.empty:
+                self.logger.debug(f"Database hit: {len(df)} raw options for {symbol} {trading_date}")
+                return df
+
+            # Fallback to file cache (deprecated, for backward compatibility)
+            self.logger.debug(f"Database miss for {symbol} {trading_date}, trying file cache fallback")
+            file_cache_df = self._get_raw_options_from_file_cache(symbol, trading_date)
+
+            if file_cache_df is not None:
+                self.logger.warning(
+                    f"Using deprecated file cache for {symbol} {trading_date}. "
+                    f"Consider migrating to database with store_raw_options()"
+                )
+                return file_cache_df
+
+            self.logger.debug(f"No raw options found for {symbol} {trading_date}")
+            return None
+
+        except Exception as e:
+            self.logger.error(f"Error retrieving raw options for {symbol} {trading_date}: {e}")
+            return None
+
+    def _get_raw_options_from_file_cache(self, symbol: str, trading_date: str) -> Optional[pd.DataFrame]:
+        """
+        Fallback to file cache for raw options data (deprecated).
+
+        This provides backward compatibility during migration to database storage.
+
+        Args:
+            symbol: Stock symbol
+            trading_date: Trading date in YYYY-MM-DD format
+
+        Returns:
+            DataFrame from file cache, or None if not found
+        """
+        try:
+            # Try common file cache locations
+            file_cache_paths = [
+                Path(f".cache/options/{symbol.upper()}/{trading_date}.pickle"),
+                Path(f".cache/options/{symbol.upper()}/{trading_date}.json"),
+            ]
+
+            for cache_path in file_cache_paths:
+                if cache_path.exists():
+                    if cache_path.suffix == '.pickle':
+                        df = pd.read_pickle(cache_path)
+                    elif cache_path.suffix == '.json':
+                        df = pd.read_json(cache_path)
+                    else:
+                        continue
+
+                    if not df.empty:
+                        self.logger.debug(f"File cache hit: {cache_path}")
+                        return df
+
+            return None
+
+        except Exception as e:
+            self.logger.warning(f"Error reading file cache: {e}")
+            return None
+
+    def delete_raw_options(self, symbol: str, trading_date: str = None, source: str = None) -> int:
+        """
+        Delete raw options data.
+
+        Args:
+            symbol: Stock symbol
+            trading_date: Trading date (None = all dates)
+            source: Data source filter (None = all sources)
+
+        Returns:
+            Number of rows deleted
+        """
+        try:
+            query = "DELETE FROM raw_options_chain WHERE symbol = ?"
+            params = [symbol.upper()]
+
+            if trading_date:
+                query += " AND trading_date = ?"
+                params.append(trading_date)
+
+            if source:
+                query += " AND source = ?"
+                params.append(source)
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(query, params)
+                deleted = cursor.rowcount
+                conn.commit()
+
+            self.logger.debug(f"Deleted {deleted} raw options for {symbol}")
+            return deleted
+
+        except Exception as e:
+            self.logger.error(f"Error deleting raw options for {symbol}: {e}")
+            return 0
+
+    def get_options_stats(self) -> Dict[str, Any]:
+        """
+        Get raw options cache statistics.
+
+        Returns:
+            Dictionary with options metrics:
+            - total_contracts: Total number of option contracts
+            - unique_symbols: Number of unique underlying symbols
+            - trading_dates: Number of unique trading dates
+            - sources: Breakdown by data source
+            - date_range: Min and max trading dates
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                # Total contracts
+                total = conn.execute("SELECT COUNT(*) FROM raw_options_chain").fetchone()[0]
+
+                # Unique symbols
+                unique_symbols = conn.execute(
+                    "SELECT COUNT(DISTINCT symbol) FROM raw_options_chain"
+                ).fetchone()[0]
+
+                # Unique trading dates
+                unique_dates = conn.execute(
+                    "SELECT COUNT(DISTINCT trading_date) FROM raw_options_chain"
+                ).fetchone()[0]
+
+                # Breakdown by source
+                sources = {}
+                for row in conn.execute(
+                    "SELECT source, COUNT(*) as count FROM raw_options_chain GROUP BY source"
+                ):
+                    sources[row[0]] = row[1]
+
+                # Date range
+                date_range = conn.execute(
+                    "SELECT MIN(trading_date), MAX(trading_date) FROM raw_options_chain"
+                ).fetchone()
+
+            return {
+                "total_contracts": total,
+                "unique_symbols": unique_symbols,
+                "trading_dates": unique_dates,
+                "sources": sources,
+                "date_range": {
+                    "min_date": date_range[0],
+                    "max_date": date_range[1]
+                } if date_range[0] else None
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error getting options stats: {e}")
+            return {}
