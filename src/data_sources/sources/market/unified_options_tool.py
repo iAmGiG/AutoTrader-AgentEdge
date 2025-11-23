@@ -60,10 +60,21 @@ class UnifiedOptionsDataTool:
 
     # Provider priority order (higher = try first)
     PROVIDER_PRIORITY = {
-        'polygon': 100,       # Primary: Best data quality, real-time
-        'alpaca': 90,         # Secondary: Good for live trading
+        'alpaca': 100,        # Primary: Main broker with live trading data
+        'polygon': 90,        # Secondary: Best data quality, real-time (paid tier)
         'alpha_vantage': 80,  # Tertiary: Historical backup
     }
+
+    # TODO: Future multi-broker/multi-account routing (Issue #373 extension)
+    # Vision: Support multiple brokers across different vendors (Alpaca A, Alpaca B, IB, etc.)
+    # Route API calls to match specific account based on:
+    # - Account credentials mapping
+    # - Broker capabilities (options, futures, etc.)
+    # - Cost optimization (use cheaper data source when equivalent)
+    # - Geographic restrictions
+    # Example future API:
+    #   fetcher.fetch_options("SPY", "2024-01-15", account_id="alpaca_main")
+    #   → Routes to Alpaca account "alpaca_main" specifically
 
     def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
         """
