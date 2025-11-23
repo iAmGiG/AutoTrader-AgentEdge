@@ -13,6 +13,7 @@ from pathlib import Path
 import logging
 import threading
 import uuid
+import json
 
 
 logger = logging.getLogger(__name__)
@@ -117,7 +118,12 @@ class TradingCacheManager:
                     underlying_price REAL,
                     source TEXT NOT NULL DEFAULT 'polygon',
                     cached_at TEXT NOT NULL,
+                    modified_at TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+                    -- Provider tracking & data quality
+                    data_quality_score REAL DEFAULT 1.0,
+                    provider_metadata TEXT,
 
                     -- Unique constraint
                     UNIQUE(symbol, trading_date, strike, option_type, expiration, source)
@@ -158,6 +164,14 @@ class TradingCacheManager:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_options_strike
                 ON raw_options_chain(symbol, trading_date, strike)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_options_source
+                ON raw_options_chain(source)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_options_quality
+                ON raw_options_chain(data_quality_score)
             """)
 
             conn.commit()
@@ -591,16 +605,19 @@ class TradingCacheManager:
     # === RAW OPTIONS CHAIN METHODS (Issue #373) ===
 
     def store_raw_options(self, symbol: str, trading_date: str, options_df: pd.DataFrame,
-                          underlying_price: float = None, source: str = "polygon") -> int:
+                          underlying_price: float = None, source: str = "polygon",
+                          data_quality_score: float = 1.0, provider_metadata: dict = None) -> int:
         """
-        Store raw options chain data to database.
+        Store raw options chain data to database with multi-provider support.
 
         Args:
             symbol: Stock symbol (e.g., "SPY")
             trading_date: Trading date in YYYY-MM-DD format
             options_df: DataFrame with raw options data
             underlying_price: Spot price of underlying (optional)
-            source: Data source (default: "polygon")
+            source: Data source ("polygon", "alpha_vantage", "alpaca", etc.)
+            data_quality_score: Data quality score 0.0-1.0 (default: 1.0)
+            provider_metadata: Optional dict with provider-specific metadata
 
         Returns:
             Number of options contracts stored
@@ -620,7 +637,12 @@ class TradingCacheManager:
             ...     'expiration': ['2024-12-20', '2024-12-20', '2024-12-20'],
             ...     'last': [10.5, 8.2, 3.1]
             ... })
-            >>> count = cache.store_raw_options("SPY", "2024-01-15", options_df, 412.50)
+            >>> metadata = {'api_version': '2.0', 'rate_limit': 5}
+            >>> count = cache.store_raw_options("SPY", "2024-01-15", options_df,
+            ...                                  underlying_price=412.50,
+            ...                                  source="polygon",
+            ...                                  data_quality_score=0.95,
+            ...                                  provider_metadata=metadata)
         """
         if options_df is None or options_df.empty:
             self.logger.warning(f"Empty options data for {symbol} {trading_date}")
@@ -657,6 +679,11 @@ class TradingCacheManager:
                     if underlying is None and 'underlying_price' in row:
                         underlying = row['underlying_price']
 
+                    # Serialize provider metadata to JSON if provided
+                    metadata_json = json.dumps(provider_metadata) if provider_metadata else None
+
+                    current_time = datetime.now().isoformat()
+
                     record = (
                         symbol.upper(),
                         trading_date,
@@ -677,7 +704,10 @@ class TradingCacheManager:
                         contract_sym,
                         float(underlying) if underlying is not None else None,
                         source,
-                        datetime.now().isoformat()
+                        current_time,  # cached_at
+                        current_time,  # modified_at
+                        float(data_quality_score),  # data_quality_score
+                        metadata_json  # provider_metadata
                     )
                     records.append(record)
 
@@ -698,13 +728,17 @@ class TradingCacheManager:
                         (symbol, trading_date, strike, option_type, expiration,
                          bid, ask, last, volume, open_interest,
                          implied_volatility, delta, gamma, theta, vega, rho,
-                         contract_symbol, underlying_price, source, cached_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         contract_symbol, underlying_price, source, cached_at,
+                         modified_at, data_quality_score, provider_metadata)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', records)
                     conn.commit()
                     rows_inserted = cursor.rowcount
 
-            self.logger.info(f"Stored {rows_inserted} raw options for {symbol} {trading_date}")
+            self.logger.info(
+                f"Stored {rows_inserted} raw options for {symbol} {trading_date} "
+                f"from {source} (quality: {data_quality_score:.2f})"
+            )
             return rows_inserted
 
         except Exception as e:
