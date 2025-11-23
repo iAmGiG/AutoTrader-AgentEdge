@@ -1530,6 +1530,40 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 'order_id': order_id
             }
 
+    def modify_stop_order(
+        self,
+        order_id: str,
+        new_stop_price: float,
+        symbol: str
+    ) -> bool:
+        """
+        Modify stop price on an existing stop order (convenience wrapper).
+
+        Used for dynamic trailing stop adjustments.
+
+        Args:
+            order_id: ID of the stop order to modify
+            new_stop_price: New stop price level
+            symbol: Stock symbol (for logging)
+
+        Returns:
+            True if modification successful, False otherwise
+        """
+        logger.info(f"Modifying stop order {order_id} for {symbol} to ${new_stop_price:.2f}")
+
+        result = self.modify_order(
+            order_id=order_id,
+            stop_price=new_stop_price
+        )
+
+        if result.get('status') == 'submitted':
+            logger.info(f"✅ Stop order {order_id} updated successfully")
+            return True
+        else:
+            error_msg = result.get('message', 'Unknown error')
+            logger.error(f"❌ Failed to modify stop order {order_id}: {error_msg}")
+            return False
+
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
         """
         Cancel an existing order.
