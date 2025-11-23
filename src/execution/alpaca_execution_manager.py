@@ -12,14 +12,41 @@ from typing import Optional, Tuple
 from core.interfaces import ExecutionManager
 from core.models import TradeSuggestion, OrderResult, TradeDecision, TimeInForce
 
-# Market hours configuration constants
-MARKET_TIMEZONE = 'America/New_York'
-SATURDAY = 5
-SUNDAY = 6
-MARKET_OPEN_HOUR = 9
-MARKET_OPEN_MINUTE = 30
-MARKET_CLOSE_HOUR = 16
-MARKET_CLOSE_MINUTE = 0
+# Load market hours configuration from YAML
+def _load_market_hours_config():
+    """Load market hours configuration from config_defaults/market_hours.yaml"""
+    try:
+        import yaml
+        import os
+
+        # Get path to config file
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        config_path = os.path.join(base_dir, "config_defaults", "market_hours.yaml")
+
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        return config
+    except Exception as e:
+        logging.warning(f"Failed to load market_hours.yaml, using defaults: {e}")
+        # Fallback to hardcoded defaults
+        return {
+            'timezone': 'America/New_York',
+            'regular_hours': {'open_hour': 9, 'open_minute': 30, 'close_hour': 16, 'close_minute': 0},
+            'weekend': {'saturday': 5, 'sunday': 6}
+        }
+
+# Load configuration at module level
+_MARKET_CONFIG = _load_market_hours_config()
+
+# Extract configuration values (backward compatibility with existing code)
+MARKET_TIMEZONE = _MARKET_CONFIG.get('timezone', 'America/New_York')
+SATURDAY = _MARKET_CONFIG.get('weekend', {}).get('saturday', 5)
+SUNDAY = _MARKET_CONFIG.get('weekend', {}).get('sunday', 6)
+MARKET_OPEN_HOUR = _MARKET_CONFIG.get('regular_hours', {}).get('open_hour', 9)
+MARKET_OPEN_MINUTE = _MARKET_CONFIG.get('regular_hours', {}).get('open_minute', 30)
+MARKET_CLOSE_HOUR = _MARKET_CONFIG.get('regular_hours', {}).get('close_hour', 16)
+MARKET_CLOSE_MINUTE = _MARKET_CONFIG.get('regular_hours', {}).get('close_minute', 0)
 DEFAULT_FALLBACK_PRICE = 100.0  # UnifiedPriceFetcher default when data unavailable
 
 # Try to import pytz for timezone handling
@@ -365,10 +392,8 @@ class AlpacaExecutionManager(ExecutionManager):
             except Exception as e:
                 # Check if this is an off-hours bracket validation error using error codes
                 # error_data was set above if the error came from order_manager
-                try:
-                    error_data
-                except NameError:
-                    # Exception from somewhere else, create minimal error_data
+                # If not set, create minimal error_data for analysis
+                if 'error_data' not in locals():
                     error_data = {
                         'status': 'error',
                         'message': str(e),

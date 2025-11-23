@@ -1,0 +1,87 @@
+# Market Hours Configuration
+# Defines trading hours, holidays, and market calendar settings
+
+# Primary market timezone (NYSE/NASDAQ default)
+timezone: "America/New_York"
+
+# Regular trading hours (Eastern Time)
+regular_hours:
+  open_hour: 9
+  open_minute: 30
+  close_hour: 16
+  close_minute: 0
+  description: "Regular market hours: 9:30 AM - 4:00 PM ET"
+
+# Extended trading hours (pre-market and after-hours)
+extended_hours:
+  enabled: false
+  pre_market:
+    open_hour: 4
+    open_minute: 0
+    description: "Pre-market: 4:00 AM - 9:30 AM ET"
+  after_hours:
+    close_hour: 20
+    close_minute: 0
+    description: "After-hours: 4:00 PM - 8:00 PM ET"
+
+# Weekend days (ISO 8601: Monday=0, Sunday=6)
+weekend:
+  saturday: 5
+  sunday: 6
+  description: "Market closed on weekends"
+
+# Holiday calendar
+holidays:
+  enabled: false
+  # When enabled, these dates will be treated as market closed
+  # Format: YYYY-MM-DD
+  fixed_holidays:
+    - "2025-01-01"  # New Year's Day
+    - "2025-07-04"  # Independence Day
+    - "2025-12-25"  # Christmas Day
+  observed_holidays:
+    - "2025-01-20"  # MLK Jr. Day (3rd Monday in January)
+    - "2025-02-17"  # Presidents Day (3rd Monday in February)
+    - "2025-04-18"  # Good Friday (varies)
+    - "2025-05-26"  # Memorial Day (last Monday in May)
+    - "2025-09-01"  # Labor Day (1st Monday in September)
+    - "2025-11-27"  # Thanksgiving (4th Thursday in November)
+  early_close:
+    # Market closes at 1:00 PM ET on these days
+    - "2025-07-03"   # Day before Independence Day
+    - "2025-11-28"   # Day after Thanksgiving
+    - "2025-12-24"   # Christmas Eve
+  description: "NYSE/NASDAQ holiday calendar"
+
+# International markets (for future expansion)
+international_markets:
+  enabled: false
+  markets:
+    LSE:  # London Stock Exchange
+      timezone: "Europe/London"
+      open_hour: 8
+      open_minute: 0
+      close_hour: 16
+      close_minute: 30
+    TSE:  # Tokyo Stock Exchange
+      timezone: "Asia/Tokyo"
+      open_hour: 9
+      open_minute: 0
+      close_hour: 15
+      close_minute: 0
+
+# Validation and testing settings
+validation:
+  allow_weekend_orders: false
+  allow_holiday_orders: false
+  warn_only: true  # If true, warn but don't block orders during off-hours
+  description: "Off-hours order handling policy"
+
+# Metadata
+metadata:
+  last_updated: "2025-11-23"
+  version: "1.0.0"
+  notes:
+    - "Market hours extracted from alpaca_execution_manager.py constants"
+    - "Holiday calendar based on NYSE 2025 schedule"
+    - "Extended hours and international markets disabled by default"
