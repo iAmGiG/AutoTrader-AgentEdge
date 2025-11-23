@@ -1406,9 +1406,30 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         except Exception as e:
             # Don't log error here - it will be logged and translated by execution manager
             logger.debug(f"Bracket order error details: {e}", exc_info=True)
+
+            # Extract Alpaca API error details if available
+            error_code = None
+            status_code = None
+
+            # Try to extract error code from Alpaca APIError
+            try:
+                from alpaca.common.exceptions import APIError
+                if isinstance(e, APIError):
+                    status_code = getattr(e, 'status_code', None)
+                    error_code = getattr(e, 'code', None)
+                    logger.debug(f"Alpaca API error: status={status_code}, code={error_code}")
+            except ImportError:
+                # alpaca-py not available or doesn't have APIError
+                pass
+            except Exception:
+                # Failed to extract error details
+                pass
+
             return {
                 'status': 'error',
                 'message': str(e),
+                'error_code': error_code,
+                'status_code': status_code,
                 'order_details': {
                     'symbol': symbol,
                     'qty': qty,

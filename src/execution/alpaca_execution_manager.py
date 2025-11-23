@@ -126,6 +126,52 @@ class AlpacaExecutionManager(ExecutionManager):
             logger.warning(f"Could not determine market hours: {e}")
             return False  # Assume off-hours if we can't determine
 
+    def _is_bracket_validation_error(self, error_data: dict) -> bool:
+        """
+        Detect if an error is a bracket order validation failure.
+
+        Uses Alpaca API error codes when available, falls back to heuristics.
+
+        Args:
+            error_data: Error dict from order_manager (contains status, message, error_code, status_code)
+
+        Returns:
+            True if this is a bracket order validation error, False otherwise
+        """
+        # Method 1: Check Alpaca API error codes (most reliable)
+        error_code = error_data.get('error_code')
+        status_code = error_data.get('status_code')
+
+        if status_code == 422:  # Unprocessable Entity - validation failed
+            # Alpaca returns 422 for bracket order validation failures
+            logger.debug(f"Detected HTTP 422 validation error (error_code={error_code})")
+            return True
+
+        # Alpaca error code 42210000 series: Invalid order parameters
+        if error_code and str(error_code).startswith('4221'):
+            logger.debug(f"Detected Alpaca error code {error_code} - bracket order validation")
+            return True
+
+        # Method 2: Message-based heuristics (fallback for when error codes unavailable)
+        error_msg = error_data.get('message', '').lower()
+
+        # Common bracket order validation error patterns
+        bracket_error_keywords = [
+            'limit_price',
+            'base_price',
+            'take_profit',
+            'stop_loss',
+            'bracket',
+            'order_class'
+        ]
+
+        matches = sum(1 for keyword in bracket_error_keywords if keyword in error_msg)
+        if matches >= 2:  # Multiple keywords suggest bracket order issue
+            logger.debug(f"Detected bracket validation via message pattern (matched {matches} keywords)")
+            return True
+
+        return False
+
     async def execute_trade(
         self,
         suggestion: TradeSuggestion,
@@ -307,15 +353,36 @@ class AlpacaExecutionManager(ExecutionManager):
 
                 # Check for errors (AlpacaOrderManager returns status='error')
                 if order_data.get('status') == 'error':
+                    # Preserve error data for analysis before raising
+                    error_data = {
+                        'status': 'error',
+                        'message': order_data.get('message', 'Unknown error'),
+                        'error_code': order_data.get('error_code'),
+                        'status_code': order_data.get('status_code')
+                    }
                     raise Exception(order_data.get('message', 'Unknown error'))
 
             except Exception as e:
-                error_msg = str(e).lower()
+                # Check if this is an off-hours bracket validation error using error codes
+                # error_data was set above if the error came from order_manager
+                try:
+                    error_data
+                except NameError:
+                    # Exception from somewhere else, create minimal error_data
+                    error_data = {
+                        'status': 'error',
+                        'message': str(e),
+                        'error_code': None,
+                        'status_code': None
+                    }
 
-                # Check if this is an off-hours validation error
-                if not is_market_hours and ('limit_price' in error_msg or 'base_price' in error_msg or 'take_profit' in error_msg):
+                is_bracket_error = self._is_bracket_validation_error(error_data)
+
+                if not is_market_hours and is_bracket_error:
                     logger.warning(
                         f"❌ Bracket order validation failed (off-hours): {e}\n"
+                        f"   Error code: {error_data.get('error_code', 'N/A')}, "
+                        f"Status: {error_data.get('status_code', 'N/A')}\n"
                         f"   🔄 Attempting fallback: simple market order without brackets..."
                     )
 
