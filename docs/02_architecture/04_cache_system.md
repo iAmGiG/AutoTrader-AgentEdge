@@ -21,6 +21,10 @@ The primary cache interface providing:
 
 ### Database Schema
 
+The database contains three main tables:
+
+#### 1. Market Data Cache
+
 ```sql
 CREATE TABLE market_cache (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,11 +54,74 @@ CREATE INDEX idx_symbol_date ON market_cache(asset_type, symbol, trading_date);
 CREATE INDEX idx_expiration ON market_cache(expires_at);
 ```
 
+#### 2. Raw Options Chain (Issue #373)
+
+```sql
+CREATE TABLE raw_options_chain (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    trading_date TEXT NOT NULL,
+    strike REAL NOT NULL,
+    option_type TEXT NOT NULL CHECK(option_type IN ('call', 'put')),
+    expiration TEXT NOT NULL,
+
+    -- Pricing data
+    bid REAL, ask REAL, last REAL,
+    volume INTEGER, open_interest INTEGER,
+
+    -- Greeks
+    implied_volatility REAL, delta REAL, gamma REAL,
+    theta REAL, vega REAL, rho REAL,
+
+    -- Metadata
+    contract_symbol TEXT,
+    underlying_price REAL,
+    source TEXT NOT NULL,
+    data_quality_score REAL DEFAULT 1.0,
+
+    UNIQUE(symbol, trading_date, strike, option_type, expiration, source)
+);
+```
+
+#### 3. Trade History (Issue #373)
+
+```sql
+CREATE TABLE trade_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_id TEXT NOT NULL UNIQUE,
+    symbol TEXT NOT NULL,
+
+    -- Entry/Exit details
+    entry_date TEXT NOT NULL,
+    entry_price REAL NOT NULL,
+    quantity INTEGER NOT NULL,
+    exit_date TEXT,
+    exit_price REAL,
+    exit_reason TEXT,
+
+    -- Performance metrics
+    realized_pnl REAL,
+    realized_pnl_pct REAL,
+    holding_period_hours REAL,
+
+    -- Strategy attribution
+    strategy_name TEXT,
+    signal_strength TEXT,
+    signal_confidence REAL,
+    broker_account TEXT DEFAULT 'alpaca_paper'
+);
+```
+
+See [docs/trade_history_database.md](../trade_history_database.md) for complete trade history schema and API reference.
+
 ### Cache Directory Structure
 
 ```bash
 .cache/
-├── trading_data.db              # SQLite database (current)
+├── trading_cache.db             # SQLite database (current) - unified storage
+│   ├── market_cache             # OHLCV market data
+│   ├── raw_options_chain        # Options chains with greeks (Issue #373)
+│   └── trade_history            # Completed trades for analytics (Issue #373)
 ├── backup_*/                    # Migration backups
 └── market_data/                 # Legacy JSON files (deprecated)
 ```
@@ -458,5 +525,6 @@ Planned improvements:
 ## Related Issues
 
 - Issue #336: SQLite Cache System implementation (COMPLETED)
+- Issue #373: Multi-provider database storage for options and trade history (COMPLETED)
 - Issue #287: GTC daily execution support
 - Issue #306: Position management with multi-date queries

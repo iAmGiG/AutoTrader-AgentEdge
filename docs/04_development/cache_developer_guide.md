@@ -605,12 +605,64 @@ Query performance (production data):
 
 ---
 
+## Additional Tables (Issue #373)
+
+The cache database also includes:
+
+### Raw Options Chain Storage
+
+```python
+from src.data_sources.cache import TradingCacheManager
+
+cache = TradingCacheManager()
+
+# Store raw options data
+cache.store_raw_options(
+    symbol="SPY",
+    trading_date="2024-01-15",
+    options_df=options_data,
+    source="polygon"
+)
+
+# Retrieve options
+options = cache.get_raw_options("SPY", "2024-01-15")
+```
+
+### Trade History Analytics
+
+```python
+# Archive completed trade
+cache.archive_trade({
+    'trade_id': 'AAPL_2024-01-15T10:30:00',
+    'symbol': 'AAPL',
+    'entry_date': '2024-01-15T10:30:00',
+    'entry_price': 185.50,
+    'quantity': 100,
+    'exit_price': 188.20,
+    'realized_pnl': 270.00,
+    'strategy_name': 'VoterAgent'
+})
+
+# Query trade history
+trades = cache.get_trade_history(strategy="VoterAgent")
+
+# Get statistics
+stats = cache.get_trade_stats(strategy="VoterAgent")
+print(f"Win rate: {stats['win_rate_pct']:.1f}%")
+```
+
+See [Trade History Database](../trade_history_database.md) for complete API reference.
+
+---
+
 ## Related Documentation
 
 - **[Cache System Architecture](../02_architecture/04_cache_system.md)** - Technical design
+- **[Trade History Database](../trade_history_database.md)** - Trade analytics API
 - **[CACHE_MIGRATION.md](../../CACHE_MIGRATION.md)** - Migration guide
 - **[Troubleshooting](../03_reference/04_troubleshooting.md)** - Common issues
-- **Issue #336** - Implementation details
+- **Issue #336** - SQLite cache implementation
+- **Issue #373** - Multi-provider options and trade history storage
 
 ---
 
