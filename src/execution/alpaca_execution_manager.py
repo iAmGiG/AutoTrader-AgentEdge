@@ -37,25 +37,60 @@ class AlpacaExecutionManager(ExecutionManager):
     Full order lifecycle management in OrderManager.
     """
 
-    def __init__(self, order_manager: Optional[object] = None):
+    def __init__(self, order_manager: Optional[object] = None,
+                 stop_loss_pct: float = 0.05, take_profit_pct: float = 0.08):
         """
         Initialize with existing OrderManager.
 
         Args:
             order_manager: OrderManager instance (from src/trading/order_manager.py)
+            stop_loss_pct: Stop loss percentage (default 5%)
+            take_profit_pct: Take profit percentage (default 8%)
         """
         self.order_manager = order_manager
+        self.stop_loss_pct = stop_loss_pct
+        self.take_profit_pct = take_profit_pct
 
         if order_manager:
             logger.info("AlpacaExecutionManager initialized with OrderManager")
         else:
             logger.warning("AlpacaExecutionManager initialized without OrderManager (stub mode)")
 
+        logger.info(f"Using strategy config: stop_loss={stop_loss_pct*100}%, take_profit={take_profit_pct*100}%")
+
         # Log price fetcher availability
         if PRICE_FETCHER_AVAILABLE:
             logger.info("UnifiedPriceFetcher available - will fetch current prices before execution")
         else:
             logger.warning("UnifiedPriceFetcher NOT available - will use suggestion prices")
+
+    def _is_market_hours(self) -> bool:
+        """
+        Check if current time is during regular market hours (9:30 AM - 4:00 PM ET, Mon-Fri).
+
+        Returns:
+            True if during market hours, False otherwise
+        """
+        try:
+            from datetime import datetime
+            import pytz
+
+            et_tz = pytz.timezone('America/New_York')
+            now_et = datetime.now(et_tz)
+
+            # Check if weekend
+            if now_et.weekday() >= 5:  # 5=Saturday, 6=Sunday
+                return False
+
+            # Check if within market hours (9:30 AM - 4:00 PM ET)
+            market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+            market_close = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+
+            return market_open <= now_et <= market_close
+
+        except Exception as e:
+            logger.warning(f"Could not determine market hours: {e}")
+            return False  # Assume off-hours if we can't determine
 
     async def execute_trade(
         self,
@@ -142,12 +177,13 @@ class AlpacaExecutionManager(ExecutionManager):
             # Recalculate bracket prices using current market price if available
             if current_market_price and current_market_price > 0 and signal.lower() == "buy":
                 entry_price = round(current_market_price, 2)
-                stop_loss = round(current_market_price * 0.98, 2)  # -2% stop
-                take_profit = round(current_market_price * 1.035, 2)  # +3.5% target
+                stop_loss = round(current_market_price * (1 - self.stop_loss_pct), 2)
+                take_profit = round(current_market_price * (1 + self.take_profit_pct), 2)
 
                 logger.info(
                     f"Recalculated bracket prices using current market price ${current_market_price:.2f}: "
-                    f"entry=${entry_price:.2f}, stop=${stop_loss:.2f}, target=${take_profit:.2f}"
+                    f"entry=${entry_price:.2f}, stop=${stop_loss:.2f} (-{self.stop_loss_pct*100}%), "
+                    f"target=${take_profit:.2f} (+{self.take_profit_pct*100}%)"
                 )
             else:
                 logger.warning(
@@ -212,22 +248,95 @@ class AlpacaExecutionManager(ExecutionManager):
                 # Stub mode: Return mock order result
                 return self._create_stub_result(ticker, quantity, entry_price, signal)
 
+            # Check if we're during market hours
+            is_market_hours = self._is_market_hours()
+
+            if not is_market_hours:
+                logger.warning(
+                    f"⚠️  Market is CLOSED (weekend/off-hours). "
+                    f"Bracket orders may fail validation during off-hours."
+                )
+
             # Execute via OrderManager (only BUY orders reach here)
             # AlpacaOrderManager.place_bracket_order handles entry + stop + target
             # Note: Uses different parameter names than generic OrderManager
-            order_data = self.order_manager.place_bracket_order(
-                symbol=ticker,
-                qty=quantity,
-                side="buy",  # Always BUY (SELL signals filtered above)
-                entry_limit_price=None,  # Market order
-                take_profit_price=take_profit,
-                stop_loss_price=stop_loss,
-                time_in_force="gtc"  # Good-til-canceled
-            )
+            try:
+                order_data = self.order_manager.place_bracket_order(
+                    symbol=ticker,
+                    qty=quantity,
+                    side="buy",  # Always BUY (SELL signals filtered above)
+                    entry_limit_price=None,  # Market order
+                    take_profit_price=take_profit,
+                    stop_loss_price=stop_loss,
+                    time_in_force="gtc"  # Good-til-canceled
+                )
 
-            # Check for errors (AlpacaOrderManager returns status='error')
-            if order_data.get('status') == 'error':
-                raise Exception(order_data.get('message', 'Unknown error'))
+                # Check for errors (AlpacaOrderManager returns status='error')
+                if order_data.get('status') == 'error':
+                    raise Exception(order_data.get('message', 'Unknown error'))
+
+            except Exception as e:
+                error_msg = str(e).lower()
+
+                # Check if this is an off-hours validation error
+                if not is_market_hours and ('limit_price' in error_msg or 'base_price' in error_msg or 'take_profit' in error_msg):
+                    logger.warning(
+                        f"❌ Bracket order validation failed (off-hours): {e}\n"
+                        f"   🔄 Attempting fallback: simple market order without brackets..."
+                    )
+
+                    # Fallback: Place simple market order for demo/testing purposes
+                    try:
+                        fallback_order = self.order_manager.place_market_order(
+                            symbol=ticker,
+                            qty=quantity,
+                            side="buy"
+                        )
+
+                        if fallback_order.get('status') == 'error':
+                            raise Exception(fallback_order.get('message', 'Unknown error'))
+
+                        fallback_order_id = fallback_order.get('order_id') or fallback_order.get('id')
+
+                        logger.info(
+                            f"✅ Simple market order placed: {fallback_order_id}\n"
+                            f"   ⚠️  NOTE: Stop-loss and take-profit NOT set (bracket order failed).\n"
+                            f"   Manual risk management required!\n"
+                            f"   Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f}"
+                        )
+
+                        return OrderResult(
+                            success=True,
+                            entry_order_id=fallback_order_id,
+                            stop_order_id=None,  # Not set
+                            target_order_id=None,  # Not set
+                            ticker=ticker,
+                            quantity=quantity,
+                            filled_price=None,
+                            message=(
+                                f"⚠️  Market order placed WITHOUT brackets (off-hours fallback). "
+                                f"Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f} (NOT automatically set). "
+                                f"Manual risk management required!"
+                            ),
+                            error=None
+                        )
+
+                    except Exception as fallback_error:
+                        logger.error(f"❌ Fallback market order also failed: {fallback_error}")
+                        return OrderResult(
+                            success=False,
+                            entry_order_id=None,
+                            stop_order_id=None,
+                            target_order_id=None,
+                            ticker=ticker,
+                            quantity=quantity,
+                            filled_price=None,
+                            message=f"Both bracket and fallback market orders failed during off-hours",
+                            error=f"Bracket error: {e}; Fallback error: {fallback_error}"
+                        )
+                else:
+                    # Re-raise if it's not an off-hours issue
+                    raise
 
             # Extract order IDs (AlpacaOrderManager uses 'order_id' not 'id')
             entry_order_id = order_data.get('order_id')
