@@ -66,22 +66,43 @@ class UnifiedPriceFetcher:
         try:
             # Try latest trade first
             trade_data = self.market_data.get_latest_trade(symbol)
-            if trade_data and 'price' in trade_data:
-                price = float(trade_data['price'])
-                self._update_cache(symbol, price)
-                logger.debug(f"Got trade price for {symbol}: ${price:.2f}")
-                return price
+            # Handle nested structure: trade_data['trade']['p']
+            if trade_data:
+                if 'price' in trade_data:
+                    price = float(trade_data['price'])
+                    self._update_cache(symbol, price)
+                    logger.debug(f"Got trade price for {symbol}: ${price:.2f}")
+                    return price
+                elif 'trade' in trade_data and trade_data['trade'] and 'p' in trade_data['trade']:
+                    price = float(trade_data['trade']['p'])
+                    self._update_cache(symbol, price)
+                    logger.debug(f"Got trade price for {symbol}: ${price:.2f}")
+                    return price
 
             # Fallback to quote mid-price
             quote_data = self.market_data.get_latest_quote(symbol)
-            if quote_data and 'bid_price' in quote_data and 'ask_price' in quote_data:
-                bid = float(quote_data['bid_price'])
-                ask = float(quote_data['ask_price'])
-                if bid > 0 and ask > 0:
-                    price = (bid + ask) / 2
-                    self._update_cache(symbol, price)
-                    logger.debug(f"Got quote mid-price for {symbol}: ${price:.2f}")
-                    return price
+            # Handle nested structure: quote_data['quote']['bp'] and ['ap']
+            if quote_data:
+                # Try direct keys first (legacy format)
+                if 'bid_price' in quote_data and 'ask_price' in quote_data:
+                    bid = float(quote_data['bid_price'])
+                    ask = float(quote_data['ask_price'])
+                    if bid > 0 and ask > 0:
+                        price = (bid + ask) / 2
+                        self._update_cache(symbol, price)
+                        logger.debug(f"Got quote mid-price for {symbol}: ${price:.2f}")
+                        return price
+                # Try nested structure (Alpaca SDK format)
+                elif 'quote' in quote_data and quote_data['quote']:
+                    quote = quote_data['quote']
+                    if 'bp' in quote and 'ap' in quote:
+                        bid = float(quote['bp']) if quote['bp'] else 0
+                        ask = float(quote['ap']) if quote['ap'] else 0
+                        if bid > 0 and ask > 0:
+                            price = (bid + ask) / 2
+                            self._update_cache(symbol, price)
+                            logger.debug(f"Got quote mid-price for {symbol}: ${price:.2f}")
+                            return price
 
             # Try historical data
             end_date = datetime.now()

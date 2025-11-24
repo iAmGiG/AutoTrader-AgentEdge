@@ -698,7 +698,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get today's orders
             from alpaca.trading.requests import GetOrdersRequest
-            from alpaca.trading.enums import OrderStatus
             from datetime import datetime, timezone
             import pytz
 
@@ -716,8 +715,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             market_start_utc = market_start.astimezone(timezone.utc)
 
             # Get orders from market start of today
+            # Note: Not specifying status parameter returns all orders (open, closed, filled, etc.)
             request = GetOrdersRequest(
-                status=OrderStatus.ALL,
                 after=market_start_utc
             )
             today_orders = self.client.trading.get_orders(request)
