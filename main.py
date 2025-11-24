@@ -198,6 +198,7 @@ def run_paper_trading_check(symbol: str = None):
                 for adj in stop_adjustments:
                     try:
                         # Update stop order
+                        # pylint: disable=no-member  # AlpacaOrderManager has this method
                         success = order_manager.modify_stop_order(
                             order_id=adj.order_id,
                             new_stop_price=adj.new_stop,
@@ -344,7 +345,13 @@ def generate_analysis():
     try:
         # Try to run analysis script
         from scripts.analysis.generate_results_summary import main as generate_summary
-        generate_summary(['--advanced'])
+        # Save original sys.argv and temporarily set it for argparse
+        original_argv = sys.argv
+        sys.argv = ['generate_results_summary.py', '--advanced']
+        try:
+            generate_summary()
+        finally:
+            sys.argv = original_argv
         return True
     except (ImportError, ValueError, RuntimeError) as e:
         safe_print(f"{get_symbol('ERROR')} Error generating analysis: {e}")
