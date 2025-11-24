@@ -18,6 +18,7 @@ The primary cache interface providing:
 - **Multi-Asset Support**: Stocks, options, futures (schema-ready)
 - **Smart Expiration**: Historical data (10 year TTL), Recent data (24 hour TTL)
 - **Efficient Storage**: Single 0.5MB database vs 54+ scattered JSON files
+- **Live Price Integration**: Automatic fallback to live prices during market hours (Issue #384)
 
 ### Database Schema
 
@@ -156,6 +157,38 @@ df = cache.get(
 stats = cache.get_stats()
 print(f"Total entries: {stats['total_entries']}")
 print(f"Database size: {stats['db_size_mb']} MB")
+```
+
+### Live Price Integration (Issue #384)
+
+During market hours (9:30 AM - 4:00 PM ET), the system automatically detects when today's daily bar is incomplete and falls back to live prices:
+
+```python
+from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+
+# Automatically handles live prices during market hours
+# - Cache bypass for current trading day
+# - Live price bar appended to historical data
+# - Seamless fallback after market close
+data = fetch_unified_market_data('TQQQ', '2025-09-25', '2025-11-24')
+# Returns: 43 bars (42 historical + 1 live) during market hours
+```
+
+**Market Hours Detection:**
+
+```python
+from src.utils.market_hours import is_market_hours, get_market_status
+
+# Check if market is open
+if is_market_hours():
+    print("Use live prices")
+else:
+    print("Use cached daily closes")
+
+# Detailed status
+is_open, status = get_market_status()
+# Returns: (True, "Market open (Regular hours)")
+#       or (False, "Market closed (After-hours)")
 ```
 
 ### Backward Compatible Interface
