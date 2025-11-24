@@ -399,9 +399,32 @@ python main.py test-voter
 
 ## Recent Milestones
 
-### November 2025 - Documentation & Issue Organization
+### November 2025 - Weekend Order Fix & Code Quality Improvements
 
-**Documentation Restructure**:
+**Weekend Trading Enhancements** (branch: `feature/weekend-order-fix`):
+
+- ✅ Fixed off-hours bracket order validation failures
+- ✅ Platform-aware emoji handling (Windows compatibility)
+- ✅ Enhanced error detection using Alpaca API error codes (#377, #382)
+- ✅ Extracted market hours configuration to YAML (#374, #379)
+- ✅ Centralized user-facing messages to templates (#375, #380)
+- ✅ Improved fallback handling for off-hours trading
+
+**Configuration Improvements**:
+
+- Created `market_hours.yaml` with NYSE 2025 holiday calendar
+- Created `cli_messages.yaml` with 50+ message templates
+- Integrated `MessageLoader` for centralized message management
+- Platform-aware `safe_print()` utility for cross-platform symbols
+
+**Code Quality**:
+
+- Error code-based validation (3-level detection: HTTP 422, Alpaca 4221xxxx, message patterns)
+- Backward-compatible YAML configuration loading
+- Message template system with fallback strings
+- 4 commits, 6 issues resolved (#374, #375, #377, #379, #380, #382)
+
+**Documentation & Issue Organization**:
 - Consolidated 7 folders into 4 organized sections
 - Added numerical sequencing (01-06 files)
 - Created 5 new consolidated documents
