@@ -146,7 +146,7 @@ The system architecture is grounded in peer-reviewed research:
 - Hierarchical Multi-Agent Trading with Dynamic Strategy Selection (2023)
 - FINSABER: LLM Trading Behavior Analysis (2024)
 
-See `research_papers.md` for detailed citations and implementation impact.
+See [research_papers.md](../research/research_papers.md) for detailed citations and implementation impact.
 
 ## Technology Stack
 

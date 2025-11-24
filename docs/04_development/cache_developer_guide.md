@@ -720,15 +720,14 @@ stats = cache.get_trade_stats(strategy="VoterAgent")
 print(f"Win rate: {stats['win_rate_pct']:.1f}%")
 ```
 
-See [Trade History Database](../trade_history_database.md) for complete API reference.
+See [Trade History Database](../02_architecture/trade_history_database.md) for complete API reference.
 
 ---
 
 ## Related Documentation
 
 - **[Cache System Architecture](../02_architecture/04_cache_system.md)** - Technical design
-- **[Trade History Database](../trade_history_database.md)** - Trade analytics API
-- **[CACHE_MIGRATION.md](../../CACHE_MIGRATION.md)** - Migration guide
+- **[Trade History Database](../02_architecture/trade_history_database.md)** - Trade analytics API
 - **[Troubleshooting](../03_reference/04_troubleshooting.md)** - Common issues
 - **Issue #336** - SQLite cache implementation
 - **Issue #373** - Multi-provider options and trade history storage

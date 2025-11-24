@@ -113,7 +113,7 @@ CREATE TABLE trade_history (
 );
 ```
 
-See [docs/trade_history_database.md](../trade_history_database.md) for complete trade history schema and API reference.
+See [trade_history_database.md](trade_history_database.md) for complete trade history schema and API reference.
 
 ### Cache Directory Structure
 
