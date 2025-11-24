@@ -1,37 +1,49 @@
 # PhD Presentation Materials
 
-## Everything You Need: One File
+## Presentation Documents
 
-**[SUBMISSION_PACKAGE.md](SUBMISSION_PACKAGE.md)** - Contains everything for submission and presentation day
+### Core Materials
 
-### What's in it
+- **[abstract.md](abstract.md)** - Submission package (abstract, equipment request, demo guide)
+- **[poster_draft.md](poster_draft.md)** - Physical poster layout (36" x 48")
+- **[speaker_notes.md](speaker_notes.md)** - Demo scripts (30-sec lightning, 1-2 min standard)
 
-1. **Abstract** (1,750 chars) - Copy/paste for submission
-2. **Equipment Request** (1,500 chars) - Conversational justification for monitor/keyboard/mouse
-3. **Additional Comments** (1,400 chars) - Why interactive format
-4. **Demo Day Guide** - One-page cheat sheet for presentation
+### Supporting Assets
 
-### Optional: Generate Diagrams
+- **[figures/](figures/)** - Generated diagrams (architecture, voting logic, workflow, QR code)
+- **[assets/](assets/)** - Source materials
+- **[scripts/](scripts/)** - One-shot diagram generation scripts
 
-If you want backup visuals:
+## Quick Start
+
+### For Submission
+
+Copy content from [abstract.md](abstract.md) - includes abstract, equipment request, and justification.
+
+### For Demo Day
+
+1. Review [speaker_notes.md](speaker_notes.md) for demo scripts
+2. Practice 30-second lightning demo
+3. Have 1-2 minute standard demo ready
+
+### Generate Diagrams (Optional)
 
 ```bash
 # Install dependencies
 pip install graphviz matplotlib
 
-# Generate all diagrams
-python generate_all_diagrams.py
-
-# Creates 5 diagrams in figures/:
-# - architecture.png
-# - voting_logic.png
-# - data_flow.png
-# - agent_communication.png
-# - performance_metrics.png
+# Generate specific diagram
+cd scripts/
+python generate_architecture_diagram.py
+python generate_qr_code.py
+python generate_simple_diagrams.py
+python generate_conclusions_visual.py
 ```
 
-### Recommendation
+## Recommendations
 
-**Use 27-inch monitor** for best group viewing experience.
+- **Monitor**: 27-inch preferred for group viewing
+- **Demo Mode**: Interactive CLI demonstrations (not pre-recorded)
+- **Backup**: Keep figures/ available if needed
 
-**That's it. Keep it simple.**
+**Keep it simple. Focus on live interaction.**
