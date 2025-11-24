@@ -12,6 +12,7 @@ import logging
 from typing import Optional
 import sys
 import os
+import platform
 
 # Add imports for new features
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
@@ -137,7 +138,11 @@ class CLISession:
         while True:
             try:
                 # Get user input with mode indicator
-                mode_indicator = f"{MSG.EMOJI['auto_mode']} AUTO" if self.autonomy_mode == "auto" else f"{MSG.EMOJI['confirm_mode']} CONFIRM"
+                # Use ASCII on Windows to avoid encoding issues
+                if platform.system() == 'Windows':
+                    mode_indicator = "AUTO" if self.autonomy_mode == "auto" else "CONFIRM"
+                else:
+                    mode_indicator = f"{MSG.EMOJI['auto_mode']} AUTO" if self.autonomy_mode == "auto" else f"{MSG.EMOJI['confirm_mode']} CONFIRM"
                 user_input = input(f"\n({mode_indicator}) > ").strip()
 
                 if not user_input:
@@ -156,7 +161,9 @@ class CLISession:
                 print(MSG.EXIT_MESSAGE)
                 break
             except Exception as e:
-                print(f"\n{MSG.EMOJI['error']} Error: {e}")
+                # Use ASCII error prefix on Windows
+                error_prefix = "[ERROR]" if platform.system() == 'Windows' else MSG.EMOJI['error']
+                print(f"\n{error_prefix} Error: {e}")
                 logger.error(f"CLI error: {e}", exc_info=True)
                 # Don't show traceback to user - it's logged
 
