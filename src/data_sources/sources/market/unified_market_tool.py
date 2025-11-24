@@ -56,10 +56,17 @@ def fetch_unified_market_data(
     Returns:
         DataFrame with OHLCV data
     """
-    # First try to get from unified cache
-    cached_data = cache_adapter.get_market_data(symbol, start_date, end_date, source)
-    if cached_data is not None:
-        return cached_data
+    # Check if requesting current trading day - skip cache during market hours
+    from datetime import datetime
+    end_dt = pd.to_datetime(end_date).date()
+    today = datetime.now().date()
+    is_current_day = (end_dt >= today)
+
+    # Skip cache for current trading day during market hours
+    if not is_current_day:
+        cached_data = cache_adapter.get_market_data(symbol, start_date, end_date, source)
+        if cached_data is not None:
+            return cached_data
 
     # Cache miss - fetch from appropriate source
     if source == "auto":
