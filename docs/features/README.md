@@ -142,7 +142,7 @@ python main.py    # Just works!
 
 **Documentation:**
 
-- Architecture: `docs/architecture/llm_routing_architecture.md`
+- Architecture: `docs/02_architecture/06_llm_routing.md`
 - Test Plan: `docs/features/05_interactive_cli_test_plan.md` (Category 7)
 - Main README: See main README.md
 

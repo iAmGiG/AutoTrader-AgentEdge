@@ -12,7 +12,6 @@
 ### Supporting Assets
 
 - **[figures/](figures/)** - Generated diagrams (architecture, voting logic, workflow, QR code)
-- **[assets/](assets/)** - Source materials
 - **[scripts/](scripts/)** - One-shot diagram generation scripts
 
 ## Quick Start
