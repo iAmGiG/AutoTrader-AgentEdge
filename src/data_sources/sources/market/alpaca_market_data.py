@@ -131,8 +131,18 @@ class AlpacaMarketData:
         # Check cache first
         cached_data = []
         symbols_to_fetch = []
-        
-        if use_cache:
+
+        # Smart cache logic: Skip cache for current trading day to ensure fresh data
+        from datetime import datetime
+        end_dt_check = pd.to_datetime(end).date()
+        today = datetime.now().date()
+        is_current_day = (end_dt_check >= today)
+
+        if is_current_day:
+            logger.info(f"Bypassing cache for current trading day - fetching fresh data")
+
+        if use_cache and not is_current_day:
+            # Only use cache for historical data (not today)
             for symbol in symbols:
                 cached = self.cache.get(symbol, start, end, source="alpaca")
 
