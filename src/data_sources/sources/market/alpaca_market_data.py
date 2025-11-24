@@ -239,7 +239,47 @@ class AlpacaMarketData:
         
         # Combine all data
         all_data = cached_data + fetched_data
-        
+
+        # Fallback for current day during market hours: use live prices if daily bar not available
+        if not all_data and is_current_day and timeframe == "1Day":
+            from src.utils.market_hours import is_market_hours
+            if is_market_hours():
+                logger.warning(f"⏰ Market is OPEN - daily bars incomplete. Falling back to live prices for {symbols}")
+                # Fetch live prices and create synthetic daily bar
+                live_bars = []
+                for symbol in symbols:
+                    try:
+                        # Get latest trade for current price
+                        trade = self.get_latest_trade(symbol)
+                        if trade and 'trade' in trade and 'p' in trade['trade']:
+                            price = float(trade['trade']['p'])
+                            timestamp = pd.Timestamp.now(tz='UTC')
+
+                            # Create synthetic bar with current price
+                            live_bar = {
+                                'timestamp': timestamp,
+                                'symbol': symbol,
+                                'open': price,
+                                'high': price,
+                                'low': price,
+                                'close': price,
+                                'volume': 0,  # Unknown during day
+                                'vwap': price,
+                                'trade_count': 0,
+                                'source': 'alpaca_live'
+                            }
+                            live_bars.append(live_bar)
+                            logger.info(f"Created live bar for {symbol} @ ${price:.2f}")
+                    except Exception as e:
+                        logger.warning(f"Could not fetch live price for {symbol}: {e}")
+
+                if live_bars:
+                    df = pd.DataFrame(live_bars)
+                    df['date'] = df['timestamp']
+                    df = df.set_index('timestamp')
+                    all_data = [df]
+                    logger.info(f"✅ Using live prices for {len(live_bars)} symbols during market hours")
+
         if not all_data:
             return pd.DataFrame()
         
