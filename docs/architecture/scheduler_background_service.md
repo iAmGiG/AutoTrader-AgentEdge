@@ -57,7 +57,7 @@ After=network.target
 [Service]
 Type=simple
 User=trader
-WorkingDirectory=/path/to/AutoGen-TradingSystem
+WorkingDirectory=/path/to/AutoTrader-AgentEdge
 ExecStart=/usr/bin/python main.py --daemon
 Restart=on-failure
 RestartSec=30s

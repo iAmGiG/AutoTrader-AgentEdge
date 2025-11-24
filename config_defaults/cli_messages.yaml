@@ -361,3 +361,61 @@ orders:
           Order ID: {order_id}...
 
   error: "❌ Error checking orders: {error}"
+
+# Execution manager messages
+execution:
+  # Initialization
+  init_with_manager: "AlpacaExecutionManager initialized with OrderManager"
+  init_without_manager: "AlpacaExecutionManager initialized without OrderManager (stub mode)"
+  strategy_config: "Using strategy config: stop_loss={stop_loss_pct}%, take_profit={take_profit_pct}%"
+  price_fetcher_available: "UnifiedPriceFetcher available - will fetch current prices before execution"
+  price_fetcher_unavailable: "UnifiedPriceFetcher NOT available - will use suggestion prices"
+
+  # Market hours
+  market_hours_check_failed: "Could not determine market hours: {error}"
+  market_closed_warning: |
+    Market is CLOSED (weekend/off-hours).
+    Bracket orders may fail validation during off-hours.
+
+  # Price fetching
+  price_fetch_alpaca_failed: "Could not fetch current price from Alpaca market data: {error}"
+  price_fetch_unified_failed: "UnifiedPriceFetcher failed: {error}"
+
+  # Position checks
+  position_found: "Found position: {qty} shares of {ticker}"
+  position_check_failed: "Could not check positions: {error}"
+
+  # SELL signal rejections
+  sell_no_position: "SELL signal rejected: No position in {ticker}. Short selling not supported."
+  sell_exceeds_position: "SELL quantity ({qty}) exceeds position ({position_qty} shares)"
+
+  # Order execution
+  bracket_order_success: "Bracket order placed: {signal} {qty} {ticker} (mode: {mode})"
+
+  # Bracket order validation failures (off-hours)
+  bracket_validation_failed: |
+    Bracket order validation failed (off-hours): {error}
+    Error code: {error_code}, Status: {status_code}
+    Attempting fallback: simple market order without brackets...
+
+  fallback_order_success: |
+    Simple market order placed: {order_id}
+    NOTE: Stop-loss and take-profit NOT set (bracket order failed).
+    Manual risk management required!
+    Target: ${target:.2f}, Stop: ${stop:.2f}
+
+  fallback_order_warning: "⚠️  Market order placed WITHOUT brackets (off-hours fallback). Target: ${target:.2f}, Stop: ${stop:.2f} (NOT automatically set). Manual risk management required!"
+
+  fallback_order_failed: "Both bracket and fallback market orders failed during off-hours"
+
+  # Stub mode
+  stub_order: "[STUB] {signal} {qty} {ticker} @ ${price:.2f}"
+
+  # Order cancellation
+  cancel_no_manager: "Cannot cancel - no OrderManager (stub mode)"
+  order_cancelled: "Order cancelled: {order_id}"
+  cancel_failed: "Failed to cancel order {order_id}: {error}"
+
+  # Order status
+  status_no_manager: "Cannot get status - no OrderManager (stub mode)"
+  status_failed: "Failed to get order status {order_id}: {error}"

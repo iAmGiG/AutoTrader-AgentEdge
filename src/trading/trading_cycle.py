@@ -343,7 +343,7 @@ class CostEfficientTradeCycle:
                 ))
 
                 # Extract stop/target prices from broker's open orders
-                entry_price = pos_data["entry_price"]
+                entry_price = broker_pos["entry_price"]
                 stop_price, target_price, stop_verified = self._extract_stop_target_from_orders(
                     symbol, broker_state, entry_price=entry_price
                 )
@@ -833,7 +833,7 @@ class CostEfficientTradeCycle:
                 report_file = f"{base_name}_{counter}.md"
 
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, 'w') as f:
+            with open(report_file, 'w', encoding='utf-8') as f:
                 f.write(report)
 
             logger.info(f"Morning routine complete. Report saved to {report_file}")
@@ -882,7 +882,7 @@ class CostEfficientTradeCycle:
                 report_file = f"{base_name}_{counter}.md"
 
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, 'w') as f:
+            with open(report_file, 'w', encoding='utf-8') as f:
                 f.write(report)
 
             logger.info(f"Evening routine complete. Report saved to {report_file}")
@@ -964,7 +964,7 @@ class CostEfficientTradeCycle:
                 report_file = f"{base_name}_{counter}.md"
 
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, 'w') as f:
+            with open(report_file, 'w', encoding='utf-8') as f:
                 f.write(report)
 
             logger.info(f"Crash recovery complete. Report saved to {report_file}")

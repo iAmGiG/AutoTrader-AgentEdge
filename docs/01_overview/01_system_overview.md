@@ -1,4 +1,4 @@
-# AutoGen-TradingSystem Overview
+# AutoTrader-AgentEdge Overview
 
 **Status**: Production-Ready Multi-Agent Trading Platform
 **Foundation**: Microsoft AutoGen Framework
@@ -6,7 +6,7 @@
 
 ## What Is This System?
 
-AutoGen-TradingSystem is a professional algorithmic trading platform built on Microsoft's AutoGen multi-agent framework. The system employs ensemble voting methodologies backed by academic research to achieve superior risk-adjusted returns compared to single-indicator strategies.
+AutoTrader-AgentEdge is a professional algorithmic trading platform built on Microsoft's AutoGen multi-agent framework. The system employs ensemble voting methodologies backed by academic research to achieve superior risk-adjusted returns compared to single-indicator strategies.
 
 ### Core Purpose
 

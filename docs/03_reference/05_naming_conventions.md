@@ -1,6 +1,6 @@
 # Naming Conventions
 
-This document establishes consistent naming patterns for the RH2MAS trading system.
+This document establishes consistent naming patterns for the AutoTrader trading system.
 
 ## File Naming
 

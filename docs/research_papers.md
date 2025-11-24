@@ -2,13 +2,13 @@
 
 ## Abstract
 
-This document presents the research foundation for the AutoGen-TradingSystem, a **human-in-loop multi-agent trading platform** that combines validated technical indicators with supervised automated decision support. Unlike autonomous algorithmic trading systems, our research focuses on **human-AI collaboration** where AutoGen agents provide analysis and recommendations while humans retain final trading authority. The system achieves a validated Sharpe ratio of 0.856 with a 51.4% win rate through pure MACD+RSI voting, demonstrating that **simple validated technical indicators combined with human oversight outperform complex LLM-based sentiment analysis** (which we extensively tested and deprecated as V0-V4 framework). The core research contribution is the **architecture and methodology for effective human-in-loop agentic trading systems** using Microsoft AutoGen framework.
+This document presents the research foundation for the AutoTrader-AgentEdge, a **human-in-loop multi-agent trading platform** that combines validated technical indicators with supervised automated decision support. Unlike autonomous algorithmic trading systems, our research focuses on **human-AI collaboration** where AutoGen agents provide analysis and recommendations while humans retain final trading authority. The system achieves a validated Sharpe ratio of 0.856 with a 51.4% win rate through pure MACD+RSI voting, demonstrating that **simple validated technical indicators combined with human oversight outperform complex LLM-based sentiment analysis** (which we extensively tested and deprecated as V0-V4 framework). The core research contribution is the **architecture and methodology for effective human-in-loop agentic trading systems** using Microsoft AutoGen framework.
 
 ## Introduction
 
 ### Research Focus: Human-in-Loop Agentic Trading
 
-The AutoGen-TradingSystem represents a paradigm shift from autonomous algorithmic trading to **supervised multi-agent assistance**. Our research demonstrates that:
+The AutoTrader-AgentEdge represents a paradigm shift from autonomous algorithmic trading to **supervised multi-agent assistance**. Our research demonstrates that:
 
 1. **Human-in-loop design** prevents the common pitfalls of fully autonomous trading systems
 2. **Pure technical indicators** (MACD+RSI voting) outperform complex LLM sentiment analysis
@@ -32,7 +32,7 @@ The AutoGen-TradingSystem represents a paradigm shift from autonomous algorithmi
 
 ### System Overview: Human-in-Loop Multi-Agent Architecture
 
-The AutoGen-TradingSystem uses Microsoft's AutoGen framework for **supervised trading assistance**:
+The AutoTrader-AgentEdge uses Microsoft's AutoGen framework for **supervised trading assistance**:
 
 1. **VoterAgent**: Production MACD+RSI voting recommendations (not autonomous execution)
 2. **Scanner Agent** (planned): Multi-ticker opportunity detection for human review
@@ -210,7 +210,7 @@ While our core contribution is human-in-loop architecture, our system design is 
 
 ## Conclusion: Research Contributions and Findings
 
-The AutoGen-TradingSystem's primary research contribution is demonstrating **effective patterns for human-in-loop agentic trading systems** using Microsoft AutoGen framework. Our findings challenge common assumptions about autonomous AI trading:
+The AutoTrader-AgentEdge's primary research contribution is demonstrating **effective patterns for human-in-loop agentic trading systems** using Microsoft AutoGen framework. Our findings challenge common assumptions about autonomous AI trading:
 
 ### Key Research Findings
 

@@ -3,7 +3,7 @@
 ## Environment Setup
 
 - **Python version**: 3.10+
-- **Conda environment**: `conda activate RH2MAS`
+- **Conda environment**: `conda activate AutoTrader`
 - **Install dependencies**: `pip install -e .`
 
 ## Current Development Commands
@@ -116,13 +116,13 @@ ls reports/archived/v0_v4_deprecated/continuous_backtests/
 
 ```bash
 # View active Fibonacci regime issues
-gh issue list --repo iAmGiG/RH2MAS --label "fibonacci-regime"
+gh issue list --repo iAmGiG/AutoTrader --label "fibonacci-regime"
 
 # Check phase development status
-gh issue view 298 --repo iAmGiG/RH2MAS  # Phase 1
-gh issue view 299 --repo iAmGiG/RH2MAS  # Phase 2
-gh issue view 300 --repo iAmGiG/RH2MAS  # Phase 3
-gh issue view 301 --repo iAmGiG/RH2MAS  # Phase 4
+gh issue view 298 --repo iAmGiG/AutoTrader  # Phase 1
+gh issue view 299 --repo iAmGiG/AutoTrader  # Phase 2
+gh issue view 300 --repo iAmGiG/AutoTrader  # Phase 3
+gh issue view 301 --repo iAmGiG/AutoTrader  # Phase 4
 ```
 
 ### Documentation Updates
