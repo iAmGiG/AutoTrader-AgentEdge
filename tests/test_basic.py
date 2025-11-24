@@ -18,13 +18,8 @@ def test_core_models():
     """Test that core models can be created."""
     print("\n=== Test 1: Core Models ===")
 
-    from core.models import (
-        AnalysisResult,
-        AssetType,
-        RiskAssessment,
-        Signal,
-        TradeRequest,
-    )
+    from core.models import (AnalysisResult, AssetType, RiskAssessment, Signal,
+                             TradeRequest)
 
     # Test TradeRequest
     request = TradeRequest(
@@ -99,7 +94,8 @@ async def test_orchestrator_workflow():
     """Test TradingOrchestrator with mocked components."""
     print("\n=== Test 3: TradingOrchestrator Workflow ===")
 
-    from core.models import AnalysisResult, RiskAssessment, Signal, TradeRequest
+    from core.models import (AnalysisResult, RiskAssessment, Signal,
+                             TradeRequest)
     from core.trading_orchestrator import TradingOrchestrator
 
     # Create mocks
@@ -171,13 +167,8 @@ async def test_orchestrator_suggestion_merging():
     """Test that orchestrator properly merges analysis + risk assessment."""
     print("\n=== Test 4: Suggestion Merging ===")
 
-    from core.models import (
-        AnalysisResult,
-        RiskAssessment,
-        Signal,
-        TimeInForce,
-        TradeRequest,
-    )
+    from core.models import (AnalysisResult, RiskAssessment, Signal,
+                             TimeInForce, TradeRequest)
     from core.trading_orchestrator import TradingOrchestrator
 
     # Create mocks with specific values to test merging

@@ -15,9 +15,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from src.data_sources.cache.unified_cache import UnifiedCacheManager
-from src.data_sources.sources.market.alpaca_market_data import (
-    AlpacaMarketData,
-)
+from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
 
 # Initialize Alpaca client with SDK implementation
 cache_manager = UnifiedCacheManager()

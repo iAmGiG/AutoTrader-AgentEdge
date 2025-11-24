@@ -18,11 +18,11 @@ Future Components (Issues #277-289):
 """
 
 from .base_voting_strategy import (
-    BaseVotingStrategy,
-    IndicatorSignal,
-    MarketRegime,
-    SignalStrength,
-    VotingDecision,
+                                   BaseVotingStrategy,
+                                   IndicatorSignal,
+                                   MarketRegime,
+                                   SignalStrength,
+                                   VotingDecision,
 )
 from .basic_voting_strategy import BasicVotingStrategy
 

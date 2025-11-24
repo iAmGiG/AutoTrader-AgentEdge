@@ -46,15 +46,13 @@ def test_tool_functionality():
     try:
         from datetime import datetime
 
-
         # Test with current date
         current_date = datetime.now().strftime("%Y-%m-%d")
         print(f"🔍 Testing with current date: {current_date}")
 
         # Import and call the function directly
-        from src.tools.data_sources.news.hybrid_historical_news_tool import (
-            fetch_hybrid_historical_news,
-        )
+        from src.tools.data_sources.news.hybrid_historical_news_tool import \
+            fetch_hybrid_historical_news
 
         result = fetch_hybrid_historical_news(
             target_date=current_date, keywords=["AAPL", "market"], max_articles=5

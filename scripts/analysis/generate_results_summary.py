@@ -268,9 +268,7 @@ def generate_markdown_report(results: Dict[str, Dict[str, Dict]], df: pd.DataFra
         )
 
         report.append("\n### Framework Validation")
-        report.append(
-            "- Results align with realistic market behavior (no unrealistic 100%+ gains)"
-        )
+        report.append("- Results align with realistic market behavior (no unrealistic 100%+ gains)")
         report.append(
             "- Position sizing working: 30%-100% allocation based on sentiment confidence"
         )

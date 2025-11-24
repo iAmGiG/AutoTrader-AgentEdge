@@ -5,7 +5,6 @@ Verify the mathematical concerns about negative expected value.
 """
 
 
-
 def analyze_expected_value(win_rate, take_profit, stop_loss):
     """Calculate expected value per trade."""
     expected_value = win_rate * take_profit + (1 - win_rate) * (-stop_loss)

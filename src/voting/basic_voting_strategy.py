@@ -19,12 +19,7 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from .base_voting_strategy import (
-    BaseVotingStrategy,
-    IndicatorSignal,
-    MarketRegime,
-    VotingDecision,
-)
+from .base_voting_strategy import BaseVotingStrategy, IndicatorSignal, MarketRegime, VotingDecision
 
 logger = logging.getLogger(__name__)
 

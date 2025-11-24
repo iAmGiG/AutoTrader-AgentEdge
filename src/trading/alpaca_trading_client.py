@@ -19,13 +19,7 @@ from src.utils.date_utils import get_default_timezone
 
 try:
     from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import (
-        OrderClass,
-        OrderSide,
-        OrderType,
-        QueryOrderStatus,
-        TimeInForce,
-    )
+    from alpaca.trading.enums import OrderClass, OrderSide, OrderType, QueryOrderStatus, TimeInForce
     from alpaca.trading.requests import (
         ClosePositionRequest,
         GetOrdersRequest,

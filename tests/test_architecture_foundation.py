@@ -12,16 +12,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 from unittest.mock import AsyncMock
 
 import pytest
-from core.models import (
-    AnalysisResult,
-    AssetType,
-    OrderType,
-    RiskAssessment,
-    Signal,
-    TimeInForce,
-    TradeRequest,
-    TradeSuggestion,
-)
+
+from core.models import (AnalysisResult, AssetType, OrderType, RiskAssessment,
+                         Signal, TimeInForce, TradeRequest, TradeSuggestion)
 from core.trading_orchestrator import TradingOrchestrator
 from strategies.voter_strategy import VoterStrategy
 

@@ -16,11 +16,7 @@ import requests
 
 from ...cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
-from src.utils.date_utils import (
-    get_default_timezone,
-    get_processed_date_range,
-    localize_df,
-)
+from src.utils.date_utils import get_default_timezone, get_processed_date_range, localize_df
 
 
 class AlphaVantageMarketTool:
