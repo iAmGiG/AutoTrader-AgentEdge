@@ -719,7 +719,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             request = GetOrdersRequest(
                 after=market_start_utc
             )
-            today_orders = self.trading_client.get_orders(request)
+            # AlpacaOrderManager has self.client (AlpacaTradingClient), which has trading_client
+            today_orders = self.client.trading_client.get_orders(request)
 
             order_count = len(today_orders)
             max_trades = self.risk_limits.get('max_daily_trades', 100)  # Default 100

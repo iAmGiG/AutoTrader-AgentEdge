@@ -138,8 +138,10 @@ class AlpacaMarketData:
         today = datetime.now().date()
         is_current_day = (end_dt_check >= today)
 
+        logger.warning(f"📊 CACHE CHECK: start={start}, end={end}, end_date={end_dt_check}, today={today}, is_current={is_current_day}, symbols={symbols}")
+
         if is_current_day:
-            logger.info(f"Bypassing cache for current trading day - fetching fresh data")
+            logger.warning(f"⚠️ BYPASSING CACHE - fetching fresh data for current trading day")
 
         if use_cache and not is_current_day:
             # Only use cache for historical data (not today)
