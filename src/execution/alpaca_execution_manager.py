@@ -290,8 +290,11 @@ class AlpacaExecutionManager(ExecutionManager):
                         current_market_price = fetched_price
                         logger.info(
                             f"Got price from UnifiedPriceFetcher: ${current_market_price:.2f}")
+                    else:
+                        logger.warning(
+                            f"UnifiedPriceFetcher returned default fallback price ${fetched_price:.2f} - not using")
                 except Exception as e:
-                    logger.warning(f"UnifiedPriceFetcher failed: {e}")
+                    logger.error(f"UnifiedPriceFetcher failed with exception: {e}", exc_info=True)
 
             # Recalculate bracket prices using current market price if available
             if current_market_price and current_market_price > 0 and signal.lower() == "buy":
