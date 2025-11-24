@@ -9,9 +9,8 @@ import re
 from typing import Optional
 
 from core.interfaces import InputParser
-from core.models import TradeRequest, AssetType
+from core.models import AssetType, TradeRequest
 from services.llm import LLMService
-
 
 logger = logging.getLogger(__name__)
 
@@ -64,33 +63,33 @@ class LLMParser(InputParser):
                         "request_type": {
                             "type": "string",
                             "enum": ["trade", "status_query"],
-                            "description": "Type of request: 'trade' for buy/sell/analyze ticker, 'status_query' for asking about orders/positions/portfolio"
+                            "description": "Type of request: 'trade' for buy/sell/analyze ticker, 'status_query' for asking about orders/positions/portfolio",
                         },
                         "ticker": {
                             "type": "string",
-                            "description": "Stock ticker symbol (e.g., SPY, AAPL, TSLA). Empty string if status_query with no specific ticker."
+                            "description": "Stock ticker symbol (e.g., SPY, AAPL, TSLA). Empty string if status_query with no specific ticker.",
                         },
                         "action": {
                             "type": "string",
                             "enum": ["review", "buy", "sell"],
-                            "description": "User's intent: review (analyze), buy, or sell"
+                            "description": "User's intent: review (analyze), buy, or sell",
                         },
                         "quantity": {
                             "type": "integer",
-                            "description": "Number of shares (optional, null if not specified)"
+                            "description": "Number of shares (optional, null if not specified)",
                         },
                         "price": {
                             "type": "number",
-                            "description": "Entry price mentioned (optional, null if not specified)"
+                            "description": "Entry price mentioned (optional, null if not specified)",
                         },
                         "asset_type": {
                             "type": "string",
                             "enum": ["stock", "option"],
-                            "description": "Asset type (default: stock)"
-                        }
+                            "description": "Asset type (default: stock)",
+                        },
                     },
-                    "required": ["request_type", "ticker", "action"]
-                }
+                    "required": ["request_type", "ticker", "action"],
+                },
             }
         ]
 
@@ -165,7 +164,7 @@ Use the parse_trade_request function."""
         - Price is positive (if specified)
         """
         # Ticker validation (basic)
-        if not re.match(r'^[A-Z]{1,5}$', request.ticker):
+        if not re.match(r"^[A-Z]{1,5}$", request.ticker):
             logger.debug(f"Invalid ticker format: {request.ticker}")
             return False
 
@@ -200,10 +199,10 @@ Use the parse_trade_request function."""
         # Common ticker typos (lowercase → uppercase handled by LLM)
         # Common price typos (SPY at 60 → 600, QQQ at 50 → 500)
         common_corrections = {
-            r'\bspy at 60\b': 'SPY at 600',
-            r'\bspy at 6([0-9]{2})\b': r'SPY at 6\1',  # spy at 605 → SPY at 605
-            r'\bqqq at 50\b': 'QQQ at 500',
-            r'\bqqq at 5([0-9]{2})\b': r'QQQ at 5\1',
+            r"\bspy at 60\b": "SPY at 600",
+            r"\bspy at 6([0-9]{2})\b": r"SPY at 6\1",  # spy at 605 → SPY at 605
+            r"\bqqq at 50\b": "QQQ at 500",
+            r"\bqqq at 5([0-9]{2})\b": r"QQQ at 5\1",
         }
 
         for pattern, replacement in common_corrections.items():

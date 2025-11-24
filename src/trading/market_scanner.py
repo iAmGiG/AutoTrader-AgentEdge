@@ -9,21 +9,23 @@ Core Principle: Download data once, run calculations locally, generate opportuni
 - No automatic execution - human approval required
 """
 
-import sys
-import os
 import json
 import logging
-from datetime import datetime  # TODO date utils
-from typing import Dict, List, Any, Tuple
+import os
+import sys
 from dataclasses import dataclass
+from datetime import datetime  # TODO date utils
+from typing import Any, Dict, List, Tuple
+
 import pandas as pd
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
+from config_defaults.trading_config import TradingConfig
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
-from config_defaults.trading_config import TradingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OpportunitySignal:
     """Represents a trading opportunity with signal details"""
+
     symbol: str
     current_price: float
     signal_type: str  # BUY, SELL, HOLD
@@ -50,6 +53,7 @@ class OpportunitySignal:
 @dataclass
 class ScanResult:
     """Results from a complete market scan"""
+
     timestamp: str
     symbols_scanned: int
     opportunities: List[OpportunitySignal]
@@ -77,13 +81,29 @@ class CostEfficientScanner:
         # Default watchlist (can be customized)
         self.default_watchlist = [
             # Core ETFs
-            "SPY", "QQQ", "IWM", "VTI",
+            "SPY",
+            "QQQ",
+            "IWM",
+            "VTI",
             # Leverage ETFs
-            "TQQQ", "SQQQ", "UPRO", "SPXL",
+            "TQQQ",
+            "SQQQ",
+            "UPRO",
+            "SPXL",
             # Tech giants
-            "AAPL", "MSFT", "NVDA", "TSLA", "META", "GOOGL", "AMZN",
+            "AAPL",
+            "MSFT",
+            "NVDA",
+            "TSLA",
+            "META",
+            "GOOGL",
+            "AMZN",
             # Other interesting stocks
-            "PLTR", "COIN", "AMD", "CRM", "NFLX"
+            "PLTR",
+            "COIN",
+            "AMD",
+            "CRM",
+            "NFLX",
         ]
 
         os.makedirs(cache_dir, exist_ok=True)
@@ -103,14 +123,15 @@ class CostEfficientScanner:
                 # Try to get recent data (this counts as 1 API call per symbol)
                 # Use get_bars method from AlpacaMarketData
                 from datetime import timedelta
+
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=days)
 
                 data = self.market_data.get_bars(
                     symbols=[symbol],
-                    start=start_date.strftime('%Y-%m-%d'),
-                    end=end_date.strftime('%Y-%m-%d'),
-                    timeframe="1Day"
+                    start=start_date.strftime("%Y-%m-%d"),
+                    end=end_date.strftime("%Y-%m-%d"),
+                    timeframe="1Day",
                 )
 
                 # get_bars returns data for all symbols, extract the one we want
@@ -128,8 +149,10 @@ class CostEfficientScanner:
                 logger.error(f"Error fetching data for {symbol}: {e}")
 
         duration = (datetime.now() - start_time).total_seconds()
-        logger.info(f"Batch fetched data for {len(market_data)}/{len(symbols)} symbols "
-                    f"in {duration:.1f}s using {api_calls} API calls")
+        logger.info(
+            f"Batch fetched data for {len(market_data)}/{len(symbols)} symbols "
+            f"in {duration:.1f}s using {api_calls} API calls"
+        )
 
         return market_data, api_calls, duration
 
@@ -144,31 +167,33 @@ class CostEfficientScanner:
                     "symbol": symbol,
                     "error": "Insufficient data for indicators",
                     "vote_score": 0.0,
-                    "signal_type": "HOLD"
+                    "signal_type": "HOLD",
                 }
 
             # MACD calculation (validated parameters)
             macd_config = self.config.get_macd_config()
             macd_data = calculate_macd(
-                data['Close'] if 'Close' in data.columns else data['close'],
-                fast=macd_config.fast,    # 13
-                slow=macd_config.slow,    # 34
-                signal=macd_config.signal  # 8
+                data["Close"] if "Close" in data.columns else data["close"],
+                fast=macd_config.fast,  # 13
+                slow=macd_config.slow,  # 34
+                signal=macd_config.signal,  # 8
             )
 
             # RSI calculation (validated parameters)
             rsi_config = self.config.get_rsi_config()
             rsi_data = calculate_rsi(
-                data['Close'] if 'Close' in data.columns else data['close'],
+                data["Close"] if "Close" in data.columns else data["close"],
                 period=rsi_config.period,
                 oversold=rsi_config.oversold,
-                overbought=rsi_config.overbought
+                overbought=rsi_config.overbought,
             )
 
             # Get latest values
-            latest_histogram = macd_data['histogram'].iloc[-1]
-            current_rsi = rsi_data['rsi'].iloc[-1]
-            current_price = data['Close'].iloc[-1] if 'Close' in data.columns else data['close'].iloc[-1]
+            latest_histogram = macd_data["histogram"].iloc[-1]
+            current_rsi = rsi_data["rsi"].iloc[-1]
+            current_price = (
+                data["Close"].iloc[-1] if "Close" in data.columns else data["close"].iloc[-1]
+            )
 
             # MACD signal logic (from validated system)
             if latest_histogram > 0.1:  # Positive histogram above threshold
@@ -207,7 +232,9 @@ class CostEfficientScanner:
                 vote_score = 0.8  # High consensus
                 reasoning = f"Strong consensus: Both MACD and RSI signal {macd_action}"
 
-            elif (macd_action != "HOLD" and rsi_action == "HOLD") or (rsi_action != "HOLD" and macd_action == "HOLD"):
+            elif (macd_action != "HOLD" and rsi_action == "HOLD") or (
+                rsi_action != "HOLD" and macd_action == "HOLD"
+            ):
                 # One signals, one neutral - weak signal
                 final_action = macd_action if macd_action != "HOLD" else rsi_action
                 active_conf = macd_confidence if macd_action != "HOLD" else rsi_confidence
@@ -239,10 +266,10 @@ class CostEfficientScanner:
                 "macd_details": {
                     "action": macd_action,
                     "histogram": latest_histogram,
-                    "macd_line": macd_data['macd'].iloc[-1],
-                    "signal_line": macd_data['signal'].iloc[-1],
+                    "macd_line": macd_data["macd"].iloc[-1],
+                    "signal_line": macd_data["signal"].iloc[-1],
                     "strength": macd_strength,
-                    "confidence": macd_confidence
+                    "confidence": macd_confidence,
                 },
                 "rsi_details": {
                     "action": rsi_action,
@@ -250,21 +277,17 @@ class CostEfficientScanner:
                     "oversold_threshold": rsi_config.oversold,
                     "overbought_threshold": rsi_config.overbought,
                     "strength": rsi_strength,
-                    "confidence": rsi_confidence
-                }
+                    "confidence": rsi_confidence,
+                },
             }
 
         except Exception as e:
             logger.error(f"Error calculating signals for {symbol}: {e}")
-            return {
-                "symbol": symbol,
-                "error": str(e),
-                "vote_score": 0.0,
-                "signal_type": "HOLD"
-            }
+            return {"symbol": symbol, "error": str(e), "vote_score": 0.0, "signal_type": "HOLD"}
 
-    def calculate_stop_and_target(self, symbol: str, current_price: float,
-                                  signal_type: str, confidence: float) -> Tuple[float, float]:
+    def calculate_stop_and_target(
+        self, symbol: str, current_price: float, signal_type: str, confidence: float
+    ) -> Tuple[float, float]:
         """
         Calculate stop loss and target prices based on signal strength.
         Conservative approach with fixed percentages.
@@ -285,8 +308,9 @@ class CostEfficientScanner:
 
         return stop_price, target_price
 
-    def scan_opportunities(self, symbols: List[str] = None,
-                           min_vote_score: float = 0.6) -> ScanResult:
+    def scan_opportunities(
+        self, symbols: List[str] = None, min_vote_score: float = 0.6
+    ) -> ScanResult:
         """
         Scan for trading opportunities with minimal API costs.
 
@@ -315,8 +339,10 @@ class CostEfficientScanner:
 
             # Calculate stop and target
             stop_price, target_price = self.calculate_stop_and_target(
-                symbol, signal_data["current_price"],
-                signal_data["signal_type"], signal_data["confidence"]
+                symbol,
+                signal_data["current_price"],
+                signal_data["signal_type"],
+                signal_data["confidence"],
             )
 
             # Create opportunity signal
@@ -334,7 +360,7 @@ class CostEfficientScanner:
                 reasoning=signal_data["reasoning"],
                 macd_details=signal_data["macd_details"],
                 rsi_details=signal_data["rsi_details"],
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().isoformat(),
             )
 
             opportunities.append(opportunity)
@@ -348,7 +374,12 @@ class CostEfficientScanner:
             "buy_signals": len([o for o in opportunities if o.signal_type == "BUY"]),
             "sell_signals": len([o for o in opportunities if o.signal_type == "SELL"]),
             "avg_confidence": sum(o.confidence for o in opportunities) / max(len(opportunities), 1),
-            "market_bias": "BULLISH" if len([o for o in opportunities if o.signal_type == "BUY"]) > len([o for o in opportunities if o.signal_type == "SELL"]) else "BEARISH"
+            "market_bias": (
+                "BULLISH"
+                if len([o for o in opportunities if o.signal_type == "BUY"])
+                > len([o for o in opportunities if o.signal_type == "SELL"])
+                else "BEARISH"
+            ),
         }
 
         scan_duration = (datetime.now() - scan_start).total_seconds()
@@ -359,11 +390,13 @@ class CostEfficientScanner:
             opportunities=opportunities,
             market_conditions=market_conditions,
             api_calls_used=api_calls,
-            scan_duration=scan_duration
+            scan_duration=scan_duration,
         )
 
-        logger.info(f"Scan complete: {len(opportunities)} opportunities found "
-                    f"in {scan_duration:.1f}s using {api_calls} API calls")
+        logger.info(
+            f"Scan complete: {len(opportunities)} opportunities found "
+            f"in {scan_duration:.1f}s using {api_calls} API calls"
+        )
 
         return result
 
@@ -382,24 +415,28 @@ class CostEfficientScanner:
 
         # Market conditions
         conditions = scan_result.market_conditions
-        report_lines.extend([
-            "## Market Conditions",
-            f"**Market Bias:** {conditions['market_bias']}",
-            f"**Buy Signals:** {conditions['buy_signals']}",
-            f"**Sell Signals:** {conditions['sell_signals']}",
-            f"**Average Confidence:** {conditions['avg_confidence']:.1%}",
-            f"**Data Coverage:** {conditions['symbols_with_data']}/{scan_result.symbols_scanned} symbols",
-            ""
-        ])
+        report_lines.extend(
+            [
+                "## Market Conditions",
+                f"**Market Bias:** {conditions['market_bias']}",
+                f"**Buy Signals:** {conditions['buy_signals']}",
+                f"**Sell Signals:** {conditions['sell_signals']}",
+                f"**Average Confidence:** {conditions['avg_confidence']:.1%}",
+                f"**Data Coverage:** {conditions['symbols_with_data']}/{scan_result.symbols_scanned} symbols",
+                "",
+            ]
+        )
 
         # Top opportunities
         if scan_result.opportunities:
-            report_lines.extend([
-                "## Top Opportunities (Ranked by Vote Score)",
-                "",
-                "| Rank | Symbol | Signal | Price | Confidence | Vote Score | Stop | Target | Size | Reasoning |",
-                "|------|--------|--------|-------|------------|------------|------|--------|------|-----------|"
-            ])
+            report_lines.extend(
+                [
+                    "## Top Opportunities (Ranked by Vote Score)",
+                    "",
+                    "| Rank | Symbol | Signal | Price | Confidence | Vote Score | Stop | Target | Size | Reasoning |",
+                    "|------|--------|--------|-------|------------|------------|------|--------|------|-----------|",
+                ]
+            )
 
             for i, opp in enumerate(scan_result.opportunities[:10], 1):  # Top 10
                 report_lines.append(
@@ -412,46 +449,52 @@ class CostEfficientScanner:
 
             # Detailed breakdown for top 3
             for i, opp in enumerate(scan_result.opportunities[:3], 1):
-                report_lines.extend([
-                    f"### {i}. {opp.symbol} - {opp.signal_type} Signal",
-                    f"**Current Price:** ${opp.current_price:.2f}",
-                    f"**Vote Score:** {opp.vote_score:.2f} (Confidence: {opp.confidence:.1%})",
-                    f"**Entry Recommendation:** {opp.entry_recommendation}",
-                    f"**Stop Loss:** ${opp.stop_price:.2f} ({((opp.stop_price/opp.current_price-1)*100):+.1f}%)",
-                    f"**Target:** ${opp.target_price:.2f} ({((opp.target_price/opp.current_price-1)*100):+.1f}%)",
-                    f"**Reasoning:** {opp.reasoning}",
-                    "",
-                    "**Technical Details:**",
-                    f"- MACD: {opp.macd_details['action']} (Histogram: {opp.macd_details['histogram']:.4f})",
-                    f"- RSI: {opp.rsi_details['action']} (RSI: {opp.rsi_details['rsi']:.1f})",
-                    ""
-                ])
+                report_lines.extend(
+                    [
+                        f"### {i}. {opp.symbol} - {opp.signal_type} Signal",
+                        f"**Current Price:** ${opp.current_price:.2f}",
+                        f"**Vote Score:** {opp.vote_score:.2f} (Confidence: {opp.confidence:.1%})",
+                        f"**Entry Recommendation:** {opp.entry_recommendation}",
+                        f"**Stop Loss:** ${opp.stop_price:.2f} ({((opp.stop_price/opp.current_price-1)*100):+.1f}%)",
+                        f"**Target:** ${opp.target_price:.2f} ({((opp.target_price/opp.current_price-1)*100):+.1f}%)",
+                        f"**Reasoning:** {opp.reasoning}",
+                        "",
+                        "**Technical Details:**",
+                        f"- MACD: {opp.macd_details['action']} (Histogram: {opp.macd_details['histogram']:.4f})",
+                        f"- RSI: {opp.rsi_details['action']} (RSI: {opp.rsi_details['rsi']:.1f})",
+                        "",
+                    ]
+                )
         else:
-            report_lines.extend([
-                "## No Opportunities Found",
-                "No signals met the minimum vote score threshold.",
-                "Consider lowering the threshold or expanding the watchlist.",
-                ""
-            ])
+            report_lines.extend(
+                [
+                    "## No Opportunities Found",
+                    "No signals met the minimum vote score threshold.",
+                    "Consider lowering the threshold or expanding the watchlist.",
+                    "",
+                ]
+            )
 
         # Footer
-        report_lines.extend([
-            "---",
-            "⚠️ **HUMAN REVIEW REQUIRED** - No automatic execution",
-            "📊 **Next Steps:**",
-            "1. Review top opportunities for manual entry",
-            "2. Verify signals with additional analysis",
-            "3. Check position sizing against portfolio limits",
-            "4. Consider market conditions and news events",
-            "",
-            f"*Generated by CostEfficientScanner at {scan_result.timestamp}*"
-        ])
+        report_lines.extend(
+            [
+                "---",
+                "⚠️ **HUMAN REVIEW REQUIRED** - No automatic execution",
+                "📊 **Next Steps:**",
+                "1. Review top opportunities for manual entry",
+                "2. Verify signals with additional analysis",
+                "3. Check position sizing against portfolio limits",
+                "4. Consider market conditions and news events",
+                "",
+                f"*Generated by CostEfficientScanner at {scan_result.timestamp}*",
+            ]
+        )
 
         return "\n".join(report_lines)
 
     def save_scan_results(self, scan_result: ScanResult, report: str):
         """Save scan results and report to files with better naming"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M')  # Remove seconds for cleaner names
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")  # Remove seconds for cleaner names
 
         # Save to dedicated scans folder with clear names
         results_file = f"reports/scans/{timestamp}_opportunities.json"
@@ -476,18 +519,18 @@ class CostEfficientScanner:
                     "position_size_percent": opp.position_size_percent,
                     "reasoning": opp.reasoning,
                     "macd_details": opp.macd_details,
-                    "rsi_details": opp.rsi_details
+                    "rsi_details": opp.rsi_details,
                 }
                 for opp in scan_result.opportunities
-            ]
+            ],
         }
 
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(scan_dict, f, indent=2)
 
         # Save human-readable report
         report_file = f"reports/scans/{timestamp}_opportunities.md"
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             f.write(report)
 
         logger.info(f"Scan results saved to {results_file} and {report_file}")
@@ -517,21 +560,24 @@ def main():
         scanner.save_scan_results(scan_result, report)
 
         # Print summary
-        print(f"\n📊 SCAN COMPLETE")
+        print("\n📊 SCAN COMPLETE")
         print(f"Duration: {scan_result.scan_duration:.1f}s")
         print(f"API Calls: {scan_result.api_calls_used}")
         print(f"Opportunities: {len(scan_result.opportunities)}")
 
         if scan_result.opportunities:
-            print(f"\nTop opportunity: {scan_result.opportunities[0].symbol} "
-                  f"({scan_result.opportunities[0].signal_type}, "
-                  f"score: {scan_result.opportunities[0].vote_score:.2f})")
+            print(
+                f"\nTop opportunity: {scan_result.opportunities[0].symbol} "
+                f"({scan_result.opportunities[0].signal_type}, "
+                f"score: {scan_result.opportunities[0].vote_score:.2f})"
+            )
 
-        print(f"\nReports saved to reports/")
+        print("\nReports saved to reports/")
 
     except Exception as e:
         print(f"Scanner demo failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

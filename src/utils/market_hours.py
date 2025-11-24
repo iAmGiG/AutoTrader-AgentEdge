@@ -7,6 +7,7 @@ Used to determine whether to fetch live prices or use historical daily closes.
 
 from datetime import datetime, time
 from typing import Tuple
+
 import pytz
 
 
@@ -22,7 +23,7 @@ def is_market_hours() -> bool:
     Returns:
         bool: True if market is open, False otherwise
     """
-    et_tz = pytz.timezone('America/New_York')
+    et_tz = pytz.timezone("America/New_York")
     now_et = datetime.now(et_tz)
 
     # Check if weekend
@@ -44,7 +45,7 @@ def get_market_status() -> Tuple[bool, str]:
     Returns:
         Tuple of (is_open: bool, status_message: str)
     """
-    et_tz = pytz.timezone('America/New_York')
+    et_tz = pytz.timezone("America/New_York")
     now_et = datetime.now(et_tz)
 
     # Check weekend

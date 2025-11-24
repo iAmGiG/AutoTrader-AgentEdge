@@ -8,14 +8,15 @@ Enhanced with exit alerts and dynamic stop integration.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class ExitReason(Enum):
     """Exit reasons for positions."""
+
     TAKE_PROFIT = "take_profit"
     STOP_LOSS = "stop_loss"
     MANUAL = "manual"
@@ -24,6 +25,7 @@ class ExitReason(Enum):
 
 class AlertType(Enum):
     """Alert types for position monitoring."""
+
     APPROACHING_TAKE_PROFIT = "approaching_tp"
     APPROACHING_STOP_LOSS = "approaching_sl"
     STOP_ADJUSTED = "stop_adjusted"
@@ -34,6 +36,7 @@ class AlertType(Enum):
 @dataclass
 class PositionAlert:
     """Alert for position monitoring."""
+
     alert_id: str
     position_id: str
     ticker: str
@@ -46,50 +49,53 @@ class PositionAlert:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'alert_id': self.alert_id,
-            'position_id': self.position_id,
-            'ticker': self.ticker,
-            'alert_type': self.alert_type.value,
-            'timestamp': self.timestamp.isoformat(),
-            'current_price': self.current_price,
-            'details': self.details,
-            'severity': self.severity
+            "alert_id": self.alert_id,
+            "position_id": self.position_id,
+            "ticker": self.ticker,
+            "alert_type": self.alert_type.value,
+            "timestamp": self.timestamp.isoformat(),
+            "current_price": self.current_price,
+            "details": self.details,
+            "severity": self.severity,
         }
 
     def format_message(self) -> str:
         """Format alert as human-readable message."""
-        severity_emoji = {
-            'INFO': '📊',
-            'WARNING': '⚠️',
-            'CRITICAL': '🚨'
-        }
-        emoji = severity_emoji.get(self.severity, '📊')
+        severity_emoji = {"INFO": "📊", "WARNING": "⚠️", "CRITICAL": "🚨"}
+        emoji = severity_emoji.get(self.severity, "📊")
 
         if self.alert_type == AlertType.APPROACHING_TAKE_PROFIT:
-            distance = self.details.get('distance_pct', 0)
-            return (f"{emoji} {self.ticker} approaching take profit! "
-                    f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%")
+            distance = self.details.get("distance_pct", 0)
+            return (
+                f"{emoji} {self.ticker} approaching take profit! "
+                f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%"
+            )
 
         elif self.alert_type == AlertType.APPROACHING_STOP_LOSS:
-            distance = self.details.get('distance_pct', 0)
-            return (f"{emoji} {self.ticker} approaching stop loss! "
-                    f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%")
+            distance = self.details.get("distance_pct", 0)
+            return (
+                f"{emoji} {self.ticker} approaching stop loss! "
+                f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%"
+            )
 
         elif self.alert_type == AlertType.STOP_ADJUSTED:
-            old_stop = self.details.get('old_stop', 0)
-            new_stop = self.details.get('new_stop', 0)
-            return (f"{emoji} {self.ticker} stop adjusted: "
-                    f"${old_stop:.2f} → ${new_stop:.2f}")
+            old_stop = self.details.get("old_stop", 0)
+            new_stop = self.details.get("new_stop", 0)
+            return f"{emoji} {self.ticker} stop adjusted: " f"${old_stop:.2f} → ${new_stop:.2f}"
 
         elif self.alert_type == AlertType.PROFIT_TARGET_REACHED:
-            profit_pct = self.details.get('profit_pct', 0)
-            return (f"{emoji} {self.ticker} profit target reached! "
-                    f"Current: ${self.current_price:.2f}, Profit: {profit_pct:.1f}%")
+            profit_pct = self.details.get("profit_pct", 0)
+            return (
+                f"{emoji} {self.ticker} profit target reached! "
+                f"Current: ${self.current_price:.2f}, Profit: {profit_pct:.1f}%"
+            )
 
         elif self.alert_type == AlertType.LOSS_THRESHOLD_REACHED:
-            loss_pct = self.details.get('loss_pct', 0)
-            return (f"{emoji} {self.ticker} loss threshold reached! "
-                    f"Current: ${self.current_price:.2f}, Loss: {loss_pct:.1f}%")
+            loss_pct = self.details.get("loss_pct", 0)
+            return (
+                f"{emoji} {self.ticker} loss threshold reached! "
+                f"Current: ${self.current_price:.2f}, Loss: {loss_pct:.1f}%"
+            )
 
         return f"{emoji} {self.ticker} alert: {self.alert_type.value}"
 
@@ -97,6 +103,7 @@ class PositionAlert:
 @dataclass
 class Position:
     """Position data structure with alert tracking."""
+
     position_id: str
     ticker: str
     entry_date: datetime
@@ -114,53 +121,51 @@ class Position:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'position_id': self.position_id,
-            'ticker': self.ticker,
-            'entry_date': self.entry_date.isoformat(),
-            'entry_price': self.entry_price,
-            'quantity': self.quantity,
-            'take_profit_price': self.take_profit_price,
-            'stop_loss_price': self.stop_loss_price,
-            'status': self.status,
-            'exit_date': self.exit_date.isoformat() if self.exit_date else None,
-            'exit_price': self.exit_price,
-            'exit_reason': self.exit_reason.value if self.exit_reason else None,
-            'alert_history': [alert.to_dict() for alert in self.alert_history],
-            'last_alert_time': self.last_alert_time.isoformat() if self.last_alert_time else None
+            "position_id": self.position_id,
+            "ticker": self.ticker,
+            "entry_date": self.entry_date.isoformat(),
+            "entry_price": self.entry_price,
+            "quantity": self.quantity,
+            "take_profit_price": self.take_profit_price,
+            "stop_loss_price": self.stop_loss_price,
+            "status": self.status,
+            "exit_date": self.exit_date.isoformat() if self.exit_date else None,
+            "exit_price": self.exit_price,
+            "exit_reason": self.exit_reason.value if self.exit_reason else None,
+            "alert_history": [alert.to_dict() for alert in self.alert_history],
+            "last_alert_time": self.last_alert_time.isoformat() if self.last_alert_time else None,
         }
 
     def calculate_unrealized_pnl(self, current_price: float) -> Dict[str, float]:
         """Calculate unrealized P&L."""
         if self.status != "ACTIVE":
-            return {'unrealized_pnl': 0.0, 'unrealized_pnl_pct': 0.0}
+            return {"unrealized_pnl": 0.0, "unrealized_pnl_pct": 0.0}
 
         pnl = (current_price - self.entry_price) * self.quantity
         pnl_pct = ((current_price - self.entry_price) / self.entry_price) * 100
 
-        return {
-            'unrealized_pnl': pnl,
-            'unrealized_pnl_pct': pnl_pct
-        }
+        return {"unrealized_pnl": pnl, "unrealized_pnl_pct": pnl_pct}
 
     def calculate_realized_pnl(self) -> Dict[str, float]:
         """Calculate realized P&L (for closed positions)."""
         if self.status == "ACTIVE" or self.exit_price is None:
-            return {'realized_pnl': 0.0, 'realized_pnl_pct': 0.0}
+            return {"realized_pnl": 0.0, "realized_pnl_pct": 0.0}
 
         pnl = (self.exit_price - self.entry_price) * self.quantity
         pnl_pct = ((self.exit_price - self.entry_price) / self.entry_price) * 100
 
-        return {
-            'realized_pnl': pnl,
-            'realized_pnl_pct': pnl_pct
-        }
+        return {"realized_pnl": pnl, "realized_pnl_pct": pnl_pct}
 
 
 class PositionTracker:
     """Position tracking with validated exit parameters and enhanced alerts."""
 
-    def __init__(self, take_profit_pct: float = 0.08, stop_loss_pct: float = 0.05,
-                 alert_cooldown_seconds: int = 300):
+    def __init__(
+        self,
+        take_profit_pct: float = 0.08,
+        stop_loss_pct: float = 0.05,
+        alert_cooldown_seconds: int = 300,
+    ):
         """
         Initialize with validated exit parameters.
 
@@ -200,7 +205,7 @@ class PositionTracker:
             entry_price=entry_price,
             quantity=quantity,
             take_profit_price=take_profit_price,
-            stop_loss_price=stop_loss_price
+            stop_loss_price=stop_loss_price,
         )
 
         self.positions[position_id] = position
@@ -222,9 +227,14 @@ class PositionTracker:
         time_since_last = (datetime.now() - position.last_alert_time).total_seconds()
         return time_since_last >= self.alert_cooldown_seconds
 
-    def _create_alert(self, position: Position, alert_type: AlertType,
-                      current_price: float, details: Dict[str, Any],
-                      severity: str = "INFO") -> PositionAlert:
+    def _create_alert(
+        self,
+        position: Position,
+        alert_type: AlertType,
+        current_price: float,
+        details: Dict[str, Any],
+        severity: str = "INFO",
+    ) -> PositionAlert:
         """
         Create and log an alert.
 
@@ -247,7 +257,7 @@ class PositionTracker:
             timestamp=datetime.now(),
             current_price=current_price,
             details=details,
-            severity=severity
+            severity=severity,
         )
 
         # Add to position history
@@ -290,15 +300,15 @@ class PositionTracker:
                     position,
                     AlertType.PROFIT_TARGET_REACHED,
                     current_price,
-                    {'profit_pct': pnl_pct, 'target_price': position.take_profit_price},
-                    severity="CRITICAL"
+                    {"profit_pct": pnl_pct, "target_price": position.take_profit_price},
+                    severity="CRITICAL",
                 )
 
             return {
-                'recommendation': 'EXIT',
-                'reason': ExitReason.TAKE_PROFIT,
-                'exit_price': current_price,
-                'pnl_pct': pnl_pct
+                "recommendation": "EXIT",
+                "reason": ExitReason.TAKE_PROFIT,
+                "exit_price": current_price,
+                "pnl_pct": pnl_pct,
             }
 
         # Check stop loss
@@ -311,15 +321,15 @@ class PositionTracker:
                     position,
                     AlertType.LOSS_THRESHOLD_REACHED,
                     current_price,
-                    {'loss_pct': pnl_pct, 'stop_price': position.stop_loss_price},
-                    severity="CRITICAL"
+                    {"loss_pct": pnl_pct, "stop_price": position.stop_loss_price},
+                    severity="CRITICAL",
                 )
 
             return {
-                'recommendation': 'EXIT',
-                'reason': ExitReason.STOP_LOSS,
-                'exit_price': current_price,
-                'pnl_pct': pnl_pct
+                "recommendation": "EXIT",
+                "reason": ExitReason.STOP_LOSS,
+                "exit_price": current_price,
+                "pnl_pct": pnl_pct,
             }
 
         # Check approaching levels (for alerts)
@@ -333,18 +343,18 @@ class PositionTracker:
                     AlertType.APPROACHING_TAKE_PROFIT,
                     current_price,
                     {
-                        'distance_pct': tp_distance * 100,
-                        'target_price': position.take_profit_price,
-                        'distance_dollars': position.take_profit_price - current_price
+                        "distance_pct": tp_distance * 100,
+                        "target_price": position.take_profit_price,
+                        "distance_dollars": position.take_profit_price - current_price,
                     },
-                    severity="WARNING"
+                    severity="WARNING",
                 )
 
             return {
-                'recommendation': 'ALERT',
-                'reason': 'APPROACHING_TP',
-                'distance_pct': tp_distance * 100,
-                'distance_dollars': position.take_profit_price - current_price
+                "recommendation": "ALERT",
+                "reason": "APPROACHING_TP",
+                "distance_pct": tp_distance * 100,
+                "distance_dollars": position.take_profit_price - current_price,
             }
 
         if sl_distance < 0.02:  # Within 2% of stop loss
@@ -354,23 +364,25 @@ class PositionTracker:
                     AlertType.APPROACHING_STOP_LOSS,
                     current_price,
                     {
-                        'distance_pct': sl_distance * 100,
-                        'stop_price': position.stop_loss_price,
-                        'distance_dollars': current_price - position.stop_loss_price
+                        "distance_pct": sl_distance * 100,
+                        "stop_price": position.stop_loss_price,
+                        "distance_dollars": current_price - position.stop_loss_price,
                     },
-                    severity="WARNING"
+                    severity="WARNING",
                 )
 
             return {
-                'recommendation': 'ALERT',
-                'reason': 'APPROACHING_SL',
-                'distance_pct': sl_distance * 100,
-                'distance_dollars': current_price - position.stop_loss_price
+                "recommendation": "ALERT",
+                "reason": "APPROACHING_SL",
+                "distance_pct": sl_distance * 100,
+                "distance_dollars": current_price - position.stop_loss_price,
             }
 
         return None
 
-    def close_position(self, position_id: str, exit_price: float, exit_reason: ExitReason = ExitReason.MANUAL) -> bool:
+    def close_position(
+        self, position_id: str, exit_price: float, exit_reason: ExitReason = ExitReason.MANUAL
+    ) -> bool:
         """
         Close a position.
 
@@ -450,7 +462,7 @@ class PositionTracker:
             List of newly generated alerts (since last check)
         """
         new_alerts = []
-        positions_dict = broker_state.get('positions', {})
+        positions_dict = broker_state.get("positions", {})
 
         for position in self.get_active_positions():
             # Get current price from broker state
@@ -459,7 +471,7 @@ class PositionTracker:
                 logger.warning(f"No price data for {position.ticker} in broker state")
                 continue
 
-            current_price = ticker_data.get('current_price')
+            current_price = ticker_data.get("current_price")
             if not current_price:
                 logger.warning(f"No current_price for {position.ticker}")
                 continue
@@ -498,19 +510,19 @@ class PositionTracker:
         all_alerts = self.get_all_alerts()
 
         alert_counts = {
-            'total': len(all_alerts),
-            'critical': len([a for a in all_alerts if a.severity == "CRITICAL"]),
-            'warning': len([a for a in all_alerts if a.severity == "WARNING"]),
-            'info': len([a for a in all_alerts if a.severity == "INFO"])
+            "total": len(all_alerts),
+            "critical": len([a for a in all_alerts if a.severity == "CRITICAL"]),
+            "warning": len([a for a in all_alerts if a.severity == "WARNING"]),
+            "info": len([a for a in all_alerts if a.severity == "INFO"]),
         }
 
         # Get recent alerts (last 10)
         recent_alerts = all_alerts[:10]
 
         return {
-            'counts': alert_counts,
-            'recent_alerts': [alert.to_dict() for alert in recent_alerts],
-            'alert_messages': [alert.format_message() for alert in recent_alerts]
+            "counts": alert_counts,
+            "recent_alerts": [alert.to_dict() for alert in recent_alerts],
+            "alert_messages": [alert.format_message() for alert in recent_alerts],
         }
 
     def get_position_summary(self, current_prices: Dict[str, float]) -> Dict:
@@ -538,26 +550,28 @@ class PositionTracker:
                 position_value = current_price * position.quantity
 
                 total_value += position_value
-                total_pnl += pnl_data['unrealized_pnl']
+                total_pnl += pnl_data["unrealized_pnl"]
 
-                position_details.append({
-                    'position_id': position.position_id,
-                    'ticker': position.ticker,
-                    'quantity': position.quantity,
-                    'entry_price': position.entry_price,
-                    'current_price': current_price,
-                    'position_value': position_value,
-                    'unrealized_pnl': pnl_data['unrealized_pnl'],
-                    'unrealized_pnl_pct': pnl_data['unrealized_pnl_pct'],
-                    'take_profit_price': position.take_profit_price,
-                    'stop_loss_price': position.stop_loss_price
-                })
+                position_details.append(
+                    {
+                        "position_id": position.position_id,
+                        "ticker": position.ticker,
+                        "quantity": position.quantity,
+                        "entry_price": position.entry_price,
+                        "current_price": current_price,
+                        "position_value": position_value,
+                        "unrealized_pnl": pnl_data["unrealized_pnl"],
+                        "unrealized_pnl_pct": pnl_data["unrealized_pnl_pct"],
+                        "take_profit_price": position.take_profit_price,
+                        "stop_loss_price": position.stop_loss_price,
+                    }
+                )
 
         return {
-            'active_positions': position_count,
-            'total_position_value': total_value,
-            'total_unrealized_pnl': total_pnl,
-            'positions': position_details
+            "active_positions": position_count,
+            "total_position_value": total_value,
+            "total_unrealized_pnl": total_pnl,
+            "positions": position_details,
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -568,16 +582,15 @@ class PositionTracker:
             Dictionary containing tracker configuration and all position data
         """
         return {
-            'config': {
-                'take_profit_pct': self.take_profit_pct,
-                'stop_loss_pct': self.stop_loss_pct,
-                'alert_cooldown_seconds': self.alert_cooldown_seconds
+            "config": {
+                "take_profit_pct": self.take_profit_pct,
+                "stop_loss_pct": self.stop_loss_pct,
+                "alert_cooldown_seconds": self.alert_cooldown_seconds,
             },
-            'alert_counter': self.alert_counter,
-            'positions': {
-                position_id: position.to_dict()
-                for position_id, position in self.positions.items()
-            }
+            "alert_counter": self.alert_counter,
+            "positions": {
+                position_id: position.to_dict() for position_id, position in self.positions.items()
+            },
         }
 
     def restore_from_dict(self, data: Dict[str, Any]) -> None:
@@ -588,43 +601,50 @@ class PositionTracker:
             data: Dictionary from to_dict()
         """
         # Restore counter
-        self.alert_counter = data.get('alert_counter', 0)
+        self.alert_counter = data.get("alert_counter", 0)
 
         # Restore positions
-        for position_id, pos_data in data.get('positions', {}).items():
+        for position_id, pos_data in data.get("positions", {}).items():
             # Reconstruct PositionAlert objects
             alert_history = []
-            for alert_data in pos_data.get('alert_history', []):
+            for alert_data in pos_data.get("alert_history", []):
                 alert = PositionAlert(
-                    alert_id=alert_data['alert_id'],
-                    position_id=alert_data['position_id'],
-                    ticker=alert_data['ticker'],
-                    alert_type=AlertType(alert_data['alert_type']),
-                    timestamp=datetime.fromisoformat(alert_data['timestamp']),
-                    current_price=alert_data['current_price'],
-                    details=alert_data['details'],
-                    severity=alert_data['severity']
+                    alert_id=alert_data["alert_id"],
+                    position_id=alert_data["position_id"],
+                    ticker=alert_data["ticker"],
+                    alert_type=AlertType(alert_data["alert_type"]),
+                    timestamp=datetime.fromisoformat(alert_data["timestamp"]),
+                    current_price=alert_data["current_price"],
+                    details=alert_data["details"],
+                    severity=alert_data["severity"],
                 )
                 alert_history.append(alert)
 
             # Reconstruct Position object
             position = Position(
-                position_id=pos_data['position_id'],
-                ticker=pos_data['ticker'],
-                entry_date=datetime.fromisoformat(pos_data['entry_date']),
-                entry_price=pos_data['entry_price'],
-                quantity=pos_data['quantity'],
-                take_profit_price=pos_data['take_profit_price'],
-                stop_loss_price=pos_data['stop_loss_price'],
-                status=pos_data['status'],
-                exit_date=datetime.fromisoformat(
-                    pos_data['exit_date']) if pos_data.get('exit_date') else None,
-                exit_price=pos_data.get('exit_price'),
-                exit_reason=ExitReason(pos_data['exit_reason']) if pos_data.get(
-                    'exit_reason') else None,
+                position_id=pos_data["position_id"],
+                ticker=pos_data["ticker"],
+                entry_date=datetime.fromisoformat(pos_data["entry_date"]),
+                entry_price=pos_data["entry_price"],
+                quantity=pos_data["quantity"],
+                take_profit_price=pos_data["take_profit_price"],
+                stop_loss_price=pos_data["stop_loss_price"],
+                status=pos_data["status"],
+                exit_date=(
+                    datetime.fromisoformat(pos_data["exit_date"])
+                    if pos_data.get("exit_date")
+                    else None
+                ),
+                exit_price=pos_data.get("exit_price"),
+                exit_reason=(
+                    ExitReason(pos_data["exit_reason"]) if pos_data.get("exit_reason") else None
+                ),
                 alert_history=alert_history,
-                last_alert_time=datetime.fromisoformat(
-                    pos_data['last_alert_time']) if pos_data.get('last_alert_time') else None
+                last_alert_time=(
+                    datetime.fromisoformat(pos_data["last_alert_time"])
+                    if pos_data.get("last_alert_time")
+                    else None
+                ),
             )
 
             self.positions[position_id] = position

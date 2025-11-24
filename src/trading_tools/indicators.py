@@ -5,19 +5,22 @@ Clean implementations of MACD and RSI using validated parameters.
 All functions are pure (no side effects) for easy testing.
 """
 
-import pandas as pd
-import numpy as np
 from typing import Dict
 
+import numpy as np
+import pandas as pd
 
-def calculate_macd(prices: pd.Series, fast: int = 13, slow: int = 34, signal: int = 8) -> Dict[str, pd.Series]:
+
+def calculate_macd(
+    prices: pd.Series, fast: int = 13, slow: int = 34, signal: int = 8
+) -> Dict[str, pd.Series]:
     """
     Calculate MACD with validated parameters (13/34/8).
 
     Args:
         prices: Price series (Close prices)
         fast: Fast EMA period (default 13 - Fibonacci optimized)
-        slow: Slow EMA period (default 34 - Fibonacci optimized)  
+        slow: Slow EMA period (default 34 - Fibonacci optimized)
         signal: Signal line EMA period (default 8 - Fibonacci optimized)
 
     Returns:
@@ -43,22 +46,19 @@ def calculate_macd(prices: pd.Series, fast: int = 13, slow: int = 34, signal: in
     # Bullish signal (validated: histogram > 0)
     bullish = histogram > 0
 
-    return {
-        'macd': macd_line,
-        'signal': signal_line,
-        'histogram': histogram,
-        'bullish': bullish
-    }
+    return {"macd": macd_line, "signal": signal_line, "histogram": histogram, "bullish": bullish}
 
 
-def calculate_rsi(prices: pd.Series, period: int = 14, oversold: int = 30, overbought: int = 70) -> Dict[str, pd.Series]:
+def calculate_rsi(
+    prices: pd.Series, period: int = 14, oversold: int = 30, overbought: int = 70
+) -> Dict[str, pd.Series]:
     """
     Calculate RSI with validated parameters (14/30/70).
 
     Args:
         prices: Price series (Close prices)
         period: RSI calculation period (default 14)
-        oversold: Oversold threshold (default 30)  
+        oversold: Oversold threshold (default 30)
         overbought: Overbought threshold (default 70)
 
     Returns:
@@ -89,10 +89,10 @@ def calculate_rsi(prices: pd.Series, period: int = 14, oversold: int = 30, overb
     overbought_signal = rsi >= overbought
 
     return {
-        'rsi': rsi,
-        'bullish': bullish,
-        'oversold': oversold_signal,
-        'overbought': overbought_signal
+        "rsi": rsi,
+        "bullish": bullish,
+        "oversold": oversold_signal,
+        "overbought": overbought_signal,
     }
 
 
@@ -108,11 +108,11 @@ def calculate_voting_consensus(macd_data: Dict, rsi_data: Dict) -> Dict[str, pd.
         Dictionary containing:
         - 'consensus': Boolean series where both indicators agree (bullish)
         - 'macd_votes': MACD bullish signals
-        - 'rsi_votes': RSI bullish signals  
+        - 'rsi_votes': RSI bullish signals
         - 'confidence': Confidence score (0.0-1.0) based on indicator strength
     """
-    macd_bullish = macd_data['bullish']
-    rsi_bullish = rsi_data['bullish']
+    macd_bullish = macd_data["bullish"]
+    rsi_bullish = rsi_data["bullish"]
 
     # Voting consensus: both indicators must agree
     consensus = macd_bullish & rsi_bullish
@@ -120,16 +120,16 @@ def calculate_voting_consensus(macd_data: Dict, rsi_data: Dict) -> Dict[str, pd.
     # Calculate confidence based on indicator strength
     # Higher MACD histogram = stronger signal
     # RSI closer to 50 = more neutral/stable
-    macd_strength = np.abs(macd_data['histogram']) / macd_data['histogram'].rolling(20).std()
-    rsi_neutrality = 1 - np.abs(rsi_data['rsi'] - 50) / 50  # Closer to 50 = better
+    macd_strength = np.abs(macd_data["histogram"]) / macd_data["histogram"].rolling(20).std()
+    rsi_neutrality = 1 - np.abs(rsi_data["rsi"] - 50) / 50  # Closer to 50 = better
 
     confidence = ((macd_strength + rsi_neutrality) / 2).clip(0, 1)
 
     return {
-        'consensus': consensus,
-        'macd_votes': macd_bullish,
-        'rsi_votes': rsi_bullish,
-        'confidence': confidence
+        "consensus": consensus,
+        "macd_votes": macd_bullish,
+        "rsi_votes": rsi_bullish,
+        "confidence": confidence,
     }
 
 
@@ -145,11 +145,11 @@ def get_current_signals(prices: pd.Series) -> Dict:
     """
     if len(prices) < 34:  # Need at least slow EMA period
         return {
-            'signal_strength': 'INSUFFICIENT_DATA',
-            'macd_bullish': False,
-            'rsi_bullish': False,
-            'consensus': False,
-            'confidence': 0.0
+            "signal_strength": "INSUFFICIENT_DATA",
+            "macd_bullish": False,
+            "rsi_bullish": False,
+            "consensus": False,
+            "confidence": 0.0,
         }
 
     # Calculate indicators
@@ -161,13 +161,13 @@ def get_current_signals(prices: pd.Series) -> Dict:
     latest_idx = prices.index[-1]
 
     return {
-        'date': latest_idx,
-        'price': prices.iloc[-1],
-        'macd_histogram': macd_data['histogram'].iloc[-1],
-        'rsi_value': rsi_data['rsi'].iloc[-1],
-        'macd_bullish': macd_data['bullish'].iloc[-1],
-        'rsi_bullish': rsi_data['bullish'].iloc[-1],
-        'consensus': voting_data['consensus'].iloc[-1],
-        'confidence': voting_data['confidence'].iloc[-1],
-        'signal_strength': 'BULLISH' if voting_data['consensus'].iloc[-1] else 'NEUTRAL'
+        "date": latest_idx,
+        "price": prices.iloc[-1],
+        "macd_histogram": macd_data["histogram"].iloc[-1],
+        "rsi_value": rsi_data["rsi"].iloc[-1],
+        "macd_bullish": macd_data["bullish"].iloc[-1],
+        "rsi_bullish": rsi_data["bullish"].iloc[-1],
+        "consensus": voting_data["consensus"].iloc[-1],
+        "confidence": voting_data["confidence"].iloc[-1],
+        "signal_strength": "BULLISH" if voting_data["consensus"].iloc[-1] else "NEUTRAL",
     }

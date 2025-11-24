@@ -4,7 +4,6 @@ Expected Value Analysis
 Verify the mathematical concerns about negative expected value.
 """
 
-import numpy as np
 
 
 def analyze_expected_value(win_rate, take_profit, stop_loss):
@@ -22,7 +21,7 @@ def main():
         (0.566, 0.06, 0.08, "Conservative (56.6% WR, 6% TP, 8% SL)"),
         (0.667, 0.06, 0.08, "Actual Test (66.7% WR, 6% TP, 8% SL)"),
         (0.50, 0.08, 0.05, "Balanced (50% WR, 8% TP, 5% SL)"),
-        (0.333, 0.10, 0.03, "Aggressive (33.3% WR, 10% TP, 3% SL)")
+        (0.333, 0.10, 0.03, "Aggressive (33.3% WR, 10% TP, 3% SL)"),
     ]
 
     print("\n" + "-" * 60)
@@ -59,7 +58,7 @@ def main():
     configs = [
         (0.06, 0.08, "6% TP / 8% SL"),
         (0.08, 0.05, "8% TP / 5% SL"),
-        (0.10, 0.03, "10% TP / 3% SL")
+        (0.10, 0.03, "10% TP / 3% SL"),
     ]
 
     for tp, sl, name in configs:

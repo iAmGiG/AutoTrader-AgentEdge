@@ -8,6 +8,7 @@
 ## Problem Statement
 
 Morning/evening reports showed `$0.00` for stop-loss prices despite:
+
 - Take-profit orders visible in reports ($634.19, $712.80)
 - Stop orders visible on Alpaca web dashboard with status "held"
 - Positions having bracket orders with `OrderClass.BRACKET`
@@ -15,9 +16,11 @@ Morning/evening reports showed `$0.00` for stop-loss prices despite:
 ## Investigation Timeline
 
 ### Attempt 1: Check Enum Comparison
+
 **Hypothesis**: Orders returned but not extracted due to enum vs string comparison
 
 **Fix Applied**:
+
 ```python
 # Convert enums to strings
 side_str = str(order.get('side')).lower()
@@ -27,9 +30,11 @@ order_type_str = str(order.get('order_type')).lower()
 **Result**: ❌ No change - orders still missing
 
 ### Attempt 2: Fetch All Order Statuses
+
 **Hypothesis**: Stop orders have different status not included in filter
 
 **Fix Applied**:
+
 ```python
 # Changed from status='open' to status='all'
 orders = self.account_monitor.get_orders(status='all')
@@ -41,9 +46,11 @@ active_statuses = ['new', 'pending_new', 'accepted', 'partially_filled', 'held']
 **Result**: ❌ No change - still only 3 LIMIT orders returned
 
 ### Attempt 3: Extract Bracket Order Legs
+
 **Hypothesis**: Legs nested in parent order's `legs` property
 
 **Fix Applied**:
+
 ```python
 # Added nested leg extraction
 if hasattr(order, 'legs') and order.legs:
@@ -54,9 +61,11 @@ if hasattr(order, 'legs') and order.legs:
 **Result**: ❌ `order.legs = []` (empty list despite OrderClass.BRACKET)
 
 ### Attempt 4: Use `nested=True` Parameter
+
 **Hypothesis**: Need explicit parameter to include bracket legs
 
 **Fix Applied**:
+
 ```python
 # Add nested parameter to API request
 request = GetOrdersRequest(limit=limit, symbols=symbols, nested=True)
@@ -65,9 +74,11 @@ request = GetOrdersRequest(limit=limit, symbols=symbols, nested=True)
 **Result**: ❌ No change - still only 3 orders returned
 
 ### Attempt 5: Fetch by Order ID
+
 **Hypothesis**: Individual order fetch includes held legs
 
 **Fix Applied**:
+
 ```python
 # For each bracket order, fetch by ID
 full_order = self.client.trading_client.get_order_by_id(order_id)
@@ -90,6 +101,7 @@ From [Alpaca Community Forum](https://forum.alpaca.markets/t/half-of-bracket-ord
 ### API Behavior Confirmed
 
 **Debug Output**:
+
 ```
 🔍 RAW ORDERS FROM ALPACA (before filtering):
   [0] META OrderSide.SELL OrderType.LIMIT status=OrderStatus.NEW stop=None limit=634.19
@@ -98,6 +110,7 @@ From [Alpaca Community Forum](https://forum.alpaca.markets/t/half-of-bracket-ord
 ```
 
 **Analysis**:
+
 - Only 3 orders total returned by API
 - All are SELL LIMIT orders (take-profit legs, status "new")
 - No SELL STOP orders (stop-loss legs, status "held")
@@ -158,6 +171,7 @@ report_lines.extend([
 ### 3. Report Output
 
 **Before**:
+
 ```
 | Symbol | Entry | Current | Stop | Target | P&L | Action |
 | META | $628.07 | $627.00 | $0.00 | $634.19 | $-9 | No change |
@@ -165,6 +179,7 @@ report_lines.extend([
 ```
 
 **After (with saved stops)**:
+
 ```
 | Symbol | Entry | Current | Stop | Target | P&L | Action |
 | META | $628.07 | $627.00 | $609.00 | $634.19 | $-9 | No change |
@@ -178,6 +193,7 @@ report_lines.extend([
 ## Files Modified
 
 ### Core Changes
+
 1. **src/trading/trading_cycle.py** (+60/-20 lines)
    - Updated `_extract_stop_target_from_orders()` to calculate stops
    - Added `entry_price` parameter
@@ -198,12 +214,14 @@ report_lines.extend([
 ## Verification
 
 ### Test Commands
+
 ```bash
 Scheduler> test morning
 Scheduler> test evening
 ```
 
 ### Expected Behavior
+
 - ✅ Stop prices display: META $596.66, SPY $624.72
 - ✅ Take-profit prices from API: $634.19, $712.80
 - ✅ Warning footer in report
@@ -234,6 +252,7 @@ Since these positions weren't placed by this system, actual stop prices were syn
 
 **Note on Split Orders:**
 User's SPY position was split across 2 separate bracket orders:
+
 - 2× qty 7 shares with same stop price ($627.00)
 - 2× SELL LIMIT for take-profit targets ($712.80)
 
@@ -242,18 +261,21 @@ System handles this correctly by extracting the first matching order for each ty
 ## GitHub Issues
 
 ### Issue #355: Place GTC stop/target orders
+
 - **Status**: Closed as "not planned"
 - **Label**: wontfix
 - **Reason**: Alpaca API limitation cannot be overcome without major architectural change (separate GTC orders)
 - **Workaround**: Current solution functional for reporting needs
 
 ### Issue #353: Save stop/target when placing orders
+
 - **Status**: Partial - carbon copy in place, Order Manager integration pending
 - **Dependencies**: #336 (SQLite Cache System) for proper persistence
 - **Future Enhancement**: Proper verification tracking with calculated fallback
 
 **Order Manager Integration Gap:**
 When placing bracket orders via Order Manager, need to save stop/target values:
+
 ```python
 # In handle_fill_notification()
 def handle_fill_notification(self, filled_order):
@@ -281,14 +303,17 @@ def handle_fill_notification(self, filled_order):
 ## Alternative Approaches Considered
 
 ### Option 1: Separate GTC Orders (Rejected)
+
 Place individual GTC stop/target orders after entry fills instead of bracket orders.
 
 **Pros**:
+
 - Full API visibility
 - Programmatic stop management
 - No calculation needed
 
 **Cons**:
+
 - Major architectural change
 - More API calls
 - Lose atomic bracket order guarantee
@@ -297,29 +322,35 @@ Place individual GTC stop/target orders after entry fills instead of bracket ord
 **Decision**: Not worth the complexity for paper trading / reporting use case
 
 ### Option 2: SQLite Cache (Future)
+
 Save stop/target when placing order, verify periodically, mark as verified/unverified.
 
 **Pros**:
+
 - Resilient to API failures
 - Verification status tracking
 - Historical data
 
 **Cons**:
+
 - Requires #336 (SQLite implementation)
 - Added complexity
 
 **Decision**: Good future enhancement (Issue #353) but not critical
 
 ### Option 3: Calculation Only (Chosen)
+
 Calculate from entry price, extract target from API, warn user.
 
 **Pros**:
+
 - Simple implementation
 - No architectural changes
 - Functional for reporting
 - Clear user communication
 
 **Cons**:
+
 - Can't detect manual stop adjustments
 - Requires verification via dashboard
 

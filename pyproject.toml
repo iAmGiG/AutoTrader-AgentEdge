@@ -72,6 +72,66 @@ max-line-length = 100
 
 [tool.flake8]
 # Note: flake8 doesn't support pyproject.toml natively, this is for reference
-# Real config stays in setup.cfg
+# Real config stays in .flake8 file
 ignore = ["E402"]
 max-line-length = 100
+
+[tool.pytest.ini_options]
+# Pytest configuration
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.mypy]
+# MyPy static type checking
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+no_strict_optional = true
+exclude = [
+    "deprecated/",
+    "tests/",
+    "scripts/",
+]
+
+[tool.bandit]
+# Bandit security scanning
+exclude_dirs = [
+    "/tests/",
+    "/deprecated/",
+    "/.venv/",
+]
+skips = [
+    "B101",  # assert_used - we use assert in tests
+    "B601",  # paramiko_calls - not applicable
+]
+
+[tool.coverage.run]
+# Coverage settings
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/deprecated/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+# Coverage report settings
+precision = 2
+show_missing = true
+skip_covered = false

@@ -4,19 +4,21 @@ Voter Agent - Fully parameterizable MACD+RSI voting functionality
 Properly implemented using base_agent.py inheritance with flexible parameter testing
 """
 
-import sys
-import os
-from typing import Dict, Any, Optional
-import pandas as pd
-import logging
 import json
+import logging
+import os
+import sys
+from typing import Any, Dict, Optional
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+import pandas as pd
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
+from config_defaults.trading_config import TradingConfig
 
 from .base_agent import BaseAgent
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from src.utils.agent_utils import load_agent_config
-from config_defaults.trading_config import TradingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +34,15 @@ class VoterAgent(BaseAgent):
     - Not a fixed calculator - truly reusable agent
     """
 
-    def __init__(self,
-                 name: str = "voter_agent",
-                 macd_params: Optional[Dict[str, int]] = None,
-                 rsi_params: Optional[Dict[str, int]] = None,
-                 voting_thresholds: Optional[Dict[str, float]] = None,
-                 use_config_file: bool = True,
-                 **kwargs):
+    def __init__(
+        self,
+        name: str = "voter_agent",
+        macd_params: Optional[Dict[str, int]] = None,
+        rsi_params: Optional[Dict[str, int]] = None,
+        voting_thresholds: Optional[Dict[str, float]] = None,
+        use_config_file: bool = True,
+        **kwargs,
+    ):
         """
         Initialize parameterizable voter agent.
 
@@ -62,12 +66,12 @@ class VoterAgent(BaseAgent):
             self.macd_params = macd_params or {
                 "fast": default_macd.fast,
                 "slow": default_macd.slow,
-                "signal": default_macd.signal
+                "signal": default_macd.signal,
             }
             self.rsi_params = rsi_params or {
                 "period": default_rsi.period,
                 "oversold": default_rsi.oversold,
-                "overbought": default_rsi.overbought
+                "overbought": default_rsi.overbought,
             }
         else:
             # Use provided params or hardcoded defaults
@@ -76,29 +80,33 @@ class VoterAgent(BaseAgent):
 
         # Voting thresholds (can be tuned for optimization)
         self.voting_thresholds = voting_thresholds or {
-            "macd_threshold": 0.1,      # Histogram threshold for signal
-            "consensus_boost": 0.15,    # Confidence boost for consensus
-            "weak_signal_boost": 0.1,   # Confidence boost for weak signals
-            "min_data_points": 42       # Minimum data for reliable signals
+            "macd_threshold": 0.1,  # Histogram threshold for signal
+            "consensus_boost": 0.15,  # Confidence boost for consensus
+            "weak_signal_boost": 0.1,  # Confidence boost for weak signals
+            "min_data_points": 42,  # Minimum data for reliable signals
         }
 
         # Track configuration for logging
         self.current_config = {
             "macd": self.macd_params.copy(),
             "rsi": self.rsi_params.copy(),
-            "thresholds": self.voting_thresholds.copy()
+            "thresholds": self.voting_thresholds.copy(),
         }
 
         logger.info(f"VoterAgent '{name}' initialized with:")
         logger.info(
-            f"  MACD({self.macd_params['fast']}/{self.macd_params['slow']}/{self.macd_params['signal']})")
+            f"  MACD({self.macd_params['fast']}/{self.macd_params['slow']}/{self.macd_params['signal']})"
+        )
         logger.info(
-            f"  RSI({self.rsi_params['period']}) [{self.rsi_params['oversold']}/{self.rsi_params['overbought']}]")
+            f"  RSI({self.rsi_params['period']}) [{self.rsi_params['oversold']}/{self.rsi_params['overbought']}]"
+        )
 
-    def reconfigure(self,
-                    macd_params: Optional[Dict[str, int]] = None,
-                    rsi_params: Optional[Dict[str, int]] = None,
-                    voting_thresholds: Optional[Dict[str, float]] = None) -> None:
+    def reconfigure(
+        self,
+        macd_params: Optional[Dict[str, int]] = None,
+        rsi_params: Optional[Dict[str, int]] = None,
+        voting_thresholds: Optional[Dict[str, float]] = None,
+    ) -> None:
         """
         Reconfigure agent parameters on the fly for testing.
 
@@ -118,10 +126,9 @@ class VoterAgent(BaseAgent):
 
         logger.info(f"VoterAgent reconfigured: {self.current_config}")
 
-    def evaluate_voting(self,
-                        symbol: str,
-                        price_data: pd.DataFrame,
-                        return_components: bool = False) -> Dict[str, Any]:
+    def evaluate_voting(
+        self, symbol: str, price_data: pd.DataFrame, return_components: bool = False
+    ) -> Dict[str, Any]:
         """
         Core MACD+RSI voting logic with current parameters.
 
@@ -142,31 +149,31 @@ class VoterAgent(BaseAgent):
                     "confidence": 0.0,
                     "position_size": 0.0,
                     "reasoning": f"Insufficient data ({len(price_data)} < {self.voting_thresholds['min_data_points']})",
-                    "parameters_used": self.current_config
+                    "parameters_used": self.current_config,
                 }
 
             # Extract price series
-            prices = price_data['Close'] if 'Close' in price_data.columns else price_data['close']
+            prices = price_data["Close"] if "Close" in price_data.columns else price_data["close"]
 
             # Calculate MACD with current parameters
             macd_data = calculate_macd(
                 prices,
-                fast=self.macd_params['fast'],
-                slow=self.macd_params['slow'],
-                signal=self.macd_params['signal']
+                fast=self.macd_params["fast"],
+                slow=self.macd_params["slow"],
+                signal=self.macd_params["signal"],
             )
 
             # Calculate RSI with current parameters
             rsi_data = calculate_rsi(
                 prices,
-                period=self.rsi_params['period'],
-                oversold=self.rsi_params['oversold'],
-                overbought=self.rsi_params['overbought']
+                period=self.rsi_params["period"],
+                oversold=self.rsi_params["oversold"],
+                overbought=self.rsi_params["overbought"],
             )
 
             # Determine MACD signal
-            latest_histogram = macd_data['histogram'].iloc[-1]
-            macd_threshold = self.voting_thresholds['macd_threshold']
+            latest_histogram = macd_data["histogram"].iloc[-1]
+            macd_threshold = self.voting_thresholds["macd_threshold"]
 
             if latest_histogram > macd_threshold:
                 macd_action = "BUY"
@@ -182,24 +189,24 @@ class VoterAgent(BaseAgent):
                 macd_strength = 0.0
 
             # Determine RSI signal
-            current_rsi = rsi_data['rsi'].iloc[-1]
+            current_rsi = rsi_data["rsi"].iloc[-1]
 
-            if current_rsi < self.rsi_params['oversold']:
+            if current_rsi < self.rsi_params["oversold"]:
                 rsi_action = "BUY"
                 rsi_conf = 0.6
-                rsi_strength = (self.rsi_params['oversold'] - current_rsi) * 3.33
-            elif current_rsi > self.rsi_params['overbought']:
+                rsi_strength = (self.rsi_params["oversold"] - current_rsi) * 3.33
+            elif current_rsi > self.rsi_params["overbought"]:
                 rsi_action = "SELL"
                 rsi_conf = 0.6
-                rsi_strength = (current_rsi - self.rsi_params['overbought']) * 3.33
+                rsi_strength = (current_rsi - self.rsi_params["overbought"]) * 3.33
             else:
                 rsi_action = "HOLD"
                 rsi_conf = 0.3
                 rsi_strength = 0.0
 
             # VOTING LOGIC (preserved from validated system)
-            consensus_boost = self.voting_thresholds['consensus_boost']
-            weak_boost = self.voting_thresholds['weak_signal_boost']
+            consensus_boost = self.voting_thresholds["consensus_boost"]
+            weak_boost = self.voting_thresholds["weak_signal_boost"]
 
             if macd_action == rsi_action and macd_action != "HOLD":
                 # Strong consensus
@@ -209,8 +216,9 @@ class VoterAgent(BaseAgent):
                 reasoning = f"Strong consensus: Both MACD and RSI signal {action}"
                 signal_type = "STRONG"
 
-            elif (macd_action != "HOLD" and rsi_action == "HOLD") or \
-                 (rsi_action != "HOLD" and macd_action == "HOLD"):
+            elif (macd_action != "HOLD" and rsi_action == "HOLD") or (
+                rsi_action != "HOLD" and macd_action == "HOLD"
+            ):
                 # Weak signal
                 active_action = macd_action if macd_action != "HOLD" else rsi_action
                 active_conf = macd_conf if macd_action != "HOLD" else rsi_conf
@@ -242,7 +250,7 @@ class VoterAgent(BaseAgent):
                 "reasoning": reasoning,
                 "signal_type": signal_type,
                 "current_price": float(prices.iloc[-1]),
-                "parameters_used": self.current_config
+                "parameters_used": self.current_config,
             }
 
             # Add component details if requested
@@ -253,17 +261,17 @@ class VoterAgent(BaseAgent):
                         "confidence": macd_conf,
                         "strength": macd_strength,
                         "histogram": float(latest_histogram),
-                        "macd_line": float(macd_data['macd'].iloc[-1]),
-                        "signal_line": float(macd_data['signal'].iloc[-1])
+                        "macd_line": float(macd_data["macd"].iloc[-1]),
+                        "signal_line": float(macd_data["signal"].iloc[-1]),
                     },
                     "rsi": {
                         "action": rsi_action,
                         "confidence": rsi_conf,
                         "strength": rsi_strength,
                         "value": float(current_rsi),
-                        "oversold": self.rsi_params['oversold'],
-                        "overbought": self.rsi_params['overbought']
-                    }
+                        "oversold": self.rsi_params["oversold"],
+                        "overbought": self.rsi_params["overbought"],
+                    },
                 }
 
             return result
@@ -277,7 +285,7 @@ class VoterAgent(BaseAgent):
                 "position_size": 0.0,
                 "reasoning": f"Analysis error: {str(e)}",
                 "error": str(e),
-                "parameters_used": self.current_config
+                "parameters_used": self.current_config,
             }
 
     def generate_reply(self, messages, context=None) -> str:
@@ -300,7 +308,7 @@ class VoterAgent(BaseAgent):
 
         # Get the latest message
         latest_message = messages[-1]
-        if hasattr(latest_message, 'content'):
+        if hasattr(latest_message, "content"):
             content = latest_message.content
         else:
             content = str(latest_message)
@@ -360,9 +368,7 @@ Your role:
 Always return results in JSON format with action, confidence, and reasoning."""
 
             system_prompt = prompt_template.format(
-                macd=self.macd_params,
-                rsi=self.rsi_params,
-                thresholds=self.voting_thresholds
+                macd=self.macd_params, rsi=self.rsi_params, thresholds=self.voting_thresholds
             )
 
             return self.process_with_tools(content, system_prompt)
@@ -375,18 +381,20 @@ Always return results in JSON format with action, confidence, and reasoning."""
             # Use the unified market data tool through base agent
             tool_result = self.process_with_tools(
                 f"Fetch 60 days of price data for {symbol} and calculate MACD and RSI signals",
-                "You are fetching market data for technical analysis."
+                "You are fetching market data for technical analysis.",
             )
 
             # Parse the tool result and evaluate
             # This would need proper parsing of the tool response
-            return json.dumps({
-                "symbol": symbol,
-                "action": "HOLD",
-                "confidence": 0.0,
-                "reasoning": "Data fetch in progress",
-                "note": "Implement full tool integration for production"
-            })
+            return json.dumps(
+                {
+                    "symbol": symbol,
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "reasoning": "Data fetch in progress",
+                    "note": "Implement full tool integration for production",
+                }
+            )
 
         except Exception as e:
             return json.dumps({"error": f"Failed to fetch and evaluate: {str(e)}"})
@@ -397,19 +405,19 @@ Always return results in JSON format with action, confidence, and reasoning."""
 
     def reset_to_defaults(self, use_config_file: bool = True) -> None:
         """Reset parameters to defaults."""
-        if use_config_file and hasattr(self, 'config'):
+        if use_config_file and hasattr(self, "config"):
             default_macd = self.config.get_macd_config()
             default_rsi = self.config.get_rsi_config()
 
             self.macd_params = {
                 "fast": default_macd.fast,
                 "slow": default_macd.slow,
-                "signal": default_macd.signal
+                "signal": default_macd.signal,
             }
             self.rsi_params = {
                 "period": default_rsi.period,
                 "oversold": default_rsi.oversold,
-                "overbought": default_rsi.overbought
+                "overbought": default_rsi.overbought,
             }
         else:
             self.macd_params = {"fast": 13, "slow": 34, "signal": 8}
@@ -419,13 +427,13 @@ Always return results in JSON format with action, confidence, and reasoning."""
             "macd_threshold": 0.1,
             "consensus_boost": 0.15,
             "weak_signal_boost": 0.1,
-            "min_data_points": 42
+            "min_data_points": 42,
         }
 
         self.current_config = {
             "macd": self.macd_params.copy(),
             "rsi": self.rsi_params.copy(),
-            "thresholds": self.voting_thresholds.copy()
+            "thresholds": self.voting_thresholds.copy(),
         }
 
         logger.info(f"VoterAgent reset to defaults: {self.current_config}")

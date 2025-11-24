@@ -7,7 +7,7 @@ Shows how BasicVotingStrategy coordinates MACD + sentiment signals for ensemble 
 
 Usage:
     python examples/basic_voting_demo.py
-    
+
 Expected Output:
     - Voting decision with signal breakdown
     - Integration validation results
@@ -24,8 +24,7 @@ sys.path.insert(0, str(project_root))
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -74,11 +73,11 @@ def main():
         print(f"     - Weighted Score: {test_result.get('weighted_score', 0.0):.1f}")
         print(f"     - Reasoning: {test_result.get('reasoning', 'N/A')}")
 
-        if 'signal_breakdown' in test_result:
+        if "signal_breakdown" in test_result:
             print("   ✓ Signal Breakdown:")
-            for signal_name, signal_data in test_result['signal_breakdown'].items():
-                strength = signal_data.get('strength', 0)
-                confidence = signal_data.get('confidence', 0.0)
+            for signal_name, signal_data in test_result["signal_breakdown"].items():
+                strength = signal_data.get("strength", 0)
+                confidence = signal_data.get("confidence", 0.0)
                 print(f"     - {signal_name}: {strength} (conf: {confidence:.2f})")
 
         print("\n4. Performance Metrics...")
@@ -87,7 +86,7 @@ def main():
         metrics = voting_strategy.get_performance_metrics()
         print(f"   ✓ Total Decisions: {metrics.get('total_decisions', 0)}")
 
-        if 'action_distribution' in metrics:
+        if "action_distribution" in metrics:
             print(f"   ✓ Action Distribution: {metrics['action_distribution']}")
 
         print("\n5. Architecture Overview...")

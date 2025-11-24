@@ -12,8 +12,9 @@ Provides dedicated commands for:
 import asyncio
 import logging
 import os
+
 # TODO: utilize @date_utils.py for more datetime lib usage.
-from datetime import datetime, time as dt_time
+from datetime import time as dt_time
 from pathlib import Path
 from typing import Optional
 
@@ -22,8 +23,8 @@ try:
 except ImportError:
     yaml = None
 
+
 from src.trading.daily_scheduler import DailyScheduler
-from config_defaults.cli_messages import CLIMessages as MSG
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ class SchedulerCLI:
                     continue
 
                 # Strip leading slash for compatibility with main CLI
-                if command.startswith('/'):
+                if command.startswith("/"):
                     command = command[1:]
 
                 if command in ["exit", "quit", "q"]:
@@ -167,7 +168,7 @@ class SchedulerCLI:
 
         # Check if daemon is actually running
         daemon_running = self._is_daemon_running()
-        enabled = self.scheduler.config.get('enabled', False)
+        enabled = self.scheduler.config.get("enabled", False)
 
         # Config status
         config_emoji = "🟢" if enabled else "🔴"
@@ -175,18 +176,18 @@ class SchedulerCLI:
 
         # Daemon/service status (actual execution)
         if daemon_running:
-            print(f"✅ Service: RUNNING (automatic execution active)")
+            print("✅ Service: RUNNING (automatic execution active)")
         else:
-            print(f"❌ Service: NOT RUNNING (no automatic execution)")
+            print("❌ Service: NOT RUNNING (no automatic execution)")
             if enabled:
-                print(f"\n💡 Config is enabled but daemon is not running.")
-                print(f"   To start automatic execution:")
-                print(f"   1. Exit this CLI")
-                print(f"   2. Run: python main.py --daemon")
-                print(f"   3. Scheduler will run automatically at scheduled times")
-                print(f"\n   Or use 'test morning/evening' to run manually now")
+                print("\n💡 Config is enabled but daemon is not running.")
+                print("   To start automatic execution:")
+                print("   1. Exit this CLI")
+                print("   2. Run: python main.py --daemon")
+                print("   3. Scheduler will run automatically at scheduled times")
+                print("\n   Or use 'test morning/evening' to run manually now")
 
-        print(f"\n⚙️  Configuration:")
+        print("\n⚙️  Configuration:")
         print(f"   Morning: {self.scheduler.config.get('morning_routine_time', 'N/A')} ET")
         print(f"   Evening: {self.scheduler.config.get('evening_routine_time', 'N/A')} ET")
         print(f"   Timezone: {self.scheduler.config.get('market_timezone', 'N/A')}")
@@ -210,11 +211,12 @@ class SchedulerCLI:
         # Try psutil first (if available)
         try:
             import psutil
+
             # Check for process running main.py --daemon
-            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            for proc in psutil.process_iter(["pid", "name", "cmdline"]):
                 try:
-                    cmdline = proc.info.get('cmdline', [])
-                    if cmdline and 'main.py' in ' '.join(cmdline) and '--daemon' in cmdline:
+                    cmdline = proc.info.get("cmdline", [])
+                    if cmdline and "main.py" in " ".join(cmdline) and "--daemon" in cmdline:
                         return True
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
@@ -223,7 +225,7 @@ class SchedulerCLI:
             pass
 
         # Fallback: Check PID file
-        pid_file = Path('state/scheduler.pid')
+        pid_file = Path("state/scheduler.pid")
         if pid_file.exists():
             try:
                 pid = int(pid_file.read_text())
@@ -242,7 +244,7 @@ class SchedulerCLI:
 
         if os.path.exists(self.config_file):
             print(f"\nConfig file: {self.config_file}\n")
-            with open(self.config_file, 'r') as f:
+            with open(self.config_file, "r") as f:
                 content = f.read()
                 print(content)
         else:
@@ -258,32 +260,56 @@ class SchedulerCLI:
         print("-" * 70)
 
         print("\n1. enabled (boolean)")
-        print("   Current: {}".format(self.scheduler.config.get('enabled', 'N/A') if self.scheduler else 'N/A'))
+        print(
+            "   Current: {}".format(
+                self.scheduler.config.get("enabled", "N/A") if self.scheduler else "N/A"
+            )
+        )
         print("   Purpose: Master switch for automated trading")
         print("   Values:  true = scheduler runs automatically")
         print("            false = scheduler paused (safe mode)")
         print("   Tip:     Set to 'false' when testing or during holidays")
 
         print("\n2. morning_routine_time (HH:MM:SS)")
-        print("   Current: {}".format(self.scheduler.config.get('morning_routine_time', 'N/A') if self.scheduler else 'N/A'))
+        print(
+            "   Current: {}".format(
+                self.scheduler.config.get("morning_routine_time", "N/A")
+                if self.scheduler
+                else "N/A"
+            )
+        )
         print("   Purpose: Daily pre-market check and position setup")
         print("   Default: 09:20:00 (9:20 AM ET, 10 min before market open)")
         print("   Tip:     Run before market opens to prepare for trading day")
 
         print("\n3. evening_routine_time (HH:MM:SS)")
-        print("   Current: {}".format(self.scheduler.config.get('evening_routine_time', 'N/A') if self.scheduler else 'N/A'))
+        print(
+            "   Current: {}".format(
+                self.scheduler.config.get("evening_routine_time", "N/A")
+                if self.scheduler
+                else "N/A"
+            )
+        )
         print("   Purpose: End-of-day position review and trailing stop adjustments")
         print("   Default: 15:50:00 (3:50 PM ET, 10 min before market close)")
         print("   Tip:     Run before market closes to lock in profits")
 
         print("\n4. max_retries (integer 1-10)")
-        print("   Current: {}".format(self.scheduler.config.get('max_retries', 'N/A') if self.scheduler else 'N/A'))
+        print(
+            "   Current: {}".format(
+                self.scheduler.config.get("max_retries", "N/A") if self.scheduler else "N/A"
+            )
+        )
         print("   Purpose: Number of retry attempts if routine fails")
         print("   Default: 3")
         print("   Tip:     Higher values = more resilient to network issues")
 
         print("\n5. dry_run (boolean)")
-        print("   Current: {}".format(self.scheduler.config.get('dry_run', 'N/A') if self.scheduler else 'N/A'))
+        print(
+            "   Current: {}".format(
+                self.scheduler.config.get("dry_run", "N/A") if self.scheduler else "N/A"
+            )
+        )
         print("   Purpose: Test mode - simulates actions without placing orders")
         print("   Values:  true = simulation only (NO real orders)")
         print("            false = normal operation (places orders)")
@@ -336,14 +362,15 @@ class SchedulerCLI:
 
         # Load current config
         if os.path.exists(self.config_file):
-            with open(self.config_file, 'r') as f:
-                if self.config_file.endswith('.yaml') or self.config_file.endswith('.yml'):
+            with open(self.config_file, "r") as f:
+                if self.config_file.endswith(".yaml") or self.config_file.endswith(".yml"):
                     if yaml is None:
                         print("❌ PyYAML not installed. Install with: pip install pyyaml")
                         return
                     config = yaml.safe_load(f)
                 else:
                     import json
+
                     config = json.load(f)
         else:
             config = self._get_default_config()
@@ -360,10 +387,10 @@ class SchedulerCLI:
         while True:
             choice = input("\nEdit setting (1-5, 0 to save, q to cancel): ").strip()
 
-            if choice == 'q':
+            if choice == "q":
                 print("Cancelled")
                 return
-            elif choice == '0':
+            elif choice == "0":
                 # Save config
                 self._save_config(config)
                 print("✅ Configuration saved!")
@@ -376,36 +403,36 @@ class SchedulerCLI:
                     self.scheduler = DailyScheduler(self.config_file, trading_cycle=existing_cycle)
                     print("✅ Scheduler reloaded")
                 break
-            elif choice == '1':
+            elif choice == "1":
                 value = input("Enable scheduler? (yes/no): ").strip().lower()
-                config['enabled'] = value in ['yes', 'y', 'true']
-            elif choice == '2':
+                config["enabled"] = value in ["yes", "y", "true"]
+            elif choice == "2":
                 value = input("Morning routine time (HH:MM:SS): ").strip()
                 try:
                     dt_time.fromisoformat(value)  # Validate
-                    config['morning_routine_time'] = value
+                    config["morning_routine_time"] = value
                 except ValueError:
                     print("❌ Invalid time format. Use HH:MM:SS")
-            elif choice == '3':
+            elif choice == "3":
                 value = input("Evening routine time (HH:MM:SS): ").strip()
                 try:
                     dt_time.fromisoformat(value)  # Validate
-                    config['evening_routine_time'] = value
+                    config["evening_routine_time"] = value
                 except ValueError:
                     print("❌ Invalid time format. Use HH:MM:SS")
-            elif choice == '4':
+            elif choice == "4":
                 value = input("Max retries (1-10): ").strip()
                 try:
                     retries = int(value)
                     if 1 <= retries <= 10:
-                        config['max_retries'] = retries
+                        config["max_retries"] = retries
                     else:
                         print("❌ Value must be between 1 and 10")
                 except ValueError:
                     print("❌ Invalid number")
-            elif choice == '5':
+            elif choice == "5":
                 value = input("Enable dry run mode? (yes/no): ").strip().lower()
-                config['dry_run'] = value in ['yes', 'y', 'true']
+                config["dry_run"] = value in ["yes", "y", "true"]
             else:
                 print("Invalid choice")
 
@@ -413,13 +440,14 @@ class SchedulerCLI:
         """Save configuration to file."""
         os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
 
-        with open(self.config_file, 'w') as f:
-            if self.config_file.endswith('.yaml') or self.config_file.endswith('.yml'):
+        with open(self.config_file, "w") as f:
+            if self.config_file.endswith(".yaml") or self.config_file.endswith(".yml"):
                 if yaml is None:
                     raise ImportError("PyYAML not installed")
                 yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
             else:
                 import json
+
                 json.dump(config, f, indent=2)
 
     def _get_default_config(self) -> dict:
@@ -433,21 +461,23 @@ class SchedulerCLI:
             "retry_delay_seconds": 60,
             "timeout_seconds": 300,
             "enable_notifications": False,
-            "dry_run": False
+            "dry_run": False,
         }
 
     def _set_enabled(self, enabled: bool):
         """Enable or disable scheduler."""
         if os.path.exists(self.config_file):
-            with open(self.config_file, 'r') as f:
-                if self.config_file.endswith('.yaml') or self.config_file.endswith('.yml'):
+            with open(self.config_file, "r") as f:
+                if self.config_file.endswith(".yaml") or self.config_file.endswith(".yml"):
                     import yaml
+
                     config = yaml.safe_load(f)
                 else:
                     import json
+
                     config = json.load(f)
 
-            config['enabled'] = enabled
+            config["enabled"] = enabled
             self._save_config(config)
 
             status = "enabled" if enabled else "disabled"
@@ -455,7 +485,7 @@ class SchedulerCLI:
             print(f"\n{emoji} Scheduler {status}")
 
             if self.scheduler:
-                self.scheduler.config['enabled'] = enabled
+                self.scheduler.config["enabled"] = enabled
         else:
             print(f"❌ Config file not found: {self.config_file}")
 
@@ -481,7 +511,7 @@ class SchedulerCLI:
             preview = report[:500] + "..." if len(report) > 500 else report
             print(preview)
             print("-" * 70)
-            print(f"\nFull report saved to: reports/daily/")
+            print("\nFull report saved to: reports/daily/")
         except Exception as e:
             print(f"❌ Test failed: {e}")
             logger.error(f"Routine test error: {e}", exc_info=True)
@@ -501,12 +531,15 @@ class SchedulerCLI:
             print("No execution history found")
             return
 
-        print(f"\nShowing last 20 executions (7 days):\n")
+        print("\nShowing last 20 executions (7 days):\n")
 
         for entry in history[:20]:
             status_emoji = "✅" if entry.status == "completed" else "❌"
-            time_str = entry.actual_end_time.strftime(
-                "%Y-%m-%d %H:%M") if entry.actual_end_time else "In Progress"
+            time_str = (
+                entry.actual_end_time.strftime("%Y-%m-%d %H:%M")
+                if entry.actual_end_time
+                else "In Progress"
+            )
 
             print(f"{status_emoji} {entry.task_name:20s} {entry.status:12s} {time_str}")
             if entry.error_message:
@@ -523,18 +556,21 @@ class SchedulerCLI:
 
         try:
             from datetime import datetime
+
             import pytz
 
-            et = pytz.timezone('US/Eastern')
+            et = pytz.timezone("US/Eastern")
             now = datetime.now(et)
 
-            morning_time = dt_time.fromisoformat(self.scheduler.config['morning_routine_time'])
-            evening_time = dt_time.fromisoformat(self.scheduler.config['evening_routine_time'])
+            morning_time = dt_time.fromisoformat(self.scheduler.config["morning_routine_time"])
+            evening_time = dt_time.fromisoformat(self.scheduler.config["evening_routine_time"])
 
-            morning_today = now.replace(hour=morning_time.hour,
-                                        minute=morning_time.minute, second=0, microsecond=0)
-            evening_today = now.replace(hour=evening_time.hour,
-                                        minute=evening_time.minute, second=0, microsecond=0)
+            morning_today = now.replace(
+                hour=morning_time.hour, minute=morning_time.minute, second=0, microsecond=0
+            )
+            evening_today = now.replace(
+                hour=evening_time.hour, minute=evening_time.minute, second=0, microsecond=0
+            )
 
             if now.time() < morning_time:
                 next_run = morning_today
@@ -544,6 +580,7 @@ class SchedulerCLI:
                 next_task = "Evening Routine"
             else:
                 from datetime import timedelta
+
                 next_run = morning_today + timedelta(days=1)
                 next_task = "Morning Routine (tomorrow)"
 

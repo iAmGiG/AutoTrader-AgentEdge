@@ -11,11 +11,12 @@ Usage:
     python main.py analysis                  # Generate analysis reports
 """
 
-import sys
-import os
 import argparse
+import os
+import sys
 import traceback
 from datetime import datetime, timedelta  # TODO date_utils.py maybe?
+
 import pandas as pd
 
 # Add project root to path
@@ -23,10 +24,10 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 # Import all trading system components at startup for efficiency
 from src.autogen_agents.voter_agent import VoterAgent
-from src.trading.trading_cycle import CostEfficientTradeCycle
-from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
 from src.data_sources.tools import fetch_unified_market_data
-from src.utils.safe_print import safe_print, get_symbol, get_severity_symbol
+from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.trading_cycle import CostEfficientTradeCycle
+from src.utils.safe_print import get_severity_symbol, get_symbol, safe_print
 
 
 def test_voter_agent():
@@ -36,18 +37,20 @@ def test_voter_agent():
         # Create VoterAgent with production parameters
         print("Creating VoterAgent with validated parameters...")
         voter = VoterAgent(
-            name='production_voter',
-            macd_params={'fast': 13, 'slow': 34, 'signal': 8},  # Validated Fibonacci parameters
-            rsi_params={'period': 14, 'oversold': 30, 'overbought': 70},
-            use_config_file=True
+            name="production_voter",
+            macd_params={"fast": 13, "slow": 34, "signal": 8},  # Validated Fibonacci parameters
+            rsi_params={"period": 14, "oversold": 30, "overbought": 70},
+            use_config_file=True,
         )
 
         config = voter.get_current_configuration()
         safe_print(f"{get_symbol('SUCCESS')} VoterAgent configured:")
         print(
-            f"   MACD: ({config['macd']['fast']}/{config['macd']['slow']}/{config['macd']['signal']})")
+            f"   MACD: ({config['macd']['fast']}/{config['macd']['slow']}/{config['macd']['signal']})"
+        )
         print(
-            f"   RSI: {config['rsi']['period']} period, {config['rsi']['oversold']}/{config['rsi']['overbought']} levels")
+            f"   RSI: {config['rsi']['period']} period, {config['rsi']['oversold']}/{config['rsi']['overbought']} levels"
+        )
 
         # Test with AAPL data
         print("\nFetching AAPL market data...")
@@ -57,23 +60,23 @@ def test_voter_agent():
 
         if market_data is not None and not market_data.empty and len(market_data) >= 42:
             df = market_data
-            if 'Close' not in df.columns and 'close' in df.columns:
-                df['Close'] = df['close']
+            if "Close" not in df.columns and "close" in df.columns:
+                df["Close"] = df["close"]
 
             safe_print(f"{get_symbol('SUCCESS')} Loaded {len(df)} data points")
             print(f"   Price range: ${df['Close'].min():.2f} - ${df['Close'].max():.2f}")
 
             # Get trading decision
-            result = voter.evaluate_voting('AAPL', df, return_components=True)
+            result = voter.evaluate_voting("AAPL", df, return_components=True)
 
             safe_print(f"\n{get_symbol('INFO')} Trading Decision:")
             print(f"   Action: {result['action']} (Confidence: {result['confidence']:.1%})")
             print(f"   Reasoning: {result['reasoning']}")
             print(f"   Current Price: ${result.get('current_price', 0):.2f}")
 
-            if 'components' in result:
-                macd = result['components']['macd']
-                rsi = result['components']['rsi']
+            if "components" in result:
+                macd = result["components"]["macd"]
+                rsi = result["components"]["rsi"]
                 safe_print(f"\n{get_symbol('GEAR')} Component Analysis:")
                 print(f"   MACD: {macd['action']} (Histogram: {macd['histogram']:.6f})")
                 print(f"   RSI: {rsi['action']} (Value: {rsi['value']:.1f})")
@@ -109,26 +112,28 @@ def check_paper_positions():
             print(f"\n[POSITIONS] Current Positions ({len(positions)}):")
             total_value = 0
             for pos in positions:
-                pnl = pos['unrealized_pl']
-                pnl_pct = pos['unrealized_plpc'] * 100
-                market_value = pos['market_value']
+                pnl = pos["unrealized_pl"]
+                pnl_pct = pos["unrealized_plpc"] * 100
+                market_value = pos["market_value"]
                 total_value += market_value
 
                 print(f"   {pos['symbol']}: {pos['qty']} shares @ ${pos['avg_entry_price']:.2f}")
                 print(
-                    f"     Market Value: ${market_value:,.2f} | P&L: ${pnl:+.2f} ({pnl_pct:+.1f}%)")
+                    f"     Market Value: ${market_value:,.2f} | P&L: ${pnl:+.2f} ({pnl_pct:+.1f}%)"
+                )
 
             print(f"\n[TOTAL] Total Position Value: ${total_value:,.2f}")
         else:
             print("\n[POSITIONS] No current positions")
 
         # Get recent orders
-        recent_orders = monitor.get_orders(status='all', limit=5)
+        recent_orders = monitor.get_orders(status="all", limit=5)
         if recent_orders:
             print(f"\n[ORDERS] Recent Orders ({len(recent_orders)}):")
             for order in recent_orders:
                 print(
-                    f"   {order['symbol']}: {order['side']} {order['qty']} @ {order['order_type']}")
+                    f"   {order['symbol']}: {order['side']} {order['qty']} @ {order['order_type']}"
+                )
                 print(f"     Status: {order['status']}")
         else:
             print("\n[ORDERS] No recent orders")
@@ -136,7 +141,9 @@ def check_paper_positions():
         return True
     except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
         safe_print(f"{get_symbol('ERROR')} Error checking positions: {e}")
-        safe_print(f"{get_symbol('INFO')} Make sure Alpaca API keys are configured in config/config.json")
+        safe_print(
+            f"{get_symbol('INFO')} Make sure Alpaca API keys are configured in config/config.json"
+        )
         return False
 
 
@@ -155,11 +162,13 @@ def run_paper_trading_check(symbol: str = None):
         print("\n1️⃣ Fetching Remote Broker State...")
         broker_state = cycle.fetch_broker_state()
 
-        account = broker_state['account']
+        account = broker_state["account"]
         print(f"   [VALUE] Portfolio Value: ${account['portfolio_value']:,.2f}")
         print(f"   [CASH] Available Cash: ${account['cash']:,.2f}")
         print(f"   [POSITIONS] Active Positions: {len(broker_state['positions'])}")
-        print(f"   [ORDERS] Open Orders: {sum(len(orders) for orders in broker_state['orders'].values())}")
+        print(
+            f"   [ORDERS] Open Orders: {sum(len(orders) for orders in broker_state['orders'].values())}"
+        )
 
         # Step 2: Reconcile and update local state
         print("\n2️⃣ Reconciling Local vs Remote State...")
@@ -188,43 +197,48 @@ def run_paper_trading_check(symbol: str = None):
         print("\n3️⃣ Reviewing Positions and Executing Updates...")
         actions_taken = []
 
-        if broker_state['positions']:
+        if broker_state["positions"]:
             stop_adjustments = cycle.calculate_stop_adjustments(broker_state)
             losing_positions = []
 
             # Execute stop adjustments for profitable positions
             if stop_adjustments:
-                safe_print(f"   {get_symbol('CYCLE')} Executing {len(stop_adjustments)} stop adjustments...")
+                safe_print(
+                    f"   {get_symbol('CYCLE')} Executing {len(stop_adjustments)} stop adjustments..."
+                )
                 for adj in stop_adjustments:
                     try:
                         # Update stop order
                         # pylint: disable=no-member  # AlpacaOrderManager has this method
                         success = order_manager.modify_stop_order(
-                            order_id=adj.order_id,
-                            new_stop_price=adj.new_stop,
-                            symbol=adj.symbol
+                            order_id=adj.order_id, new_stop_price=adj.new_stop, symbol=adj.symbol
                         )
 
                         if success:
                             safe_print(
-                                f"     {get_symbol('SUCCESS')} {adj.symbol}: Stop updated ${adj.current_stop:.2f} → ${adj.new_stop:.2f}")
+                                f"     {get_symbol('SUCCESS')} {adj.symbol}: Stop updated ${adj.current_stop:.2f} → ${adj.new_stop:.2f}"
+                            )
                             print(f"        [NOTE] {adj.reason}")
                             actions_taken.append(f"Updated stop for {adj.symbol}")
                         else:
-                            safe_print(f"     {get_symbol('ERROR')} Failed to update stop for {adj.symbol}")
+                            safe_print(
+                                f"     {get_symbol('ERROR')} Failed to update stop for {adj.symbol}"
+                            )
 
                     except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
-                        safe_print(f"     {get_symbol('ERROR')} Error updating stop for {adj.symbol}: {e}")
+                        safe_print(
+                            f"     {get_symbol('ERROR')} Error updating stop for {adj.symbol}: {e}"
+                        )
 
             # Review each position
-            for pos_symbol, position in broker_state['positions'].items():
+            for pos_symbol, position in broker_state["positions"].items():
                 safe_print(f"\n   {get_symbol('CHART')} {pos_symbol}:")
                 print(f"      Quantity: {position['quantity']} shares")
                 print(f"      Entry: ${position['entry_price']:.2f}")
                 print(f"      Current: ${position['current_price']:.2f}")
 
-                profit = position['current_price'] - position['entry_price']
-                profit_pct = (profit / position['entry_price']) * 100
+                profit = position["current_price"] - position["entry_price"]
+                profit_pct = (profit / position["entry_price"]) * 100
                 print(f"      P&L: ${profit:+.2f} ({profit_pct:+.1f}%)")
 
                 # Track losing positions for re-evaluation
@@ -236,10 +250,10 @@ def run_paper_trading_check(symbol: str = None):
                 print(f"\n4️⃣ Re-evaluating {len(losing_positions)} Losing Positions...")
 
                 voter = VoterAgent(
-                    name='position_reviewer',
-                    macd_params={'fast': 13, 'slow': 34, 'signal': 8},
-                    rsi_params={'period': 14, 'oversold': 30, 'overbought': 70},
-                    use_config_file=True
+                    name="position_reviewer",
+                    macd_params={"fast": 13, "slow": 34, "signal": 8},
+                    rsi_params={"period": 14, "oversold": 30, "overbought": 70},
+                    use_config_file=True,
                 )
 
                 for pos_symbol, position, loss_pct in losing_positions:
@@ -250,47 +264,68 @@ def run_paper_trading_check(symbol: str = None):
                         end_date = datetime.now().strftime("%Y-%m-%d")
                         start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
                         market_data = fetch_unified_market_data(
-                            pos_symbol, start_date=start_date, end_date=end_date)
+                            pos_symbol, start_date=start_date, end_date=end_date
+                        )
                         if market_data is not None and len(market_data) >= 42:
                             df = pd.DataFrame(market_data)
-                            if 'Close' not in df.columns:
-                                df['Close'] = df.get('close', df.get('c', 0))
+                            if "Close" not in df.columns:
+                                df["Close"] = df.get("close", df.get("c", 0))
 
                             # Get VoterAgent decision
                             decision = voter.evaluate_voting(pos_symbol, df)
 
-                            safe_print(f"       {get_symbol('ROBOT')} VoterAgent Decision: {decision['action']}")
+                            safe_print(
+                                f"       {get_symbol('ROBOT')} VoterAgent Decision: {decision['action']}"
+                            )
                             print(f"       [REASON] Reasoning: {decision['reasoning']}")
-                            safe_print(f"       {get_symbol('TARGET')} Confidence: {decision['confidence']:.1%}")
+                            safe_print(
+                                f"       {get_symbol('TARGET')} Confidence: {decision['confidence']:.1%}"
+                            )
 
                             # Execute action based on VoterAgent decision
-                            if decision['action'] == 'SELL' and decision['confidence'] > 0.6:
-                                safe_print(f"       {get_symbol('EXECUTE')} EXECUTING: Exit position in {pos_symbol}")
+                            if decision["action"] == "SELL" and decision["confidence"] > 0.6:
+                                safe_print(
+                                    f"       {get_symbol('EXECUTE')} EXECUTING: Exit position in {pos_symbol}"
+                                )
 
                                 try:
                                     # Close the position
                                     result = order_manager.close_position(pos_symbol)
                                     if result:
-                                        safe_print(f"       {get_symbol('SUCCESS')} Position closed successfully")
+                                        safe_print(
+                                            f"       {get_symbol('SUCCESS')} Position closed successfully"
+                                        )
                                         actions_taken.append(
-                                            f"Closed losing position in {pos_symbol}")
+                                            f"Closed losing position in {pos_symbol}"
+                                        )
                                     else:
-                                        safe_print(f"       {get_symbol('ERROR')} Failed to close position")
+                                        safe_print(
+                                            f"       {get_symbol('ERROR')} Failed to close position"
+                                        )
 
                                 except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
-                                    safe_print(f"       {get_symbol('ERROR')} Error closing position: {e}")
+                                    safe_print(
+                                        f"       {get_symbol('ERROR')} Error closing position: {e}"
+                                    )
 
-                            elif decision['action'] == 'HOLD' or decision['confidence'] < 0.6:
+                            elif decision["action"] == "HOLD" or decision["confidence"] < 0.6:
                                 safe_print(
-                                    f"       {get_symbol('HOLD')} HOLDING: Keeping position, insufficient confidence or hold signal")
+                                    f"       {get_symbol('HOLD')} HOLDING: Keeping position, insufficient confidence or hold signal"
+                                )
                             else:
-                                safe_print(f"       {get_symbol('WAIT')} HOLDING: VoterAgent suggests staying in position")
+                                safe_print(
+                                    f"       {get_symbol('WAIT')} HOLDING: VoterAgent suggests staying in position"
+                                )
 
                         else:
-                            safe_print(f"       {get_symbol('ERROR')} Insufficient data for re-evaluation")
+                            safe_print(
+                                f"       {get_symbol('ERROR')} Insufficient data for re-evaluation"
+                            )
 
                     except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
-                        safe_print(f"       {get_symbol('ERROR')} Error re-evaluating {pos_symbol}: {e}")
+                        safe_print(
+                            f"       {get_symbol('ERROR')} Error re-evaluating {pos_symbol}: {e}"
+                        )
 
         else:
             safe_print(f"   {get_symbol('MAILBOX')} No active positions to review")
@@ -304,9 +339,11 @@ def run_paper_trading_check(symbol: str = None):
         safe_print(f"\n{get_symbol('INFO')} Trading Cycle Summary:")
         safe_print(f"   {get_symbol('CHART')} Active Positions: {len(broker_state['positions'])}")
         safe_print(
-            f"   {get_symbol('CYCLE')} Stop Adjustments: {len(stop_adjustments) if 'stop_adjustments' in locals() else 0}")
+            f"   {get_symbol('CYCLE')} Stop Adjustments: {len(stop_adjustments) if 'stop_adjustments' in locals() else 0}"
+        )
         print(
-            f"   [REVIEW] Losing Positions Reviewed: {len(losing_positions) if 'losing_positions' in locals() else 0}")
+            f"   [REVIEW] Losing Positions Reviewed: {len(losing_positions) if 'losing_positions' in locals() else 0}"
+        )
         safe_print(f"   {get_symbol('WARNING')} State Discrepancies Fixed: {len(discrepancies)}")
         safe_print(f"   {get_symbol('SUCCESS')} Actions Executed: {len(actions_taken)}")
 
@@ -319,14 +356,16 @@ def run_paper_trading_check(symbol: str = None):
 
         if symbol:
             # If specific symbol requested, provide focused analysis
-            if symbol in broker_state['positions']:
+            if symbol in broker_state["positions"]:
                 safe_print(f"\n{get_symbol('TARGET')} Focused Analysis: {symbol}")
-                pos = broker_state['positions'][symbol]
-                profit_pct = ((pos['current_price'] - pos['entry_price']) /
-                              pos['entry_price']) * 100
+                pos = broker_state["positions"][symbol]
+                profit_pct = (
+                    (pos["current_price"] - pos["entry_price"]) / pos["entry_price"]
+                ) * 100
                 print(f"   Current P&L: {profit_pct:+.1f}%")
                 print(
-                    f"   Status: {'Needs attention' if abs(profit_pct) > 5 else 'Performing normally'}")
+                    f"   Status: {'Needs attention' if abs(profit_pct) > 5 else 'Performing normally'}"
+                )
             else:
                 safe_print(f"\n{get_symbol('TARGET')} No position found for {symbol}")
 
@@ -345,9 +384,10 @@ def generate_analysis():
     try:
         # Try to run analysis script
         from scripts.analysis.generate_results_summary import main as generate_summary
+
         # Save original sys.argv and temporarily set it for argparse
         original_argv = sys.argv
-        sys.argv = ['generate_results_summary.py', '--advanced']
+        sys.argv = ["generate_results_summary.py", "--advanced"]
         try:
             generate_summary()
         finally:
@@ -362,7 +402,8 @@ def generate_analysis():
 def trade_assist():
     """Interactive CLI trading assistant."""
     import asyncio
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
     try:
         from cli import CLISession
@@ -378,10 +419,10 @@ def trade_assist():
         # Create orchestrator with real components
         factory = OrchestratorFactory()
         orchestrator = factory.create(
-            order_manager=None,      # Auto-create from factory
-            use_real_voter=True,     # Use production VoterAgent
-            use_real_alpaca=True,    # Use real Alpaca OrderManager
-            alpaca_mode="paper"      # Paper trading mode
+            order_manager=None,  # Auto-create from factory
+            use_real_voter=True,  # Use production VoterAgent
+            use_real_alpaca=True,  # Use real Alpaca OrderManager
+            alpaca_mode="paper",  # Paper trading mode
         )
 
         # Create CLI session
@@ -422,14 +463,16 @@ Interactive CLI Usage:
   > show portfolio             # Account status
   > /help                      # Show all commands
   > /exit                      # Exit
-        """
+        """,
     )
 
-    parser.add_argument('--daemon', action='store_true',
-                        help='Run daily scheduler in background (daemon mode)')
+    parser.add_argument(
+        "--daemon", action="store_true", help="Run daily scheduler in background (daemon mode)"
+    )
 
-    parser.add_argument('--legacy', nargs='+', metavar='COMMAND',
-                        help='Run legacy one-shot command (deprecated)')
+    parser.add_argument(
+        "--legacy", nargs="+", metavar="COMMAND", help="Run legacy one-shot command (deprecated)"
+    )
 
     # If no arguments, launch interactive CLI
     if len(sys.argv) == 1:
@@ -455,8 +498,10 @@ Interactive CLI Usage:
         print()
         try:
             from src.trading.daily_scheduler import DailyScheduler
+
             scheduler = DailyScheduler()
             import asyncio
+
             asyncio.run(scheduler.run_daemon(check_interval_seconds=60))
             sys.exit(0)
         except KeyboardInterrupt:
@@ -469,29 +514,31 @@ Interactive CLI Usage:
     # Legacy mode - one-shot commands (deprecated)
     if args.legacy:
         command = args.legacy[0]
-        symbol = args.legacy[1] if len(args.legacy) > 1 else 'AAPL'
+        symbol = args.legacy[1] if len(args.legacy) > 1 else "AAPL"
 
-        safe_print(f"{get_symbol('WARNING')} DEPRECATED: Legacy commands will be removed in future version")
+        safe_print(
+            f"{get_symbol('WARNING')} DEPRECATED: Legacy commands will be removed in future version"
+        )
         print("   Please use interactive CLI instead (python main.py)")
         print()
         print("AutoGen-TradingSystem")
         print("=" * 30)
         print(f"Command: {command}")
-        if command == 'paper-trade':
+        if command == "paper-trade":
             print(f"Symbol: {symbol}")
         print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 30)
 
         try:
-            if command == 'test-voter':
+            if command == "test-voter":
                 success = test_voter_agent()
-            elif command == 'check-positions':
+            elif command == "check-positions":
                 success = check_paper_positions()
-            elif command == 'paper-trade':
+            elif command == "paper-trade":
                 success = run_paper_trading_check(symbol)
-            elif command == 'analysis':
+            elif command == "analysis":
                 success = generate_analysis()
-            elif command == 'trade-assist':
+            elif command == "trade-assist":
                 success = trade_assist()
             else:
                 safe_print(f"{get_symbol('ERROR')} Unknown command: {command}")

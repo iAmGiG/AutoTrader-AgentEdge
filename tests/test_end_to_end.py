@@ -5,17 +5,17 @@ Tests the complete flow from CLI → Orchestrator → Components → Result.
 """
 
 import asyncio
-import sys
 import os
+import sys
 from unittest.mock import AsyncMock, MagicMock
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from cli import CLISession
 from core.factory import OrchestratorFactory
-from core.trading_orchestrator import TradingOrchestrator
 from core.models import *
+from core.trading_orchestrator import TradingOrchestrator
 
 
 async def test_orchestrator_creation():
@@ -46,10 +46,7 @@ async def test_complete_workflow():
 
     # Configure mock parser
     mock_parser.parse.return_value = TradeRequest(
-        ticker="SPY",
-        action="review",
-        price=600.0,
-        raw_input="is SPY at 600 a good entry?"
+        ticker="SPY", action="review", price=600.0, raw_input="is SPY at 600 a good entry?"
     )
     mock_parser.validate.return_value = True
 
@@ -62,7 +59,7 @@ async def test_complete_workflow():
         take_profit=621.0,
         reasoning=["MACD: BUY (bullish crossover)", "RSI: NEUTRAL (value: 52)"],
         indicators={"macd_histogram": 1.5, "rsi": 52},
-        analyzer_name="VoterStrategy"
+        analyzer_name="VoterStrategy",
     )
     mock_analyzer.supported_asset_types = [AssetType.STOCK]
     mock_analyzer.name = "VoterStrategy (Mock)"
@@ -74,7 +71,7 @@ async def test_complete_workflow():
         portfolio_pct=4.8,
         max_loss_usd=96.0,
         risk_reward_ratio=2.2,
-        warnings=[]
+        warnings=[],
     )
 
     # Create orchestrator with mocks
@@ -82,7 +79,7 @@ async def test_complete_workflow():
         input_parser=mock_parser,
         strategy_analyzer=mock_analyzer,
         risk_manager=mock_risk,
-        execution_manager=mock_executor
+        execution_manager=mock_executor,
     )
 
     # Process a trade request
@@ -99,7 +96,7 @@ async def test_complete_workflow():
     assert decision.suggestion.recommended_quantity == 8, "Quantity should be 8"
     assert len(decision.suggestion.reasoning) > 0, "Reasoning should be provided"
 
-    print(f"   ✅ Workflow complete")
+    print("   ✅ Workflow complete")
     print(f"      Ticker: {decision.suggestion.ticker}")
     print(f"      Signal: {decision.suggestion.signal.value}")
     print(f"      Entry: ${decision.suggestion.entry_price:.2f}")
@@ -120,11 +117,7 @@ async def test_execution_stub():
 
     # Configure mocks for AAPL buy
     mock_parser.parse.return_value = TradeRequest(
-        ticker="AAPL",
-        action="buy",
-        quantity=10,
-        price=200.0,
-        raw_input="buy 10 AAPL at 200"
+        ticker="AAPL", action="buy", quantity=10, price=200.0, raw_input="buy 10 AAPL at 200"
     )
     mock_parser.validate.return_value = True
 
@@ -136,7 +129,7 @@ async def test_execution_stub():
         take_profit=207.0,
         reasoning=["User requested buy"],
         indicators={},
-        analyzer_name="VoterStrategy"
+        analyzer_name="VoterStrategy",
     )
     mock_analyzer.supported_asset_types = [AssetType.STOCK]
     mock_analyzer.name = "VoterStrategy (Mock)"
@@ -147,7 +140,7 @@ async def test_execution_stub():
         portfolio_pct=2.0,
         max_loss_usd=40.0,
         risk_reward_ratio=1.75,
-        warnings=[]
+        warnings=[],
     )
 
     mock_executor.execute_trade.return_value = OrderResult(
@@ -157,7 +150,7 @@ async def test_execution_stub():
         target_order_id="STUB_TARGET_789",
         ticker="AAPL",
         quantity=10,
-        message="Order placed successfully (STUB MODE)"
+        message="Order placed successfully (STUB MODE)",
     )
 
     # Create orchestrator with mocks
@@ -165,7 +158,7 @@ async def test_execution_stub():
         input_parser=mock_parser,
         strategy_analyzer=mock_analyzer,
         risk_manager=mock_risk,
-        execution_manager=mock_executor
+        execution_manager=mock_executor,
     )
 
     # Process and approve
@@ -182,7 +175,7 @@ async def test_execution_stub():
     assert result.entry_order_id.startswith("STUB_"), "Should have stub order ID"
     assert result.ticker == "AAPL", f"Expected AAPL, got {result.ticker}"
 
-    print(f"   ✅ Execution successful (stub mode)")
+    print("   ✅ Execution successful (stub mode)")
     print(f"      Order ID: {result.entry_order_id}")
     print(f"      Message: {result.message}")
 
@@ -223,18 +216,20 @@ async def run_all_tests():
     except AssertionError as e:
         print(f"\n❌ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
     except Exception as e:
         print(f"\n💥 ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 if __name__ == "__main__":
     # Set environment variable for OpenAI (stub will be used anyway)
-    os.environ.setdefault('OPENAI_API_KEY', 'test-key')
+    os.environ.setdefault("OPENAI_API_KEY", "test-key")
 
     success = asyncio.run(run_all_tests())
     sys.exit(0 if success else 1)

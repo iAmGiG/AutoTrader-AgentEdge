@@ -5,8 +5,8 @@ This module provides AutoGen-compatible tool wrappers for the Alpaca trading sys
 enabling agents to access account information and place orders with unified live/paper support.
 """
 
-from typing import Dict, List, Any, Optional
 import logging
+from typing import Any, Dict, List, Optional
 
 from .alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
 
@@ -117,11 +117,7 @@ class AlpacaOrderTool:
         )
 
     def place_market_order(
-        self,
-        symbol: str,
-        qty: int,
-        side: str,
-        time_in_force: str = "day"
+        self, symbol: str, qty: int, side: str, time_in_force: str = "day"
     ) -> Dict[str, Any]:
         """
         Place market order.
@@ -142,15 +138,11 @@ class AlpacaOrderTool:
             return {
                 "status": "error",
                 "message": str(e),
-                "order_details": {"symbol": symbol, "qty": qty, "side": side}
+                "order_details": {"symbol": symbol, "qty": qty, "side": side},
             }
 
     def place_limit_order_gtc(
-        self,
-        symbol: str,
-        qty: int,
-        side: str,
-        limit_price: float
+        self, symbol: str, qty: int, side: str, limit_price: float
     ) -> Dict[str, Any]:
         """
         Place GTC limit order.
@@ -175,8 +167,8 @@ class AlpacaOrderTool:
                     "symbol": symbol,
                     "qty": qty,
                     "side": side,
-                    "limit_price": limit_price
-                }
+                    "limit_price": limit_price,
+                },
             }
 
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
@@ -196,10 +188,7 @@ class AlpacaOrderTool:
             return {"status": "error", "message": str(e), "order_id": order_id}
 
     def close_position(
-        self,
-        symbol: str,
-        qty: Optional[int] = None,
-        percentage: Optional[float] = None
+        self, symbol: str, qty: Optional[int] = None, percentage: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Close position in a symbol.
@@ -219,12 +208,7 @@ class AlpacaOrderTool:
             return {"status": "error", "message": str(e), "symbol": symbol}
 
     def place_stop_order(
-        self,
-        symbol: str,
-        qty: int,
-        side: str,
-        stop_price: float,
-        time_in_force: str = "day"
+        self, symbol: str, qty: int, side: str, stop_price: float, time_in_force: str = "day"
     ) -> Dict[str, Any]:
         """
         Place stop order.
@@ -246,7 +230,12 @@ class AlpacaOrderTool:
             return {
                 "status": "error",
                 "message": str(e),
-                "order_details": {"symbol": symbol, "qty": qty, "side": side, "stop_price": stop_price}
+                "order_details": {
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
+                    "stop_price": stop_price,
+                },
             }
 
     def place_trailing_stop_order(
@@ -256,7 +245,7 @@ class AlpacaOrderTool:
         side: str,
         trail_percent: Optional[float] = None,
         trail_price: Optional[float] = None,
-        time_in_force: str = "day"
+        time_in_force: str = "day",
     ) -> Dict[str, Any]:
         """
         Place trailing stop order.
@@ -282,9 +271,12 @@ class AlpacaOrderTool:
                 "status": "error",
                 "message": str(e),
                 "order_details": {
-                    "symbol": symbol, "qty": qty, "side": side,
-                    "trail_percent": trail_percent, "trail_price": trail_price
-                }
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
+                    "trail_percent": trail_percent,
+                    "trail_price": trail_price,
+                },
             }
 
     def place_bracket_order(
@@ -295,7 +287,7 @@ class AlpacaOrderTool:
         entry_limit_price: Optional[float] = None,
         take_profit_price: Optional[float] = None,
         stop_loss_price: Optional[float] = None,
-        time_in_force: str = "day"
+        time_in_force: str = "day",
     ) -> Dict[str, Any]:
         """
         Place bracket order (entry + take profit + stop loss).
@@ -314,8 +306,13 @@ class AlpacaOrderTool:
         """
         try:
             return self.manager.place_bracket_order(
-                symbol, qty, side, entry_limit_price,
-                take_profit_price, stop_loss_price, time_in_force
+                symbol,
+                qty,
+                side,
+                entry_limit_price,
+                take_profit_price,
+                stop_loss_price,
+                time_in_force,
             )
         except Exception as e:
             logger.error(f"Failed to place bracket order: {e}")
@@ -323,11 +320,13 @@ class AlpacaOrderTool:
                 "status": "error",
                 "message": str(e),
                 "order_details": {
-                    "symbol": symbol, "qty": qty, "side": side,
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
                     "entry_limit_price": entry_limit_price,
                     "take_profit_price": take_profit_price,
-                    "stop_loss_price": stop_loss_price
-                }
+                    "stop_loss_price": stop_loss_price,
+                },
             }
 
     # Inherit all read-only methods from account tool
@@ -417,8 +416,13 @@ class AlpacaUnifiedTool:
         return self.order_manager.place_stop_order(symbol, qty, side, stop_price, time_in_force)
 
     def place_trailing_stop_order(
-        self, symbol: str, qty: int, side: str, trail_percent: Optional[float] = None,
-        trail_price: Optional[float] = None, time_in_force: str = "day"
+        self,
+        symbol: str,
+        qty: int,
+        side: str,
+        trail_percent: Optional[float] = None,
+        trail_price: Optional[float] = None,
+        time_in_force: str = "day",
     ) -> Dict[str, Any]:
         """Place trailing stop order with validation."""
         return self.order_manager.place_trailing_stop_order(
@@ -426,9 +430,14 @@ class AlpacaUnifiedTool:
         )
 
     def place_bracket_order(
-        self, symbol: str, qty: int, side: str, entry_limit_price: Optional[float] = None,
-        take_profit_price: Optional[float] = None, stop_loss_price: Optional[float] = None,
-        time_in_force: str = "day"
+        self,
+        symbol: str,
+        qty: int,
+        side: str,
+        entry_limit_price: Optional[float] = None,
+        take_profit_price: Optional[float] = None,
+        stop_loss_price: Optional[float] = None,
+        time_in_force: str = "day",
     ) -> Dict[str, Any]:
         """Place bracket order with entry, take profit, and stop loss."""
         return self.order_manager.place_bracket_order(
@@ -460,23 +469,13 @@ class AlpacaUnifiedTool:
             return {
                 "status": "valid",
                 "message": "Order passes all validation checks",
-                "order_details": {
-                    "symbol": symbol,
-                    "qty": qty,
-                    "side": side,
-                    "price": price
-                }
+                "order_details": {"symbol": symbol, "qty": qty, "side": side, "price": price},
             }
         except Exception as e:
             return {
                 "status": "invalid",
                 "message": str(e),
-                "order_details": {
-                    "symbol": symbol,
-                    "qty": qty,
-                    "side": side,
-                    "price": price
-                }
+                "order_details": {"symbol": symbol, "qty": qty, "side": side, "price": price},
             }
 
     def check_market_hours(self, extended_hours: bool = False) -> Dict[str, Any]:
@@ -507,8 +506,7 @@ def create_alpaca_account_tool(mode: str = "paper") -> AlpacaAccountTool:
 
 
 def create_alpaca_order_tool(
-    mode: str = "paper",
-    risk_limits: Optional[Dict] = None
+    mode: str = "paper", risk_limits: Optional[Dict] = None
 ) -> AlpacaOrderTool:
     """
     Create order management tool for AutoGen agents.
@@ -524,8 +522,7 @@ def create_alpaca_order_tool(
 
 
 def create_alpaca_unified_tool(
-    mode: str = "paper",
-    risk_limits: Optional[Dict] = None
+    mode: str = "paper", risk_limits: Optional[Dict] = None
 ) -> AlpacaUnifiedTool:
     """
     Create unified trading tool for AutoGen agents.

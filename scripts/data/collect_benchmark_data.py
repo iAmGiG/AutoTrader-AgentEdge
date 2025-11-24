@@ -4,21 +4,20 @@ Collect benchmark and volatility data for comprehensive V0-V4 analysis.
 Fetches VXX, SPY, and QQQ data matching our MAG7 cache structure.
 """
 
-import sys
-import os
-import time
 import logging
+import os
+import sys
+import time
 
 # Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from src.tools.data_sources.market.alpha_vantage_market import AlphaVantageMarketTool
 from src.utils.config_loader import ConfigLoader
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ def collect_benchmark_data():
 
     # Initialize Alpha Vantage tool (it will load the API key internally)
     config = ConfigLoader()
-    av_key = os.getenv('ALPHA_VANTAGE_KEY', config.get('ALPHA_VANTAGE_KEY'))
+    av_key = os.getenv("ALPHA_VANTAGE_KEY", config.get("ALPHA_VANTAGE_KEY"))
 
     if not av_key:
         logger.error("❌ No Alpha Vantage API key found!")
@@ -42,25 +41,26 @@ def collect_benchmark_data():
 
     # Same quarterly date ranges as MAG7 cache
     quarters = [
-        ('2023-11-01', '2023-12-31'),  # Buffer for technical indicators
-        ('2024-01-01', '2024-03-31'),  # Q1 2024
-        ('2024-04-01', '2024-06-30'),  # Q2 2024
-        ('2024-07-01', '2024-09-30'),  # Q3 2024
-        ('2024-10-01', '2024-12-31'),  # Q4 2024
-        ('2025-01-01', '2025-03-31'),  # Q1 2025
-        ('2025-04-01', '2025-06-30'),  # Q2 2025
-        ('2025-07-01', '2025-08-14'),  # Q3 2025 (YTD)
+        ("2023-11-01", "2023-12-31"),  # Buffer for technical indicators
+        ("2024-01-01", "2024-03-31"),  # Q1 2024
+        ("2024-04-01", "2024-06-30"),  # Q2 2024
+        ("2024-07-01", "2024-09-30"),  # Q3 2024
+        ("2024-10-01", "2024-12-31"),  # Q4 2024
+        ("2025-01-01", "2025-03-31"),  # Q1 2025
+        ("2025-04-01", "2025-06-30"),  # Q2 2025
+        ("2025-07-01", "2025-08-14"),  # Q3 2025 (YTD)
     ]
 
     # Symbols to collect: VXX (volatility), SPY (S&P 500), QQQ (NASDAQ-100)
     symbols = [
-        ('VXX', 'VXX Volatility ETF (for V2 Market Fear sentiment)'),
-        ('SPY', 'S&P 500 ETF (market benchmark)'),
-        ('QQQ', 'NASDAQ-100 ETF (tech benchmark for MAG7 comparison)')
+        ("VXX", "VXX Volatility ETF (for V2 Market Fear sentiment)"),
+        ("SPY", "S&P 500 ETF (market benchmark)"),
+        ("QQQ", "NASDAQ-100 ETF (tech benchmark for MAG7 comparison)"),
     ]
 
     logger.info(
-        f"📅 Collecting data for {len(symbols)} symbols × {len(quarters)} quarters = {len(symbols) * len(quarters)} total calls")
+        f"📅 Collecting data for {len(symbols)} symbols × {len(quarters)} quarters = {len(symbols) * len(quarters)} total calls"
+    )
 
     total_calls = len(symbols) * len(quarters)
     successful = 0
@@ -74,17 +74,21 @@ def collect_benchmark_data():
         for i, (start_date, end_date) in enumerate(quarters, 1):
             call_count += 1
             logger.info(
-                f"📊 [{call_count}/{total_calls}] Fetching {symbol}: {start_date} to {end_date}")
+                f"📊 [{call_count}/{total_calls}] Fetching {symbol}: {start_date} to {end_date}"
+            )
 
             try:
                 result = av_tool.fetch_stock_data(symbol, start_date, end_date)
 
                 if result is not None and not result.empty:
                     logger.info(
-                        f"✅ Success: {symbol} {start_date} to {end_date} ({len(result)} records)")
+                        f"✅ Success: {symbol} {start_date} to {end_date} ({len(result)} records)"
+                    )
                     successful += 1
                 else:
-                    logger.warning(f"📡 Empty data returned for {symbol} {start_date} to {end_date}")
+                    logger.warning(
+                        f"📡 Empty data returned for {symbol} {start_date} to {end_date}"
+                    )
                     errors += 1
 
                 # Rate limiting - Alpha Vantage: 25 calls/day, 5 calls/minute
@@ -107,7 +111,7 @@ def collect_benchmark_data():
     logger.info(f"Success rate: {successful/total_calls*100:.1f}%")
 
     if successful > 0:
-        logger.info(f"\n📊 Data collected and cached:")
+        logger.info("\n📊 Data collected and cached:")
         logger.info("  - VXX: Ready for V2 Market Fear sentiment analysis")
         logger.info("  - SPY: S&P 500 benchmark for performance comparison")
         logger.info("  - QQQ: NASDAQ-100 benchmark for MAG7 tech comparison")

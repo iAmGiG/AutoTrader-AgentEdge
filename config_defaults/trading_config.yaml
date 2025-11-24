@@ -44,6 +44,15 @@ strategy_parameters:
     size: 1.0
     description: "100% capital per trade (all-in)"
 
+risk_management:
+  max_position_pct: 0.15  # 15% max per position (warning threshold)
+  max_position_value: 5000  # Max $5K per position
+  max_portfolio_pct: 0.20  # 20% max portfolio exposure per position
+  max_positions: 10  # Maximum concurrent positions
+  risk_per_trade: 0.02  # 2% portfolio risk per trade
+  min_confidence: 0.65  # Minimum confidence for trade execution
+  risk_free_rate: 0.02  # 2% annual risk-free rate for Sharpe calculation
+
 backtest_defaults:
   initial_capital: 10000
   commission: 0.001

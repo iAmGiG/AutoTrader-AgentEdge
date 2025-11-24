@@ -20,23 +20,23 @@ import sys
 def main():
     """Read commit message from stdin, remove signatures, write to stdout."""
     message = sys.stdin.read()
-    lines = message.split('\n')
+    lines = message.split("\n")
     filtered_lines = []
 
     for line in lines:
         # Skip lines with Claude Code signature
-        if 'Generated with [Claude Code]' in line:
+        if "Generated with [Claude Code]" in line:
             continue
-        if 'Co-Authored-By: Claude' in line:
+        if "Co-Authored-By: Claude" in line:
             continue
         filtered_lines.append(line)
 
     # Remove trailing empty lines
-    while filtered_lines and filtered_lines[-1] == '':
+    while filtered_lines and filtered_lines[-1] == "":
         filtered_lines.pop()
 
-    print('\n'.join(filtered_lines))
+    print("\n".join(filtered_lines))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

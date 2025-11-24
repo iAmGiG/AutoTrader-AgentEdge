@@ -7,8 +7,8 @@ Provides decorators and context managers for safe state modifications.
 
 import functools
 import logging
-from typing import Any, Callable, Dict
 from contextlib import contextmanager
+from typing import Any, Callable, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +23,13 @@ def safe_state_modification(rollback_on_error: bool = True):
     Args:
         rollback_on_error: Whether to rollback state on error
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             # Save current state for potential rollback
-            if hasattr(self, 'state') and hasattr(self, 'save_state'):
-                original_state = self.state.copy() if hasattr(self.state, 'copy') else None
+            if hasattr(self, "state") and hasattr(self, "save_state"):
+                original_state = self.state.copy() if hasattr(self.state, "copy") else None
             else:
                 original_state = None
 
@@ -52,6 +53,7 @@ def safe_state_modification(rollback_on_error: bool = True):
                 raise
 
         return wrapper
+
     return decorator
 
 
@@ -69,6 +71,7 @@ def safe_order_placement(state_manager, symbol: str):
             if order_result['status'] == 'success':
                 context.commit_state(order_data)
     """
+
     class OrderContext:
         def __init__(self, state_mgr, sym):
             self.state_manager = state_mgr
@@ -104,13 +107,13 @@ def validate_order_response(response: Any) -> bool:
 
     if isinstance(response, dict):
         # Check for success indicators
-        status = response.get('status', '').lower()
-        if status in ['submitted', 'accepted', 'pending_new', 'new']:
+        status = response.get("status", "").lower()
+        if status in ["submitted", "accepted", "pending_new", "new"]:
             return True
 
         # Check for error indicators
-        if 'error' in response or 'message' in response:
-            error_msg = response.get('error') or response.get('message')
+        if "error" in response or "message" in response:
+            error_msg = response.get("error") or response.get("message")
             logger.error(f"Order failed: {error_msg}")
             return False
 

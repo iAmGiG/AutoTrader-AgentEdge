@@ -2,6 +2,7 @@
 
 **Period Covered:** 2025-01-11 to 2025-11-11
 **Documents Analyzed:**
+
 - [01_interactive_cli_ux_testing.md](01_interactive_cli_ux_testing.md)
 - [02_alpaca_bracket_order_investigation.md](02_alpaca_bracket_order_investigation.md)
 
@@ -18,11 +19,13 @@ Two major testing sessions revealed critical insights about system design, API l
 2. **Alpaca Bracket Order Investigation** (2025-11-11): Discovered fundamental API limitation requiring architectural workaround
 
 **Key Findings:**
+
 - **User Experience**: System felt "mechanical" by overriding user intent with strategy signals
 - **API Limitations**: Alpaca deliberately hides bracket order stop-loss legs (status="held") from all queries
 - **Configuration**: Hardcoded values violated DRY principle and made system inflexible
 
 **Outcomes:**
+
 - 3 issues resolved (#345, #348, #349)
 - 4 issues remain open (#344, #346, #347, #355)
 - 2 architectural patterns established (position context checking, config-driven percentages)
@@ -36,6 +39,7 @@ Two major testing sessions revealed critical insights about system design, API l
 **Issue:** #347 - System overrides user's explicit BUY request with SELL signal
 
 **Root Cause:**
+
 ```
 User Input: "buy qqq at a pullback"
     ↓
@@ -49,6 +53,7 @@ CLI Display: Shows SELL, ignores user intent ❌
 ```
 
 **Why This Happened:**
+
 - Orchestrator treats all requests as "analyze this ticker" not "help me execute this action"
 - No distinction between:
   - **Advisory mode**: "What should I do with QQQ?" (strategy decides)
@@ -58,6 +63,7 @@ CLI Display: Shows SELL, ignores user intent ❌
 > **User intent must be the primary directive, not a suggestion.** Strategy signals should inform and advise, but never override explicit user requests.
 
 **Fix Required:**
+
 - Add `user_intent` field to distinguish between queries and commands
 - Display format: "You requested BUY, but signals suggest SELL. Confidence: 35%. Proceed?"
 
@@ -70,6 +76,7 @@ CLI Display: Shows SELL, ignores user intent ❌
 **Issue:** #344 - System doesn't understand "pullback", "dip", "breakout" timing context
 
 **Root Cause:**
+
 ```
 Parser Schema:
 {
@@ -81,6 +88,7 @@ Parser Schema:
 ```
 
 **Why This Happened:**
+
 - Parser was designed for immediate execution ("buy now")
 - No concept of conditional/future execution ("buy when price drops")
 - `price_type` only handles market/limit, not timing conditions
@@ -89,6 +97,7 @@ Parser Schema:
 > **Natural language = nuance.** "Buy at a pullback" ≠ "buy now". System must extract timing intent, not just ticker and action.
 
 **Fix Required:**
+
 ```python
 TradeRequest:
     action: str
@@ -106,6 +115,7 @@ TradeRequest:
 **Issue:** #345 - System suggested SELL without checking if user holds position
 
 **Root Cause:**
+
 ```
 _handle_trade_request():
     1. Parse request
@@ -115,6 +125,7 @@ _handle_trade_request():
 ```
 
 **Why This Happened:**
+
 - Trade flow assumed user knows their positions
 - No defensive check for impossible operations (selling unowned stock)
 - Separation of concerns taken too far (trading vs portfolio)
@@ -123,6 +134,7 @@ _handle_trade_request():
 > **Context is king.** Always check what user already owns before suggesting actions. Defensive programming prevents user errors.
 
 **Fix Implemented:**
+
 ```python
 _handle_trade_request():
     1. Parse request
@@ -153,6 +165,7 @@ _handle_trade_request():
 > "Once the entry order is filled, the two exit orders (stop loss and take profit) are submitted. **Only one of those two orders will be active at a time**. The other will have a status of 'held'."
 
 **Why This Happened:**
+
 - Alpaca's OCO (One-Cancels-Other) implementation deliberately hides inactive leg
 - API design decision: only show "actionable" orders
 - No programmatic way to retrieve "held" orders
@@ -161,6 +174,7 @@ _handle_trade_request():
 > **Always verify vendor API capabilities early.** Check forums and community for known limitations before assuming functionality. Not all orders are retrievable.
 
 **Fix Implemented - "Carbon Copy" Strategy:**
+
 ```python
 def _extract_stop_target_from_orders():
     # PRIORITY 1: Try to find in API orders (targets only, stops hidden)
@@ -177,6 +191,7 @@ def _extract_stop_target_from_orders():
 **Issue:** Multiple files had hardcoded stop_loss=0.05, take_profit=0.08
 
 **Root Cause:**
+
 ```python
 # trading_cycle.py (before fix)
 stop_loss_pct = 0.05  # TODO: Load from config ❌
@@ -186,6 +201,7 @@ stop_loss_pct = 0.05  # TODO: Load from config ❌
 ```
 
 **Why This Happened:**
+
 - Rapid prototyping led to hardcoded values
 - "TODO: Load from config" comment ignored
 - No centralized config architecture
@@ -194,6 +210,7 @@ stop_loss_pct = 0.05  # TODO: Load from config ❌
 > **Avoid hardcoding from day one.** Even in prototypes, use config files. Technical debt compounds quickly.
 
 **Fix Implemented:**
+
 ```python
 # cli_session.py __init__
 self.trading_config = self._load_trading_config()
@@ -213,6 +230,7 @@ def _get_stop_loss_pct(self) -> float:
 **Issue:** "Alpaca client initialized in PAPER mode" printed 9 times on startup
 
 **Root Cause:**
+
 ```
 OrchestratorFactory.create()
     ↓
@@ -227,6 +245,7 @@ CLISession.__init__()
 ```
 
 **Why This Happened:**
+
 - No singleton pattern for Alpaca client
 - Each component creates its own client instance
 - Verbose logging for safety (deliberate design)
@@ -235,6 +254,7 @@ CLISession.__init__()
 > **Transparency vs noise.** Multiple initialization messages are intentional for safety (especially LIVE mode), but could benefit from singleton pattern to reduce API overhead.
 
 **Fix Considered:**
+
 - **Option 1:** Singleton pattern for AlpacaTradingClient
 - **Option 2:** Pass client instance via dependency injection
 - **Option 3:** Change log level from WARNING to INFO
@@ -246,13 +266,16 @@ CLISession.__init__()
 ## Systemic Patterns Identified
 
 ### Pattern 1: API-First Assumptions
+
 **Problem:** Assuming vendor APIs return all data without verification
 
 **Examples:**
+
 - Bracket order "held" legs assumed retrievable
 - Position `current_price` assumed in API response (wasn't, had to calculate)
 
 **Solution:**
+
 - Read API documentation thoroughly
 - Check community forums for known limitations
 - Build defensive fallbacks (calculate from known data)
@@ -260,14 +283,17 @@ CLISession.__init__()
 ---
 
 ### Pattern 2: UX Philosophy Mismatch
+
 **Problem:** Technical accuracy prioritized over user experience
 
 **Examples:**
+
 - Strategy signal overrides user intent
 - Technical jargon ("OrderClass.BRACKET") instead of plain language
 - No position context before suggestions
 
 **Solution:**
+
 - **User intent > Strategy signals** - Respect what user asks for
 - **Context is king** - Show what's relevant before acting
 - **Collaborative, not dictatorial** - Suggest, don't command
@@ -275,13 +301,16 @@ CLISession.__init__()
 ---
 
 ### Pattern 3: Configuration Debt
+
 **Problem:** Hardcoded values scattered across codebase
 
 **Examples:**
+
 - `stop_loss_pct = 0.05` in multiple files
 - No single source of truth for strategy parameters
 
 **Solution:**
+
 - Use `config_defaults/trading_config.yaml` from day one
 - Helper methods to access config (`_get_stop_loss_pct()`)
 - Document config schema
@@ -289,13 +318,16 @@ CLISession.__init__()
 ---
 
 ### Pattern 4: Missing Data Validation
+
 **Problem:** Displaying data without sanity checks
 
 **Examples:**
+
 - Entry price shows $0.00 (mathematically impossible with P/L)
 - No check if position exists before SELL suggestion
 
 **Solution:**
+
 - Defensive programming: validate before display
 - Fallback calculations (use `cost_basis / qty` if `avg_entry_price` is 0)
 - Early exit on invalid states
@@ -395,14 +427,17 @@ CLISession.__init__()
 ## Architectural Decisions (ADRs)
 
 ### ADR-001: Position Context Before SELL Suggestions
+
 **Decision:** Always check and display position context before showing SELL suggestions
 
 **Rationale:**
+
 - Prevents user errors (trying to sell unowned stock)
 - Provides context for decision-making
 - Aligns with UX principle "context is king"
 
 **Implementation:**
+
 - `_check_position_for_ticker()` - Fetch position from broker
 - `_display_position_context()` - Show position before suggestion
 - Early exit if SELL requested without position
@@ -410,14 +445,17 @@ CLISession.__init__()
 ---
 
 ### ADR-002: Config-Driven Strategy Parameters
+
 **Decision:** Load all strategy parameters from `trading_config.yaml`
 
 **Rationale:**
+
 - Single source of truth for percentages
 - Easy to change strategies without code changes
 - Supports multiple strategies (balanced, conservative, aggressive)
 
 **Implementation:**
+
 - `_load_trading_config()` - Load YAML on init
 - `_get_stop_loss_pct()` / `_get_take_profit_pct()` - Helper methods
 - Graceful fallbacks if config unavailable
@@ -425,20 +463,24 @@ CLISession.__init__()
 ---
 
 ### ADR-003: "Carbon Copy" Strategy for Bracket Orders
+
 **Decision:** Save stop/target to local state when placing orders, use as source of truth
 
 **Rationale:**
+
 - Alpaca API hides "held" bracket order legs
 - No programmatic way to retrieve stop-loss orders
 - Separate GTC orders would be major architectural change
 
 **Implementation:**
+
 - Priority 1: Extract from API orders (targets visible)
 - Priority 2: Use saved stop from local state
 - Priority 3: Calculate from entry price with config percentage
 - Warn user about API limitation
 
 **Trade-offs:**
+
 - ✅ Simple, functional for reporting
 - ✅ No architectural changes needed
 - ❌ Can't detect manual stop adjustments
@@ -447,26 +489,31 @@ CLISession.__init__()
 ---
 
 ### ADR-004: Verbose Alpaca Client Logging
+
 **Decision:** Keep multiple "Alpaca client initialized" messages as-is, but minimize unnecessary re-instantiation
 
 **Rationale:**
+
 - Transparency for LIVE vs PAPER mode
 - Safety-critical to know which mode each component uses
 - Multiple components create clients by design
 
 **Implementation:**
+
 - Each component logs its own client initialization
 - WARNING level for visibility
 - Clear differentiation: "PAPER mode" vs "LIVE TRADING MODE - Real money at risk!"
 - **Fixed (2025-11):** SchedulerCLI now reuses `trading_cycle` on config reload to avoid duplicate client creation
 
 **Trade-offs:**
+
 - ✅ High visibility for safety
 - ✅ Easy to verify all components in correct mode
 - ✅ Reduced duplicates on scheduler reload (2 fewer clients per reload)
 - ❌ Verbose console output (still 6-9 messages on initial startup)
 
 **Future Enhancement:**
+
 - Consider singleton pattern to reduce instantiations further
 - Could change to INFO level with verbose flag
 
@@ -475,15 +522,18 @@ CLISession.__init__()
 ## Recommendations for Future Testing
 
 ### 1. Interactive UX Testing
+
 **Frequency:** After each major UX feature
 
 **Test Cases:**
+
 - Natural language variations ("buy on a dip", "sell at resistance")
 - Edge cases (SELL without position, invalid tickers)
 - Strategy disagreement scenarios (user says BUY, signals say SELL)
 - Multi-step flows (check position → analyze → execute)
 
 **Success Criteria:**
+
 - System feels "collaborative, not mechanical"
 - User intent respected
 - Context displayed before suggestions
@@ -491,15 +541,18 @@ CLISession.__init__()
 ---
 
 ### 2. API Integration Testing
+
 **Frequency:** Before each deployment
 
 **Test Cases:**
+
 - Bracket order placement and retrieval
 - Position data accuracy (entry price, P/L)
 - Order status transitions (new → filled → held)
 - Rate limit handling
 
 **Success Criteria:**
+
 - All retrievable data accurate
 - Known limitations documented
 - Graceful degradation when data unavailable
@@ -507,15 +560,18 @@ CLISession.__init__()
 ---
 
 ### 3. Configuration Testing
+
 **Frequency:** When config schema changes
 
 **Test Cases:**
+
 - Missing config files (graceful fallback)
 - Invalid YAML syntax (error handling)
 - Multiple strategies (balanced, aggressive, conservative)
 - Config reload without restart
 
 **Success Criteria:**
+
 - No hardcoded values in code
 - Clear error messages for config issues
 - Defaults documented and tested
@@ -557,12 +613,14 @@ Two testing sessions revealed **fundamental insights** about system design:
 4. **Context is Critical:** Show user state before suggesting actions
 
 **Key Achievements:**
+
 - 3 issues resolved, 4 tracked for future work
 - 2 architectural patterns established (position checking, config-driven)
 - 1 major API limitation documented with workaround
 - 9 lessons learned for future development
 
 **Next Steps:**
+
 - Implement user intent priority (#347) - **High Priority**
 - Add timing context to parser (#344) - **High Priority**
 - Consider SQLite cache (#336) to unblock #346
@@ -573,5 +631,6 @@ Two testing sessions revealed **fundamental insights** about system design:
 **Document Version:** 1.0
 **Last Updated:** 2025-11-11
 **Related Documents:**
+
 - [01_interactive_cli_ux_testing.md](01_interactive_cli_ux_testing.md)
 - [02_alpaca_bracket_order_investigation.md](02_alpaca_bracket_order_investigation.md)

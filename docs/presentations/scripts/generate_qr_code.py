@@ -2,8 +2,9 @@
 Generate QR Code for GitHub Repository
 """
 
-import qrcode
 import os
+
+import qrcode
 
 # Repository URL
 REPO_URL = "https://github.com/iAmGiG/AutoTrader-AgentEdge"
@@ -27,10 +28,10 @@ def generate_qr_code():
     img = qr.make_image(fill_color="black", back_color="white")
 
     # Save to figures directory
-    output_dir = os.path.join(os.path.dirname(__file__), 'figures')
+    output_dir = os.path.join(os.path.dirname(__file__), "figures")
     os.makedirs(output_dir, exist_ok=True)
 
-    output_path = os.path.join(output_dir, 'repo_qr_code.png')
+    output_path = os.path.join(output_dir, "repo_qr_code.png")
     img.save(output_path)
 
     print("=" * 70)
@@ -38,12 +39,12 @@ def generate_qr_code():
     print("=" * 70)
     print(f"Repository: {REPO_URL}")
     print(f"Saved to: {output_path}")
-    print(f"Size: High resolution for printing")
+    print("Size: High resolution for printing")
     print()
     print("Usage: Add this to your poster so attendees can scan and access")
     print("       the repository directly from their phones!")
     print("=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     generate_qr_code()

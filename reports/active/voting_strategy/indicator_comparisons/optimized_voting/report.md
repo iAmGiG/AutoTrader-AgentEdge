@@ -22,17 +22,18 @@ Testing voting strategy (MACD + RSI) with optimized MACD parameters across tech 
 ## Aggregate Performance
 
 ### Standard MACD
+
 - Average Return: 38.9%
 - Average Sharpe: 1.262
 - Profitable Tickers: 7/7
 - Beat Buy-Hold: 0/7
 
 ### Optimized MACD
+
 - Average Return: 39.8%
 - Average Sharpe: 1.289
 - Profitable Tickers: 7/7
 - Beat Buy-Hold: 0/7
-
 
 ## Conclusion
 

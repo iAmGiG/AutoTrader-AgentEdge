@@ -7,7 +7,7 @@ in the multi-indicator ensemble trading system.
 Current Indicators:
 - MACD: Existing implementation via TechAgent
 - RSI: Relative Strength Index (Issue #277) - PENDING
-- Bollinger Bands: Volatility bands (Issue #278) - PENDING  
+- Bollinger Bands: Volatility bands (Issue #278) - PENDING
 - Volume: Volume-based confirmation (Issue #279) - PENDING
 
 Each indicator provides:
@@ -27,15 +27,11 @@ from .simple_rsi import SimpleRSI
 # from .bollinger_bands import BollingerBandsIndicator  # Issue #278
 # from .volume_indicator import VolumeIndicator  # Issue #279
 
-__all__ = [
-    'BaseIndicator',
-    'IndicatorSignal', 
-    'SimpleRSI'
-]
+__all__ = ["BaseIndicator", "IndicatorSignal", "SimpleRSI"]
 
 __version__ = "0.1.0"
 __issue_tracking__ = {
     "277": "PENDING - RSI Implementation",
-    "278": "PENDING - Bollinger Bands", 
+    "278": "PENDING - Bollinger Bands",
     "279": "PENDING - Volume Confirmation",
 }

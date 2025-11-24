@@ -5,23 +5,28 @@ Active tools: Google Search (news), Polygon.io (primary market data), Alpha Vant
 
 # Standard library imports
 import logging
-import pandas as pd
+import os
+
+# Load tool descriptions from YAML
+import sys
 
 # Third-party imports
 from autogen_core.tools import FunctionTool
 
+from .sources.market.market_context_tool import market_context_tool
+
 # Project imports - only tools actually used
 from .sources.market.unified_market_tool import fetch_unified_market_data
 from .sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
-from .sources.market.market_context_tool import market_context_tool
-from .sources.news.google_search_simple import google_search_smart_tool, set_news_governor, _news_governor
+from .sources.news.google_search_simple import (
+    _news_governor,
+    google_search_smart_tool,
+    set_news_governor,
+)
 from .sources.news.hierarchical_news_tool import fetch_hierarchical_news
 from src.data_sources.processors.news_governor import create_balanced_governor
 
-# Load tool descriptions from YAML
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
@@ -57,6 +62,7 @@ def _get_tool_description(tool_key: str, fallback: str) -> str:
     except Exception:
         return fallback
 
+
 # Note: Individual Alpha Vantage and hierarchical market data tools removed
 # All market data access now handled by unified_market_tool for consistency
 
@@ -70,8 +76,8 @@ unified_market_tool = FunctionTool(
     name="fetch_unified_market_data",
     description=_get_tool_description(
         "unified_market_data",
-        "Fetch market data using unified cache system. Routes through cache adapter for consistent data management across Polygon and Alpha Vantage sources."
-    )
+        "Fetch market data using unified cache system. Routes through cache adapter for consistent data management across Polygon and Alpha Vantage sources.",
+    ),
 )
 unified_market_tool.agent_types = [TECH_AGENT]
 
@@ -84,8 +90,8 @@ vxx_volatility_tool = FunctionTool(
     name="fetch_vxx_volatility_data",
     description=_get_tool_description(
         "vxx_volatility_data",
-        "Fetch VXX volatility data for market fear-based sentiment analysis. Returns VXX-based sentiment scores for V2 Market Fear sentiment agent."
-    )
+        "Fetch VXX volatility data for market fear-based sentiment analysis. Returns VXX-based sentiment scores for V2 Market Fear sentiment agent.",
+    ),
 )
 vxx_volatility_tool.agent_types = [SENTIMENT_AGENT]
 
@@ -98,8 +104,8 @@ hierarchical_news_tool = FunctionTool(
     name="fetch_hierarchical_news",
     description=_get_tool_description(
         "hierarchical_news",
-        "Fetch hierarchical adaptive news mix for V4 sentiment analysis. Provides balanced company-specific, sector ETF, and broad market news for intelligent sentiment reasoning."
-    )
+        "Fetch hierarchical adaptive news mix for V4 sentiment analysis. Provides balanced company-specific, sector ETF, and broad market news for intelligent sentiment reasoning.",
+    ),
 )
 hierarchical_news_tool.agent_types = [SENTIMENT_AGENT]
 
@@ -110,10 +116,10 @@ hierarchical_news_tool.agent_types = [SENTIMENT_AGENT]
 # SENTIMENT_AGENT tools - Multiple approaches for V0-V4 framework
 # V1: Google Search + smart sampling, V2: VXX volatility, V4: Hierarchical news
 _sentiment_tools_raw = [
-    google_search_smart_tool,   # V1: Google Custom Search API with smart sampling
-    vxx_volatility_tool,        # V2: VXX volatility data for market fear sentiment
-    hierarchical_news_tool,     # V4: Hierarchical adaptive news (Direct + Sector + Market)
-    market_context_tool,        # V4: SPY/QQQ market context for enhanced sentiment
+    google_search_smart_tool,  # V1: Google Custom Search API with smart sampling
+    vxx_volatility_tool,  # V2: VXX volatility data for market fear sentiment
+    hierarchical_news_tool,  # V4: Hierarchical adaptive news (Direct + Sector + Market)
+    market_context_tool,  # V4: SPY/QQQ market context for enhanced sentiment
 ]
 SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
 
@@ -133,13 +139,9 @@ _strategy_tools_raw = [
 STRATEGY_TOOLS = [tool for tool in _strategy_tools_raw if tool is not None]
 
 # All tools combined (filter out None values from conditional imports)
-ALL_TOOLS = list(set(
-    tool for tool in (
-        SENTIMENT_TOOLS +
-        TECH_TOOLS +
-        STRATEGY_TOOLS
-    ) if tool is not None
-))
+ALL_TOOLS = list(
+    set(tool for tool in (SENTIMENT_TOOLS + TECH_TOOLS + STRATEGY_TOOLS) if tool is not None)
+)
 
 # Tool dispatcher dictionary for efficient lookup by name
 ALL_TOOLS_DICT = {tool.name: tool for tool in ALL_TOOLS if tool is not None}
@@ -173,6 +175,7 @@ def get_tools_for_agent(agent_type):
 ##################################
 # NewsGovernor Integration
 ##################################
+
 
 def enable_smart_news_sampling(governor=None):
     """

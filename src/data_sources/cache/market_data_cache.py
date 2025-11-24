@@ -5,13 +5,14 @@ DEPRECATED: This file-based cache is deprecated in favor of TradingCacheManager 
 Use src.data_sources.cache.TradingCacheManager for new code.
 """
 
-import os
-import json
 import hashlib
+import json
+import os
 import warnings
-from typing import Optional
-import pandas as pd
 from datetime import datetime, timedelta  # TODO: utilze @date_utils.py
+from typing import Optional
+
+import pandas as pd
 
 
 class MarketDataCache:
@@ -36,7 +37,7 @@ class MarketDataCache:
             "MarketDataCache (MD5-hashed file cache) is deprecated. "
             "Use TradingCacheManager (SQLite) for better performance.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
         self.cache_dir = cache_dir
@@ -60,25 +61,25 @@ class MarketDataCache:
             return None
 
         try:
-            with open(cache_path, 'r') as f:
+            with open(cache_path, "r") as f:
                 cache_data = json.load(f)
 
             # Check if cache is expired (24 hours)
-            cached_time = datetime.fromisoformat(cache_data['timestamp'])
+            cached_time = datetime.fromisoformat(cache_data["timestamp"])
             if datetime.now() - cached_time > timedelta(hours=24):
                 return None
 
             # Reconstruct DataFrame
-            data = cache_data['data']
-            if isinstance(data, dict) and 'values' in data:
+            data = cache_data["data"]
+            if isinstance(data, dict) and "values" in data:
                 # New format
-                df = pd.DataFrame(data['values'])
-                if 'index' in data and not df.empty:
+                df = pd.DataFrame(data["values"])
+                if "index" in data and not df.empty:
                     # Handle timezone-aware datetime
                     try:
-                        df.index = pd.to_datetime(data['index'], utc=True)
+                        df.index = pd.to_datetime(data["index"], utc=True)
                     except:
-                        df.index = pd.to_datetime(data['index'])
+                        df.index = pd.to_datetime(data["index"])
                     df = df.sort_index()
             else:
                 # Old format (backward compatibility)
@@ -109,21 +110,21 @@ class MarketDataCache:
             # Convert DataFrame to JSON-serializable format
             # Save both data and index separately for better reconstruction
             data_dict = {
-                'values': data.to_dict(orient='records'),
-                'index': [str(idx) for idx in data.index],
-                'columns': list(data.columns)
+                "values": data.to_dict(orient="records"),
+                "index": [str(idx) for idx in data.index],
+                "columns": list(data.columns),
             }
 
             cache_data = {
-                'symbol': symbol,
-                'start': start,
-                'end': end,
-                'source': source,
-                'timestamp': datetime.now().isoformat(),
-                'data': data_dict
+                "symbol": symbol,
+                "start": start,
+                "end": end,
+                "source": source,
+                "timestamp": datetime.now().isoformat(),
+                "data": data_dict,
             }
 
-            with open(cache_path, 'w') as f:
+            with open(cache_path, "w") as f:
                 json.dump(cache_data, f)
 
             print(f"💾 Cached data for {symbol} ({start} to {end}) from {source}")
@@ -134,6 +135,6 @@ class MarketDataCache:
     def clear(self) -> None:
         """Clear all cached data."""
         for file in os.listdir(self.cache_dir):
-            if file.endswith('.json'):
+            if file.endswith(".json"):
                 os.remove(os.path.join(self.cache_dir, file))
         print("🗑️  Cache cleared")

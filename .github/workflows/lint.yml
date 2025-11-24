@@ -1,0 +1,105 @@
+name: Code Quality Checks (Non-Blocking)
+
+on:
+  pull_request:
+    branches: [ main, development ]
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff pylint black mypy
+        # Install project dependencies for imports
+        pip install -e .
+
+    - name: Run Ruff (fast linter)
+      run: |
+        ruff check src/ tests/ scripts/ --output-format=github
+      continue-on-error: true
+
+    - name: Run Pylint (errors only)
+      run: |
+        pylint src/ --errors-only --score=n --output-format=colorized
+      continue-on-error: true
+
+    - name: Check code formatting with Black
+      run: |
+        black --check src/ tests/ scripts/
+      continue-on-error: true
+
+    - name: Run type checking with mypy
+      run: |
+        mypy src/ --ignore-missing-imports --no-strict-optional
+      continue-on-error: true
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install bandit
+      run: pip install bandit[toml]
+
+    - name: Run security scan
+      run: |
+        bandit -r src/ -f json -o bandit-report.json || true
+        bandit -r src/ -f screen
+      continue-on-error: true
+
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: bandit-security-report
+        path: bandit-report.json
+
+  complexity:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install radon
+      run: pip install radon
+
+    - name: Check cyclomatic complexity
+      run: |
+        radon cc src/ -a -nb
+      continue-on-error: true
+
+    - name: Check maintainability index
+      run: |
+        radon mi src/ -nb
+      continue-on-error: true

@@ -6,12 +6,13 @@ This allows swapping providers via configuration without code changes.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class LLMProvider(Enum):
     """Supported LLM providers"""
+
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     LOCAL = "local"
@@ -29,10 +30,7 @@ class LLMService(ABC):
 
     @abstractmethod
     async def call_tool(
-        self,
-        prompt: str,
-        tools: List[Dict[str, Any]],
-        temperature: float = 0.0
+        self, prompt: str, tools: List[Dict[str, Any]], temperature: float = 0.0
     ) -> Dict[str, Any]:
         """
         Call LLM with tool/function calling capability.
@@ -66,10 +64,7 @@ class LLMService(ABC):
 
     @abstractmethod
     async def reason(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.7
+        self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 0.7
     ) -> str:
         """
         Call LLM for reasoning/generation.

@@ -25,4 +25,5 @@ class RiskAgent:
     # TODO: Implement all risk management methods
     pass
 
+
 # TODO: Implement factory function using BaseAgent

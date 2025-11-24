@@ -6,7 +6,8 @@ Implementations can use different strategies (MACD+RSI, options, multi-agent).
 """
 
 from abc import ABC, abstractmethod
-from ..models import TradeRequest, AnalysisResult
+
+from ..models import AnalysisResult, TradeRequest
 
 
 class StrategyAnalyzer(ABC):

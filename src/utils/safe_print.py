@@ -5,34 +5,36 @@ Detects platform and terminal capabilities to provide appropriate
 emoji/symbol rendering across Windows, Linux, and macOS.
 """
 
-import sys
 import os
+import sys
 from typing import Dict
 
 # Platform detection
-IS_WINDOWS = sys.platform == 'win32'
-IS_UNIX = sys.platform in ('linux', 'darwin')
+IS_WINDOWS = sys.platform == "win32"
+IS_UNIX = sys.platform in ("linux", "darwin")
+
 
 # Check if terminal supports UTF-8
 def _supports_utf8() -> bool:
     """Check if current terminal supports UTF-8 encoding."""
     try:
         # Check environment variables
-        if os.environ.get('PYTHONIOENCODING', '').lower().startswith('utf'):
+        if os.environ.get("PYTHONIOENCODING", "").lower().startswith("utf"):
             return True
 
         # Check stdout encoding
-        if hasattr(sys.stdout, 'encoding'):
-            encoding = sys.stdout.encoding or ''
-            if 'utf' in encoding.lower():
+        if hasattr(sys.stdout, "encoding"):
+            encoding = sys.stdout.encoding or ""
+            if "utf" in encoding.lower():
                 return True
 
         # Windows: Check if console is UTF-8 (chcp 65001)
         if IS_WINDOWS:
             import subprocess
+
             try:
-                result = subprocess.run(['chcp'], capture_output=True, text=True, shell=True)
-                return '65001' in result.stdout
+                result = subprocess.run(["chcp"], capture_output=True, text=True, shell=True)
+                return "65001" in result.stdout
             except:
                 pass
 
@@ -43,116 +45,28 @@ def _supports_utf8() -> bool:
 
 # Emoji configuration with platform-specific fallbacks
 EMOJI_CONFIG: Dict[str, Dict[str, str]] = {
-    'SUCCESS': {
-        'emoji': '✅',
-        'windows': '[OK]',
-        'ascii': '[+]'
-    },
-    'ERROR': {
-        'emoji': '❌',
-        'windows': '[ERROR]',
-        'ascii': '[X]'
-    },
-    'INFO': {
-        'emoji': '📊',
-        'windows': '[INFO]',
-        'ascii': '[*]'
-    },
-    'CHART': {
-        'emoji': '📈',
-        'windows': '[CHART]',
-        'ascii': '[^]'
-    },
-    'WARNING': {
-        'emoji': '⚠️',
-        'windows': '[WARN]',
-        'ascii': '[!]'
-    },
-    'ROCKET': {
-        'emoji': '🚀',
-        'windows': '>>>',
-        'ascii': '>>>'
-    },
-    'EXPLOSION': {
-        'emoji': '💥',
-        'windows': '[FATAL]',
-        'ascii': '[!!]'
-    },
-    'RED': {
-        'emoji': '🔴',
-        'windows': '[HIGH]',
-        'ascii': '[H]'
-    },
-    'YELLOW': {
-        'emoji': '🟡',
-        'windows': '[MED]',
-        'ascii': '[M]'
-    },
-    'GREEN': {
-        'emoji': '🟢',
-        'windows': '[LOW]',
-        'ascii': '[L]'
-    },
-    'EXECUTE': {
-        'emoji': '🔴',
-        'windows': '[EXEC]',
-        'ascii': '[>]'
-    },
-    'HOLD': {
-        'emoji': '🟡',
-        'windows': '[HOLD]',
-        'ascii': '[-]'
-    },
-    'WAIT': {
-        'emoji': '🟢',
-        'windows': '[WAIT]',
-        'ascii': '[~]'
-    },
-    'GEAR': {
-        'emoji': '🔧',
-        'windows': '[CFG]',
-        'ascii': '[=]'
-    },
-    'CYCLE': {
-        'emoji': '🔄',
-        'windows': '[SYNC]',
-        'ascii': '[~]'
-    },
-    'TARGET': {
-        'emoji': '🎯',
-        'windows': '[TARGET]',
-        'ascii': '[T]'
-    },
-    'STOP': {
-        'emoji': '🛑',
-        'windows': '[STOP]',
-        'ascii': '[S]'
-    },
-    'BELL': {
-        'emoji': '🔔',
-        'windows': '[ALERT]',
-        'ascii': '[A]'
-    },
-    'MAILBOX': {
-        'emoji': '📭',
-        'windows': '[EMPTY]',
-        'ascii': '[ ]'
-    },
-    'SLEEP': {
-        'emoji': '💤',
-        'windows': '[IDLE]',
-        'ascii': '[z]'
-    },
-    'SAVE': {
-        'emoji': '💾',
-        'windows': '[SAVE]',
-        'ascii': '[S]'
-    },
-    'ROBOT': {
-        'emoji': '🤖',
-        'windows': '[BOT]',
-        'ascii': '[AI]'
-    }
+    "SUCCESS": {"emoji": "✅", "windows": "[OK]", "ascii": "[+]"},
+    "ERROR": {"emoji": "❌", "windows": "[ERROR]", "ascii": "[X]"},
+    "INFO": {"emoji": "📊", "windows": "[INFO]", "ascii": "[*]"},
+    "CHART": {"emoji": "📈", "windows": "[CHART]", "ascii": "[^]"},
+    "WARNING": {"emoji": "⚠️", "windows": "[WARN]", "ascii": "[!]"},
+    "ROCKET": {"emoji": "🚀", "windows": ">>>", "ascii": ">>>"},
+    "EXPLOSION": {"emoji": "💥", "windows": "[FATAL]", "ascii": "[!!]"},
+    "RED": {"emoji": "🔴", "windows": "[HIGH]", "ascii": "[H]"},
+    "YELLOW": {"emoji": "🟡", "windows": "[MED]", "ascii": "[M]"},
+    "GREEN": {"emoji": "🟢", "windows": "[LOW]", "ascii": "[L]"},
+    "EXECUTE": {"emoji": "🔴", "windows": "[EXEC]", "ascii": "[>]"},
+    "HOLD": {"emoji": "🟡", "windows": "[HOLD]", "ascii": "[-]"},
+    "WAIT": {"emoji": "🟢", "windows": "[WAIT]", "ascii": "[~]"},
+    "GEAR": {"emoji": "🔧", "windows": "[CFG]", "ascii": "[=]"},
+    "CYCLE": {"emoji": "🔄", "windows": "[SYNC]", "ascii": "[~]"},
+    "TARGET": {"emoji": "🎯", "windows": "[TARGET]", "ascii": "[T]"},
+    "STOP": {"emoji": "🛑", "windows": "[STOP]", "ascii": "[S]"},
+    "BELL": {"emoji": "🔔", "windows": "[ALERT]", "ascii": "[A]"},
+    "MAILBOX": {"emoji": "📭", "windows": "[EMPTY]", "ascii": "[ ]"},
+    "SLEEP": {"emoji": "💤", "windows": "[IDLE]", "ascii": "[z]"},
+    "SAVE": {"emoji": "💾", "windows": "[SAVE]", "ascii": "[S]"},
+    "ROBOT": {"emoji": "🤖", "windows": "[BOT]", "ascii": "[AI]"},
 }
 
 
@@ -168,17 +82,17 @@ def get_symbol(symbol_name: str) -> str:
     """
     config = EMOJI_CONFIG.get(symbol_name.upper())
     if not config:
-        return ''
+        return ""
 
     # Try to use emoji if terminal supports UTF-8
     if _supports_utf8():
-        return config['emoji']
+        return config["emoji"]
 
     # Fall back to Windows-friendly or ASCII
     if IS_WINDOWS:
-        return config['windows']
+        return config["windows"]
 
-    return config['ascii']
+    return config["ascii"]
 
 
 def safe_print(message: str, **kwargs):
@@ -199,7 +113,7 @@ def safe_print(message: str, **kwargs):
     """
     # Replace all known emojis with platform-appropriate symbols
     for symbol_name, config in EMOJI_CONFIG.items():
-        emoji = config['emoji']
+        emoji = config["emoji"]
         if emoji in message:
             replacement = get_symbol(symbol_name)
             message = message.replace(emoji, replacement)
@@ -208,7 +122,7 @@ def safe_print(message: str, **kwargs):
         print(message, **kwargs)
     except UnicodeEncodeError:
         # Final fallback: remove any remaining non-ASCII characters
-        message_ascii = message.encode('ascii', errors='ignore').decode('ascii')
+        message_ascii = message.encode("ascii", errors="ignore").decode("ascii")
         print(message_ascii, **kwargs)
 
 
@@ -244,16 +158,12 @@ def get_severity_symbol(severity: str) -> str:
     Returns:
         Platform-appropriate severity symbol
     """
-    severity_map = {
-        'HIGH': 'RED',
-        'MEDIUM': 'YELLOW',
-        'LOW': 'GREEN'
-    }
-    symbol_name = severity_map.get(severity.upper(), 'INFO')
+    severity_map = {"HIGH": "RED", "MEDIUM": "YELLOW", "LOW": "GREEN"}
+    symbol_name = severity_map.get(severity.upper(), "INFO")
     return get_symbol(symbol_name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Test the safe_print functionality
     print("Platform Detection:")
     print(f"  IS_WINDOWS: {IS_WINDOWS}")

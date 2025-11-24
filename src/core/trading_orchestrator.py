@@ -6,27 +6,21 @@ It coordinates the workflow: parse → analyze → risk check → suggest → ex
 """
 
 import logging
-from typing import Optional
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import Optional
 
+from .interfaces import ExecutionManager, InputParser, RiskManager, StrategyAnalyzer
 from .models import (
-    TradeRequest,
     AnalysisResult,
-    RiskAssessment,
-    TradeSuggestion,
-    TradeDecision,
     OrderResult,
-    TimeInForce,
     OrderType,
+    RiskAssessment,
+    TimeInForce,
+    TradeDecision,
+    TradeRequest,
+    TradeSuggestion,
 )
-from .interfaces import (
-    InputParser,
-    StrategyAnalyzer,
-    RiskManager,
-    ExecutionManager,
-)
-
 
 logger = logging.getLogger(__name__)
 
@@ -80,11 +74,7 @@ class TradingOrchestrator:
             f"parser={type(input_parser).__name__}"
         )
 
-    async def process_request(
-        self,
-        user_input: str,
-        user_id: str = "default"
-    ) -> TradeDecision:
+    async def process_request(self, user_input: str, user_id: str = "default") -> TradeDecision:
         """
         Main workflow: Process user request and generate trade suggestion.
 
@@ -111,13 +101,18 @@ class TradingOrchestrator:
             is_valid = await self.parser.validate(request)
             if not is_valid:
                 # Check if this looks like a portfolio query (no ticker)
-                if not request.ticker or request.ticker.strip() == '':
-                    portfolio_keywords = ['position', 'portfolio',
-                                          'holding', 'open', 'what do i have']
+                if not request.ticker or request.ticker.strip() == "":
+                    portfolio_keywords = [
+                        "position",
+                        "portfolio",
+                        "holding",
+                        "open",
+                        "what do i have",
+                    ]
                     if any(keyword in user_input.lower() for keyword in portfolio_keywords):
                         raise ValueError(
-                            f"Portfolio queries not yet supported. "
-                            f"Please ask about a specific ticker (e.g., 'any positions in AAPL?')"
+                            "Portfolio queries not yet supported. "
+                            "Please ask about a specific ticker (e.g., 'any positions in AAPL?')"
                         )
 
                 raise ValueError(f"Invalid request: {request}")
@@ -164,9 +159,7 @@ class TradingOrchestrator:
             raise
 
     async def execute_decision(
-        self,
-        decision: TradeDecision,
-        modifications: Optional[dict] = None
+        self, decision: TradeDecision, modifications: Optional[dict] = None
     ) -> OrderResult:
         """
         Execute an approved trade decision.
@@ -195,22 +188,14 @@ class TradingOrchestrator:
                 decision = self._apply_modifications(decision, modifications)
 
             # Execute via execution manager
-            result = await self.executor.execute_trade(
-                decision.suggestion,
-                decision
-            )
+            result = await self.executor.execute_trade(decision.suggestion, decision)
 
             # Save to session (if available)
             if self.session_store:
-                await self.session_store.save_execution(
-                    decision.user_id,
-                    decision,
-                    result
-                )
+                await self.session_store.save_execution(decision.user_id, decision, result)
 
             logger.info(
-                f"Execution complete: {result.success}, "
-                f"entry_order={result.entry_order_id}"
+                f"Execution complete: {result.success}, " f"entry_order={result.entry_order_id}"
             )
 
             return result
@@ -225,14 +210,11 @@ class TradingOrchestrator:
                 ticker=decision.suggestion.ticker,
                 quantity=decision.suggestion.recommended_quantity,
                 message="Trade execution failed",
-                error=str(e)
+                error=str(e),
             )
 
     def _create_suggestion(
-        self,
-        request: TradeRequest,
-        analysis: AnalysisResult,
-        risk_assessment: RiskAssessment
+        self, request: TradeRequest, analysis: AnalysisResult, risk_assessment: RiskAssessment
     ) -> TradeSuggestion:
         """
         Merge analysis and risk assessment into actionable suggestion.
@@ -260,19 +242,16 @@ class TradingOrchestrator:
             stop_loss=analysis.stop_loss,
             take_profit=analysis.take_profit,
             reasoning=analysis.reasoning,
-
             # From risk assessment
             recommended_quantity=quantity,
             portfolio_pct=risk_assessment.portfolio_pct,
             max_loss_usd=risk_assessment.max_loss_usd,
             risk_reward_ratio=risk_assessment.risk_reward_ratio,
             warnings=risk_assessment.warnings,
-
             # Order details
             ticker=request.ticker,
             order_type=OrderType.LIMIT,
             time_in_force=TimeInForce.GTC,  # Always GTC per requirements
-
             # Metadata
             suggestion_id=suggestion_id,
             timestamp=datetime.utcnow(),
@@ -280,11 +259,7 @@ class TradingOrchestrator:
 
         return suggestion
 
-    def _apply_modifications(
-        self,
-        decision: TradeDecision,
-        modifications: dict
-    ) -> TradeDecision:
+    def _apply_modifications(self, decision: TradeDecision, modifications: dict) -> TradeDecision:
         """
         Apply user modifications to a decision.
 

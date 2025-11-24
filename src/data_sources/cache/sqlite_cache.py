@@ -5,16 +5,16 @@ Replaces file-based caching with efficient relational storage.
 Provides drop-in replacement for UnifiedCacheManager with better performance.
 """
 
-import sqlite3
-import pandas as pd
-from datetime import datetime, timedelta  # TODO utilze @date_utils.py
-from typing import Optional, Dict, Any, List
-from pathlib import Path
+import json
 import logging
+import sqlite3
 import threading
 import uuid
-import json
+from datetime import datetime, timedelta  # TODO utilze @date_utils.py
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,8 @@ class TradingCacheManager:
         """Create tables and indexes if they don't exist."""
         with sqlite3.connect(self.db_path) as conn:
             # Create main market data table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS market_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -82,10 +83,12 @@ class TradingCacheManager:
                     -- Unique constraint: one entry per symbol+date+source
                     UNIQUE(asset_type, symbol, trading_date, source)
                 )
-            """)
+            """
+            )
 
             # Create raw options chain table (Issue #373)
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS raw_options_chain (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -128,10 +131,12 @@ class TradingCacheManager:
                     -- Unique constraint
                     UNIQUE(symbol, trading_date, strike, option_type, expiration, source)
                 )
-            """)
+            """
+            )
 
             # Create trade history table (Issue #373 extension - hybrid trade storage)
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS trade_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -183,80 +188,112 @@ class TradingCacheManager:
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     notes TEXT
                 )
-            """)
+            """
+            )
 
             # Create indexes for market_cache
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_lookup
                 ON market_cache(asset_type, symbol, trading_date)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_symbol_range
                 ON market_cache(symbol, trading_date)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_expiry
                 ON market_cache(expires_at)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_symbol
                 ON market_cache(symbol)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_source
                 ON market_cache(source)
-            """)
+            """
+            )
 
             # Create indexes for raw_options_chain (Issue #373)
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_options_symbol_date
                 ON raw_options_chain(symbol, trading_date)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_options_expiration
                 ON raw_options_chain(expiration)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_options_strike
                 ON raw_options_chain(symbol, trading_date, strike)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_options_source
                 ON raw_options_chain(source)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_options_quality
                 ON raw_options_chain(data_quality_score)
-            """)
+            """
+            )
 
             # Create indexes for trade_history (Issue #373 extension)
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trade_symbol
                 ON trade_history(symbol)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trade_entry_date
                 ON trade_history(entry_date)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trade_strategy
                 ON trade_history(strategy_name)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trade_exit_reason
                 ON trade_history(exit_reason)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_trade_broker
                 ON trade_history(broker_account)
-            """)
+            """
+            )
 
             conn.commit()
 
         self.logger.debug(f"SQLite cache initialized: {self.db_path}")
 
-    def get(self, symbol: str, start: str, end: str,
-            source: str = None, asset_type: str = "stock") -> Optional[pd.DataFrame]:
+    def get(
+        self, symbol: str, start: str, end: str, source: str = None, asset_type: str = "stock"
+    ) -> Optional[pd.DataFrame]:
         """
         Get cached data for date range.
 
@@ -304,12 +341,12 @@ class TradingCacheManager:
                 return None
 
             # Convert date column to datetime and set as index
-            df['trading_date'] = pd.to_datetime(df['trading_date'])
-            df.set_index('trading_date', inplace=True)
-            df.index.name = 'date'  # Rename index to match expected format
+            df["trading_date"] = pd.to_datetime(df["trading_date"])
+            df.set_index("trading_date", inplace=True)
+            df.index.name = "date"  # Rename index to match expected format
 
             # Drop columns that are all NULL (e.g., vwap/transactions from Alpha Vantage)
-            df = df.dropna(axis=1, how='all')
+            df = df.dropna(axis=1, how="all")
 
             self.logger.debug(
                 f"Cache hit: {symbol} ({start} to {end}) - {len(df)} days from {source or 'any source'}"
@@ -320,8 +357,14 @@ class TradingCacheManager:
             self.logger.error(f"Error reading cache for {symbol}: {e}")
             return None
 
-    def set(self, symbol: str, data: pd.DataFrame, source: str,
-            asset_type: str = "stock", ttl_hours: int = None):
+    def set(
+        self,
+        symbol: str,
+        data: pd.DataFrame,
+        source: str,
+        asset_type: str = "stock",
+        ttl_hours: int = None,
+    ):
         """
         Cache market data.
 
@@ -358,70 +401,74 @@ class TradingCacheManager:
             # Ensure we have a date column
             if isinstance(df.index, pd.DatetimeIndex):
                 df.reset_index(inplace=True)
-                if 'index' in df.columns:
-                    df.rename(columns={'index': 'date'}, inplace=True)
-            elif 'date' not in df.columns:
+                if "index" in df.columns:
+                    df.rename(columns={"index": "date"}, inplace=True)
+            elif "date" not in df.columns:
                 raise ValueError("Data must have 'date' column or DatetimeIndex")
 
             # Convert date to string format
-            df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
+            df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
 
             # Add metadata columns
-            df['asset_type'] = asset_type
-            df['symbol'] = symbol
-            df['source'] = source
-            df['cached_at'] = datetime.now().isoformat()
+            df["asset_type"] = asset_type
+            df["symbol"] = symbol
+            df["source"] = source
+            df["cached_at"] = datetime.now().isoformat()
 
             # Calculate smart expiration for each row
             if ttl_hours:
                 # Custom TTL
                 expires_at = datetime.now() + timedelta(hours=ttl_hours)
-                df['expires_at'] = expires_at.isoformat()
+                df["expires_at"] = expires_at.isoformat()
             else:
                 # Smart TTL based on data recency
-                df['expires_at'] = df['date'].apply(
-                    lambda d: self._calculate_expiration(d, d).isoformat())
+                df["expires_at"] = df["date"].apply(
+                    lambda d: self._calculate_expiration(d, d).isoformat()
+                )
 
             # Rename date column to trading_date for DB
-            df.rename(columns={'date': 'trading_date'}, inplace=True)
+            df.rename(columns={"date": "trading_date"}, inplace=True)
 
             # Select columns that exist in schema
-            base_columns = ['asset_type', 'symbol', 'trading_date', 'source',
-                            'cached_at', 'expires_at']
-            price_columns = ['open', 'high', 'low', 'close', 'volume', 'vwap', 'transactions']
+            base_columns = [
+                "asset_type",
+                "symbol",
+                "trading_date",
+                "source",
+                "cached_at",
+                "expires_at",
+            ]
+            price_columns = ["open", "high", "low", "close", "volume", "vwap", "transactions"]
 
             # Include only columns that exist in the data
             columns_to_save = base_columns + [col for col in price_columns if col in df.columns]
             df_to_save = df[columns_to_save]
 
             # Ensure close column exists (required)
-            if 'close' not in df_to_save.columns:
+            if "close" not in df_to_save.columns:
                 raise ValueError("Data must have 'close' column")
 
             # Bulk insert using pandas to_sql (much faster than row-by-row)
             # Use lock to prevent concurrent write conflicts with temp table
             with self._write_lock:
                 # Use unique temp table name to avoid conflicts
-                temp_table = f'market_cache_temp_{uuid.uuid4().hex[:8]}'
+                temp_table = f"market_cache_temp_{uuid.uuid4().hex[:8]}"
 
                 with sqlite3.connect(self.db_path) as conn:
                     # Use INSERT OR REPLACE for idempotent caching
-                    df_to_save.to_sql(
-                        temp_table,
-                        conn,
-                        if_exists='replace',
-                        index=False
-                    )
+                    df_to_save.to_sql(temp_table, conn, if_exists="replace", index=False)
 
                     # Build column list for INSERT (exclude id which is auto-increment)
-                    columns_list = ', '.join(columns_to_save)
+                    columns_list = ", ".join(columns_to_save)
 
                     # Copy to main table with INSERT OR REPLACE
-                    conn.execute(f"""
+                    conn.execute(
+                        f"""
                         INSERT OR REPLACE INTO market_cache
                         ({columns_list})
                         SELECT {columns_list} FROM {temp_table}
-                    """)
+                    """
+                    )
 
                     # Drop temp table
                     conn.execute(f"DROP TABLE {temp_table}")
@@ -435,8 +482,9 @@ class TradingCacheManager:
             self.logger.error(f"Error caching data for {symbol}: {e}", exc_info=True)
             raise
 
-    def exists(self, symbol: str, start: str, end: str,
-               source: str = None, asset_type: str = "stock") -> bool:
+    def exists(
+        self, symbol: str, start: str, end: str, source: str = None, asset_type: str = "stock"
+    ) -> bool:
         """
         Check if data exists (even if expired).
 
@@ -475,8 +523,14 @@ class TradingCacheManager:
             self.logger.error(f"Error checking existence for {symbol}: {e}")
             return False
 
-    def delete(self, symbol: str, start: str = None, end: str = None,
-               source: str = None, asset_type: str = "stock") -> int:
+    def delete(
+        self,
+        symbol: str,
+        start: str = None,
+        end: str = None,
+        source: str = None,
+        asset_type: str = "stock",
+    ) -> int:
         """
         Delete cached data.
 
@@ -527,10 +581,12 @@ class TradingCacheManager:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     DELETE FROM market_cache
                     WHERE datetime(expires_at) <= datetime('now')
-                """)
+                """
+                )
                 deleted = cursor.rowcount
                 conn.commit()
 
@@ -586,10 +642,12 @@ class TradingCacheManager:
                 ).fetchone()
 
                 # Expired entries
-                expired = conn.execute("""
+                expired = conn.execute(
+                    """
                     SELECT COUNT(*) FROM market_cache
                     WHERE datetime(expires_at) <= datetime('now')
-                """).fetchone()[0]
+                """
+                ).fetchone()[0]
 
             # Database file size
             db_size_mb = self.db_path.stat().st_size / (1024 * 1024) if self.db_path.exists() else 0
@@ -599,13 +657,14 @@ class TradingCacheManager:
                 "unique_symbols": unique_symbols,
                 "sources": sources,
                 "asset_types": asset_types,
-                "date_range": {
-                    "min_date": date_range[0],
-                    "max_date": date_range[1]
-                } if date_range[0] else None,
+                "date_range": (
+                    {"min_date": date_range[0], "max_date": date_range[1]}
+                    if date_range[0]
+                    else None
+                ),
                 "expired_entries": expired,
                 "db_size_mb": round(db_size_mb, 2),
-                "db_path": str(self.db_path)
+                "db_path": str(self.db_path),
             }
 
         except Exception as e:
@@ -627,7 +686,7 @@ class TradingCacheManager:
             Expiration datetime
         """
         try:
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
             today = datetime.now().date()
 
             # Historical data should never practically expire
@@ -656,7 +715,7 @@ class TradingCacheManager:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute(
                     "SELECT DISTINCT symbol FROM market_cache WHERE asset_type = ? ORDER BY symbol",
-                    [asset_type]
+                    [asset_type],
                 )
                 return [row[0] for row in cursor.fetchall()]
 
@@ -681,9 +740,16 @@ class TradingCacheManager:
 
     # === RAW OPTIONS CHAIN METHODS (Issue #373) ===
 
-    def store_raw_options(self, symbol: str, trading_date: str, options_df: pd.DataFrame,
-                          underlying_price: float = None, source: str = "polygon",
-                          data_quality_score: float = 1.0, provider_metadata: dict = None) -> int:
+    def store_raw_options(
+        self,
+        symbol: str,
+        trading_date: str,
+        options_df: pd.DataFrame,
+        underlying_price: float = None,
+        source: str = "polygon",
+        data_quality_score: float = 1.0,
+        provider_metadata: dict = None,
+    ) -> int:
         """
         Store raw options chain data to database with multi-provider support.
 
@@ -731,30 +797,30 @@ class TradingCacheManager:
             df = options_df.copy()
 
             # Normalize option_type column (handle both 'type' and 'option_type')
-            if 'type' in df.columns and 'option_type' not in df.columns:
-                df['option_type'] = df['type']
-            elif 'option_type' not in df.columns:
+            if "type" in df.columns and "option_type" not in df.columns:
+                df["option_type"] = df["type"]
+            elif "option_type" not in df.columns:
                 raise ValueError("Options data must have 'type' or 'option_type' column")
 
             # Normalize option_type values to lowercase
-            df['option_type'] = df['option_type'].str.lower()
+            df["option_type"] = df["option_type"].str.lower()
 
             for _, row in df.iterrows():
                 try:
                     # Handle expiration date conversion
-                    expiration = row['expiration']
-                    if hasattr(expiration, 'strftime'):
-                        expiration_str = expiration.strftime('%Y-%m-%d')
+                    expiration = row["expiration"]
+                    if hasattr(expiration, "strftime"):
+                        expiration_str = expiration.strftime("%Y-%m-%d")
                     else:
                         expiration_str = str(expiration)
 
                     # Handle contract_symbol (may be missing)
-                    contract_sym = row.get('contract_symbol') or row.get('contractID')
+                    contract_sym = row.get("contract_symbol") or row.get("contractID")
 
                     # Use provided underlying_price or try to get from row
                     underlying = underlying_price
-                    if underlying is None and 'underlying_price' in row:
-                        underlying = row['underlying_price']
+                    if underlying is None and "underlying_price" in row:
+                        underlying = row["underlying_price"]
 
                     # Serialize provider metadata to JSON if provided
                     metadata_json = json.dumps(provider_metadata) if provider_metadata else None
@@ -764,27 +830,31 @@ class TradingCacheManager:
                     record = (
                         symbol.upper(),
                         trading_date,
-                        float(row['strike']),
-                        str(row['option_type']),
+                        float(row["strike"]),
+                        str(row["option_type"]),
                         expiration_str,
-                        float(row['bid']) if pd.notna(row.get('bid')) else None,
-                        float(row['ask']) if pd.notna(row.get('ask')) else None,
-                        float(row['last']) if pd.notna(row.get('last')) else None,
-                        int(row['volume']) if pd.notna(row.get('volume')) else None,
-                        int(row['open_interest']) if pd.notna(row.get('open_interest')) else None,
-                        float(row['implied_volatility']) if pd.notna(row.get('implied_volatility')) else None,
-                        float(row['delta']) if pd.notna(row.get('delta')) else None,
-                        float(row['gamma']) if pd.notna(row.get('gamma')) else None,
-                        float(row['theta']) if pd.notna(row.get('theta')) else None,
-                        float(row['vega']) if pd.notna(row.get('vega')) else None,
-                        float(row['rho']) if pd.notna(row.get('rho')) else None,
+                        float(row["bid"]) if pd.notna(row.get("bid")) else None,
+                        float(row["ask"]) if pd.notna(row.get("ask")) else None,
+                        float(row["last"]) if pd.notna(row.get("last")) else None,
+                        int(row["volume"]) if pd.notna(row.get("volume")) else None,
+                        int(row["open_interest"]) if pd.notna(row.get("open_interest")) else None,
+                        (
+                            float(row["implied_volatility"])
+                            if pd.notna(row.get("implied_volatility"))
+                            else None
+                        ),
+                        float(row["delta"]) if pd.notna(row.get("delta")) else None,
+                        float(row["gamma"]) if pd.notna(row.get("gamma")) else None,
+                        float(row["theta"]) if pd.notna(row.get("theta")) else None,
+                        float(row["vega"]) if pd.notna(row.get("vega")) else None,
+                        float(row["rho"]) if pd.notna(row.get("rho")) else None,
                         contract_sym,
                         float(underlying) if underlying is not None else None,
                         source,
                         current_time,  # cached_at
                         current_time,  # modified_at
                         float(data_quality_score),  # data_quality_score
-                        metadata_json  # provider_metadata
+                        metadata_json,  # provider_metadata
                     )
                     records.append(record)
 
@@ -800,7 +870,8 @@ class TradingCacheManager:
             with self._write_lock:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
-                    cursor.executemany('''
+                    cursor.executemany(
+                        """
                         INSERT OR REPLACE INTO raw_options_chain
                         (symbol, trading_date, strike, option_type, expiration,
                          bid, ask, last, volume, open_interest,
@@ -808,7 +879,9 @@ class TradingCacheManager:
                          contract_symbol, underlying_price, source, cached_at,
                          modified_at, data_quality_score, provider_metadata)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', records)
+                    """,
+                        records,
+                    )
                     conn.commit()
                     rows_inserted = cursor.rowcount
 
@@ -819,11 +892,14 @@ class TradingCacheManager:
             return rows_inserted
 
         except Exception as e:
-            self.logger.error(f"Error storing raw options for {symbol} {trading_date}: {e}", exc_info=True)
+            self.logger.error(
+                f"Error storing raw options for {symbol} {trading_date}: {e}", exc_info=True
+            )
             return 0
 
-    def get_raw_options(self, symbol: str, trading_date: str,
-                       source: str = None) -> Optional[pd.DataFrame]:
+    def get_raw_options(
+        self, symbol: str, trading_date: str, source: str = None
+    ) -> Optional[pd.DataFrame]:
         """
         Retrieve raw options chain from database with file cache fallback.
 
@@ -867,11 +943,15 @@ class TradingCacheManager:
                 df = pd.read_sql_query(query, conn, params=params)
 
             if not df.empty:
-                self.logger.debug(f"Database hit: {len(df)} raw options for {symbol} {trading_date}")
+                self.logger.debug(
+                    f"Database hit: {len(df)} raw options for {symbol} {trading_date}"
+                )
                 return df
 
             # Fallback to file cache (deprecated, for backward compatibility)
-            self.logger.debug(f"Database miss for {symbol} {trading_date}, trying file cache fallback")
+            self.logger.debug(
+                f"Database miss for {symbol} {trading_date}, trying file cache fallback"
+            )
             file_cache_df = self._get_raw_options_from_file_cache(symbol, trading_date)
 
             if file_cache_df is not None:
@@ -888,7 +968,9 @@ class TradingCacheManager:
             self.logger.error(f"Error retrieving raw options for {symbol} {trading_date}: {e}")
             return None
 
-    def _get_raw_options_from_file_cache(self, symbol: str, trading_date: str) -> Optional[pd.DataFrame]:
+    def _get_raw_options_from_file_cache(
+        self, symbol: str, trading_date: str
+    ) -> Optional[pd.DataFrame]:
         """
         Fallback to file cache for raw options data (deprecated).
 
@@ -910,9 +992,9 @@ class TradingCacheManager:
 
             for cache_path in file_cache_paths:
                 if cache_path.exists():
-                    if cache_path.suffix == '.pickle':
+                    if cache_path.suffix == ".pickle":
                         df = pd.read_pickle(cache_path)
-                    elif cache_path.suffix == '.json':
+                    elif cache_path.suffix == ".json":
                         df = pd.read_json(cache_path)
                     else:
                         continue
@@ -1007,10 +1089,11 @@ class TradingCacheManager:
                 "unique_symbols": unique_symbols,
                 "trading_dates": unique_dates,
                 "sources": sources,
-                "date_range": {
-                    "min_date": date_range[0],
-                    "max_date": date_range[1]
-                } if date_range[0] else None
+                "date_range": (
+                    {"min_date": date_range[0], "max_date": date_range[1]}
+                    if date_range[0]
+                    else None
+                ),
             }
 
         except Exception as e:
@@ -1068,20 +1151,21 @@ class TradingCacheManager:
         """
         try:
             # Validate required fields
-            required_fields = ['trade_id', 'symbol', 'entry_date', 'entry_price', 'quantity']
+            required_fields = ["trade_id", "symbol", "entry_date", "entry_price", "quantity"]
             for field in required_fields:
                 if field not in trade_data:
                     self.logger.error(f"Missing required field: {field}")
                     return False
 
             # Serialize notes to JSON if it's a dict
-            notes = trade_data.get('notes')
+            notes = trade_data.get("notes")
             if isinstance(notes, dict):
                 notes = json.dumps(notes)
 
             with self._write_lock:
                 with sqlite3.connect(self.db_path) as conn:
-                    conn.execute("""
+                    conn.execute(
+                        """
                         INSERT INTO trade_history (
                             trade_id, symbol, asset_type,
                             entry_date, entry_price, entry_order_id, quantity,
@@ -1094,37 +1178,39 @@ class TradingCacheManager:
                             entry_slippage_pct, exit_slippage_pct, commission_paid,
                             broker_account, notes
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        trade_data['trade_id'],
-                        trade_data['symbol'].upper(),
-                        trade_data.get('asset_type', 'stock'),
-                        trade_data['entry_date'],
-                        trade_data['entry_price'],
-                        trade_data.get('entry_order_id'),
-                        trade_data['quantity'],
-                        trade_data.get('exit_date'),
-                        trade_data.get('exit_price'),
-                        trade_data.get('exit_order_id'),
-                        trade_data.get('exit_reason'),
-                        trade_data.get('initial_stop_loss'),
-                        trade_data.get('initial_take_profit'),
-                        trade_data.get('final_stop_loss'),
-                        trade_data.get('final_take_profit'),
-                        trade_data.get('stop_adjustments', 0),
-                        trade_data.get('realized_pnl'),
-                        trade_data.get('realized_pnl_pct'),
-                        trade_data.get('max_profit_pct'),
-                        trade_data.get('max_drawdown_pct'),
-                        trade_data.get('holding_period_hours'),
-                        trade_data.get('strategy_name'),
-                        trade_data.get('signal_strength'),
-                        trade_data.get('signal_confidence'),
-                        trade_data.get('entry_slippage_pct'),
-                        trade_data.get('exit_slippage_pct'),
-                        trade_data.get('commission_paid'),
-                        trade_data.get('broker_account', 'alpaca_paper'),
-                        notes
-                    ))
+                    """,
+                        (
+                            trade_data["trade_id"],
+                            trade_data["symbol"].upper(),
+                            trade_data.get("asset_type", "stock"),
+                            trade_data["entry_date"],
+                            trade_data["entry_price"],
+                            trade_data.get("entry_order_id"),
+                            trade_data["quantity"],
+                            trade_data.get("exit_date"),
+                            trade_data.get("exit_price"),
+                            trade_data.get("exit_order_id"),
+                            trade_data.get("exit_reason"),
+                            trade_data.get("initial_stop_loss"),
+                            trade_data.get("initial_take_profit"),
+                            trade_data.get("final_stop_loss"),
+                            trade_data.get("final_take_profit"),
+                            trade_data.get("stop_adjustments", 0),
+                            trade_data.get("realized_pnl"),
+                            trade_data.get("realized_pnl_pct"),
+                            trade_data.get("max_profit_pct"),
+                            trade_data.get("max_drawdown_pct"),
+                            trade_data.get("holding_period_hours"),
+                            trade_data.get("strategy_name"),
+                            trade_data.get("signal_strength"),
+                            trade_data.get("signal_confidence"),
+                            trade_data.get("entry_slippage_pct"),
+                            trade_data.get("exit_slippage_pct"),
+                            trade_data.get("commission_paid"),
+                            trade_data.get("broker_account", "alpaca_paper"),
+                            notes,
+                        ),
+                    )
                     conn.commit()
 
             self.logger.info(
@@ -1140,9 +1226,15 @@ class TradingCacheManager:
             self.logger.error(f"Failed to archive trade: {e}", exc_info=True)
             return False
 
-    def get_trade_history(self, symbol: str = None, start_date: str = None,
-                         end_date: str = None, strategy: str = None,
-                         broker_account: str = None, limit: int = None) -> pd.DataFrame:
+    def get_trade_history(
+        self,
+        symbol: str = None,
+        start_date: str = None,
+        end_date: str = None,
+        strategy: str = None,
+        broker_account: str = None,
+        limit: int = None,
+    ) -> pd.DataFrame:
         """
         Query trade history for analytics and TradingView-style visualizations.
 
@@ -1275,16 +1367,16 @@ class TradingCacheManager:
             profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else 0.0
 
             return {
-                'total_trades': total_trades,
-                'winning_trades': winning_trades,
-                'losing_trades': losing_trades,
-                'win_rate_pct': win_rate_pct,
-                'total_pnl': total_pnl,
-                'avg_pnl': avg_pnl,
-                'avg_win': avg_win,
-                'avg_loss': avg_loss,
-                'profit_factor': profit_factor,
-                'avg_holding_hours': avg_holding_hours
+                "total_trades": total_trades,
+                "winning_trades": winning_trades,
+                "losing_trades": losing_trades,
+                "win_rate_pct": win_rate_pct,
+                "total_pnl": total_pnl,
+                "avg_pnl": avg_pnl,
+                "avg_win": avg_win,
+                "avg_loss": avg_loss,
+                "profit_factor": profit_factor,
+                "avg_holding_hours": avg_holding_hours,
             }
 
         except Exception as e:

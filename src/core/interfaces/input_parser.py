@@ -7,6 +7,7 @@ Implementations can use LLMs, regex, or structured input (GUI).
 
 from abc import ABC, abstractmethod
 from typing import Optional
+
 from ..models import TradeRequest
 
 

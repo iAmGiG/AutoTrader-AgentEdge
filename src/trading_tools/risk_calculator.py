@@ -4,15 +4,17 @@ Risk Calculation - Pure Functions
 Portfolio-level risk metrics and position sizing.
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional
 from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 
 @dataclass
 class RiskMetrics:
     """Portfolio risk metrics."""
+
     total_portfolio_value: float
     position_value: float
     cash_value: float
@@ -25,8 +27,9 @@ class RiskMetrics:
     var_95: Optional[float] = None  # 95% Value at Risk
 
 
-def calculate_portfolio_risk(positions: List[Dict], cash: float,
-                             portfolio_history: Optional[pd.DataFrame] = None) -> RiskMetrics:
+def calculate_portfolio_risk(
+    positions: List[Dict], cash: float, portfolio_history: Optional[pd.DataFrame] = None
+) -> RiskMetrics:
     """
     Calculate comprehensive portfolio risk metrics.
 
@@ -39,30 +42,32 @@ def calculate_portfolio_risk(positions: List[Dict], cash: float,
         RiskMetrics object
     """
     # Basic portfolio metrics
-    total_position_value = sum(p['position_value'] for p in positions)
+    total_position_value = sum(p["position_value"] for p in positions)
     total_portfolio_value = total_position_value + cash
 
     # Position exposure
-    position_exposure_pct = (total_position_value / total_portfolio_value) * \
-        100 if total_portfolio_value > 0 else 0
+    position_exposure_pct = (
+        (total_position_value / total_portfolio_value) * 100 if total_portfolio_value > 0 else 0
+    )
 
     # Largest position risk
     if positions:
-        largest_position_value = max(p['position_value'] for p in positions)
+        largest_position_value = max(p["position_value"] for p in positions)
         largest_position_pct = (largest_position_value / total_portfolio_value) * 100
     else:
         largest_position_pct = 0
 
     # P&L metrics
-    total_unrealized_pnl = sum(p['unrealized_pnl'] for p in positions)
-    total_unrealized_pnl_pct = (total_unrealized_pnl / total_portfolio_value) * \
-        100 if total_portfolio_value > 0 else 0
+    total_unrealized_pnl = sum(p["unrealized_pnl"] for p in positions)
+    total_unrealized_pnl_pct = (
+        (total_unrealized_pnl / total_portfolio_value) * 100 if total_portfolio_value > 0 else 0
+    )
 
     # Maximum daily loss risk (all positions hit stop loss)
     max_daily_loss = 0
     for position in positions:
         # Assume 5% stop loss per position
-        position_max_loss = position['position_value'] * 0.05
+        position_max_loss = position["position_value"] * 0.05
         max_daily_loss += position_max_loss
 
     # Advanced metrics if portfolio history available
@@ -71,7 +76,7 @@ def calculate_portfolio_risk(positions: List[Dict], cash: float,
 
     if portfolio_history is not None and len(portfolio_history) > 30:
         # Calculate daily returns
-        returns = portfolio_history['portfolio_value'].pct_change().dropna()
+        returns = portfolio_history["portfolio_value"].pct_change().dropna()
 
         if len(returns) > 10:
             # 95% Value at Risk (5th percentile of daily returns)
@@ -91,12 +96,16 @@ def calculate_portfolio_risk(positions: List[Dict], cash: float,
         total_unrealized_pnl_pct=total_unrealized_pnl_pct,
         max_daily_loss_risk=max_daily_loss,
         portfolio_beta=portfolio_beta,
-        var_95=var_95
+        var_95=var_95,
     )
 
 
-def calculate_position_size(portfolio_value: float, risk_per_trade: float = 0.02,
-                            entry_price: float = 0, stop_loss_price: float = 0) -> Dict[str, float]:
+def calculate_position_size(
+    portfolio_value: float,
+    risk_per_trade: float = 0.02,
+    entry_price: float = 0,
+    stop_loss_price: float = 0,
+) -> Dict[str, float]:
     """
     Calculate position size based on risk management.
 
@@ -119,10 +128,10 @@ def calculate_position_size(portfolio_value: float, risk_per_trade: float = 0.02
             position_value = shares * entry_price
 
             return {
-                'recommended_shares': shares,
-                'position_value': position_value,
-                'risk_amount': risk_amount,
-                'position_size_pct': (position_value / portfolio_value) * 100
+                "recommended_shares": shares,
+                "position_value": position_value,
+                "risk_amount": risk_amount,
+                "position_size_pct": (position_value / portfolio_value) * 100,
             }
 
     # Fallback: equal weight approach
@@ -134,22 +143,23 @@ def calculate_position_size(portfolio_value: float, risk_per_trade: float = 0.02
         position_value = shares * entry_price
 
         return {
-            'recommended_shares': shares,
-            'position_value': position_value,
-            'risk_amount': position_value * 0.05,  # Assume 5% stop loss
-            'position_size_pct': (position_value / portfolio_value) * 100
+            "recommended_shares": shares,
+            "position_value": position_value,
+            "risk_amount": position_value * 0.05,  # Assume 5% stop loss
+            "position_size_pct": (position_value / portfolio_value) * 100,
         }
 
     return {
-        'recommended_shares': 0,
-        'position_value': 0,
-        'risk_amount': risk_amount,
-        'position_size_pct': 0
+        "recommended_shares": 0,
+        "position_value": 0,
+        "risk_amount": risk_amount,
+        "position_size_pct": 0,
     }
 
 
-def check_portfolio_limits(current_positions: int, position_exposure_pct: float,
-                           largest_position_pct: float) -> Dict[str, bool]:
+def check_portfolio_limits(
+    current_positions: int, position_exposure_pct: float, largest_position_pct: float
+) -> Dict[str, bool]:
     """
     Check portfolio risk limits.
 
@@ -162,14 +172,14 @@ def check_portfolio_limits(current_positions: int, position_exposure_pct: float,
         Dictionary of limit checks
     """
     limits = {
-        'max_positions': current_positions <= 10,  # Max 10 positions
-        'max_exposure': position_exposure_pct <= 80,  # Max 80% invested
-        'max_single_position': largest_position_pct <= 15,  # Max 15% per position
+        "max_positions": current_positions <= 10,  # Max 10 positions
+        "max_exposure": position_exposure_pct <= 80,  # Max 80% invested
+        "max_single_position": largest_position_pct <= 15,  # Max 15% per position
         # If only 1 position, allow up to 25%
-        'diversification_ok': current_positions <= 1 or largest_position_pct <= 25
+        "diversification_ok": current_positions <= 1 or largest_position_pct <= 25,
     }
 
-    limits['all_limits_ok'] = all(limits.values())
+    limits["all_limits_ok"] = all(limits.values())
 
     return limits
 
@@ -208,7 +218,7 @@ def calculate_max_drawdown(portfolio_values: pd.Series) -> Dict[str, float]:
         Dictionary with drawdown metrics
     """
     if len(portfolio_values) < 2:
-        return {'max_drawdown_pct': 0.0, 'current_drawdown_pct': 0.0}
+        return {"max_drawdown_pct": 0.0, "current_drawdown_pct": 0.0}
 
     # Calculate running maximum
     running_max = portfolio_values.expanding().max()
@@ -219,7 +229,4 @@ def calculate_max_drawdown(portfolio_values: pd.Series) -> Dict[str, float]:
     max_drawdown = drawdown.min()
     current_drawdown = drawdown.iloc[-1]
 
-    return {
-        'max_drawdown_pct': max_drawdown * 100,
-        'current_drawdown_pct': current_drawdown * 100
-    }
+    return {"max_drawdown_pct": max_drawdown * 100, "current_drawdown_pct": current_drawdown * 100}

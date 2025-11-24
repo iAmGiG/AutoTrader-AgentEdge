@@ -8,11 +8,12 @@ ensuring type safety and clear contracts between components.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 
 class Signal(Enum):
     """Trading signal types"""
+
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
@@ -20,6 +21,7 @@ class Signal(Enum):
 
 class AssetType(Enum):
     """Asset types supported by the system"""
+
     STOCK = "stock"
     OPTION = "option"
     # Future: CRYPTO, FUTURES, etc.
@@ -27,6 +29,7 @@ class AssetType(Enum):
 
 class OrderType(Enum):
     """Order types"""
+
     MARKET = "market"
     LIMIT = "limit"
     STOP = "stop"
@@ -36,6 +39,7 @@ class OrderType(Enum):
 
 class TimeInForce(Enum):
     """Order time in force"""
+
     DAY = "day"
     GTC = "gtc"  # Good-til-canceled (our default)
     IOC = "ioc"  # Immediate or cancel
@@ -49,6 +53,7 @@ class TradeRequest:
 
     This is the output of InputParser and input to StrategyAnalyzer.
     """
+
     ticker: str
     action: str  # "review", "buy", "sell"
     request_type: str = "trade"  # "trade" or "status_query" (LLM-determined)
@@ -73,6 +78,7 @@ class AnalysisResult:
 
     Contains the trading signal, confidence, entry/exit levels, and reasoning.
     """
+
     signal: Signal
     confidence: float  # 0.0 to 1.0
 
@@ -97,6 +103,7 @@ class RiskAssessment:
 
     Contains risk evaluation and recommended position sizing.
     """
+
     approved: bool  # False = hard block, True = proceed (maybe with warnings)
 
     # Position sizing
@@ -123,6 +130,7 @@ class TradeSuggestion:
 
     Merges AnalysisResult + RiskAssessment into actionable suggestion.
     """
+
     # From analysis
     signal: Signal
     confidence: float
@@ -155,6 +163,7 @@ class TradeDecision:
 
     Used to track approval/rejection and any modifications.
     """
+
     suggestion: TradeSuggestion
     approved: bool = False
 
@@ -179,6 +188,7 @@ class OrderResult:
 
     Returned by ExecutionManager after placing orders.
     """
+
     success: bool
 
     # Order IDs (may have multiple for bracket orders)
@@ -206,6 +216,7 @@ class SessionState:
 
     Allows resuming conversations and tracking history.
     """
+
     session_id: str
     user_id: str
 

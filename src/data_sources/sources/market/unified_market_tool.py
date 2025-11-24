@@ -5,15 +5,17 @@ Routes all market data requests through the unified cache system,
 with Alpaca as the primary data source.
 """
 
-import pandas as pd
-from typing import Optional
 import logging
+from typing import Optional
+
+import pandas as pd
 
 from ...cache import cache_adapter
 
 # Primary data source: Alpaca
 try:
     from .alpaca_market_data import AlpacaMarketData
+
     ALPACA_AVAILABLE = True
 except ImportError:
     ALPACA_AVAILABLE = False
@@ -23,6 +25,7 @@ except ImportError:
 # Fallback sources (optional)
 try:
     from .polygon_historical_tool import PolygonHistoricalData
+
     POLYGON_AVAILABLE = True
 except ImportError:
     POLYGON_AVAILABLE = False
@@ -30,6 +33,7 @@ except ImportError:
 
 try:
     from .alpha_vantage_market import AlphaVantageMarketTool
+
     ALPHA_VANTAGE_AVAILABLE = True
 except ImportError:
     ALPHA_VANTAGE_AVAILABLE = False
@@ -42,7 +46,7 @@ def fetch_unified_market_data(
     symbol: str = "AAPL",
     start_date: str = "2024-01-01",
     end_date: str = "2024-12-31",
-    source: str = "auto"
+    source: str = "auto",
 ) -> pd.DataFrame:
     """
     Fetch market data using unified cache system with Alpaca as primary source.
@@ -58,9 +62,10 @@ def fetch_unified_market_data(
     """
     # Check if requesting current trading day - skip cache during market hours
     from datetime import datetime
+
     end_dt = pd.to_datetime(end_date).date()
     today = datetime.now().date()
-    is_current_day = (end_dt >= today)
+    is_current_day = end_dt >= today
 
     # Skip cache for current trading day during market hours
     if not is_current_day:
@@ -110,21 +115,21 @@ def _fetch_from_alpaca(symbol: str, start_date: str, end_date: str) -> Optional[
             start=start_date,
             end=end_date,
             timeframe="1Day",
-            use_cache=False  # Cache handled by unified cache
+            use_cache=False,  # Cache handled by unified cache
         )
 
         if not data.empty:
             # Normalize column names to match expected format
-            if 'close' in data.columns and 'Close' not in data.columns:
-                data['Close'] = data['close']
-            if 'open' in data.columns and 'Open' not in data.columns:
-                data['Open'] = data['open']
-            if 'high' in data.columns and 'High' not in data.columns:
-                data['High'] = data['high']
-            if 'low' in data.columns and 'Low' not in data.columns:
-                data['Low'] = data['low']
-            if 'volume' in data.columns and 'Volume' not in data.columns:
-                data['Volume'] = data['volume']
+            if "close" in data.columns and "Close" not in data.columns:
+                data["Close"] = data["close"]
+            if "open" in data.columns and "Open" not in data.columns:
+                data["Open"] = data["open"]
+            if "high" in data.columns and "High" not in data.columns:
+                data["High"] = data["high"]
+            if "low" in data.columns and "Low" not in data.columns:
+                data["Low"] = data["low"]
+            if "volume" in data.columns and "Volume" not in data.columns:
+                data["Volume"] = data["volume"]
 
             logger.info(f"Fetched {len(data)} bars from Alpaca for {symbol}")
             return data
@@ -150,7 +155,9 @@ def _fetch_from_polygon(symbol: str, start_date: str, end_date: str) -> Optional
         return None
 
 
-def _fetch_from_alpha_vantage(symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+def _fetch_from_alpha_vantage(
+    symbol: str, start_date: str, end_date: str
+) -> Optional[pd.DataFrame]:
     """Fetch from Alpha Vantage API (fallback source)."""
     if not ALPHA_VANTAGE_AVAILABLE:
         logger.debug("Alpha Vantage not available")

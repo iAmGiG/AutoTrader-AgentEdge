@@ -11,12 +11,14 @@
 ## Test Case: "buy qqq at a pullback"
 
 ### User Intent
+
 - **Action:** BUY
 - **Ticker:** QQQ
 - **Timing:** "at a pullback" (wait for price to drop, then buy)
 - **Expected:** System suggests limit order below current price
 
 ### System Response
+
 ```
 ⏳ Analyzing trade...
 Using fallback portfolio value: $100,000
@@ -43,20 +45,24 @@ Using fallback buying power: $50,000
 ### Issues Identified
 
 #### ❌ Issue 1: User Intent Ignored
+
 **Severity:** High
 **Category:** UX / Parser
 
 **Problem:**
+
 - User said **BUY**, system suggested **SELL**
 - Strategy analyzer overrode user's explicit request
 - System feels mechanical - doesn't listen to user
 
 **Root Cause:**
+
 - Parser extracts action="buy" correctly
 - But orchestrator runs strategy analysis independently
 - Strategy signal (SELL) replaces user intent (BUY)
 
 **Expected Behavior:**
+
 ```
 📊 QQQ @ $623.23
 ⬆️ BUY (as requested)
@@ -74,20 +80,24 @@ Continue with BUY limit order? [yes/no/wait]
 ---
 
 #### ❌ Issue 2: "Pullback" Context Not Understood
+
 **Severity:** High
 **Category:** Parser / Natural Language Understanding
 
 **Problem:**
+
 - "at a pullback" means wait for price to drop
 - User wants limit order below current price
 - System doesn't understand timing context
 
 **Root Cause:**
+
 - Parser doesn't extract timing intent ("pullback", "dip", "breakout")
 - No field in TradeRequest for entry timing
 - No logic to suggest limit prices for pullbacks
 
 **Expected Behavior:**
+
 ```
 User wants to: BUY at a pullback
 Current price: $623.23
@@ -104,16 +114,19 @@ Options:
 ---
 
 #### ✅ Issue 3: No Position Context - RESOLVED
+
 **Severity:** Medium
 **Category:** Data / UX
 **Status:** ✅ FIXED (2025-11-12)
 
 **Problem:**
+
 - System suggests SELL without checking if user holds QQQ
 - Shows "short selling" warning without position check
 - Missing context: "You currently hold X shares"
 
 **Root Cause:**
+
 - Trade suggestions didn't query existing positions
 - No display of current holdings before recommendation
 - No early exit for SELL without position
@@ -128,6 +141,7 @@ Added position checking to `src/cli/cli_session.py`:
 **Fixed Behavior:**
 
 With position (SPY):
+
 ```
 ============================================================
 📊 Position Context: SPY
@@ -143,6 +157,7 @@ With position (SPY):
 ```
 
 Without position (AAPL):
+
 ```
 ============================================================
 📊 Position Context: AAPL
@@ -157,6 +172,7 @@ Without position (AAPL):
 ```
 
 **Issues:**
+
 - #345 - ✅ CLOSED (Check existing positions before SELL)
 - #346 - Open (Local cache optimization - future)
 
@@ -211,22 +227,26 @@ Without position (AAPL):
 ## Recommendations for Testing
 
 ### High Priority UX Issues
+
 1. **Issue #347** - Respect user intent (critical UX flaw) - OPEN
 2. **Issue #344** - Understand pullback/timing context - OPEN
 3. ✅ **Issue #345** - Show position context before suggestions - CLOSED
 
 ### Performance/Caching
+
 4. **Issue #346** - Local cache for positions/orders - OPEN (blocked by #336)
 
 ### Testing Approach
 
 **Continue Interactive Testing:**
+
 - Test more natural language variations
 - Try different timing contexts ("on a dip", "at breakout", "wait for")
 - Test with and without existing positions
 - Test when signals agree vs disagree with user
 
 **Specific Test Cases to Try:**
+
 ```
 1. "buy SPY on a dip"
 2. "sell my AAPL position"
@@ -257,16 +277,19 @@ Without position (AAPL):
 ## Next Steps
 
 ### Immediate (High Priority)
+
 1. Implement user intent priority (#347)
 2. Add pullback/timing context to parser (#344)
 3. ✅ ~~Show position context in suggestions (#345)~~ - COMPLETE
 
 ### Short Term (Medium Priority)
+
 4. Implement local broker cache (#346)
 5. Continue interactive testing with fixes
 6. Document UX patterns in ADRs
 
 ### Future Testing
+
 - Test with paper trading (real executions)
 - Test scheduler integration
 - Test position alerts with live positions
@@ -280,12 +303,14 @@ Without position (AAPL):
 > "A layman shouldn't have to think hard. The system should understand context, respect intent, and guide intelligently without being mechanical."
 
 **Design Principles Discovered:**
+
 1. **User intent > Strategy signals** - Respect what user asks for
 2. **Context is king** - Show what's relevant (positions, prices, timing)
 3. **Collaborative, not dictatorial** - Suggest, don't command
 4. **Natural language = understand nuance** - "pullback" ≠ "buy now"
 
 **Technical Debt Identified:**
+
 - No position context in trade suggestions
 - No local caching (hits API every time)
 - Parser doesn't understand timing nuance
@@ -298,11 +323,13 @@ Without position (AAPL):
 ## Test Case 2: "what is my stop level on meta"
 
 ### User Intent
+
 - **Query:** Check stop loss level for existing META position
 - **Expected:** Show stop loss order details (price, status)
 - **Context:** User has META position with bracket orders (stop + take profit)
 
 ### System Response
+
 ```
 💼 Portfolio Status...
 
@@ -318,20 +345,24 @@ Without position (AAPL):
 ### Issues Identified
 
 #### ❌ Issue 4: Stop Level Query Shows Portfolio, Not Orders
+
 **Severity:** High
 **Category:** Router / Handler
 
 **Problem:**
+
 - User asked about "stop level" (order info)
 - System routed to portfolio handler (position info)
 - Didn't show actual stop loss orders set on Alpaca
 
 **Root Cause:**
+
 - Router doesn't recognize "stop level" as order query
 - No dedicated handler for position-specific orders
 - Keywords like "stop", "target", "take profit" not in routing
 
 **Expected Behavior:**
+
 ```
 📋 META Orders:
 
@@ -359,33 +390,39 @@ Without position (AAPL):
 ---
 
 #### ✅ Issue 5: Entry Price Shows $0.00 (BUG) - RESOLVED
+
 **Severity:** High
 **Category:** Data / Bug
 **Status:** ✅ FIXED in commit 87dbcfb (2025-11-11)
 
 **Problem:**
+
 ```
 🔴 META: 8 shares @ $0.00    <-- Should show actual entry price
    P/L: $-25.00 (-0.50%)
 ```
 
 This is mathematically impossible:
+
 - If entry = $0.00, P/L would be +∞%
 - Shows -0.50% loss but entry is $0.00?
 - Can't calculate accurate P/L without entry price
 
 **Root Cause (IDENTIFIED):**
+
 - Code was displaying `current_price` field instead of `avg_entry_price`
 - Alpaca position dict doesn't provide `current_price` directly
 - Field needed to be calculated from `market_value / qty`
 
 **Solution Implemented:**
+
 - Extract `avg_entry_price` from position data correctly
 - Calculate `current_price` from `market_value / qty`
 - Use `cost_basis / qty` as fallback if `avg_entry_price` is 0
 - Display both entry and current prices separately with clear labels
 
 **Fixed Behavior:**
+
 ```
 🔴 META: 8 shares @ $625.12 (avg entry)
    Current: $624.96
@@ -398,15 +435,18 @@ This is mathematically impossible:
 ---
 
 #### ❌ Issue 6: Can't Distinguish Filled vs Open Orders
+
 **Severity:** Medium
 **Category:** UX / Data Display
 
 **Problem:**
+
 - System shows positions but not order history
 - Can't see which orders are filled vs pending
 - No visibility into bracket order legs (stop/target)
 
 **Expected Behavior:**
+
 ```
 📋 Order History for META:
 
@@ -453,6 +493,7 @@ This is mathematically impossible:
 - Orchestrator: `src/core/trading_orchestrator.py`
 
 **Issues Created (Testing Session):**
+
 - #344 - Parser: Pullback/timing context
 - #345 - Position context in suggestions
 - #346 - Local broker cache

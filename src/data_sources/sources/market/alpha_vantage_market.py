@@ -6,19 +6,21 @@ from Alpha Vantage. It's part of the specialized data sources organization that
 separates different types of financial data.
 """
 
-from datetime import datetime
-from typing import Dict, Any, Optional
 import logging
-import requests
-import pandas as pd
 import os
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+import pandas as pd
+import requests
+
+from ...cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import (
+    get_default_timezone,
     get_processed_date_range,
     localize_df,
-    get_default_timezone,
 )
-from ...cache import TradingCacheManager
 
 
 class AlphaVantageMarketTool:
@@ -35,9 +37,7 @@ class AlphaVantageMarketTool:
     def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
         # Load API key from environment or config
         config_loader = ConfigLoader()
-        self.api_key = os.getenv(
-            "ALPHA_VANTAGE_KEY", config_loader.get("ALPHA_VANTAGE_KEY")
-        )
+        self.api_key = os.getenv("ALPHA_VANTAGE_KEY", config_loader.get("ALPHA_VANTAGE_KEY"))
 
         if not self.api_key:
             logging.warning("Alpha Vantage API key not found in config.")
@@ -48,8 +48,9 @@ class AlphaVantageMarketTool:
         # Initialize SQLite cache
         self.cache = cache_manager or TradingCacheManager()
 
-    def fetch_stock_data(self, symbol: str, start_date: Optional[str] = None,
-                         end_date: Optional[str] = None) -> pd.DataFrame:
+    def fetch_stock_data(
+        self, symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None
+    ) -> pd.DataFrame:
         """
         Fetch daily stock data for a given symbol.
 
@@ -65,8 +66,7 @@ class AlphaVantageMarketTool:
         """
         try:
             # Process date parameters, applying dynamic date calculation if needed
-            processed_start, processed_end = get_processed_date_range(
-                start_date, end_date)
+            processed_start, processed_end = get_processed_date_range(start_date, end_date)
 
             # Check cache first
             cached_data = self.cache.get(
@@ -77,11 +77,11 @@ class AlphaVantageMarketTool:
                 return cached_data
 
             self.logger.info(
-                f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}")
+                f"Fetching Alpha Vantage data for {symbol} from {processed_start} to {processed_end}"
+            )
 
             # Determine outputsize based on date range
-            days_range = (datetime.now() -
-                          datetime.strptime(processed_start, "%Y-%m-%d")).days
+            days_range = (datetime.now() - datetime.strptime(processed_start, "%Y-%m-%d")).days
             use_full = days_range > 100
 
             # API parameters for daily time series
@@ -90,7 +90,7 @@ class AlphaVantageMarketTool:
                 "symbol": symbol,
                 "apikey": self.api_key,
                 "outputsize": "full" if use_full else "compact",
-                "datatype": "json"
+                "datatype": "json",
             }
 
             # Make API request
@@ -98,15 +98,15 @@ class AlphaVantageMarketTool:
 
             if response.status_code != 200:
                 self.logger.error(
-                    f"Alpha Vantage API error: {response.status_code} - {response.text}")
+                    f"Alpha Vantage API error: {response.status_code} - {response.text}"
+                )
                 return pd.DataFrame()
 
             data = response.json()
 
             # Check for errors in the response
             if "Error Message" in data:
-                self.logger.error(
-                    f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
             # Extract time series data
@@ -120,23 +120,27 @@ class AlphaVantageMarketTool:
             df = pd.DataFrame.from_dict(time_series, orient="index")
 
             # Fix column names (removing number prefixes)
-            df = df.rename(columns={
-                "1. open": "open",
-                "2. high": "high",
-                "3. low": "low",
-                "4. close": "close",
-                "5. volume": "volume"
-            })
+            df = df.rename(
+                columns={
+                    "1. open": "open",
+                    "2. high": "high",
+                    "3. low": "low",
+                    "4. close": "close",
+                    "5. volume": "volume",
+                }
+            )
 
             # Convert index to datetime
             df.index = pd.to_datetime(df.index)
 
             # Convert values to numeric
             for col in df.columns:
-                df[col] = pd.to_numeric(df[col])
+                df[col] = pd.to_numeric(
+                    df[col]
+                )  # pylint: disable=unsupported-assignment-operation,unsubscriptable-object
 
             # Apply date filters using processed dates
-            df = df[df.index >= processed_start]
+            df = df[df.index >= processed_start]  # pylint: disable=unsubscriptable-object
             df = df[df.index <= processed_end]
 
             # Sort by date (newest first)
@@ -164,25 +168,21 @@ class AlphaVantageMarketTool:
             Dictionary with company overview data
         """
         try:
-            params = {
-                "function": "OVERVIEW",
-                "symbol": symbol,
-                "apikey": self.api_key
-            }
+            params = {"function": "OVERVIEW", "symbol": symbol, "apikey": self.api_key}
 
             response = requests.get(self.base_url, params=params)
 
             if response.status_code != 200:
                 self.logger.error(
-                    f"Alpha Vantage API error: {response.status_code} - {response.text}")
+                    f"Alpha Vantage API error: {response.status_code} - {response.text}"
+                )
                 return {}
 
             data = response.json()
 
             # Check for errors
             if "Error Message" in data:
-                self.logger.error(
-                    f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
                 return {}
 
             return data
@@ -209,22 +209,22 @@ class AlphaVantageMarketTool:
                 "interval": interval,
                 "apikey": self.api_key,
                 "outputsize": "compact",
-                "datatype": "json"
+                "datatype": "json",
             }
 
             response = requests.get(self.base_url, params=params)
 
             if response.status_code != 200:
                 self.logger.error(
-                    f"Alpha Vantage API error: {response.status_code} - {response.text}")
+                    f"Alpha Vantage API error: {response.status_code} - {response.text}"
+                )
                 return pd.DataFrame()
 
             data = response.json()
 
             # Check for errors
             if "Error Message" in data:
-                self.logger.error(
-                    f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
             # Extract time series data
@@ -239,20 +239,24 @@ class AlphaVantageMarketTool:
             df = pd.DataFrame.from_dict(time_series, orient="index")
 
             # Fix column names
-            df = df.rename(columns={
-                "1. open": "open",
-                "2. high": "high",
-                "3. low": "low",
-                "4. close": "close",
-                "5. volume": "volume"
-            })
+            df = df.rename(
+                columns={
+                    "1. open": "open",
+                    "2. high": "high",
+                    "3. low": "low",
+                    "4. close": "close",
+                    "5. volume": "volume",
+                }
+            )
 
             # Convert index to datetime
             df.index = pd.to_datetime(df.index)
 
             # Convert values to numeric
             for col in df.columns:
-                df[col] = pd.to_numeric(df[col])
+                df[col] = pd.to_numeric(
+                    df[col]
+                )  # pylint: disable=unsupported-assignment-operation,unsubscriptable-object
 
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)
@@ -279,28 +283,29 @@ class AlphaVantageMarketTool:
                 "function": "CURRENCY_EXCHANGE_RATE",
                 "from_currency": from_currency,
                 "to_currency": to_currency,
-                "apikey": self.api_key
+                "apikey": self.api_key,
             }
 
             response = requests.get(self.base_url, params=params)
 
             if response.status_code != 200:
                 self.logger.error(
-                    f"Alpha Vantage API error: {response.status_code} - {response.text}")
+                    f"Alpha Vantage API error: {response.status_code} - {response.text}"
+                )
                 return pd.DataFrame()
 
             data = response.json()
 
             # Check for errors
             if "Error Message" in data:
-                self.logger.error(
-                    f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
             # Extract exchange rate data
             if "Realtime Currency Exchange Rate" not in data:
                 self.logger.warning(
-                    f"No exchange rate data found for {from_currency}/{to_currency}")
+                    f"No exchange rate data found for {from_currency}/{to_currency}"
+                )
                 return pd.DataFrame()
 
             exchange_data = data["Realtime Currency Exchange Rate"]

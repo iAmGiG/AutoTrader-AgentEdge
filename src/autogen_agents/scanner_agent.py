@@ -25,4 +25,5 @@ class ScannerAgent:
     # TODO: Implement market scanning methods
     pass
 
+
 # TODO: Implement factory function using BaseAgent

@@ -4,11 +4,12 @@ Configuration Usage Demo
 Shows the benefits of having a flexible configuration system.
 """
 
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.trading_config import get_config, reload_config
+from config.trading_config import get_config
 
 
 def demo_basic_usage():
@@ -22,21 +23,21 @@ def demo_basic_usage():
 
     # Get MACD parameters
     macd = config.get_macd_config()
-    print(f"\nMACD Configuration:")
+    print("\nMACD Configuration:")
     print(f"  Fast: {macd.fast}")
     print(f"  Slow: {macd.slow}")
     print(f"  Signal: {macd.signal}")
 
     # Get RSI parameters
     rsi = config.get_rsi_config()
-    print(f"\nRSI Configuration:")
+    print("\nRSI Configuration:")
     print(f"  Period: {rsi.period}")
     print(f"  Oversold: {rsi.oversold}")
     print(f"  Overbought: {rsi.overbought}")
 
     # Get exit strategy
-    exit_cfg = config.get_exit_config('balanced')
-    print(f"\nBalanced Exit Strategy:")
+    exit_cfg = config.get_exit_config("balanced")
+    print("\nBalanced Exit Strategy:")
     print(f"  Take Profit: {exit_cfg.take_profit:.1%}")
     print(f"  Stop Loss: {exit_cfg.stop_loss:.1%}")
     print(f"  Expected Value (50% WR): {exit_cfg.expected_value_50wr:.1%}")
@@ -56,8 +57,10 @@ def demo_strategy_comparison():
     print("-" * 60)
 
     for name, strategy in strategies.items():
-        print(f"{name:<15} {strategy.take_profit:>6.1%}  {strategy.stop_loss:>6.1%}  "
-              f"{strategy.expected_value_50wr:>8.2%}  {strategy.breakeven_win_rate:>8.1%}")
+        print(
+            f"{name:<15} {strategy.take_profit:>6.1%}  {strategy.stop_loss:>6.1%}  "
+            f"{strategy.expected_value_50wr:>8.2%}  {strategy.breakeven_win_rate:>8.1%}"
+        )
 
 
 def demo_benefits():
@@ -66,7 +69,8 @@ def demo_benefits():
     print("BENEFITS OF CONFIGURATION SYSTEM")
     print("=" * 60)
 
-    print("""
+    print(
+        """
 1. EASY PARAMETER TUNING:
    - Change parameters in JSON without touching code
    - Test different MACD periods (e.g., 12/26/9 vs 13/34/8)
@@ -103,7 +107,8 @@ macd = config.get_macd_config()
 fast_ema = prices.ewm(span=macd.fast).mean()
 slow_ema = prices.ewm(span=macd.slow).mean()
 ```
-    """)
+    """
+    )
 
 
 def demo_dynamic_adjustment():
@@ -118,15 +123,15 @@ def demo_dynamic_adjustment():
     print("Action: Switch from balanced to conservative exits")
 
     # Get current strategy
-    current = config.get_exit_config('balanced')
-    print(f"\nCurrent (Balanced):")
+    current = config.get_exit_config("balanced")
+    print("\nCurrent (Balanced):")
     print(f"  TP: {current.take_profit:.1%}, SL: {current.stop_loss:.1%}")
 
     # Switch to conservative
-    conservative = config.get_exit_config('conservative')
-    print(f"\nSwitched to Conservative:")
+    conservative = config.get_exit_config("conservative")
+    print("\nSwitched to Conservative:")
     print(f"  TP: {conservative.take_profit:.1%}, SL: {conservative.stop_loss:.1%}")
-    print(f"  Note: Wider stop loss for volatile conditions")
+    print("  Note: Wider stop loss for volatile conditions")
 
     print("\n✅ No code changes needed - just specify different strategy!")
 
@@ -141,7 +146,8 @@ def main():
     print("\n" + "=" * 60)
     print("RECOMMENDATION")
     print("=" * 60)
-    print("""
+    print(
+        """
 YES, there are significant benefits to using a configuration system:
 
 1. Flexibility without code changes
@@ -152,7 +158,8 @@ YES, there are significant benefits to using a configuration system:
 
 Start with the 'balanced' exit strategy (8% TP / 5% SL)
 as it has the best expected value at realistic win rates.
-""")
+"""
+    )
     print("=" * 60)
 
 

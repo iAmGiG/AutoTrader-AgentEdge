@@ -9,23 +9,19 @@ Part of Issue #373: Enhanced Database Storage for Multi-Provider Support
 """
 
 import logging
-import pandas as pd
-from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime
 import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
+import pandas as pd
 
 from src.data_sources.cache import TradingCacheManager
-from src.data_sources.processors.data_normalizer import (
-    normalize_options_data,
-    normalize_polygon_options,
-    normalize_alpha_vantage_options,
-    normalize_alpaca_options
-)
 from src.utils.config_loader import ConfigLoader
 
 # Lazy imports for providers
 try:
     from polygon import RESTClient as PolygonClient
+
     POLYGON_AVAILABLE = True
 except ImportError:
     PolygonClient = None
@@ -34,6 +30,7 @@ except ImportError:
 try:
     from alpaca.data import OptionHistoricalDataClient
     from alpaca.data.requests import OptionChainRequest
+
     ALPACA_AVAILABLE = True
 except ImportError:
     OptionHistoricalDataClient = None
@@ -60,9 +57,9 @@ class UnifiedOptionsDataTool:
 
     # Provider priority order (higher = try first)
     PROVIDER_PRIORITY = {
-        'alpaca': 100,        # Primary: Main broker with live trading data
-        'polygon': 90,        # Secondary: Best data quality, real-time (paid tier)
-        'alpha_vantage': 80,  # Tertiary: Historical backup
+        "alpaca": 100,  # Primary: Main broker with live trading data
+        "polygon": 90,  # Secondary: Best data quality, real-time (paid tier)
+        "alpha_vantage": 80,  # Tertiary: Historical backup
     }
 
     # TODO: Future multi-broker/multi-account routing (Issue #373 extension)
@@ -91,9 +88,13 @@ class UnifiedOptionsDataTool:
         self._alpaca_client = None
         self._config = ConfigLoader()
 
-    def fetch_options(self, symbol: str, trading_date: str,
-                     preferred_provider: str = None,
-                     force_refresh: bool = False) -> Optional[pd.DataFrame]:
+    def fetch_options(
+        self,
+        symbol: str,
+        trading_date: str,
+        preferred_provider: str = None,
+        force_refresh: bool = False,
+    ) -> Optional[pd.DataFrame]:
         """
         Fetch options chain with automatic provider fallback.
 
@@ -144,7 +145,7 @@ class UnifiedOptionsDataTool:
                         underlying_price=underlying_price,
                         source=provider_name,
                         data_quality_score=quality_score,
-                        provider_metadata=metadata
+                        provider_metadata=metadata,
                     )
 
                     self.logger.info(
@@ -172,11 +173,7 @@ class UnifiedOptionsDataTool:
             List of provider names in priority order
         """
         # Get all providers sorted by priority
-        providers = sorted(
-            self.PROVIDER_PRIORITY.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        providers = sorted(self.PROVIDER_PRIORITY.items(), key=lambda x: x[1], reverse=True)
         provider_names = [p[0] for p in providers]
 
         # Move preferred provider to front if specified
@@ -186,8 +183,9 @@ class UnifiedOptionsDataTool:
 
         return provider_names
 
-    def _fetch_from_provider(self, provider: str, symbol: str, trading_date: str
-                           ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
+    def _fetch_from_provider(
+        self, provider: str, symbol: str, trading_date: str
+    ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
         """
         Fetch options data from a specific provider.
 
@@ -199,17 +197,18 @@ class UnifiedOptionsDataTool:
         Returns:
             Tuple of (options_df, underlying_price, metadata)
         """
-        if provider == 'polygon':
+        if provider == "polygon":
             return self._fetch_polygon(symbol, trading_date)
-        elif provider == 'alpha_vantage':
+        elif provider == "alpha_vantage":
             return self._fetch_alpha_vantage(symbol, trading_date)
-        elif provider == 'alpaca':
+        elif provider == "alpaca":
             return self._fetch_alpaca(symbol, trading_date)
         else:
             raise ValueError(f"Unknown provider: {provider}")
 
-    def _fetch_polygon(self, symbol: str, trading_date: str
-                      ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
+    def _fetch_polygon(
+        self, symbol: str, trading_date: str
+    ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
         """
         Fetch options data from Polygon.io
 
@@ -217,9 +216,9 @@ class UnifiedOptionsDataTool:
         complete options chain data.
         """
         metadata = {
-            'provider': 'polygon',
-            'attempted_at': datetime.now().isoformat(),
-            'status': 'attempted'
+            "provider": "polygon",
+            "attempted_at": datetime.now().isoformat(),
+            "status": "attempted",
         }
 
         try:
@@ -228,7 +227,7 @@ class UnifiedOptionsDataTool:
 
             # Initialize Polygon client (lazy)
             if self._polygon_client is None:
-                api_key = os.getenv('POLYGON_API_KEY') or self._config.get('POLYGON_IO')
+                api_key = os.getenv("POLYGON_API_KEY") or self._config.get("POLYGON_IO")
                 if not api_key:
                     raise ValueError("Polygon API key not configured")
                 self._polygon_client = PolygonClient(api_key)
@@ -237,23 +236,23 @@ class UnifiedOptionsDataTool:
             # Note: This is a placeholder - actual implementation depends on Polygon API version
             # and subscription tier. Free tier may not have options data.
 
-            metadata['status'] = 'not_available_free_tier'
-            metadata['note'] = 'Polygon options require paid subscription'
+            metadata["status"] = "not_available_free_tier"
+            metadata["note"] = "Polygon options require paid subscription"
 
             self.logger.warning(
-                f"Polygon options data requires paid subscription. "
-                f"Falling back to next provider."
+                "Polygon options data requires paid subscription. " "Falling back to next provider."
             )
             return None, None, metadata
 
         except Exception as e:
-            metadata['status'] = 'error'
-            metadata['error'] = str(e)
+            metadata["status"] = "error"
+            metadata["error"] = str(e)
             self.logger.error(f"Polygon fetch failed: {e}")
             return None, None, metadata
 
-    def _fetch_alpha_vantage(self, symbol: str, trading_date: str
-                            ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
+    def _fetch_alpha_vantage(
+        self, symbol: str, trading_date: str
+    ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
         """
         Fetch options from Alpha Vantage.
 
@@ -261,29 +260,29 @@ class UnifiedOptionsDataTool:
         Implementation pending API endpoint verification.
         """
         metadata = {
-            'provider': 'alpha_vantage',
-            'attempted_at': datetime.now().isoformat(),
-            'status': 'not_implemented',
-            'note': 'Alpha Vantage options API endpoint requires verification'
+            "provider": "alpha_vantage",
+            "attempted_at": datetime.now().isoformat(),
+            "status": "not_implemented",
+            "note": "Alpha Vantage options API endpoint requires verification",
         }
 
         self.logger.info(
-            f"Alpha Vantage options fetcher not yet implemented. "
-            f"Falling back to next provider."
+            "Alpha Vantage options fetcher not yet implemented. " "Falling back to next provider."
         )
         return None, None, metadata
 
-    def _fetch_alpaca(self, symbol: str, trading_date: str
-                     ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
+    def _fetch_alpaca(
+        self, symbol: str, trading_date: str
+    ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
         """
         Fetch options from Alpaca.
 
         Uses Alpaca's options historical data API to fetch options chain.
         """
         metadata = {
-            'provider': 'alpaca',
-            'attempted_at': datetime.now().isoformat(),
-            'status': 'attempted'
+            "provider": "alpaca",
+            "attempted_at": datetime.now().isoformat(),
+            "status": "attempted",
         }
 
         try:
@@ -292,42 +291,38 @@ class UnifiedOptionsDataTool:
 
             # Initialize Alpaca client (lazy)
             if self._alpaca_client is None:
-                api_key = self._config.get('ALPACA_PAPER_API_KEY')
-                secret_key = self._config.get('ALPACA_PAPER_SECRET')
+                api_key = self._config.get("ALPACA_PAPER_API_KEY")
+                secret_key = self._config.get("ALPACA_PAPER_SECRET")
 
                 if not api_key or not secret_key:
                     raise ValueError("Alpaca API credentials not configured")
 
                 self._alpaca_client = OptionHistoricalDataClient(
-                    api_key=api_key,
-                    secret_key=secret_key
+                    api_key=api_key, secret_key=secret_key
                 )
 
             # Fetch options chain for the trading date
             # Note: Alpaca options API requires specific date format
             request = OptionChainRequest(
-                underlying_symbol=symbol,
-                feed='opra'  # Options Price Reporting Authority feed
+                underlying_symbol=symbol, feed="opra"  # Options Price Reporting Authority feed
             )
 
             # This is a placeholder - actual Alpaca options API usage may vary
-            metadata['status'] = 'pending_api_verification'
-            metadata['note'] = 'Alpaca options API implementation pending verification'
+            metadata["status"] = "pending_api_verification"
+            metadata["note"] = "Alpaca options API implementation pending verification"
 
             self.logger.info(
-                f"Alpaca options fetcher pending API verification. "
-                f"Falling back to next provider."
+                "Alpaca options fetcher pending API verification. " "Falling back to next provider."
             )
             return None, None, metadata
 
         except Exception as e:
-            metadata['status'] = 'error'
-            metadata['error'] = str(e)
+            metadata["status"] = "error"
+            metadata["error"] = str(e)
             self.logger.error(f"Alpaca fetch failed: {e}")
             return None, None, metadata
 
-    def _calculate_quality_score(self, options_df: pd.DataFrame,
-                                 metadata: Dict[str, Any]) -> float:
+    def _calculate_quality_score(self, options_df: pd.DataFrame, metadata: Dict[str, Any]) -> float:
         """
         Calculate data quality score based on completeness and metadata.
 
@@ -347,14 +342,18 @@ class UnifiedOptionsDataTool:
         score = 1.0
 
         # Penalize missing Greeks
-        greek_columns = ['delta', 'gamma', 'theta', 'vega', 'implied_volatility']
-        missing_greeks = sum(1 for col in greek_columns if col not in options_df.columns or options_df[col].isna().all())
-        score -= (missing_greeks * 0.05)  # -5% per missing Greek
+        greek_columns = ["delta", "gamma", "theta", "vega", "implied_volatility"]
+        missing_greeks = sum(
+            1
+            for col in greek_columns
+            if col not in options_df.columns or options_df[col].isna().all()
+        )
+        score -= missing_greeks * 0.05  # -5% per missing Greek
 
         # Penalize missing pricing data
-        if 'bid' not in options_df.columns or options_df['bid'].isna().all():
+        if "bid" not in options_df.columns or options_df["bid"].isna().all():
             score -= 0.1
-        if 'ask' not in options_df.columns or options_df['ask'].isna().all():
+        if "ask" not in options_df.columns or options_df["ask"].isna().all():
             score -= 0.1
 
         # Penalize low contract count (expect at least 50 contracts)
@@ -364,10 +363,10 @@ class UnifiedOptionsDataTool:
             score -= 0.1
 
         # Provider-specific adjustments
-        provider = metadata.get('provider', '')
-        if provider == 'polygon':
+        provider = metadata.get("provider", "")
+        if provider == "polygon":
             score += 0.05  # Polygon typically has best data
-        elif provider == 'alpha_vantage':
+        elif provider == "alpha_vantage":
             score -= 0.05  # Alpha Vantage may have delays
 
         # Ensure score stays in valid range
@@ -387,6 +386,7 @@ class UnifiedOptionsDataTool:
         try:
             # Query cache for all providers
             import sqlite3
+
             query = """
                 SELECT source, data_quality_score, COUNT(*) as contract_count
                 FROM raw_options_chain

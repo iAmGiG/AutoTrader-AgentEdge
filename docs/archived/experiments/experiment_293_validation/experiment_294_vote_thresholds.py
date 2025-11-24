@@ -4,23 +4,26 @@ Experiment #294: Optimal Vote Threshold Analysis
 Testing 2/4, 3/4, and 4/4 agreement thresholds with MACD+RSI+Bollinger+Stochastic
 """
 
-import numpy as np
-import pandas as pd
 import json
 import os
-from typing import Dict
-from dataclasses import dataclass
 
 # Add project root to path
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+from dataclasses import dataclass
+from typing import Dict
 
-from src.core.indicators.indicator_library import macd, rsi, bollinger_bands, stochrsi
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
+from src.core.indicators.indicator_library import bollinger_bands, macd, rsi, stochrsi
 
 
 @dataclass
 class IndicatorSignal:
     """Individual indicator signal."""
+
     name: str
     signal: int  # -1 (sell), 0 (hold), 1 (buy)
     strength: float  # 0-100
@@ -41,7 +44,7 @@ class FourIndicatorStrategy:
     def calculate_macd_signal(self, prices: pd.Series) -> IndicatorSignal:
         """MACD signal generation."""
         macd_data = macd(prices)
-        histogram = macd_data['MACD_hist']
+        histogram = macd_data["MACD_hist"]
 
         # Signal based on histogram
         current_hist = histogram.iloc[-1]
@@ -76,9 +79,9 @@ class FourIndicatorStrategy:
         bb_data = bollinger_bands(prices, window=20, num_std=2.0)
 
         current_price = prices.iloc[-1]
-        upper_band = bb_data['BB_upper'].iloc[-1]
-        lower_band = bb_data['BB_lower'].iloc[-1]
-        middle_band = bb_data['BB_middle'].iloc[-1]
+        upper_band = bb_data["BB_upper"].iloc[-1]
+        lower_band = bb_data["BB_lower"].iloc[-1]
+        middle_band = bb_data["BB_middle"].iloc[-1]
 
         # Bollinger signals: below lower (buy), above upper (sell)
         if current_price < lower_band:
@@ -102,8 +105,8 @@ class FourIndicatorStrategy:
         """Stochastic RSI signal generation."""
         stoch_data = stochrsi(prices, rsi_period=14, stoch_period=14)
 
-        current_k = stoch_data['StochRSI_K'].iloc[-1] * 100  # Convert to 0-100 scale
-        current_d = stoch_data['StochRSI_D'].iloc[-1] * 100
+        current_k = stoch_data["StochRSI_K"].iloc[-1] * 100  # Convert to 0-100 scale
+        current_d = stoch_data["StochRSI_D"].iloc[-1] * 100
 
         # Stochastic signals: <20 oversold (buy), >80 overbought (sell)
         if current_k < 20:
@@ -129,7 +132,7 @@ class FourIndicatorStrategy:
 
         # Calculate signals for each day (using rolling window)
         for i in range(50, len(prices)):  # Start after indicators have enough data
-            price_window = prices.iloc[:i + 1]
+            price_window = prices.iloc[: i + 1]
 
             # Get individual indicator signals
             macd_signal = self.calculate_macd_signal(price_window)
@@ -138,10 +141,12 @@ class FourIndicatorStrategy:
             stoch_signal = self.calculate_stochastic_signal(price_window)
 
             # Count votes for each direction
-            buy_votes = sum(1 for sig in [macd_signal, rsi_signal,
-                            bb_signal, stoch_signal] if sig.signal == 1)
-            sell_votes = sum(1 for sig in [macd_signal, rsi_signal,
-                             bb_signal, stoch_signal] if sig.signal == -1)
+            buy_votes = sum(
+                1 for sig in [macd_signal, rsi_signal, bb_signal, stoch_signal] if sig.signal == 1
+            )
+            sell_votes = sum(
+                1 for sig in [macd_signal, rsi_signal, bb_signal, stoch_signal] if sig.signal == -1
+            )
 
             # Decision based on vote threshold
             if buy_votes >= self.vote_threshold:
@@ -160,15 +165,23 @@ def load_cached_data(symbol: str, start_date: str, end_date: str) -> pd.DataFram
 
     if os.path.exists(cache_file):
         print(f"   Using cached data from {cache_file}")
-        with open(cache_file, 'r') as f:
+        with open(cache_file, "r") as f:
             data = json.load(f)
 
-        df = pd.DataFrame(data['data'])
-        df['date'] = pd.to_datetime(df['date'])
-        df.set_index('date', inplace=True)
-        df.rename(columns={'close': 'Close', 'open': 'Open', 'high': 'High',
-                  'low': 'Low', 'volume': 'Volume'}, inplace=True)
-        return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+        df = pd.DataFrame(data["data"])
+        df["date"] = pd.to_datetime(df["date"])
+        df.set_index("date", inplace=True)
+        df.rename(
+            columns={
+                "close": "Close",
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "volume": "Volume",
+            },
+            inplace=True,
+        )
+        return df[["Open", "High", "Low", "Close", "Volume"]]
 
     return None
 
@@ -204,11 +217,13 @@ def calculate_metrics(returns: pd.Series) -> Dict:
         "total_return": total_return,
         "max_dd": max_dd,
         "volatility": annual_vol,
-        "win_rate": win_rate
+        "win_rate": win_rate,
     }
 
 
-def run_backtest(strategy: FourIndicatorStrategy, symbol: str, start_date: str, end_date: str) -> Dict:
+def run_backtest(
+    strategy: FourIndicatorStrategy, symbol: str, start_date: str, end_date: str
+) -> Dict:
     """Run backtest for voting strategy."""
 
     # Load data
@@ -217,7 +232,7 @@ def run_backtest(strategy: FourIndicatorStrategy, symbol: str, start_date: str, 
         print(f"   No data available for {symbol}")
         return None
 
-    prices = data['Close']
+    prices = data["Close"]
 
     # Generate signals
     signals = strategy.generate_signals(prices)
@@ -278,38 +293,41 @@ def main():
         print("THRESHOLD COMPARISON:")
         print("-" * 40)
 
-        best_sharpe = max(results.items(), key=lambda x: x[1]['sharpe'])
-        best_return = max(results.items(), key=lambda x: x[1]['total_return'])
-        lowest_dd = max(results.items(), key=lambda x: x[1]['max_dd'])  # Least negative
+        best_sharpe = max(results.items(), key=lambda x: x[1]["sharpe"])
+        best_return = max(results.items(), key=lambda x: x[1]["total_return"])
+        lowest_dd = max(results.items(), key=lambda x: x[1]["max_dd"])  # Least negative
 
         print(f"Best Sharpe Ratio: {best_sharpe[0]}/4 ({best_sharpe[1]['sharpe']:.3f})")
         print(f"Best Total Return: {best_return[0]}/4 ({best_return[1]['total_return']:.2%})")
         print(f"Lowest Drawdown: {lowest_dd[0]}/4 ({lowest_dd[1]['max_dd']:.2%})")
 
-        print(f"\nTrade Frequency Analysis:")
+        print("\nTrade Frequency Analysis:")
         for threshold in thresholds:
             if threshold in results:
-                trades_per_month = results[threshold]['num_trades'] / 12
+                trades_per_month = results[threshold]["num_trades"] / 12
                 print(
-                    f"   {threshold}/4: {results[threshold]['num_trades']} trades ({trades_per_month:.1f}/month)")
+                    f"   {threshold}/4: {results[threshold]['num_trades']} trades ({trades_per_month:.1f}/month)"
+                )
 
-        print(f"\nComparison to Issue #293 Baseline:")
-        print(f"   Original MACD+RSI: 0.856 Sharpe, 12.6% return")
+        print("\nComparison to Issue #293 Baseline:")
+        print("   Original MACD+RSI: 0.856 Sharpe, 12.6% return")
 
         for threshold in thresholds:
             if threshold in results:
-                sharpe_diff = results[threshold]['sharpe'] - 0.856
-                return_diff = results[threshold]['total_return'] - 0.126
-                print(f"   {threshold}/4 vs Baseline: {sharpe_diff:+.3f} Sharpe, {return_diff:+.2%} return")
+                sharpe_diff = results[threshold]["sharpe"] - 0.856
+                return_diff = results[threshold]["total_return"] - 0.126
+                print(
+                    f"   {threshold}/4 vs Baseline: {sharpe_diff:+.3f} Sharpe, {return_diff:+.2%} return"
+                )
 
     print("\n" + "=" * 80)
     print("CONCLUSION:")
     if results:
-        best_overall = max(results.items(), key=lambda x: x[1]['sharpe'])
+        best_overall = max(results.items(), key=lambda x: x[1]["sharpe"])
         print(f"Optimal threshold: {best_overall[0]}/4 indicators")
-        print(f"This approach balances signal quality with trade frequency")
+        print("This approach balances signal quality with trade frequency")
 
-        if best_overall[1]['sharpe'] > 0.856:
+        if best_overall[1]["sharpe"] > 0.856:
             print("✅ Multi-indicator voting improves upon 2-indicator baseline")
         else:
             print("⚠️  2-indicator baseline may be optimal - additional complexity not beneficial")

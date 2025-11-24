@@ -7,29 +7,23 @@ for the new plugin-based architecture.
 Legacy components (autogen_agents, old strategies) are imported separately.
 """
 
+from .interfaces import ExecutionManager, InputParser, RiskManager, StrategyAnalyzer
+
 # New plugin architecture
 from .models import (
-    Signal,
-    AssetType,
-    OrderType,
-    TimeInForce,
-    TradeRequest,
     AnalysisResult,
-    RiskAssessment,
-    TradeSuggestion,
-    TradeDecision,
+    AssetType,
     OrderResult,
+    OrderType,
+    RiskAssessment,
     SessionState,
+    Signal,
+    TimeInForce,
+    TradeDecision,
+    TradeRequest,
+    TradeSuggestion,
 )
-
 from .trading_orchestrator import TradingOrchestrator
-
-from .interfaces import (
-    InputParser,
-    StrategyAnalyzer,
-    RiskManager,
-    ExecutionManager,
-)
 
 __all__ = [
     # New architecture - Enums
@@ -37,7 +31,6 @@ __all__ = [
     "AssetType",
     "OrderType",
     "TimeInForce",
-
     # New architecture - Models
     "TradeRequest",
     "AnalysisResult",
@@ -46,10 +39,8 @@ __all__ = [
     "TradeDecision",
     "OrderResult",
     "SessionState",
-
     # New architecture - Orchestrator
     "TradingOrchestrator",
-
     # New architecture - Interfaces
     "InputParser",
     "StrategyAnalyzer",

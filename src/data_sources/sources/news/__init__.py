@@ -10,7 +10,4 @@ This package provides Google Search-based financial news for sentiment analysis.
 
 from .google_search_simple import fetch_google_news, google_search_simple_tool
 
-__all__ = [
-    "fetch_google_news",
-    "google_search_simple_tool"
-]
+__all__ = ["fetch_google_news", "google_search_simple_tool"]

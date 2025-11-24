@@ -11,12 +11,12 @@ Usage:
     python scripts/migrate_cache_to_sqlite.py [--dry-run] [--no-backup]
 """
 
-import sys
+import argparse
 import json
 import shutil
-import argparse
+import sys
 from pathlib import Path
-from datetime import datetime
+
 import pandas as pd
 
 # Add src to path for imports
@@ -25,7 +25,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.data_sources.cache.sqlite_cache import TradingCacheManager
 
 
-def migrate_unified_format(json_file: Path, db_manager: TradingCacheManager, dry_run: bool = False) -> dict:
+def migrate_unified_format(
+    json_file: Path, db_manager: TradingCacheManager, dry_run: bool = False
+) -> dict:
     """
     Migrate UnifiedCacheManager format.
 
@@ -33,24 +35,24 @@ def migrate_unified_format(json_file: Path, db_manager: TradingCacheManager, dry
     Filename: SYMBOL_START_END_SOURCE.json
     """
     try:
-        with open(json_file, 'r') as f:
+        with open(json_file, "r") as f:
             cache_data = json.load(f)
 
         # Extract metadata (handle both nested and flat formats)
-        if 'metadata' in cache_data:
-            metadata = cache_data['metadata']
-            symbol = metadata['symbol']
-            source = metadata['source']
-            data_records = cache_data['data']
+        if "metadata" in cache_data:
+            metadata = cache_data["metadata"]
+            symbol = metadata["symbol"]
+            source = metadata["source"]
+            data_records = cache_data["data"]
         else:
             # Legacy flat format - parse from filename
-            parts = json_file.stem.split('_')
+            parts = json_file.stem.split("_")
             if len(parts) < 4:
                 return {"status": "skipped", "reason": "invalid filename format"}
 
             symbol = parts[0]
             source = parts[3]
-            data_records = cache_data.get('data', [])
+            data_records = cache_data.get("data", [])
 
         if not data_records:
             return {"status": "skipped", "reason": "empty data"}
@@ -59,15 +61,15 @@ def migrate_unified_format(json_file: Path, db_manager: TradingCacheManager, dry
         df = pd.DataFrame(data_records)
 
         # Ensure date column exists
-        if 'date' not in df.columns and 'Date' in df.columns:
-            df.rename(columns={'Date': 'date'}, inplace=True)
+        if "date" not in df.columns and "Date" in df.columns:
+            df.rename(columns={"Date": "date"}, inplace=True)
 
-        if 'date' not in df.columns:
+        if "date" not in df.columns:
             return {"status": "skipped", "reason": "no date column"}
 
         # Convert date to datetime
-        df['date'] = pd.to_datetime(df['date'])
-        df.set_index('date', inplace=True)
+        df["date"] = pd.to_datetime(df["date"])
+        df.set_index("date", inplace=True)
 
         # Store in SQLite
         if not dry_run:
@@ -78,14 +80,16 @@ def migrate_unified_format(json_file: Path, db_manager: TradingCacheManager, dry
             "symbol": symbol,
             "source": source,
             "rows": len(df),
-            "date_range": f"{df.index.min().date()} to {df.index.max().date()}"
+            "date_range": f"{df.index.min().date()} to {df.index.max().date()}",
         }
 
     except Exception as e:
         return {"status": "error", "reason": str(e)}
 
 
-def migrate_polygon_format(json_file: Path, db_manager: TradingCacheManager, dry_run: bool = False) -> dict:
+def migrate_polygon_format(
+    json_file: Path, db_manager: TradingCacheManager, dry_run: bool = False
+) -> dict:
     """
     Migrate Polygon format.
 
@@ -93,7 +97,7 @@ def migrate_polygon_format(json_file: Path, db_manager: TradingCacheManager, dry
     Filename: SYMBOL_START_to_END_day.json
     """
     try:
-        with open(json_file, 'r') as f:
+        with open(json_file, "r") as f:
             data_records = json.load(f)
 
         if not isinstance(data_records, list) or not data_records:
@@ -101,7 +105,7 @@ def migrate_polygon_format(json_file: Path, db_manager: TradingCacheManager, dry
 
         # Parse symbol from filename
         # Format: SYMBOL_START_to_END_day.json
-        parts = json_file.stem.split('_')
+        parts = json_file.stem.split("_")
         if len(parts) < 4:
             return {"status": "skipped", "reason": "invalid filename format"}
 
@@ -112,12 +116,12 @@ def migrate_polygon_format(json_file: Path, db_manager: TradingCacheManager, dry
         df = pd.DataFrame(data_records)
 
         # Ensure date column exists
-        if 'date' not in df.columns:
+        if "date" not in df.columns:
             return {"status": "skipped", "reason": "no date column"}
 
         # Convert date to datetime
-        df['date'] = pd.to_datetime(df['date'])
-        df.set_index('date', inplace=True)
+        df["date"] = pd.to_datetime(df["date"])
+        df.set_index("date", inplace=True)
 
         # Store in SQLite
         if not dry_run:
@@ -128,7 +132,7 @@ def migrate_polygon_format(json_file: Path, db_manager: TradingCacheManager, dry
             "symbol": symbol,
             "source": source,
             "rows": len(df),
-            "date_range": f"{df.index.min().date()} to {df.index.max().date()}"
+            "date_range": f"{df.index.min().date()} to {df.index.max().date()}",
         }
 
     except Exception as e:
@@ -152,7 +156,7 @@ def backup_cache_files(cache_dir: Path, backup_dir: Path) -> bool:
             print("   Skipping backup (previous backup preserved)")
             return True
 
-        print(f"\n📦 Backing up cache files...")
+        print("\n📦 Backing up cache files...")
         print(f"   Source: {cache_dir}")
         print(f"   Destination: {backup_dir}")
 
@@ -160,7 +164,7 @@ def backup_cache_files(cache_dir: Path, backup_dir: Path) -> bool:
         shutil.copytree(cache_dir, backup_dir)
 
         # Calculate backup size
-        total_size = sum(f.stat().st_size for f in backup_dir.rglob('*') if f.is_file())
+        total_size = sum(f.stat().st_size for f in backup_dir.rglob("*") if f.is_file())
         size_mb = total_size / (1024 * 1024)
 
         print(f"✅ Backup complete: {size_mb:.2f} MB")
@@ -171,8 +175,9 @@ def backup_cache_files(cache_dir: Path, backup_dir: Path) -> bool:
         return False
 
 
-def migrate_directory(directory: Path, db_manager: TradingCacheManager,
-                     format_func, dry_run: bool = False) -> dict:
+def migrate_directory(
+    directory: Path, db_manager: TradingCacheManager, format_func, dry_run: bool = False
+) -> dict:
     """
     Migrate all JSON files in a directory.
 
@@ -191,7 +196,7 @@ def migrate_directory(directory: Path, db_manager: TradingCacheManager,
         "skipped": 0,
         "errors": 0,
         "total_rows": 0,
-        "symbols": set()
+        "symbols": set(),
     }
 
     if not directory.exists():
@@ -207,7 +212,9 @@ def migrate_directory(directory: Path, db_manager: TradingCacheManager,
             stats["success"] += 1
             stats["total_rows"] += result["rows"]
             stats["symbols"].add(result["symbol"])
-            print(f"✅ {json_file.name}: {result['symbol']} ({result['rows']} days, {result['date_range']})")
+            print(
+                f"✅ {json_file.name}: {result['symbol']} ({result['rows']} days, {result['date_range']})"
+            )
         elif result["status"] == "skipped":
             stats["skipped"] += 1
             print(f"⏭️  {json_file.name}: {result['reason']}")
@@ -221,7 +228,11 @@ def migrate_directory(directory: Path, db_manager: TradingCacheManager,
 def main():
     """Run migration."""
     parser = argparse.ArgumentParser(description="Migrate JSON cache files to SQLite")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated without actually doing it")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be migrated without actually doing it",
+    )
     parser.add_argument("--no-backup", action="store_true", help="Skip backup (not recommended)")
     parser.add_argument("--db-path", default=".cache/trading_data.db", help="SQLite database path")
     args = parser.parse_args()
@@ -249,10 +260,12 @@ def main():
     # Migrate market_data directory (UnifiedCacheManager format)
     market_dir = cache_dir / "market_data"
     if market_dir.exists():
-        print(f"\n📁 Migrating market_data directory...")
+        print("\n📁 Migrating market_data directory...")
         print(f"   Path: {market_dir}")
-        market_stats = migrate_directory(market_dir, db_manager, migrate_unified_format, args.dry_run)
-        print(f"\n   Summary:")
+        market_stats = migrate_directory(
+            market_dir, db_manager, migrate_unified_format, args.dry_run
+        )
+        print("\n   Summary:")
         print(f"   - Total files: {market_stats['total_files']}")
         print(f"   - Migrated: {market_stats['success']}")
         print(f"   - Skipped: {market_stats['skipped']}")
@@ -260,16 +273,18 @@ def main():
         print(f"   - Total rows: {market_stats['total_rows']}")
         print(f"   - Unique symbols: {len(market_stats['symbols'])}")
     else:
-        print(f"\n⏭️  market_data directory not found, skipping...")
+        print("\n⏭️  market_data directory not found, skipping...")
         market_stats = {"success": 0, "total_rows": 0, "symbols": set()}
 
     # Migrate polygon/prices directory
     polygon_dir = cache_dir / "polygon" / "prices"
     if polygon_dir.exists():
-        print(f"\n📁 Migrating polygon/prices directory...")
+        print("\n📁 Migrating polygon/prices directory...")
         print(f"   Path: {polygon_dir}")
-        polygon_stats = migrate_directory(polygon_dir, db_manager, migrate_polygon_format, args.dry_run)
-        print(f"\n   Summary:")
+        polygon_stats = migrate_directory(
+            polygon_dir, db_manager, migrate_polygon_format, args.dry_run
+        )
+        print("\n   Summary:")
         print(f"   - Total files: {polygon_stats['total_files']}")
         print(f"   - Migrated: {polygon_stats['success']}")
         print(f"   - Skipped: {polygon_stats['skipped']}")
@@ -277,7 +292,7 @@ def main():
         print(f"   - Total rows: {polygon_stats['total_rows']}")
         print(f"   - Unique symbols: {len(polygon_stats['symbols'])}")
     else:
-        print(f"\n⏭️  polygon/prices directory not found, skipping...")
+        print("\n⏭️  polygon/prices directory not found, skipping...")
         polygon_stats = {"success": 0, "total_rows": 0, "symbols": set()}
 
     # Overall statistics
@@ -290,7 +305,7 @@ def main():
     total_rows = market_stats.get("total_rows", 0) + polygon_stats.get("total_rows", 0)
     all_symbols = market_stats.get("symbols", set()) | polygon_stats.get("symbols", set())
 
-    print(f"\nOverall Summary:")
+    print("\nOverall Summary:")
     print(f"  Total files processed: {total_files}")
     print(f"  Successfully migrated: {total_success}")
     print(f"  Total rows migrated: {total_rows:,}")
@@ -299,19 +314,21 @@ def main():
     if not args.dry_run:
         # Get database stats
         db_stats = db_manager.get_stats()
-        print(f"\nSQLite Database:")
+        print("\nSQLite Database:")
         print(f"  Path: {db_stats['db_path']}")
         print(f"  Size: {db_stats['db_size_mb']} MB")
         print(f"  Total entries: {db_stats['total_entries']:,}")
-        print(f"  Date range: {db_stats['date_range']['min_date']} to {db_stats['date_range']['max_date']}")
-        print(f"\n  By source:")
-        for source, count in db_stats['sources'].items():
+        print(
+            f"  Date range: {db_stats['date_range']['min_date']} to {db_stats['date_range']['max_date']}"
+        )
+        print("\n  By source:")
+        for source, count in db_stats["sources"].items():
             print(f"    - {source}: {count:,} days")
 
         if backup_dir.exists():
-            print(f"\nBackup Location:")
+            print("\nBackup Location:")
             print(f"  {backup_dir}")
-            print(f"  ⚠️  Review the migration before deleting backup files!")
+            print("  ⚠️  Review the migration before deleting backup files!")
 
     print("\n✅ Migration complete!")
 

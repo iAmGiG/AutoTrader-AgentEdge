@@ -3,8 +3,8 @@ Test script for the enhanced SentimentAgent with LLM function calling capabiliti
 """
 
 import logging
-import sys
 import os
+import sys
 
 # Handle import path for both running from root and from within src directory
 try:
@@ -12,8 +12,7 @@ try:
     from src.agents.sentiment_v0 import V0SentimentAgent as SentimentAgent
 except ImportError:
     # If that fails, adjust path and try again
-    sys.path.insert(0, os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '../..')))
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
     from src.agents.sentiment_v0 import V0SentimentAgent as SentimentAgent
 
 # Set up logging
@@ -24,9 +23,9 @@ logger = logging.getLogger(__name__)
 def test_sentiment_agent_basic():
     """Test the SentimentAgent with various message types - basic functionality"""
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("PART 1: TESTING BASIC SENTIMENT AGENT FUNCTIONALITY WITH DATA RETRIEVAL")
-    print("="*70)
+    print("=" * 70)
 
     # Create the agent
     agent = SentimentAgent()
@@ -55,9 +54,9 @@ def test_sentiment_agent_basic():
 def test_enhanced_narrative():
     """Test the enhanced narrative generation capabilities"""
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("PART 2: TESTING ENHANCED NARRATIVE GENERATION WITH MISSESIAN ECONOMICS")
-    print("="*70)
+    print("=" * 70)
 
     # Create the agent
     agent = SentimentAgent()
@@ -85,9 +84,9 @@ def test_enhanced_narrative():
 def test_direct_llm_processing():
     """Test the direct LLM processing capability"""
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("PART 3: TESTING DIRECT LLM PROCESSING CAPABILITY")
-    print("="*70)
+    print("=" * 70)
 
     # Create the agent
     agent = SentimentAgent()
@@ -102,15 +101,15 @@ def test_direct_llm_processing():
         "headlines": [
             "Apple announces new AI features for iPhone",
             "AAPL stock hits new high after earnings beat",
-            "Analysts bullish on Apple's services growth"
+            "Analysts bullish on Apple's services growth",
         ],
-        "article_count": 24
+        "article_count": 24,
     }
 
     # Create a prompt for the LLM to interpret
     prompt = f"""
     Please analyze this financial data and provide a missesian interpretation:
-    
+
     Ticker: {sample_data['ticker']}
     Sentiment Score: {sample_data['sentiment_score']}
     Number of Articles: {sample_data['article_count']}

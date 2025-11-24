@@ -11,31 +11,37 @@
 The interactive CLI was failing for beginners in multiple ways:
 
 ### Issue 1: Bare Ticker Parsing Failure
+
 **Input**: "meta", "pltr", "ibm"
-**Error**: `Invalid ticker format: ` (empty ticker)
+**Error**: `Invalid ticker format:` (empty ticker)
 **Root Cause**: LLM parser misclassified bare tickers as status queries
 
 ### Issue 2: Cumbersome Clarification for Review Requests
+
 **Input**: "review pltr at market price for trade idea"
 **Behavior**: Immediately blocked with "Cannot execute SELL"
 **Problem**: System didn't ask for clarification when signal conflicted with ambiguous intent
 
 ### Issue 3: No Support for Explicit User Overrides
+
 **Input**: "review pltr for long going long"
 **Behavior**: Showed SELL analysis, blocked execution
 **Problem**: System ignored explicit "going long" intent from user
 
 ### Issue 4: Infinite Loops on Override Confirmation
+
 **Input**: User confirms override → "yes"
 **Behavior**: Reprocessed request → same SELL signal → same prompt → infinite loop
 **Root Cause**: Recursive call to `_handle_trade_request()` with same conditions
 
 ### Issue 5: Quantity Lost During Overrides
+
 **Input**: "want to review 1 share of PLTR for going long"
 **Behavior**: First display showed 1 share, after override showed 25 shares
 **Root Cause**: Reprocessing created new request without quantity, risk manager calculated default
 
 ### Issue 6: Trading Jargon Not Accessible
+
 **Problem**: Terms like "LONG", "SHORT", "position" confuse non-traders
 **Missing**: Educational resources for beginners
 
@@ -59,6 +65,7 @@ def _reformat_bare_ticker(self, user_input: str) -> str:
 ```
 
 **Pattern Detection**:
+
 - Alphabetic only (no numbers, spaces)
 - 1-5 characters (typical ticker length)
 - "meta" → "analyze META" ✅
@@ -72,6 +79,7 @@ def _reformat_bare_ticker(self, user_input: str) -> str:
 Detects when user's explicit intent conflicts with technical analysis:
 
 **Explicit BUY Intent Keywords** (line 363-367):
+
 ```python
 explicit_buy_indicators = [
     'buy', 'long', 'go long', 'going long', 'bullish',
@@ -81,6 +89,7 @@ explicit_buy_indicators = [
 ```
 
 **Explicit SELL Intent Keywords** (line 371-377):
+
 ```python
 explicit_sell_indicators = [
     'sell', 'short', 'shorting', 'go short', 'exit',
@@ -90,6 +99,7 @@ explicit_sell_indicators = [
 ```
 
 **Flow When Conflict Detected**:
+
 1. Show "SIGNAL CONFLICT DETECTED" warning
 2. Display actual technical analysis (SELL)
 3. Show what user requested (BUY)
@@ -106,12 +116,14 @@ explicit_sell_indicators = [
 **File**: `src/cli/cli_session.py:398-428`
 
 **Old Approach (caused infinite loop)**:
+
 ```python
 if proceed in ['yes', 'y', '1']:
     await self._handle_trade_request(f"buy {ticker}")  # ❌ Reprocesses!
 ```
 
 **New Approach (flips in place)**:
+
 ```python
 if proceed in ['yes', 'y', '1']:
     # Flip signal in current decision object
@@ -130,6 +142,7 @@ if proceed in ['yes', 'y', '1']:
 ```
 
 **Key Benefits**:
+
 - ✅ No infinite loop
 - ✅ Preserves original quantity
 - ✅ Only one additional confirmation needed
@@ -144,6 +157,7 @@ if proceed in ['yes', 'y', '1']:
 Fixed clarification when user picks "1. BUY shares":
 
 **Old**:
+
 ```python
 if clarification in ['1', 'buy', ...]:
     await self._handle_trade_request(f"buy {ticker}")  # ❌ Reprocesses!
@@ -151,6 +165,7 @@ if clarification in ['1', 'buy', ...]:
 ```
 
 **New**:
+
 ```python
 if clarification in ['1', 'buy', ...]:
     # Flip signal in place (same as override flow)
@@ -193,6 +208,7 @@ self.trading_tips = {
 **File**: `src/cli/cli_session.py:440-444`
 
 **Before** (technical jargon):
+
 ```
 Analysis suggests selling $PLTR, but you have no position.
 1. Going LONG (buying) PLTR
@@ -200,6 +216,7 @@ Analysis suggests selling $PLTR, but you have no position.
 ```
 
 **After** (plain English):
+
 ```
 ❓ The analysis suggests PLTR might go DOWN, but you don't own any shares yet.
 
@@ -270,33 +287,39 @@ Visual differentiation between system recommendation and user intent.
 ## Testing Results
 
 ### Test Case 1: Bare Ticker
+
 **Input**: `pltr`
 **Result**: ✅ Works - reformatted to "analyze PLTR"
 **Behavior**: Clarification prompt appears if SELL signal + no position
 
 ### Test Case 2: Explicit Override
+
 **Input**: `review pltr for long going long`
 **Result**: ✅ Works - detects "going long", shows conflict
 **Flow**: Signal conflict → user confirms → flips to BUY → one confirmation
 
 ### Test Case 3: Quantity Preservation
+
 **Input**: `want to review 1 share of PLTR for going long`
 **Result**: ✅ Works - quantity=1 preserved throughout
 **Before**: Lost quantity, showed 25 shares
 **After**: Keeps 1 share through override and clarification
 
 ### Test Case 4: Complex Language
+
 **Input**: `I want to get 1 PLTR common review and get me a plan`
 **Result**: ✅ Works - "get" recognized as BUY intent
 **Flow**: Override flow → quantity preserved → double confirmation
 
 ### Test Case 5: Clarification Response
+
 **Input**: `pltr` → [prompt] → `1`
 **Result**: ✅ Works - no infinite loop
 **Before**: Reprocessed forever
 **After**: Flips signal, continues to confirmation
 
 ### Test Case 6: Educational Tips
+
 **Input**: `/tips`
 **Result**: ✅ Works - displays comprehensive beginner guide
 **Content**: BUY vs SHORT, signals, position requirements, quick tips
@@ -306,6 +329,7 @@ Visual differentiation between system recommendation and user intent.
 ## Key Metrics
 
 **Before This Session**:
+
 - Bare tickers: 0% success rate (all failed)
 - Override support: Not available
 - Beginner-friendly: Limited (trading jargon)
@@ -313,6 +337,7 @@ Visual differentiation between system recommendation and user intent.
 - Quantity preservation: 50% (lost during override)
 
 **After This Session**:
+
 - Bare tickers: 100% success rate ✅
 - Override support: Full human-in-loop with transparency ✅
 - Beginner-friendly: Extensive (15+ layman terms, /tips command) ✅
@@ -324,6 +349,7 @@ Visual differentiation between system recommendation and user intent.
 ## User Experience Comparison
 
 ### Before (Technical, Broken)
+
 ```
 > meta
 Invalid ticker format:
@@ -331,6 +357,7 @@ Error processing request: Invalid request: TradeRequest(ticker='', ...)
 ```
 
 ### After (Beginner-Friendly, Working)
+
 ```
 > meta
 
@@ -349,6 +376,7 @@ Your choice [1/2/3 or buy/short/review]: _
 ## Architecture Improvements
 
 ### Human-in-Loop Pattern
+
 - System makes recommendation
 - User can override with full transparency
 - System shows conflicting data
@@ -356,12 +384,14 @@ Your choice [1/2/3 or buy/short/review]: _
 - System executes user's choice
 
 ### No-Reprocessing Signal Flip
+
 - Preserves all request context (quantity, price, etc.)
 - Avoids infinite loops
 - Single pass through orchestrator
 - Faster execution
 
 ### Layman Terminology Support
+
 - 15+ casual terms recognized
 - "get", "acquire", "cash out", "dump"
 - Makes system accessible to non-traders
@@ -371,7 +401,9 @@ Your choice [1/2/3 or buy/short/review]: _
 ## Known Limitations
 
 ### Double Confirmation
+
 **Behavior**: User must confirm twice
+
 1. First: Override confirmation ("Do you still want to BUY?")
 2. Second: Final trade confirmation ("Continue?")
 

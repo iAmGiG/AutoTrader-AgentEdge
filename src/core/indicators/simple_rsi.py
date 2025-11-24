@@ -5,8 +5,10 @@ RSI signal generator using efficient indicator_library.rsi() calculation.
 Provides IndicatorSignal interface with buy/sell/hold decisions and confidence scores.
 """
 
+from typing import Any, Dict
+
 import pandas as pd
-from typing import Dict, Any
+
 from .base_indicator import BaseIndicator, IndicatorSignal
 from .indicator_library import rsi
 
@@ -45,16 +47,16 @@ class SimpleRSI(BaseIndicator):
         Returns:
             DataFrame with RSI values added
         """
-        if 'close' not in data.columns:
+        if "close" not in data.columns:
             raise ValueError("Data must contain 'close' column for RSI calculation")
 
         # Use fast numpy-based RSI calculation from indicator library
-        rsi_values = rsi(data['close'], period=self.period)
+        rsi_values = rsi(data["close"], period=self.period)
 
         # Add to dataframe
         result = data.copy()
-        result['rsi'] = rsi_values
-        result['rsi_signal'] = self._calculate_signal_strength(rsi_values)
+        result["rsi"] = rsi_values
+        result["rsi_signal"] = self._calculate_signal_strength(rsi_values)
 
         return result
 
@@ -68,11 +70,11 @@ class SimpleRSI(BaseIndicator):
         Returns:
             IndicatorSignal with action, strength, and confidence
         """
-        if 'rsi' not in data.columns:
+        if "rsi" not in data.columns:
             data = self.calculate(data)
 
         # Get latest RSI value
-        latest_rsi = data['rsi'].iloc[-1]
+        latest_rsi = data["rsi"].iloc[-1]
 
         # Handle NaN (not enough data)
         if pd.isna(latest_rsi):
@@ -82,7 +84,7 @@ class SimpleRSI(BaseIndicator):
                 confidence=0.0,
                 action="HOLD",
                 reasoning="Insufficient data for RSI calculation",
-                metadata={"rsi": None, "period": self.period}
+                metadata={"rsi": None, "period": self.period},
             )
 
         # Generate signal based on thresholds
@@ -112,8 +114,8 @@ class SimpleRSI(BaseIndicator):
                 "rsi": latest_rsi,
                 "period": self.period,
                 "oversold_threshold": self.oversold,
-                "overbought_threshold": self.overbought
-            }
+                "overbought_threshold": self.overbought,
+            },
         )
 
     def _calculate_signal_strength(self, rsi_series: pd.Series) -> pd.Series:
@@ -170,10 +172,10 @@ class SimpleRSI(BaseIndicator):
         Returns:
             Dictionary with RSI summary statistics
         """
-        if 'rsi' not in data.columns:
+        if "rsi" not in data.columns:
             data = self.calculate(data)
 
-        rsi_series = data['rsi'].dropna()
+        rsi_series = data["rsi"].dropna()
 
         if len(rsi_series) == 0:
             return {"error": "No RSI data available"}
@@ -196,6 +198,6 @@ class SimpleRSI(BaseIndicator):
             "signal_ratio": {
                 "oversold_pct": float(oversold_count / len(rsi_series) * 100),
                 "overbought_pct": float(overbought_count / len(rsi_series) * 100),
-                "neutral_pct": float(neutral_count / len(rsi_series) * 100)
-            }
+                "neutral_pct": float(neutral_count / len(rsi_series) * 100),
+            },
         }

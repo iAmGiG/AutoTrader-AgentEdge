@@ -1,6 +1,5 @@
-import pandas as pd
 import numpy as np
-
+import pandas as pd
 
 # Exported indicator functions
 __all__ = [
@@ -41,9 +40,7 @@ def rsi(series: pd.Series, period: int = 14) -> pd.Series:
 
 
 # --- Volatility ---
-def atr(
-    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
-) -> pd.Series:
+def atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
     tr = pd.concat(
         [high - low, (high - close.shift()).abs(), (low - close.shift()).abs()], axis=1
     ).max(axis=1)
@@ -106,8 +103,7 @@ def avwap(
     anchor_idx = 0
     if anchor_ts is not None:
         if isinstance(anchor_ts, (str, pd.Timestamp)):
-            anchor_idx = close.index.get_indexer(
-                [pd.Timestamp(anchor_ts)], method="nearest")[0]
+            anchor_idx = close.index.get_indexer([pd.Timestamp(anchor_ts)], method="nearest")[0]
         elif isinstance(anchor_ts, int):
             anchor_idx = anchor_ts
     pv = (close * volume).cumsum()
@@ -119,9 +115,7 @@ def avwap(
 
 
 # --- MACD ---
-def macd(
-    series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
-) -> pd.DataFrame:
+def macd(series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
     """Moving Average Convergence Divergence."""
     ema_fast = ema(series, span=fast)
     ema_slow = ema(series, span=slow)
@@ -138,9 +132,7 @@ def macd(
 
 
 # --- Bollinger Bands ---
-def bollinger_bands(
-    series: pd.Series, window: int = 20, num_std: float = 2.0
-) -> pd.DataFrame:
+def bollinger_bands(series: pd.Series, window: int = 20, num_std: float = 2.0) -> pd.DataFrame:
     mid = sma(series, window)
     std = series.rolling(window=window).std()
     upper = mid + num_std * std
@@ -155,14 +147,11 @@ def bollinger_bands(
 
 
 # --- ADX and DI +/- ---
-def adx(
-    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
-) -> pd.DataFrame:
+def adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.DataFrame:
     up_move = high.diff()
     down_move = low.diff().abs()
     plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
-    minus_dm = np.where((down_move > up_move) &
-                        (down_move > 0), down_move, 0.0)
+    minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
 
     tr = pd.concat(
         [
@@ -175,8 +164,7 @@ def adx(
 
     atr_vals = tr.rolling(window=period).sum()
     plus_di = 100 * pd.Series(plus_dm).rolling(window=period).sum() / atr_vals
-    minus_di = 100 * \
-        pd.Series(minus_dm).rolling(window=period).sum() / atr_vals
+    minus_di = 100 * pd.Series(minus_dm).rolling(window=period).sum() / atr_vals
     dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
     adx_val = dx.rolling(window=period).mean()
 
@@ -198,14 +186,12 @@ def ichimoku(
     base_period: int = 26,
     span_b_period: int = 52,
 ) -> pd.DataFrame:
-    tenkan = (high.rolling(conv_period).max() +
-              low.rolling(conv_period).min()) / 2
-    kijun = (high.rolling(base_period).max() +
-             low.rolling(base_period).min()) / 2
+    tenkan = (high.rolling(conv_period).max() + low.rolling(conv_period).min()) / 2
+    kijun = (high.rolling(base_period).max() + low.rolling(base_period).min()) / 2
     span_a = ((tenkan + kijun) / 2).shift(base_period)
-    span_b = (
-        (high.rolling(span_b_period).max() + low.rolling(span_b_period).min()) / 2
-    ).shift(base_period)
+    span_b = ((high.rolling(span_b_period).max() + low.rolling(span_b_period).min()) / 2).shift(
+        base_period
+    )
 
     return pd.DataFrame(
         {
@@ -240,28 +226,22 @@ def stochrsi(
 
 
 # --- Commodity Channel Index ---
-def cci(
-    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 20
-) -> pd.Series:
+def cci(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 20) -> pd.Series:
     tp = (high + low + close) / 3
     ma = tp.rolling(window=period).mean()
-    mad = tp.rolling(window=period).apply(
-        lambda x: np.mean(np.abs(x - x.mean())), raw=True
-    )
+    mad = tp.rolling(window=period).apply(lambda x: np.mean(np.abs(x - x.mean())), raw=True)
     return (tp - ma) / (0.015 * mad)
 
 
 # --- Fibonacci Retracement ---
-def fibonacci_retracement(
-    high: pd.Series, low: pd.Series, period: int = 20
-) -> pd.DataFrame:
+def fibonacci_retracement(high: pd.Series, low: pd.Series, period: int = 20) -> pd.DataFrame:
     """Calculate Fibonacci retracement levels for support and resistance analysis.
 
     Parameters:
     -----------
     high : pd.Series
         High price series
-    low : pd.Series  
+    low : pd.Series
         Low price series
     period : int, default 20
         Lookback period for identifying significant high/low points
@@ -272,7 +252,7 @@ def fibonacci_retracement(
         DataFrame with fibonacci retracement levels:
         - Fib_0_0: 0% level (swing high)
         - Fib_23_6: 23.6% retracement level
-        - Fib_38_2: 38.2% retracement level  
+        - Fib_38_2: 38.2% retracement level
         - Fib_50_0: 50% retracement level (key support/resistance)
         - Fib_61_8: 61.8% retracement level
         - Fib_100_0: 100% level (swing low)
@@ -292,12 +272,14 @@ def fibonacci_retracement(
     fib_61_8 = swing_high - (price_range * 0.618)  # 61.8%
     fib_100_0 = swing_low  # 100% (swing low)
 
-    return pd.DataFrame({
-        "Fib_0_0": fib_0_0,
-        "Fib_23_6": fib_23_6,
-        "Fib_38_2": fib_38_2,
-        "Fib_50_0": fib_50_0,      # Key 50% retracement level
-        "Fib_61_8": fib_61_8,
-        "Fib_100_0": fib_100_0,
-        "Fib_range": price_range   # Range for reference
-    })
+    return pd.DataFrame(
+        {
+            "Fib_0_0": fib_0_0,
+            "Fib_23_6": fib_23_6,
+            "Fib_38_2": fib_38_2,
+            "Fib_50_0": fib_50_0,  # Key 50% retracement level
+            "Fib_61_8": fib_61_8,
+            "Fib_100_0": fib_100_0,
+            "Fib_range": price_range,  # Range for reference
+        }
+    )
