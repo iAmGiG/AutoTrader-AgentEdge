@@ -183,6 +183,7 @@ The deprecated system used a **UnifiedNewsTool** that provided:
 ## Migration to Current System
 
 **Current Production System**: AutoGen VoterAgent with MACD+RSI voting
+
 - **File**: `src/autogen_agents/voter_agent.py`
 - **Validation**: 0.856 Sharpe ratio, 36.6% return over 2024-2025
 - **Testing**: `scripts/experiments/experiment_293_validation/test_voter_agent.py`

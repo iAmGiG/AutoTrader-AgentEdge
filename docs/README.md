@@ -73,7 +73,7 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 ### 📊 **Performance & Validation**
 
 1. See [Validation Results](03_reference/01_validation_results.md) for proven performance (0.856 Sharpe)
-2. Review [Research Papers](research/research_papers.md) for academic foundation
+2. Review [Research Foundation](presentations/research_foundation.md) for academic foundation
 3. Check [Troubleshooting](03_reference/04_troubleshooting.md) for common issues
 
 ## Current Status
@@ -112,7 +112,7 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 
 For academic research and citations informing the system architecture:
 
-- **[Research Papers](research/research_papers.md)** - Academic foundation with abstract, introduction, and citations
+- **[Research Foundation](presentations/research_foundation.md)** - Academic foundation with abstract, introduction, and citations
 - **[Agent Ensemble](02_architecture/02_agent_ensemble.md)** - Evolution from V0-V4 to current multi-agent system
 - **[Voting System](02_architecture/03_voting_system.md)** - Multi-indicator voting architecture
 - **[Validation Results](03_reference/01_validation_results.md)** - Experiment #293 proving voting superiority (0.856 Sharpe)

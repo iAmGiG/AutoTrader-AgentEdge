@@ -38,18 +38,21 @@ src/
 **Purpose**: External service integrations, stateful operations
 
 **Components**:
+
 - **Alpaca Trading Client**: Order placement, account management, position monitoring
 - **AutoGen Tool Wrappers**: Agent-to-trading-system bridge
 - **API Integrations**: External service connections
 - **State Management**: Account state, order tracking
 
 **Responsibilities**:
+
 - Communicate with external APIs (Alpaca, brokers)
 - Maintain stateful connections and sessions
 - Handle authentication and authorization
 - Manage rate limiting and error recovery
 
 **Key Files**:
+
 - `alpaca_trading_client.py`: Main trading client implementation
 - `alpaca_autogen_tools.py`: AutoGen tool wrappers for agents
 
@@ -58,18 +61,21 @@ src/
 **Purpose**: Pure functions, calculations, utilities
 
 **Components**:
+
 - **Technical Indicators**: MACD, RSI calculation functions
 - **Risk Calculations**: Position sizing, risk assessment
 - **Data Utilities**: Market data fetching and processing
 - **Position Tracking**: Portfolio state calculations
 
 **Responsibilities**:
+
 - Perform mathematical calculations
 - Implement trading logic and strategies
 - Provide reusable utility functions
 - No external dependencies or state
 
 **Key Files**:
+
 - `indicators.py`: Technical indicator calculations
 - `risk_calculator.py`: Position sizing and risk metrics
 - `data_fetch.py`: Market data retrieval utilities
@@ -80,6 +86,7 @@ src/
 **Purpose**: Multi-agent trading system using Microsoft AutoGen framework
 
 **Components**:
+
 - **VoterAgent**: ✅ Production-ready MACD+RSI voting logic (validated: 0.856 Sharpe)
 - **BaseAgent**: ✅ Foundation class with tool integration and message handling
 - **ScannerAgent**: 🚧 Market opportunity identification (in development)
@@ -88,12 +95,14 @@ src/
 - **TradingOrchestrator**: 🚧 Multi-agent workflow management (in development)
 
 **Responsibilities**:
+
 - Coordinate multi-agent workflows
 - Make trading decisions via ensemble voting
 - Manage agent communication and message passing
 - Integrate with tools from integration and business logic layers
 
 **Key Files**:
+
 - `voter_agent.py`: Production MACD+RSI voting agent
 - `base_agent.py`: Common agent functionality
 - `trading_orchestrator.py`: Multi-agent coordination
@@ -103,17 +112,20 @@ src/
 **Purpose**: Market data acquisition and normalization
 
 **Components**:
+
 - **Alpaca Market Data**: Real-time bars, quotes, trades, snapshots
 - **Multi-provider Support**: Polygon, Alpha Vantage fallbacks
 - **Intelligent Caching**: >90% API call reduction
 
 **Responsibilities**:
+
 - Fetch market data from multiple providers
 - Normalize data to unified format
 - Implement caching for performance
 - Handle data provider failures and fallbacks
 
 **Key Files**:
+
 - `sources/market/alpaca_market_data.py`: Primary data source
 - `cache/unified_cache.py`: Caching layer
 - `processors/data_normalizer.py`: Data format standardization
@@ -130,6 +142,7 @@ src/
 - Clean boundaries between layers
 
 **Benefits**:
+
 - Easy to test (mock external dependencies)
 - Easy to swap providers (change integration, keep logic)
 - Easy to enhance (add agents without changing core)
@@ -143,6 +156,7 @@ src/
 - No duplication between paper and live systems
 
 **Implementation**:
+
 ```python
 # Same code, different mode
 manager = AlpacaOrderManager(mode="paper")  # Paper trading
@@ -150,6 +164,7 @@ manager = AlpacaOrderManager(mode="live")   # Live trading (with confirmations)
 ```
 
 **Benefits**:
+
 - Test in paper, deploy to live with confidence
 - No code divergence between environments
 - Unified monitoring and logging
@@ -163,6 +178,7 @@ manager = AlpacaOrderManager(mode="live")   # Live trading (with confirmations)
 - Emergency stop capabilities
 
 **Safety Layers**:
+
 1. **Agent Layer**: Signal validation and confidence scoring
 2. **Risk Layer**: Position limits, account checks, market hours
 3. **Integration Layer**: Order validation, confirmation prompts
@@ -177,6 +193,7 @@ manager = AlpacaOrderManager(mode="live")   # Live trading (with confirmations)
 - Consistent tool interface across all agents
 
 **Tool Integration**:
+
 ```python
 from src.trading.alpaca_autogen_tools import AlpacaAccountTool, AlpacaOrderTool
 
@@ -201,6 +218,7 @@ config_defaults/
 ```
 
 **Example**: `voting_config.yaml`
+
 ```yaml
 macd:
   fast_period: 13        # Fibonacci sequence
@@ -234,6 +252,7 @@ voting:
 ```
 
 **Security**:
+
 - API keys never committed to git
 - Separate keys for paper and live trading
 - Environment variable support for production
@@ -243,6 +262,7 @@ voting:
 ### Comprehensive Test Coverage: 35/35 Tests Passing
 
 **Test Categories**:
+
 - **Market Data**: 3/3 tests (connection, data retrieval, caching)
 - **Basic Orders**: 9/9 tests (market, limit, validation, risk)
 - **Advanced Orders**: 6/6 tests (stop, trailing, bracket)
@@ -268,16 +288,19 @@ tests/
 ### Validation Approach
 
 **Backtesting**:
+
 - Historical data validation
 - Strategy performance verification
 - Edge case testing with known market conditions
 
 **Paper Trading**:
+
 - Real-time system validation
 - Order execution verification
 - Position tracking accuracy
 
 **Live Trading** (Future):
+
 - Small position sizes initially
 - Gradual scale-up based on performance
 - Continuous monitoring and validation
@@ -287,11 +310,13 @@ tests/
 ### Market Data
 
 **Metrics**:
+
 - **>90% Cache Hit Rate**: Intelligent caching reduces API calls
 - **Multi-provider Fallback**: Resilient data acquisition
 - **Real-time Capability**: Live bars, quotes, trades
 
 **Optimization**:
+
 - Consolidated cache files (reduced I/O)
 - Smart expiration logic (historical vs recent)
 - Parallel loading for multiple symbols
@@ -299,11 +324,13 @@ tests/
 ### Order Management
 
 **Metrics**:
+
 - **Sub-second Validation**: Fast risk checks and parameter validation
 - **Unified Performance**: No penalty for paper vs live mode switching
 - **Scalable Architecture**: Handles multiple concurrent operations
 
 **Optimization**:
+
 - Async order submission (non-blocking)
 - Batch order capabilities (future)
 - Efficient fill monitoring
@@ -313,6 +340,7 @@ tests/
 ### AutoGen Agents
 
 **Tool Access**:
+
 ```python
 from src.trading.alpaca_autogen_tools import AlpacaAccountTool, AlpacaOrderTool
 
@@ -328,6 +356,7 @@ order_result = order_tool.place_market_order("AAPL", 10, "buy")
 ### Direct Usage
 
 **Programmatic Access**:
+
 ```python
 from src.trading.alpaca_trading_client import AlpacaOrderManager
 
@@ -350,16 +379,19 @@ order = manager.submit_market_order("AAPL", 10, "buy")
 ### Monitoring & Observability
 
 **Logging**:
+
 - **Structured Logging**: All operations logged with context
 - **Error Tracking**: Comprehensive error handling and reporting
 - **Audit Trail**: Complete record of all trading decisions and executions
 
 **Metrics**:
+
 - **Performance Metrics**: Order execution times, success rates
 - **Risk Monitoring**: Real-time position and limit tracking
 - **System Health**: API availability, cache hit rates, error rates
 
 **Alerts** (Future):
+
 - Position limit breaches
 - Unexpected errors or failures
 - Performance degradation

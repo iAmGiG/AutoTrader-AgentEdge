@@ -54,24 +54,29 @@ The implementation follows a clean plugin architecture with dependency injection
 ### Component Responsibilities
 
 **TradingOrchestrator** (`src/core/trading_orchestrator.py`):
+
 - Central coordinator for complete trading workflow
 - Manages: parse → analyze → risk → suggest → execute
 - Used by all presentation layers (CLI, GUI, API)
 - Session state management (optional)
 
 **InputParser Interface** (`src/core/interfaces/input_parser.py`):
+
 - Abstract interface for parsing user input
 - Implementations: LLMParser (OpenAI), RegexParser (future), GUIParser (future)
 
 **StrategyAnalyzer Interface** (`src/core/interfaces/strategy_analyzer.py`):
+
 - Abstract interface for trade analysis strategies
 - Implementations: RealVoterStrategy (MACD+RSI), OptionsStrategy (future #330)
 
 **RiskManager Interface** (`src/core/interfaces/risk_manager.py`):
+
 - Abstract interface for risk assessment
 - Implementations: SimpleRiskManager (MVP), PortfolioManager (future #333)
 
 **ExecutionManager Interface** (`src/core/interfaces/execution_manager.py`):
+
 - Abstract interface for order execution
 - Implementations: AlpacaExecutionManager, SimulatedExecutor (future)
 
@@ -82,6 +87,7 @@ The implementation follows a clean plugin architecture with dependency injection
 ### 1. LLM Integration (`src/services/llm/`)
 
 **OpenAIService** - Dual model configuration:
+
 - **gpt-4o-mini**: Tool calling and function extraction (fast, cheap)
 - **o4-mini**: Reasoning and analysis (configured in config.json)
 
@@ -94,6 +100,7 @@ llm_service = OpenAIService(
 ```
 
 **LLMParser** - Natural language parsing:
+
 - Extracts ticker, action, quantity, price from user input
 - Auto-correction for common typos ("spy at 60" → "SPY at 600")
 - Validation (ticker format, quantity, price ranges)
@@ -101,17 +108,20 @@ llm_service = OpenAIService(
 ### 2. Real VoterAgent Integration (`src/strategies/real_voter_strategy.py`)
 
 **RealVoterStrategy** - Production MACD+RSI analysis:
+
 - Wraps validated VoterAgent (0.856 Sharpe ratio)
 - Fetches real market data (Alpaca, Polygon, Alpha Vantage)
 - MACD(13/34/8) + RSI(14) with Fibonacci parameters
 - Voting logic: Strong consensus, weak signal, conflict detection
 
 **Market Data Fetching**:
+
 - 60-day lookback period (configurable)
 - Multi-source fallback (Alpaca → Polygon → Alpha Vantage)
 - Graceful error handling with HOLD signal on failure
 
 **Signal Generation**:
+
 - **Strong Consensus**: MACD and RSI agree → 85% confidence
 - **Weak Signal**: Only one indicator active → 65% confidence
 - **Conflict**: MACD and RSI disagree → HOLD
@@ -120,6 +130,7 @@ llm_service = OpenAIService(
 ### 3. Risk Management (`src/risk/simple_risk_manager.py`)
 
 **SimpleRiskManager** - Portfolio percentage based:
+
 - Default position size: 5% of portfolio
 - Max position size: 15% of portfolio (warning)
 - Buying power check with fallback ($100k portfolio, 50% buying power)
@@ -127,6 +138,7 @@ llm_service = OpenAIService(
 - Warning generation (no blocking)
 
 **Position Sizing Logic**:
+
 ```python
 if user_specified_quantity:
     quantity = user_quantity
@@ -138,12 +150,14 @@ else:
 ### 4. Execution Manager (`src/execution/alpaca_execution_manager.py`)
 
 **AlpacaExecutionManager** - Bracket order execution:
+
 - Integrates with existing OrderManager
 - Places entry + stop-loss + take-profit orders
 - Enforces GTC (Good-Til-Canceled) time in force
 - Stub mode for testing without broker connection
 
 **Order Tracking**:
+
 - Returns entry_order_id, stop_order_id, target_order_id
 - Order status queries
 - Cancel order support
@@ -151,6 +165,7 @@ else:
 ### 5. CLI Session (`src/presentation/cli/cli_session.py`)
 
 **CLISession** - Interactive REPL:
+
 - Async-based input loop
 - Command handling: /help, /exit, /auto, /confirm
 - Two autonomy modes:
@@ -160,6 +175,7 @@ else:
 - User confirmation workflow
 
 **Display Format**:
+
 ```
 ======================================================================
 📊 SPY @ $670.97
@@ -192,6 +208,7 @@ Continue? [yes/no]: _
 ### 6. Factory Pattern (`src/core/factory.py`)
 
 **OrchestratorFactory** - Component wiring:
+
 - Loads configuration from config.json
 - Creates all components with correct dependencies
 - Supports stub vs real VoterAgent selection
@@ -216,6 +233,7 @@ python main.py trade-assist
 ```
 
 **Example Session**:
+
 ```
 > is SPY at 600 a good entry?
 
@@ -242,17 +260,20 @@ Continue? [yes/no]: yes
 ### Natural Language Examples
 
 **Review queries**:
+
 - "is SPY at 600 a good entry?"
 - "should I buy AAPL?"
 - "analyze TSLA"
 - "what do you think about MSFT?"
 
 **Buy orders**:
+
 - "buy 10 AAPL"
 - "buy 10 AAPL at 200"
 - "enter AAPL with 10 shares"
 
 **Sell orders**:
+
 - "sell 5 TSLA"
 - "sell 5 TSLA at 250"
 - "exit my AAPL position"
@@ -264,6 +285,7 @@ Continue? [yes/no]: yes
 ### Real OpenAI API Tests (3/3 passing)
 
 **Test 1: Review Query**
+
 ```
 Input: "is SPY at 600 a good entry?"
 ✅ Parsed: SPY, review action, $600 price
@@ -271,6 +293,7 @@ Input: "is SPY at 600 a good entry?"
 ```
 
 **Test 2: Buy Order**
+
 ```
 Input: "buy 10 AAPL at 200"
 ✅ Parsed: AAPL, buy action, 10 shares, $200 price
@@ -278,6 +301,7 @@ Input: "buy 10 AAPL at 200"
 ```
 
 **Test 3: Sell Order**
+
 ```
 Input: "sell 5 TSLA"
 ✅ Parsed: TSLA, sell action, 5 shares
@@ -287,6 +311,7 @@ Input: "sell 5 TSLA"
 ### Real VoterAgent Tests (3/3 passing)
 
 **Test 1: SPY Analysis**
+
 ```
 Market Data: Fetched 60 days from Alpaca
 Signal: SELL (65% confidence)
@@ -297,6 +322,7 @@ Current Price: $670.97
 ```
 
 **Test 2: AAPL Analysis**
+
 ```
 Market Data: Fetched 60 days from Alpaca
 Signal: BUY (65% confidence)
@@ -307,6 +333,7 @@ Current Price: $258.45
 ```
 
 **Test 3: Stub vs Real Comparison**
+
 ```
 Stub VoterStrategy:
   Signal: BUY (75% confidence)
@@ -357,12 +384,14 @@ rsi_params = {
 ## Files Created
 
 ### Core Components
+
 - `src/core/models.py` - Data structures (TradeRequest, AnalysisResult, etc.)
 - `src/core/trading_orchestrator.py` - Central coordinator
 - `src/core/interfaces/` - Abstract interfaces for all plugins
 - `src/core/factory.py` - Component wiring with config.json
 
 ### Services & Plugins
+
 - `src/services/llm/llm_service.py` - LLM abstraction
 - `src/services/llm/openai_service.py` - OpenAI implementation
 - `src/parsers/llm_parser.py` - Natural language parser
@@ -372,16 +401,19 @@ rsi_params = {
 - `src/execution/alpaca_execution_manager.py` - Alpaca execution
 
 ### Presentation Layer
+
 - `src/presentation/cli/__init__.py` - Package initialization
 - `src/presentation/cli/cli_session.py` - Interactive REPL
 
 ### Tests
+
 - `tests/test_basic.py` - Foundation tests (4/4 passing)
 - `tests/test_end_to_end.py` - Integration tests (4/4 passing)
 - `test_real_api.py` - Real OpenAI API tests (3/3 passing)
 - `test_real_voter.py` - Real VoterAgent tests (3/3 passing)
 
 ### Documentation
+
 - `docs/sessions/2025-01-08_plugin_architecture_implementation.md` - Implementation tracking
 - `docs/04_development/03_cli_trade_assistant.md` - This document
 

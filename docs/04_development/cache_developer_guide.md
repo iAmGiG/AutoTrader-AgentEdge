@@ -76,6 +76,7 @@ TradingCacheManager(
 ```
 
 **Parameters:**
+
 - `db_path`: Path to SQLite database file (default: `.cache/trading_data.db`)
 
 ---
@@ -94,6 +95,7 @@ def get(
 ```
 
 **Parameters:**
+
 - `symbol`: Stock ticker (e.g., "AAPL", "SPY")
 - `start`: Start date in YYYY-MM-DD format
 - `end`: End date in YYYY-MM-DD format
@@ -101,6 +103,7 @@ def get(
 - `asset_type`: Asset type ("stock", "option", "future")
 
 **Returns:**
+
 - `pd.DataFrame` with OHLCV data if found
 - `None` if cache miss
 
@@ -130,6 +133,7 @@ def set(
 ```
 
 **Parameters:**
+
 - `symbol`: Stock ticker
 - `data`: DataFrame with OHLCV columns (must have 'close' column minimum)
 - `source`: Data source ("alpaca", "polygon", "alpha_vantage")
@@ -137,6 +141,7 @@ def set(
 - `ttl_hours`: Optional custom TTL (overrides smart expiration)
 
 **Required DataFrame Columns:**
+
 - `close` (required)
 - `open`, `high`, `low`, `volume` (recommended)
 - `vwap`, `transactions` (optional)
@@ -167,6 +172,7 @@ def delete(
 ```
 
 **Parameters:**
+
 - `symbol`: Stock ticker
 - `start`: Optional start date filter
 - `end`: Optional end date filter
@@ -174,6 +180,7 @@ def delete(
 - `asset_type`: Asset type
 
 **Returns:**
+
 - Number of entries deleted
 
 **Examples:**
@@ -240,6 +247,7 @@ def cleanup_expired(self) -> int:
 ```
 
 **Returns:**
+
 - Number of expired entries deleted
 
 **Example:**
@@ -275,9 +283,11 @@ def get_symbols(self, asset_type: str = "stock") -> List[str]:
 ```
 
 **Parameters:**
+
 - `asset_type`: Asset type filter
 
 **Returns:**
+
 - List of unique symbols
 
 **Example:**

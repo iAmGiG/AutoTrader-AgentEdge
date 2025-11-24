@@ -7,6 +7,7 @@
 - **[abstract.md](abstract.md)** - Submission package (abstract, equipment request, demo guide)
 - **[poster_draft.md](poster_draft.md)** - Physical poster layout (36" x 48")
 - **[speaker_notes.md](speaker_notes.md)** - Demo scripts (30-sec lightning, 1-2 min standard)
+- **[research_foundation.md](research_foundation.md)** - Academic foundation (citations, research impact)
 
 ### Supporting Assets
 

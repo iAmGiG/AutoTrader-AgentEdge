@@ -41,6 +41,7 @@ The `open orders` command displays all pending orders with visual grouping to sh
 **Format**: `$SPY`, `$AAPL`, `$O`
 
 **Benefits**:
+
 - Matches trading terminal conventions
 - Immediately scannable among text
 - Machine-parseable for automation
@@ -51,6 +52,7 @@ The `open orders` command displays all pending orders with visual grouping to sh
 **Shows**: Overall position bias for the order group
 
 **Values**:
+
 - `LONG` - Bullish equity position or long call
 - `SHORT` - Bearish equity position or short call
 - `LONG CALL` - Bullish option position
@@ -74,11 +76,13 @@ The `open orders` command displays all pending orders with visual grouping to sh
 **Logic**: PT1 is always the closest profit target to current price
 
 **LONG Position** (ascending prices):
+
 ```
 Entry → PT1 @ $595 → PT2 @ $600 → SL @ $580
 ```
 
 **SHORT Position** (descending prices):
+
 ```
 Entry → PT1 @ $55 → SL @ $62
 ```
@@ -88,6 +92,7 @@ Entry → PT1 @ $55 → SL @ $62
 ### 5. Visual Hierarchy
 
 **Box Drawing Characters**:
+
 - `┌─` Top border (first order in group)
 - `│` Continuation lines (middle orders)
 - `└─` Bottom border (last order in group)
@@ -102,6 +107,7 @@ Entry → PT1 @ $55 → SL @ $62
 **Example**: `🟢 buy 7.0 @ market - NEW (1b449d18)`
 
 **Benefits**:
+
 - All critical info visible at a glance
 - Compact, scannable format
 - No scrolling needed for multi-order positions
@@ -113,19 +119,23 @@ Entry → PT1 @ $55 → SL @ $62
 ### Direction Logic
 
 **LONG CALL** (Bullish):
+
 - Higher prices = profit
 - PT ordering: Ascending (same as LONG stock)
 
 **LONG PUT** (Bearish):
+
 - Lower prices = profit
 - PT ordering: Descending (same as SHORT stock)
 
 **SHORT CALL** (Bearish STO):
+
 - Lower prices = profit (expire worthless is ideal)
 - Maximum profit = premium collected
 - Display: "max profit @ expiry" instead of PT
 
 **SHORT PUT** (Bullish STO):
+
 - Higher prices = profit (expire worthless is ideal)
 - Maximum profit = premium collected
 - Display: "max profit @ expiry" instead of PT
@@ -230,16 +240,19 @@ Single symbol with multiple order structures:
 ## Future Enhancements
 
 **Visual**:
+
 - Color coding by P&L (green = profitable, red = losing)
 - Live price updates with distance to targets
 - Highlight imminent stop triggers
 
 **Interactive**:
+
 - Quick cancel: `cancel order 3` to cancel PT2
 - Bulk operations: `cancel all $SPY orders`
 - Interactive order modification from CLI
 
 **Analysis**:
+
 - Export to CSV/JSON for analysis
 - Generate order flow diagrams
 - Historical order pattern analysis

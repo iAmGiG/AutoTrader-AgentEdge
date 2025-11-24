@@ -16,7 +16,7 @@ When placing bracket orders outside of market hours (weekends, after-hours):
 
 ### Example
 
-```
+```text
 Analysis shows: AAPL @ $258.45 (from historical data)
 Calculated target: $267.50 (+3.5%)
 Alpaca validates against: $268.69 (current market quote)

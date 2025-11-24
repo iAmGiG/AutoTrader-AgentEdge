@@ -34,11 +34,13 @@ os.kill(pid, signal.SIGTERM)
 ```
 
 **Pros:**
+
 - Simple implementation
 - Standard Python libraries
 - Works cross-platform
 
 **Cons:**
+
 - PID file can become stale
 - No automatic restart on crash
 - Parent/child relationship issues
@@ -48,6 +50,7 @@ os.kill(pid, signal.SIGTERM)
 **Approach:** Register as system service
 
 **systemd (Linux):**
+
 ```ini
 # /etc/systemd/system/trading-scheduler.service
 [Unit]
@@ -67,6 +70,7 @@ WantedBy=multi-user.target
 ```
 
 **Control from CLI:**
+
 ```python
 import subprocess
 subprocess.run(['systemctl', '--user', 'start', 'trading-scheduler'])
@@ -75,12 +79,14 @@ subprocess.run(['systemctl', '--user', 'status', 'trading-scheduler'])
 ```
 
 **Pros:**
+
 - Automatic restart on crash
 - System-level monitoring
 - Proper logging integration
 - Runs at boot (optional)
 
 **Cons:**
+
 - Platform-specific (systemd, launchd, Windows Service)
 - Requires initial setup
 - Elevated permissions for install
@@ -120,6 +126,7 @@ subprocess.run(['systemctl', '--user', 'status', 'trading-scheduler'])
 ```
 
 **Implementation:**
+
 ```python
 # src/cli/scheduler_supervisor.py
 class SchedulerSupervisor:
@@ -174,6 +181,7 @@ class SchedulerSupervisor:
 ```
 
 **CLI Integration:**
+
 ```python
 # In scheduler_cli.py
 def start_service(self):
@@ -198,6 +206,7 @@ def stop_service(self):
 ```
 
 **Pros:**
+
 - Cross-platform (pure Python)
 - No root/admin needed
 - Lightweight (supervisor sleeps most of the time)
@@ -205,6 +214,7 @@ def stop_service(self):
 - Clean shutdown
 
 **Cons:**
+
 - Requires supervisor to always run
 - 10s delay for state changes
 
@@ -213,12 +223,14 @@ def stop_service(self):
 ### Worker Self-Termination
 
 **Trigger Conditions:**
+
 1. Config `enabled: false` detected
 2. No scheduled runs in next 24 hours
 3. Consecutive failures exceed threshold
 4. Manual shutdown signal
 
 **Implementation:**
+
 ```python
 # src/trading/scheduler_worker.py
 class SchedulerWorker:
@@ -331,6 +343,7 @@ Scheduler> service restart  - Restart service
 ```
 
 **Example:**
+
 ```
 Scheduler> service start
 
@@ -352,23 +365,27 @@ Scheduler> service status
 ## Implementation Plan
 
 ### Phase 1: Basic Subprocess Control
+
 - [ ] Add `service start` command (simple subprocess)
 - [ ] Add `service stop` command (PID-based kill)
 - [ ] PID file management
 - [ ] Basic status checking
 
 ### Phase 2: Self-Termination
+
 - [ ] Worker detects `enabled: false`
 - [ ] Graceful shutdown with cleanup
 - [ ] State persistence before exit
 
 ### Phase 3: Supervisor Pattern
+
 - [ ] Create lightweight supervisor daemon
 - [ ] State file communication
 - [ ] Automatic crash recovery
 - [ ] Heartbeat monitoring
 
 ### Phase 4: Production Features
+
 - [ ] System service integration (systemd/launchd)
 - [ ] Logging to syslog/journald
 - [ ] Metrics collection (Prometheus-style)
@@ -418,5 +435,6 @@ src/
 **Status:** This is a design document for future implementation.
 
 **Related:**
+
 - [Scheduler CLI Reference](../features/scheduler_cli_reference.md)
 - [GTC Scheduler Technical](../features/03_gtc_scheduler_technical.md)

@@ -377,6 +377,7 @@ For developers migrating from the old system:
 ### Quick Migration
 
 **Before (UnifiedCacheManager)**:
+
 ```python
 from src.data_sources.cache import UnifiedCacheManager
 cache = UnifiedCacheManager()
@@ -385,6 +386,7 @@ df = cache.get_market_data(symbol, start, end, source)
 ```
 
 **After (TradingCacheManager)**:
+
 ```python
 from src.data_sources.cache import TradingCacheManager
 cache = TradingCacheManager()
@@ -393,6 +395,7 @@ df = cache.get(symbol, start, end, source=source)
 ```
 
 **Or use CacheAdapter (no code changes)**:
+
 ```python
 from src.data_sources.cache import cache_adapter
 # Same API as before, automatically uses SQLite
@@ -444,6 +447,7 @@ cache.delete("SPY", "2025-01-01", "2025-01-31", source="alpaca")
 ### Cache Miss (Expected Behavior)
 
 If `cache.get()` returns `None`:
+
 1. Data not cached yet (first request)
 2. Data expired (check TTL settings)
 3. Symbol/date range not available in cache
@@ -451,6 +455,7 @@ If `cache.get()` returns `None`:
 ### Database Locked Error
 
 SQLite serializes writes. If you see "database is locked":
+
 - Reads are concurrent (no lock)
 - Writes are serialized (one at a time)
 - Default timeout: 5 seconds
@@ -459,6 +464,7 @@ SQLite serializes writes. If you see "database is locked":
 ### Performance Degradation
 
 If queries become slow:
+
 1. Run `cache.cleanup_expired()` to remove old data
 2. Run `cache.vacuum()` to reclaim space
 3. Check database size with `cache.get_stats()`
@@ -473,6 +479,7 @@ If queries become slow:
 - **Total**: 29/29 tests passing (100% pass rate)
 
 Test categories:
+
 - Basic operations (set/get/filtering)
 - Edge cases (empty data, duplicates, date handling)
 - Expiration logic (TTL, cleanup)
@@ -509,6 +516,7 @@ The old file-based cache is deprecated but maintained for backward compatibility
 - 📅 Planned removal: Q2 2025
 
 **Why deprecated:**
+
 - No concurrent access safety
 - Slower queries (200ms+ vs 25ms)
 - File fragmentation issues
@@ -541,6 +549,7 @@ with sqlite3.connect('.cache/trading_data.db') as conn:
 ## Future Enhancements
 
 Planned improvements:
+
 - [ ] Compression for large datasets (gzip BLOB columns)
 - [ ] Sharding for multi-TB deployments
 - [ ] Read replicas for high-concurrency scenarios

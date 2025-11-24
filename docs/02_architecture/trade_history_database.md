@@ -73,6 +73,7 @@ CREATE TABLE trade_history (
 ### Indexes
 
 Optimized for common analytics queries:
+
 - `idx_trade_symbol`: Symbol-based filtering
 - `idx_trade_entry_date`: Time-based filtering
 - `idx_trade_strategy`: Strategy performance analysis
@@ -88,6 +89,7 @@ Optimized for common analytics queries:
 Archive a completed trade to the database.
 
 **Required Fields**:
+
 - `trade_id`: Unique identifier
 - `symbol`: Stock symbol
 - `entry_date`: Entry datetime (ISO format)
@@ -95,6 +97,7 @@ Archive a completed trade to the database.
 - `quantity`: Number of shares
 
 **Optional Fields**:
+
 - `exit_date`, `exit_price`, `exit_reason`
 - `initial_stop_loss`, `initial_take_profit`
 - `realized_pnl`, `realized_pnl_pct`
@@ -103,6 +106,7 @@ Archive a completed trade to the database.
 - `notes`: Dict (will be JSON serialized)
 
 **Example**:
+
 ```python
 from src.data_sources.cache import TradingCacheManager
 
@@ -132,6 +136,7 @@ cache.archive_trade(trade_data)
 Query trade history with flexible filters.
 
 **Parameters**:
+
 - `symbol`: Filter by symbol (None = all)
 - `start_date`: Entry date >= start_date (YYYY-MM-DD)
 - `end_date`: Entry date <= end_date (YYYY-MM-DD)
@@ -140,6 +145,7 @@ Query trade history with flexible filters.
 - `limit`: Limit number of results
 
 **Example**:
+
 ```python
 # Get all TQQQ trades from 2024
 trades = cache.get_trade_history(
@@ -165,10 +171,12 @@ voter_trades = cache.get_trade_history(
 Get aggregated trading statistics.
 
 **Parameters**:
+
 - `symbol`: Filter by symbol (None = all)
 - `strategy`: Filter by strategy (None = all)
 
 **Returns**:
+
 - `total_trades`: Total number of trades
 - `winning_trades`: Number of profitable trades
 - `losing_trades`: Number of losing trades
@@ -181,6 +189,7 @@ Get aggregated trading statistics.
 - `avg_holding_hours`: Average holding period
 
 **Example**:
+
 ```python
 # Overall stats
 stats = cache.get_trade_stats()
@@ -221,6 +230,7 @@ def close_position(self, reason: str = "Manual close") -> bool:
 ```
 
 **Key Points**:
+
 - ✅ Non-invasive: Single line addition to existing code
 - ✅ Fail-safe: Won't break trade execution if DB unavailable
 - ✅ Automatic: No manual intervention required

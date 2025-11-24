@@ -50,12 +50,14 @@ This directory contains comprehensive documentation for all integrated features 
 **Why:** Know when positions approach targets/stops without constant checking
 
 **Key Features:**
+
 - 5 alert types (approaching TP/SL, stop adjusted, targets reached)
 - 5-minute cooldown (anti-spam)
 - Alert history persists across restarts
 - Integrated into unified CLI
 
 **Usage:**
+
 ```bash
 python main.py
 
@@ -76,12 +78,14 @@ python main.py
 **Why:** Automate morning reconciliation and evening review without manual intervention
 
 **Key Features:**
+
 - Twice-daily execution (9:20 AM, 3:50 PM ET)
 - 90% API cost savings vs continuous polling
 - Retry logic with exponential backoff
 - Multiple deployment options
 
 **Usage:**
+
 ```bash
 # Background scheduler
 python main.py --daemon
@@ -96,6 +100,7 @@ python main.py
 ```
 
 **Documentation:**
+
 - Quick Start: [02_gtc_scheduler_quickstart.md](02_gtc_scheduler_quickstart.md)
 - Technical: [03_gtc_scheduler_technical.md](03_gtc_scheduler_technical.md)
 
@@ -108,6 +113,7 @@ python main.py
 **Why:** Eliminate fragmented commands, enable natural language interaction
 
 **Key Features:**
+
 - **LLM-Based Routing:** Context-aware classification (trade vs status query)
 - **Natural Language:** "check my alerts", "show portfolio", "any open orders?"
 - **No Hardcoded Patterns:** Handles ambiguous tickers (ANY, WHAT, etc.) automatically
@@ -115,12 +121,14 @@ python main.py
 - **Mode Indicator:** Visual prompt shows CONFIRM/AUTO mode like conda environments
 
 **Architecture:**
+
 - LLM parser determines `request_type` before ticker extraction
 - Prevents "any open orders?" from being parsed as ticker "ANY"
 - Fast keyword routing for scheduler/alerts (no LLM overhead)
 - Scalable: No special cases needed for individual tickers
 
 **Usage:**
+
 ```bash
 python main.py    # Just works!
 
@@ -133,6 +141,7 @@ python main.py    # Just works!
 ```
 
 **Documentation:**
+
 - Architecture: `docs/architecture/llm_routing_architecture.md`
 - Test Plan: `docs/features/05_interactive_cli_test_plan.md` (Category 7)
 - Main README: See main README.md
@@ -179,6 +188,7 @@ Unified CLI (#339)
 ```
 
 **Morning Routine Flow:**
+
 1. Scheduler runs at 9:20 AM ET
 2. Fetches broker state (2 API calls)
 3. Checks position alerts
@@ -187,6 +197,7 @@ Unified CLI (#339)
 6. Generates daily report
 
 **User Interaction:**
+
 ```bash
 python main.py
 
@@ -220,17 +231,20 @@ python main.py
 ## Support
 
 **Questions?**
+
 - Check this manual first
 - See main README.md
 - Review test results (#4)
 - Check GitHub issues
 
 **Found a bug?**
+
 - Create GitHub issue
 - Include steps to reproduce
 - Attach relevant logs
 
 **Need a feature?**
+
 - Create GitHub issue with "enhancement" label
 - Describe use case
 - Explain benefit
@@ -240,6 +254,7 @@ python main.py
 ## Version History
 
 **v1.0 - 2025-01-10**
+
 - Initial unified feature release
 - Position alerts (#306)
 - GTC scheduler (#287)
