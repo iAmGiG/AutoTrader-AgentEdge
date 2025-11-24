@@ -541,9 +541,30 @@ python scripts/cache_manager.py clear --all --confirm
 
 ## Migration from Legacy Cache
 
-See [CACHE_MIGRATION.md](../../CACHE_MIGRATION.md) for complete migration guide.
+### Step 1: Run Migration Script
 
-**Quick migration:**
+```bash
+# Preview migration (dry run)
+python scripts/migrate_cache_to_sqlite.py --dry-run
+
+# Full migration (creates backup automatically)
+python scripts/migrate_cache_to_sqlite.py
+
+# Skip backup if you're confident
+python scripts/migrate_cache_to_sqlite.py --no-backup
+```
+
+**What the script does:**
+
+- Backs up all JSON files to `.cache/backup_TIMESTAMP/`
+- Converts 3 cache formats: UnifiedCacheManager, MarketDataCache, and raw JSON
+- Removes duplicates automatically
+- Creates `.cache/trading_data.db` SQLite database
+- Preserves all metadata (sources, timestamps)
+
+### Step 2: Update Your Code
+
+**Quick migration (minimal changes):**
 
 ```python
 # Before (UnifiedCacheManager)
@@ -561,6 +582,54 @@ df = cache.get(symbol, start, end, source=source)
 # Or use CacheAdapter (no code changes)
 from src.data_sources.cache import cache_adapter
 df = cache_adapter.get_market_data(symbol, start, end, source)
+```
+
+### Step 3: Update Data Sources
+
+**Pattern for data source integration:**
+
+```python
+from src.data_sources.cache import TradingCacheManager
+
+class AlpacaMarketData:
+    def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
+        self.cache = cache_manager or TradingCacheManager()
+
+    def get_bars(self, symbols, start, end):
+        # New cache API
+        cached = self.cache.get(symbol, start, end, source="alpaca")
+
+        # After fetching...
+        # Remove 'symbol' and 'source' columns before caching
+        cache_data = df.drop(columns=['symbol', 'source'], errors='ignore')
+        self.cache.set(symbol, cache_data, source="alpaca")
+```
+
+**Important:** Drop 'symbol' and 'source' columns before caching (stored as metadata).
+
+### Step 4: Rollback Plan (If Needed)
+
+If you need to rollback to the old system:
+
+```bash
+# 1. Restore JSON files from backup
+cp -r .cache/backup_TIMESTAMP/* .cache/
+
+# 2. Remove SQLite database
+mv .cache/trading_data.db .cache/trading_data.db.backup
+
+# 3. Update git to previous commit
+git log --oneline  # Find commit before migration
+git checkout <commit-hash>
+```
+
+**Temporary rollback in code:**
+
+```python
+# Switch back temporarily (will show deprecation warnings)
+from src.data_sources.cache import UnifiedCacheManager
+cache = UnifiedCacheManager()
+# Use old API...
 ```
 
 ---
