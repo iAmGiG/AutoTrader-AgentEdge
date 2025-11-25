@@ -454,9 +454,7 @@ class TradeCycle:
                     if account and account.get("cash", 0) > 1000:
                         # If we have cash but no price, try getting it through the broker
                         try:
-                            from src.trading.alpaca_trading_client import (
-                                AlpacaAccountMonitor,
-                            )
+                            from src.trading.alpaca_trading_client import AlpacaAccountMonitor
 
                             monitor = AlpacaAccountMonitor(mode="paper")
                             # Try to get last trade price from Alpaca directly
