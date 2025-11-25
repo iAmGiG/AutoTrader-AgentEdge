@@ -10,13 +10,13 @@ Part of Issue #373: Enhanced Database Storage for Multi-Provider Support
 
 import logging
 import os
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
 from src.data_sources.cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
+from src.utils.date_utils import now_iso
 
 # Lazy imports for providers
 try:
@@ -217,7 +217,7 @@ class UnifiedOptionsDataTool:
         """
         metadata = {
             "provider": "polygon",
-            "attempted_at": datetime.now().isoformat(),
+            "attempted_at": now_iso(),
             "status": "attempted",
         }
 
@@ -261,7 +261,7 @@ class UnifiedOptionsDataTool:
         """
         metadata = {
             "provider": "alpha_vantage",
-            "attempted_at": datetime.now().isoformat(),
+            "attempted_at": now_iso(),
             "status": "not_implemented",
             "note": "Alpha Vantage options API endpoint requires verification",
         }
@@ -281,7 +281,7 @@ class UnifiedOptionsDataTool:
         """
         metadata = {
             "provider": "alpaca",
-            "attempted_at": datetime.now().isoformat(),
+            "attempted_at": now_iso(),
             "status": "attempted",
         }
 

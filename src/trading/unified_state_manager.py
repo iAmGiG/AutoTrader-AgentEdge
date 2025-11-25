@@ -10,9 +10,10 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime  # TODO Date utils
 from threading import Lock
 from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import now_iso
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -85,7 +86,7 @@ class UnifiedStateManager:
             "positions": {},
             "orders": {},
             "trade_history": [],
-            "last_update": datetime.now().isoformat(),
+            "last_update": now_iso(),
             "version": "2.0",
             "stats": {"total_trades": 0, "winning_trades": 0, "losing_trades": 0, "total_pnl": 0.0},
         }
@@ -129,7 +130,7 @@ class UnifiedStateManager:
         with self._lock:
             try:
                 # Update timestamp
-                self.state["last_update"] = datetime.now().isoformat()
+                self.state["last_update"] = now_iso()
 
                 # Write to temp file first
                 temp_file = self.state_file + ".tmp"
@@ -153,7 +154,7 @@ class UnifiedStateManager:
             try:
                 self.state["positions"][symbol] = {
                     **data,
-                    "last_update": datetime.now().isoformat(),
+                    "last_update": now_iso(),
                 }
                 self._save_state()
                 logger.info(f"Added/updated position: {symbol}")
@@ -177,7 +178,7 @@ class UnifiedStateManager:
             if symbol in self.state["positions"]:
                 # Move to history before removing
                 position = self.state["positions"][symbol]
-                position["closed_time"] = datetime.now().isoformat()
+                position["closed_time"] = now_iso()
                 self.state["trade_history"].append(position)
 
                 # Update stats
@@ -203,7 +204,7 @@ class UnifiedStateManager:
         """Add or update an order."""
         with self._lock:
             try:
-                self.state["orders"][order_id] = {**data, "last_update": datetime.now().isoformat()}
+                self.state["orders"][order_id] = {**data, "last_update": now_iso()}
                 self._save_state()
                 logger.info(f"Added/updated order: {order_id}")
                 return True
@@ -255,7 +256,7 @@ class UnifiedStateManager:
             "orders": self.state["orders"],
             "history": self.state["trade_history"][-100:],  # Last 100 trades
             "stats": self.state["stats"],
-            "export_time": datetime.now().isoformat(),
+            "export_time": now_iso(),
         }
 
 

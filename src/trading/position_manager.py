@@ -8,9 +8,10 @@ Fetches directly from broker to eliminate state synchronization issues.
 
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class PositionManager:
         Returns:
             Dict mapping symbol -> position data
         """
-        now = datetime.now()
+        now = get_datetime_now()
 
         # Check if we can use cached data
         if not force_refresh and self._cache_timestamp:
@@ -163,7 +164,7 @@ class PositionManager:
                     else 0
                 ),
                 "status": account.status,
-                "last_updated": datetime.now().isoformat(),
+                "last_updated": now_iso(),
             }
         except Exception as e:
             logger.error(f"Failed to fetch account info: {e}")
@@ -173,9 +174,7 @@ class PositionManager:
         """Save positions to backup file."""
         try:
             with open(self.state_file, "w") as f:
-                json.dump(
-                    {"positions": positions, "saved_at": datetime.now().isoformat()}, f, indent=2
-                )
+                json.dump({"positions": positions, "saved_at": now_iso()}, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save positions backup: {e}")
 

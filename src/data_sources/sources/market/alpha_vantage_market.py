@@ -8,7 +8,6 @@ separates different types of financial data.
 
 import logging
 import os
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 import pandas as pd
@@ -16,7 +15,13 @@ import requests
 
 from ...cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
-from src.utils.date_utils import get_default_timezone, get_processed_date_range, localize_df
+from src.utils.date_utils import (
+    get_datetime_now,
+    get_default_timezone,
+    get_processed_date_range,
+    localize_df,
+    parse_date_string,
+)
 
 
 class AlphaVantageMarketTool:
@@ -77,7 +82,7 @@ class AlphaVantageMarketTool:
             )
 
             # Determine outputsize based on date range
-            days_range = (datetime.now() - datetime.strptime(processed_start, "%Y-%m-%d")).days
+            days_range = (get_datetime_now() - parse_date_string(processed_start)).days
             use_full = days_range > 100
 
             # API parameters for daily time series

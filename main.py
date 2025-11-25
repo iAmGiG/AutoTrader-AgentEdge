@@ -15,7 +15,7 @@ import argparse
 import os
 import sys
 import traceback
-from datetime import datetime, timedelta  # TODO date_utils.py maybe?
+from datetime import timedelta
 
 import pandas as pd
 
@@ -27,6 +27,7 @@ from src.autogen_agents.voter_agent import VoterAgent
 from src.data_sources.tools import fetch_unified_market_data
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
 from src.trading.trading_cycle import CostEfficientTradeCycle
+from src.utils.date_utils import get_datetime_now
 from src.utils.safe_print import get_severity_symbol, get_symbol, safe_print
 
 
@@ -54,8 +55,8 @@ def test_voter_agent():
 
         # Test with AAPL data
         print("\nFetching AAPL market data...")
-        end_date = datetime.now().strftime("%Y-%m-%d")
-        start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+        end_date = get_datetime_now().strftime("%Y-%m-%d")
+        start_date = (get_datetime_now() - timedelta(days=60)).strftime("%Y-%m-%d")
         market_data = fetch_unified_market_data("AAPL", start_date=start_date, end_date=end_date)
 
         if market_data is not None and not market_data.empty and len(market_data) >= 42:
@@ -261,8 +262,8 @@ def run_paper_trading_check(symbol: str = None):
 
                     try:
                         # Get fresh market data
-                        end_date = datetime.now().strftime("%Y-%m-%d")
-                        start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+                        end_date = get_datetime_now().strftime("%Y-%m-%d")
+                        start_date = (get_datetime_now() - timedelta(days=60)).strftime("%Y-%m-%d")
                         market_data = fetch_unified_market_data(
                             pos_symbol, start_date=start_date, end_date=end_date
                         )
@@ -526,7 +527,7 @@ Interactive CLI Usage:
         print(f"Command: {command}")
         if command == "paper-trade":
             print(f"Symbol: {symbol}")
-        print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Time: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 30)
 
         try:

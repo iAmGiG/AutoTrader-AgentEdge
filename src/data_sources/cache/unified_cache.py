@@ -11,11 +11,17 @@ Use src.data_sources.cache.TradingCacheManager for new code.
 import json
 import logging
 import warnings
-from datetime import datetime, timedelta  # TODO: utilize date_utils.py
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import pandas as pd
+
+from src.utils.date_utils import (
+    get_datetime_now,
+    now_iso,
+    parse_date_string,
+)
 
 
 class UnifiedCacheManager:
@@ -59,7 +65,7 @@ class UnifiedCacheManager:
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def _calculate_market_data_expiration(self, start_date: str, end_date: str) -> datetime:
+    def _calculate_market_data_expiration(self, start_date: str, end_date: str):
         """
         Calculate appropriate expiration based on data recency.
 
@@ -67,20 +73,20 @@ class UnifiedCacheManager:
         Recent data (≤2 days): Short expiration (24 hours) for fresh updates
         """
         try:
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-            today = datetime.now().date()
+            end_dt = parse_date_string(end_date)
+            today = get_datetime_now().date()
 
             # Historical data should never practically expire
             if end_dt.date() < today - timedelta(days=2):
-                return datetime.now() + timedelta(days=365 * 10)  # 10 years
+                return get_datetime_now() + timedelta(days=365 * 10)  # 10 years
 
             # Recent data needs fresh updates
             else:
-                return datetime.now() + timedelta(hours=24)
+                return get_datetime_now() + timedelta(hours=24)
 
         except ValueError:
             # Fallback to short expiration if date parsing fails
-            return datetime.now() + timedelta(hours=24)
+            return get_datetime_now() + timedelta(hours=24)
 
     def _get_market_cache_key(self, symbol: str, start: str, end: str, source: str) -> str:
         """Generate standardized cache key for market data."""
@@ -133,11 +139,11 @@ class UnifiedCacheManager:
 
                 # Use stored expiry if available, otherwise calculate
                 if expires_at_value:
-                    expires_at = datetime.fromisoformat(expires_at_value)
+                    expires_at = parse_date_string(expires_at_value)
                 else:
                     expires_at = expected_expiry
 
-                if datetime.now() > expires_at:
+                if get_datetime_now() > expires_at:
                     self.logger.debug(f"Market data cache expired: {cache_key}")
                 else:
                     # Convert to DataFrame
@@ -157,8 +163,8 @@ class UnifiedCacheManager:
         complete_result = self._search_overlapping_cache(symbol, start, end, source)
         if complete_result is not None:
             # Calculate expected trading days for the time range
-            start_dt = datetime.strptime(start, "%Y-%m-%d")
-            end_dt = datetime.strptime(end, "%Y-%m-%d")
+            start_dt = parse_date_string(start)
+            end_dt = parse_date_string(end)
             calendar_days = (end_dt - start_dt).days + 1
             expected_trading_days = (
                 calendar_days * 0.7
@@ -214,18 +220,16 @@ class UnifiedCacheManager:
 
                         # Check if this is historical data (don't apply expiration to historical data)
                         metadata_end_str = cache_data["metadata"]["end_date"]
-                        file_end_date = datetime.strptime(metadata_end_str, "%Y-%m-%d")
-                        is_historical = file_end_date.date() < datetime.now().date() - timedelta(
-                            days=2
+                        file_end_date = parse_date_string(metadata_end_str)
+                        is_historical = (
+                            file_end_date.date() < get_datetime_now().date() - timedelta(days=2)
                         )
 
                         # For historical data, ignore expiration
                         if not is_historical:
                             if "expires_at" in cache_data["metadata"]:
-                                expires_at = datetime.fromisoformat(
-                                    cache_data["metadata"]["expires_at"]
-                                )
-                                if datetime.now() > expires_at:
+                                expires_at = parse_date_string(cache_data["metadata"]["expires_at"])
+                                if get_datetime_now() > expires_at:
                                     continue
 
                         # Convert to DataFrame
@@ -268,8 +272,8 @@ class UnifiedCacheManager:
         but having quarterly cache files).
         """
         try:
-            start_date = datetime.strptime(start, "%Y-%m-%d")
-            end_date = datetime.strptime(end, "%Y-%m-%d")
+            start_date = parse_date_string(start)
+            end_date = parse_date_string(end)
 
             # Look for cache files that might contain our date range
             # Handle both regular and consolidated files
@@ -296,8 +300,8 @@ class UnifiedCacheManager:
                     if len(file_start_str) != 10 or len(file_end_str) != 10:
                         continue
 
-                    file_start_date = datetime.strptime(file_start_str, "%Y-%m-%d")
-                    file_end_date = datetime.strptime(file_end_str, "%Y-%m-%d")
+                    file_start_date = parse_date_string(file_start_str)
+                    file_end_date = parse_date_string(file_end_str)
 
                     # Check if cached range overlaps with requested range
                     if file_start_date <= end_date and file_end_date >= start_date:
@@ -314,25 +318,23 @@ class UnifiedCacheManager:
 
                         # Use stored expiry if available, otherwise calculate
                         if "expires_at" in cache_data["metadata"]:
-                            expires_at = datetime.fromisoformat(
-                                cache_data["metadata"]["expires_at"]
-                            )
+                            expires_at = parse_date_string(cache_data["metadata"]["expires_at"])
                         else:
                             expires_at = expected_expiry
 
                         # HISTORICAL DATA FIX: Don't expire historical market data (>2 days old)
                         # Historical data never changes, so expired cache is still valid
                         try:
-                            file_end_date = datetime.strptime(metadata_end_str, "%Y-%m-%d")
+                            file_end_date = parse_date_string(metadata_end_str)
                             is_historical = (
-                                file_end_date.date() < datetime.now().date() - timedelta(days=2)
+                                file_end_date.date() < get_datetime_now().date() - timedelta(days=2)
                             )
 
-                            if not is_historical and datetime.now() > expires_at:
+                            if not is_historical and get_datetime_now() > expires_at:
                                 continue  # Only skip expired recent data, not historical data
                         except ValueError:
                             # If date parsing fails, fall back to original expiry check
-                            if datetime.now() > expires_at:
+                            if get_datetime_now() > expires_at:
                                 continue
 
                         # Convert to DataFrame
@@ -505,7 +507,7 @@ class UnifiedCacheManager:
                     "start_date": start,
                     "end_date": end,
                     "source": source,
-                    "cached_at": datetime.now().isoformat(),
+                    "cached_at": now_iso(),
                     "expires_at": expires_at.isoformat(),
                 },
                 "data": df[["date", "open", "high", "low", "close", "volume"]].to_dict("records"),
@@ -537,8 +539,8 @@ class UnifiedCacheManager:
                 cache_data = json.load(f)
 
             # Check expiration (7 days for news)
-            cached_time = datetime.fromisoformat(cache_data["metadata"]["cached_at"])
-            if datetime.now() - cached_time > timedelta(days=7):
+            cached_time = parse_date_string(cache_data["metadata"]["cached_at"])
+            if get_datetime_now() - cached_time > timedelta(days=7):
                 self.logger.debug(f"News cache expired: {cache_key}")
                 return None
 
@@ -569,8 +571,8 @@ class UnifiedCacheManager:
                     "start_date": start,
                     "end_date": end,
                     "source": source,
-                    "cached_at": datetime.now().isoformat(),
-                    "expires_at": (datetime.now() + timedelta(days=7)).isoformat(),
+                    "cached_at": now_iso(),
+                    "expires_at": (get_datetime_now() + timedelta(days=7)).isoformat(),
                 },
                 "data": data.to_dict("records"),
             }
@@ -588,7 +590,7 @@ class UnifiedCacheManager:
 
     def cleanup_expired(self):
         """Remove expired cache files."""
-        now = datetime.now()
+        now = get_datetime_now()
         cleaned_count = 0
 
         # Clean market data (24h expiry)
@@ -597,7 +599,7 @@ class UnifiedCacheManager:
                 with open(cache_file, "r") as f:
                     cache_data = json.load(f)
 
-                expires_at = datetime.fromisoformat(cache_data["metadata"]["expires_at"])
+                expires_at = parse_date_string(cache_data["metadata"]["expires_at"])
                 if now > expires_at:
                     cache_file.unlink()
                     cleaned_count += 1
@@ -611,7 +613,7 @@ class UnifiedCacheManager:
                 with open(cache_file, "r") as f:
                     cache_data = json.load(f)
 
-                expires_at = datetime.fromisoformat(cache_data["metadata"]["expires_at"])
+                expires_at = parse_date_string(cache_data["metadata"]["expires_at"])
                 if now > expires_at:
                     cache_file.unlink()
                     cleaned_count += 1

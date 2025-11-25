@@ -14,8 +14,9 @@ import logging
 import os
 import sys
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -134,7 +135,7 @@ class AutomatedTradingSystem:
                 macd_signal="HOLD",
                 rsi_signal="HOLD",
                 reasoning="Market analysis pending",
-                timestamp=datetime.now().isoformat(),
+                timestamp=now_iso(),
             )
 
             return decision
@@ -318,7 +319,7 @@ class AutomatedTradingSystem:
 
         report_lines = [
             "# Daily Trading Cycle Report",
-            f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Date: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"Mode: {self.mode}",
             "",
         ]
@@ -362,7 +363,9 @@ class AutomatedTradingSystem:
             # Step 4: Summary
             report_lines.append("## Summary")
             report_lines.append("✅ Daily trading cycle completed successfully")
-            report_lines.append(f"Next cycle: {datetime.now().strftime('%Y-%m-%d')} 15:50:00 ET")
+            report_lines.append(
+                f"Next cycle: {get_datetime_now().strftime('%Y-%m-%d')} 15:50:00 ET"
+            )
 
         except Exception as e:
             logger.error("Daily trading cycle failed: %s", e)
@@ -372,7 +375,7 @@ class AutomatedTradingSystem:
         report = "\n".join(report_lines)
 
         # Save report
-        report_file = f"reports/daily/{datetime.now().strftime('%Y%m%d')}_trading_cycle.md"
+        report_file = f"reports/daily/{get_datetime_now().strftime('%Y%m%d')}_trading_cycle.md"
         os.makedirs(os.path.dirname(report_file), exist_ok=True)
         with open(report_file, "w") as f:
             f.write(report)

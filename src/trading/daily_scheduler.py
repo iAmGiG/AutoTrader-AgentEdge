@@ -18,11 +18,13 @@ import os
 import sys
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
 from datetime import time as dt_time
+from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 try:
     import yaml
@@ -226,7 +228,7 @@ class DailyScheduler:
         log_entry = ExecutionLog(
             task_name=task.name,
             scheduled_time=task.scheduled_time.isoformat(),
-            actual_start_time=datetime.now().isoformat(),
+            actual_start_time=now_iso(),
             status=ScheduleStatus.RUNNING.value,
         )
 
@@ -251,13 +253,13 @@ class DailyScheduler:
 
                 # Success!
                 log_entry.status = ScheduleStatus.COMPLETED.value
-                log_entry.actual_end_time = datetime.now().isoformat()
+                log_entry.actual_end_time = now_iso()
                 log_entry.api_calls_used = 3  # Typical API calls per routine
 
                 # Extract report path from report if available
                 # Report path is typically mentioned in the trading_cycle output
                 # Use human-readable format: 2025-11-11_morning.md (or _2.md, _3.md for multiple runs)
-                now = datetime.now()
+                now = get_datetime_now()
                 date_str = now.strftime("%Y-%m-%d")
                 # Extract routine type from task name (e.g., "morning_routine" -> "morning")
                 routine_type = task.name.replace("_routine", "")
@@ -293,7 +295,7 @@ class DailyScheduler:
                 else:
                     # All attempts failed
                     log_entry.status = ScheduleStatus.FAILED.value
-                    log_entry.actual_end_time = datetime.now().isoformat()
+                    log_entry.actual_end_time = now_iso()
                     logger.error("❌ %s failed after %d attempts", task.name, max_attempts)
 
         return log_entry
@@ -311,11 +313,13 @@ class DailyScheduler:
         if not self.config.get("enabled", True):
             return False
 
-        now = datetime.now()
+        now = get_datetime_now()
         current_time = now.time()
 
         # Check if we're within the scheduled time window (± 5 minutes)
-        scheduled_dt = datetime.combine(now.date(), task.scheduled_time)
+        from datetime import datetime as dt
+
+        scheduled_dt = dt.combine(now.date(), task.scheduled_time)
         window_start = (scheduled_dt - timedelta(minutes=5)).time()
         window_end = (scheduled_dt + timedelta(minutes=5)).time()
 
@@ -326,7 +330,7 @@ class DailyScheduler:
         # Check if already executed today
         today_str = now.strftime("%Y-%m-%d")
         for entry in reversed(self.execution_log):
-            entry_date = datetime.fromisoformat(entry.actual_start_time).strftime("%Y-%m-%d")
+            entry_date = parse_date_string(entry.actual_start_time).strftime("%Y-%m-%d")
             if entry.task_name == task.name and entry_date == today_str:
                 if entry.status == ScheduleStatus.COMPLETED.value:
                     logger.debug("Task %s already completed today", task.name)
@@ -357,8 +361,8 @@ class DailyScheduler:
         """Log execution summary for monitoring"""
         duration = "N/A"
         if log_entry.actual_end_time:
-            start = datetime.fromisoformat(log_entry.actual_start_time)
-            end = datetime.fromisoformat(log_entry.actual_end_time)
+            start = parse_date_string(log_entry.actual_start_time)
+            end = parse_date_string(log_entry.actual_end_time)
             duration = f"{(end - start).total_seconds():.1f}s"
 
         status_emoji = {
@@ -448,12 +452,12 @@ class DailyScheduler:
         Returns:
             List of ExecutionLog entries
         """
-        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = get_datetime_now() - timedelta(days=days)
 
         history = [
             entry
             for entry in self.execution_log
-            if datetime.fromisoformat(entry.actual_start_time) >= cutoff
+            if parse_date_string(entry.actual_start_time) >= cutoff
         ]
 
         return sorted(history, key=lambda x: x.actual_start_time, reverse=True)
@@ -467,7 +471,7 @@ class DailyScheduler:
 
         lines = [
             "# Daily Scheduler Status Report",
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Generated: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
             "## Recent Executions (Last 7 Days)",
             "",

@@ -8,7 +8,6 @@ Alpaca's actual response structure and proper order lifecycle.
 
 import logging
 import time
-from datetime import datetime  # TODO Date utils
 from typing import Any, Dict, List, Optional
 
 from alpaca.trading.requests import (
@@ -20,6 +19,8 @@ from alpaca.trading.requests import (
     TakeProfitRequest,
     TimeInForce,
 )
+
+from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -349,7 +350,7 @@ class OrderManager:
             "fill_qty": qty,
             "fill_time": filled_order["filled_at"],
             "position": position,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_iso(),
         }
 
         logger.info(f"Fill handled: {side} {qty} {symbol} @ ${price}")

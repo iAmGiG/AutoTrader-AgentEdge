@@ -4,10 +4,11 @@ Data normalization utilities for standardizing data from different sources into 
 
 import logging
 import re
-from datetime import datetime  # TODO utilze date_utils.py
 from typing import Optional
 
 import pandas as pd
+
+from src.utils.date_utils import get_datetime_from_timestamp
 
 # Define common schemas
 
@@ -153,7 +154,7 @@ def normalize_finnhub_data(raw_data: list) -> pd.DataFrame:
         if timestamp:
             # Convert Unix timestamp to datetime if needed
             if isinstance(timestamp, int):
-                timestamp = datetime.fromtimestamp(timestamp)
+                timestamp = get_datetime_from_timestamp(timestamp)
 
         entry = {
             "timestamp": timestamp,

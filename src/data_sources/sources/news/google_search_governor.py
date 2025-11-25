@@ -7,13 +7,13 @@ quota management without requiring agent modifications.
 """
 
 import logging
-from datetime import datetime
 from typing import Optional
 
 import pandas as pd
 
 from src.tools.data_sources.news.google_search_simple import fetch_google_news
 from src.tools.news_governor import NewsGovernor, create_balanced_governor
+from src.utils.date_utils import get_datetime_now, parse_date_string
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,10 @@ def fetch_google_news_with_governor(
 
     # Convert string date to datetime for governor
     try:
-        target_date = datetime.strptime(start_date, "%Y-%m-%d")
+        target_date = parse_date_string(start_date)
     except ValueError:
         logger.warning(f"Invalid date format: {start_date}, using current date")
-        target_date = datetime.now()
+        target_date = get_datetime_now()
 
     # Define the actual fetch function for governor
     def actual_fetch(symbol, start_date, end_date):

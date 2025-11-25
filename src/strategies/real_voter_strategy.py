@@ -8,8 +8,10 @@ the plugin architecture while handling market data fetching.
 import logging
 import os
 import sys
-from datetime import datetime, timedelta  # TODO date_utils
+from datetime import timedelta
 from typing import Dict, Optional
+
+from src.utils.date_utils import get_datetime_now
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -94,8 +96,10 @@ class RealVoterStrategy(StrategyAnalyzer):
         try:
             # 1. Fetch market data
             logger.info(f"Fetching market data for {ticker} ({self.lookback_days} days)...")
-            end_date = datetime.now().strftime("%Y-%m-%d")
-            start_date = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%Y-%m-%d")
+            end_date = get_datetime_now().strftime("%Y-%m-%d")
+            start_date = (get_datetime_now() - timedelta(days=self.lookback_days)).strftime(
+                "%Y-%m-%d"
+            )
 
             market_data = fetch_unified_market_data(
                 ticker, start_date=start_date, end_date=end_date

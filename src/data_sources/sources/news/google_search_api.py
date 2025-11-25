@@ -17,6 +17,7 @@ from autogen_core.tools import FunctionTool
 
 # Quota management removed for simplified V0-V4 framework
 from src.utils.config_loader import ConfigLoader
+from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +301,7 @@ class GoogleSearchNewsCache:
                 cache_data = {
                     "month": month_key,
                     "ticker": ticker.upper(),
-                    "cached_at": datetime.now().isoformat(),
+                    "cached_at": now_iso(),
                     "last_query": query,
                     "results": all_articles,
                     "articles_count": len(all_articles),

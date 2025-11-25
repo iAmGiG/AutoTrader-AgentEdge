@@ -6,11 +6,12 @@ Integrates existing OrderManager into the plugin architecture.
 
 import logging
 import uuid
-from datetime import datetime
 from typing import Optional, Tuple
 
 from core.interfaces import ExecutionManager
 from core.models import OrderResult, TradeDecision, TradeSuggestion
+
+from src.utils.date_utils import get_datetime_now
 
 # Import message loader for user-facing messages
 try:
@@ -172,7 +173,7 @@ class AlpacaExecutionManager(ExecutionManager):
 
         try:
             et_tz = pytz.timezone(MARKET_TIMEZONE)
-            now_et = datetime.now(et_tz)
+            now_et = get_datetime_now(et_tz)
 
             # Check if weekend
             if now_et.weekday() >= SATURDAY:  # Saturday or Sunday
@@ -285,7 +286,9 @@ class AlpacaExecutionManager(ExecutionManager):
             if self.order_manager and hasattr(self.order_manager, "client"):
                 try:
                     # Use Alpaca's market data client for most accurate price
-                    from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+                    from src.data_sources.sources.market.alpaca_market_data import (
+                        AlpacaMarketData,
+                    )
 
                     market_data = AlpacaMarketData()
 

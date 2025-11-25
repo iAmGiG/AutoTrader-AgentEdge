@@ -12,7 +12,7 @@ import os
 import time
 from collections import deque
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone  # TODO date utils
+from datetime import timezone
 from enum import Enum
 from threading import Lock
 from typing import Any, Dict, Optional
@@ -22,6 +22,7 @@ from config_defaults.trading_config import TradingConfig
 from src.trading.order_manager import OrderManager
 from src.trading.position_manager import PositionManager
 from src.trading.unified_price_fetcher import get_current_price
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ class TradeCycle:
             # Get recent filled orders for this symbol
             from datetime import timedelta
 
-            recent_cutoff = datetime.now() - timedelta(minutes=5)
+            recent_cutoff = get_datetime_now() - timedelta(minutes=5)
 
             # Use proper Alpaca SDK request structure
             from alpaca.trading.requests import GetOrdersRequest
@@ -249,9 +250,7 @@ class TradeCycle:
                         "qty": float(order.filled_qty),
                         "filled_price": float(order.filled_avg_price),
                         "filled_at": (
-                            order.filled_at.isoformat()
-                            if order.filled_at
-                            else datetime.now().isoformat()
+                            order.filled_at.isoformat() if order.filled_at else now_iso()
                         ),
                     }
                     self._handle_order_fill(fill_data)
@@ -455,7 +454,9 @@ class TradeCycle:
                     if account and account.get("cash", 0) > 1000:
                         # If we have cash but no price, try getting it through the broker
                         try:
-                            from src.trading.alpaca_trading_client import AlpacaAccountMonitor
+                            from src.trading.alpaca_trading_client import (
+                                AlpacaAccountMonitor,
+                            )
 
                             monitor = AlpacaAccountMonitor(mode="paper")
                             # Try to get last trade price from Alpaca directly
@@ -510,7 +511,7 @@ class TradeCycle:
                 self.data.entry_price = current_price
                 self.data.current_stop = stop_loss_price
                 self.data.target_price = take_profit_price
-                self.data.entry_time = datetime.now(timezone.utc).isoformat()
+                self.data.entry_time = now_iso()
                 self.data.state = TradeState.ORDER_PENDING.value
 
                 # Store bracket order ID from simplified response
@@ -740,7 +741,7 @@ class TradeCycle:
 
             if result["status"] == "submitted":
                 self.data.current_stop = new_stop_price
-                self.data.last_adjustment = datetime.now(timezone.utc).isoformat()
+                self.data.last_adjustment = now_iso()
                 self.data.state = TradeState.STOP_ADJUSTED.value
 
                 # Save state
@@ -802,8 +803,8 @@ class TradeCycle:
         current_unrealized = current_price - self.data.entry_price
 
         # Calculate time held (for additional context)
-        entry_time = datetime.fromisoformat(self.data.entry_time.replace("Z", "+00:00"))
-        current_time_held = datetime.now(timezone.utc) - entry_time
+        entry_time = parse_date_string(self.data.entry_time.replace("Z", "+00:00"))
+        current_time_held = get_datetime_now(timezone.utc) - entry_time
 
         # New opportunity expected profit
         new_expected_profit = new_opportunity.expected_profit
@@ -905,8 +906,8 @@ class TradeCycle:
             holding_period_hours = None
             if self.data.entry_time:
                 try:
-                    entry_dt = datetime.fromisoformat(self.data.entry_time.replace("Z", "+00:00"))
-                    exit_dt = datetime.now(timezone.utc)
+                    entry_dt = parse_date_string(self.data.entry_time.replace("Z", "+00:00"))
+                    exit_dt = get_datetime_now(timezone.utc)
                     holding_period_hours = (exit_dt - entry_dt).total_seconds() / 3600
                 except Exception:
                     pass
@@ -922,7 +923,7 @@ class TradeCycle:
                     self.data.order_ids.get("parent") if self.data.order_ids else None
                 ),
                 "quantity": self.data.quantity,
-                "exit_date": datetime.now(timezone.utc).isoformat(),
+                "exit_date": now_iso(),
                 "exit_reason": reason,
                 "initial_stop_loss": self.data.current_stop,
                 "initial_take_profit": self.data.target_price,
@@ -1237,7 +1238,7 @@ def test_opportunity_comparison():
     trade.data.target_price = 54.0
     trade.data.quantity = 100
     trade.data.state = TradeState.POSITION_OPEN.value
-    trade.data.entry_time = datetime.now(timezone.utc).isoformat()
+    trade.data.entry_time = now_iso()
 
     # Create new opportunities
     opportunities = [

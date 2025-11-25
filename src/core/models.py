@@ -10,6 +10,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from src.utils.date_utils import get_datetime_now
+
 
 class Signal(Enum):
     """Trading signal types"""
@@ -67,7 +69,7 @@ class TradeRequest:
     option_type: Optional[str] = None  # "call" or "put"
 
     # Metadata
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
     raw_input: str = ""  # Original user input
 
 
@@ -93,7 +95,7 @@ class AnalysisResult:
 
     # Metadata
     analyzer_name: str = "unknown"
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -120,7 +122,7 @@ class RiskAssessment:
     existing_position_qty: int = 0  # If already holding this ticker
 
     # Metadata
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -153,7 +155,7 @@ class TradeSuggestion:
 
     # Metadata
     suggestion_id: str = ""  # Set by session store
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -206,7 +208,7 @@ class OrderResult:
     error: Optional[str] = None
 
     # Metadata
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -229,5 +231,5 @@ class SessionState:
     autonomy_level: int = 0  # 0 = confirm, 1 = auto
 
     # Timestamps
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    last_activity: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=get_datetime_now)
+    last_activity: datetime = field(default_factory=get_datetime_now)

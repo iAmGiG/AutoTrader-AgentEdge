@@ -3,10 +3,12 @@
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 
 class NewsCache:
@@ -45,8 +47,8 @@ class NewsCache:
                 cache_data = json.load(f)
 
             # Check if cache is expired (7 days for news)
-            cached_time = datetime.fromisoformat(cache_data["timestamp"])
-            if datetime.now() - cached_time > timedelta(days=7):
+            cached_time = parse_date_string(cache_data["timestamp"])
+            if get_datetime_now() - cached_time > timedelta(days=7):
                 return None
 
             # Reconstruct DataFrame
@@ -89,7 +91,7 @@ class NewsCache:
                 "start": start,
                 "end": end,
                 "source": source,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": now_iso(),
                 "data": data_dict,
                 "record_count": len(data_dict),
             }

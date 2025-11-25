@@ -14,9 +14,10 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime  # TODO date utils
 from enum import Enum
 from typing import Any, Dict, List
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -146,7 +147,7 @@ class CostEfficientTradeCycle:
 
     def save_local_state(self):
         """Save local state to JSON including position tracker with alert history"""
-        self.local_state["last_update"] = datetime.now().isoformat()
+        self.local_state["last_update"] = now_iso()
 
         # Persist position tracker state (including alert history)
         self.local_state["position_tracker_state"] = self.position_tracker.to_dict()
@@ -185,7 +186,7 @@ class CostEfficientTradeCycle:
                     "portfolio_value": float(account.get("portfolio_value", 0)),
                     "cash": float(account.get("cash", 0)),
                 },
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": now_iso(),
             }
 
             # Process positions
@@ -380,7 +381,7 @@ class CostEfficientTradeCycle:
                 self.local_state["positions"][symbol] = {
                     "entry_price": broker_pos["entry_price"],
                     "quantity": broker_pos["quantity"],
-                    "entry_time": datetime.now().isoformat(),
+                    "entry_time": now_iso(),
                     "source": "AUTO_DISCOVERED",
                     "stop_price": stop_price,
                     "target_price": target_price,
@@ -722,7 +723,7 @@ class CostEfficientTradeCycle:
     ) -> str:
         """Generate human-readable trading report with alerts"""
 
-        now = datetime.now()
+        now = get_datetime_now()
         report_lines = [
             f"# {routine_type.value.title()} Trading Report - {now.strftime('%Y-%m-%d %H:%M:%S')}",
             "",
@@ -879,7 +880,7 @@ class CostEfficientTradeCycle:
 
             # Save report to file with human-readable format: 2025-11-11_morning.md
             # If multiple runs same day, append counter: morning_2.md, morning_3.md
-            now = datetime.now()
+            now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
             base_name = f"reports/daily/{date_str}_morning"
 
@@ -928,7 +929,7 @@ class CostEfficientTradeCycle:
 
             # Save report to file with human-readable format: 2025-11-11_evening.md
             # If multiple runs same day, append counter: evening_2.md, evening_3.md
-            now = datetime.now()
+            now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
             base_name = f"reports/daily/{date_str}_evening"
 
@@ -965,9 +966,9 @@ class CostEfficientTradeCycle:
             # Rebuild local state from broker truth
             self.local_state = {
                 "positions": {},
-                "last_update": datetime.now().isoformat(),
+                "last_update": now_iso(),
                 "discrepancies": [],
-                "recovery_timestamp": datetime.now().isoformat(),
+                "recovery_timestamp": now_iso(),
             }
 
             # Auto-discover all positions
@@ -985,7 +986,7 @@ class CostEfficientTradeCycle:
 
             # Generate recovery report
             recovery_lines = [
-                f"# Crash Recovery Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"# Crash Recovery Report - {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
                 "",
                 f"Recovered {len(broker_state['positions'])} positions",
                 f"Recovered {len(broker_state['orders'])} order groups",
@@ -1013,7 +1014,7 @@ class CostEfficientTradeCycle:
 
             # Save recovery report with human-readable format: 2025-11-11_recovery.md
             # Recovery is ad-hoc, so include counter for multiple recoveries same day
-            now = datetime.now()
+            now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
             base_name = f"reports/daily/{date_str}_recovery"
 

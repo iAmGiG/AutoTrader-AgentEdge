@@ -9,8 +9,9 @@ Handles fallbacks and caching consistently.
 import logging
 import os
 import sys
-from datetime import datetime, timedelta  # TODO date utils
 from typing import Optional
+
+from src.utils.date_utils import get_datetime_now, subtract_days
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -59,7 +60,7 @@ class UnifiedPriceFetcher:
         # Check cache first
         if use_cache and symbol in self._cache:
             cache_entry = self._cache[symbol]
-            if (datetime.now() - cache_entry["timestamp"]).seconds < self._cache_ttl:
+            if (get_datetime_now() - cache_entry["timestamp"]).seconds < self._cache_ttl:
                 logger.debug(f"Using cached price for {symbol}: ${cache_entry['price']:.2f}")
                 return cache_entry["price"]
 
@@ -105,8 +106,8 @@ class UnifiedPriceFetcher:
                             return price
 
             # Try historical data
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=5)
+            end_date = get_datetime_now()
+            start_date = subtract_days(end_date, 5)
             historical = self.market_data.get_bars(
                 symbols=[symbol],
                 start=start_date.strftime("%Y-%m-%d"),
@@ -144,7 +145,7 @@ class UnifiedPriceFetcher:
 
     def _update_cache(self, symbol: str, price: float):
         """Update the price cache."""
-        self._cache[symbol] = {"price": price, "timestamp": datetime.now()}
+        self._cache[symbol] = {"price": price, "timestamp": get_datetime_now()}
 
     def clear_cache(self, symbol: Optional[str] = None):
         """Clear price cache."""

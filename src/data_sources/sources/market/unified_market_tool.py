@@ -61,10 +61,10 @@ def fetch_unified_market_data(
         DataFrame with OHLCV data
     """
     # Check if requesting current trading day - skip cache during market hours
-    from datetime import datetime
+    from src.utils.date_utils import get_datetime_now
 
     end_dt = pd.to_datetime(end_date).date()
-    today = datetime.now().date()
+    today = get_datetime_now().date()
     is_current_day = end_dt >= today
 
     # Skip cache for current trading day during market hours

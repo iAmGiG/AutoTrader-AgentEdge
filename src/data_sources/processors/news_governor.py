@@ -16,6 +16,8 @@ from typing import Dict, Tuple
 
 import pandas as pd
 
+from src.utils.date_utils import get_datetime_now, parse_date_string
+
 logger = logging.getLogger(__name__)
 
 
@@ -199,7 +201,7 @@ class NewsGovernor:
                     symbol=symbol,
                     news_data=news_data,
                     cache_key=f"{symbol}_{date.strftime('%Y-%m-%d')}",
-                    fetch_timestamp=datetime.now(),
+                    fetch_timestamp=get_datetime_now(),
                     sampling_reason=reason,
                 )
 
@@ -279,11 +281,11 @@ class NewsGovernor:
             for cache_key, sample_data in samples_data.items():
                 # Reconstruct NewsSample from cached data
                 sample = NewsSample(
-                    date=datetime.fromisoformat(sample_data["date"]),
+                    date=parse_date_string(sample_data["date"]),
                     symbol=sample_data["symbol"],
                     news_data=pd.DataFrame(sample_data["news_data"]),
                     cache_key=cache_key,
-                    fetch_timestamp=datetime.fromisoformat(sample_data["fetch_timestamp"]),
+                    fetch_timestamp=parse_date_string(sample_data["fetch_timestamp"]),
                     sampling_reason=sample_data["sampling_reason"],
                 )
 

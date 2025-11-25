@@ -135,10 +135,10 @@ class AlpacaMarketData:
         symbols_to_fetch = []
 
         # Smart cache logic: Skip cache for current trading day to ensure fresh data
-        from datetime import datetime
+        from src.utils.date_utils import get_datetime_now
 
         end_dt_check = pd.to_datetime(end).date()
-        today = datetime.now().date()
+        today = get_datetime_now().date()
         is_current_day = end_dt_check >= today
 
         logger.warning(
@@ -255,7 +255,7 @@ class AlpacaMarketData:
 
             if is_market_hours():
                 # Check if today's bar exists in the data
-                today_date = datetime.now().date()
+                today_date = get_datetime_now().date()
                 has_today = False
 
                 if all_data:

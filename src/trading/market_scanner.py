@@ -14,10 +14,12 @@ import logging
 import os
 import sys
 from dataclasses import dataclass
-from datetime import datetime  # TODO date utils
+from datetime import timedelta
 from typing import Any, Dict, List, Tuple
 
 import pandas as pd
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -114,7 +116,7 @@ class CostEfficientScanner:
         Fetch market data for all symbols in a single batch.
         This is the main API cost - minimize by caching and reusing.
         """
-        start_time = datetime.now()
+        start_time = get_datetime_now()
         market_data = {}
         api_calls = 0
 
@@ -122,9 +124,7 @@ class CostEfficientScanner:
             try:
                 # Try to get recent data (this counts as 1 API call per symbol)
                 # Use get_bars method from AlpacaMarketData
-                from datetime import timedelta
-
-                end_date = datetime.now()
+                end_date = get_datetime_now()
                 start_date = end_date - timedelta(days=days)
 
                 data = self.market_data.get_bars(
@@ -148,7 +148,7 @@ class CostEfficientScanner:
             except Exception as e:
                 logger.error(f"Error fetching data for {symbol}: {e}")
 
-        duration = (datetime.now() - start_time).total_seconds()
+        duration = (get_datetime_now() - start_time).total_seconds()
         logger.info(
             f"Batch fetched data for {len(market_data)}/{len(symbols)} symbols "
             f"in {duration:.1f}s using {api_calls} API calls"
@@ -321,7 +321,7 @@ class CostEfficientScanner:
         if symbols is None:
             symbols = self.default_watchlist
 
-        scan_start = datetime.now()
+        scan_start = get_datetime_now()
         logger.info(f"Starting scan of {len(symbols)} symbols...")
 
         # Step 1: Fetch all market data (main API cost)
@@ -360,7 +360,7 @@ class CostEfficientScanner:
                 reasoning=signal_data["reasoning"],
                 macd_details=signal_data["macd_details"],
                 rsi_details=signal_data["rsi_details"],
-                timestamp=datetime.now().isoformat(),
+                timestamp=now_iso(),
             )
 
             opportunities.append(opportunity)
@@ -382,10 +382,10 @@ class CostEfficientScanner:
             ),
         }
 
-        scan_duration = (datetime.now() - scan_start).total_seconds()
+        scan_duration = (get_datetime_now() - scan_start).total_seconds()
 
         result = ScanResult(
-            timestamp=datetime.now().isoformat(),
+            timestamp=now_iso(),
             symbols_scanned=len(symbols),
             opportunities=opportunities,
             market_conditions=market_conditions,
@@ -404,7 +404,7 @@ class CostEfficientScanner:
         """Generate human-readable scan report for opportunities"""
 
         report_lines = [
-            f"# Market Scan Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"# Market Scan Report - {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
             f"**Scan Duration:** {scan_result.scan_duration:.1f}s",
             f"**API Calls Used:** {scan_result.api_calls_used}",
@@ -494,7 +494,7 @@ class CostEfficientScanner:
 
     def save_scan_results(self, scan_result: ScanResult, report: str):
         """Save scan results and report to files with better naming"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M")  # Remove seconds for cleaner names
+        timestamp = get_datetime_now().strftime("%Y%m%d_%H%M")  # Remove seconds for cleaner names
 
         # Save to dedicated scans folder with clear names
         results_file = f"reports/scans/{timestamp}_opportunities.json"

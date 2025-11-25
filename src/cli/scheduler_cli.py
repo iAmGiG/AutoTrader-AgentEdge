@@ -12,11 +12,11 @@ Provides dedicated commands for:
 import asyncio
 import logging
 import os
-
-# TODO: utilize @date_utils.py for more datetime lib usage.
 from datetime import time as dt_time
 from pathlib import Path
 from typing import Optional
+
+from src.utils.date_utils import get_datetime_now
 
 try:
     import yaml
@@ -555,12 +555,10 @@ class SchedulerCLI:
         print("=" * 70)
 
         try:
-            from datetime import datetime
-
             import pytz
 
             et = pytz.timezone("US/Eastern")
-            now = datetime.now(et)
+            now = get_datetime_now(et)
 
             morning_time = dt_time.fromisoformat(self.scheduler.config["morning_routine_time"])
             evening_time = dt_time.fromisoformat(self.scheduler.config["evening_routine_time"])

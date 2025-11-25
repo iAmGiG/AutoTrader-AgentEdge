@@ -11,12 +11,13 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from datetime import time as dt_time
 from enum import Enum
 from typing import Any, Dict, Optional
 
 import pytz
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
@@ -112,7 +113,7 @@ class LLMTradingAssistant:
         request = TradingRequest(
             request_type=RequestType.UNKNOWN,
             raw_text=user_input,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=now_iso(),
         )
 
         # Convert to lowercase for matching
@@ -307,7 +308,7 @@ class LLMTradingAssistant:
                         "target_price": target_price,
                         "shares": shares,
                         "signal_strength": signals["vote_score"],
-                        "entry_time": datetime.now(timezone.utc).isoformat(),
+                        "entry_time": now_iso(),
                     },
                 )
 
@@ -688,7 +689,7 @@ class LLMTradingAssistant:
         try:
             # US Eastern Time
             et = pytz.timezone("US/Eastern")
-            now_et = datetime.now(et)
+            now_et = get_datetime_now(et)
 
             # Market hours: 9:30 AM - 4:00 PM ET, Monday-Friday
             market_open_time = dt_time(9, 30)
@@ -752,7 +753,7 @@ class LLMTradingAssistant:
             # Fallback - assume market closed
             return {
                 "is_open": False,
-                "last_trading_day": datetime.now().date().isoformat(),
+                "last_trading_day": get_datetime_now().date().isoformat(),
                 "hours_since_close": 24,
                 "current_time_et": "unknown",
                 "data_freshness": "stale",
@@ -796,9 +797,9 @@ class LLMTradingAssistant:
         """
         try:
             # Get market data for signal generation
-            from datetime import datetime, timedelta
+            from datetime import timedelta
 
-            end_date = datetime.now()
+            end_date = get_datetime_now()
             start_date = end_date - timedelta(days=60)  # More data for reliable indicators
 
             # Check market status to determine data freshness

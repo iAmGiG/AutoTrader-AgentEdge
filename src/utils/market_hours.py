@@ -5,10 +5,12 @@ Detects whether US stock markets (NYSE/NASDAQ) are currently open for trading.
 Used to determine whether to fetch live prices or use historical daily closes.
 """
 
-from datetime import datetime, time
+from datetime import time
 from typing import Tuple
 
 import pytz
+
+from src.utils.date_utils import get_datetime_now
 
 
 def is_market_hours() -> bool:
@@ -24,7 +26,7 @@ def is_market_hours() -> bool:
         bool: True if market is open, False otherwise
     """
     et_tz = pytz.timezone("America/New_York")
-    now_et = datetime.now(et_tz)
+    now_et = get_datetime_now(et_tz)
 
     # Check if weekend
     if now_et.weekday() >= 5:  # Saturday = 5, Sunday = 6
@@ -46,7 +48,7 @@ def get_market_status() -> Tuple[bool, str]:
         Tuple of (is_open: bool, status_message: str)
     """
     et_tz = pytz.timezone("America/New_York")
-    now_et = datetime.now(et_tz)
+    now_et = get_datetime_now(et_tz)
 
     # Check weekend
     if now_et.weekday() >= 5:

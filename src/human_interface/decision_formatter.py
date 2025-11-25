@@ -4,10 +4,11 @@ Decision Formatter - Formats trading decisions for human review
 Part of RH2MAS AutoGen trading system
 """
 
-from datetime import datetime  # TODO date utils
 from typing import Any, Dict, List
 
 from config_defaults.trading_config import TradingConfig
+
+from src.utils.date_utils import get_datetime_now
 
 
 class DecisionFormatter:
@@ -39,7 +40,7 @@ class DecisionFormatter:
             [
                 "🤖 TRADING DECISION REQUIRED",
                 "=" * 50,
-                f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"Timestamp: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
                 f"Available Capital: ${account_status.get('available_cash', 0):,.2f}",
                 f"Total Portfolio: ${account_status.get('total_value', 0):,.2f}",
                 "",

@@ -10,11 +10,13 @@ import logging
 import sqlite3
 import threading
 import uuid
-from datetime import datetime, timedelta  # TODO utilze @date_utils.py
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 logger = logging.getLogger(__name__)
 
@@ -413,12 +415,12 @@ class TradingCacheManager:
             df["asset_type"] = asset_type
             df["symbol"] = symbol
             df["source"] = source
-            df["cached_at"] = datetime.now().isoformat()
+            df["cached_at"] = now_iso()
 
             # Calculate smart expiration for each row
             if ttl_hours:
                 # Custom TTL
-                expires_at = datetime.now() + timedelta(hours=ttl_hours)
+                expires_at = get_datetime_now() + timedelta(hours=ttl_hours)
                 df["expires_at"] = expires_at.isoformat()
             else:
                 # Smart TTL based on data recency
@@ -686,20 +688,20 @@ class TradingCacheManager:
             Expiration datetime
         """
         try:
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-            today = datetime.now().date()
+            end_dt = parse_date_string(end_date)
+            today = get_datetime_now().date()
 
             # Historical data should never practically expire
             if end_dt.date() < today - timedelta(days=2):
-                return datetime.now() + timedelta(days=365 * 10)  # 10 years
+                return get_datetime_now() + timedelta(days=365 * 10)  # 10 years
 
             # Recent data needs fresh updates
             else:
-                return datetime.now() + timedelta(hours=24)
+                return get_datetime_now() + timedelta(hours=24)
 
         except ValueError:
             # Fallback to short expiration if date parsing fails
-            return datetime.now() + timedelta(hours=24)
+            return get_datetime_now() + timedelta(hours=24)
 
     def get_symbols(self, asset_type: str = "stock") -> List[str]:
         """
@@ -825,7 +827,7 @@ class TradingCacheManager:
                     # Serialize provider metadata to JSON if provided
                     metadata_json = json.dumps(provider_metadata) if provider_metadata else None
 
-                    current_time = datetime.now().isoformat()
+                    current_time = now_iso()
 
                     record = (
                         symbol.upper(),

@@ -6,8 +6,9 @@ Part of RH2MAS AutoGen trading system
 
 import os
 import sys
-from datetime import datetime
 from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
@@ -110,7 +111,7 @@ class TradingOrchestrator:
             "trading_recommendations": trading_recommendations,
             "validated_trades": validated_trades,
             "account_status": account_status,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_iso(),
         }
 
     def execute_approved_trade(
@@ -142,11 +143,11 @@ class TradingOrchestrator:
                 "symbol": symbol,
                 "execution_result": execution_result,
                 "trade_summary": trade_summary,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": now_iso(),
             }
 
         except Exception as e:
-            return {"symbol": symbol, "error": str(e), "timestamp": datetime.now().isoformat()}
+            return {"symbol": symbol, "error": str(e), "timestamp": now_iso()}
 
     def monitor_positions(
         self, current_prices: Optional[Dict[str, float]] = None
@@ -208,7 +209,7 @@ class TradingOrchestrator:
             "exit_recommendations": exit_recommendations,
             "position_updates": update_result,
             "account_status": update_result.get("account_status", {}),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_iso(),
         }
 
     def generate_trading_report(self) -> str:
@@ -216,7 +217,7 @@ class TradingOrchestrator:
         report_parts = [
             "🤖 RH2MAS TRADING SYSTEM REPORT",
             "=" * 60,
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Generated: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
         ]
 

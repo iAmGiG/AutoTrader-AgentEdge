@@ -79,7 +79,7 @@ google_search_simple_tool = FunctionTool(
     "This is the primary news source for sentiment analysis.",
 )
 
-from datetime import datetime
+from src.utils.date_utils import get_datetime_now, parse_date_string
 
 # Smart sampling with NewsGovernor
 
@@ -111,9 +111,9 @@ def fetch_google_news_smart(
     if _news_governor is not None:
         # Use smart sampling
         try:
-            target_date = datetime.strptime(start_date, "%Y-%m-%d")
+            target_date = parse_date_string(start_date)
         except ValueError:
-            target_date = datetime.now()
+            target_date = get_datetime_now()
 
         # Define fetch function for governor
         def actual_fetch(symbol, start_date, end_date):

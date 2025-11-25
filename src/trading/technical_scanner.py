@@ -11,8 +11,10 @@ Instead of useless "no opportunities found" reports, this scanner provides:
 
 import os
 import sys
-from datetime import datetime  # TODO Date utils
+from datetime import timedelta
 from typing import Any, Dict
+
+from src.utils.date_utils import get_datetime_now
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
@@ -73,8 +75,8 @@ class UsefulScanner:
             current_price = get_current_price(symbol)
 
             # Get recent price data for calculations
-            end_date = datetime.now()
-            start_date = end_date.replace(day=end_date.day - 60)  # 60 days
+            end_date = get_datetime_now()
+            start_date = end_date - timedelta(days=60)  # 60 days
 
             data = self.market_data.get_bars(
                 symbols=[symbol],
@@ -213,7 +215,7 @@ class UsefulScanner:
 
         Returns detailed breakdown of every symbol, not just empty lists.
         """
-        scan_start = datetime.now()
+        scan_start = get_datetime_now()
         print(f"🔍 Scanning {len(self.watchlist)} symbols...")
 
         results = {
@@ -253,7 +255,7 @@ class UsefulScanner:
             "near_misses": len(results["watch_list"]),
             "rejected": len(results["rejects"]),
             "errors": len(results["errors"]),
-            "scan_duration": (datetime.now() - scan_start).total_seconds(),
+            "scan_duration": (get_datetime_now() - scan_start).total_seconds(),
             "success_rate": f"{analyzed_count/len(self.watchlist)*100:.1f}%",
         }
 
@@ -263,7 +265,7 @@ class UsefulScanner:
         """Generate actually useful report instead of useless boilerplate."""
 
         lines = [
-            f"# Useful Market Scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"# Useful Market Scan - {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
             f"**Scanned:** {results['summary']['total_symbols']} symbols",
             f"**Analyzed:** {results['summary']['successfully_analyzed']} ({results['summary']['success_rate']})",
@@ -402,7 +404,7 @@ def main():
     report = scanner.generate_useful_report(results)
 
     # Save report with clear naming in dedicated folder
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")  # Remove seconds for cleaner names
+    timestamp = get_datetime_now().strftime("%Y%m%d_%H%M")  # Remove seconds for cleaner names
     report_file = f"/mnt/bst/yxie2/cregan1/RH2MAS/reports/scans/{timestamp}_market_scan.md"
 
     os.makedirs(os.path.dirname(report_file), exist_ok=True)

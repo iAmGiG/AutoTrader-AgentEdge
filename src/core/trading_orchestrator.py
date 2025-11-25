@@ -7,7 +7,6 @@ It coordinates the workflow: parse → analyze → risk check → suggest → ex
 
 import logging
 import uuid
-from datetime import datetime
 from typing import Optional
 
 from .interfaces import ExecutionManager, InputParser, RiskManager, StrategyAnalyzer
@@ -21,6 +20,7 @@ from .models import (
     TradeRequest,
     TradeSuggestion,
 )
+from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +254,7 @@ class TradingOrchestrator:
             time_in_force=TimeInForce.GTC,  # Always GTC per requirements
             # Metadata
             suggestion_id=suggestion_id,
-            timestamp=datetime.utcnow(),
+            timestamp=get_datetime_now(),
         )
 
         return suggestion
@@ -282,7 +282,7 @@ class TradingOrchestrator:
         if "target" in modifications:
             decision.modified_target = modifications["target"]
 
-        decision.decision_timestamp = datetime.utcnow()
+        decision.decision_timestamp = get_datetime_now()
 
         return decision
 

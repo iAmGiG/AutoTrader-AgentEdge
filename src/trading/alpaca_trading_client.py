@@ -9,17 +9,22 @@ Phase 2: Write operations (order placement, modification, cancellation)
 """
 
 import logging
-from datetime import datetime
-from datetime import time as dt_time  # TODO date utils
+from datetime import time as dt_time
 from typing import Any, Dict, List, Optional
 
 import pytz
 
-from src.utils.date_utils import get_default_timezone
+from src.utils.date_utils import get_datetime_now, get_default_timezone
 
 try:
     from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import OrderClass, OrderSide, OrderType, QueryOrderStatus, TimeInForce
+    from alpaca.trading.enums import (
+        OrderClass,
+        OrderSide,
+        OrderType,
+        QueryOrderStatus,
+        TimeInForce,
+    )
     from alpaca.trading.requests import (
         ClosePositionRequest,
         GetOrdersRequest,
@@ -624,7 +629,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Use the configured timezone from date_utils, defaulting to NY (market timezone)
             market_tz = get_default_timezone()  # Should be "America/New_York"
             et = pytz.timezone(market_tz)
-            current_et = datetime.now(et)
+            current_et = get_datetime_now(et)
             current_time = current_et.time()
             current_weekday = current_et.weekday()  # 0=Monday, 6=Sunday
 
@@ -730,14 +735,14 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         """
         try:
             # Get today's orders
-            from datetime import datetime, timezone
+            from datetime import timezone
 
             import pytz
             from alpaca.trading.requests import GetOrdersRequest
 
             # Get ET timezone for market day calculation
             et_tz = pytz.timezone("America/New_York")
-            now_et = datetime.now(et_tz)
+            now_et = get_datetime_now(et_tz)
 
             # Market day starts at market open (usually 4:00 AM ET for pre-market)
             market_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)

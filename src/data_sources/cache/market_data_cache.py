@@ -9,10 +9,12 @@ import hashlib
 import json
 import os
 import warnings
-from datetime import datetime, timedelta  # TODO: utilze @date_utils.py
+from datetime import timedelta
 from typing import Optional
 
 import pandas as pd
+
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 
 class MarketDataCache:
@@ -65,8 +67,8 @@ class MarketDataCache:
                 cache_data = json.load(f)
 
             # Check if cache is expired (24 hours)
-            cached_time = datetime.fromisoformat(cache_data["timestamp"])
-            if datetime.now() - cached_time > timedelta(hours=24):
+            cached_time = parse_date_string(cache_data["timestamp"])
+            if get_datetime_now() - cached_time > timedelta(hours=24):
                 return None
 
             # Reconstruct DataFrame
@@ -120,7 +122,7 @@ class MarketDataCache:
                 "start": start,
                 "end": end,
                 "source": source,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": now_iso(),
                 "data": data_dict,
             }
 

@@ -992,12 +992,14 @@ class CLISession:
             # Calculate next scheduled run
             print(MSG.SCHEDULER_NEXT_HEADER)
             try:
-                from datetime import datetime, time
+                from datetime import time
 
                 import pytz
 
+                from src.utils.date_utils import get_datetime_now
+
                 et = pytz.timezone("US/Eastern")
-                now = datetime.now(et)
+                now = get_datetime_now(et)
 
                 morning_time = time(9, 20)
                 evening_time = time(15, 50)
