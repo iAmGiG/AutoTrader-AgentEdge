@@ -20,8 +20,8 @@ from typing import Any, Dict, Optional
 from config_defaults.trading_config import TradingConfig
 
 from src.trading.order_manager import OrderManager
-from src.trading.trailing_stop_manager import TrailingStopManager
 from src.trading.position_manager import PositionManager
+from src.trading.trailing_stop_manager import TrailingStopManager
 from src.trading.unified_price_fetcher import get_current_price
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
