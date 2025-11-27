@@ -312,7 +312,7 @@ class AgentFactory:
 
     def _create_orchestrator(self, config: AgentConfig) -> Any:
         """Create a TradingOrchestrator."""
-        from src.autogen_agents.orchestrator import create_trading_orchestrator
+        from src.autogen_agents.trading_orchestrator import create_trading_orchestrator
 
         initial_capital = config.extra_config.get("initial_capital", 100000)
         return create_trading_orchestrator(initial_capital=initial_capital)
