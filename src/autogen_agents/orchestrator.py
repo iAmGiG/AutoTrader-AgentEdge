@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Orchestrator - Coordinates multi-agent trading conversations
-Part of RH2MAS AutoGen trading system
+Orchestrator - Legacy wrapper for backward compatibility
+
+This module provides backward compatibility with the old TradingOrchestrator API.
+New code should use trading_orchestrator.TradingOrchestrator directly.
 
 Refactored to use AgentFactory and AgentBus (Issue #390).
+Enhanced with full workflow management (Issue #389).
 """
 
 import os
@@ -20,6 +23,8 @@ from src.autogen_agents.agent_bus import EventType, get_agent_bus
 
 # Agent Infrastructure (Issue #390)
 from src.autogen_agents.agent_factory import AgentType, get_agent_factory
+
+# New TradingOrchestrator (Issue #389)
 
 # Lazy import to avoid circular dependency with cli_interface
 DecisionFormatter = None
@@ -305,7 +310,8 @@ class TradingOrchestrator:
                 "-" * 20,
                 f"MACD: {macd_config.fast}/{macd_config.slow}/{macd_config.signal}",
                 f"RSI: {self.config.get_rsi_config().period} period",
-                f"Exit Strategy: +{exit_config.take_profit_pct:.1%} TP / -{exit_config.stop_loss_pct:.1%} SL",
+                f"Exit Strategy: +{exit_config.take_profit_pct:.1%} TP / "
+                f"-{exit_config.stop_loss_pct:.1%} SL",
                 "",
             ]
         )
