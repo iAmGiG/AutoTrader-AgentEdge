@@ -26,6 +26,7 @@ from config_defaults.message_loader import (
     get_status_emoji,
 )
 
+from src.cli.help_system import HelpSystem
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
 from src.trading.trading_cycle import CostEfficientTradeCycle
@@ -52,6 +53,7 @@ class CLISession:
             orchestrator: Wired TradingOrchestrator
         """
         self.orchestrator = orchestrator
+        self.help_system = HelpSystem()  # Issue #369 - Interactive help system
         self.autonomy_mode = "confirm"  # or "auto"
         self.user_id = "cli_user"
 
@@ -194,8 +196,15 @@ class CLISession:
         if cmd == "/exit" or cmd == "/quit":
             return False
 
-        elif cmd == "/help":
-            self._print_welcome()
+        elif cmd.startswith("/help"):
+            # Enhanced help system with search (Issue #369)
+            parts = command.split()
+            if len(parts) == 1:
+                print(self.help_system.get_help())
+            elif parts[1].lower() == "search" and len(parts) > 2:
+                print(self.help_system.search(" ".join(parts[2:])))
+            else:
+                print(self.help_system.get_help(parts[1]))
 
         elif cmd == "/toggle":
             # Toggle between confirm and auto modes
