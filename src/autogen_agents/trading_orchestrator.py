@@ -305,36 +305,47 @@ class TradingOrchestrator:
             print("🌅 Starting Morning Routine...")
             print("   📊 Phase 1: Scanning markets...")
 
-            scan_results = self._execute_with_retry(
-                lambda: self.scanner.scan_for_signals(symbols),
+            # ScannerAgent.scan_market() returns List[ScanResult]
+            scan_result_list = self._execute_with_retry(
+                lambda: self.scanner.scan_market(symbols),
                 "market_scan",
             )
 
-            self.workflow_state.symbols_scanned = list(scan_results.keys())
+            # Convert to dict for workflow state
+            scan_results = {r.symbol: r.to_dict() for r in scan_result_list}
+            self.workflow_state.symbols_scanned = [r.symbol for r in scan_result_list]
             self.workflow_state.opportunities_found = scan_results
             self._save_state()
 
-            # Step 2: Analyze signals
+            # Step 2: Analyze signals with VoterAgent
+            # ScannerAgent already provides MACD+RSI analysis in ScanResult
+            # VoterAgent can provide additional evaluation if needed
             self._update_state(WorkflowPhase.ANALYZING)
             print("   🎯 Phase 2: Analyzing trading signals...")
 
             analysis_results = {}
-            for symbol, signal_data in scan_results.items():
-                if "error" in signal_data:
-                    analysis_results[symbol] = {"error": signal_data["error"]}
+            for scan_result in scan_result_list:
+                symbol = scan_result.symbol
+                if scan_result.error:
+                    analysis_results[symbol] = {"error": scan_result.error}
                     continue
 
-                try:
-                    market_data = self.scanner.get_market_data(symbol, days=60)
-                    if not market_data or "error" in market_data:
-                        analysis_results[symbol] = {"error": "Failed to get market data"}
-                        continue
-
-                    evaluation = self.voter.evaluate_entry_signal(symbol, market_data)
-                    analysis_results[symbol] = evaluation
-                except Exception as e:
-                    analysis_results[symbol] = {"error": str(e)}
-                    self._record_error("analysis", symbol, str(e))
+                # Use ScanResult data directly - it already has MACD+RSI analysis
+                analysis_results[symbol] = {
+                    "symbol": symbol,
+                    "decision": (
+                        f"ENTER_{scan_result.action}" if scan_result.action != "HOLD" else "HOLD"
+                    ),
+                    "action": scan_result.action,
+                    "confidence": scan_result.confidence,
+                    "signal_type": scan_result.signal_type,
+                    "current_price": scan_result.current_price,
+                    "macd_signal": scan_result.macd_signal,
+                    "macd_histogram": scan_result.macd_histogram,
+                    "rsi_value": scan_result.rsi_value,
+                    "rsi_signal": scan_result.rsi_signal,
+                    "ranking_score": scan_result.ranking_score,
+                }
 
             self.workflow_state.signals_analyzed = analysis_results
             self._save_state()
@@ -474,16 +485,17 @@ class TradingOrchestrator:
                 "timestamp": now_iso(),
             }
 
-        # Fetch current prices
+        # Fetch current prices by scanning position symbols
         current_prices = {}
-        for position in active_positions:
-            symbol = position["symbol"]
-            try:
-                market_data = self.scanner.get_market_data(symbol, days=1)
-                if market_data and "current_price" in market_data:
-                    current_prices[symbol] = market_data["current_price"]
-            except Exception as e:
-                logger.warning(f"Failed to get price for {symbol}: {e}")
+        position_symbols = [p["symbol"] for p in active_positions]
+        try:
+            # Use scanner to get current prices
+            scan_results = self.scanner.scan_market(position_symbols)
+            for result in scan_results:
+                if result.current_price > 0:
+                    current_prices[result.symbol] = result.current_price
+        except Exception as e:
+            logger.warning(f"Failed to scan for current prices: {e}")
 
         # Update positions
         update_result = self.executor.update_positions(current_prices)
