@@ -634,6 +634,9 @@ class CLISession:
             if decision.approved:
                 result = await self.orchestrator.execute_decision(decision)
                 self._display_result(result)
+
+                # Issue #385: Update local state with stop/target immediately after trade
+                self._update_local_state_after_trade(decision, result)
             else:
                 print(MSG.TRADE_CANCELLED)
 
@@ -823,6 +826,55 @@ class CLISession:
                 print(MSG.ORDER_ERROR.format(error=result.error))
 
         print(MSG.RESULT_SEPARATOR)
+
+    def _update_local_state_after_trade(self, decision, result):
+        """
+        Update local state (cost_efficient_positions.json) after successful trade.
+
+        This ensures stop/target prices are immediately visible in CLI order displays,
+        rather than waiting for the next reconciliation routine.
+
+        Issue #385: Bracket Order Stop-Loss Not Logged to Local State on Placement
+
+        Args:
+            decision: TradeDecision with suggestion containing stop/target prices
+            result: OrderResult from execution
+        """
+        if not result.success:
+            return
+
+        if not self.trading_cycle:
+            logger.warning("No trading_cycle available - cannot update local state")
+            return
+
+        try:
+            from src.utils.date_utils import now_iso
+
+            suggestion = decision.suggestion
+            symbol = suggestion.ticker
+            quantity = result.quantity or suggestion.recommended_quantity
+
+            # Add or update position in local state
+            self.trading_cycle.local_state["positions"][symbol] = {
+                "entry_price": suggestion.entry_price,
+                "quantity": quantity,
+                "entry_time": now_iso(),
+                "source": "CLI_TRADE",
+                "stop_price": suggestion.stop_loss,
+                "target_price": suggestion.take_profit,
+                "order_id": result.entry_order_id,
+            }
+
+            # Save state immediately
+            self.trading_cycle.save_local_state()
+
+            logger.info(
+                f"Updated local state for {symbol}: "
+                f"stop=${suggestion.stop_loss:.2f}, target=${suggestion.take_profit:.2f}"
+            )
+
+        except Exception as e:
+            logger.warning(f"Failed to update local state after trade: {e}")
 
     def _calc_pct(self, base: float, value: float) -> float:
         """Calculate percentage change."""
