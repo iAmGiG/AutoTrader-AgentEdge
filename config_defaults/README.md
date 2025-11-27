@@ -100,6 +100,47 @@ report_path = report_template.format(
 # Result: "reports/daily/2025-01-27_morning.md"
 ```
 
+### Trailing Stop Configuration (Issue #321)
+
+```python
+from config_defaults.trading_config import TradingConfig
+
+# Load trailing stop configuration
+config = TradingConfig()
+trailing = config.get_trailing_stop_config()
+
+# Progressive thresholds (proven in backtesting)
+print(f"Breakeven at: {trailing.progressive_breakeven_pct:.0%} profit")  # 2%
+print(f"Lock 25% at: {trailing.progressive_lock_25_pct:.0%} profit")     # 4%
+print(f"Trail 50% at: {trailing.progressive_trail_50_pct:.0%} profit")   # 6%
+
+# Safety settings
+print(f"Rate limit: {trailing.min_update_interval_seconds}s between updates")
+print(f"Never move down: {trailing.never_move_stop_down}")
+```
+
+**Progressive Stop Logic**:
+
+| Profit Level | Action | Description |
+|--------------|--------|-------------|
+| < 2% | Hold | No stop adjustment (avoid whipsaws) |
+| 2-4% | Breakeven | Move stop to entry price (protect capital) |
+| 4-6% | Lock 25% | Stop at entry + 25% of gains |
+| > 6% | Trail 50% | Stop at entry + 50% of gains |
+
+**Configuration in `trading_config.yaml`**:
+
+```yaml
+trailing_stops:
+  enabled: true
+  progressive_enabled: true
+  progressive_breakeven_pct: 0.02  # 2%
+  progressive_lock_25_pct: 0.04    # 4%
+  progressive_trail_50_pct: 0.06   # 6%
+  min_update_interval_seconds: 60
+  never_move_stop_down: true
+```
+
 ### Timeframe Configuration (Issue #365)
 
 ```python
