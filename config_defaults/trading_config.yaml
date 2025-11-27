@@ -3,17 +3,27 @@
 # Converted from JSON for better readability and consistency with other configs
 
 strategy_parameters:
+  # Timeframe for technical analysis (Issue #365)
+  # Standard values: 5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M
+  # - 5m, 15m, 30m: Scalping/day trading
+  # - 1h, 4h: Intraday swing trading
+  # - 1d: Daily swing/position trading (validated default)
+  # - 1w, 1M: Position/long-term trading
+  timeframe: "1d"
+
   macd:
     fast: 13
     slow: 34
     signal: 8
     description: "Validated MACD parameters (13/34/8)"
+    timeframe: null  # null = inherit from strategy_parameters.timeframe
 
   rsi:
     period: 14
     oversold: 30
     overbought: 70
     description: "Standard RSI with 30/70 levels"
+    timeframe: null  # null = inherit from strategy_parameters.timeframe
 
   exits:
     balanced:
