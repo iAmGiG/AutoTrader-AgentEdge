@@ -15,9 +15,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
-from src.trading.forward_test_manager import (
-    ForwardTestManager,
-)
+from src.trading.forward_test_manager import ForwardTestManager
 from src.trading.performance_validator import PerformanceValidator
 
 logger = logging.getLogger(__name__)
