@@ -26,6 +26,7 @@ from config_defaults.message_loader import (
     get_status_emoji,
 )
 
+from src.cli.help_system import HelpSystem
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
 from src.trading.trading_cycle import CostEfficientTradeCycle
@@ -54,6 +55,9 @@ class CLISession:
         self.orchestrator = orchestrator
         self.autonomy_mode = "confirm"  # or "auto"
         self.user_id = "cli_user"
+
+        # Initialize help system (Issue #369)
+        self.help_system = HelpSystem()
 
         # Initialize additional components for unified CLI
         # Share instances to reduce Alpaca client instantiations
@@ -194,8 +198,10 @@ class CLISession:
         if cmd == "/exit" or cmd == "/quit":
             return False
 
-        elif cmd == "/help":
-            self._print_welcome()
+        elif cmd.startswith("/help"):
+            # Issue #369: Interactive help system
+            help_output = self.help_system.handle_help_command(command)
+            print(help_output)
 
         elif cmd == "/toggle":
             # Toggle between confirm and auto modes
