@@ -1,557 +1,546 @@
 """
-Help System for CLI - Searchable, organized command documentation.
+Interactive Help System for Trading CLI
 
-Issue #369: Interactive manual/help system with search
+Issue #369: Interactive Help System for CLI
+Provides searchable, context-aware help for all trading commands.
 
-Provides:
-- Categorized command reference
-- Searchable help by keyword
-- Examples for each command
-- Command aliases and related commands
+Features:
+- `/help` - Show all commands grouped by category
+- `/help COMMAND` - Show specific command help
+- `/help search KEYWORD` - Search help by keyword
+- `/help --examples` - Show all examples
 """
 
 import logging
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class CommandHelp:
-    """Help information for a single command."""
-
-    name: str
-    description: str
-    usage: str
-    examples: List[str] = field(default_factory=list)
-    aliases: List[str] = field(default_factory=list)
-    category: str = "general"
-    tags: Set[str] = field(default_factory=set)
-    related: List[str] = field(default_factory=list)
-    notes: Optional[str] = None
-
-
 class HelpSystem:
-    """
-    Interactive help system with search and categorization.
-
-    Features:
-    - Command categorization (workflow, trading, status, config, system)
-    - Keyword search across all commands
-    - Related command suggestions
-    - Examples for each command
-    """
+    """Interactive help system with searchable documentation."""
 
     def __init__(self):
-        """Initialize help system with all command documentation."""
-        self.commands: Dict[str, CommandHelp] = {}
-        self.categories: Dict[str, List[str]] = {}
-        self._register_all_commands()
+        """Initialize help system with command documentation."""
+        self.commands = self._build_help_data()
+        self.categories = self._extract_categories()
 
-    def _register_all_commands(self):
-        """Register all CLI commands with help information."""
-
-        # === SYSTEM COMMANDS ===
-        self._register_command(
-            CommandHelp(
-                name="/help",
-                description="Show this help message or help for specific command",
-                usage="/help [command] | /help search KEYWORD",
-                examples=[
-                    "/help",
-                    "/help buy",
-                    "/help search order",
-                    "/help search morning",
+    def _build_help_data(self) -> Dict[str, Dict]:
+        """Build comprehensive help data for all commands."""
+        return {
+            # ==================== WORKFLOW COMMANDS ====================
+            "morning-routine": {
+                "category": "Workflow",
+                "description": "Run morning market scan and analysis",
+                "usage": "morning-routine [symbols]",
+                "examples": [
+                    "morning-routine",
+                    "morning-routine AAPL,MSFT,TSLA",
+                    "morning-routine --approve-all",
                 ],
-                aliases=[],
-                category="system",
-                tags={"help", "documentation", "search"},
-                related=[],
-                notes="Use '/help search' to find commands by keyword",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="/exit",
-                description="Exit the CLI session",
-                usage="/exit | /quit",
-                examples=["/exit", "/quit"],
-                aliases=["/quit"],
-                category="system",
-                tags={"exit", "quit", "close"},
-                related=[],
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="/toggle",
-                description="Toggle between CONFIRM and AUTO execution modes",
-                usage="/toggle",
-                examples=["/toggle"],
-                aliases=[],
-                category="system",
-                tags={"mode", "execution", "confirm", "auto"},
-                related=["set execution-mode"],
-                notes="CONFIRM mode requires approval, AUTO mode executes immediately",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="/tips",
-                description="Show trading basics and educational tips for beginners",
-                usage="/tips | /learn",
-                examples=["/tips", "/learn"],
-                aliases=["/learn"],
-                category="system",
-                tags={"education", "help", "basics", "beginner"},
-                related=["/help"],
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="/schedule",
-                description="Enter scheduler management mode",
-                usage="/schedule",
-                examples=["/schedule"],
-                aliases=[],
-                category="system",
-                tags={"scheduler", "automation", "routine"},
-                related=["show scheduler status"],
-            )
-        )
-
-        # === TRADING COMMANDS (Natural Language) ===
-        self._register_command(
-            CommandHelp(
-                name="buy",
-                description="Execute a buy order for a stock",
-                usage="buy [shares] SYMBOL [at/limit PRICE]",
-                examples=[
-                    "buy 10 AAPL",
-                    "buy 5 MSFT at 420",
-                    "buy 100 shares of TSLA",
-                    "I want to buy META",
+                "aliases": ["morning", "scan"],
+                "tags": ["workflow", "scanning", "analysis"],
+                "related": ["approve", "reject", "monitor", "evening-summary"],
+                "details": (
+                    "Scans your watchlist for trading opportunities using technical analysis.\n"
+                    "Shows buy/sell signals with confidence levels.\n"
+                    "Enters approval mode if execution_mode is set to CONFIRM.\n\n"
+                    "Options:\n"
+                    "  --approve-all    Auto-approve all pending trades\n"
+                    "  --paper          Run in paper trading mode only"
+                ),
+            },
+            "approve": {
+                "category": "Workflow",
+                "description": "Approve a pending trade",
+                "usage": "approve SYMBOL | approve all",
+                "examples": [
+                    "approve AAPL",
+                    "approve all",
                 ],
-                aliases=["purchase", "long", "enter position"],
-                category="trading",
-                tags={"buy", "order", "trade", "long", "purchase"},
-                related=["sell", "cancel", "show orders"],
-                notes="System uses LLM parsing, so natural language works. Bracket orders (stop/target) are automatic.",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="sell",
-                description="Sell existing position or short a stock",
-                usage="sell [shares] SYMBOL",
-                examples=[
-                    "sell AAPL",
-                    "sell 10 MSFT",
-                    "sell all my TSLA",
-                    "close my META position",
+                "aliases": ["yes", "ok"],
+                "tags": ["workflow", "execution"],
+                "related": ["reject", "morning-routine", "show orders"],
+                "details": (
+                    "Approves a pending trade for execution.\n"
+                    "After approval, the trade is executed using your current execution mode.\n\n"
+                    "Use 'approve all' to approve all pending trades at once."
+                ),
+            },
+            "reject": {
+                "category": "Workflow",
+                "description": "Reject a pending trade",
+                "usage": "reject SYMBOL | reject all",
+                "examples": [
+                    "reject MSFT",
+                    "reject all",
                 ],
-                aliases=["close position", "exit trade"],
-                category="trading",
-                tags={"sell", "close", "exit", "order"},
-                related=["buy", "show positions", "show orders"],
-                notes="To sell a position you must own it first. Use '/tips' for more on shorting.",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="cancel",
-                description="Cancel an existing order",
-                usage="cancel ORDER_ID | cancel SYMBOL | cancel all",
-                examples=[
+                "aliases": ["no", "skip"],
+                "tags": ["workflow", "execution"],
+                "related": ["approve", "morning-routine"],
+                "details": (
+                    "Rejects a pending trade without executing it.\n"
+                    "The signal is logged for analysis but not traded.\n\n"
+                    "Use 'reject all' to reject all pending trades at once."
+                ),
+            },
+            "monitor": {
+                "category": "Workflow",
+                "description": "Monitor active positions",
+                "usage": "monitor [--check-exits]",
+                "examples": [
+                    "monitor",
+                    "monitor --check-exits",
+                ],
+                "aliases": ["watch", "positions"],
+                "tags": ["workflow", "monitoring"],
+                "related": ["show portfolio", "show positions", "evening-summary"],
+                "details": (
+                    "Continuously monitors your active trading positions.\n"
+                    "Displays position updates, profit/loss, and exit signals.\n\n"
+                    "Options:\n"
+                    "  --check-exits    Check for exit signals on open positions\n"
+                    "  --interval 5     Update every N minutes (default: 5)"
+                ),
+            },
+            "evening-summary": {
+                "category": "Workflow",
+                "description": "Generate end-of-day report",
+                "usage": "evening-summary [--save FILE]",
+                "examples": [
+                    "evening-summary",
+                    "evening-summary --save report.txt",
+                ],
+                "aliases": ["summary", "report", "eod"],
+                "tags": ["workflow", "reporting"],
+                "related": ["morning-routine", "show portfolio"],
+                "details": (
+                    "Generates a comprehensive end-of-day report.\n"
+                    "Includes trades executed, P&L, market insights, and next steps.\n\n"
+                    "Options:\n"
+                    "  --save FILE      Save report to file\n"
+                    "  --detailed       Include detailed trade breakdown"
+                ),
+            },
+            # ==================== TRADING COMMANDS ====================
+            "buy": {
+                "category": "Trading",
+                "description": "Place a manual buy order",
+                "usage": "buy SYMBOL QUANTITY [PRICE]",
+                "examples": [
+                    "buy AAPL 10",
+                    "buy MSFT 5 $425.50",
+                ],
+                "aliases": ["long"],
+                "tags": ["trading", "execution"],
+                "related": ["sell", "show orders", "cancel"],
+                "details": (
+                    "Place a buy order for a specific symbol and quantity.\n"
+                    "If price is not specified, uses current market price.\n"
+                    "Respects risk management rules and position limits.\n\n"
+                    "Execution depends on current execution_mode:\n"
+                    "  CONFIRM - Asks for approval before executing\n"
+                    "  AUTO    - Executes immediately\n"
+                    "  PAPER   - Simulates the trade without real money\n"
+                    "  DISABLED - Blocks all trading"
+                ),
+            },
+            "sell": {
+                "category": "Trading",
+                "description": "Place a manual sell order",
+                "usage": "sell SYMBOL QUANTITY [PRICE]",
+                "examples": [
+                    "sell AAPL 10",
+                    "sell MSFT 5 $427.00",
+                ],
+                "aliases": ["close", "exit"],
+                "tags": ["trading", "execution"],
+                "related": ["buy", "show orders", "cancel"],
+                "details": (
+                    "Place a sell order to close a position.\n"
+                    "You can only sell if you own the position.\n"
+                    "If price is not specified, uses current market price.\n\n"
+                    "Note: To short sell (sell without owning), use 'short' command."
+                ),
+            },
+            "cancel": {
+                "category": "Trading",
+                "description": "Cancel pending or open orders",
+                "usage": "cancel ORDER_ID | cancel SYMBOL | cancel all",
+                "examples": [
                     "cancel 12345",
                     "cancel AAPL",
                     "cancel all",
-                    "cancel all pending",
                 ],
-                aliases=["cancel order"],
-                category="trading",
-                tags={"cancel", "order", "remove"},
-                related=["show orders"],
-                notes="Requires confirmation before canceling all orders",
-            )
-        )
-
-        # === STATUS / QUERY COMMANDS (Natural Language) ===
-        self._register_command(
-            CommandHelp(
-                name="show portfolio",
-                description="Display portfolio overview with account value and P&L",
-                usage="show portfolio | show account | check my portfolio",
-                examples=[
+                "aliases": ["delete", "remove"],
+                "tags": ["trading", "order management"],
+                "related": ["show orders", "buy", "sell"],
+                "details": (
+                    "Cancel one or more pending orders.\n\n"
+                    "Usage:\n"
+                    "  cancel ORDER_ID  - Cancel specific order by ID\n"
+                    "  cancel SYMBOL    - Cancel all orders for a symbol\n"
+                    "  cancel all       - Cancel all pending orders (with confirmation)\n\n"
+                    "Note: Canceled orders are logged for record-keeping."
+                ),
+            },
+            # ==================== INFORMATION COMMANDS ====================
+            "show portfolio": {
+                "category": "Information",
+                "description": "Show portfolio summary and allocation",
+                "usage": "show portfolio [--detailed]",
+                "examples": [
                     "show portfolio",
-                    "show my account",
-                    "what's my portfolio status",
-                    "how am I doing",
+                    "show portfolio --detailed",
                 ],
-                aliases=["show account", "portfolio status", "account status"],
-                category="status",
-                tags={"portfolio", "account", "status", "balance", "pnl"},
-                related=["show positions", "show orders"],
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="show positions",
-                description="Display all active positions with current P&L",
-                usage="show positions | show my positions | what positions do I have",
-                examples=[
+                "aliases": ["portfolio", "positions overview"],
+                "tags": ["information", "portfolio"],
+                "related": ["show positions", "show orders", "show account"],
+                "details": (
+                    "Display portfolio summary including:\n"
+                    "  - Total portfolio value\n"
+                    "  - Cash available\n"
+                    "  - Position allocation\n"
+                    "  - Daily P&L\n"
+                    "  - Risk metrics\n\n"
+                    "Use --detailed for full breakdown by symbol."
+                ),
+            },
+            "show positions": {
+                "category": "Information",
+                "description": "Show open positions with details",
+                "usage": "show positions [SYMBOL]",
+                "examples": [
                     "show positions",
-                    "show my positions",
-                    "what stocks do I own",
-                    "check my holdings",
+                    "show positions AAPL",
                 ],
-                aliases=["show holdings", "my positions"],
-                category="status",
-                tags={"positions", "holdings", "stocks", "pnl"},
-                related=["show portfolio", "show orders"],
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="show orders",
-                description="Display open and recent orders with stops/targets",
-                usage="show orders [SYMBOL] | show orders --detailed",
-                examples=[
+                "aliases": ["positions", "holdings"],
+                "tags": ["information", "portfolio"],
+                "related": ["show portfolio", "show orders", "monitor"],
+                "details": (
+                    "Display all open positions with:\n"
+                    "  - Entry price and quantity\n"
+                    "  - Current price and P&L\n"
+                    "  - Stop loss and take profit levels\n"
+                    "  - Position duration\n\n"
+                    "Optionally filter by symbol."
+                ),
+            },
+            "show orders": {
+                "category": "Information",
+                "description": "Show open and closed orders",
+                "usage": "show orders [--detailed] [SYMBOL]",
+                "examples": [
                     "show orders",
-                    "show my orders",
-                    "show orders AAPL",
                     "show orders --detailed",
+                    "show orders AAPL",
                 ],
-                aliases=["my orders", "open orders"],
-                category="status",
-                tags={"orders", "trades", "stops", "targets"},
-                related=["show positions", "cancel"],
-                notes="Use --detailed to see full bracket order information (stop/target prices)",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="check my alerts",
-                description="Show position alerts for stop-loss and take-profit levels",
-                usage="check my alerts | show alerts | check stops",
-                examples=[
-                    "check my alerts",
-                    "show my alerts",
-                    "are any stops close",
-                    "check my stop losses",
+                "aliases": ["orders", "order history"],
+                "tags": ["information", "orders"],
+                "related": ["show positions", "cancel", "buy", "sell"],
+                "details": (
+                    "Display order history including:\n"
+                    "  - Open orders with status\n"
+                    "  - Closed orders from today\n"
+                    "  - Entry and exit prices\n"
+                    "  - P&L for completed trades\n\n"
+                    "Use --detailed for full order details including stops/targets."
+                ),
+            },
+            "show account": {
+                "category": "Information",
+                "description": "Show account details and limits",
+                "usage": "show account",
+                "examples": [
+                    "show account",
                 ],
-                aliases=["show alerts", "check stops", "check targets"],
-                category="status",
-                tags={"alerts", "stops", "targets", "risk"},
-                related=["show positions", "show orders"],
-            )
-        )
-
-        # === CONFIG COMMANDS ===
-        self._register_command(
-            CommandHelp(
-                name="set execution-mode",
-                description="Set trading execution mode (confirm, auto, paper, disabled)",
-                usage="set execution-mode {confirm|auto|paper|disabled}",
-                examples=[
+                "aliases": ["account", "account info"],
+                "tags": ["information", "account"],
+                "related": ["show portfolio", "show positions"],
+                "details": (
+                    "Display account information:\n"
+                    "  - Account type (paper/live)\n"
+                    "  - Total equity\n"
+                    "  - Available cash\n"
+                    "  - Buying power\n"
+                    "  - Account restrictions"
+                ),
+            },
+            # ==================== CONFIGURATION COMMANDS ====================
+            "set execution-mode": {
+                "category": "Configuration",
+                "description": "Set trading execution mode",
+                "usage": "set execution-mode {confirm|auto|paper|disabled}",
+                "examples": [
                     "set execution-mode confirm",
                     "set execution-mode auto",
                     "set execution-mode paper",
-                    "set execution-mode disabled",
                 ],
-                aliases=["set mode"],
-                category="config",
-                tags={"mode", "execution", "confirm", "auto", "paper"},
-                related=["/toggle", "show execution-mode"],
-                notes="CONFIRM=human approval, AUTO=autonomous, PAPER=simulation, DISABLED=trading off",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="show execution-mode",
-                description="Display current execution mode",
-                usage="show execution-mode | show mode",
-                examples=["show execution-mode", "show mode", "what mode am I in"],
-                aliases=["show mode"],
-                category="config",
-                tags={"mode", "execution", "status"},
-                related=["set execution-mode", "/toggle"],
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="show config",
-                description="Display current trading configuration",
-                usage="show config",
-                examples=["show config", "show configuration", "show settings"],
-                aliases=["show configuration", "show settings"],
-                category="config",
-                tags={"config", "settings", "parameters"},
-                related=["show execution-mode"],
-            )
-        )
-
-        # === WORKFLOW COMMANDS (To be implemented by B) ===
-        self._register_command(
-            CommandHelp(
-                name="morning-routine",
-                description="Run morning market scan and analysis workflow",
-                usage="morning-routine [SYMBOLS] | morning-routine --auto-approve",
-                examples=[
-                    "morning-routine",
-                    "morning-routine AAPL,MSFT,TSLA",
-                    "morning-routine --auto-approve",
+                "aliases": ["set mode", "execution mode"],
+                "tags": ["configuration", "trading"],
+                "related": ["show execution-mode"],
+                "details": (
+                    "Change how trades are executed:\n\n"
+                    "  CONFIRM  - Ask for approval before each trade (default)\n"
+                    "  AUTO     - Execute trades automatically without approval\n"
+                    "  PAPER    - Simulate trades without real money (testing)\n"
+                    "  DISABLED - Block all trading\n\n"
+                    "⚠️  WARNING: Switching from paper to auto/confirm requires confirmation."
+                ),
+            },
+            "show execution-mode": {
+                "category": "Configuration",
+                "description": "Show current execution mode",
+                "usage": "show execution-mode",
+                "examples": [
+                    "show execution-mode",
                 ],
-                aliases=["morning", "scan", "morning scan"],
-                category="workflow",
-                tags={"workflow", "morning", "scan", "routine", "analysis"},
-                related=["approve", "reject", "evening-summary"],
-                notes="Scans markets, generates signals, analyzes risk. Awaits approval in CONFIRM mode.",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="approve",
-                description="Approve pending trade(s) from morning routine",
-                usage="approve SYMBOL | approve all",
-                examples=["approve AAPL", "approve all", "approve MSFT"],
-                aliases=["execute", "go ahead"],
-                category="workflow",
-                tags={"approve", "execute", "confirm", "workflow"},
-                related=["reject", "morning-routine", "show execution-mode"],
-                notes="Only available in CONFIRM mode with pending trades",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="reject",
-                description="Reject pending trade(s) from morning routine",
-                usage="reject SYMBOL | reject all",
-                examples=["reject AAPL", "reject all", "reject MSFT"],
-                aliases=["skip", "pass"],
-                category="workflow",
-                tags={"reject", "skip", "cancel", "workflow"},
-                related=["approve", "morning-routine"],
-                notes="Only available in CONFIRM mode with pending trades",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="monitor",
-                description="Monitor active positions for exit signals",
-                usage="monitor | monitor --check-exits",
-                examples=["monitor", "monitor --check-exits", "check positions"],
-                aliases=["check positions"],
-                category="workflow",
-                tags={"monitor", "positions", "exits", "workflow"},
-                related=["show positions", "evening-summary"],
-                notes="Continuously monitors positions, checks for exit signals based on indicators",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="evening-summary",
-                description="Generate end-of-day trading summary and P&L report",
-                usage="evening-summary | evening-summary --save FILENAME",
-                examples=[
-                    "evening-summary",
-                    "evening-summary --save report.txt",
-                    "end of day summary",
+                "aliases": ["show mode", "mode"],
+                "tags": ["configuration"],
+                "related": ["set execution-mode"],
+                "details": (
+                    "Display the current trading execution mode.\n"
+                    "This determines how your trades are processed."
+                ),
+            },
+            "set voter-system": {
+                "category": "Configuration",
+                "description": "Switch between voter systems",
+                "usage": "set voter-system {single|ranked}",
+                "examples": [
+                    "set voter-system single",
+                    "set voter-system ranked",
                 ],
-                aliases=["evening", "eod", "end of day"],
-                category="workflow",
-                tags={"evening", "summary", "report", "workflow", "eod"},
-                related=["morning-routine", "show portfolio"],
-                notes="Generates comprehensive report of day's trading activity",
-            )
-        )
-
-        self._register_command(
-            CommandHelp(
-                name="show scheduler status",
-                description="Display scheduler status and scheduled routines",
-                usage="show scheduler status | show scheduler",
-                examples=["show scheduler status", "show scheduler", "scheduler status"],
-                aliases=["scheduler status"],
-                category="workflow",
-                tags={"scheduler", "status", "automation"},
-                related=["/schedule", "morning-routine", "evening-summary"],
-            )
-        )
-
-    def _register_command(self, cmd_help: CommandHelp):
-        """Register a command with its help information."""
-        self.commands[cmd_help.name] = cmd_help
-
-        # Add to category
-        if cmd_help.category not in self.categories:
-            self.categories[cmd_help.category] = []
-        self.categories[cmd_help.category].append(cmd_help.name)
-
-        # Register aliases
-        for alias in cmd_help.aliases:
-            self.commands[alias] = cmd_help
-
-    def get_help(self, command: Optional[str] = None) -> str:
-        """
-        Get help for a specific command or show all commands.
-
-        Args:
-            command: Command name (with or without /) or None for all
-
-        Returns:
-            Formatted help text
-        """
-        if command is None:
-            return self._format_all_help()
-
-        # Clean command name
-        cmd = command.lower().strip().lstrip("/")
-
-        # Try exact match
-        if cmd in self.commands:
-            return self._format_command_help(self.commands[cmd])
-
-        # Try partial match
-        matches = [name for name in self.commands.keys() if cmd in name.lower()]
-        if len(matches) == 1:
-            return self._format_command_help(self.commands[matches[0]])
-        elif len(matches) > 1:
-            return (
-                f"Multiple commands match '{command}':\n"
-                + "\n".join(f"  - {m}" for m in matches)
-                + "\n\nUse '/help COMMAND' for specific help"
-            )
-
-        return f"Unknown command: {command}\n\nUse '/help' to see all commands"
-
-    def search(self, keyword: str) -> str:
-        """
-        Search commands by keyword.
-
-        Args:
-            keyword: Search term
-
-        Returns:
-            Formatted search results
-        """
-        keyword_lower = keyword.lower()
-        matches = []
-
-        for cmd_help in self.commands.values():
-            # Avoid duplicates from aliases
-            if cmd_help.name in [m.name for m in matches]:
-                continue
-
-            # Search in name, description, tags
-            if (
-                keyword_lower in cmd_help.name.lower()
-                or keyword_lower in cmd_help.description.lower()
-                or any(keyword_lower in tag.lower() for tag in cmd_help.tags)
-            ):
-                matches.append(cmd_help)
-
-        if not matches:
-            return f"No commands found matching '{keyword}'"
-
-        result = [f"Commands matching '{keyword}':\n"]
-        for cmd_help in matches:
-            result.append(f"  {cmd_help.name:25} - {cmd_help.description}")
-
-        result.append(f"\n{len(matches)} commands found. Use '/help COMMAND' for details")
-        return "\n".join(result)
-
-    def _format_all_help(self) -> str:
-        """Format help for all commands, organized by category."""
-        lines = []
-        lines.append("=" * 80)
-        lines.append("AVAILABLE COMMANDS")
-        lines.append("=" * 80)
-
-        # Category order
-        category_order = ["workflow", "trading", "status", "config", "system"]
-        category_titles = {
-            "workflow": "WORKFLOW - Daily trading routines",
-            "trading": "TRADING - Execute trades",
-            "status": "STATUS - Check positions and portfolio",
-            "config": "CONFIG - Configuration and settings",
-            "system": "SYSTEM - CLI controls",
+                "aliases": ["voter system"],
+                "tags": ["configuration", "analysis"],
+                "related": ["show config"],
+                "details": (
+                    "Choose which voting system to use for signals:\n\n"
+                    "  SINGLE - Simple MACD+RSI voting (fast, tested)\n"
+                    "  RANKED - Multi-indicator consensus voting (more signals)\n\n"
+                    "Ranked voter uses multiple indicators for higher confidence."
+                ),
+            },
+            "show config": {
+                "category": "Configuration",
+                "description": "Show current configuration",
+                "usage": "show config [--all]",
+                "examples": [
+                    "show config",
+                    "show config --all",
+                ],
+                "aliases": ["config", "settings"],
+                "tags": ["configuration", "information"],
+                "related": ["set execution-mode", "set voter-system"],
+                "details": (
+                    "Display current system configuration including:\n"
+                    "  - Execution mode\n"
+                    "  - Risk parameters\n"
+                    "  - Indicator parameters\n"
+                    "  - Position limits\n\n"
+                    "Use --all to see all available config options."
+                ),
+            },
+            # ==================== HELP & SYSTEM COMMANDS ====================
+            "help": {
+                "category": "Help",
+                "description": "Show interactive help",
+                "usage": "/help [COMMAND] [--search KEYWORD]",
+                "examples": [
+                    "/help",
+                    "/help morning-routine",
+                    "/help search workflow",
+                    "/help --examples",
+                ],
+                "aliases": ["?", "h"],
+                "tags": ["help", "documentation"],
+                "related": [],
+                "details": (
+                    "Get help on commands.\n\n"
+                    "Usage:\n"
+                    "  /help                - Show all commands by category\n"
+                    "  /help COMMAND        - Show help for specific command\n"
+                    "  /help search KEYWORD - Search commands by keyword\n"
+                    "  /help --examples     - Show all command examples\n\n"
+                    "Type '/help COMMAND' to see detailed help for any command."
+                ),
+            },
+            "exit": {
+                "category": "Help",
+                "description": "Exit the trading CLI",
+                "usage": "exit | quit",
+                "examples": [
+                    "exit",
+                    "quit",
+                ],
+                "aliases": ["quit", "q"],
+                "tags": ["help", "system"],
+                "related": [],
+                "details": (
+                    "Exit the interactive CLI session.\n"
+                    "All positions remain active - exiting the CLI doesn't close trades.\n"
+                    "Use 'sell' or 'cancel' to close positions before exiting."
+                ),
+            },
         }
 
-        for category in category_order:
-            if category not in self.categories:
-                continue
+    def _extract_categories(self) -> Dict[str, List[str]]:
+        """Extract unique categories from command data."""
+        categories = {}
+        for command, data in self.commands.items():
+            category = data.get("category", "Other")
+            if category not in categories:
+                categories[category] = []
+            categories[category].append(command)
+        return categories
 
-            lines.append(f"\n{category_titles.get(category, category.upper())}")
-            lines.append("-" * 80)
+    def get_help_all(self) -> str:
+        """Get help for all commands grouped by category."""
+        output = []
+        output.append("╔════════════════════════════════════════════════════════════════╗")
+        output.append("║           AUTOGEN-TRADER INTERACTIVE CLI - HELP MENU            ║")
+        output.append("╚════════════════════════════════════════════════════════════════╝\n")
 
-            # Get unique commands (skip aliases)
-            seen = set()
-            for cmd_name in self.categories[category]:
-                cmd_help = self.commands[cmd_name]
-                if cmd_help.name in seen:
-                    continue
-                seen.add(cmd_help.name)
+        for category in sorted(self.categories.keys()):
+            output.append(f"\n{category.upper()}")
+            output.append("─" * 50)
 
-                lines.append(f"  {cmd_help.name:25} - {cmd_help.description}")
+            for command in sorted(self.categories[category]):
+                data = self.commands[command]
+                desc = data.get("description", "No description")
+                output.append(f"  {command:25} {desc}")
 
-        lines.append("\n" + "=" * 80)
-        lines.append("Type '/help COMMAND' for details on a specific command")
-        lines.append("Type '/help search KEYWORD' to search commands")
-        lines.append("Type '/tips' for trading basics")
-        lines.append("=" * 80)
+            output.append("")
 
-        return "\n".join(lines)
+        output.append("Type '/help COMMAND' for detailed help on any command")
+        output.append("Type '/help search KEYWORD' to search for commands")
+        output.append("Type '/help --examples' to see command examples")
 
-    def _format_command_help(self, cmd_help: CommandHelp) -> str:
-        """Format detailed help for a specific command."""
-        lines = []
-        lines.append("=" * 80)
-        lines.append(f"{cmd_help.name} - {cmd_help.description}")
-        lines.append("=" * 80)
+        return "\n".join(output)
 
-        lines.append("\nUsage:")
-        lines.append(f"  {cmd_help.usage}")
+    def get_help_command(self, command: str) -> str:
+        """Get detailed help for a specific command."""
+        # Handle partial command names
+        matching = [cmd for cmd in self.commands.keys() if cmd.startswith(command.lower())]
 
-        if cmd_help.examples:
-            lines.append("\nExamples:")
-            for example in cmd_help.examples:
-                lines.append(f"  > {example}")
+        if not matching:
+            return f"❌ Command '{command}' not found. Type '/help' to see all commands."
 
-        if cmd_help.aliases:
-            lines.append(f"\nAliases: {', '.join(cmd_help.aliases)}")
+        if len(matching) > 1:
+            return f"❓ Ambiguous: '{command}' matches: {', '.join(matching)}"
 
-        if cmd_help.notes:
-            lines.append("\nNotes:")
-            lines.append(f"  {cmd_help.notes}")
+        cmd = matching[0]
+        data = self.commands[cmd]
 
-        if cmd_help.related:
-            lines.append(f"\nSee also: {', '.join(cmd_help.related)}")
+        output = []
+        output.append("╔════════════════════════════════════════════════════════════════╗")
+        output.append(f"║ {cmd.upper():62} ║")
+        output.append("╚════════════════════════════════════════════════════════════════╝\n")
 
-        lines.append("=" * 80)
+        output.append(f"{data.get('description', 'No description')}\n")
 
-        return "\n".join(lines)
+        output.append("USAGE:")
+        output.append(f"  {data.get('usage', 'N/A')}\n")
 
-    def get_commands_by_category(self, category: str) -> List[str]:
-        """Get all command names in a category."""
-        return self.categories.get(category, [])
+        if data.get("examples"):
+            output.append("EXAMPLES:")
+            for example in data["examples"]:
+                output.append(f"  > {example}")
+            output.append("")
 
-    def get_all_categories(self) -> List[str]:
-        """Get list of all categories."""
-        return list(self.categories.keys())
+        if data.get("aliases"):
+            output.append(f"ALIASES: {', '.join(data['aliases'])}")
+            output.append("")
+
+        if data.get("details"):
+            output.append("DETAILS:")
+            output.append(data["details"])
+            output.append("")
+
+        if data.get("related"):
+            output.append(f"RELATED: {', '.join(data['related'])}")
+
+        return "\n".join(output)
+
+    def search_help(self, keyword: str) -> str:
+        """Search help by keyword."""
+        keyword = keyword.lower()
+        matches = []
+
+        for command, data in self.commands.items():
+            # Search in description, usage, tags, and details
+            if (
+                keyword in data.get("description", "").lower()
+                or keyword in data.get("usage", "").lower()
+                or keyword in " ".join(data.get("tags", [])).lower()
+                or keyword in " ".join(data.get("aliases", [])).lower()
+                or keyword in data.get("details", "").lower()
+            ):
+                matches.append(command)
+
+        if not matches:
+            return f"❌ No commands found matching '{keyword}'"
+
+        output = []
+        output.append(f"SEARCH RESULTS for '{keyword}' ({len(matches)} found):\n")
+
+        for cmd in sorted(matches):
+            data = self.commands[cmd]
+            desc = data.get("description", "")
+            output.append(f"  {cmd:25} {desc}")
+
+        output.append("")
+        output.append("Type '/help COMMAND' for detailed help on any command")
+
+        return "\n".join(output)
+
+    def get_examples(self) -> str:
+        """Get all examples."""
+        output = []
+        output.append("╔════════════════════════════════════════════════════════════════╗")
+        output.append("║                      COMMAND EXAMPLES                          ║")
+        output.append("╚════════════════════════════════════════════════════════════════╝\n")
+
+        for category in sorted(self.categories.keys()):
+            output.append(f"{category.upper()}")
+            output.append("─" * 50)
+
+            for command in sorted(self.categories[category]):
+                data = self.commands[command]
+                if data.get("examples"):
+                    output.append(f"\n{command}:")
+                    for example in data["examples"]:
+                        output.append(f"  > {example}")
+
+            output.append("")
+
+        return "\n".join(output)
+
+    def handle_help_command(self, input_str: str) -> str:
+        """
+        Handle help command from user input.
+
+        Formats:
+        - /help
+        - /help COMMAND
+        - /help search KEYWORD
+        - /help --examples
+        """
+        parts = input_str.strip().split(None, 2)
+
+        if len(parts) == 1:
+            # Just /help
+            return self.get_help_all()
+
+        if len(parts) >= 2:
+            if parts[1] == "search" and len(parts) >= 3:
+                # /help search KEYWORD
+                return self.search_help(parts[2])
+            elif parts[1] == "--examples":
+                # /help --examples
+                return self.get_examples()
+            else:
+                # /help COMMAND
+                return self.get_help_command(parts[1])
+
+        return self.get_help_all()
