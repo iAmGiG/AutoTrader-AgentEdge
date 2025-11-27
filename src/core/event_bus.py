@@ -14,7 +14,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Optional, Set
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -391,11 +391,8 @@ class EventBus:
             event_types = set(self._handlers.keys()) | set(self._async_handlers.keys())
             return {
                 "event_types": list(event_types),
-                "total_handlers": sum(
-                    len(h) for h in self._handlers.values()
-                ) + sum(
-                    len(h) for h in self._async_handlers.values()
-                ),
+                "total_handlers": sum(len(h) for h in self._handlers.values())
+                + sum(len(h) for h in self._async_handlers.values()),
                 "history_size": len(self._event_history),
                 "max_history": self._max_history,
                 "paused_types": list(self._paused),

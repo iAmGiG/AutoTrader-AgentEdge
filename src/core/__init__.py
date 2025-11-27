@@ -9,50 +9,44 @@ Legacy components (autogen_agents, old strategies) are imported separately.
 
 # Event Bus Infrastructure (Issue #397)
 from .event_bus import Event, EventBus, EventPriority, get_event_bus
-from .events import (
+from .events import (  # Market events; Signal events; Risk events; Order events; Position events; System events
+    AgentHeartbeatPayload,
     EventType,
-    # Market events
     MarketDataPayload,
     MarketOpportunityPayload,
+    OrderPayload,
+    PositionPayload,
+    RiskAlertPayload,
+    RiskAssessmentPayload,
+    SignalPayload,
+    StopAdjustmentPayload,
+    SystemErrorPayload,
+    create_agent_heartbeat_event,
     create_market_data_event,
     create_market_opportunity_event,
-    # Signal events
-    SignalPayload,
-    create_signal_event,
-    # Risk events
-    RiskAssessmentPayload,
-    RiskAlertPayload,
-    create_risk_assessment_event,
-    create_risk_alert_event,
-    # Order events
-    OrderPayload,
     create_order_event,
-    # Position events
-    PositionPayload,
-    StopAdjustmentPayload,
     create_position_event,
+    create_risk_alert_event,
+    create_risk_assessment_event,
+    create_signal_event,
     create_stop_adjustment_event,
-    # System events
-    SystemErrorPayload,
-    AgentHeartbeatPayload,
     create_system_error_event,
-    create_agent_heartbeat_event,
 )
 from .interfaces import ExecutionManager, InputParser, RiskManager, StrategyAnalyzer
 
 # New plugin architecture
 from .models import (
-                         AnalysisResult,
-                         AssetType,
-                         OrderResult,
-                         OrderType,
-                         RiskAssessment,
-                         SessionState,
-                         Signal,
-                         TimeInForce,
-                         TradeDecision,
-                         TradeRequest,
-                         TradeSuggestion,
+    AnalysisResult,
+    AssetType,
+    OrderResult,
+    OrderType,
+    RiskAssessment,
+    SessionState,
+    Signal,
+    TimeInForce,
+    TradeDecision,
+    TradeRequest,
+    TradeSuggestion,
 )
 from .trading_orchestrator import TradingOrchestrator
 
