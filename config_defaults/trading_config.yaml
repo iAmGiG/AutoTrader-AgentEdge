@@ -71,3 +71,51 @@ validated_performance:
     sharpe_ratio: -1.260
     win_rate: 0.177
     note: "Failed complexity trap - DO NOT USE"
+
+# Technical Indicator Confidence Calculations
+# Issue #358: Externalize magic numbers from market_scanner.py
+technical_indicators:
+  rsi:
+    # Multiplier for RSI strength calculation
+    # Used in: (rsi_config.oversold - current_rsi) * strength_multiplier
+    strength_multiplier: 3.33
+
+  confidence_calculations:
+    # Maximum confidence when multiple indicators agree
+    max_consensus: 0.85
+
+    # Boost added when indicators align
+    consensus_boost: 0.15
+
+    # Maximum confidence for single indicator
+    max_single_indicator: 0.65
+
+    # Boost for single strong indicator
+    single_indicator_boost: 0.10
+
+# Position Management - Trailing Stop Configuration
+# Issue #358: Externalize trailing stop thresholds from trading_cycle.py
+position_management:
+  trailing_stop:
+    # Profit thresholds and corresponding actions
+    thresholds:
+      - profit_pct: 0.02
+        action: "hold"
+        description: "Under 2% profit - no stop adjustment"
+
+      - profit_pct: 0.04
+        action: "hold"
+        description: "2-4% profit - monitor but don't adjust"
+
+      - profit_pct: 0.06
+        action: "lock_partial"
+        lock_percent: 0.25
+        description: "4-6% profit - lock in 25% gains"
+
+      - profit_pct: 1.0
+        action: "trail_aggressive"
+        trail_percent: 0.50
+        description: "6%+ profit - trail with 50% of gains"
+
+    # Minimum dollar move to update stop (prevents micro-adjustments)
+    min_move_dollars: 0.01

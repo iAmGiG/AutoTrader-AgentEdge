@@ -1,0 +1,53 @@
+# Market Scanner Configuration
+# Issue #358: Externalize scanner watchlist and settings
+
+# Default Watchlist - symbols scanned when no specific list is provided
+default_watchlist:
+  # Core broad market ETFs
+  core_etfs:
+    - SPY    # S&P 500
+    - QQQ    # Nasdaq 100
+    - IWM    # Russell 2000
+    - VTI    # Total Stock Market
+
+  # Leveraged ETFs (2x-3x)
+  leverage_etfs:
+    - TQQQ   # 3x Nasdaq Bull
+    - SQQQ   # 3x Nasdaq Bear
+    - UPRO   # 3x S&P Bull
+    - SPXL   # 3x S&P Bull
+
+  # Tech giants (FAANG + others)
+  tech_giants:
+    - AAPL   # Apple
+    - MSFT   # Microsoft
+    - NVDA   # NVIDIA
+    - TSLA   # Tesla
+    - META   # Meta/Facebook
+    - GOOGL  # Google/Alphabet
+    - AMZN   # Amazon
+
+  # Growth/High-beta stocks
+  growth_stocks:
+    - PLTR   # Palantir
+    - COIN   # Coinbase
+    - AMD    # Advanced Micro Devices
+    - CRM    # Salesforce
+    - NFLX   # Netflix
+
+# Scanner operational settings
+scanner_settings:
+  # Data cache directory
+  cache_dir: ".cache/scanner_data"
+
+  # Number of days to fetch in batch requests
+  batch_fetch_days: 3
+
+  # Maximum number of symbols to scan in parallel
+  max_concurrent_scans: 10
+
+  # Timeout for individual symbol scan (seconds)
+  scan_timeout_seconds: 30
+
+  # Minimum confidence threshold for opportunities
+  min_opportunity_confidence: 0.65

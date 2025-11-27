@@ -1,0 +1,56 @@
+# File Paths Configuration
+# Centralized configuration for all file and directory paths used by the trading system
+# Issue #358: Externalize hardcoded file paths
+
+# Base directories
+state_dir: "state"
+reports_dir: "reports"
+logs_dir: "logs"
+cache_dir: ".cache"
+
+# State files - persistent data storage
+state_files:
+  # Cost-efficient trading cycle state
+  cost_efficient: "state/cost_efficient_positions.json"
+
+  # Position management state
+  positions: "state/positions.json"
+
+  # LLM-based position tracking
+  llm_positions: "state/llm_positions.json"
+
+  # Scheduler execution history
+  scheduler_log: "state/scheduler_execution_log.json"
+
+# Report templates - use {date}, {routine_type}, {timestamp} as placeholders
+report_templates:
+  # Daily routine reports (morning/evening)
+  daily_routine: "reports/daily/{date}_{routine_type}.md"
+
+  # Market scanner output (JSON format)
+  scan_json: "reports/scans/{timestamp}_opportunities.json"
+
+  # Market scanner output (Markdown format)
+  scan_markdown: "reports/scans/{timestamp}_opportunities.md"
+
+# Log files
+log_files:
+  # Scheduler activity log
+  scheduler: "state/scheduler.log"
+
+  # Trading cycle log
+  trading: "logs/trading.log"
+
+  # Market scanner log
+  scanner: "logs/scanner.log"
+
+# Cache directories - component-specific caches
+cache_dirs:
+  # Market scanner data cache
+  scanner_data: ".cache/scanner_data"
+
+  # Market data cache
+  market_data: ".cache/market_data"
+
+  # API response cache
+  api_cache: ".cache/api_responses"
