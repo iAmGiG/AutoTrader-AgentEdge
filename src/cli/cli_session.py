@@ -1601,9 +1601,9 @@ class CLISession:
         side = order.get("side", "?").upper()
         qty = order.get("qty", "?")
 
-        print(f"\n📋 Order to cancel:")
+        print("\n📋 Order to cancel:")
         print(f"   {side} {qty} {symbol} (ID: {full_order_id[:8]}...)")
-        print(f"\nCancel this order? [yes/no]: ", end="")
+        print("\nCancel this order? [yes/no]: ", end="")
         confirm = input().strip().lower()
 
         if confirm != "yes":
