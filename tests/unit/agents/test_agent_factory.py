@@ -12,15 +12,10 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.autogen_agents.agent_factory import (
-    AgentConfig,
-    AgentFactory,
-    AgentInstance,
-    AgentType,
-    create_agent,
-    create_voter,
-    get_agent_factory,
-)
+from src.autogen_agents.agent_factory import (AgentConfig, AgentFactory,
+                                              AgentInstance, AgentType,
+                                              create_agent, create_voter,
+                                              get_agent_factory)
 
 
 class TestAgentType(unittest.TestCase):
@@ -185,9 +180,7 @@ class TestConfigMerging(unittest.TestCase):
         base_config = factory.get_config(AgentType.VOTER)
 
         # Create with override
-        merged = factory._merge_config(
-            base_config, {"temperature": 0.9}
-        )
+        merged = factory._merge_config(base_config, {"temperature": 0.9})
 
         self.assertEqual(merged.temperature, 0.9)
         self.assertEqual(merged.model_name, base_config.model_name)
@@ -202,9 +195,7 @@ class TestConfigMerging(unittest.TestCase):
             extra_config={"a": 1, "b": 2},
         )
 
-        merged = factory._merge_config(
-            base_config, {"extra_config": {"b": 3, "c": 4}}
-        )
+        merged = factory._merge_config(base_config, {"extra_config": {"b": 3, "c": 4}})
 
         self.assertEqual(merged.extra_config["a"], 1)
         self.assertEqual(merged.extra_config["b"], 3)

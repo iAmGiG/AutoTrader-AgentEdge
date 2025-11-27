@@ -13,15 +13,9 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.autogen_agents.agent_bus import (
-    AgentBus,
-    AgentMessage,
-    EventType,
-    Subscription,
-    create_message,
-    get_agent_bus,
-    publish_result,
-)
+from src.autogen_agents.agent_bus import (AgentBus, AgentMessage, EventType,
+                                          Subscription, create_message,
+                                          get_agent_bus, publish_result)
 
 
 class TestEventType(unittest.TestCase):
@@ -76,6 +70,7 @@ class TestAgentMessage(unittest.TestCase):
     def test_message_ttl(self):
         """Test message TTL expiration."""
         import time
+
         msg = AgentMessage(
             source_agent="test",
             event_type=EventType.CUSTOM,
