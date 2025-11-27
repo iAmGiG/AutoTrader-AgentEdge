@@ -1964,7 +1964,7 @@ class CLISession:
             print("  • AUTO    - Executes trades automatically (within risk limits)")
             print("  • PAPER   - Paper trading only, no real money")
             print("  • DISABLED - Trading completely disabled")
-            print(f"\nTo change mode: set execution mode {{confirm|auto|paper|disabled}}")
+            print("\nTo change mode: set execution mode {confirm|auto|paper|disabled}")
             return
 
         # Try to extract target mode from input
@@ -1993,10 +1993,10 @@ class CLISession:
                 new_mode == ExecutionMode.AUTO
                 and self.orchestrator.execution_mode != ExecutionMode.AUTO
             ):
-                print(f"\n⚠️  WARNING: Switching to AUTO mode")
+                print("\n⚠️  WARNING: Switching to AUTO mode")
                 print("   This will execute trades automatically without confirmation.")
                 print("   Risk limits and position sizing will still apply.")
-                print(f"\nSwitch to AUTO mode? [yes/no]: ", end="")
+                print("\nSwitch to AUTO mode? [yes/no]: ", end="")
                 confirm = input().strip().lower()
 
                 if confirm != "yes":
