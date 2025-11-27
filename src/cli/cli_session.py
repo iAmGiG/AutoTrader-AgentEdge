@@ -289,6 +289,13 @@ class CLISession:
             # Order cancellation (Issue #360)
             await self._handle_cancel_request(user_input)
 
+        elif any(
+            phrase in input_lower
+            for phrase in ["execution mode", "execution-mode", "set execution", "show execution"]
+        ):
+            # Execution mode management (Issue #332)
+            await self._handle_execution_mode_request(user_input)
+
         else:
             # For everything else, let LLM parser decide: trade vs status_query
             # This includes: orders, positions, portfolio, and actual trades
@@ -1926,3 +1933,97 @@ class CLISession:
                     return clean_word
 
         return ""
+
+    async def _handle_execution_mode_request(self, user_input: str):
+        """
+        Handle execution mode view/change requests.
+        Issue #332: Add execution mode switching commands
+
+        Supports:
+        - show execution mode
+        - set execution mode {confirm|auto|paper|disabled}
+        - execution-mode confirm/auto/paper/disabled
+
+        Args:
+            user_input: User's natural language input
+        """
+        from src.autogen_agents.trading_orchestrator import ExecutionMode
+
+        input_lower = user_input.lower()
+
+        # Determine if this is a "show" or "set" request
+        is_show = any(word in input_lower for word in ["show", "what", "current", "get"])
+        is_set = any(word in input_lower for word in ["set", "change", "switch"])
+
+        if is_show and not is_set:
+            # Show current execution mode
+            current_mode = self.orchestrator.execution_mode
+            print(f"\n📋 Current Execution Mode: {current_mode.value.upper()}")
+            print("\nMode Descriptions:")
+            print("  • CONFIRM - Requires human approval for each trade")
+            print("  • AUTO    - Executes trades automatically (within risk limits)")
+            print("  • PAPER   - Paper trading only, no real money")
+            print("  • DISABLED - Trading completely disabled")
+            print(f"\nTo change mode: set execution mode {{confirm|auto|paper|disabled}}")
+            return
+
+        # Try to extract target mode from input
+        target_mode = None
+        for mode in ["confirm", "auto", "paper", "disabled"]:
+            if mode in input_lower:
+                target_mode = mode
+                break
+
+        if not target_mode:
+            print("❌ Could not determine execution mode")
+            print("ℹ️  Usage: set execution mode {confirm|auto|paper|disabled}")
+            print("\nAvailable modes:")
+            print("  • confirm  - Human approval required")
+            print("  • auto     - Autonomous execution")
+            print("  • paper    - Paper trading only")
+            print("  • disabled - Trading disabled")
+            return
+
+        # Validate and set new mode
+        try:
+            new_mode = ExecutionMode(target_mode)
+
+            # Safety confirmation for AUTO mode
+            if (
+                new_mode == ExecutionMode.AUTO
+                and self.orchestrator.execution_mode != ExecutionMode.AUTO
+            ):
+                print(f"\n⚠️  WARNING: Switching to AUTO mode")
+                print("   This will execute trades automatically without confirmation.")
+                print("   Risk limits and position sizing will still apply.")
+                print(f"\nSwitch to AUTO mode? [yes/no]: ", end="")
+                confirm = input().strip().lower()
+
+                if confirm != "yes":
+                    print("❌ Mode change cancelled")
+                    return
+
+            # Set new mode
+            old_mode = self.orchestrator.execution_mode
+            self.orchestrator.execution_mode = new_mode
+
+            # Confirmation message
+            print(
+                f"\n✅ Execution mode changed: {old_mode.value.upper()} → {new_mode.value.upper()}"
+            )
+
+            # Mode-specific guidance
+            if new_mode == ExecutionMode.CONFIRM:
+                print("   • Trades will require your approval before execution")
+            elif new_mode == ExecutionMode.AUTO:
+                print("   • Trades will execute automatically (within risk limits)")
+                print("   • Use 'cancel all orders' to stop pending trades")
+            elif new_mode == ExecutionMode.PAPER:
+                print("   • All trades will be simulated (no real money)")
+            elif new_mode == ExecutionMode.DISABLED:
+                print("   • Trading is now disabled")
+                print("   • No trades will be executed")
+
+        except ValueError:
+            print(f"❌ Invalid execution mode: {target_mode}")
+            print("ℹ️  Valid modes: confirm, auto, paper, disabled")
