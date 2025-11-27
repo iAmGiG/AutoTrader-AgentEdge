@@ -337,13 +337,32 @@ class CLISession:
                 # Status query detected - route based on content
                 input_lower = user_input.lower()
 
-                if any(word in input_lower for word in ["order", "orders"]):
+                # Issue #348: Route stop/target queries with symbols to order details
+                if any(
+                    phrase in input_lower
+                    for phrase in [
+                        "stop level on",
+                        "stop price on",
+                        "stop loss on",
+                        "stop on",
+                        "target price on",
+                        "take profit on",
+                        "tp on",
+                        "exit orders on",
+                        "bracket orders on",
+                        "orders for",
+                        "show orders for",
+                    ]
+                ):
+                    # Specific symbol stop/target query → show detailed orders
+                    await self._handle_position_orders(user_input)
+                elif any(word in input_lower for word in ["order", "orders"]):
                     await self._handle_orders_request(user_input)
                 elif any(
                     phrase in input_lower
                     for phrase in ["stop", "target", "take profit", "exit level", "stop loss"]
                 ):
-                    # Stop/target queries → show portfolio with exit levels
+                    # Generic stop/target queries → show portfolio with exit levels
                     await self._handle_portfolio_request(user_input)
                 elif any(
                     word in input_lower for word in ["position", "positions", "holding", "holdings"]
@@ -1667,3 +1686,243 @@ class CLISession:
                 print(f"❌ Error cancelling {order_id[:8]}...: {e}")
 
         print(f"\n✅ Cancelled {cancelled_count}/{len(symbol_orders)} {symbol} orders successfully")
+
+    async def _handle_position_orders(self, user_input: str):
+        """
+        Show detailed orders for specific position (stops, targets, entry).
+        Issue #348: Enhanced order details when asking about stops/targets
+
+        Supports queries like:
+        - "what is my stop level on META"
+        - "show orders for AAPL"
+        - "target price on SPY"
+
+        Args:
+            user_input: User's natural language input
+        """
+        # Extract ticker from query
+        ticker = self._extract_ticker_from_query(user_input)
+
+        if not ticker:
+            print("❌ Could not identify symbol in query")
+            print("ℹ️  Try: 'show orders for AAPL' or 'stop level on META'")
+            return
+
+        try:
+            if not self.account_monitor:
+                print(MSG.PORTFOLIO_NOT_INITIALIZED)
+                return
+
+            # Get all orders for this ticker (open and filled recently)
+            all_orders = self.account_monitor.get_orders(status="all")
+            ticker_orders = [o for o in all_orders if o.get("symbol", "").upper() == ticker.upper()]
+
+            # Also check local state for stop/target info
+            local_state = self._load_local_state()
+            position_data = local_state.get("positions", {}).get(ticker)
+
+            if not ticker_orders and not position_data:
+                print(f"❌ No orders or positions found for {ticker}")
+                return
+
+            # Display header
+            print(f"\n📋 {ticker} Orders:")
+
+            # Group orders by status
+            filled_orders = [
+                o for o in ticker_orders if self._extract_value(o.get("status")) == "filled"
+            ]
+            open_orders = [
+                o
+                for o in ticker_orders
+                if self._extract_value(o.get("status"))
+                in ["new", "pending_new", "accepted", "open"]
+            ]
+
+            # Show filled entry orders (most recent 3)
+            if filled_orders:
+                print("\n✅ ENTRY (Filled)")
+                for order in filled_orders[:3]:  # Limit to 3 most recent
+                    side = self._extract_value(order.get("side")).upper()
+                    qty = order.get("qty", 0)
+                    filled_price = order.get("filled_avg_price", 0)
+                    filled_at = order.get("filled_at", "")
+
+                    # Format timestamp
+                    time_str = ""
+                    if filled_at:
+                        try:
+                            from datetime import datetime
+
+                            dt = datetime.fromisoformat(filled_at.replace("Z", "+00:00"))
+                            time_str = dt.strftime("%Y-%m-%d %H:%M")
+                        except:
+                            time_str = filled_at[:16]
+
+                    print(f"   {side} {qty} shares @ ${filled_price:.2f}")
+                    if time_str:
+                        print(f"   Filled: {time_str}")
+
+            # Calculate entry price for reference (from filled orders or position data)
+            entry_price = None
+            if filled_orders:
+                entry_price = filled_orders[0].get("filled_avg_price")
+            elif position_data:
+                entry_price = position_data.get("entry_price", 0)
+
+            # Show open stop/target orders from API
+            stop_shown = False
+            target_shown = False
+
+            if open_orders:
+                print("\n🟡 OPEN Exit Orders")
+                for order in open_orders:
+                    order_type = self._extract_value(order.get("order_type"))
+                    order_id = order.get("id", "N/A")
+                    status = self._extract_value(order.get("status"))
+
+                    if order_type == "stop":
+                        stop_price = float(order.get("stop_price", 0))
+                        pct_from_entry = ""
+                        if entry_price and stop_price:
+                            pct = ((stop_price - entry_price) / entry_price) * 100
+                            pct_from_entry = f" ({pct:+.1f}% from entry)"
+
+                        print(f"   🔴 STOP LOSS: ${stop_price:.2f}{pct_from_entry}")
+                        print(f"      Order ID: {order_id[:12]}...")
+                        print(f"      Status: {status.upper()}")
+                        stop_shown = True
+
+                    elif order_type == "limit":
+                        limit_price = float(order.get("limit_price", 0))
+                        pct_from_entry = ""
+                        if entry_price and limit_price:
+                            pct = ((limit_price - entry_price) / entry_price) * 100
+                            pct_from_entry = f" ({pct:+.1f}% from entry)"
+
+                        print(f"   🟢 TAKE PROFIT: ${limit_price:.2f}{pct_from_entry}")
+                        print(f"      Order ID: {order_id[:12]}...")
+                        print(f"      Status: {status.upper()}")
+                        target_shown = True
+
+            # Supplement with local state data (Alpaca often hides bracket legs)
+            if position_data:
+                stop_price = position_data.get("stop_price")
+                target_price = position_data.get("target_price")
+
+                if stop_price and not stop_shown:
+                    print("\n🟡 OPEN Exit Orders (from local state)")
+                    pct_from_entry = ""
+                    if entry_price and stop_price:
+                        pct = ((stop_price - entry_price) / entry_price) * 100
+                        pct_from_entry = f" ({pct:+.1f}% from entry)"
+
+                    print(f"   🔴 STOP LOSS: ${stop_price:.2f}{pct_from_entry}")
+                    print("      Status: PENDING (bracket order)")
+                    print("      * Logged locally - verify on broker dashboard")
+
+                if target_price and not target_shown:
+                    if not stop_shown and not stop_price:
+                        print("\n🟡 OPEN Exit Orders (from local state)")
+
+                    pct_from_entry = ""
+                    if entry_price and target_price:
+                        pct = ((target_price - entry_price) / entry_price) * 100
+                        pct_from_entry = f" ({pct:+.1f}% from entry)"
+
+                    print(f"   🟢 TAKE PROFIT: ${target_price:.2f}{pct_from_entry}")
+                    print("      Status: PENDING (bracket order)")
+                    print("      * Logged locally - verify on broker dashboard")
+
+            # Show current price and distance to exits
+            try:
+                positions = self.account_monitor.get_positions()
+                current_position = next(
+                    (p for p in positions if p.get("symbol") == ticker.upper()), None
+                )
+
+                if current_position:
+                    current_price = float(current_position.get("current_price", 0))
+                    unrealized_pl_pct = float(current_position.get("unrealized_plpc", 0)) * 100
+
+                    print(
+                        f"\n📊 Current: {ticker} @ ${current_price:.2f} ({unrealized_pl_pct:+.2f}%)"
+                    )
+
+                    # Calculate distance to stop/target
+                    stop_price = position_data.get("stop_price") if position_data else None
+                    target_price = position_data.get("target_price") if position_data else None
+
+                    # Try to get from open orders if not in local state
+                    for order in open_orders:
+                        order_type = self._extract_value(order.get("order_type"))
+                        if order_type == "stop" and not stop_price:
+                            stop_price = float(order.get("stop_price", 0))
+                        elif order_type == "limit" and not target_price:
+                            target_price = float(order.get("limit_price", 0))
+
+                    if stop_price:
+                        dist_to_stop = ((stop_price - current_price) / current_price) * 100
+                        print(f"   Distance to stop: {dist_to_stop:+.1f}%")
+
+                    if target_price:
+                        dist_to_target = ((target_price - current_price) / current_price) * 100
+                        print(f"   Distance to target: {dist_to_target:+.1f}%")
+
+            except Exception as e:
+                logger.debug(f"Could not fetch current price for {ticker}: {e}")
+
+        except Exception as e:
+            print(f"❌ Error fetching orders for {ticker}: {e}")
+            logger.error(f"Position orders error: {e}", exc_info=True)
+
+    def _extract_ticker_from_query(self, user_input: str) -> str:
+        """
+        Extract ticker symbol from user query.
+
+        Handles queries like:
+        - "stop level on META"
+        - "show orders for AAPL"
+        - "what's my target price on spy"
+
+        Returns:
+            Ticker symbol (uppercase) or empty string if not found
+        """
+        import re
+
+        # Try regex pattern for ticker symbols (1-5 uppercase letters)
+        # Look for words that are all caps or look like tickers
+        words = user_input.upper().split()
+
+        # Common prepositions that come before tickers
+        prepositions = ["ON", "FOR", "IN", "OF", "WITH"]
+
+        for i, word in enumerate(words):
+            # Check if previous word was a preposition
+            if i > 0 and words[i - 1] in prepositions:
+                # Clean word (remove punctuation)
+                clean_word = re.sub(r"[^A-Z]", "", word)
+                if clean_word.isalpha() and 1 <= len(clean_word) <= 5:
+                    return clean_word
+
+        # Fallback: look for any word that's all caps and 1-5 letters
+        for word in words:
+            clean_word = re.sub(r"[^A-Z]", "", word)
+            if clean_word.isalpha() and 1 <= len(clean_word) <= 5:
+                # Avoid common words
+                if clean_word not in [
+                    "ON",
+                    "FOR",
+                    "IN",
+                    "OF",
+                    "WITH",
+                    "THE",
+                    "A",
+                    "AN",
+                    "MY",
+                    "IS",
+                    "ARE",
+                ]:
+                    return clean_word
+
+        return ""
