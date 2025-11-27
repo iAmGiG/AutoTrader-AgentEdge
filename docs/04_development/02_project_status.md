@@ -106,11 +106,12 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **Low Priority**:
 
-- [ ] **Forward Testing Protocol** (#324)
-  - Statistical validation framework
-  - Walk-forward analysis
-  - Performance tracking
-  - Target: Q2 2026
+- [x] **Forward Testing Protocol** (#324) - ✅ COMPLETE (Nov 2025)
+  - 30-day validation framework with state persistence
+  - Performance metrics: Sharpe, win rate, drawdown, profit factor
+  - Daily/weekly/final reports with go/no-go recommendations
+  - Automated acceptance criteria validation
+  - Branch: `feature/forward-testing-achat`
 
 ### Phase 3A: CLI & UX Improvements ✅ IN PROGRESS (Nov 2025)
 
