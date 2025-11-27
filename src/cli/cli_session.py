@@ -283,6 +283,12 @@ class CLISession:
             # Alert queries
             await self._handle_alerts_request(user_input)
 
+        elif any(word in input_lower for word in ["cancel", "delete", "remove"]) and any(
+            word in input_lower for word in ["order", "all"]
+        ):
+            # Order cancellation (Issue #360)
+            await self._handle_cancel_request(user_input)
+
         else:
             # For everything else, let LLM parser decide: trade vs status_query
             # This includes: orders, positions, portfolio, and actual trades
@@ -1476,3 +1482,188 @@ class CLISession:
         print(
             f"│ {local_marker}{side_emoji} {label_prefix}{side} {qty} @ {price_str} ({order_id[:8]})"
         )
+
+    async def _handle_cancel_request(self, user_input: str):
+        """
+        Handle order cancellation request.
+        Issue #360: Add order cancellation functionality to CLI
+
+        Supports:
+        - cancel all orders
+        - cancel order <id>
+        - cancel <symbol> orders
+
+        Args:
+            user_input: User's natural language input
+        """
+        input_lower = user_input.lower()
+
+        try:
+            # Get open orders from broker
+            if not self.account_monitor:
+                print("❌ Order management not initialized")
+                return
+
+            orders = self.account_monitor.get_orders(status="open")
+
+            if not orders:
+                print("ℹ️  No open orders to cancel")
+                return
+
+            # Determine what to cancel
+            if "all" in input_lower:
+                # Cancel all orders
+                await self._cancel_all_orders(orders)
+
+            elif any(char.isdigit() for char in user_input):
+                # Extract order ID (contains digits)
+                import re
+
+                id_match = re.search(r"[a-f0-9-]{8,}", user_input, re.IGNORECASE)
+                if id_match:
+                    order_id = id_match.group(0)
+                    await self._cancel_order_by_id(order_id, orders)
+                else:
+                    print("❌ Could not find order ID in input")
+
+            else:
+                # Try to extract symbol
+                import re
+
+                symbol_match = re.search(r"\b([A-Z]{1,5})\b", user_input.upper())
+                if symbol_match:
+                    symbol = symbol_match.group(1)
+                    await self._cancel_orders_by_symbol(symbol, orders)
+                else:
+                    print("❌ Could not determine what to cancel")
+                    print(
+                        "ℹ️  Usage: 'cancel all orders' | 'cancel order <id>' | 'cancel <SYMBOL> orders'"
+                    )
+
+        except Exception as e:
+            print(f"❌ Error cancelling orders: {e}")
+            logger.error(f"Cancel error: {e}", exc_info=True)
+
+    async def _cancel_all_orders(self, orders: list):
+        """Cancel all open orders with confirmation."""
+        print(f"\n📋 Found {len(orders)} open order(s):")
+        for idx, order in enumerate(orders, 1):
+            symbol = order.get("symbol", "?")
+            side = order.get("side", "?").upper()
+            qty = order.get("qty", "?")
+            order_id = order.get("id", "?")
+            print(f"   {idx}. {side} {qty} {symbol} (ID: {order_id[:8]}...)")
+
+        # Confirmation
+        print(f"\n⚠️  Cancel all {len(orders)} orders? [yes/no]: ", end="")
+        confirm = input().strip().lower()
+
+        if confirm != "yes":
+            print("❌ Cancelled - no changes made")
+            return
+
+        # Cancel orders via executor
+        print("\n🔄 Cancelling orders...")
+        executor = self.orchestrator.executor
+
+        cancelled_count = 0
+        for order in orders:
+            order_id = order.get("id")
+            symbol = order.get("symbol")
+            try:
+                success = executor.cancel_order(order_id)
+                if success:
+                    print(f"✅ Cancelled {order_id[:8]}... ({symbol})")
+                    cancelled_count += 1
+                else:
+                    print(f"❌ Failed to cancel {order_id[:8]}... ({symbol})")
+            except Exception as e:
+                print(f"❌ Error cancelling {order_id[:8]}...: {e}")
+
+        print(f"\n✅ Cancelled {cancelled_count}/{len(orders)} orders successfully")
+
+    async def _cancel_order_by_id(self, order_id: str, orders: list):
+        """Cancel specific order by ID."""
+        # Find matching order (partial ID match)
+        matching = [o for o in orders if o.get("id", "").startswith(order_id)]
+
+        if not matching:
+            print(f"❌ Order '{order_id}' not found")
+            return
+
+        if len(matching) > 1:
+            print(f"❌ Ambiguous: '{order_id}' matches multiple orders")
+            return
+
+        order = matching[0]
+        full_order_id = order.get("id")
+        symbol = order.get("symbol")
+        side = order.get("side", "?").upper()
+        qty = order.get("qty", "?")
+
+        print(f"\n📋 Order to cancel:")
+        print(f"   {side} {qty} {symbol} (ID: {full_order_id[:8]}...)")
+        print(f"\nCancel this order? [yes/no]: ", end="")
+        confirm = input().strip().lower()
+
+        if confirm != "yes":
+            print("❌ Cancelled - no changes made")
+            return
+
+        # Cancel via executor
+        print("\n🔄 Cancelling order...")
+        executor = self.orchestrator.executor
+
+        try:
+            success = executor.cancel_order(full_order_id)
+            if success:
+                print(f"✅ Cancelled order {full_order_id[:8]}... ({qty} {symbol})")
+            else:
+                print(f"❌ Failed to cancel order {full_order_id[:8]}...")
+        except Exception as e:
+            print(f"❌ Error cancelling order: {e}")
+            logger.error(f"Cancel order error: {e}", exc_info=True)
+
+    async def _cancel_orders_by_symbol(self, symbol: str, orders: list):
+        """Cancel all orders for a specific symbol."""
+        # Filter orders by symbol
+        symbol_orders = [o for o in orders if o.get("symbol", "").upper() == symbol.upper()]
+
+        if not symbol_orders:
+            print(f"ℹ️  No open orders found for {symbol}")
+            return
+
+        print(f"\n📋 Found {len(symbol_orders)} {symbol} order(s):")
+        for idx, order in enumerate(symbol_orders, 1):
+            side = order.get("side", "?").upper()
+            qty = order.get("qty", "?")
+            order_id = order.get("id", "?")
+            print(f"   {idx}. {side} {qty} (ID: {order_id[:8]}...)")
+
+        # Confirmation
+        count_str = f"all {len(symbol_orders)}" if len(symbol_orders) > 1 else "this"
+        print(f"\nCancel {count_str} {symbol} order(s)? [yes/no]: ", end="")
+        confirm = input().strip().lower()
+
+        if confirm != "yes":
+            print("❌ Cancelled - no changes made")
+            return
+
+        # Cancel orders via executor
+        print("\n🔄 Cancelling orders...")
+        executor = self.orchestrator.executor
+
+        cancelled_count = 0
+        for order in symbol_orders:
+            order_id = order.get("id")
+            try:
+                success = executor.cancel_order(order_id)
+                if success:
+                    print(f"✅ Cancelled {order_id[:8]}... ({symbol})")
+                    cancelled_count += 1
+                else:
+                    print(f"❌ Failed to cancel {order_id[:8]}...")
+            except Exception as e:
+                print(f"❌ Error cancelling {order_id[:8]}...: {e}")
+
+        print(f"\n✅ Cancelled {cancelled_count}/{len(symbol_orders)} {symbol} orders successfully")
