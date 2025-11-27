@@ -16,20 +16,20 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from config_defaults.trading_config import TradingConfig
 
+from src.autogen_agents.agent_bus import EventType, get_agent_bus
+
 # Agent Infrastructure (Issue #390)
 from src.autogen_agents.agent_factory import AgentType, get_agent_factory
-from src.autogen_agents.agent_bus import (
-    EventType,
-    get_agent_bus,
-    create_message,
-)
+
 # Lazy import to avoid circular dependency with cli_interface
 DecisionFormatter = None
+
 
 def _get_decision_formatter():
     global DecisionFormatter
     if DecisionFormatter is None:
         from src.human_interface.decision_formatter import DecisionFormatter as DF
+
         DecisionFormatter = DF
     return DecisionFormatter
 
@@ -328,19 +328,20 @@ class TradingOrchestrator:
 
     def _setup_event_subscriptions(self):
         """Subscribe to key events for monitoring and logging."""
+
         # Log all trade executions
         def log_trade(msg):
-            symbol = msg.symbol or 'UNKNOWN'
-            order_id = msg.payload.get('order_id', 'N/A')
+            symbol = msg.symbol or "UNKNOWN"
+            order_id = msg.payload.get("order_id", "N/A")
             print(f"[Orchestrator] Trade executed: {symbol} - Order {order_id}")
 
         # Log position updates
         def log_position(msg):
-            symbol = msg.symbol or 'UNKNOWN'
+            symbol = msg.symbol or "UNKNOWN"
             print(f"[Orchestrator] Position updated: {symbol}")
 
-        self._bus.subscribe('orchestrator', EventType.TRADE_EXECUTED, log_trade)
-        self._bus.subscribe('orchestrator', EventType.POSITION_UPDATED, log_position)
+        self._bus.subscribe("orchestrator", EventType.TRADE_EXECUTED, log_trade)
+        self._bus.subscribe("orchestrator", EventType.POSITION_UPDATED, log_position)
 
     def get_factory_stats(self) -> dict:
         """Get agent factory statistics."""
@@ -355,11 +356,11 @@ class TradingOrchestrator:
         print("🔄 Shutting down trading orchestrator...")
         self.trading_enabled = False
         self.active_conversations.clear()
-        
+
         # Unsubscribe from events
-        self._bus.unsubscribe('orchestrator', EventType.TRADE_EXECUTED)
-        self._bus.unsubscribe('orchestrator', EventType.POSITION_UPDATED)
-        
+        self._bus.unsubscribe("orchestrator", EventType.TRADE_EXECUTED)
+        self._bus.unsubscribe("orchestrator", EventType.POSITION_UPDATED)
+
         print("✅ Orchestrator shutdown complete")
 
 

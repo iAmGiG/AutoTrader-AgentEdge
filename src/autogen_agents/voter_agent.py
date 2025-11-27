@@ -17,11 +17,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from config_defaults.trading_config import TradingConfig
 
 from .base_agent import BaseAgent
-from src.trading_tools.indicators import calculate_macd, calculate_rsi
-from src.utils.agent_utils import load_agent_config
 
 # Agent Bus for event publishing (Issue #390)
-from src.autogen_agents.agent_bus import EventType, get_agent_bus, create_message
+from src.autogen_agents.agent_bus import EventType, create_message, get_agent_bus
+from src.trading_tools.indicators import calculate_macd, calculate_rsi
+from src.utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
 
