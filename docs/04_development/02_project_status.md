@@ -34,11 +34,13 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | Component | Status | Target | Priority |
 |-----------|--------|--------|----------|
 | **ScannerAgent** | 🚧 Placeholder | Q1 2026 | Medium |
-| **RiskAgent** | 🚧 Placeholder | Q1 2026 | High |
-| **ExecutorAgent** | 🚧 Placeholder | Q1 2026 | High |
+| **RiskAgent** | ✅ Complete | Nov 2025 | High |
+| **ExecutorAgent** | ✅ Complete | Nov 2025 | High |
 | **TradingOrchestrator** | 🚧 Minimal | Q1 2026 | Medium |
-| **Human-in-Loop CLI** | 🚧 Not started | Q4 2025 | **CRITICAL** |
+| **Human-in-Loop CLI** | ✅ Complete | Nov 2025 | **CRITICAL** |
 | **Agent Factory & Bus** | ✅ Complete | Nov 2025 | Medium |
+
+**Branch Status**: All agent work consolidated in `feature/development` for testing before merge to `development`.
 
 ---
 
@@ -526,9 +528,9 @@ python main.py test-voter
 
 **#310 - Complete Remaining Agents**:
 
-1. Implement RiskAgent (position sizing, stop-loss)
-2. Implement ScannerAgent (opportunity identification)
-3. Implement ExecutorAgent (order coordination)
+1. ✅ Implement ExecutorAgent (order coordination) - **COMPLETE**
+2. ✅ Implement RiskAgent (position sizing, stop-loss) - **COMPLETE**
+3. 🚧 Implement ScannerAgent (opportunity identification) - **B next**
 4. Build TradingOrchestrator (workflow management)
 
 **#330 - Options Analysis** (after #308 commons stable):
