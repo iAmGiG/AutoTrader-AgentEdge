@@ -12,6 +12,7 @@ This directory contains **non-sensitive default configuration files** for the Au
 ### Trading & Strategy Configuration
 
 - **`trading_config.yaml`** - Trading strategy parameters, risk management, and validated performance metrics
+  - Timeframe specification for technical analysis (Issue #365)
   - MACD/RSI indicator settings
   - Exit strategies (stop loss, take profit)
   - Position sizing and risk management
@@ -52,6 +53,7 @@ with open("config_defaults/trading_config.yaml") as f:
     config = yaml.safe_load(f)
 
 stop_loss_pct = config["strategy_parameters"]["exits"]["balanced"]["stop_loss"]
+timeframe = config["strategy_parameters"]["timeframe"]  # "1d" (Issue #365)
 ```
 
 ### In Class Constructors
@@ -97,6 +99,33 @@ report_path = report_template.format(
 )
 # Result: "reports/daily/2025-01-27_morning.md"
 ```
+
+### Timeframe Configuration (Issue #365)
+
+```python
+from src.autogen_agents.voter_agent import VoterAgent
+
+# Default: loads "1d" from config
+voter = VoterAgent(name="daily_voter", use_config_file=True)
+
+# Explicit timeframe for intraday trading
+voter_1h = VoterAgent(name="hourly_voter", timeframe="1h", use_config_file=False)
+
+# Reconfigure timeframe dynamically
+voter.reconfigure(timeframe="15m")
+
+# Voting result includes timeframe context
+result = voter.evaluate_voting("AAPL", price_data)
+print(f"Signal: {result['action']} on {result['timeframe']} timeframe")
+# Output: "Signal: BUY on 15m timeframe"
+```
+
+**Supported Timeframes**:
+
+- `1m, 5m, 15m, 30m` - Scalping/day trading
+- `1h, 2h, 4h` - Intraday swing trading
+- `1d` - Daily swing/position trading (validated default, 0.856 Sharpe)
+- `1w, 1M` - Position/long-term trading
 
 ## Sensitive Configuration (config/)
 
