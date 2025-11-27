@@ -65,7 +65,7 @@
 
 ### Branch & Worktree
 
-```
+```text
 Branch: feature/trailing-stops-321
 Worktree: A:\Projects\AutoGen-Trader-wt-321
 ```
@@ -85,21 +85,17 @@ Integrating TrailingStopManager into the trading system:
 - `src/trading/trading_cycle.py` - Replace calculate_stop_adjustments()
 - `src/trading/trade_lifecycle.py` - Replace adjust_stop()
 
-### Current Status
+### Current Status: ✅ COMPLETE
 
-✅ TrailingStopManager fully implemented (392 lines)
-✅ OrderManager.replace_stop_order() exists
-❌ Not integrated (duplicate code in 2 places)
+| Phase | Status | Commit |
+|-------|--------|--------|
+| Phase 1: trading_cycle.py | ✅ Done | `ffdfeac` |
+| Phase 2: trade_lifecycle.py | ✅ Done | `4cfa8c4` |
+| Phase 3: Unit tests (31 tests) | ✅ Done | (gitignored) |
+| Phase 4: Forward testing | ⏳ Deferred | Post-merge |
+| Phase 5: Documentation | ✅ Done | `686bd7c` |
 
-### Work Plan (from GitHub issue #321 comment)
-
-1. Phase 1: trading_cycle.py (6-8 hrs)
-2. Phase 2: trade_lifecycle.py (6-8 hrs)
-3. Phase 3: Unit tests (4-6 hrs)
-4. Phase 4: Validation (2-3 hrs)
-5. Phase 5: Documentation (1-2 hrs)
-
-**Total Estimate**: 20-23 hours with full testing
+**Result**: TrailingStopManager now used in both files. No duplicate code. Ready to merge.
 
 ---
 
@@ -107,7 +103,7 @@ Integrating TrailingStopManager into the trading system:
 
 ### Branch & Worktree
 
-```
+```text
 Branch: feature/event-bus-390
 Worktree: A:\Projects\AutoGen-Trader-wt-390
 ```
