@@ -20,6 +20,9 @@ from .base_agent import BaseAgent
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from src.utils.agent_utils import load_agent_config
 
+# Agent Bus for event publishing (Issue #390)
+from src.autogen_agents.agent_bus import EventType, get_agent_bus, create_message
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +95,10 @@ class VoterAgent(BaseAgent):
             "rsi": self.rsi_params.copy(),
             "thresholds": self.voting_thresholds.copy(),
         }
+
+        # Agent Bus for event publishing
+        self._bus = get_agent_bus()
+        self._publish_events = True  # Can be disabled for backtesting
 
         logger.info(f"VoterAgent '{name}' initialized with:")
         logger.info(
@@ -253,6 +260,10 @@ class VoterAgent(BaseAgent):
                 "parameters_used": self.current_config,
             }
 
+            # Publish voting complete event via bus
+            if self._publish_events and action != "HOLD":
+                self._publish_voting_result(symbol, result)
+
             # Add component details if requested
             if return_components:
                 result["components"] = {
@@ -287,6 +298,30 @@ class VoterAgent(BaseAgent):
                 "error": str(e),
                 "parameters_used": self.current_config,
             }
+
+    def _publish_voting_result(self, symbol: str, result: dict) -> None:
+        """Publish voting result to the agent bus."""
+        try:
+            msg = create_message(
+                source_agent=self.name,
+                event_type=EventType.VOTING_COMPLETE,
+                symbol=symbol,
+                payload={
+                    "action": result["action"],
+                    "confidence": result["confidence"],
+                    "position_size": result["position_size"],
+                    "signal_type": result["signal_type"],
+                    "reasoning": result["reasoning"],
+                },
+            )
+            self._bus.publish_sync(msg)
+            logger.debug(f"Published voting result for {symbol}: {result['action']}")
+        except Exception as e:
+            logger.warning(f"Failed to publish voting result: {e}")
+
+    def set_publish_events(self, enabled: bool) -> None:
+        """Enable or disable event publishing (useful for backtesting)."""
+        self._publish_events = enabled
 
     def generate_reply(self, messages, context=None) -> str:
         """
