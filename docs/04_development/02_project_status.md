@@ -112,7 +112,58 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Performance tracking
   - Target: Q2 2026
 
-### Phase 3: Optimization & Enhancement 🔜 PLANNED (Q2 2026+)
+### Phase 3A: CLI & UX Improvements ✅ IN PROGRESS (Nov 2025)
+
+**Completed**:
+
+- [x] **Interactive Help System** (#369) - ✅ COMPLETE
+  - `/help` command with category-based organization
+  - `/help search KEYWORD` for searchable documentation
+  - Command examples, aliases, related commands
+  - 23+ commands documented across 5 categories
+  - Merged to feature/development Nov 2025
+
+- [x] **Order Cancellation** (#360) - ✅ COMPLETE (B-chat)
+  - `cancel all orders` with confirmation
+  - `cancel order <id>` with partial ID matching  
+  - `cancel <SYMBOL> orders` for symbol-specific cancellation
+  - Merged to feature/development Nov 2025
+
+- [x] **Order Details Display** (#348) - ✅ COMPLETE (B-chat)
+  - Natural language queries: "what is my stop level on META"
+  - Shows entry orders, stop/target orders, current price
+  - Calculates distance and percentage from entry
+  - Merged to feature/development Nov 2025
+
+**In Progress**:
+
+- [ ] **Execution Mode Switching** (#332)
+  - `/toggle` command for quick mode switching
+  - `set execution-mode {confirm|auto|paper|disabled}`
+  - Mode persistence and validation
+  - Target: Dec 2025
+
+- [ ] **Config Externalization** (#358)
+  - Move hardcoded values to config files
+  - Cleaner parameter management
+  - Easier testing and deployment
+  - Target: Dec 2025
+
+### Phase 3B: Signal Enhancement 🔜 PLANNED (Q1 2026)
+
+**Planned Enhancements**:
+
+- [ ] **Timeframe Specification** (#365)
+  - Multi-timeframe analysis for VoterAgent
+  - Better signal quality through timeframe confluence
+  - Target: Q1 2026
+
+- [ ] **Ranked Voter System** (#364)
+  - Multi-indicator consensus voting
+  - Confidence scoring across multiple signals
+  - Target: Q1 2026
+
+### Phase 3C: Live Trading Preparation 🔜 PLANNED (Q2 2026+)
 
 **Future Enhancements**:
 
