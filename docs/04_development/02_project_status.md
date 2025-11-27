@@ -29,18 +29,18 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | **Market Data** | ✅ Complete | Alpaca + Polygon + Alpha Vantage | Multi-source with fallback |
 | **Documentation** | ✅ Complete | Restructured with numbering | Presentation-ready |
 
-### 🚧 In Development (Phase 2)
+### ✅ Phase 2 Agents Complete (Nov 2025)
 
-| Component | Status | Target | Priority |
-|-----------|--------|--------|----------|
-| **ScannerAgent** | 🚧 Placeholder | Q1 2026 | Medium |
-| **RiskAgent** | ✅ Complete | Nov 2025 | High |
-| **ExecutorAgent** | ✅ Complete | Nov 2025 | High |
-| **TradingOrchestrator** | 🚧 Minimal | Q1 2026 | Medium |
-| **Human-in-Loop CLI** | ✅ Complete | Nov 2025 | **CRITICAL** |
-| **Agent Factory & Bus** | ✅ Complete | Nov 2025 | Medium |
+| Component | Status | Completed | Notes |
+|-----------|--------|-----------|-------|
+| **ScannerAgent** | ✅ Complete | Nov 2025 | Multi-ticker MACD+RSI scanning (#386) |
+| **RiskAgent** | ✅ Complete | Nov 2025 | Position sizing, circuit breaker (#387) |
+| **ExecutorAgent** | ✅ Complete | Nov 2025 | Trade execution, simulation mode (#388) |
+| **TradingOrchestrator** | ✅ Complete | Nov 2025 | Workflow management, state persistence (#389) |
+| **Human-in-Loop CLI** | ✅ Complete | Nov 2025 | Trade assistant with approval modes |
+| **Agent Factory & Bus** | ✅ Complete | Nov 2025 | Pub-sub messaging infrastructure (#390) |
 
-**Branch Status**: All agent work consolidated in `feature/development` for testing before merge to `development`.
+**Branch Status**: All agent work in `feature/development` - ready for final testing before merge to `development`.
 
 ---
 
@@ -526,12 +526,12 @@ python main.py test-voter
 
 ### Medium Term (Q1-Q2 2026)
 
-**#310 - Complete Remaining Agents**:
+**#310 - Complete Remaining Agents**: ✅ **ALL COMPLETE**
 
-1. ✅ Implement ExecutorAgent (order coordination) - **COMPLETE**
-2. ✅ Implement RiskAgent (position sizing, stop-loss) - **COMPLETE**
-3. 🚧 Implement ScannerAgent (opportunity identification) - **B next**
-4. Build TradingOrchestrator (workflow management)
+1. ✅ Implement ExecutorAgent (order coordination) - **COMPLETE** (#388)
+2. ✅ Implement RiskAgent (position sizing, stop-loss) - **COMPLETE** (#387)
+3. ✅ Implement ScannerAgent (opportunity identification) - **COMPLETE** (#386)
+4. ✅ Build TradingOrchestrator (workflow management) - **COMPLETE** (#389)
 
 **#330 - Options Analysis** (after #308 commons stable):
 
