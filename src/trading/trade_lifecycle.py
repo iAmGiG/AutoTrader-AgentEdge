@@ -21,6 +21,7 @@ from config_defaults.trading_config import TradingConfig
 
 from src.trading.order_manager import OrderManager
 from src.trading.position_manager import PositionManager
+from src.trading.trailing_stop_manager import TrailingStopManager
 from src.trading.unified_price_fetcher import get_current_price
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
@@ -161,6 +162,13 @@ class TradeCycle:
         except Exception as e:
             logger.warning(f"Could not load trading config: {e}. Using hardcoded defaults.")
             self.config = self._create_fallback_config()
+
+        # Initialize trailing stop manager for progressive stop adjustments
+        # Uses order_manager for broker communication (cancel-replace pattern)
+        self.trailing_stop_manager = TrailingStopManager(
+            order_manager=self.order_manager,
+            config=self.config,
+        )
 
         # CRITICAL FIX: Fill monitoring system
         self.last_fill_check = 0
@@ -377,10 +385,9 @@ class TradeCycle:
 
     def adjust_stop(self, current_price: float) -> Optional[float]:
         """
-        Progressive stop adjustment - only moves up, never down.
-        Conservative approach that prevents giving back gains.
+        Progressive stop adjustment using TrailingStopManager.
 
-        Rules:
+        Delegates to TrailingStopManager.calculate_new_stop() which implements:
         - Under 2% profit: Don't adjust
         - 2-4% profit: Move to breakeven
         - 4-6% profit: Lock in 25% of gains
@@ -395,35 +402,24 @@ class TradeCycle:
         if not self.data.entry_price or not self.data.current_stop:
             return None
 
-        entry_price = self.data.entry_price
-        current_stop = self.data.current_stop
+        # Register position with TrailingStopManager if not already tracked
+        if self.symbol not in self.trailing_stop_manager.stop_states:
+            self.trailing_stop_manager.register_position(
+                symbol=self.symbol,
+                entry_price=self.data.entry_price,
+                initial_stop=self.data.current_stop,
+                quantity=self.data.quantity,
+                stop_order_id=self.data.order_ids.get("stop"),
+            )
 
-        # Calculate profit percentage
-        profit_percent = (current_price - entry_price) / entry_price
+        # Use TrailingStopManager for centralized progressive stop logic
+        new_stop = self.trailing_stop_manager.calculate_new_stop(self.symbol, current_price)
 
-        new_stop = None
+        # Sync TrailingStopManager state if stop was calculated
+        if new_stop and self.symbol in self.trailing_stop_manager.stop_states:
+            self.trailing_stop_manager.stop_states[self.symbol].current_stop = new_stop
 
-        if profit_percent < 0.02:  # Under 2% profit
-            new_stop = current_stop  # Don't adjust
-            logger.debug(f"Stop unchanged: {profit_percent:.1%} profit < 2% threshold")
-
-        elif profit_percent < 0.04:  # 2-4% profit
-            new_stop = entry_price  # Move to breakeven
-            logger.info(f"Stop to breakeven: {profit_percent:.1%} profit, stop ${new_stop:.2f}")
-
-        elif profit_percent < 0.06:  # 4-6% profit
-            new_stop = entry_price + (current_price - entry_price) * 0.25  # Lock 25%
-            logger.info(f"Stop locks 25%: {profit_percent:.1%} profit, stop ${new_stop:.2f}")
-
-        else:  # Over 6% profit
-            new_stop = entry_price + (current_price - entry_price) * 0.50  # Trail 50%
-            logger.info(f"Trailing 50%: {profit_percent:.1%} profit, stop ${new_stop:.2f}")
-
-        # Only return new stop if it's higher than current (never move down)
-        if new_stop and new_stop > current_stop:
-            return round(new_stop, 2)
-        else:
-            return None
+        return new_stop
 
     def place_entry_order(self, current_price: Optional[float] = None) -> bool:
         """
