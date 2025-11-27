@@ -7,7 +7,8 @@ Integrates with existing OrderManager and broker APIs.
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from ..models import TradeSuggestion, OrderResult, TradeDecision
+
+from ..models import OrderResult, TradeDecision, TradeSuggestion
 
 
 class ExecutionManager(ABC):
@@ -23,9 +24,7 @@ class ExecutionManager(ABC):
 
     @abstractmethod
     async def execute_trade(
-        self,
-        suggestion: TradeSuggestion,
-        decision: Optional[TradeDecision] = None
+        self, suggestion: TradeSuggestion, decision: Optional[TradeDecision] = None
     ) -> OrderResult:
         """
         Execute a trade based on suggestion and user decision.
@@ -74,10 +73,7 @@ class ExecutionManager(ABC):
 
     @abstractmethod
     async def modify_order(
-        self,
-        order_id: str,
-        new_quantity: Optional[int] = None,
-        new_price: Optional[float] = None
+        self, order_id: str, new_quantity: Optional[int] = None, new_price: Optional[float] = None
     ) -> bool:
         """
         Modify an existing order.

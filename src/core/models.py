@@ -8,11 +8,14 @@ ensuring type safety and clear contracts between components.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now
 
 
 class Signal(Enum):
     """Trading signal types"""
+
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
@@ -20,6 +23,7 @@ class Signal(Enum):
 
 class AssetType(Enum):
     """Asset types supported by the system"""
+
     STOCK = "stock"
     OPTION = "option"
     # Future: CRYPTO, FUTURES, etc.
@@ -27,6 +31,7 @@ class AssetType(Enum):
 
 class OrderType(Enum):
     """Order types"""
+
     MARKET = "market"
     LIMIT = "limit"
     STOP = "stop"
@@ -36,6 +41,7 @@ class OrderType(Enum):
 
 class TimeInForce(Enum):
     """Order time in force"""
+
     DAY = "day"
     GTC = "gtc"  # Good-til-canceled (our default)
     IOC = "ioc"  # Immediate or cancel
@@ -49,6 +55,7 @@ class TradeRequest:
 
     This is the output of InputParser and input to StrategyAnalyzer.
     """
+
     ticker: str
     action: str  # "review", "buy", "sell"
     request_type: str = "trade"  # "trade" or "status_query" (LLM-determined)
@@ -62,7 +69,7 @@ class TradeRequest:
     option_type: Optional[str] = None  # "call" or "put"
 
     # Metadata
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
     raw_input: str = ""  # Original user input
 
 
@@ -73,6 +80,7 @@ class AnalysisResult:
 
     Contains the trading signal, confidence, entry/exit levels, and reasoning.
     """
+
     signal: Signal
     confidence: float  # 0.0 to 1.0
 
@@ -87,7 +95,7 @@ class AnalysisResult:
 
     # Metadata
     analyzer_name: str = "unknown"
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -97,6 +105,7 @@ class RiskAssessment:
 
     Contains risk evaluation and recommended position sizing.
     """
+
     approved: bool  # False = hard block, True = proceed (maybe with warnings)
 
     # Position sizing
@@ -113,7 +122,7 @@ class RiskAssessment:
     existing_position_qty: int = 0  # If already holding this ticker
 
     # Metadata
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -123,6 +132,7 @@ class TradeSuggestion:
 
     Merges AnalysisResult + RiskAssessment into actionable suggestion.
     """
+
     # From analysis
     signal: Signal
     confidence: float
@@ -145,7 +155,7 @@ class TradeSuggestion:
 
     # Metadata
     suggestion_id: str = ""  # Set by session store
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -155,6 +165,7 @@ class TradeDecision:
 
     Used to track approval/rejection and any modifications.
     """
+
     suggestion: TradeSuggestion
     approved: bool = False
 
@@ -179,6 +190,7 @@ class OrderResult:
 
     Returned by ExecutionManager after placing orders.
     """
+
     success: bool
 
     # Order IDs (may have multiple for bracket orders)
@@ -196,7 +208,7 @@ class OrderResult:
     error: Optional[str] = None
 
     # Metadata
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_datetime_now)
 
 
 @dataclass
@@ -206,6 +218,7 @@ class SessionState:
 
     Allows resuming conversations and tracking history.
     """
+
     session_id: str
     user_id: str
 
@@ -218,5 +231,5 @@ class SessionState:
     autonomy_level: int = 0  # 0 = confirm, 1 = auto
 
     # Timestamps
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    last_activity: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=get_datetime_now)
+    last_activity: datetime = field(default_factory=get_datetime_now)

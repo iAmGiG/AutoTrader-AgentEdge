@@ -2,11 +2,13 @@
 Data normalization utilities for standardizing data from different sources into a common schema.
 """
 
-import pandas as pd
-from datetime import datetime  # TODO utilze date_utils.py
-from typing import Optional
+import logging
 import re
+from typing import Optional
 
+import pandas as pd
+
+from src.utils.date_utils import get_datetime_from_timestamp
 
 # Define common schemas
 
@@ -35,6 +37,28 @@ MARKET_SCHEMA = {
     "source": "str",  # Data source (e.g., "Yahoo", "AlphaVantage")
 }
 
+# Schema for options data (Issue #373)
+OPTIONS_SCHEMA = {
+    "symbol": "str",  # Underlying symbol
+    "strike": "float",  # Strike price
+    "option_type": "str",  # 'call' or 'put'
+    "expiration": "datetime64[ns]",  # Expiration date
+    "bid": "float",  # Bid price
+    "ask": "float",  # Ask price
+    "last": "float",  # Last trade price
+    "volume": "int",  # Contract volume
+    "open_interest": "int",  # Open interest
+    "implied_volatility": "float",  # IV
+    "delta": "float",  # Delta
+    "gamma": "float",  # Gamma
+    "theta": "float",  # Theta
+    "vega": "float",  # Vega
+    "rho": "float",  # Rho
+    "underlying_price": "float",  # Spot price
+    "contract_symbol": "str",  # Contract identifier
+    "source": "str",  # Data provider
+}
+
 # Schema for economic data (from FRED and similar sources)
 ECONOMIC_SCHEMA = {
     "timestamp": "datetime64[ns]",  # Date/time of the data point
@@ -50,25 +74,19 @@ ECONOMIC_SCHEMA = {
 
 def create_empty_news_df() -> pd.DataFrame:
     """Create an empty DataFrame with the standard news schema."""
-    df = pd.DataFrame(
-        {col: pd.Series(dtype=dtype) for col, dtype in NEWS_SCHEMA.items()}
-    )
+    df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in NEWS_SCHEMA.items()})
     return df
 
 
 def create_empty_market_df() -> pd.DataFrame:
     """Create an empty DataFrame with the standard market schema."""
-    df = pd.DataFrame(
-        {col: pd.Series(dtype=dtype) for col, dtype in MARKET_SCHEMA.items()}
-    )
+    df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in MARKET_SCHEMA.items()})
     return df
 
 
 def create_empty_economic_df() -> pd.DataFrame:
     """Create an empty DataFrame with the standard economic data schema."""
-    df = pd.DataFrame(
-        {col: pd.Series(dtype=dtype) for col, dtype in ECONOMIC_SCHEMA.items()}
-    )
+    df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in ECONOMIC_SCHEMA.items()})
     return df
 
 
@@ -136,7 +154,7 @@ def normalize_finnhub_data(raw_data: list) -> pd.DataFrame:
         if timestamp:
             # Convert Unix timestamp to datetime if needed
             if isinstance(timestamp, int):
-                timestamp = datetime.fromtimestamp(timestamp)
+                timestamp = get_datetime_from_timestamp(timestamp)
 
         entry = {
             "timestamp": timestamp,
@@ -275,9 +293,7 @@ def normalize_market_data_for_sentiment(
     return None
 
 
-def normalize_fred_data(
-    raw_df: pd.DataFrame, indicator: str = "Unknown"
-) -> pd.DataFrame:
+def normalize_fred_data(raw_df: pd.DataFrame, indicator: str = "Unknown") -> pd.DataFrame:
     """
     Normalize data from FRED to the common economic schema.
 
@@ -359,34 +375,34 @@ def normalize_alpaca_data(raw_df: pd.DataFrame, symbol: str) -> pd.DataFrame:
     # Also: vw (VWAP), n (trade_count)
 
     # Map Alpaca columns to standard schema
-    if 't' in raw_df.columns:
+    if "t" in raw_df.columns:
         # Raw Alpaca format
         column_mapping = {
-            't': 'timestamp',
-            'o': 'open',
-            'h': 'high',
-            'l': 'low',
-            'c': 'close',
-            'v': 'volume',
-            'vw': 'vwap',
-            'n': 'trade_count'
+            "t": "timestamp",
+            "o": "open",
+            "h": "high",
+            "l": "low",
+            "c": "close",
+            "v": "volume",
+            "vw": "vwap",
+            "n": "trade_count",
         }
 
         for alpaca_col, norm_col in column_mapping.items():
             if alpaca_col in raw_df.columns:
-                if norm_col == 'timestamp':
+                if norm_col == "timestamp":
                     # Convert Alpaca timestamp (RFC3339) to datetime
                     normalized_df[norm_col] = pd.to_datetime(raw_df[alpaca_col])
                 else:
                     normalized_df[norm_col] = raw_df[alpaca_col]
 
-    elif 'timestamp' in raw_df.columns or 'date' in raw_df.columns:
+    elif "timestamp" in raw_df.columns or "date" in raw_df.columns:
         # Already normalized or partially normalized format
-        time_col = 'timestamp' if 'timestamp' in raw_df.columns else 'date'
-        normalized_df['timestamp'] = pd.to_datetime(raw_df[time_col])
+        time_col = "timestamp" if "timestamp" in raw_df.columns else "date"
+        normalized_df["timestamp"] = pd.to_datetime(raw_df[time_col])
 
         # Map standard column names
-        std_columns = ['open', 'high', 'low', 'close', 'volume']
+        std_columns = ["open", "high", "low", "close", "volume"]
         for col in std_columns:
             if col in raw_df.columns:
                 normalized_df[col] = raw_df[col]
@@ -394,20 +410,20 @@ def normalize_alpaca_data(raw_df: pd.DataFrame, symbol: str) -> pd.DataFrame:
                 normalized_df[col] = raw_df[col.title()]
 
         # Optional columns
-        if 'vwap' in raw_df.columns:
-            normalized_df['vwap'] = raw_df['vwap']
-        if 'trade_count' in raw_df.columns:
-            normalized_df['trade_count'] = raw_df['trade_count']
+        if "vwap" in raw_df.columns:
+            normalized_df["vwap"] = raw_df["vwap"]
+        if "trade_count" in raw_df.columns:
+            normalized_df["trade_count"] = raw_df["trade_count"]
 
     # Add symbol and source
-    normalized_df['symbol'] = symbol
-    normalized_df['source'] = 'alpaca'
+    normalized_df["symbol"] = symbol
+    normalized_df["source"] = "alpaca"
 
     # Fill missing optional columns
-    if 'vwap' not in normalized_df.columns:
-        normalized_df['vwap'] = normalized_df.get('close', None)
-    if 'trade_count' not in normalized_df.columns:
-        normalized_df['trade_count'] = 0
+    if "vwap" not in normalized_df.columns:
+        normalized_df["vwap"] = normalized_df.get("close", None)
+    if "trade_count" not in normalized_df.columns:
+        normalized_df["trade_count"] = 0
 
     return normalized_df
 
@@ -436,17 +452,14 @@ def normalize_data_for_sentiment(
     elif data_type == "yahoo_finance":
         # Market data isn't directly usable for sentiment, so skip it
         # or we could transform it if needed
-        market_df = normalize_yahoo_finance_data(
-            df, kwargs.get("symbol", "UNKNOWN"))
+        market_df = normalize_yahoo_finance_data(df, kwargs.get("symbol", "UNKNOWN"))
         return normalize_market_data_for_sentiment(market_df)
     elif data_type == "alpha_vantage":
-        market_df = normalize_alpha_vantage_data(
-            df, kwargs.get("symbol", "UNKNOWN"))
+        market_df = normalize_alpha_vantage_data(df, kwargs.get("symbol", "UNKNOWN"))
         return normalize_market_data_for_sentiment(market_df)
     elif data_type == "alpaca":
         # Alpaca market data isn't directly usable for sentiment
-        market_df = normalize_alpaca_data(
-            df, kwargs.get("symbol", "UNKNOWN"))
+        market_df = normalize_alpaca_data(df, kwargs.get("symbol", "UNKNOWN"))
         return normalize_market_data_for_sentiment(market_df)
     elif data_type == "fred":
         # FRED economic data isn't directly usable for sentiment without transformation
@@ -455,3 +468,242 @@ def normalize_data_for_sentiment(
     else:
         # Unknown data source
         return None
+
+
+# === OPTIONS DATA NORMALIZATION (Issue #373) ===
+
+
+def create_empty_options_df() -> pd.DataFrame:
+    """Create an empty DataFrame with the standard options schema."""
+    df = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in OPTIONS_SCHEMA.items()})
+    return df
+
+
+def normalize_polygon_options(raw_df: pd.DataFrame, symbol: str, trading_date: str) -> pd.DataFrame:
+    """
+    Normalize options data from Polygon.io to common schema.
+
+    Args:
+        raw_df: Raw options DataFrame from Polygon
+        symbol: Underlying symbol
+        trading_date: Trading date
+
+    Returns:
+        Normalized DataFrame following OPTIONS_SCHEMA
+    """
+    if raw_df.empty:
+        return create_empty_options_df()
+
+    normalized_df = pd.DataFrame()
+
+    # Map Polygon columns to standard schema
+    # Polygon uses: strike, type/option_type, expiration, bid, ask, last, volume, oi, iv, greeks
+    column_mapping = {
+        "strike": "strike",
+        "type": "option_type",
+        "option_type": "option_type",
+        "expiration": "expiration",
+        "expiration_date": "expiration",
+        "bid": "bid",
+        "ask": "ask",
+        "last": "last",
+        "last_price": "last",
+        "volume": "volume",
+        "oi": "open_interest",
+        "open_interest": "open_interest",
+        "iv": "implied_volatility",
+        "implied_volatility": "implied_volatility",
+        "delta": "delta",
+        "gamma": "gamma",
+        "theta": "theta",
+        "vega": "vega",
+        "rho": "rho",
+        "underlying_price": "underlying_price",
+        "contract_symbol": "contract_symbol",
+        "ticker": "contract_symbol",
+    }
+
+    for raw_col, norm_col in column_mapping.items():
+        if raw_col in raw_df.columns:
+            normalized_df[norm_col] = raw_df[raw_col]
+
+    # Add symbol and source
+    normalized_df["symbol"] = symbol
+    normalized_df["source"] = "polygon"
+
+    # Normalize option_type to lowercase
+    if "option_type" in normalized_df.columns:
+        normalized_df["option_type"] = normalized_df["option_type"].str.lower()
+
+    # Convert expiration to datetime
+    if "expiration" in normalized_df.columns:
+        normalized_df["expiration"] = pd.to_datetime(normalized_df["expiration"])
+
+    return normalized_df
+
+
+def normalize_alpha_vantage_options(
+    raw_df: pd.DataFrame, symbol: str, trading_date: str
+) -> pd.DataFrame:
+    """
+    Normalize options data from Alpha Vantage to common schema.
+
+    Args:
+        raw_df: Raw options DataFrame from Alpha Vantage
+        symbol: Underlying symbol
+        trading_date: Trading date
+
+    Returns:
+        Normalized DataFrame following OPTIONS_SCHEMA
+
+    Note:
+        Alpha Vantage options API format may vary. This handles common formats.
+    """
+    if raw_df.empty:
+        return create_empty_options_df()
+
+    normalized_df = pd.DataFrame()
+
+    # Alpha Vantage may use different column names
+    column_mapping = {
+        "strike": "strike",
+        "strike_price": "strike",
+        "type": "option_type",
+        "option_type": "option_type",
+        "contractID": "contract_symbol",
+        "contract_id": "contract_symbol",
+        "expiration": "expiration",
+        "expiration_date": "expiration",
+        "bid": "bid",
+        "ask": "ask",
+        "last": "last",
+        "lastPrice": "last",
+        "volume": "volume",
+        "openInterest": "open_interest",
+        "open_interest": "open_interest",
+        "impliedVolatility": "implied_volatility",
+        "delta": "delta",
+        "gamma": "gamma",
+        "theta": "theta",
+        "vega": "vega",
+        "rho": "rho",
+    }
+
+    for raw_col, norm_col in column_mapping.items():
+        if raw_col in raw_df.columns:
+            normalized_df[norm_col] = raw_df[raw_col]
+
+    # Add symbol and source
+    normalized_df["symbol"] = symbol
+    normalized_df["source"] = "alpha_vantage"
+
+    # Normalize option_type
+    if "option_type" in normalized_df.columns:
+        normalized_df["option_type"] = normalized_df["option_type"].str.lower()
+
+    # Convert expiration to datetime
+    if "expiration" in normalized_df.columns:
+        normalized_df["expiration"] = pd.to_datetime(normalized_df["expiration"])
+
+    return normalized_df
+
+
+def normalize_alpaca_options(raw_df: pd.DataFrame, symbol: str, trading_date: str) -> pd.DataFrame:
+    """
+    Normalize options data from Alpaca to common schema.
+
+    Args:
+        raw_df: Raw options DataFrame from Alpaca
+        symbol: Underlying symbol
+        trading_date: Trading date
+
+    Returns:
+        Normalized DataFrame following OPTIONS_SCHEMA
+    """
+    if raw_df.empty:
+        return create_empty_options_df()
+
+    normalized_df = pd.DataFrame()
+
+    # Alpaca column mapping
+    column_mapping = {
+        "strike_price": "strike",
+        "strike": "strike",
+        "type": "option_type",
+        "option_type": "option_type",
+        "expiration_date": "expiration",
+        "expiration": "expiration",
+        "symbol": "contract_symbol",
+        "contract_symbol": "contract_symbol",
+        "bid_price": "bid",
+        "bid": "bid",
+        "ask_price": "ask",
+        "ask": "ask",
+        "last_price": "last",
+        "last": "last",
+        "volume": "volume",
+        "open_interest": "open_interest",
+        "implied_volatility": "implied_volatility",
+        "greeks.delta": "delta",
+        "delta": "delta",
+        "greeks.gamma": "gamma",
+        "gamma": "gamma",
+        "greeks.theta": "theta",
+        "theta": "theta",
+        "greeks.vega": "vega",
+        "vega": "vega",
+        "greeks.rho": "rho",
+        "rho": "rho",
+    }
+
+    for raw_col, norm_col in column_mapping.items():
+        if raw_col in raw_df.columns:
+            normalized_df[norm_col] = raw_df[raw_col]
+
+    # Add symbol and source
+    normalized_df["symbol"] = symbol
+    normalized_df["source"] = "alpaca"
+
+    # Normalize option_type
+    if "option_type" in normalized_df.columns:
+        normalized_df["option_type"] = normalized_df["option_type"].str.lower()
+
+    # Convert expiration to datetime
+    if "expiration" in normalized_df.columns:
+        normalized_df["expiration"] = pd.to_datetime(normalized_df["expiration"])
+
+    return normalized_df
+
+
+def normalize_options_data(
+    raw_df: pd.DataFrame, symbol: str, trading_date: str, source: str
+) -> pd.DataFrame:
+    """
+    Main entry point for normalizing options data from any provider.
+
+    Args:
+        raw_df: Raw DataFrame from options provider
+        symbol: Underlying symbol
+        trading_date: Trading date
+        source: Data source ('polygon', 'alpha_vantage', 'alpaca')
+
+    Returns:
+        Normalized DataFrame following OPTIONS_SCHEMA
+
+    Example:
+        >>> raw_options = fetch_from_provider(...)
+        >>> normalized = normalize_options_data(raw_options, "SPY", "2024-01-15", "polygon")
+    """
+    if raw_df.empty:
+        return create_empty_options_df()
+
+    if source == "polygon":
+        return normalize_polygon_options(raw_df, symbol, trading_date)
+    elif source == "alpha_vantage":
+        return normalize_alpha_vantage_options(raw_df, symbol, trading_date)
+    elif source == "alpaca":
+        return normalize_alpaca_options(raw_df, symbol, trading_date)
+    else:
+        # Unknown source, try generic normalization
+        logging.warning(f"Unknown options source: {source}, using generic normalization")
+        return normalize_polygon_options(raw_df, symbol, trading_date)

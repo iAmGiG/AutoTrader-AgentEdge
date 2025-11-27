@@ -4,22 +4,23 @@ OrchestratorFactory - Creates fully wired TradingOrchestrator.
 MVP: Hardcoded component creation (YAML config deferred to later iteration).
 """
 
+import json
 import logging
 import os
-import json
 
 from core.trading_orchestrator import TradingOrchestrator
-from services.llm import OpenAIService
-from parsers import LLMParser
-from strategies import VoterStrategy, RealVoterStrategy
-from risk import SimpleRiskManager
 from execution import AlpacaExecutionManager
+from parsers import LLMParser
+from risk import SimpleRiskManager
+from services.llm import OpenAIService
+from strategies import RealVoterStrategy, VoterStrategy
 
 logger = logging.getLogger(__name__)
 
 # Import existing OrderManager for real integration
 try:
     from trading.alpaca_trading_client import AlpacaOrderManager
+
     ALPACA_AVAILABLE = True
 except ImportError:
     ALPACA_AVAILABLE = False
@@ -47,20 +48,26 @@ class OrchestratorFactory:
     def _load_config(self) -> dict:
         """Load configuration from config.json."""
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path, "r") as f:
                 config = json.load(f)
             logger.info(f"Loaded config from {self.config_path}")
             return config
         except FileNotFoundError:
             logger.warning(
-                f"Config file not found: {self.config_path}, using environment variables")
+                f"Config file not found: {self.config_path}, using environment variables"
+            )
             return {}
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in config file: {e}")
             return {}
 
-    def create(self, order_manager=None, use_real_voter: bool = True,
-               use_real_alpaca: bool = True, alpaca_mode: str = "paper") -> TradingOrchestrator:
+    def create(
+        self,
+        order_manager=None,
+        use_real_voter: bool = True,
+        use_real_alpaca: bool = True,
+        alpaca_mode: str = "paper",
+    ) -> TradingOrchestrator:
         """
         Create TradingOrchestrator with all components wired.
 
@@ -87,11 +94,10 @@ class OrchestratorFactory:
 
         # 1. Create LLM Service
         logger.info(
-            f"  - Creating OpenAIService (tool: {tool_model}, reasoning: {reasoning_model})...")
+            f"  - Creating OpenAIService (tool: {tool_model}, reasoning: {reasoning_model})..."
+        )
         llm_service = OpenAIService(
-            tool_calling_model=tool_model,
-            reasoning_model=reasoning_model,
-            api_key=api_key
+            tool_calling_model=tool_model, reasoning_model=reasoning_model, api_key=api_key
         )
 
         # 2. Create Input Parser
@@ -102,9 +108,9 @@ class OrchestratorFactory:
         if use_real_voter:
             logger.info("  - Creating RealVoterStrategy (production MACD+RSI)...")
             strategy_analyzer = RealVoterStrategy(
-                macd_params={'fast': 13, 'slow': 34, 'signal': 8},  # Validated Fibonacci parameters
-                rsi_params={'period': 14, 'oversold': 30, 'overbought': 70},
-                lookback_days=60
+                macd_params={"fast": 13, "slow": 34, "signal": 8},  # Validated Fibonacci parameters
+                rsi_params={"period": 14, "oversold": 30, "overbought": 70},
+                lookback_days=60,
             )
         else:
             logger.info("  - Creating VoterStrategy (stub)...")
@@ -115,7 +121,7 @@ class OrchestratorFactory:
         risk_manager = SimpleRiskManager(
             account_service=None,  # Will use fallback ($100k portfolio)
             default_position_pct=5.0,
-            max_position_pct=15.0
+            max_position_pct=15.0,
         )
 
         # 5. Create Execution Manager
@@ -126,7 +132,7 @@ class OrchestratorFactory:
             logger.info(f"    Auto-creating AlpacaOrderManager (mode: {alpaca_mode})...")
             try:
                 order_manager = AlpacaOrderManager(mode=alpaca_mode)
-                logger.info(f"    ✅ AlpacaOrderManager created successfully")
+                logger.info("    ✅ AlpacaOrderManager created successfully")
             except Exception as e:
                 logger.error(f"    ❌ Failed to create AlpacaOrderManager: {e}")
                 logger.warning("    Falling back to stub mode")
@@ -145,7 +151,7 @@ class OrchestratorFactory:
             strategy_analyzer=strategy_analyzer,
             risk_manager=risk_manager,
             execution_manager=execution_manager,
-            session_store=None  # Optional, defer to later
+            session_store=None,  # Optional, defer to later
         )
 
         logger.info("✅ TradingOrchestrator created successfully!")

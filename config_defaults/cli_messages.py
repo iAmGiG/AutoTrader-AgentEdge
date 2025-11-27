@@ -14,7 +14,6 @@ class CLIMessages:
         # Mode indicators
         "auto_mode": "🤖",
         "confirm_mode": "✋",
-
         # Status indicators
         "success": "✅",
         "error": "❌",
@@ -23,18 +22,15 @@ class CLIMessages:
         "critical": "🚨",
         "loading": "⏳",
         "thinking": "💭",
-
         # Trading signals
         "buy": "⬆️",
         "sell": "⬇️",
         "hold": "➡️",
         "check": "✅",
-
         # Position status
         "profit": "🟢",
         "loss": "🔴",
         "neutral": "⚪",
-
         # Feature icons
         "portfolio": "💼",
         "money": "💰",
@@ -51,11 +47,9 @@ class CLIMessages:
         "lightbulb": "💡",
         "wave": "👋",
         "lightning": "⚡",
-
         # Time of day
         "morning": "🌅",
         "evening": "🌆",
-
         # Actions
         "retry": "🔄",
     }
@@ -339,6 +333,7 @@ Tip: Just type naturally - the LLM will understand!
 # ========================================================================
 # HELPER FUNCTIONS
 # ========================================================================
+
 
 def get_signal_emoji(signal_value: str) -> str:
     """Get emoji for trading signal."""

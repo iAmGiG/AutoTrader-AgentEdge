@@ -17,6 +17,9 @@ AutoGen-TradingSystem/
 │   │   ├── executor_agent.py        # 🚧 In development
 │   │   └── trading_orchestrator.py  # 🚧 In development
 │   │
+│   ├── execution/                   # Order execution layer
+│   │   └── alpaca_execution_manager.py # AlpacaExecutionManager (plugin architecture)
+│   │
 │   ├── trading/                     # Trading execution & lifecycle
 │   │   ├── alpaca_trading_client.py # Alpaca API integration
 │   │   ├── alpaca_autogen_tools.py  # AutoGen tool wrappers
@@ -72,8 +75,11 @@ AutoGen-TradingSystem/
 │   └── config.json                  # API keys and secrets
 │
 ├── config_defaults/                 # Default configurations
-│   ├── trading_config.py            # Trading parameters
-│   └── *.yaml                       # YAML configs
+│   ├── trading_config.yaml          # Trading strategy parameters
+│   ├── market_hours.yaml            # Market hours & holidays
+│   ├── cli_messages.yaml            # User-facing message templates
+│   ├── message_loader.py            # Message template loader
+│   └── safe_print.py                # Platform-aware output utilities
 │
 ├── scripts/                         # Utility scripts
 │   ├── experiments/                 # Backtesting experiments
@@ -124,6 +130,18 @@ AutoGen-TradingSystem/
 - `risk_agent.py`: Risk management (in development)
 - `executor_agent.py`: Trade execution (in development)
 - `trading_orchestrator.py`: Multi-agent coordination (in development)
+
+### src/execution/ - Order Execution Layer
+
+**Purpose**: Plugin architecture for broker-agnostic trade execution
+
+**Files**:
+
+- `alpaca_execution_manager.py`: AlpacaExecutionManager implementing ExecutionManager interface
+  - Bracket order placement with fallback handling
+  - Off-hours validation error detection
+  - Message template integration
+  - Market hours checking
 
 ### src/trading/ - Trading Operations
 
@@ -300,23 +318,53 @@ python main.py analysis                 # Generate analysis reports
 }
 ```
 
-### Trading Parameters (config_defaults/trading_config.py)
+### Trading Parameters (config_defaults/)
 
-**Version-controlled** - Default trading parameters
+**Version-controlled** - Default trading parameters in YAML format
 
-```python
-# MACD Configuration
-macd_config = {"fast": 13, "slow": 34, "signal": 8}
+#### trading_config.yaml
 
-# RSI Configuration
-rsi_config = {"period": 14, "oversold": 30, "overbought": 70}
+```yaml
+strategy_parameters:
+  macd:
+    fast: 13
+    slow: 34
+    signal: 8
+  rsi:
+    period: 14
+    oversold: 30
+    overbought: 70
+  exits:
+    balanced:
+      take_profit: 0.08
+      stop_loss: 0.05
+```
 
-# Exit Strategy
-exit_config = {
-    "balanced": {"take_profit": 0.08, "stop_loss": 0.05},
-    "conservative": {"take_profit": 0.05, "stop_loss": 0.03},
-    "aggressive": {"take_profit": 0.12, "stop_loss": 0.08}
-}
+#### market_hours.yaml
+
+```yaml
+timezone: "America/New_York"
+regular_hours:
+  open_hour: 9
+  open_minute: 30
+  close_hour: 16
+  close_minute: 0
+weekend:
+  saturday: 5
+  sunday: 6
+holidays:
+  enabled: false
+  # NYSE 2025 holiday calendar
+```
+
+#### cli_messages.yaml
+
+```yaml
+execution:
+  init_with_manager: "AlpacaExecutionManager initialized with OrderManager"
+  market_closed_warning: "Market is CLOSED (weekend/off-hours)..."
+  sell_no_position: "SELL signal rejected: No position in {ticker}..."
+  # 50+ message templates for user-facing output
 ```
 
 ## Testing Structure

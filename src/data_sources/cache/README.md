@@ -5,6 +5,7 @@ SQLite-based market data caching for the AutoGen Trading System.
 ## Quick Links
 
 **For comprehensive documentation, see:**
+
 - **[Cache System Architecture](../../../docs/02_architecture/04_cache_system.md)** - Full technical documentation
 - **[Developer Guide](../../../docs/04_development/cache_developer_guide.md)** - API reference and examples
 - **[Migration Guide](../../../CACHE_MIGRATION.md)** - Migrating from file-based cache

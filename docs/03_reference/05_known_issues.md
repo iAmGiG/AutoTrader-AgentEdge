@@ -2,8 +2,8 @@
 
 ## 1. Bracket Order Price Validation During Off-Hours
 
-**Status**: Known limitation
-**Severity**: Medium
+**Status**: ✅ MITIGATED (2025-11-23)
+**Severity**: Medium → Low
 **Affects**: Bracket orders placed outside market hours
 
 ### Description
@@ -16,7 +16,7 @@ When placing bracket orders outside of market hours (weekends, after-hours):
 
 ### Example
 
-```
+```text
 Analysis shows: AAPL @ $258.45 (from historical data)
 Calculated target: $267.50 (+3.5%)
 Alpaca validates against: $268.69 (current market quote)
@@ -30,54 +30,64 @@ Result: ERROR - target $267.50 < base $268.69
 3. Alpaca's order API validates against internal real-time quotes
 4. Price mismatch causes bracket order rejection
 
-### Workarounds
+### ✅ Implemented Solution (2025-11-23)
 
-**Option 1: Market Hours Only** (Recommended for Production)
+**Feature**: Intelligent off-hours handling with automatic fallback
 
-```python
-# Only allow bracket orders during market hours
-if not self._is_market_hours():
-    return OrderResult(
-        success=False,
-        message="Bracket orders only supported during market hours"
-    )
+The `AlpacaExecutionManager` now implements comprehensive off-hours support:
+
+1. **Market Hours Detection**: Automatically detects weekend/off-hours (9:30 AM - 4:00 PM ET, Mon-Fri)
+2. **Price Recalculation**: Fetches latest Alpaca quote/trade and recalculates brackets using strategy config
+3. **Configurable Percentages**: Uses `stop_loss_pct` (default 5%) and `take_profit_pct` (default 8%) from config
+4. **Automatic Fallback**: If bracket order fails during off-hours, automatically places simple market order
+5. **Clear Warnings**: Explicit messaging about missing bracket protection
+
+**User Experience During Weekends**:
+
+```text
+⚠️  Market is CLOSED (weekend/off-hours).
+    Bracket orders may fail validation during off-hours.
+❌ Bracket order validation failed (off-hours): take_profit.limit_price must be >= base_price + 0.01
+   🔄 Attempting fallback: simple market order without brackets...
+✅ Simple market order placed: abc123
+   ⚠️  NOTE: Stop-loss and take-profit NOT set (bracket order failed).
+   Manual risk management required!
+   Target: $712.80, Stop: $624.72
 ```
 
-**Option 2: Market Entry Only During Off-Hours**
+### Benefits
 
-```python
-# Place market order without bracket during off-hours
-# Then add stop/target after fill
-if not self._is_market_hours():
-    # Place simple market order
-    # Monitor fill, then add bracket legs
-```
+- ✅ **Demo-Ready**: System works on weekends for presentations
+- ✅ **Production-Safe**: Normal bracket orders during market hours
+- ✅ **Clear Warnings**: Users understand exactly what protection is missing
+- ✅ **Automatic Handling**: No manual intervention required
+- ✅ **Configurable**: Strategy percentages from config, not hardcoded
 
-**Option 3: Fetch Last Quote Price**
+### Testing During Weekends
 
-```python
-# Use Alpaca's last quote API for validation
-quote = self.market_data.get_latest_quote(ticker)
-if quote:
-    current_price = (quote['bid'] + quote['ask']) / 2
-    # Recalculate bracket prices
-```
+Orders place successfully with clear warnings:
 
-### Temporary Solution
+1. Bracket order attempted first
+2. If validation fails → automatic fallback to simple market order
+3. Success returned with warning message
+4. Target/stop prices logged for manual monitoring
+5. Portfolio and order display work normally
 
-For testing during weekends:
+### Implemented Fixes (2025-11-23)
 
-1. Use stub mode (no real OrderManager)
-2. Test during market hours (Mon-Fri 9:30am-4pm ET)
-3. Use simple market orders without brackets
+- [x] Added `_is_market_hours()` detection in execution manager
+- [x] Fetch latest quote/trade from Alpaca for accurate pricing
+- [x] Calculate bracket prices from Alpaca's validated price
+- [x] Market hours check with clear warnings
+- [x] Automatic fallback to simple market orders during off-hours
+- [x] Configurable stop_loss_pct and take_profit_pct parameters
 
-### Permanent Fix (TODO)
+### Future Enhancements
 
-- [ ] Add `get_latest_quote()` fallback in execution manager
-- [ ] Use Alpaca's quote API for price validation
-- [ ] Calculate bracket prices from validated base price
-- [ ] Add market hours check before bracket orders
-- [ ] Consider GTC limit orders instead of market+bracket
+- [ ] Queue orders for next market open (scheduler integration)
+- [ ] User choice prompt: "fallback to simple order" vs "queue for market open"
+- [ ] Extended hours trading support (extended_hours=True flag)
+- [ ] Post-fill bracket leg addition (add stop/target after entry fills)
 
 ### Related Files
 

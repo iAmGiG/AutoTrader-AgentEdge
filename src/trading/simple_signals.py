@@ -26,16 +26,18 @@ class SimpleSignalGenerator:
     No complex agent architecture - just threshold-based decisions.
     """
 
-    def __init__(self,
-                 config: Optional[TradingConfig] = None,
-                 macd_fast: Optional[int] = None,
-                 macd_slow: Optional[int] = None,
-                 macd_signal: Optional[int] = None,
-                 rsi_period: Optional[int] = None,
-                 rsi_oversold: Optional[float] = None,
-                 rsi_overbought: Optional[float] = None,
-                 macd_threshold: Optional[float] = None,
-                 consensus_boost: Optional[float] = None):
+    def __init__(
+        self,
+        config: Optional[TradingConfig] = None,
+        macd_fast: Optional[int] = None,
+        macd_slow: Optional[int] = None,
+        macd_signal: Optional[int] = None,
+        rsi_period: Optional[int] = None,
+        rsi_oversold: Optional[float] = None,
+        rsi_overbought: Optional[float] = None,
+        macd_threshold: Optional[float] = None,
+        consensus_boost: Optional[float] = None,
+    ):
         """
         Initialize with validated parameters from config system.
 
@@ -63,7 +65,8 @@ class SimpleSignalGenerator:
         logger.info("SimpleSignalGenerator initialized:")
         logger.info(f"  MACD: {self.macd_fast}/{self.macd_slow}/{self.macd_signal}")
         logger.info(
-            f"  RSI: {self.rsi_period} period, {self.rsi_oversold}/{self.rsi_overbought} levels")
+            f"  RSI: {self.rsi_period} period, {self.rsi_oversold}/{self.rsi_overbought} levels"
+        )
         logger.info(f"  Thresholds: MACD {self.macd_threshold}, consensus {self.consensus_boost}")
 
     def evaluate_signal(self, price_data: pd.DataFrame, symbol: str = "UNKNOWN") -> Dict[str, Any]:
@@ -80,10 +83,10 @@ class SimpleSignalGenerator:
         try:
             if len(price_data) < max(self.macd_slow + self.macd_signal, self.rsi_period):
                 return {
-                    'action': 'HOLD',
-                    'confidence': 0.0,
-                    'reason': 'Insufficient data for indicators',
-                    'raw_data': {}
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "reason": "Insufficient data for indicators",
+                    "raw_data": {},
                 }
 
             # Calculate indicators
@@ -91,7 +94,7 @@ class SimpleSignalGenerator:
                 price_data,
                 fast_period=self.macd_fast,
                 slow_period=self.macd_slow,
-                signal_period=self.macd_signal
+                signal_period=self.macd_signal,
             )
 
             rsi_values = calculate_rsi(price_data, period=self.rsi_period)
@@ -104,11 +107,11 @@ class SimpleSignalGenerator:
 
             # Raw technical data
             raw_data = {
-                'macd_line': latest_macd,
-                'macd_signal': latest_macd_signal,
-                'macd_crossover': macd_crossover,
-                'rsi': latest_rsi,
-                'price': price_data['close'].iloc[-1]
+                "macd_line": latest_macd,
+                "macd_signal": latest_macd_signal,
+                "macd_crossover": macd_crossover,
+                "rsi": latest_rsi,
+                "price": price_data["close"].iloc[-1],
             }
 
             # Simple threshold decisions
@@ -117,44 +120,44 @@ class SimpleSignalGenerator:
 
             # MACD Signal
             if macd_crossover > self.macd_threshold:
-                signals.append('BUY')
+                signals.append("BUY")
                 reasons.append(f"MACD crossover: {macd_crossover:.3f} > {self.macd_threshold}")
             elif macd_crossover < -self.macd_threshold:
-                signals.append('SELL')
+                signals.append("SELL")
                 reasons.append(f"MACD crossover: {macd_crossover:.3f} < -{self.macd_threshold}")
             else:
-                signals.append('HOLD')
+                signals.append("HOLD")
                 reasons.append(f"MACD neutral: {macd_crossover:.3f}")
 
             # RSI Signal
             if latest_rsi < self.rsi_oversold:
-                signals.append('BUY')
+                signals.append("BUY")
                 reasons.append(f"RSI oversold: {latest_rsi:.1f} < {self.rsi_oversold}")
             elif latest_rsi > self.rsi_overbought:
-                signals.append('SELL')
+                signals.append("SELL")
                 reasons.append(f"RSI overbought: {latest_rsi:.1f} > {self.rsi_overbought}")
             else:
-                signals.append('HOLD')
+                signals.append("HOLD")
                 reasons.append(f"RSI neutral: {latest_rsi:.1f}")
 
             # Voting logic
-            buy_votes = signals.count('BUY')
-            sell_votes = signals.count('SELL')
+            buy_votes = signals.count("BUY")
+            sell_votes = signals.count("SELL")
 
             if buy_votes > sell_votes:
-                action = 'BUY'
+                action = "BUY"
                 base_confidence = 0.6 + (buy_votes - sell_votes) * 0.1
                 # Consensus boost when both agree
                 if buy_votes == 2:
                     base_confidence += self.consensus_boost
             elif sell_votes > buy_votes:
-                action = 'SELL'
+                action = "SELL"
                 base_confidence = 0.6 + (sell_votes - buy_votes) * 0.1
                 # Consensus boost when both agree
                 if sell_votes == 2:
                     base_confidence += self.consensus_boost
             else:
-                action = 'HOLD'
+                action = "HOLD"
                 base_confidence = 0.3
 
             # Cap confidence at 1.0
@@ -165,20 +168,20 @@ class SimpleSignalGenerator:
             logger.debug(f"{symbol} signal: {action} ({confidence:.2f}) - {reason}")
 
             return {
-                'action': action,
-                'confidence': confidence,
-                'reason': reason,
-                'raw_data': raw_data,
-                'votes': {'buy': buy_votes, 'sell': sell_votes, 'hold': signals.count('HOLD')}
+                "action": action,
+                "confidence": confidence,
+                "reason": reason,
+                "raw_data": raw_data,
+                "votes": {"buy": buy_votes, "sell": sell_votes, "hold": signals.count("HOLD")},
             }
 
         except Exception as e:
             logger.error(f"Error generating signal for {symbol}: {e}")
             return {
-                'action': 'HOLD',
-                'confidence': 0.0,
-                'reason': f'Error: {str(e)}',
-                'raw_data': {}
+                "action": "HOLD",
+                "confidence": 0.0,
+                "reason": f"Error: {str(e)}",
+                "raw_data": {},
             }
 
     def get_signal_summary(self, signal: Dict[str, Any]) -> str:
@@ -191,9 +194,9 @@ class SimpleSignalGenerator:
         Returns:
             Formatted summary string
         """
-        action = signal['action']
-        confidence = signal['confidence']
-        raw = signal.get('raw_data', {})
+        action = signal["action"]
+        confidence = signal["confidence"]
+        raw = signal.get("raw_data", {})
 
         summary = f"{action} ({confidence:.1%})"
 
@@ -214,8 +217,8 @@ class SimpleSignalGenerator:
         Returns:
             True if signal should trigger trading action
         """
-        return (signal['action'] in ['BUY', 'SELL'] and
-                signal['confidence'] >= min_confidence)
+        return signal["action"] in ["BUY", "SELL"] and signal["confidence"] >= min_confidence
+
 
 # Convenience function for simple usage
 

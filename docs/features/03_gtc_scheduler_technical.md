@@ -8,6 +8,7 @@
 ## Overview
 
 Automated "set it and forget it" daily trading system with:
+
 - **Daily Scheduling**: Morning (9:20 AM ET) and evening (3:50 PM ET) routines
 - **Retry Logic**: Exponential backoff with configurable retries
 - **Error Handling**: Comprehensive exception management and recovery
@@ -69,12 +70,14 @@ tests/
 ### 1. Daily Scheduling
 
 **Morning Routine (9:20 AM ET)**:
+
 - Reconcile positions with broker (single API call)
 - Calculate stop adjustments based on profit levels
 - Batch modify stop orders if needed
 - Generate morning report
 
 **Evening Routine (3:50 PM ET)**:
+
 - EOD position review
 - Prepare for next trading day
 - Generate evening report
@@ -97,6 +100,7 @@ for attempt in range(1, max_attempts + 1):
 ```
 
 **Features**:
+
 - Configurable max retries (default: 3)
 - Exponential backoff (60s, 120s, 240s)
 - 10% jitter to prevent thundering herd
@@ -105,12 +109,14 @@ for attempt in range(1, max_attempts + 1):
 ### 3. Error Handling
 
 **Levels**:
+
 1. **Task-level**: Catch and retry individual routine failures
 2. **Execution-level**: Log all attempts and outcomes
 3. **System-level**: Daemon continues despite errors
 4. **Recovery**: Crash recovery rebuilds state from broker
 
 **Error Types**:
+
 - API errors → Retry with backoff
 - Network failures → Retry with backoff
 - Invalid data → Log and skip
@@ -119,6 +125,7 @@ for attempt in range(1, max_attempts + 1):
 ### 4. Configuration System
 
 `config_defaults/scheduler_config.json`:
+
 ```json
 {
   "enabled": true,
@@ -213,6 +220,7 @@ python src/trading/daily_scheduler.py --mode status
 ```
 
 Output:
+
 ```
 # Daily Scheduler Status Report
 Generated: 2025-01-15 16:00:00
@@ -259,11 +267,13 @@ python src/trading/daily_scheduler.py --mode test
 ### API Call Optimization
 
 **Traditional approach**: 50+ API calls per day
+
 - Check positions: 10-15 calls
 - Update each stop: 3-5 calls per position
 - Check order status: 10+ calls
 
 **GTC approach**: 3-5 API calls per routine
+
 - Single call to get all positions
 - Single call to get all orders
 - Batch modify stops: 1 call per modification

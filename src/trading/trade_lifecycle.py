@@ -12,7 +12,7 @@ import os
 import time
 from collections import deque
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone  # TODO date utils
+from datetime import timezone
 from enum import Enum
 from threading import Lock
 from typing import Any, Dict, Optional
@@ -22,6 +22,7 @@ from config_defaults.trading_config import TradingConfig
 from src.trading.order_manager import OrderManager
 from src.trading.position_manager import PositionManager
 from src.trading.unified_price_fetcher import get_current_price
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 logger = logging.getLogger(__name__)
 
@@ -61,17 +62,19 @@ rate_limiter = SimpleRateLimiter()
 
 class TradeState(Enum):
     """Trade lifecycle states"""
-    SIGNAL_GENERATED = "signal"     # MACD+RSI voting generates signal
-    ORDER_PENDING = "pending"       # Entry order placed, waiting for fill
-    POSITION_OPEN = "open"          # Position filled, stop/target active
-    STOP_ADJUSTED = "adjusted"      # Trailing stop or manual adjustment
-    EXIT_TRIGGERED = "exiting"      # Exit signal received, closing position
-    POSITION_CLOSED = "closed"      # Trade complete, P&L realized
+
+    SIGNAL_GENERATED = "signal"  # MACD+RSI voting generates signal
+    ORDER_PENDING = "pending"  # Entry order placed, waiting for fill
+    POSITION_OPEN = "open"  # Position filled, stop/target active
+    STOP_ADJUSTED = "adjusted"  # Trailing stop or manual adjustment
+    EXIT_TRIGGERED = "exiting"  # Exit signal received, closing position
+    POSITION_CLOSED = "closed"  # Trade complete, P&L realized
 
 
 @dataclass
 class TradeData:
     """Trade data for JSON persistence"""
+
     symbol: str
     state: str
     entry_price: Optional[float] = None
@@ -93,6 +96,7 @@ class TradeData:
 @dataclass
 class OpportunityData:
     """New trading opportunity for comparison"""
+
     symbol: str
     signal_strength: str
     confidence: float
@@ -114,8 +118,14 @@ class TradeCycle:
     Uses JSON files for state persistence (no database complexity).
     """
 
-    def __init__(self, symbol: str, signal_strength: str = "BULLISH", confidence: float = 0.7,
-                 broker_client=None, config: Optional[TradingConfig] = None):
+    def __init__(
+        self,
+        symbol: str,
+        signal_strength: str = "BULLISH",
+        confidence: float = 0.7,
+        broker_client=None,
+        config: Optional[TradingConfig] = None,
+    ):
         """
         Initialize trade cycle.
 
@@ -131,13 +141,14 @@ class TradeCycle:
             symbol=symbol,
             state=TradeState.SIGNAL_GENERATED.value,
             signal_strength=signal_strength,
-            confidence=confidence
+            confidence=confidence,
         )
 
         # Initialize unified components
         if broker_client is None:
             # Use paper mode by default
             from src.trading.alpaca_trading_client import AlpacaOrderManager
+
             old_manager = AlpacaOrderManager(mode="paper")
             broker_client = old_manager.client.trading_client
 
@@ -160,10 +171,12 @@ class TradeCycle:
         os.makedirs(self.state_dir, exist_ok=True)
 
         logger.info(
-            f"TradeCycle initialized: {symbol} {signal_strength} (confidence: {confidence:.2f})")
+            f"TradeCycle initialized: {symbol} {signal_strength} (confidence: {confidence:.2f})"
+        )
 
     def _create_fallback_config(self):
         """Create hardcoded fallback config when file loading fails."""
+
         @dataclass
         class ExitConfig:
             stop_loss: float = 0.05  # 5%
@@ -197,7 +210,7 @@ class TradeCycle:
     def monitor_fills_simple(self) -> bool:
         """Check for filled orders by polling Alpaca."""
         try:
-            if not self.data.order_ids.get('parent'):
+            if not self.data.order_ids.get("parent"):
                 logger.warning("No parent order ID to check")
                 return False
 
@@ -206,16 +219,17 @@ class TradeCycle:
 
             # Get recent filled orders for this symbol
             from datetime import timedelta
-            recent_cutoff = datetime.now() - timedelta(minutes=5)
+
+            recent_cutoff = get_datetime_now() - timedelta(minutes=5)
 
             # Use proper Alpaca SDK request structure
             from alpaca.trading.requests import GetOrdersRequest
+
             try:
                 from alpaca.trading.enums import QueryOrderStatus
+
                 request = GetOrdersRequest(
-                    status=QueryOrderStatus.FILLED,
-                    limit=50,
-                    after=recent_cutoff
+                    status=QueryOrderStatus.FILLED, limit=50, after=recent_cutoff
                 )
                 orders = self.position_manager.broker.get_orders(filter=request)
             except Exception as e:
@@ -223,20 +237,21 @@ class TradeCycle:
                 # Fallback: get all recent orders and filter manually
                 request = GetOrdersRequest(limit=50, after=recent_cutoff)
                 orders = self.position_manager.broker.get_orders(filter=request)
-                orders = [o for o in orders if str(o.status).lower() in [
-                    'filled', 'partially_filled']]
+                orders = [
+                    o for o in orders if str(o.status).lower() in ["filled", "partially_filled"]
+                ]
 
             for order in orders:
-                if order.symbol == self.symbol and order.id == self.data.order_ids['parent']:
+                if order.symbol == self.symbol and order.id == self.data.order_ids["parent"]:
                     # Found our filled order!
                     fill_data = {
-                        'symbol': self.symbol,
-                        'side': order.side,
-                        'qty': float(order.filled_qty),
-                        'filled_price': float(order.filled_avg_price),
-                        'filled_at': (order.filled_at.isoformat()
-                                      if order.filled_at
-                                      else datetime.now().isoformat())
+                        "symbol": self.symbol,
+                        "side": order.side,
+                        "qty": float(order.filled_qty),
+                        "filled_price": float(order.filled_avg_price),
+                        "filled_at": (
+                            order.filled_at.isoformat() if order.filled_at else now_iso()
+                        ),
                     }
                     self._handle_order_fill(fill_data)
                     return True
@@ -256,9 +271,9 @@ class TradeCycle:
         """
         try:
             # Update trade data with fill information
-            self.data.actual_entry_price = filled_order['filled_price']
-            self.data.actual_quantity = filled_order['qty']
-            self.data.entry_time = filled_order['filled_at']
+            self.data.actual_entry_price = filled_order["filled_price"]
+            self.data.actual_quantity = filled_order["qty"]
+            self.data.entry_time = filled_order["filled_at"]
 
             # Transition state: ORDER_PENDING -> POSITION_OPEN
             self.data.state = TradeState.POSITION_OPEN.value
@@ -268,10 +283,12 @@ class TradeCycle:
 
             logger.info(
                 f"Order filled: {self.symbol} - {filled_order['side']} "
-                f"{filled_order['qty']} @ ${filled_order['filled_price']}")
+                f"{filled_order['qty']} @ ${filled_order['filled_price']}"
+            )
             logger.info(
                 f"Trade state: {TradeState.ORDER_PENDING.value} -> "
-                f"{TradeState.POSITION_OPEN.value}")
+                f"{TradeState.POSITION_OPEN.value}"
+            )
 
             return True  # Success
 
@@ -297,14 +314,14 @@ class TradeCycle:
             order_ids = {}
 
             # Handle different response formats
-            if 'order_id' in bracket_response:
+            if "order_id" in bracket_response:
                 # Simple format - single order ID (might be parent)
-                order_ids['entry'] = bracket_response['order_id']
+                order_ids["entry"] = bracket_response["order_id"]
                 logger.warning("Simple order ID format - may need bracket order tracking")
 
-            elif 'parent' in bracket_response:
+            elif "parent" in bracket_response:
                 # Complex bracket format
-                order_ids['entry'] = bracket_response['parent']['id']
+                order_ids["entry"] = bracket_response["parent"]["id"]
 
                 # Alpaca doesn't return legs in the initial response
                 # The OCO orders are created asynchronously
@@ -314,9 +331,9 @@ class TradeCycle:
 
             else:
                 # Fallback - use whatever ID we have
-                for key in ['id', 'order_id', 'orderid']:
+                for key in ["id", "order_id", "orderid"]:
                     if key in bracket_response:
-                        order_ids['entry'] = bracket_response[key]
+                        order_ids["entry"] = bracket_response[key]
                         break
 
             logger.info(f"Parsed order IDs: {order_ids}")
@@ -326,9 +343,9 @@ class TradeCycle:
             logger.error(f"Error parsing bracket response: {e}")
             # Return basic structure to prevent crashes
             return {
-                'entry': bracket_response.get('order_id', 'unknown'),
-                'stop': 'pending',
-                'target': 'pending'
+                "entry": bracket_response.get("order_id", "unknown"),
+                "stop": "pending",
+                "target": "pending",
             }
 
     def calculate_position_size(self, account_balance: float, current_price: float) -> int:
@@ -365,7 +382,7 @@ class TradeCycle:
 
         Rules:
         - Under 2% profit: Don't adjust
-        - 2-4% profit: Move to breakeven  
+        - 2-4% profit: Move to breakeven
         - 4-6% profit: Lock in 25% of gains
         - Over 6% profit: Trail at 50% of gains
 
@@ -434,10 +451,11 @@ class TradeCycle:
                     logger.error(f"Failed to get current price: {e}")
                     # Get account and try to use market data
                     account = self.position_manager.get_account_info()
-                    if account and account.get('cash', 0) > 1000:
+                    if account and account.get("cash", 0) > 1000:
                         # If we have cash but no price, try getting it through the broker
                         try:
                             from src.trading.alpaca_trading_client import AlpacaAccountMonitor
+
                             monitor = AlpacaAccountMonitor(mode="paper")
                             # Try to get last trade price from Alpaca directly
                             logger.warning(f"Using fallback price estimation for {self.symbol}")
@@ -447,7 +465,7 @@ class TradeCycle:
 
             # Get account info for position sizing
             account = self.position_manager.get_account_info()
-            account_balance = float(account['buying_power'])
+            account_balance = float(account["buying_power"])
 
             # Calculate position size
             quantity = self.calculate_position_size(account_balance, current_price)
@@ -469,25 +487,33 @@ class TradeCycle:
                 symbol=self.symbol,
                 qty=quantity,
                 stop_price=stop_loss_price,
-                target_price=take_profit_price
+                target_price=take_profit_price,
             )
 
             # Check for successful order submission (handle both string and enum status)
-            status = str(result.get('status', '')).lower()
-            success_statuses = ['submitted', 'accepted', 'new',
-                                'pending_new', 'orderstatus.accepted', 'orderstatus.new']
+            status = str(result.get("status", "")).lower()
+            success_statuses = [
+                "submitted",
+                "accepted",
+                "new",
+                "pending_new",
+                "orderstatus.accepted",
+                "orderstatus.new",
+            ]
 
-            if 'error' not in result and any(success_status in status for success_status in success_statuses):
+            if "error" not in result and any(
+                success_status in status for success_status in success_statuses
+            ):
                 # Order confirmed successful - safe to update state
                 self.data.quantity = quantity
                 self.data.entry_price = current_price
                 self.data.current_stop = stop_loss_price
                 self.data.target_price = take_profit_price
-                self.data.entry_time = datetime.now(timezone.utc).isoformat()
+                self.data.entry_time = now_iso()
                 self.data.state = TradeState.ORDER_PENDING.value
 
                 # Store bracket order ID from simplified response
-                self.data.order_ids = {'parent': result.get('id', 'unknown')}
+                self.data.order_ids = {"parent": result.get("id", "unknown")}
 
                 # Note: Alpaca creates OCO orders asynchronously, not in initial response
                 logger.info("Bracket order submitted - OCO orders will be created by Alpaca")
@@ -499,13 +525,14 @@ class TradeCycle:
                 logger.info(
                     f"Entry: ${current_price:.2f}, Stop: ${stop_loss_price:.2f} "
                     f"({exit_config.stop_loss:.1%}), Target: ${take_profit_price:.2f} "
-                    f"({exit_config.take_profit:.1%})")
+                    f"({exit_config.take_profit:.1%})"
+                )
                 logger.info(f"Exit Strategy: {exit_config.description}")
                 logger.info(f"Order IDs: {self.data.order_ids}")
                 return True
             else:
                 # Order failed - don't modify state
-                error_msg = result.get('error', 'Unknown error')
+                error_msg = result.get("error", "Unknown error")
                 logger.error(f"Order placement failed: {error_msg}")
                 return False
 
@@ -513,8 +540,9 @@ class TradeCycle:
             logger.error(f"Error placing entry order: {e}")
             return False
 
-    def place_bracket_order_simple(self, symbol: str, qty: int,
-                                   stop_price: float, target_price: float) -> Dict[str, Any]:
+    def place_bracket_order_simple(
+        self, symbol: str, qty: int, stop_price: float, target_price: float
+    ) -> Dict[str, Any]:
         """
         CRITICAL FIX: Simple bracket order placement with retry logic.
 
@@ -536,9 +564,12 @@ class TradeCycle:
                 rate_limiter.wait_if_needed()
 
                 # Create proper Alpaca SDK request
-                from alpaca.trading.requests import MarketOrderRequest
-                from alpaca.trading.enums import OrderSide, TimeInForce, OrderClass
-                from alpaca.trading.requests import StopLossRequest, TakeProfitRequest
+                from alpaca.trading.enums import OrderClass, OrderSide, TimeInForce
+                from alpaca.trading.requests import (
+                    MarketOrderRequest,
+                    StopLossRequest,
+                    TakeProfitRequest,
+                )
 
                 alpaca_request = MarketOrderRequest(
                     symbol=symbol,
@@ -547,23 +578,31 @@ class TradeCycle:
                     time_in_force=TimeInForce.GTC,
                     order_class=OrderClass.BRACKET,
                     stop_loss=StopLossRequest(stop_price=stop_price),
-                    take_profit=TakeProfitRequest(limit_price=target_price)
+                    take_profit=TakeProfitRequest(limit_price=target_price),
                 )
 
                 # Submit order through position manager's broker client
                 order_response = self.position_manager.broker.submit_order(
-                    order_data=alpaca_request)
+                    order_data=alpaca_request
+                )
 
                 # Handle Alpaca OrderData object properly
                 result = {
-                    'id': str(order_response.id),
-                    'status': str(order_response.status),
-                    'symbol': str(order_response.symbol),
-                    'qty': int(order_response.qty) if order_response.qty else 0,
-                    'order_class': str(order_response.order_class) if order_response.order_class else 'bracket',
-                    'submitted_at': (order_response.submitted_at.isoformat()
-                                     if order_response.submitted_at else None),
-                    'legs': [str(leg.id) for leg in order_response.legs] if order_response.legs else []
+                    "id": str(order_response.id),
+                    "status": str(order_response.status),
+                    "symbol": str(order_response.symbol),
+                    "qty": int(order_response.qty) if order_response.qty else 0,
+                    "order_class": (
+                        str(order_response.order_class) if order_response.order_class else "bracket"
+                    ),
+                    "submitted_at": (
+                        order_response.submitted_at.isoformat()
+                        if order_response.submitted_at
+                        else None
+                    ),
+                    "legs": (
+                        [str(leg.id) for leg in order_response.legs] if order_response.legs else []
+                    ),
                 }
 
                 logger.info(f"Bracket order submitted successfully on attempt {attempt + 1}")
@@ -576,14 +615,14 @@ class TradeCycle:
 
                 if attempt < max_retries - 1:
                     # Exponential backoff with jitter
-                    delay = base_delay * (2 ** attempt) + (time.time() % 1)
+                    delay = base_delay * (2**attempt) + (time.time() % 1)
                     logger.info(f"Retrying in {delay:.2f}s...")
                     time.sleep(delay)
                 else:
                     logger.error(f"All {max_retries} bracket order attempts failed")
-                    return {'error': str(e), 'status': 'failed'}
+                    return {"error": str(e), "status": "failed"}
 
-        return {'error': 'Max retries exceeded', 'status': 'failed'}
+        return {"error": "Max retries exceeded", "status": "failed"}
 
     def sync_with_broker(self) -> bool:
         """
@@ -602,21 +641,21 @@ class TradeCycle:
             broker_position = None
 
             for pos in positions:
-                if pos['symbol'] == self.symbol:
+                if pos["symbol"] == self.symbol:
                     broker_position = pos
                     break
 
             # Get actual broker orders
-            orders = self.order_manager.get_orders(status='all')
+            orders = self.order_manager.get_orders(status="all")
             broker_orders = []
 
             for order in orders:
-                if order['symbol'] == self.symbol:
+                if order["symbol"] == self.symbol:
                     broker_orders.append(order)
 
             # Sync position data
             if broker_position:
-                broker_qty = int(broker_position['qty'])
+                broker_qty = int(broker_position["qty"])
                 if broker_qty > 0:
                     # We have a position - update state if needed
                     if self.data.state == TradeState.ORDER_PENDING.value:
@@ -628,34 +667,41 @@ class TradeCycle:
                     elif self.data.quantity != broker_qty:
                         # Quantity mismatch - update to broker reality
                         logger.warning(
-                            f"Quantity mismatch: local {self.data.quantity}, broker {broker_qty}")
+                            f"Quantity mismatch: local {self.data.quantity}, broker {broker_qty}"
+                        )
                         self.data.quantity = broker_qty
 
                 else:
                     # No position at broker but we think we have one
-                    if self.data.state in [TradeState.POSITION_OPEN.value, TradeState.STOP_ADJUSTED.value]:
+                    if self.data.state in [
+                        TradeState.POSITION_OPEN.value,
+                        TradeState.STOP_ADJUSTED.value,
+                    ]:
                         logger.info("Position closed at broker - updating local state")
                         self.data.state = TradeState.POSITION_CLOSED.value
 
             else:
                 # No position at broker
-                if self.data.state in [TradeState.POSITION_OPEN.value, TradeState.STOP_ADJUSTED.value]:
+                if self.data.state in [
+                    TradeState.POSITION_OPEN.value,
+                    TradeState.STOP_ADJUSTED.value,
+                ]:
                     logger.info("No position at broker - updating local state")
                     self.data.state = TradeState.POSITION_CLOSED.value
 
             # Sync order status
             active_order_ids = set(self.data.order_ids.values())
-            {order['order_id'] for order in broker_orders}
+            {order["order_id"] for order in broker_orders}
 
             # Check for filled/cancelled orders
             for order in broker_orders:
-                order_id = order['order_id']
-                order_status = order.get('status', 'unknown')
+                order_id = order["order_id"]
+                order_status = order.get("status", "unknown")
 
                 if order_id in active_order_ids:
-                    if order_status in ['filled', 'partially_filled']:
+                    if order_status in ["filled", "partially_filled"]:
                         logger.info(f"Order {order_id} filled")
-                    elif order_status in ['cancelled', 'expired', 'rejected']:
+                    elif order_status in ["cancelled", "expired", "rejected"]:
                         logger.info(f"Order {order_id} cancelled/expired")
 
             # Save updated state
@@ -680,7 +726,7 @@ class TradeCycle:
         """
         try:
             # Get the current stop order ID (simplified - would need order tracking)
-            stop_order_id = self.data.order_ids.get('stop')
+            stop_order_id = self.data.order_ids.get("stop")
 
             if not stop_order_id:
                 logger.error("No stop order ID found")
@@ -688,13 +734,12 @@ class TradeCycle:
 
             # Modify the stop order
             result = self.order_manager.modify_order(
-                order_id=stop_order_id,
-                stop_price=new_stop_price
+                order_id=stop_order_id, stop_price=new_stop_price
             )
 
-            if result['status'] == 'submitted':
+            if result["status"] == "submitted":
                 self.data.current_stop = new_stop_price
-                self.data.last_adjustment = datetime.now(timezone.utc).isoformat()
+                self.data.last_adjustment = now_iso()
                 self.data.state = TradeState.STOP_ADJUSTED.value
 
                 # Save state
@@ -727,7 +772,9 @@ class TradeCycle:
 
         return False
 
-    def should_exit_for_new_opportunity(self, current_price: float, new_opportunity: OpportunityData) -> bool:
+    def should_exit_for_new_opportunity(
+        self, current_price: float, new_opportunity: OpportunityData
+    ) -> bool:
         """
         Determine if current position should be exited for a better opportunity.
 
@@ -754,16 +801,16 @@ class TradeCycle:
         current_unrealized = current_price - self.data.entry_price
 
         # Calculate time held (for additional context)
-        entry_time = datetime.fromisoformat(self.data.entry_time.replace('Z', '+00:00'))
-        current_time_held = datetime.now(timezone.utc) - entry_time
+        entry_time = parse_date_string(self.data.entry_time.replace("Z", "+00:00"))
+        current_time_held = get_datetime_now(timezone.utc) - entry_time
 
         # New opportunity expected profit
         new_expected_profit = new_opportunity.expected_profit
 
         # Decision logic: Exit current if new opportunity is 2x better AND current is profitable
         should_exit = (
-            new_expected_profit > current_unrealized * 2 and  # 2x better opportunity
-            current_unrealized > 0                            # Current position profitable
+            new_expected_profit > current_unrealized * 2
+            and current_unrealized > 0  # 2x better opportunity  # Current position profitable
         )
 
         if should_exit:
@@ -771,11 +818,13 @@ class TradeCycle:
             logger.info(f"  Current unrealized: ${current_unrealized:.2f}")
             logger.info(f"  Time held: {current_time_held}")
             logger.info(
-                f"  New opportunity: {new_opportunity.symbol} (${new_expected_profit:.2f} expected)")
+                f"  New opportunity: {new_opportunity.symbol} (${new_expected_profit:.2f} expected)"
+            )
             logger.info(f"  New is {new_expected_profit/current_unrealized:.1f}x better")
         else:
             logger.debug(
-                f"No exit needed: Current ${current_unrealized:.2f}, New ${new_expected_profit:.2f}")
+                f"No exit needed: Current ${current_unrealized:.2f}, New ${new_expected_profit:.2f}"
+            )
 
         return should_exit
 
@@ -790,7 +839,10 @@ class TradeCycle:
             True if position closed successfully
         """
         try:
-            if self.data.state not in [TradeState.POSITION_OPEN.value, TradeState.STOP_ADJUSTED.value]:
+            if self.data.state not in [
+                TradeState.POSITION_OPEN.value,
+                TradeState.STOP_ADJUSTED.value,
+            ]:
                 logger.warning(f"Cannot close position: current state is {self.data.state}")
                 return False
 
@@ -798,22 +850,24 @@ class TradeCycle:
 
             # Cancel existing stop and target orders
             for order_type, order_id in self.data.order_ids.items():
-                if order_id and order_type in ['stop', 'target']:
+                if order_id and order_type in ["stop", "target"]:
                     cancel_result = self.order_manager.cancel_order(order_id)
-                    if cancel_result['status'] == 'cancelled':
+                    if cancel_result["status"] == "cancelled":
                         logger.info(f"Cancelled {order_type} order {order_id}")
 
             # Place market sell order to close position
             if self.data.quantity > 0:
                 close_result = self.order_manager.place_market_order(
-                    symbol=self.symbol,
-                    qty=self.data.quantity,
-                    side="sell"
+                    symbol=self.symbol, qty=self.data.quantity, side="sell"
                 )
 
-                if close_result['status'] == 'submitted':
+                if close_result["status"] == "submitted":
                     self.data.state = TradeState.EXIT_TRIGGERED.value
                     self.save_state()
+
+                    # Archive completed trade to database for analytics (Issue #373 extension)
+                    self._archive_to_database(reason=reason)
+
                     logger.info(f"Market sell order placed for {self.data.quantity} shares")
                     return True
                 else:
@@ -827,6 +881,79 @@ class TradeCycle:
             logger.error(f"Error closing position: {e}")
             return False
 
+    def _archive_to_database(self, reason: str = "Unknown"):
+        """
+        Archive completed trade to database for analytics (Issue #373 extension).
+
+        This implements the hybrid storage approach:
+        - Active trades stay in JSON (fast, simple)
+        - Completed trades archived to database (analytics, TradingView-style charts)
+
+        Args:
+            reason: Exit reason for the trade
+        """
+        try:
+            from src.data_sources.cache import TradingCacheManager
+
+            cache = TradingCacheManager()
+
+            # Generate unique trade_id
+            trade_id = f"{self.symbol}_{self.data.entry_time}".replace(":", "-")
+
+            # Calculate holding period if we have both entry and exit times
+            holding_period_hours = None
+            if self.data.entry_time:
+                try:
+                    entry_dt = parse_date_string(self.data.entry_time.replace("Z", "+00:00"))
+                    exit_dt = get_datetime_now(timezone.utc)
+                    holding_period_hours = (exit_dt - entry_dt).total_seconds() / 3600
+                except Exception:
+                    pass
+
+            # Prepare trade data for archival
+            trade_data = {
+                "trade_id": trade_id,
+                "symbol": self.symbol,
+                "asset_type": "stock",
+                "entry_date": self.data.entry_time,
+                "entry_price": self.data.entry_price,
+                "entry_order_id": (
+                    self.data.order_ids.get("parent") if self.data.order_ids else None
+                ),
+                "quantity": self.data.quantity,
+                "exit_date": now_iso(),
+                "exit_reason": reason,
+                "initial_stop_loss": self.data.current_stop,
+                "initial_take_profit": self.data.target_price,
+                "strategy_name": "TradeCycle",
+                "signal_strength": self.data.signal_strength,
+                "signal_confidence": self.data.confidence,
+                "broker_account": "alpaca_paper",
+                "holding_period_hours": holding_period_hours,
+                "notes": {"order_ids": self.data.order_ids, "exit_reason_detail": reason},
+            }
+
+            # Add exit price and P&L if available (will be updated when fill confirmed)
+            if hasattr(self.data, "exit_price") and self.data.exit_price:
+                trade_data["exit_price"] = self.data.exit_price
+                trade_data["realized_pnl"] = (
+                    self.data.exit_price - self.data.entry_price
+                ) * self.data.quantity
+                trade_data["realized_pnl_pct"] = (
+                    (self.data.exit_price - self.data.entry_price) / self.data.entry_price * 100
+                )
+
+            # Archive to database
+            success = cache.archive_trade(trade_data)
+            if success:
+                logger.info(f"Trade {trade_id} archived to database for analytics")
+            else:
+                logger.warning(f"Failed to archive trade {trade_id} to database")
+
+        except Exception as e:
+            logger.warning(f"Failed to archive trade to database: {e}")
+            # Don't fail the close operation if archival fails - this is non-critical
+
     def save_state(self):
         """Save trade state to JSON file."""
         try:
@@ -837,7 +964,7 @@ class TradeCycle:
             positions[self.symbol] = asdict(self.data)
 
             # Save positions file
-            with open(self.positions_file, 'w') as f:
+            with open(self.positions_file, "w") as f:
                 json.dump(positions, f, indent=2, default=str)
 
             logger.debug(f"State saved for {self.symbol}")
@@ -849,7 +976,7 @@ class TradeCycle:
         """Load all positions from JSON file."""
         try:
             if os.path.exists(self.positions_file):
-                with open(self.positions_file, 'r') as f:
+                with open(self.positions_file, "r") as f:
                     return json.load(f)
             return {}
         except Exception as e:
@@ -887,7 +1014,10 @@ class TradeCycle:
                     return False
 
             # 3. Check for stop adjustments (would be called periodically)
-            elif self.data.state in [TradeState.POSITION_OPEN.value, TradeState.STOP_ADJUSTED.value]:
+            elif self.data.state in [
+                TradeState.POSITION_OPEN.value,
+                TradeState.STOP_ADJUSTED.value,
+            ]:
                 # Simulate price movement for testing
                 test_price = current_price * 1.03  # 3% profit
                 adjusted = self.check_and_adjust_stop(test_price)
@@ -935,14 +1065,14 @@ class TradeManager:
             if not os.path.exists(positions_file):
                 return {}
 
-            with open(positions_file, 'r') as f:
+            with open(positions_file, "r") as f:
                 positions_data = json.load(f)
 
             active_trades = {}
             for symbol, data in positions_data.items():
-                if data['state'] in ['pending', 'open', 'adjusted', 'exiting']:
+                if data["state"] in ["pending", "open", "adjusted", "exiting"]:
                     # Create TradeCycle from saved data
-                    trade = TradeCycle(symbol, data['signal_strength'], data['confidence'])
+                    trade = TradeCycle(symbol, data["signal_strength"], data["confidence"])
                     trade.data = TradeData(**data)
                     active_trades[symbol] = trade
 
@@ -977,10 +1107,10 @@ class TradeManager:
         # If we have room, just take the new position
         if self.can_add_position():
             return {
-                'action': 'TAKE_NEW',
-                'reason': f'Available slot ({len(self.active_trades)}/{self.max_positions})',
-                'symbol': opportunity.symbol,
-                'exit_symbol': None
+                "action": "TAKE_NEW",
+                "reason": f"Available slot ({len(self.active_trades)}/{self.max_positions})",
+                "symbol": opportunity.symbol,
+                "exit_symbol": None,
             }
 
         # If positions are full, evaluate against current holdings
@@ -999,18 +1129,18 @@ class TradeManager:
 
         if best_exit_candidate:
             return {
-                'action': 'REPLACE_POSITION',
-                'reason': f'New opportunity {best_improvement_ratio:.1f}x better',
-                'symbol': opportunity.symbol,
-                'exit_symbol': best_exit_candidate,
-                'improvement_ratio': best_improvement_ratio
+                "action": "REPLACE_POSITION",
+                "reason": f"New opportunity {best_improvement_ratio:.1f}x better",
+                "symbol": opportunity.symbol,
+                "exit_symbol": best_exit_candidate,
+                "improvement_ratio": best_improvement_ratio,
             }
         else:
             return {
-                'action': 'REJECT',
-                'reason': 'No profitable exits for new opportunity',
-                'symbol': opportunity.symbol,
-                'exit_symbol': None
+                "action": "REJECT",
+                "reason": "No profitable exits for new opportunity",
+                "symbol": opportunity.symbol,
+                "exit_symbol": None,
             }
 
     def execute_trade_decision(self, opportunity: OpportunityData) -> bool:
@@ -1028,21 +1158,19 @@ class TradeManager:
 
             logger.info(f"Trade decision: {decision['action']} - {decision['reason']}")
 
-            if decision['action'] == 'TAKE_NEW':
+            if decision["action"] == "TAKE_NEW":
                 # Create and execute new trade
                 new_trade = TradeCycle(
-                    opportunity.symbol,
-                    opportunity.signal_strength,
-                    opportunity.confidence
+                    opportunity.symbol, opportunity.signal_strength, opportunity.confidence
                 )
                 success = new_trade.place_entry_order(opportunity.current_price)
                 if success:
                     self.active_trades[opportunity.symbol] = new_trade
                 return success
 
-            elif decision['action'] == 'REPLACE_POSITION':
+            elif decision["action"] == "REPLACE_POSITION":
                 # Close existing position and open new one
-                exit_symbol = decision['exit_symbol']
+                exit_symbol = decision["exit_symbol"]
                 exit_trade = self.active_trades[exit_symbol]
 
                 # Close existing position
@@ -1056,9 +1184,7 @@ class TradeManager:
 
                     # Create new position
                     new_trade = TradeCycle(
-                        opportunity.symbol,
-                        opportunity.signal_strength,
-                        opportunity.confidence
+                        opportunity.symbol, opportunity.signal_strength, opportunity.confidence
                     )
                     success = new_trade.place_entry_order(opportunity.current_price)
                     if success:
@@ -1110,7 +1236,7 @@ def test_opportunity_comparison():
     trade.data.target_price = 54.0
     trade.data.quantity = 100
     trade.data.state = TradeState.POSITION_OPEN.value
-    trade.data.entry_time = datetime.now(timezone.utc).isoformat()
+    trade.data.entry_time = now_iso()
 
     # Create new opportunities
     opportunities = [

@@ -38,7 +38,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | **ExecutorAgent** | 🚧 Placeholder | Q1 2026 | High |
 | **TradingOrchestrator** | 🚧 Minimal | Q1 2026 | Medium |
 | **Human-in-Loop CLI** | 🚧 Not started | Q4 2025 | **CRITICAL** |
-| **Event Bus** | 🚧 Not started | Q1 2026 | Medium |
+| **Agent Factory & Bus** | ✅ Complete | Nov 2025 | Medium |
 
 ---
 
@@ -47,6 +47,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### Phase 1: Core Trading System ✅ COMPLETE (Oct 2025)
 
 **Completed Components**:
+
 - [x] VoterAgent with validated MACD+RSI voting (0.856 Sharpe)
 - [x] Pure math calculations (no LLM dependencies)
 - [x] Alpaca paper trading integration
@@ -60,6 +61,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 **Key Achievement**: Production-ready VoterAgent with validated performance
 
 **Critical Bug Fixes**:
+
 - Price validation for sub-penny rounding (Alpaca compliance)
 - SDK integration with OrderData object handling
 - Import issues and execute_lifecycle() method calls
@@ -88,11 +90,11 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **Medium Priority**:
 
-- [ ] **Event Bus** (#316) - Agent communication infrastructure
-  - Decoupled agent messaging
-  - Event-driven architecture
-  - Message queue and routing
-  - Target: Q1 2026
+- [x] **Agent Factory & Event Bus** (#390) - ✅ COMPLETE
+  - Centralized agent creation via AgentFactory singleton
+  - Pub-sub messaging via AgentBus for inter-agent communication
+  - 16 trading-specific EventType values
+  - Symbol filtering, TTL, correlation tracking
 
 - [ ] **Dynamic Trailing Stops** (#321)
   - Advanced stop-loss algorithms
@@ -157,6 +159,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### Live Validation Results
 
 **Paper Trading**:
+
 - Successfully placed 7 shares SPY @ $660 with bracket orders
 - Risk Management: 5% stop loss / 8% take profit confirmed operational
 - Fill Monitoring: Real-time order status tracking working
@@ -169,6 +172,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### Critical Path (Must Complete for Production)
 
 **#308 - CLI Human-in-Loop Interface** (P0 - ✅ COMPLETE)
+
 - **Scope**: User-initiated conversational trade assistant
 - **Features**: Natural language input, real VoterAgent analysis, entry/stop/target suggestions, GTC orders
 - **Why Critical**: Core design principle is human oversight
@@ -192,6 +196,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Completed**: November 8, 2025
 
 **#333 - Portfolio Manager Agent** (P1 - NEW)
+
 - **Scope**: Risk management, position sizing, portfolio allocation checks
 - **Features**: Buying power checks, portfolio % limits, risk-based sizing, existing position handling
 - **Why Important**: Safe trading requires intelligent portfolio management
@@ -202,6 +207,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### High Priority (Multi-Agent System)
 
 **#310 - Complete Remaining AutoGen Agents**
+
 - **Why Critical**: Multi-agent coordination needed for scale
 - **Blocker For**: Full system deployment
 - **Components**: Scanner, Risk, Executor, Orchestrator
@@ -209,6 +215,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Status**: Placeholders exist
 
 **#331 - Multi-Agent Coordination & Debate System** (P2 - NEW)
+
 - **Scope**: Agent collaboration patterns (sequential, group chat, voting)
 - **Features**: Multi-agent analysis, consensus building, dissenting opinions
 - **Why Important**: Enables sophisticated multi-perspective analysis
@@ -216,14 +223,17 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Target**: Q1-Q2 2026
 - **Status**: Exploration phase, needs design discussion
 
-**#316 - Event Bus for Agent Communication**
-- **Why Important**: Scalable agent coordination infrastructure
-- **Integrates With**: #331 (multi-agent), #333 (portfolio events)
-- **Target**: Q1 2026
+**#390 - Agent Factory & Event Bus** ✅ COMPLETE (Nov 2025)
+
+- **Scope**: Centralized agent creation and pub-sub messaging infrastructure
+- **Delivered**: AgentFactory singleton, AgentBus pub-sub, 16 EventTypes
+- **Features**: Symbol filtering, TTL, correlation IDs, async wait_for_result()
+- **Supersedes**: #316 (closed)
 
 ### Medium Priority (Feature Enhancements)
 
 **#330 - Options Analysis Support** (P2 - NEW)
+
 - **Scope**: Options contracts analysis (Greeks, IV, OI)
 - **Features**: Call/put analysis, unusual activity detection, liquidity checks
 - **Why Useful**: Expands trading beyond commons
@@ -232,11 +242,13 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Status**: Data access validation needed (Alpaca options API)
 
 **#321 - Dynamic Trailing Stop Logic**
+
 - **Why Important**: Enhanced profit protection
 - **Integrates With**: #308 (order lifecycle), #333 (risk management)
 - **Target**: Q1 2026
 
 **#332 - Autonomy Levels Expansion** (P2 - NEW)
+
 - **Scope**: Expand beyond basic confirm/auto to conditional execution
 - **Features**: Per-ticker whitelists, conditional auto-execute, risk-based autonomy
 - **Why Useful**: Power users can delegate routine decisions
@@ -245,6 +257,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Status**: Design phase
 
 **#324 - Forward Testing Protocol**
+
 - **Why Useful**: Statistical validation before live trading
 - **Depends On**: #308 (needs human-in-loop CLI complete)
 - **Target**: Q2 2026
@@ -252,6 +265,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### Low Priority (Optimization)
 
 **#328 - JSON→YAML Token Optimization**
+
 - **Why Useful**: Cost reduction for LLM agents
 - **Depends On**: LLM-based agents active (#331)
 - **Target**: Q2 2026
@@ -259,6 +273,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### Completed
 
 **#327 - ✅ Make main.py Functional (COMPLETED Oct 2025)**
+
 - Fixed all import errors
 - Validated Alpaca integration
 - All 4 commands working
@@ -270,21 +285,25 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### What Works (Keep These)
 
 **1. Pure Math Over LLM Sentiment**
+
 - MACD+RSI voting: 0.856 Sharpe (validated)
 - LLM sentiment: ~60% accuracy (deprecated)
 - **Decision**: VoterAgent uses pure calculations, no LLM
 
 **2. Human-in-Loop Design**
+
 - System assists, humans decide
 - Not autonomous AI trading
 - **Decision**: Mandatory human approval for trades
 
 **3. Cost-Efficient Architecture**
+
 - GTC orders reduce API calls 90%
 - Broker-as-truth prevents state drift
 - **Decision**: Batch operations, minimize API usage
 
 **4. Dual Model Configuration**
+
 - gpt-4o-mini for tool calling (cheap, fast)
 - o3-mini for reasoning (better analysis)
 - **Decision**: Available for future agents (not used by VoterAgent)
@@ -292,16 +311,19 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### What Doesn't Work (Avoid These)
 
 **1. LLM Sentiment Analysis**
+
 - Extensively tested in V0-V4 framework
 - Performance inferior to pure math
 - **Decision**: Deprecated, archived for reference
 
 **2. Reactive Trading Systems**
+
 - 100+ API calls/day
 - Expensive, rate-limited
 - **Decision**: Proactive batching with GTC orders
 
 **3. Complex Multi-Indicator Ensembles**
+
 - Diminishing returns beyond MACD+RSI
 - Over-optimization risk
 - **Decision**: Keep it simple, validated
@@ -328,6 +350,7 @@ python main.py test-voter
 ### Development Areas (Prioritized)
 
 **Immediate Impact** (Start Here):
+
 1. Human-in-loop CLI (#308) - Core feature missing
 2. RiskAgent implementation (#310) - Critical for safety
 3. Dynamic stops (#321) - Profit protection
@@ -378,6 +401,7 @@ python main.py test-voter
 ### From V0-V4 Research (Deprecated Sentiment System)
 
 **What We Tested**:
+
 - V0: Baseline MACD → 9.00% return
 - V1: News sentiment → 9.61% return (marginal improvement)
 - V2: VXX volatility → -3.53% return (contrarian failure)
@@ -385,12 +409,14 @@ python main.py test-voter
 - V4: LLM reasoning → Variable (unreliable)
 
 **What We Learned**:
+
 - LLM sentiment adds complexity without consistent value
 - Pure technical indicators (MACD+RSI) are more reliable
 - Simple validated strategies > complex unproven ones
 - Human oversight > autonomous AI trading
 
 **Current Approach**:
+
 - VoterAgent: Pure MACD+RSI → 0.856 Sharpe (proven)
 - Human-in-loop: Humans make final decisions
 - Cost-efficient: 90% fewer API calls
@@ -399,9 +425,33 @@ python main.py test-voter
 
 ## Recent Milestones
 
-### November 2025 - Documentation & Issue Organization
+### November 2025 - Weekend Order Fix & Code Quality Improvements
 
-**Documentation Restructure**:
+**Weekend Trading Enhancements** (branch: `feature/weekend-order-fix`):
+
+- ✅ Fixed off-hours bracket order validation failures
+- ✅ Platform-aware emoji handling (Windows compatibility)
+- ✅ Enhanced error detection using Alpaca API error codes (#377, #382)
+- ✅ Extracted market hours configuration to YAML (#374, #379)
+- ✅ Centralized user-facing messages to templates (#375, #380)
+- ✅ Improved fallback handling for off-hours trading
+
+**Configuration Improvements**:
+
+- Created `market_hours.yaml` with NYSE 2025 holiday calendar
+- Created `cli_messages.yaml` with 50+ message templates
+- Integrated `MessageLoader` for centralized message management
+- Platform-aware `safe_print()` utility for cross-platform symbols
+
+**Code Quality**:
+
+- Error code-based validation (3-level detection: HTTP 422, Alpaca 4221xxxx, message patterns)
+- Backward-compatible YAML configuration loading
+- Message template system with fallback strings
+- 4 commits, 6 issues resolved (#374, #375, #377, #379, #380, #382)
+
+**Documentation & Issue Organization**:
+
 - Consolidated 7 folders into 4 organized sections
 - Added numerical sequencing (01-06 files)
 - Created 5 new consolidated documents
@@ -410,6 +460,7 @@ python main.py test-voter
 - Updated cross-references and navigation
 
 **GitHub Issue Cleanup**:
+
 - Closed 20 obsolete/completed issues (42 → 23 open)
 - Created 4 new Phase 2 issues (#330, #331, #332, #333)
 - Updated all key issues with dependency relationships
@@ -438,6 +489,7 @@ python main.py test-voter
 ### Immediate (Next 2-4 Weeks) - P0 CRITICAL
 
 **#308 - CLI Human-in-Loop MVP**:
+
 1. Implement interactive CLI session (REPL loop)
 2. Build natural language parser (gpt-4o-mini)
 3. Integrate VoterAgent for MACD+RSI analysis
@@ -452,34 +504,41 @@ python main.py test-voter
 ### Short Term (Q1 2026)
 
 **#333 - Portfolio Manager Agent**:
+
 1. Design risk management and position sizing system
 2. Implement buying power and portfolio % checks
 3. Build configuration system (portfolio.yaml)
 4. Add existing position conflict detection
 
-**#316 - Event Bus**:
-1. Design decoupled agent communication architecture
-2. Implement message queue and routing
-3. Integrate with #308 CLI for agent events
+**#390 - Agent Factory & Event Bus** ✅ COMPLETE:
+
+1. ✅ AgentFactory singleton with creator registration
+2. ✅ AgentBus pub-sub with symbol filtering
+3. ✅ 42 unit tests passing
+4. ✅ Orchestrator refactored to use factory/bus
 
 **#321 - Dynamic Trailing Stops**:
+
 1. Design stop adjustment algorithms
 2. Integrate with order lifecycle management
 
 ### Medium Term (Q1-Q2 2026)
 
 **#310 - Complete Remaining Agents**:
+
 1. Implement RiskAgent (position sizing, stop-loss)
 2. Implement ScannerAgent (opportunity identification)
 3. Implement ExecutorAgent (order coordination)
 4. Build TradingOrchestrator (workflow management)
 
 **#330 - Options Analysis** (after #308 commons stable):
+
 1. Validate Alpaca options data access
 2. Build options-specific analysis (Greeks, IV, OI)
 3. Extend CLI to accept options requests
 
 **#331 - Multi-Agent Coordination** (after #310 complete):
+
 1. Design coordination pattern (sequential vs group chat vs voting)
 2. Implement agent debate/consensus system
 3. Test multi-agent workflow with paper trading
@@ -487,12 +546,14 @@ python main.py test-voter
 ### Long Term (Q2 2026+)
 
 **Live Trading Deployment** (after #308 + #324 complete):
+
 1. Complete forward testing protocol (#324)
 2. Configure production credentials
 3. Set up monitoring dashboard
 4. Deploy with initial capital allocation
 
 **#332 - Autonomy Expansion** (after #308 L0/L1 stable):
+
 1. Implement conditional auto-execute
 2. Add per-ticker whitelists
 3. Build rule-based autonomy system

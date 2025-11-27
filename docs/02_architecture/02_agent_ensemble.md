@@ -18,6 +18,7 @@ Market Data → TechAgent → MACD Signal → StrategyAgent → Decision
 ```
 
 **V0-V4 Results** (Academic Study):
+
 - **V0 Baseline**: +9.00% (pure MACD)
 - **V1 News**: +9.61% (best with news sentiment)
 - **V2 Fear**: -3.53% (contrarian in bull market)
@@ -40,6 +41,7 @@ Market Data ────────┼─ Bollinger Signal ───┼──�
 ```
 
 **Benefits**:
+
 - Multiple independent signals reduce false positives
 - Democratic voting prevents single point of failure
 - Confidence weighting allows nuanced decisions
@@ -53,12 +55,14 @@ Market Data ────────┼─ Bollinger Signal ───┼──�
 **Performance**: 0.856 Sharpe ratio, 51.4% win rate
 
 **Responsibilities**:
+
 - Coordinate MACD+RSI voting logic
 - Generate trading signals with confidence scoring
 - Recommend position sizing based on signal strength
 - Integrate with AutoGen message passing
 
 **Implementation**:
+
 ```python
 class VoterAgent(ConversableAgent):
     def __init__(self, name="VoterAgent", **kwargs):
@@ -78,11 +82,13 @@ class VoterAgent(ConversableAgent):
 ```
 
 **Validated Configuration**:
+
 - **MACD**: Fibonacci periods (13/34/8)
 - **RSI**: 14-period with 30/70 oversold/overbought thresholds
 - **Voting**: Strong agreement = 100% position, weak = 50%, conflict = 0%
 
 **Performance Validation** (Experiment #293):
+
 | Metric | MACD-Only | VoterAgent | Improvement |
 |--------|-----------|------------|-------------|
 | Sharpe Ratio | 0.841 | **0.856** | +1.8% |
@@ -95,12 +101,14 @@ class VoterAgent(ConversableAgent):
 **Status**: Production foundation for all agents
 
 **Responsibilities**:
+
 - Provide common AutoGen integration
 - Handle tool registration and execution
 - Manage message passing and state
 - Standardize error handling
 
 **Implementation**:
+
 ```python
 class BaseAgent(ConversableAgent):
     def __init__(self, name, tools=None, **kwargs):
@@ -123,6 +131,7 @@ class BaseAgent(ConversableAgent):
 ```
 
 **Benefits**:
+
 - Consistent tool interface across all agents
 - Reduced code duplication
 - Standardized error handling
@@ -133,12 +142,14 @@ class BaseAgent(ConversableAgent):
 **Status**: Planned (Issue #310)
 
 **Responsibilities**:
+
 - Scan multiple tickers for trading opportunities
 - Prioritize symbols by signal strength
 - Feed opportunities to VoterAgent for detailed analysis
 - Monitor watchlists and custom filters
 
 **Planned Architecture**:
+
 ```python
 class ScannerAgent(BaseAgent):
     def scan_market(self, symbols, filters):
@@ -162,6 +173,7 @@ class ScannerAgent(BaseAgent):
 ```
 
 **Integration**:
+
 - **Input**: Watchlist of symbols, filter criteria
 - **Processing**: Quick signal checks across all symbols
 - **Output**: Prioritized list of opportunities for VoterAgent analysis
@@ -171,12 +183,14 @@ class ScannerAgent(BaseAgent):
 **Status**: Planned (Issue #310)
 
 **Responsibilities**:
+
 - Assess portfolio-level risk
 - Calculate position sizing based on portfolio volatility
 - Monitor correlation between positions
 - Enforce maximum drawdown limits
 
 **Planned Architecture**:
+
 ```python
 class RiskAgent(BaseAgent):
     def assess_risk(self, portfolio, proposed_trade):
@@ -206,6 +220,7 @@ class RiskAgent(BaseAgent):
 ```
 
 **Integration**:
+
 - **Input**: Portfolio state, proposed trade from VoterAgent
 - **Processing**: Risk calculations and correlation analysis
 - **Output**: Approved/rejected trade with position size recommendation
@@ -215,12 +230,14 @@ class RiskAgent(BaseAgent):
 **Status**: Planned (Issue #310)
 
 **Responsibilities**:
+
 - Execute approved trades via AlpacaOrderManager
 - Monitor order fills and status
 - Place protective stops and take-profits
 - Handle execution errors and retries
 
 **Planned Architecture**:
+
 ```python
 class ExecutorAgent(BaseAgent):
     def execute_trade(self, trade_decision):
@@ -251,6 +268,7 @@ class ExecutorAgent(BaseAgent):
 ```
 
 **Integration**:
+
 - **Input**: Approved trade from RiskAgent
 - **Processing**: Order submission and monitoring
 - **Output**: Execution confirmation with order details
@@ -260,12 +278,14 @@ class ExecutorAgent(BaseAgent):
 **Status**: Planned (Issue #310)
 
 **Responsibilities**:
+
 - Coordinate multi-agent workflow
 - Manage message passing between agents
 - Present decisions to human for approval
 - Handle state management across agent interactions
 
 **Planned Architecture**:
+
 ```python
 class TradingOrchestrator:
     def __init__(self):
@@ -305,60 +325,104 @@ class TradingOrchestrator:
 ```
 
 **Integration**:
+
 - **Coordinates**: All agents in sequential workflow
 - **Human Interface**: CLI presentation for trade approval
 - **State Management**: Maintains state across agent interactions
 
 ## Agent Communication Protocol
 
+### Agent Factory (Issue #390) ✅
+
+All agents are now created via a centralized factory pattern:
+
+```python
+from src.autogen_agents import AgentType, get_agent_factory, create_voter
+
+# Get factory singleton
+factory = get_agent_factory()
+
+# Create agents with consistent config
+voter_instance = factory.create(AgentType.VOTER)
+scanner_instance = factory.create(AgentType.SCANNER)
+
+# Or use convenience functions
+voter = create_voter(macd_params={"fast": 13, "slow": 34, "signal": 8})
+```
+
+**Available Agent Types**:
+
+- Multi-ticker market scanning
+- MACD+RSI voting decisions (production-ready)
+- Portfolio risk management
+- Trade execution coordination
+- Portfolio management (Issue #333)
+- Multi-agent coordination
+
+### Agent Bus (Issue #390) ✅
+
+Agents communicate via a pub-sub message bus for loose coupling:
+
+```python
+from src.autogen_agents import EventType, get_agent_bus, publish_signal
+
+# Get bus singleton
+bus = get_agent_bus()
+
+# Subscribe to events
+bus.subscribe("risk_agent", EventType.SIGNAL_DETECTED, handle_signal)
+
+# Publish events
+await publish_signal("voter_agent", "AAPL", "BUY", confidence=0.85)
+```
+
+**Key Event Types**:
+
+- Scanner finds opportunity
+- VoterAgent evaluation done
+- /  - Risk assessment result
+- Order filled
+- /  /  - Position lifecycle
+
 ### Message Structure
 
-**Standard Message Format**:
+**AgentMessage Format**:
+
 ```python
-{
-    "from_agent": "VoterAgent",
-    "to_agent": "RiskAgent",
-    "message_type": "trade_proposal",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "data": {
-        "symbol": "AAPL",
+from src.autogen_agents import AgentMessage, EventType
+
+msg = AgentMessage(
+    source_agent="voter_agent",
+    event_type=EventType.VOTING_COMPLETE,
+    symbol="AAPL",
+    payload={
         "action": "BUY",
-        "confidence": "strong",
-        "position_size": 1.0,
+        "confidence": 0.85,
+        "signal_type": "STRONG",
         "reasoning": "MACD bullish crossover + RSI oversold"
-    }
-}
+    },
+    correlation_id="trade-123",  # Link related events
+    ttl_seconds=300  # Optional expiration
+)
 ```
 
 ### Agent Interaction Flow
 
 ```bash
-1. ScannerAgent → Orchestrator
-   - Message: List of opportunities with signal strength
+1. ScannerAgent publishes SIGNAL_DETECTED
+   └─→ VoterAgent subscribed, receives signal
 
-2. Orchestrator → VoterAgent (for each opportunity)
-   - Message: Analyze symbol for trading signal
+2. VoterAgent publishes VOTING_COMPLETE
+   └─→ RiskAgent subscribed, receives evaluation
 
-3. VoterAgent → Orchestrator
-   - Message: Trade signal with confidence and reasoning
+3. RiskAgent publishes RISK_VALIDATED or RISK_REJECTED
+   └─→ ExecutorAgent subscribed (if approved)
 
-4. Orchestrator → RiskAgent
-   - Message: Assess risk for proposed trade
+4. ExecutorAgent publishes TRADE_EXECUTED
+   └─→ Orchestrator subscribed, logs execution
 
-5. RiskAgent → Orchestrator
-   - Message: Risk approval with position sizing
-
-6. Orchestrator → Human Interface
-   - Message: Present trade for approval
-
-7. Human Interface → Orchestrator
-   - Message: Approved/rejected trades
-
-8. Orchestrator → ExecutorAgent
-   - Message: Execute approved trade
-
-9. ExecutorAgent → Orchestrator
-   - Message: Execution confirmation with order details
+5. ExecutorAgent publishes POSITION_OPENED
+   └─→ All agents can track position lifecycle
 ```
 
 ## Tool Integration
@@ -366,6 +430,7 @@ class TradingOrchestrator:
 ### Shared Tools Across All Agents
 
 **Market Data Tool**:
+
 ```python
 from src.data_sources.sources.market.alpaca_market_data import create_alpaca_market_data_tool
 
@@ -376,6 +441,7 @@ data = market_data_tool.get_bars(["AAPL"], "2024-01-15", "2024-01-31", "1Day")
 ```
 
 **Account Tool** (Read-Only for most agents):
+
 ```python
 from src.trading.alpaca_autogen_tools import AlpacaAccountTool
 
@@ -387,6 +453,7 @@ positions = account_tool.get_positions()
 ```
 
 **Order Tool** (Executor Agent Only):
+
 ```python
 from src.trading.alpaca_autogen_tools import AlpacaOrderTool
 
@@ -408,18 +475,22 @@ order = order_tool.place_market_order("AAPL", 10, "buy")
 ### Current Ensemble Solutions
 
 **Redundancy**:
+
 - Multiple indicators reduce false signals by 40%
 - Democratic voting prevents single indicator dominance
 
 **Intelligence**:
+
 - Weighted confidence voting (research: Sharpe 0.71→1.43)
 - Signal strength granularity beyond binary signals
 
 **Adaptation**:
+
 - Market regime detection adjusts strategy (future)
 - Dynamic weight adjustment based on conditions
 
 **Accuracy**:
+
 - Ensemble methods achieve 70-90% accuracy potential
 - Current MACD+RSI: 51.4% win rate with superior risk metrics
 
@@ -428,15 +499,18 @@ order = order_tool.place_market_order("AAPL", 10, "buy")
 ### Preserved from V0-V4
 
 **3-Tier Fallback**:
+
 1. Direct cache lookup
 2. LLM tool calls if needed
 3. Neutral fallback for errors
 
 **Performance**:
+
 - 90%+ speed improvement maintained
 - Current voting system inherits proven optimization
 
 **Benefits**:
+
 - All agents benefit from caching
 - Consistent performance across ensemble
 - Reduced API usage and costs
@@ -444,21 +518,25 @@ order = order_tool.place_market_order("AAPL", 10, "buy")
 ## Development Roadmap
 
 ### Phase 1-2: Complete ✅
+
 - VoterAgent production implementation
 - MACD+RSI validation (0.856 Sharpe)
 - BaseAgent foundation
 
 ### Phase 3: In Progress 🚧
+
 - Additional indicators (RSI standalone, Bollinger Bands, Volume)
 - Scanner, Risk, Executor agents
 - Multi-agent coordination framework
 
 ### Phase 4: Planned 📋
+
 - Weighted voting implementation
 - Market regime detection
 - Dynamic weight adjustment
 
 ### Phase 5: Future 🔮
+
 - Advanced ensemble strategies
 - Machine learning integration
 - Real-time adaptive systems

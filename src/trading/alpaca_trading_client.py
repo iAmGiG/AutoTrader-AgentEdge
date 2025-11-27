@@ -8,21 +8,29 @@ Phase 1: Read-only operations (account status, positions, orders)
 Phase 2: Write operations (order placement, modification, cancellation)
 """
 
-from datetime import datetime, time as dt_time  # TODO date utils
-from typing import Dict, List, Any, Optional
 import logging
+from datetime import time as dt_time
+from typing import Any, Dict, List, Optional
+
 import pytz
 
-from src.utils.date_utils import get_default_timezone
+from src.utils.date_utils import get_datetime_now, get_default_timezone
 
 try:
     from alpaca.trading.client import TradingClient
+    from alpaca.trading.enums import OrderClass, OrderSide, OrderType, QueryOrderStatus, TimeInForce
     from alpaca.trading.requests import (
-        GetOrdersRequest, MarketOrderRequest, LimitOrderRequest,
-        StopOrderRequest, StopLimitOrderRequest, TrailingStopOrderRequest,
-        ClosePositionRequest, TakeProfitRequest, StopLossRequest
+        ClosePositionRequest,
+        GetOrdersRequest,
+        LimitOrderRequest,
+        MarketOrderRequest,
+        StopLimitOrderRequest,
+        StopLossRequest,
+        StopOrderRequest,
+        TakeProfitRequest,
+        TrailingStopOrderRequest,
     )
-    from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus, OrderClass
+
     ALPACA_TRADING_AVAILABLE = True
 except ImportError:
     TradingClient = None
@@ -89,13 +97,13 @@ class AlpacaTradingClient:
         # Use different credentials based on mode
         config = ConfigLoader()
         if mode == "paper":
-            api_key = config.get('ALPACA_PAPER_API_KEY')
-            secret = config.get('ALPACA_PAPER_SECRET')
+            api_key = config.get("ALPACA_PAPER_API_KEY")
+            secret = config.get("ALPACA_PAPER_SECRET")
             self.base_url = "https://paper-api.alpaca.markets"
         else:
             # For live trading - these keys would need to be added to config
-            api_key = config.get('ALPACA_LIVE_API_KEY')
-            secret = config.get('ALPACA_LIVE_SECRET')
+            api_key = config.get("ALPACA_LIVE_API_KEY")
+            secret = config.get("ALPACA_LIVE_SECRET")
             self.base_url = "https://api.alpaca.markets"
 
         if not api_key or not secret:
@@ -106,9 +114,7 @@ class AlpacaTradingClient:
 
         # Initialize the official SDK client
         self.trading_client = TradingClient(
-            api_key=api_key,
-            secret_key=secret,
-            paper=(mode == "paper")
+            api_key=api_key, secret_key=secret, paper=(mode == "paper")
         )
 
         # Log the mode prominently for safety
@@ -186,19 +192,23 @@ class AlpacaAccountMonitor:
             account = self.client.trading_client.get_account()
 
             return {
-                'mode': self.client.mode,  # Always show which mode we're in
-                'buying_power': float(account.buying_power) if account.buying_power else 0.0,
-                'cash': float(account.cash) if account.cash else 0.0,
-                'portfolio_value': float(account.portfolio_value) if account.portfolio_value else 0.0,
-                'pattern_day_trader': account.pattern_day_trader,
-                'trading_blocked': account.trading_blocked,
-                'account_blocked': account.account_blocked,
-                'account_number': str(account.account_number),
-                'status': str(account.status),
-                'crypto_status': str(account.crypto_status) if hasattr(account, 'crypto_status') else 'N/A',
-                'multiplier': str(account.multiplier) if hasattr(account, 'multiplier') else 'N/A',
-                'equity': float(account.equity) if account.equity else 0.0,
-                'last_equity': float(account.last_equity) if account.last_equity else 0.0
+                "mode": self.client.mode,  # Always show which mode we're in
+                "buying_power": float(account.buying_power) if account.buying_power else 0.0,
+                "cash": float(account.cash) if account.cash else 0.0,
+                "portfolio_value": (
+                    float(account.portfolio_value) if account.portfolio_value else 0.0
+                ),
+                "pattern_day_trader": account.pattern_day_trader,
+                "trading_blocked": account.trading_blocked,
+                "account_blocked": account.account_blocked,
+                "account_number": str(account.account_number),
+                "status": str(account.status),
+                "crypto_status": (
+                    str(account.crypto_status) if hasattr(account, "crypto_status") else "N/A"
+                ),
+                "multiplier": str(account.multiplier) if hasattr(account, "multiplier") else "N/A",
+                "equity": float(account.equity) if account.equity else 0.0,
+                "last_equity": float(account.last_equity) if account.last_equity else 0.0,
             }
 
         except Exception as e:
@@ -228,27 +238,27 @@ class AlpacaAccountMonitor:
         try:
             positions = self.client.trading_client.get_all_positions()
 
-            return [{
-                'symbol': pos.symbol,
-                'qty': float(pos.qty) if pos.qty else 0.0,
-                'side': str(pos.side),
-                'avg_entry_price': float(pos.avg_entry_price) if pos.avg_entry_price else 0.0,
-                'market_value': float(pos.market_value) if pos.market_value else 0.0,
-                'unrealized_pl': float(pos.unrealized_pl) if pos.unrealized_pl else 0.0,
-                'unrealized_plpc': float(pos.unrealized_plpc) if pos.unrealized_plpc else 0.0,
-                'cost_basis': float(pos.cost_basis) if pos.cost_basis else 0.0,
-                'change_today': float(pos.change_today) if pos.change_today else 0.0
-            } for pos in positions]
+            return [
+                {
+                    "symbol": pos.symbol,
+                    "qty": float(pos.qty) if pos.qty else 0.0,
+                    "side": str(pos.side),
+                    "avg_entry_price": float(pos.avg_entry_price) if pos.avg_entry_price else 0.0,
+                    "market_value": float(pos.market_value) if pos.market_value else 0.0,
+                    "unrealized_pl": float(pos.unrealized_pl) if pos.unrealized_pl else 0.0,
+                    "unrealized_plpc": float(pos.unrealized_plpc) if pos.unrealized_plpc else 0.0,
+                    "cost_basis": float(pos.cost_basis) if pos.cost_basis else 0.0,
+                    "change_today": float(pos.change_today) if pos.change_today else 0.0,
+                }
+                for pos in positions
+            ]
 
         except Exception as e:
             logger.error(f"Failed to get positions: {e}")
             raise
 
     def get_orders(
-        self,
-        status: str = 'open',
-        limit: int = 100,
-        symbols: Optional[List[str]] = None
+        self, status: str = "open", limit: int = 100, symbols: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         Get orders filtered by status.
@@ -265,7 +275,7 @@ class AlpacaAccountMonitor:
             [
                 {
                     'id': 'order-123',
-                    'symbol': 'AAPL', 
+                    'symbol': 'AAPL',
                     'side': 'buy',
                     'qty': 10,
                     'status': 'filled',
@@ -278,21 +288,18 @@ class AlpacaAccountMonitor:
         try:
             # Create request with filters
             # IMPORTANT: nested=True includes bracket order legs (stop-loss, take-profit)
-            if status == 'all':
+            if status == "all":
                 request = GetOrdersRequest(limit=limit, symbols=symbols, nested=True)
             else:
                 # Map status string to enum
                 status_enum = None
-                if status == 'open':
+                if status == "open":
                     status_enum = QueryOrderStatus.OPEN
-                elif status == 'closed':
+                elif status == "closed":
                     status_enum = QueryOrderStatus.CLOSED
 
                 request = GetOrdersRequest(
-                    status=status_enum,
-                    limit=limit,
-                    symbols=symbols,
-                    nested=True
+                    status=status_enum, limit=limit, symbols=symbols, nested=True
                 )
 
             orders = self.client.trading_client.get_orders(filter=request)
@@ -304,40 +311,57 @@ class AlpacaAccountMonitor:
 
             for order in orders:
                 order_dict = {
-                    'id': str(order.id),
-                    'symbol': order.symbol,
-                    'side': str(order.side),
-                    'qty': float(order.qty) if order.qty else 0.0,
-                    'filled_qty': float(order.filled_qty) if order.filled_qty else 0.0,
-                    'status': str(order.status),
-                    'order_type': str(order.order_type),
-                    'time_in_force': str(order.time_in_force),
-                    'limit_price': float(order.limit_price) if order.limit_price else None,
-                    'stop_price': float(order.stop_price) if order.stop_price else None,
-                    'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                    'filled_at': order.filled_at.isoformat() if order.filled_at else None,
-                    'canceled_at': order.canceled_at.isoformat() if order.canceled_at else None,
-                    'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else None,
-                    'order_class': str(order.order_class) if hasattr(order, 'order_class') else None,
-                    'legs': []  # Will be populated in second pass
+                    "id": str(order.id),
+                    "symbol": order.symbol,
+                    "side": order.side.value if hasattr(order.side, "value") else str(order.side),
+                    "qty": float(order.qty) if order.qty else 0.0,
+                    "filled_qty": float(order.filled_qty) if order.filled_qty else 0.0,
+                    "status": (
+                        order.status.value if hasattr(order.status, "value") else str(order.status)
+                    ),
+                    "order_type": (
+                        order.order_type.value
+                        if hasattr(order.order_type, "value")
+                        else str(order.order_type)
+                    ),
+                    "time_in_force": (
+                        order.time_in_force.value
+                        if hasattr(order.time_in_force, "value")
+                        else str(order.time_in_force)
+                    ),
+                    "limit_price": float(order.limit_price) if order.limit_price else None,
+                    "stop_price": float(order.stop_price) if order.stop_price else None,
+                    "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                    "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+                    "canceled_at": order.canceled_at.isoformat() if order.canceled_at else None,
+                    "filled_avg_price": (
+                        float(order.filled_avg_price) if order.filled_avg_price else None
+                    ),
+                    "order_class": (
+                        order.order_class.value
+                        if hasattr(order, "order_class") and hasattr(order.order_class, "value")
+                        else (str(order.order_class) if hasattr(order, "order_class") else None)
+                    ),
+                    "legs": [],  # Will be populated in second pass
                 }
 
                 # Track leg IDs from bracket orders
-                if hasattr(order, 'legs') and order.legs:
+                if hasattr(order, "legs") and order.legs:
                     # order.legs is a list of UUIDs for the leg orders
                     for leg_id in order.legs:
                         leg_id_str = str(leg_id)
                         leg_ids.add(leg_id_str)
                         parent_map[leg_id_str] = str(order.id)
                     logger.info(
-                        f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}")
+                        f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}"
+                    )
 
                 result.append(order_dict)
 
             # Second pass: match leg orders to their parents
             legs_found = 0
             for order_dict in result:
-                order_id = order_dict['id']
+                order_id = order_dict["id"]
 
                 # If this order is a leg of another order
                 if order_id in leg_ids:
@@ -345,8 +369,8 @@ class AlpacaAccountMonitor:
                     if parent_id:
                         # Find parent and add this as a leg
                         for parent_order in result:
-                            if parent_order['id'] == parent_id:
-                                parent_order['legs'].append(order_dict)
+                            if parent_order["id"] == parent_id:
+                                parent_order["legs"].append(order_dict)
                                 legs_found += 1
                                 logger.info(f"Matched leg {order_id} to parent {parent_id}")
                                 break
@@ -354,41 +378,55 @@ class AlpacaAccountMonitor:
             # Third pass: For bracket orders with empty legs, try fetching by ID to get held orders
             # Alpaca's get_orders() doesn't return "held" orders, but get_order_by_id() might
             for order_dict in result:
-                if order_dict.get('order_class') == 'OrderClass.BRACKET' and not order_dict.get('legs'):
+                if order_dict.get("order_class") == "OrderClass.BRACKET" and not order_dict.get(
+                    "legs"
+                ):
                     try:
                         # Fetch this specific order by ID to see if it includes held legs
-                        full_order = self.client.trading_client.get_order_by_id(order_dict['id'])
+                        full_order = self.client.trading_client.get_order_by_id(order_dict["id"])
 
-                        if hasattr(full_order, 'legs') and full_order.legs:
+                        if hasattr(full_order, "legs") and full_order.legs:
                             logger.info(
-                                f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id")
+                                f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id"
+                            )
 
                             # Fetch each leg order individually
                             for leg_id in full_order.legs:
                                 try:
                                     leg_order = self.client.trading_client.get_order_by_id(
-                                        str(leg_id))
+                                        str(leg_id)
+                                    )
                                     leg_dict = {
-                                        'id': str(leg_order.id),
-                                        'symbol': leg_order.symbol,
-                                        'side': str(leg_order.side),
-                                        'qty': float(leg_order.qty) if leg_order.qty else 0.0,
-                                        'status': str(leg_order.status),
-                                        'order_type': str(leg_order.order_type),
-                                        'time_in_force': str(leg_order.time_in_force),
-                                        'limit_price': float(leg_order.limit_price) if leg_order.limit_price else None,
-                                        'stop_price': float(leg_order.stop_price) if leg_order.stop_price else None
+                                        "id": str(leg_order.id),
+                                        "symbol": leg_order.symbol,
+                                        "side": str(leg_order.side),
+                                        "qty": float(leg_order.qty) if leg_order.qty else 0.0,
+                                        "status": str(leg_order.status),
+                                        "order_type": str(leg_order.order_type),
+                                        "time_in_force": str(leg_order.time_in_force),
+                                        "limit_price": (
+                                            float(leg_order.limit_price)
+                                            if leg_order.limit_price
+                                            else None
+                                        ),
+                                        "stop_price": (
+                                            float(leg_order.stop_price)
+                                            if leg_order.stop_price
+                                            else None
+                                        ),
                                     }
-                                    order_dict['legs'].append(leg_dict)
+                                    order_dict["legs"].append(leg_dict)
                                     legs_found += 1
                                     logger.info(
-                                        f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}")
+                                        f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}"
+                                    )
                                 except Exception as e:
                                     # Don't spam users with leg fetch errors (common for bracket orders)
                                     logger.debug(f"  Failed to fetch leg {leg_id}: {e}")
                     except Exception as e:
                         logger.warning(
-                            f"Failed to fetch bracket order {order_dict['id']} by ID: {e}")
+                            f"Failed to fetch bracket order {order_dict['id']} by ID: {e}"
+                        )
 
             logger.info(f"Processed {len(result)} orders, found {legs_found} bracket legs")
 
@@ -408,25 +446,29 @@ class AlpacaAccountMonitor:
         try:
             account_status = self.get_account_status()
             positions = self.get_positions()
-            open_orders = self.get_orders(status='open')
+            open_orders = self.get_orders(status="open")
 
             # Calculate portfolio metrics
-            total_unrealized_pl = float(sum(pos['unrealized_pl'] for pos in positions))
-            total_positions_value = float(sum(pos['market_value'] for pos in positions))
+            total_unrealized_pl = float(sum(pos["unrealized_pl"] for pos in positions))
+            total_positions_value = float(sum(pos["market_value"] for pos in positions))
             position_count = len(positions)
             open_order_count = len(open_orders)
 
             return {
-                'account': account_status,
-                'portfolio_metrics': {
-                    'position_count': position_count,
-                    'open_order_count': open_order_count,
-                    'total_unrealized_pl': total_unrealized_pl,
-                    'total_positions_value': total_positions_value,
-                    'cash_utilization': (total_positions_value / account_status['portfolio_value']) * 100 if account_status['portfolio_value'] > 0 else 0
+                "account": account_status,
+                "portfolio_metrics": {
+                    "position_count": position_count,
+                    "open_order_count": open_order_count,
+                    "total_unrealized_pl": total_unrealized_pl,
+                    "total_positions_value": total_positions_value,
+                    "cash_utilization": (
+                        (total_positions_value / account_status["portfolio_value"]) * 100
+                        if account_status["portfolio_value"] > 0
+                        else 0
+                    ),
                 },
-                'positions': positions,
-                'open_orders': open_orders
+                "positions": positions,
+                "open_orders": open_orders,
             }
 
         except Exception as e:
@@ -500,19 +542,15 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
         # Risk limits for order validation
         self.risk_limits = risk_limits or {
-            'max_position_percent': 0.10,  # 10% max position size
-            'max_daily_trades': 50,        # Max trades per day
-            'max_order_size': 1000         # Max shares per order
+            "max_position_percent": 0.10,  # 10% max position size
+            "max_daily_trades": 50,  # Max trades per day
+            "max_order_size": 1000,  # Max shares per order
         }
 
         logger.info(f"Order manager initialized for {mode} trading with safety rails")
 
     def _validate_order(
-        self,
-        symbol: str,
-        qty: int,
-        side: str,
-        price: Optional[float] = None
+        self, symbol: str, qty: int, side: str, price: Optional[float] = None
     ) -> bool:
         """
         Validate order parameters before submission.
@@ -536,33 +574,31 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         if qty <= 0:
             raise ValueError(f"Quantity must be positive, got {qty}")
 
-        if side.lower() not in ['buy', 'sell']:
+        if side.lower() not in ["buy", "sell"]:
             raise ValueError(f"Side must be 'buy' or 'sell', got {side}")
 
         # Risk limit checks
-        if qty > self.risk_limits['max_order_size']:
-            raise ValueError(
-                f"Order size {qty} exceeds limit {self.risk_limits['max_order_size']}"
-            )
+        if qty > self.risk_limits["max_order_size"]:
+            raise ValueError(f"Order size {qty} exceeds limit {self.risk_limits['max_order_size']}")
 
         # Check buying power for buy orders
-        if side.lower() == 'buy':
+        if side.lower() == "buy":
             account = self.get_account_status()
             estimated_cost = qty * (price or 100.0)  # Conservative estimate if no price
 
-            if estimated_cost > account['buying_power']:
+            if estimated_cost > account["buying_power"]:
                 raise ValueError(
                     f"Estimated cost ${estimated_cost:,.2f} exceeds buying power "
                     f"${account['buying_power']:,.2f}"
                 )
 
         # Check if we have the position for sell orders
-        if side.lower() == 'sell':
+        if side.lower() == "sell":
             positions = self.get_positions()
-            position = next((p for p in positions if p['symbol'] == symbol), None)
+            position = next((p for p in positions if p["symbol"] == symbol), None)
 
-            if not position or position['qty'] < qty:
-                available_qty = position['qty'] if position else 0
+            if not position or position["qty"] < qty:
+                available_qty = position["qty"] if position else 0
                 raise ValueError(
                     f"Cannot sell {qty} shares of {symbol}, only {available_qty} available"
                 )
@@ -587,7 +623,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Use the configured timezone from date_utils, defaulting to NY (market timezone)
             market_tz = get_default_timezone()  # Should be "America/New_York"
             et = pytz.timezone(market_tz)
-            current_et = datetime.now(et)
+            current_et = get_datetime_now(et)
             current_time = current_et.time()
             current_weekday = current_et.weekday()  # 0=Monday, 6=Sunday
 
@@ -626,35 +662,32 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 current_session = "weekend"
 
             return {
-                'is_open': is_open,
-                'session': session,
-                'current_session': current_session,
-                'current_time_et': current_et.strftime('%Y-%m-%d %H:%M:%S %Z'),
-                'is_weekday': is_weekday,
-                'hours_desc': hours_desc,
-                'extended_hours': extended_hours
+                "is_open": is_open,
+                "session": session,
+                "current_session": current_session,
+                "current_time_et": current_et.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "is_weekday": is_weekday,
+                "hours_desc": hours_desc,
+                "extended_hours": extended_hours,
             }
 
         except Exception as e:
             logger.error(f"Failed to check market hours: {e}")
             return {
-                'is_open': True,  # Default to open to avoid blocking trades
-                'session': 'unknown',
-                'current_session': 'unknown',
-                'error': str(e)
+                "is_open": True,  # Default to open to avoid blocking trades
+                "session": "unknown",
+                "current_session": "unknown",
+                "error": str(e),
             }
 
     def _validate_market_hours(
-        self,
-        _symbol: str,
-        extended_hours: bool = False,
-        warn_only: bool = True
+        self, _symbol: str, extended_hours: bool = False, warn_only: bool = True
     ) -> bool:
         """
         Validate that market is open for trading.
 
         Args:
-            symbol: Stock symbol 
+            symbol: Stock symbol
             extended_hours: Allow extended hours trading
             warn_only: If True, warn but don't block; if False, block order
 
@@ -666,7 +699,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         """
         market_status = self._is_market_hours(extended_hours)
 
-        if not market_status['is_open']:
+        if not market_status["is_open"]:
             message = (
                 f"Market is currently {market_status['current_session']} "
                 f"({market_status.get('current_time_et', 'unknown time')}). "
@@ -676,8 +709,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if warn_only:
                 # Note: We submit immediately to Alpaca - THEY queue it, not us
                 # If validation fails, order is rejected (no local queue/retry)
-                logger.warning(
-                    f"⚠️  {message} - Order will be sent to broker (may fail validation)")
+                logger.warning(f"⚠️  {message} - Order will be sent to broker (may fail validation)")
                 return True
             else:
                 logger.error(f"❌ {message} - Order blocked")
@@ -697,14 +729,14 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         """
         try:
             # Get today's orders
-            from alpaca.trading.requests import GetOrdersRequest
-            from alpaca.trading.enums import OrderStatus
-            from datetime import datetime, timezone
+            from datetime import timezone
+
             import pytz
+            from alpaca.trading.requests import GetOrdersRequest
 
             # Get ET timezone for market day calculation
-            et_tz = pytz.timezone('America/New_York')
-            now_et = datetime.now(et_tz)
+            et_tz = pytz.timezone("America/New_York")
+            now_et = get_datetime_now(et_tz)
 
             # Market day starts at market open (usually 4:00 AM ET for pre-market)
             market_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)
@@ -716,14 +748,13 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             market_start_utc = market_start.astimezone(timezone.utc)
 
             # Get orders from market start of today
-            request = GetOrdersRequest(
-                status=OrderStatus.ALL,
-                after=market_start_utc
-            )
-            today_orders = self.client.trading.get_orders(request)
+            # Note: Not specifying status parameter returns all orders (open, closed, filled, etc.)
+            request = GetOrdersRequest(after=market_start_utc)
+            # AlpacaOrderManager has self.client (AlpacaTradingClient), which has trading_client
+            today_orders = self.client.trading_client.get_orders(request)
 
             order_count = len(today_orders)
-            max_trades = self.risk_limits.get('max_daily_trades', 100)  # Default 100
+            max_trades = self.risk_limits.get("max_daily_trades", 100)  # Default 100
 
             logger.info(f"Daily trade count: {order_count}/{max_trades}")
 
@@ -743,11 +774,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             return True
 
     def place_market_order(
-        self,
-        symbol: str,
-        qty: int,
-        side: str,
-        time_in_force: str = "day"
+        self, symbol: str, qty: int, side: str, time_in_force: str = "day"
     ) -> Dict[str, Any]:
         """
         Place market order with mode awareness and validation.
@@ -775,38 +802,35 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER MARKET ORDER: {side.upper()} {qty} {symbol}")
 
             # Map string values to enums
-            side_enum = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
+            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
             tif_map = {
-                'day': TimeInForce.DAY,
-                'gtc': TimeInForce.GTC,
-                'ioc': TimeInForce.IOC,
-                'fok': TimeInForce.FOK
+                "day": TimeInForce.DAY,
+                "gtc": TimeInForce.GTC,
+                "ioc": TimeInForce.IOC,
+                "fok": TimeInForce.FOK,
             }
             tif_enum = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
 
             # Create order request
             order_request = MarketOrderRequest(
-                symbol=symbol,
-                qty=qty,
-                side=side_enum,
-                time_in_force=tif_enum
+                symbol=symbol, qty=qty, side=side_enum, time_in_force=tif_enum
             )
 
             # Safety check for live trading
             order_details = {
-                'type': 'market',
-                'symbol': symbol,
-                'qty': qty,
-                'side': side,
-                'time_in_force': time_in_force
+                "type": "market",
+                "symbol": symbol,
+                "qty": qty,
+                "side": side,
+                "time_in_force": time_in_force,
             }
 
             if self.client.mode == "live":
                 if not self.client._safety_check("PLACE MARKET ORDER", order_details):
                     return {
-                        'status': 'cancelled',
-                        'message': 'Order cancelled by user',
-                        'order_details': order_details
+                        "status": "cancelled",
+                        "message": "Order cancelled by user",
+                        "order_details": order_details,
                     }
 
             # Submit order
@@ -814,36 +838,27 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Return structured response
             return {
-                'status': 'submitted',
-                'order_id': str(order.id),
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': side.lower(),  # Use original string parameter
-                'order_type': str(order.order_type),
-                'status_detail': str(order.status),
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'mode': self.client.mode
+                "status": "submitted",
+                "order_id": str(order.id),
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": side.lower(),  # Use original string parameter
+                "order_type": str(order.order_type),
+                "status_detail": str(order.status),
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             logger.error(f"Failed to place market order: {e}")
             return {
-                'status': 'error',
-                'message': str(e),
-                'order_details': {
-                    'symbol': symbol,
-                    'qty': qty,
-                    'side': side,
-                    'type': 'market'
-                }
+                "status": "error",
+                "message": str(e),
+                "order_details": {"symbol": symbol, "qty": qty, "side": side, "type": "market"},
             }
 
     def place_limit_order_gtc(
-        self,
-        symbol: str,
-        qty: int,
-        side: str,
-        limit_price: float
+        self, symbol: str, qty: int, side: str, limit_price: float
     ) -> Dict[str, Any]:
         """
         Place GTC limit order with mode awareness and validation.
@@ -878,7 +893,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map side to enum
-            side_enum = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
+            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
 
             # Create order request
             order_request = LimitOrderRequest(
@@ -886,26 +901,26 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 qty=qty,
                 side=side_enum,
                 time_in_force=TimeInForce.GTC,  # Good Till Cancelled
-                limit_price=limit_price
+                limit_price=limit_price,
             )
 
             # Safety check for live trading
             order_details = {
-                'type': 'limit',
-                'symbol': symbol,
-                'qty': qty,
-                'side': side,
-                'limit_price': limit_price,
-                'time_in_force': 'GTC',
-                'estimated_cost': qty * limit_price if side.lower() == 'buy' else 0
+                "type": "limit",
+                "symbol": symbol,
+                "qty": qty,
+                "side": side,
+                "limit_price": limit_price,
+                "time_in_force": "GTC",
+                "estimated_cost": qty * limit_price if side.lower() == "buy" else 0,
             }
 
             if self.client.mode == "live":
                 if not self.client._safety_check("PLACE LIMIT ORDER", order_details):
                     return {
-                        'status': 'cancelled',
-                        'message': 'Order cancelled by user',
-                        'order_details': order_details
+                        "status": "cancelled",
+                        "message": "Order cancelled by user",
+                        "order_details": order_details,
                     }
 
             # Submit order
@@ -913,31 +928,31 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Return structured response
             return {
-                'status': 'submitted',
-                'order_id': str(order.id),
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': side.lower(),  # Use original string parameter
-                'order_type': str(order.order_type),
-                'limit_price': float(order.limit_price) if order.limit_price else None,
-                'time_in_force': 'GTC',  # We know this is GTC from the method name
-                'status_detail': str(order.status),
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'mode': self.client.mode
+                "status": "submitted",
+                "order_id": str(order.id),
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": side.lower(),  # Use original string parameter
+                "order_type": str(order.order_type),
+                "limit_price": float(order.limit_price) if order.limit_price else None,
+                "time_in_force": "GTC",  # We know this is GTC from the method name
+                "status_detail": str(order.status),
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             logger.error(f"Failed to place limit order: {e}")
             return {
-                'status': 'error',
-                'message': str(e),
-                'order_details': {
-                    'symbol': symbol,
-                    'qty': qty,
-                    'side': side,
-                    'limit_price': limit_price,
-                    'type': 'limit'
-                }
+                "status": "error",
+                "message": str(e),
+                "order_details": {
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
+                    "limit_price": limit_price,
+                    "type": "limit",
+                },
             }
 
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
@@ -959,34 +974,27 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if self.client.mode == "live":
                 if not self.client._safety_check("CANCEL ORDER", {"order_id": order_id}):
                     return {
-                        'status': 'cancelled',
-                        'message': 'Cancellation cancelled by user',
-                        'order_id': order_id
+                        "status": "cancelled",
+                        "message": "Cancellation cancelled by user",
+                        "order_id": order_id,
                     }
 
             # Cancel the order
             self.client.trading_client.cancel_order_by_id(order_id)
 
             return {
-                'status': 'cancelled',
-                'order_id': order_id,
-                'message': 'Order cancellation submitted',
-                'mode': self.client.mode
+                "status": "cancelled",
+                "order_id": order_id,
+                "message": "Order cancellation submitted",
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             logger.error(f"Failed to cancel order {order_id}: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'order_id': order_id
-            }
+            return {"status": "error", "message": str(e), "order_id": order_id}
 
     def close_position(
-        self,
-        symbol: str,
-        qty: Optional[int] = None,
-        percentage: Optional[float] = None
+        self, symbol: str, qty: Optional[int] = None, percentage: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Close position (or partial position) in a symbol.
@@ -1002,21 +1010,21 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get current position
             positions = self.get_positions()
-            position = next((p for p in positions if p['symbol'] == symbol), None)
+            position = next((p for p in positions if p["symbol"] == symbol), None)
 
             if not position:
                 return {
-                    'status': 'error',
-                    'message': f'No position found for {symbol}',
-                    'symbol': symbol
+                    "status": "error",
+                    "message": f"No position found for {symbol}",
+                    "symbol": symbol,
                 }
 
-            current_qty = int(position['qty'])
+            current_qty = int(position["qty"])
             if current_qty == 0:
                 return {
-                    'status': 'error',
-                    'message': f'No shares to close for {symbol}',
-                    'symbol': symbol
+                    "status": "error",
+                    "message": f"No shares to close for {symbol}",
+                    "symbol": symbol,
                 }
 
             # Calculate quantity to close
@@ -1029,32 +1037,21 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 close_qty = int(current_qty * percentage)
 
             # Determine side (close long = sell, close short = buy)
-            close_side = 'sell' if position['side'] == 'long' else 'buy'
+            close_side = "sell" if position["side"] == "long" else "buy"
 
             # Mode-aware logging
             if self.client.mode == "live":
-                logger.warning(
-                    f"🔥 LIVE POSITION CLOSE: {close_side.upper()} {close_qty} {symbol}"
-                )
+                logger.warning(f"🔥 LIVE POSITION CLOSE: {close_side.upper()} {close_qty} {symbol}")
 
             # Use market order to close position quickly
             return self.place_market_order(symbol, close_qty, close_side)
 
         except Exception as e:
             logger.error(f"Failed to close position {symbol}: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'symbol': symbol
-            }
+            return {"status": "error", "message": str(e), "symbol": symbol}
 
     def place_stop_order(
-        self,
-        symbol: str,
-        qty: int,
-        side: str,
-        stop_price: float,
-        time_in_force: str = "day"
+        self, symbol: str, qty: int, side: str, stop_price: float, time_in_force: str = "day"
     ) -> Dict[str, Any]:
         """
         Place stop order with mode awareness and validation.
@@ -1090,12 +1087,12 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map values to enums
-            side_enum = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
+            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
             tif_map = {
-                'day': TimeInForce.DAY,
-                'gtc': TimeInForce.GTC,
-                'ioc': TimeInForce.IOC,
-                'fok': TimeInForce.FOK
+                "day": TimeInForce.DAY,
+                "gtc": TimeInForce.GTC,
+                "ioc": TimeInForce.IOC,
+                "fok": TimeInForce.FOK,
             }
             tif_enum = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
 
@@ -1105,25 +1102,25 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 qty=qty,
                 side=side_enum,
                 time_in_force=tif_enum,
-                stop_price=stop_price
+                stop_price=stop_price,
             )
 
             # Safety check for live trading
             order_details = {
-                'type': 'stop',
-                'symbol': symbol,
-                'qty': qty,
-                'side': side,
-                'stop_price': stop_price,
-                'time_in_force': time_in_force
+                "type": "stop",
+                "symbol": symbol,
+                "qty": qty,
+                "side": side,
+                "stop_price": stop_price,
+                "time_in_force": time_in_force,
             }
 
             if self.client.mode == "live":
                 if not self.client._safety_check("PLACE STOP ORDER", order_details):
                     return {
-                        'status': 'cancelled',
-                        'message': 'Order cancelled by user',
-                        'order_details': order_details
+                        "status": "cancelled",
+                        "message": "Order cancelled by user",
+                        "order_details": order_details,
                     }
 
             # Submit order
@@ -1131,31 +1128,31 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Return structured response
             return {
-                'status': 'submitted',
-                'order_id': str(order.id),
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': side.lower(),
-                'order_type': 'stop',
-                'stop_price': stop_price,
-                'time_in_force': time_in_force.upper(),
-                'status_detail': str(order.status),
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'mode': self.client.mode
+                "status": "submitted",
+                "order_id": str(order.id),
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": side.lower(),
+                "order_type": "stop",
+                "stop_price": stop_price,
+                "time_in_force": time_in_force.upper(),
+                "status_detail": str(order.status),
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             logger.error(f"Failed to place stop order: {e}")
             return {
-                'status': 'error',
-                'message': str(e),
-                'order_details': {
-                    'symbol': symbol,
-                    'qty': qty,
-                    'side': side,
-                    'stop_price': stop_price,
-                    'type': 'stop'
-                }
+                "status": "error",
+                "message": str(e),
+                "order_details": {
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
+                    "stop_price": stop_price,
+                    "type": "stop",
+                },
             }
 
     def place_trailing_stop_order(
@@ -1165,7 +1162,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         side: str,
         trail_percent: Optional[float] = None,
         trail_price: Optional[float] = None,
-        time_in_force: str = "day"
+        time_in_force: str = "day",
     ) -> Dict[str, Any]:
         """
         Place trailing stop order with mode awareness and validation.
@@ -1209,8 +1206,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map values to enums
-            side_enum = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
-            tif_enum = TimeInForce.GTC if time_in_force.lower() == 'gtc' else TimeInForce.DAY
+            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+            tif_enum = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
 
             # Create order request
             order_request = TrailingStopOrderRequest(
@@ -1219,26 +1216,26 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 side=side_enum,
                 time_in_force=tif_enum,
                 trail_percent=trail_percent,
-                trail_price=trail_price
+                trail_price=trail_price,
             )
 
             # Safety check for live trading
             order_details = {
-                'type': 'trailing_stop',
-                'symbol': symbol,
-                'qty': qty,
-                'side': side,
-                'trail_percent': trail_percent,
-                'trail_price': trail_price,
-                'time_in_force': time_in_force
+                "type": "trailing_stop",
+                "symbol": symbol,
+                "qty": qty,
+                "side": side,
+                "trail_percent": trail_percent,
+                "trail_price": trail_price,
+                "time_in_force": time_in_force,
             }
 
             if self.client.mode == "live":
                 if not self.client._safety_check("PLACE TRAILING STOP ORDER", order_details):
                     return {
-                        'status': 'cancelled',
-                        'message': 'Order cancelled by user',
-                        'order_details': order_details
+                        "status": "cancelled",
+                        "message": "Order cancelled by user",
+                        "order_details": order_details,
                     }
 
             # Submit order
@@ -1246,33 +1243,33 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Return structured response
             return {
-                'status': 'submitted',
-                'order_id': str(order.id),
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': side.lower(),
-                'order_type': 'trailing_stop',
-                'trail_percent': trail_percent,
-                'trail_price': trail_price,
-                'time_in_force': time_in_force.upper(),
-                'status_detail': str(order.status),
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'mode': self.client.mode
+                "status": "submitted",
+                "order_id": str(order.id),
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": side.lower(),
+                "order_type": "trailing_stop",
+                "trail_percent": trail_percent,
+                "trail_price": trail_price,
+                "time_in_force": time_in_force.upper(),
+                "status_detail": str(order.status),
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             logger.error(f"Failed to place trailing stop order: {e}")
             return {
-                'status': 'error',
-                'message': str(e),
-                'order_details': {
-                    'symbol': symbol,
-                    'qty': qty,
-                    'side': side,
-                    'trail_percent': trail_percent,
-                    'trail_price': trail_price,
-                    'type': 'trailing_stop'
-                }
+                "status": "error",
+                "message": str(e),
+                "order_details": {
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
+                    "trail_percent": trail_percent,
+                    "trail_price": trail_price,
+                    "type": "trailing_stop",
+                },
             }
 
     def place_bracket_order(
@@ -1283,7 +1280,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         entry_limit_price: Optional[float] = None,
         take_profit_price: Optional[float] = None,
         stop_loss_price: Optional[float] = None,
-        time_in_force: str = "day"
+        time_in_force: str = "day",
     ) -> Dict[str, Any]:
         """
         Place bracket order (entry + take profit + stop loss).
@@ -1306,7 +1303,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if not take_profit_price and not stop_loss_price:
                 raise ValueError(
-                    "At least one of take_profit_price or stop_loss_price must be specified")
+                    "At least one of take_profit_price or stop_loss_price must be specified"
+                )
 
             if take_profit_price and take_profit_price <= 0:
                 raise ValueError(f"Take profit price must be positive, got {take_profit_price}")
@@ -1331,12 +1329,13 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map values to enums
-            side_enum = OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL
-            tif_enum = TimeInForce.GTC if time_in_force.lower() == 'gtc' else TimeInForce.DAY
+            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+            tif_enum = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
 
             # Create take profit and stop loss requests
-            take_profit = TakeProfitRequest(
-                limit_price=take_profit_price) if take_profit_price else None
+            take_profit = (
+                TakeProfitRequest(limit_price=take_profit_price) if take_profit_price else None
+            )
             stop_loss = StopLossRequest(stop_price=stop_loss_price) if stop_loss_price else None
 
             # Create main order request (market or limit entry)
@@ -1349,7 +1348,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                     limit_price=entry_limit_price,
                     order_class=OrderClass.BRACKET,
                     take_profit=take_profit,
-                    stop_loss=stop_loss
+                    stop_loss=stop_loss,
                 )
             else:
                 order_request = MarketOrderRequest(
@@ -1359,27 +1358,27 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                     time_in_force=tif_enum,
                     order_class=OrderClass.BRACKET,
                     take_profit=take_profit,
-                    stop_loss=stop_loss
+                    stop_loss=stop_loss,
                 )
 
             # Safety check for live trading
             order_details = {
-                'type': 'bracket',
-                'symbol': symbol,
-                'qty': qty,
-                'side': side,
-                'entry_limit_price': entry_limit_price,
-                'take_profit_price': take_profit_price,
-                'stop_loss_price': stop_loss_price,
-                'time_in_force': time_in_force
+                "type": "bracket",
+                "symbol": symbol,
+                "qty": qty,
+                "side": side,
+                "entry_limit_price": entry_limit_price,
+                "take_profit_price": take_profit_price,
+                "stop_loss_price": stop_loss_price,
+                "time_in_force": time_in_force,
             }
 
             if self.client.mode == "live":
                 if not self.client._safety_check("PLACE BRACKET ORDER", order_details):
                     return {
-                        'status': 'cancelled',
-                        'message': 'Order cancelled by user',
-                        'order_details': order_details
+                        "status": "cancelled",
+                        "message": "Order cancelled by user",
+                        "order_details": order_details,
                     }
 
             # Submit order
@@ -1387,37 +1386,59 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Return structured response
             return {
-                'status': 'submitted',
-                'order_id': str(order.id),
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': side.lower(),
-                'order_type': 'bracket',
-                'entry_limit_price': entry_limit_price,
-                'take_profit_price': take_profit_price,
-                'stop_loss_price': stop_loss_price,
-                'order_class': 'bracket',
-                'time_in_force': time_in_force.upper(),
-                'status_detail': str(order.status),
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'mode': self.client.mode
+                "status": "submitted",
+                "order_id": str(order.id),
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": side.lower(),
+                "order_type": "bracket",
+                "entry_limit_price": entry_limit_price,
+                "take_profit_price": take_profit_price,
+                "stop_loss_price": stop_loss_price,
+                "order_class": "bracket",
+                "time_in_force": time_in_force.upper(),
+                "status_detail": str(order.status),
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             # Don't log error here - it will be logged and translated by execution manager
             logger.debug(f"Bracket order error details: {e}", exc_info=True)
+
+            # Extract Alpaca API error details if available
+            error_code = None
+            status_code = None
+
+            # Try to extract error code from Alpaca APIError
+            try:
+                from alpaca.common.exceptions import APIError
+
+                if isinstance(e, APIError):
+                    status_code = getattr(e, "status_code", None)
+                    error_code = getattr(e, "code", None)
+                    logger.debug(f"Alpaca API error: status={status_code}, code={error_code}")
+            except ImportError:
+                # alpaca-py not available or doesn't have APIError
+                pass
+            except Exception:
+                # Failed to extract error details
+                pass
+
             return {
-                'status': 'error',
-                'message': str(e),
-                'order_details': {
-                    'symbol': symbol,
-                    'qty': qty,
-                    'side': side,
-                    'entry_limit_price': entry_limit_price,
-                    'take_profit_price': take_profit_price,
-                    'stop_loss_price': stop_loss_price,
-                    'type': 'bracket'
-                }
+                "status": "error",
+                "message": str(e),
+                "error_code": error_code,
+                "status_code": status_code,
+                "order_details": {
+                    "symbol": symbol,
+                    "qty": qty,
+                    "side": side,
+                    "entry_limit_price": entry_limit_price,
+                    "take_profit_price": take_profit_price,
+                    "stop_loss_price": stop_loss_price,
+                    "type": "bracket",
+                },
             }
 
     def modify_order(
@@ -1426,7 +1447,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         qty: Optional[int] = None,
         limit_price: Optional[float] = None,
         stop_price: Optional[float] = None,
-        time_in_force: Optional[str] = None
+        time_in_force: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Modify an existing order.
@@ -1435,7 +1456,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             order_id: ID of the order to modify
             qty: New quantity (optional)
             limit_price: New limit price (optional)
-            stop_price: New stop price (optional) 
+            stop_price: New stop price (optional)
             time_in_force: New time in force (optional)
 
         Returns:
@@ -1447,14 +1468,14 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 self.client.trading.get_order_by_id(order_id)
             except Exception:
                 return {
-                    'status': 'error',
-                    'message': f'Order {order_id} not found',
-                    'order_id': order_id
+                    "status": "error",
+                    "message": f"Order {order_id} not found",
+                    "order_id": order_id,
                 }
 
             # Build replacement order request
-            from alpaca.trading.requests import ReplaceOrderRequest
             from alpaca.trading.enums import TimeInForce
+            from alpaca.trading.requests import ReplaceOrderRequest
 
             # Start with current order values
             replace_request_params = {}
@@ -1462,28 +1483,28 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if qty is not None:
                 if qty <= 0:
                     raise ValueError(f"Quantity must be positive, got {qty}")
-                replace_request_params['qty'] = qty
+                replace_request_params["qty"] = qty
 
             if limit_price is not None:
                 if limit_price <= 0:
                     raise ValueError(f"Limit price must be positive, got {limit_price}")
-                replace_request_params['limit_price'] = limit_price
+                replace_request_params["limit_price"] = limit_price
 
             if stop_price is not None:
                 if stop_price <= 0:
                     raise ValueError(f"Stop price must be positive, got {stop_price}")
-                replace_request_params['stop_price'] = stop_price
+                replace_request_params["stop_price"] = stop_price
 
             if time_in_force is not None:
                 tif_map = {
                     "day": TimeInForce.DAY,
                     "gtc": TimeInForce.GTC,
                     "ioc": TimeInForce.IOC,
-                    "fok": TimeInForce.FOK
+                    "fok": TimeInForce.FOK,
                 }
                 if time_in_force.lower() not in tif_map:
                     raise ValueError(f"Invalid time in force: {time_in_force}")
-                replace_request_params['time_in_force'] = tif_map[time_in_force.lower()]
+                replace_request_params["time_in_force"] = tif_map[time_in_force.lower()]
 
             # Create replacement request
             replace_request = ReplaceOrderRequest(**replace_request_params)
@@ -1493,12 +1514,13 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.warning(f"🔥 LIVE ORDER MODIFICATION: {order_id}")
                 if self.require_confirmation:
                     confirmation = input(
-                        f"Confirm LIVE order modification for {order_id}? (yes/no): ")
-                    if confirmation.lower() != 'yes':
+                        f"Confirm LIVE order modification for {order_id}? (yes/no): "
+                    )
+                    if confirmation.lower() != "yes":
                         return {
-                            'status': 'cancelled',
-                            'message': 'Order modification cancelled by user',
-                            'order_id': order_id
+                            "status": "cancelled",
+                            "message": "Order modification cancelled by user",
+                            "order_id": order_id,
                         }
             else:
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
@@ -1507,28 +1529,54 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             updated_order = self.client.trading.replace_order_by_id(order_id, replace_request)
 
             return {
-                'status': 'submitted',
-                'message': 'Order modified successfully',
-                'order_id': str(updated_order.id),
-                'symbol': str(updated_order.symbol),
-                'qty': float(updated_order.qty),
-                'side': str(updated_order.side),
-                'order_type': str(updated_order.order_type),
-                'time_in_force': str(updated_order.time_in_force),
-                'limit_price': float(updated_order.limit_price) if updated_order.limit_price else None,
-                'stop_price': float(updated_order.stop_price) if updated_order.stop_price else None,
-                'status_detail': str(updated_order.status),
-                'submitted_at': updated_order.submitted_at.isoformat() if updated_order.submitted_at else None,
-                'mode': self.client.mode
+                "status": "submitted",
+                "message": "Order modified successfully",
+                "order_id": str(updated_order.id),
+                "symbol": str(updated_order.symbol),
+                "qty": float(updated_order.qty),
+                "side": str(updated_order.side),
+                "order_type": str(updated_order.order_type),
+                "time_in_force": str(updated_order.time_in_force),
+                "limit_price": (
+                    float(updated_order.limit_price) if updated_order.limit_price else None
+                ),
+                "stop_price": float(updated_order.stop_price) if updated_order.stop_price else None,
+                "status_detail": str(updated_order.status),
+                "submitted_at": (
+                    updated_order.submitted_at.isoformat() if updated_order.submitted_at else None
+                ),
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             logger.error(f"Failed to modify order {order_id}: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'order_id': order_id
-            }
+            return {"status": "error", "message": str(e), "order_id": order_id}
+
+    def modify_stop_order(self, order_id: str, new_stop_price: float, symbol: str) -> bool:
+        """
+        Modify stop price on an existing stop order (convenience wrapper).
+
+        Used for dynamic trailing stop adjustments.
+
+        Args:
+            order_id: ID of the stop order to modify
+            new_stop_price: New stop price level
+            symbol: Stock symbol (for logging)
+
+        Returns:
+            True if modification successful, False otherwise
+        """
+        logger.info(f"Modifying stop order {order_id} for {symbol} to ${new_stop_price:.2f}")
+
+        result = self.modify_order(order_id=order_id, stop_price=new_stop_price)
+
+        if result.get("status") == "submitted":
+            logger.info(f"✅ Stop order {order_id} updated successfully")
+            return True
+        else:
+            error_msg = result.get("message", "Unknown error")
+            logger.error(f"❌ Failed to modify stop order {order_id}: {error_msg}")
+            return False
 
     def cancel_order(self, order_id: str) -> Dict[str, Any]:
         """
@@ -1546,12 +1594,13 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.warning(f"🔥 LIVE ORDER CANCELLATION: {order_id}")
                 if self.require_confirmation:
                     confirmation = input(
-                        f"Confirm LIVE order cancellation for {order_id}? (yes/no): ")
-                    if confirmation.lower() != 'yes':
+                        f"Confirm LIVE order cancellation for {order_id}? (yes/no): "
+                    )
+                    if confirmation.lower() != "yes":
                         return {
-                            'status': 'cancelled',
-                            'message': 'Order cancellation cancelled by user',
-                            'order_id': order_id
+                            "status": "cancelled",
+                            "message": "Order cancellation cancelled by user",
+                            "order_id": order_id,
                         }
             else:
                 logger.info(f"📝 PAPER ORDER CANCELLATION: {order_id}")
@@ -1560,19 +1609,15 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             self.client.trading.cancel_order_by_id(order_id)
 
             return {
-                'status': 'cancelled',
-                'message': 'Order cancelled successfully',
-                'order_id': order_id,
-                'mode': self.client.mode
+                "status": "cancelled",
+                "message": "Order cancelled successfully",
+                "order_id": order_id,
+                "mode": self.client.mode,
             }
 
         except Exception as e:
             logger.error(f"Failed to cancel order {order_id}: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'order_id': order_id
-            }
+            return {"status": "error", "message": str(e), "order_id": order_id}
 
     def cancel_all_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -1587,31 +1632,28 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get open orders
             if symbol:
-                from alpaca.trading.requests import GetOrdersRequest
                 from alpaca.trading.enums import OrderStatus
+                from alpaca.trading.requests import GetOrdersRequest
 
-                request = GetOrdersRequest(
-                    status=OrderStatus.OPEN,
-                    symbols=[symbol]
-                )
+                request = GetOrdersRequest(status=OrderStatus.OPEN, symbols=[symbol])
                 orders = self.client.trading.get_orders(request)
             else:
-                orders = self.get_orders(status='open')
+                orders = self.get_orders(status="open")
                 # Convert to alpaca order objects if needed
                 if orders and isinstance(orders[0], dict):
                     # These are our formatted orders, we need the raw ones
-                    from alpaca.trading.requests import GetOrdersRequest
                     from alpaca.trading.enums import OrderStatus
+                    from alpaca.trading.requests import GetOrdersRequest
 
                     request = GetOrdersRequest(status=OrderStatus.OPEN)
                     orders = self.client.trading.get_orders(request)
 
             if not orders:
                 return {
-                    'status': 'success',
-                    'message': f'No open orders found{" for " + symbol if symbol else ""}',
-                    'cancelled_orders': [],
-                    'mode': self.client.mode
+                    "status": "success",
+                    "message": f'No open orders found{" for " + symbol if symbol else ""}',
+                    "cancelled_orders": [],
+                    "mode": self.client.mode,
                 }
 
             # Mode-aware logging and confirmation
@@ -1622,13 +1664,14 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.warning(f"🔥 LIVE BULK CANCELLATION: {order_count} orders{symbol_desc}")
                 if self.require_confirmation:
                     confirmation = input(
-                        f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): ")
-                    if confirmation.lower() != 'yes':
+                        f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): "
+                    )
+                    if confirmation.lower() != "yes":
                         return {
-                            'status': 'cancelled',
-                            'message': 'Bulk cancellation cancelled by user',
-                            'cancelled_orders': [],
-                            'mode': self.client.mode
+                            "status": "cancelled",
+                            "message": "Bulk cancellation cancelled by user",
+                            "cancelled_orders": [],
+                            "mode": self.client.mode,
                         }
             else:
                 logger.info(f"📝 PAPER BULK CANCELLATION: {order_count} orders{symbol_desc}")
@@ -1645,34 +1688,29 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                     errors.append(f"Failed to cancel {order.id}: {str(e)}")
 
             result = {
-                'status': 'success' if not errors else 'partial',
-                'message': f'Cancelled {len(cancelled_orders)} orders{symbol_desc}',
-                'cancelled_orders': cancelled_orders,
-                'mode': self.client.mode
+                "status": "success" if not errors else "partial",
+                "message": f"Cancelled {len(cancelled_orders)} orders{symbol_desc}",
+                "cancelled_orders": cancelled_orders,
+                "mode": self.client.mode,
             }
 
             if errors:
-                result['errors'] = errors
+                result["errors"] = errors
 
             return result
 
         except Exception as e:
             logger.error(f"Failed to cancel orders{' for ' + symbol if symbol else ''}: {e}")
             return {
-                'status': 'error',
-                'message': str(e),
-                'cancelled_orders': [],
-                'mode': self.client.mode
+                "status": "error",
+                "message": str(e),
+                "cancelled_orders": [],
+                "mode": self.client.mode,
             }
 
 
 # Convenience functions for Phase 2
-def place_market_order(
-    symbol: str,
-    qty: int,
-    side: str,
-    mode: str = "paper"
-) -> Dict[str, Any]:
+def place_market_order(symbol: str, qty: int, side: str, mode: str = "paper") -> Dict[str, Any]:
     """
     Quick market order placement.
 
@@ -1690,11 +1728,7 @@ def place_market_order(
 
 
 def place_limit_order(
-    symbol: str,
-    qty: int,
-    side: str,
-    limit_price: float,
-    mode: str = "paper"
+    symbol: str, qty: int, side: str, limit_price: float, mode: str = "paper"
 ) -> Dict[str, Any]:
     """
     Quick GTC limit order placement.

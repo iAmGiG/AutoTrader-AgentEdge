@@ -1,6 +1,6 @@
 # Agent Transformation Guide: V0-V4 to Multi-Indicator Voting System
 
-**Purpose**: Understand how RH2MAS evolved from academic V0-V4 research (~60% accuracy) to production multi-indicator ensemble targeting 90% accuracy.
+**Purpose**: Understand how AutoTrader evolved from academic V0-V4 research (~60% accuracy) to production multi-indicator ensemble targeting 90% accuracy.
 
 ## 📊 The Transformation Overview
 

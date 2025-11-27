@@ -9,15 +9,17 @@ Instead of useless "no opportunities found" reports, this scanner provides:
 - Actionable next steps with specific symbols to watch
 """
 
-import sys
 import os
-from datetime import datetime  # TODO Date utils
-from typing import Dict, Any
+import sys
+from datetime import timedelta
+from typing import Any, Dict
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+from src.utils.date_utils import get_datetime_now
 
-from src.trading.unified_price_fetcher import get_current_price
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+from src.trading.unified_price_fetcher import get_current_price
 
 
 class UsefulScanner:
@@ -29,13 +31,38 @@ class UsefulScanner:
         # Realistic watchlist with liquid ETFs
         self.watchlist = [
             # Core ETFs (most liquid)
-            "SPY", "QQQ", "IWM", "VTI", "VEA", "VWO",
+            "SPY",
+            "QQQ",
+            "IWM",
+            "VTI",
+            "VEA",
+            "VWO",
             # Leveraged ETFs (higher volatility)
-            "TQQQ", "SQQQ", "UPRO", "SPXS", "SPXL", "TNA", "TZA",
+            "TQQQ",
+            "SQQQ",
+            "UPRO",
+            "SPXS",
+            "SPXL",
+            "TNA",
+            "TZA",
             # Sector ETFs
-            "XLF", "XLK", "XLE", "XLV", "XLP", "XLI", "XLB", "XLU", "XLY",
+            "XLF",
+            "XLK",
+            "XLE",
+            "XLV",
+            "XLP",
+            "XLI",
+            "XLB",
+            "XLU",
+            "XLY",
             # Popular stocks
-            "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA", "META"
+            "AAPL",
+            "MSFT",
+            "NVDA",
+            "GOOGL",
+            "AMZN",
+            "TSLA",
+            "META",
         ]
 
     def get_raw_technical_data(self, symbol: str) -> Dict[str, Any]:
@@ -48,35 +75,35 @@ class UsefulScanner:
             current_price = get_current_price(symbol)
 
             # Get recent price data for calculations
-            end_date = datetime.now()
-            start_date = end_date.replace(day=end_date.day - 60)  # 60 days
+            end_date = get_datetime_now()
+            start_date = end_date - timedelta(days=60)  # 60 days
 
             data = self.market_data.get_bars(
                 symbols=[symbol],
-                start=start_date.strftime('%Y-%m-%d'),
-                end=end_date.strftime('%Y-%m-%d'),
-                timeframe="1Day"
+                start=start_date.strftime("%Y-%m-%d"),
+                end=end_date.strftime("%Y-%m-%d"),
+                timeframe="1Day",
             )
 
             if data is None or symbol not in data:
                 return {
-                    'symbol': symbol,
-                    'error': 'No market data available',
-                    'current_price': current_price,
-                    'status': 'NO_DATA'
+                    "symbol": symbol,
+                    "error": "No market data available",
+                    "current_price": current_price,
+                    "status": "NO_DATA",
                 }
 
             df = data[symbol]
             if len(df) < 26:  # Need enough data for MACD(12,26,9)
                 return {
-                    'symbol': symbol,
-                    'error': f'Insufficient data: {len(df)} bars',
-                    'current_price': current_price,
-                    'status': 'INSUFFICIENT_DATA'
+                    "symbol": symbol,
+                    "error": f"Insufficient data: {len(df)} bars",
+                    "current_price": current_price,
+                    "status": "INSUFFICIENT_DATA",
                 }
 
             # Calculate technical indicators manually
-            close_prices = df['close']
+            close_prices = df["close"]
 
             # Simple MACD calculation
             ema12 = close_prices.ewm(span=12).mean()
@@ -101,13 +128,23 @@ class UsefulScanner:
             # Calculate price momentum
             price_change_1d = (current_price - close_prices.iloc[-2]) / close_prices.iloc[-2] * 100
             price_change_5d = (
-                current_price - close_prices.iloc[-6]) / close_prices.iloc[-6] * 100 if len(close_prices) >= 6 else 0
+                (current_price - close_prices.iloc[-6]) / close_prices.iloc[-6] * 100
+                if len(close_prices) >= 6
+                else 0
+            )
             price_change_20d = (
-                current_price - close_prices.iloc[-21]) / close_prices.iloc[-21] * 100 if len(close_prices) >= 21 else 0
+                (current_price - close_prices.iloc[-21]) / close_prices.iloc[-21] * 100
+                if len(close_prices) >= 21
+                else 0
+            )
 
             # Determine signal strength with transparent logic
-            macd_signal = "BUY" if latest_histogram > 0 else "SELL" if latest_histogram < -0.05 else "NEUTRAL"
-            rsi_signal = "OVERSOLD" if latest_rsi < 30 else "OVERBOUGHT" if latest_rsi > 70 else "NEUTRAL"
+            macd_signal = (
+                "BUY" if latest_histogram > 0 else "SELL" if latest_histogram < -0.05 else "NEUTRAL"
+            )
+            rsi_signal = (
+                "OVERSOLD" if latest_rsi < 30 else "OVERBOUGHT" if latest_rsi > 70 else "NEUTRAL"
+            )
 
             # Vote scoring (transparent)
             vote_score = 0.5  # Start neutral
@@ -131,35 +168,32 @@ class UsefulScanner:
             vote_score = max(0, min(1, vote_score))  # Clamp to 0-1
 
             return {
-                'symbol': symbol,
-                'current_price': current_price,
-                'status': 'ANALYZED',
-                'macd': {
-                    'line': latest_macd,
-                    'signal': latest_signal,
-                    'histogram': latest_histogram,
-                    'signal_type': macd_signal
+                "symbol": symbol,
+                "current_price": current_price,
+                "status": "ANALYZED",
+                "macd": {
+                    "line": latest_macd,
+                    "signal": latest_signal,
+                    "histogram": latest_histogram,
+                    "signal_type": macd_signal,
                 },
-                'rsi': {
-                    'value': latest_rsi,
-                    'signal_type': rsi_signal
+                "rsi": {"value": latest_rsi, "signal_type": rsi_signal},
+                "momentum": {
+                    "change_1d": price_change_1d,
+                    "change_5d": price_change_5d,
+                    "change_20d": price_change_20d,
                 },
-                'momentum': {
-                    'change_1d': price_change_1d,
-                    'change_5d': price_change_5d,
-                    'change_20d': price_change_20d
-                },
-                'vote_score': vote_score,
-                'recommendation': self._get_recommendation(vote_score, macd_signal, rsi_signal),
-                'data_points': len(df)
+                "vote_score": vote_score,
+                "recommendation": self._get_recommendation(vote_score, macd_signal, rsi_signal),
+                "data_points": len(df),
             }
 
         except Exception as e:
             return {
-                'symbol': symbol,
-                'error': str(e),
-                'current_price': get_current_price(symbol),
-                'status': 'ERROR'
+                "symbol": symbol,
+                "error": str(e),
+                "current_price": get_current_price(symbol),
+                "status": "ERROR",
             }
 
     def _get_recommendation(self, vote_score: float, macd_signal: str, rsi_signal: str) -> str:
@@ -181,48 +215,48 @@ class UsefulScanner:
 
         Returns detailed breakdown of every symbol, not just empty lists.
         """
-        scan_start = datetime.now()
+        scan_start = get_datetime_now()
         print(f"🔍 Scanning {len(self.watchlist)} symbols...")
 
         results = {
-            'scan_time': scan_start.isoformat(),
-            'symbols_analyzed': [],
-            'opportunities': [],
-            'watch_list': [],
-            'rejects': [],
-            'errors': [],
-            'summary': {}
+            "scan_time": scan_start.isoformat(),
+            "symbols_analyzed": [],
+            "opportunities": [],
+            "watch_list": [],
+            "rejects": [],
+            "errors": [],
+            "summary": {},
         }
 
         for symbol in self.watchlist:
             print(f"  Analyzing {symbol}...")
             data = self.get_raw_technical_data(symbol)
-            results['symbols_analyzed'].append(data)
+            results["symbols_analyzed"].append(data)
 
-            if data['status'] == 'ANALYZED':
-                vote_score = data['vote_score']
+            if data["status"] == "ANALYZED":
+                vote_score = data["vote_score"]
 
                 if vote_score >= min_score:
-                    results['opportunities'].append(data)
+                    results["opportunities"].append(data)
                 elif vote_score >= (min_score - 0.1):  # Close misses
-                    results['watch_list'].append(data)
+                    results["watch_list"].append(data)
                 else:
-                    results['rejects'].append(data)
+                    results["rejects"].append(data)
             else:
-                results['errors'].append(data)
+                results["errors"].append(data)
 
         # Generate useful summary
-        analyzed_count = len([d for d in results['symbols_analyzed'] if d['status'] == 'ANALYZED'])
+        analyzed_count = len([d for d in results["symbols_analyzed"] if d["status"] == "ANALYZED"])
 
-        results['summary'] = {
-            'total_symbols': len(self.watchlist),
-            'successfully_analyzed': analyzed_count,
-            'opportunities_found': len(results['opportunities']),
-            'near_misses': len(results['watch_list']),
-            'rejected': len(results['rejects']),
-            'errors': len(results['errors']),
-            'scan_duration': (datetime.now() - scan_start).total_seconds(),
-            'success_rate': f"{analyzed_count/len(self.watchlist)*100:.1f}%"
+        results["summary"] = {
+            "total_symbols": len(self.watchlist),
+            "successfully_analyzed": analyzed_count,
+            "opportunities_found": len(results["opportunities"]),
+            "near_misses": len(results["watch_list"]),
+            "rejected": len(results["rejects"]),
+            "errors": len(results["errors"]),
+            "scan_duration": (get_datetime_now() - scan_start).total_seconds(),
+            "success_rate": f"{analyzed_count/len(self.watchlist)*100:.1f}%",
         }
 
         return results
@@ -231,7 +265,7 @@ class UsefulScanner:
         """Generate actually useful report instead of useless boilerplate."""
 
         lines = [
-            f"# Useful Market Scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"# Useful Market Scan - {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
             f"**Scanned:** {results['summary']['total_symbols']} symbols",
             f"**Analyzed:** {results['summary']['successfully_analyzed']} ({results['summary']['success_rate']})",
@@ -240,16 +274,20 @@ class UsefulScanner:
         ]
 
         # Opportunities section
-        if results['opportunities']:
-            lines.extend([
-                f"## 🎯 Strong Opportunities ({len(results['opportunities'])})",
-                "",
-                "| Symbol | Price | Vote | MACD | RSI | Momentum | Recommendation |",
-                "|--------|-------|------|------|-----|----------|----------------|"
-            ])
+        if results["opportunities"]:
+            lines.extend(
+                [
+                    f"## 🎯 Strong Opportunities ({len(results['opportunities'])})",
+                    "",
+                    "| Symbol | Price | Vote | MACD | RSI | Momentum | Recommendation |",
+                    "|--------|-------|------|------|-----|----------|----------------|",
+                ]
+            )
 
-            for opp in sorted(results['opportunities'], key=lambda x: x['vote_score'], reverse=True):
-                momentum_5d = opp['momentum']['change_5d']
+            for opp in sorted(
+                results["opportunities"], key=lambda x: x["vote_score"], reverse=True
+            ):
+                momentum_5d = opp["momentum"]["change_5d"]
                 momentum_str = f"{momentum_5d:+.1f}%" if momentum_5d else "N/A"
 
                 lines.append(
@@ -261,33 +299,41 @@ class UsefulScanner:
             lines.append("")
 
         # Watch list section
-        if results['watch_list']:
-            lines.extend([
-                f"## 👀 Watch List - Close to Signals ({len(results['watch_list'])})",
-                "",
-                "These symbols are close to our threshold. Monitor for changes:",
-                ""
-            ])
+        if results["watch_list"]:
+            lines.extend(
+                [
+                    f"## 👀 Watch List - Close to Signals ({len(results['watch_list'])})",
+                    "",
+                    "These symbols are close to our threshold. Monitor for changes:",
+                    "",
+                ]
+            )
 
-            for watch in sorted(results['watch_list'], key=lambda x: x['vote_score'], reverse=True):
+            for watch in sorted(results["watch_list"], key=lambda x: x["vote_score"], reverse=True):
                 lines.append(
-                    f"- **{watch['symbol']}**: {watch['vote_score']:.2f} - {watch['recommendation']}")
+                    f"- **{watch['symbol']}**: {watch['vote_score']:.2f} - {watch['recommendation']}"
+                )
             lines.append("")
 
         # Top rejects with reasons
-        if results['rejects']:
-            top_rejects = sorted(results['rejects'],
-                                 key=lambda x: x['vote_score'], reverse=True)[:5]
-            lines.extend([
-                "## ❌ Top Rejects (Why They Failed)",
-                "",
-                "Understanding why signals were rejected:",
-                ""
-            ])
+        if results["rejects"]:
+            top_rejects = sorted(results["rejects"], key=lambda x: x["vote_score"], reverse=True)[
+                :5
+            ]
+            lines.extend(
+                [
+                    "## ❌ Top Rejects (Why They Failed)",
+                    "",
+                    "Understanding why signals were rejected:",
+                    "",
+                ]
+            )
 
             for reject in top_rejects:
                 macd_reason = f"MACD {reject['macd']['signal_type'].lower()}"
-                rsi_reason = f"RSI {reject['rsi']['value']:.0f} ({reject['rsi']['signal_type'].lower()})"
+                rsi_reason = (
+                    f"RSI {reject['rsi']['value']:.0f} ({reject['rsi']['signal_type'].lower()})"
+                )
 
                 lines.append(
                     f"- **{reject['symbol']}** ({reject['vote_score']:.2f}): "
@@ -297,44 +343,47 @@ class UsefulScanner:
             lines.append("")
 
         # Errors section
-        if results['errors']:
-            lines.extend([
-                f"## ⚠️ Data Issues ({len(results['errors'])})",
-                "",
-                "Symbols with data problems:",
-                ""
-            ])
+        if results["errors"]:
+            lines.extend(
+                [
+                    f"## ⚠️ Data Issues ({len(results['errors'])})",
+                    "",
+                    "Symbols with data problems:",
+                    "",
+                ]
+            )
 
-            for error in results['errors']:
+            for error in results["errors"]:
                 lines.append(f"- **{error['symbol']}**: {error.get('error', 'Unknown error')}")
             lines.append("")
 
         # Actionable next steps
-        lines.extend([
-            "## 🎯 Next Actions",
-            "",
-        ])
+        lines.extend(
+            [
+                "## 🎯 Next Actions",
+                "",
+            ]
+        )
 
-        if results['opportunities']:
-            top_opp = results['opportunities'][0]
+        if results["opportunities"]:
+            top_opp = results["opportunities"][0]
             lines.append(
-                f"1. **Consider {top_opp['symbol']}** - Highest score ({top_opp['vote_score']:.2f})")
+                f"1. **Consider {top_opp['symbol']}** - Highest score ({top_opp['vote_score']:.2f})"
+            )
 
-        if results['watch_list']:
+        if results["watch_list"]:
             lines.append("2. **Monitor watch list** - Check these again in 1-2 hours")
 
-        if not results['opportunities'] and not results['watch_list']:
-            lines.extend([
-                "1. **Lower threshold** - Try 0.55 instead of 0.6",
-                "2. **Check individual names** - Look at top rejects manually",
-                "3. **Wait for market movement** - Scan again in 2-4 hours"
-            ])
+        if not results["opportunities"] and not results["watch_list"]:
+            lines.extend(
+                [
+                    "1. **Lower threshold** - Try 0.55 instead of 0.6",
+                    "2. **Check individual names** - Look at top rejects manually",
+                    "3. **Wait for market movement** - Scan again in 2-4 hours",
+                ]
+            )
 
-        lines.extend([
-            "",
-            "---",
-            f"*Scan completed at {results['scan_time']}*"
-        ])
+        lines.extend(["", "---", f"*Scan completed at {results['scan_time']}*"])
 
         return "\n".join(lines)
 
@@ -355,11 +404,11 @@ def main():
     report = scanner.generate_useful_report(results)
 
     # Save report with clear naming in dedicated folder
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M')  # Remove seconds for cleaner names
+    timestamp = get_datetime_now().strftime("%Y%m%d_%H%M")  # Remove seconds for cleaner names
     report_file = f"/mnt/bst/yxie2/cregan1/RH2MAS/reports/scans/{timestamp}_market_scan.md"
 
     os.makedirs(os.path.dirname(report_file), exist_ok=True)
-    with open(report_file, 'w') as f:
+    with open(report_file, "w") as f:
         f.write(report)
 
     print(report)

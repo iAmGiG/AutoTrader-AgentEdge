@@ -3,6 +3,7 @@
 ## What is it?
 
 Automated "set it and forget it" daily trading system that:
+
 - Runs twice daily (9:20 AM and 3:50 PM ET)
 - Automatically adjusts stops based on profit levels
 - Places GTC orders that broker manages
@@ -15,16 +16,17 @@ Automated "set it and forget it" daily trading system that:
 
 ```bash
 # Navigate to project root
-cd ~/AutoGen-TradingSystem
+cd ~/AutoTrader-AgentEdge
 
 # Activate environment
-conda activate RH2MAS
+conda activate AutoTrader
 
 # Test morning routine (dry run)
 python src/trading/daily_scheduler.py --mode once --task morning_routine
 ```
 
 Expected output:
+
 ```
 ✅ morning_routine completed successfully
 Task: morning_routine | Status: completed | Duration: 12.3s | Attempt: 1 | API Calls: 3
@@ -38,6 +40,7 @@ cat config_defaults/scheduler_config.json
 ```
 
 Edit if needed:
+
 ```json
 {
   "enabled": true,
@@ -88,16 +91,19 @@ python src/trading/daily_scheduler.py --mode daemon --interval 60
 ### 4. Monitor Execution
 
 **View status report:**
+
 ```bash
 python src/trading/daily_scheduler.py --mode status
 ```
 
 **Check execution log:**
+
 ```bash
 cat state/scheduler_execution_log.json | jq '.'
 ```
 
 **View daily reports:**
+
 ```bash
 ls -lh reports/daily/
 cat reports/daily/$(ls -t reports/daily/ | head -1)
@@ -106,6 +112,7 @@ cat reports/daily/$(ls -t reports/daily/ | head -1)
 ## What Happens Automatically?
 
 ### Morning Routine (9:20 AM ET)
+
 1. ✅ Fetch all positions from broker (1 API call)
 2. ✅ Fetch all open orders (1 API call)
 3. ✅ Reconcile any discrepancies
@@ -119,6 +126,7 @@ cat reports/daily/$(ls -t reports/daily/ | head -1)
 7. ✅ Total: 3-5 API calls, 10-30 seconds
 
 ### Evening Routine (3:50 PM ET)
+
 1. ✅ Review end-of-day positions
 2. ✅ Reconcile with broker
 3. ✅ Generate evening report
@@ -128,12 +136,14 @@ cat reports/daily/$(ls -t reports/daily/ | head -1)
 ## Error Handling
 
 The system automatically handles:
+
 - **API errors**: Retries with exponential backoff (60s, 120s, 240s)
 - **Network failures**: Retries up to 3 times
 - **Broker discrepancies**: Auto-reconciles with broker-as-truth
 - **Crashed state**: Recovery mode rebuilds from broker
 
 If all retries fail, you get:
+
 - Detailed error log in `state/scheduler.log`
 - Failed execution entry in `state/scheduler_execution_log.json`
 - System continues and tries again next scheduled time
@@ -141,6 +151,7 @@ If all retries fail, you get:
 ## Stopping/Pausing
 
 **Temporary pause (keep service running):**
+
 ```bash
 # Edit config
 nano config_defaults/scheduler_config.json
@@ -150,6 +161,7 @@ nano config_defaults/scheduler_config.json
 ```
 
 **Stop service:**
+
 ```bash
 # systemd
 sudo systemctl stop autogen-trading-scheduler
@@ -174,6 +186,7 @@ Ctrl+C in terminal
 ## Troubleshooting
 
 **Scheduler not running:**
+
 ```bash
 # Check service status
 sudo systemctl status autogen-trading-scheduler
@@ -183,6 +196,7 @@ sudo journalctl -u autogen-trading-scheduler -n 50
 ```
 
 **Tasks not executing:**
+
 ```bash
 # Verify timezone
 timedatectl
@@ -195,6 +209,7 @@ cat state/scheduler_execution_log.json | jq '.[-5:]'
 ```
 
 **Need to run manually:**
+
 ```bash
 # Morning routine
 python src/trading/daily_scheduler.py --mode once --task morning_routine
@@ -224,6 +239,7 @@ python src/trading/automated_trading.py --mode paper --watchlist SPY TQQQ QQQ
 ```
 
 This combines:
+
 - Morning routine (reconcile, adjust stops)
 - VoterAgent signal generation
 - Automated order placement
@@ -232,6 +248,7 @@ This combines:
 ### Custom Watchlist
 
 Edit `config_defaults/scheduler_config.json`:
+
 ```json
 {
   "watchlist": ["AAPL", "MSFT", "GOOGL", "NVDA"],
@@ -261,7 +278,8 @@ Edit `config_defaults/scheduler_config.json`:
 ## Support
 
 Issues or questions:
-- GitHub Issues: https://github.com/iAmGiG/AutoGen-TradingSystem/issues
+
+- GitHub Issues: <https://github.com/iAmGiG/AutoTrader-AgentEdge/issues>
 - Documentation: `docs/features/issue_287_gtc_daily_execution.md`
 - Examples: `scripts/deployment/`
 

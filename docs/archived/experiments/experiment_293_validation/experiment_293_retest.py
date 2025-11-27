@@ -4,12 +4,13 @@ Retest Experiment #293: MACD vs MACD+RSI Voting
 Confirming that voting strategy provides better risk-adjusted returns.
 """
 
+import json
+import os
+from typing import Dict, Tuple
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from typing import Dict, Tuple
-import json
-import os
 
 
 class TechnicalIndicators:
@@ -24,11 +25,9 @@ class TechnicalIndicators:
         signal_line = macd.ewm(span=signal, adjust=False).mean()
         histogram = macd - signal_line
 
-        return pd.DataFrame({
-            'macd': macd,
-            'signal': signal_line,
-            'histogram': histogram
-        }, index=prices.index)
+        return pd.DataFrame(
+            {"macd": macd, "signal": signal_line, "histogram": histogram}, index=prices.index
+        )
 
     @staticmethod
     def calculate_rsi(prices: pd.Series, period=14) -> pd.Series:
@@ -76,7 +75,7 @@ class Strategy:
             "total_return": total_return,
             "max_dd": max_dd,
             "volatility": annual_vol,
-            "win_rate": win_rate
+            "win_rate": win_rate,
         }
 
 
@@ -89,8 +88,8 @@ class MACDOnlyStrategy(Strategy):
 
         # Simple MACD crossover strategy
         signals = pd.Series(index=prices.index, dtype=float)
-        signals[macd_df['histogram'] > 0] = 1  # Buy
-        signals[macd_df['histogram'] < 0] = -1  # Sell
+        signals[macd_df["histogram"] > 0] = 1  # Buy
+        signals[macd_df["histogram"] < 0] = -1  # Sell
         signals[signals.isna()] = 0
 
         return signals
@@ -107,8 +106,8 @@ class MACDRSIVotingStrategy(Strategy):
 
         # MACD signals
         macd_signal = pd.Series(index=prices.index, dtype=float)
-        macd_signal[macd_df['histogram'] > 0] = 1
-        macd_signal[macd_df['histogram'] < 0] = -1
+        macd_signal[macd_df["histogram"] > 0] = 1
+        macd_signal[macd_df["histogram"] < 0] = -1
         macd_signal[macd_signal.isna()] = 0
 
         # RSI signals (30/70 thresholds)
@@ -121,10 +120,10 @@ class MACDRSIVotingStrategy(Strategy):
         signals = pd.Series(index=prices.index, dtype=float)
 
         # Buy only when both bullish or MACD bullish + RSI not bearish
-        buy_condition = ((macd_signal == 1) & (rsi_signal >= 0))
+        buy_condition = (macd_signal == 1) & (rsi_signal >= 0)
 
         # Sell only when both bearish or MACD bearish + RSI not bullish
-        sell_condition = ((macd_signal == -1) & (rsi_signal <= 0))
+        sell_condition = (macd_signal == -1) & (rsi_signal <= 0)
 
         signals[buy_condition] = 1
         signals[sell_condition] = -1
@@ -139,21 +138,31 @@ def load_cached_data(symbol: str, start_date: str, end_date: str) -> pd.DataFram
 
     if os.path.exists(cache_file):
         print(f"   Using cached data from {cache_file}")
-        with open(cache_file, 'r') as f:
+        with open(cache_file, "r") as f:
             data = json.load(f)
 
         # Convert to DataFrame (new format has 'data' key)
-        df = pd.DataFrame(data['data'])
-        df['date'] = pd.to_datetime(df['date'])
-        df.set_index('date', inplace=True)
-        df.rename(columns={'close': 'Close', 'open': 'Open', 'high': 'High',
-                  'low': 'Low', 'volume': 'Volume'}, inplace=True)
-        return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+        df = pd.DataFrame(data["data"])
+        df["date"] = pd.to_datetime(df["date"])
+        df.set_index("date", inplace=True)
+        df.rename(
+            columns={
+                "close": "Close",
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "volume": "Volume",
+            },
+            inplace=True,
+        )
+        return df[["Open", "High", "Low", "Close", "Volume"]]
 
     return None
 
 
-def run_backtest(strategy: Strategy, symbol: str, start_date: str, end_date: str) -> Tuple[Dict, pd.Series]:
+def run_backtest(
+    strategy: Strategy, symbol: str, start_date: str, end_date: str
+) -> Tuple[Dict, pd.Series]:
     """Run backtest for a given strategy."""
 
     # Try cached data first
@@ -161,13 +170,13 @@ def run_backtest(strategy: Strategy, symbol: str, start_date: str, end_date: str
 
     if data is None:
         # Fall back to yfinance
-        print(f"   Downloading data from yfinance...")
+        print("   Downloading data from yfinance...")
         data = yf.download(symbol, start=start_date, end=end_date, progress=False)
         if data.empty:
             print(f"   No data available for {symbol}")
             return None, None
 
-    prices = data['Close']
+    prices = data["Close"]
 
     # Generate signals
     signals = strategy.generate_signals(prices)
@@ -236,7 +245,7 @@ def main():
     if data is None:
         data = yf.download(symbol, start=start_date, end=end_date, progress=False)
     if not data.empty:
-        buy_hold_return = (data['Close'].iloc[-1] / data['Close'].iloc[0] - 1)
+        buy_hold_return = data["Close"].iloc[-1] / data["Close"].iloc[0] - 1
         print(f"   Total Return: {buy_hold_return:.2%}")
 
     # Comparison
@@ -245,24 +254,24 @@ def main():
         print("COMPARISON:")
         print("-" * 30)
 
-        sharpe_diff = voting_metrics['sharpe'] - macd_metrics['sharpe']
+        sharpe_diff = voting_metrics["sharpe"] - macd_metrics["sharpe"]
         print(f"Sharpe Improvement: {sharpe_diff:+.3f}")
 
-        if voting_metrics['sharpe'] > macd_metrics['sharpe']:
+        if voting_metrics["sharpe"] > macd_metrics["sharpe"]:
             print("✅ Voting strategy has BETTER risk-adjusted returns")
         else:
             print("❌ MACD-only has better risk-adjusted returns")
 
-        if abs(voting_metrics['max_dd']) < abs(macd_metrics['max_dd']):
+        if abs(voting_metrics["max_dd"]) < abs(macd_metrics["max_dd"]):
             print("✅ Voting strategy has LOWER drawdown")
         else:
             print("❌ MACD-only has lower drawdown")
 
-        print(f"\nOriginal Experiment #293 Results:")
-        print(f"   Voting Sharpe: 0.856 | MACD Sharpe: 0.841")
+        print("\nOriginal Experiment #293 Results:")
+        print("   Voting Sharpe: 0.856 | MACD Sharpe: 0.841")
         print(f"   Current Voting Sharpe: {voting_metrics['sharpe']:.3f}")
 
-        if abs(voting_metrics['sharpe'] - 0.856) < 0.1:
+        if abs(voting_metrics["sharpe"] - 0.856) < 0.1:
             print("✅ Results CONSISTENT with original experiment")
         else:
             print("⚠️  Results differ from original experiment")
@@ -270,7 +279,7 @@ def main():
     print("\n" + "=" * 70)
     print("CONCLUSION:")
     if voting_metrics and macd_metrics:
-        if voting_metrics['sharpe'] > macd_metrics['sharpe']:
+        if voting_metrics["sharpe"] > macd_metrics["sharpe"]:
             print("Voting strategy validated - provides better risk-adjusted returns")
             print("Continue with human-in-loop trade management approach")
         else:

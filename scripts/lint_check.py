@@ -39,7 +39,7 @@ def run_ruff_check(target_path: str = ".") -> tuple[bool, str]:
             [sys.executable, "-m", "ruff", "check", target_path],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
 
         success = result.returncode == 0
@@ -63,7 +63,7 @@ def run_import_check(target_path: str = ".") -> tuple[bool, str]:
         target_path: Path to check
 
     Returns:
-        Tuple of (success: bool, output: str)  
+        Tuple of (success: bool, output: str)
     """
     try:
         # Focus on import-related rules
@@ -71,7 +71,7 @@ def run_import_check(target_path: str = ".") -> tuple[bool, str]:
             [sys.executable, "-m", "ruff", "check", target_path, "--select", "I"],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
 
         success = result.returncode == 0

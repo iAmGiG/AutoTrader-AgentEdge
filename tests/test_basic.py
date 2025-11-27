@@ -5,9 +5,10 @@ Basic tests for plugin architecture (no pytest required).
 Run: python3 tests/test_basic.py
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../src'))
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
 import asyncio
 from unittest.mock import AsyncMock
@@ -17,21 +18,12 @@ def test_core_models():
     """Test that core models can be created."""
     print("\n=== Test 1: Core Models ===")
 
-    from core.models import (
-        TradeRequest,
-        AnalysisResult,
-        RiskAssessment,
-        Signal,
-        AssetType,
-    )
+    from core.models import (AnalysisResult, AssetType, RiskAssessment, Signal,
+                             TradeRequest)
 
     # Test TradeRequest
     request = TradeRequest(
-        ticker="SPY",
-        action="review",
-        quantity=10,
-        price=600.0,
-        asset_type=AssetType.STOCK
+        ticker="SPY", action="review", quantity=10, price=600.0, asset_type=AssetType.STOCK
     )
     assert request.ticker == "SPY", "TradeRequest ticker failed"
     assert request.quantity == 10, "TradeRequest quantity failed"
@@ -45,7 +37,7 @@ def test_core_models():
         stop_loss=588.0,
         take_profit=620.0,
         reasoning=["Test reason"],
-        analyzer_name="TestAnalyzer"
+        analyzer_name="TestAnalyzer",
     )
     assert analysis.signal == Signal.BUY, "AnalysisResult signal failed"
     assert analysis.confidence == 0.75, "AnalysisResult confidence failed"
@@ -57,7 +49,7 @@ def test_core_models():
         recommended_quantity=10,
         portfolio_pct=5.0,
         max_loss_usd=120.0,
-        risk_reward_ratio=1.6
+        risk_reward_ratio=1.6,
     )
     assert risk.approved is True, "RiskAssessment approved failed"
     assert risk.recommended_quantity == 10, "RiskAssessment quantity failed"
@@ -70,17 +62,13 @@ async def test_voter_strategy_stub():
     """Test VoterStrategy stub returns valid analysis."""
     print("\n=== Test 2: VoterStrategy Stub ===")
 
-    from core.models import TradeRequest, AnalysisResult, Signal
+    from core.models import AnalysisResult, Signal, TradeRequest
     from strategies.voter_strategy import VoterStrategy
 
     strategy = VoterStrategy()
 
     # Test with price specified
-    request = TradeRequest(
-        ticker="SPY",
-        action="review",
-        price=600.0
-    )
+    request = TradeRequest(ticker="SPY", action="review", price=600.0)
 
     result = await strategy.analyze(request)
 
@@ -106,16 +94,13 @@ async def test_orchestrator_workflow():
     """Test TradingOrchestrator with mocked components."""
     print("\n=== Test 3: TradingOrchestrator Workflow ===")
 
-    from core.models import TradeRequest, AnalysisResult, RiskAssessment, Signal
+    from core.models import (AnalysisResult, RiskAssessment, Signal,
+                             TradeRequest)
     from core.trading_orchestrator import TradingOrchestrator
 
     # Create mocks
     mock_parser = AsyncMock()
-    mock_parser.parse.return_value = TradeRequest(
-        ticker="SPY",
-        action="review",
-        price=600.0
-    )
+    mock_parser.parse.return_value = TradeRequest(ticker="SPY", action="review", price=600.0)
     mock_parser.validate.return_value = True
 
     mock_analyzer = AsyncMock()
@@ -126,7 +111,7 @@ async def test_orchestrator_workflow():
         stop_loss=588.0,
         take_profit=620.0,
         reasoning=["Mock analysis"],
-        analyzer_name="MockAnalyzer"
+        analyzer_name="MockAnalyzer",
     )
     mock_analyzer.name = "MockAnalyzer"
 
@@ -137,7 +122,7 @@ async def test_orchestrator_workflow():
         portfolio_pct=5.0,
         max_loss_usd=120.0,
         risk_reward_ratio=1.6,
-        warnings=[]
+        warnings=[],
     )
 
     mock_executor = AsyncMock()
@@ -148,7 +133,7 @@ async def test_orchestrator_workflow():
         strategy_analyzer=mock_analyzer,
         risk_manager=mock_risk,
         execution_manager=mock_executor,
-        session_store=None
+        session_store=None,
     )
 
     # Process request
@@ -166,9 +151,13 @@ async def test_orchestrator_workflow():
     assert decision.suggestion.recommended_quantity == 10, "Wrong quantity"
     assert decision.approved is False, "Should not be auto-approved"
 
-    print(f"✅ Workflow executed: parse → analyze → risk → suggest")
-    print(f"   Suggestion: {decision.suggestion.signal.value} {decision.suggestion.recommended_quantity} {decision.suggestion.ticker}")
-    print(f"   Entry: {decision.suggestion.entry_price}, Stop: {decision.suggestion.stop_loss}, Target: {decision.suggestion.take_profit}")
+    print("✅ Workflow executed: parse → analyze → risk → suggest")
+    print(
+        f"   Suggestion: {decision.suggestion.signal.value} {decision.suggestion.recommended_quantity} {decision.suggestion.ticker}"
+    )
+    print(
+        f"   Entry: {decision.suggestion.entry_price}, Stop: {decision.suggestion.stop_loss}, Target: {decision.suggestion.take_profit}"
+    )
     print("✅ TradingOrchestrator workflow: PASS")
 
     return True
@@ -178,7 +167,8 @@ async def test_orchestrator_suggestion_merging():
     """Test that orchestrator properly merges analysis + risk assessment."""
     print("\n=== Test 4: Suggestion Merging ===")
 
-    from core.models import TradeRequest, AnalysisResult, RiskAssessment, Signal, TimeInForce
+    from core.models import (AnalysisResult, RiskAssessment, Signal,
+                             TimeInForce, TradeRequest)
     from core.trading_orchestrator import TradingOrchestrator
 
     # Create mocks with specific values to test merging
@@ -194,7 +184,7 @@ async def test_orchestrator_suggestion_merging():
         stop_loss=147.0,
         take_profit=156.0,
         reasoning=["Strong momentum", "RSI oversold"],
-        analyzer_name="TestAnalyzer"
+        analyzer_name="TestAnalyzer",
     )
     mock_analyzer.name = "TestAnalyzer"
 
@@ -205,7 +195,7 @@ async def test_orchestrator_suggestion_merging():
         portfolio_pct=8.0,
         max_loss_usd=150.0,
         risk_reward_ratio=2.0,
-        warnings=["High allocation warning"]
+        warnings=["High allocation warning"],
     )
 
     mock_executor = AsyncMock()
@@ -214,7 +204,7 @@ async def test_orchestrator_suggestion_merging():
         input_parser=mock_parser,
         strategy_analyzer=mock_analyzer,
         risk_manager=mock_risk,
-        execution_manager=mock_executor
+        execution_manager=mock_executor,
     )
 
     decision = await orchestrator.process_request("buy 50 AAPL", "test_user")
@@ -226,7 +216,10 @@ async def test_orchestrator_suggestion_merging():
     assert suggestion.signal == Signal.BUY, "Signal not from analysis"
     assert suggestion.confidence == 0.85, "Confidence not from analysis"
     assert suggestion.entry_price == 150.0, "Entry not from analysis"
-    assert suggestion.reasoning == ["Strong momentum", "RSI oversold"], "Reasoning not from analysis"
+    assert suggestion.reasoning == [
+        "Strong momentum",
+        "RSI oversold",
+    ], "Reasoning not from analysis"
 
     # From risk (but user qty takes precedence)
     assert suggestion.recommended_quantity == 50, "Should use user quantity"
@@ -236,9 +229,11 @@ async def test_orchestrator_suggestion_merging():
     # Orchestrator enforces GTC
     assert suggestion.time_in_force == TimeInForce.GTC, "Should always be GTC"
 
-    print(f"✅ Suggestion merged correctly:")
+    print("✅ Suggestion merged correctly:")
     print(f"   Analysis: {suggestion.signal.value} @ {suggestion.entry_price}")
-    print(f"   Risk: {suggestion.recommended_quantity} shares ({suggestion.portfolio_pct}% portfolio)")
+    print(
+        f"   Risk: {suggestion.recommended_quantity} shares ({suggestion.portfolio_pct}% portfolio)"
+    )
     print(f"   Order: {suggestion.time_in_force.value}")
     print("✅ Suggestion merging: PASS")
 
@@ -269,6 +264,7 @@ def run_all_tests():
         print(f"❌ VoterStrategy Stub: FAILED - {e}")
         results.append(("VoterStrategy Stub", False))
         import traceback
+
         traceback.print_exc()
 
     # Test 3: Orchestrator workflow
@@ -279,6 +275,7 @@ def run_all_tests():
         print(f"❌ Orchestrator Workflow: FAILED - {e}")
         results.append(("Orchestrator Workflow", False))
         import traceback
+
         traceback.print_exc()
 
     # Test 4: Suggestion merging
@@ -289,6 +286,7 @@ def run_all_tests():
         print(f"❌ Suggestion Merging: FAILED - {e}")
         results.append(("Suggestion Merging", False))
         import traceback
+
         traceback.print_exc()
 
     # Summary

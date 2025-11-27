@@ -22,7 +22,7 @@
 ### AAPL - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 8.730% | -3.830% | 5.490% | 2.730% | 7.020% |
 | Final Portfolio Value | $108,731.45 | $96,168.05 | $105,487.05 | $102,733.62 | $107,023.20 |
 | Buy & Hold Return % | 34.90% | 34.90% | 34.90% | 34.90% | 34.90% |
@@ -36,7 +36,7 @@
 ### AMZN - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 22.980% | 13.240% | 6.090% | 11.460% | 19.110% |
 | Final Portfolio Value | $122,978.23 | $113,243.29 | $106,090.01 | $111,458.77 | $119,106.11 |
 | Buy & Hold Return % | 46.33% | 46.33% | 46.33% | 46.33% | 46.33% |
@@ -50,7 +50,7 @@
 ### GOOGL - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 24.490% | 16.450% | 9.050% | 8.750% | 20.750% |
 | Final Portfolio Value | $124,492.79 | $116,448.56 | $109,045.51 | $108,745.36 | $120,746.95 |
 | Buy & Hold Return % | 37.01% | 37.01% | 37.01% | 37.01% | 37.01% |
@@ -64,7 +64,7 @@
 ### META - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 46.020% | 8.270% | 41.420% | 19.110% | 44.970% |
 | Final Portfolio Value | $146,020.29 | $108,269.77 | $141,424.94 | $119,114.92 | $144,974.32 |
 | Buy & Hold Return % | 69.08% | 69.08% | 69.08% | 69.08% | 69.08% |
@@ -78,7 +78,7 @@
 ### MSFT - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 5.760% | 3.220% | -5.630% | -0.320% | 5.760% |
 | Final Portfolio Value | $105,763.37 | $103,220.79 | $94,366.44 | $99,683.96 | $105,759.75 |
 | Buy & Hold Return % | 13.65% | 13.65% | 13.65% | 13.65% | 13.65% |
@@ -92,7 +92,7 @@
 ### NVDA - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 106.730% | 67.590% | 24.710% | 35.630% | 89.820% |
 | Final Portfolio Value | $206,733.91 | $167,590.65 | $124,708.76 | $135,627.22 | $189,820.58 |
 | Buy & Hold Return % | 178.80% | 178.80% | 178.80% | 178.80% | 178.80% |
@@ -106,7 +106,7 @@
 ### SPY - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 6.860% | 2.700% | 1.890% | 1.550% | 4.980% |
 | Final Portfolio Value | $106,864.28 | $102,698.97 | $101,888.81 | $101,546.68 | $104,984.19 |
 | Buy & Hold Return % | 24.00% | 24.00% | 24.00% | 24.00% | 24.00% |
@@ -120,7 +120,7 @@
 ### TSLA - Comprehensive Metrics
 
 | Metric | V0 | V1 | V2 | V3 | V4 |
-|--------|----|----|----|----|----| 
+|--------|----|----|----|----|----|
 | Total Return % | 69.510% | 54.870% | 39.980% | 67.030% | 60.840% |
 | Final Portfolio Value | $169,507.26 | $154,868.96 | $139,977.41 | $167,030.92 | $160,836.92 |
 | Buy & Hold Return % | 62.56% | 62.56% | 62.56% | 62.56% | 62.56% |
@@ -142,12 +142,14 @@
 ## 🔍 Key Insights
 
 ### Performance Patterns
+
 - **V0 Baseline Strength**: Pure MACD signals often outperformed sentiment-adjusted approaches
 - **V4 LLM Competitive**: Second-best performer on average, showing framework effectiveness
 - **V2/V3 VXX Struggles**: Volatility-based signals poorly timed for 2024 market conditions
 - **Trade Frequency Variance**: V2/V3 generated fewer signals (8-10 trades) vs others (16-28 trades)
 
 ### Framework Validation
+
 - Results align with realistic market behavior (no unrealistic 100%+ gains)
 - Position sizing working: 30%-100% allocation based on sentiment confidence
 - Date sanitization effective: V4 LLM analysis prevented temporal data leakage

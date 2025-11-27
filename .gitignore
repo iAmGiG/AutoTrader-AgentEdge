@@ -150,7 +150,7 @@ pytest.ini
 **/test_*.py
 enhanced_sentiment_comparison_*.json
 
-# Legacy test files  
+# Legacy test files
 test_*.py
 sentiment_agent_cli.py
 sentiment_agent_cli_improved.py

@@ -8,9 +8,10 @@ Fetches directly from broker to eliminate state synchronization issues.
 
 import json
 import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class PositionManager:
         Returns:
             Dict mapping symbol -> position data
         """
-        now = datetime.now()
+        now = get_datetime_now()
 
         # Check if we can use cached data
         if not force_refresh and self._cache_timestamp:
@@ -65,16 +66,18 @@ class PositionManager:
             positions = {}
             for pos in broker_positions:
                 positions[pos.symbol] = {
-                    'symbol': pos.symbol,
-                    'qty': float(pos.qty),
-                    'side': 'long' if float(pos.qty) > 0 else 'short',
-                    'avg_entry_price': float(pos.avg_cost),
-                    'current_price': float(pos.market_value) / float(pos.qty) if float(pos.qty) != 0 else 0,
-                    'market_value': float(pos.market_value),
-                    'unrealized_pl': float(pos.unrealized_pl),
-                    'unrealized_pl_percent': float(pos.unrealized_plpc),
-                    'cost_basis': float(pos.cost_basis),
-                    'last_updated': now.isoformat()
+                    "symbol": pos.symbol,
+                    "qty": float(pos.qty),
+                    "side": "long" if float(pos.qty) > 0 else "short",
+                    "avg_entry_price": float(pos.avg_cost),
+                    "current_price": (
+                        float(pos.market_value) / float(pos.qty) if float(pos.qty) != 0 else 0
+                    ),
+                    "market_value": float(pos.market_value),
+                    "unrealized_pl": float(pos.unrealized_pl),
+                    "unrealized_pl_percent": float(pos.unrealized_plpc),
+                    "cost_basis": float(pos.cost_basis),
+                    "last_updated": now.isoformat(),
                 }
 
             # Update cache
@@ -115,31 +118,31 @@ class PositionManager:
     def has_position(self, symbol: str) -> bool:
         """Check if we currently have a position in this symbol."""
         position = self.get_position(symbol)
-        return position is not None and abs(position['qty']) > 0
+        return position is not None and abs(position["qty"]) > 0
 
     def get_position_value(self, symbol: str) -> float:
         """Get current market value of position."""
         position = self.get_position(symbol)
         if position:
-            return position['market_value']
+            return position["market_value"]
         return 0.0
 
     def get_unrealized_pl(self, symbol: str) -> float:
         """Get unrealized P&L for position."""
         position = self.get_position(symbol)
         if position:
-            return position['unrealized_pl']
+            return position["unrealized_pl"]
         return 0.0
 
     def get_portfolio_value(self) -> float:
         """Get total portfolio market value."""
         positions = self.get_positions()
-        return sum(pos['market_value'] for pos in positions.values())
+        return sum(pos["market_value"] for pos in positions.values())
 
     def get_portfolio_pl(self) -> float:
         """Get total unrealized P&L across all positions."""
         positions = self.get_positions()
-        return sum(pos['unrealized_pl'] for pos in positions.values())
+        return sum(pos["unrealized_pl"] for pos in positions.values())
 
     def get_account_info(self) -> Dict[str, Any]:
         """
@@ -151,13 +154,17 @@ class PositionManager:
         try:
             account = self.broker.get_account()
             return {
-                'buying_power': float(account.buying_power),
-                'cash': float(account.cash),
-                'portfolio_value': float(account.portfolio_value),
-                'equity': float(account.equity),
-                'day_trade_count': int(account.daytrade_buying_power) if hasattr(account, 'daytrade_buying_power') else 0,
-                'status': account.status,
-                'last_updated': datetime.now().isoformat()
+                "buying_power": float(account.buying_power),
+                "cash": float(account.cash),
+                "portfolio_value": float(account.portfolio_value),
+                "equity": float(account.equity),
+                "day_trade_count": (
+                    int(account.daytrade_buying_power)
+                    if hasattr(account, "daytrade_buying_power")
+                    else 0
+                ),
+                "status": account.status,
+                "last_updated": now_iso(),
             }
         except Exception as e:
             logger.error(f"Failed to fetch account info: {e}")
@@ -166,11 +173,8 @@ class PositionManager:
     def _save_positions_backup(self, positions: Dict[str, Any]):
         """Save positions to backup file."""
         try:
-            with open(self.state_file, 'w') as f:
-                json.dump({
-                    'positions': positions,
-                    'saved_at': datetime.now().isoformat()
-                }, f, indent=2)
+            with open(self.state_file, "w") as f:
+                json.dump({"positions": positions, "saved_at": now_iso()}, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save positions backup: {e}")
 
@@ -178,9 +182,9 @@ class PositionManager:
         """Load positions from backup file."""
         try:
             if self.state_file.exists():
-                with open(self.state_file, 'r') as f:
+                with open(self.state_file, "r") as f:
                     data = json.load(f)
-                    positions = data.get('positions', {})
+                    positions = data.get("positions", {})
                     logger.warning(f"Loaded {len(positions)} positions from backup file")
                     return positions
         except Exception as e:
@@ -188,7 +192,7 @@ class PositionManager:
 
         return {}
 
-    def get_orders(self, status: str = 'open', limit: int = 100) -> List[Dict[str, Any]]:
+    def get_orders(self, status: str = "open", limit: int = 100) -> List[Dict[str, Any]]:
         """
         Get orders from broker.
 
@@ -205,20 +209,22 @@ class PositionManager:
             order_list = []
             for order in orders:
                 order_data = {
-                    'id': order.id,
-                    'symbol': order.symbol,
-                    'qty': float(order.qty),
-                    'side': order.side,
-                    'order_type': order.order_type,
-                    'status': order.status,
-                    'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                    'filled_at': order.filled_at.isoformat() if order.filled_at else None,
-                    'filled_qty': float(order.filled_qty) if order.filled_qty else 0,
-                    'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else 0,
-                    'limit_price': float(order.limit_price) if order.limit_price else None,
-                    'stop_price': float(order.stop_price) if order.stop_price else None,
-                    'time_in_force': order.time_in_force,
-                    'order_class': order.order_class
+                    "id": order.id,
+                    "symbol": order.symbol,
+                    "qty": float(order.qty),
+                    "side": order.side,
+                    "order_type": order.order_type,
+                    "status": order.status,
+                    "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                    "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+                    "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
+                    "filled_avg_price": (
+                        float(order.filled_avg_price) if order.filled_avg_price else 0
+                    ),
+                    "limit_price": float(order.limit_price) if order.limit_price else None,
+                    "stop_price": float(order.stop_price) if order.stop_price else None,
+                    "time_in_force": order.time_in_force,
+                    "order_class": order.order_class,
                 }
                 order_list.append(order_data)
 
@@ -242,21 +248,21 @@ class PositionManager:
             order = self.broker.get_order(order_id)
 
             return {
-                'id': order.id,
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': order.side,
-                'order_type': order.order_type,
-                'status': order.status,
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'filled_at': order.filled_at.isoformat() if order.filled_at else None,
-                'filled_qty': float(order.filled_qty) if order.filled_qty else 0,
-                'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else 0,
-                'limit_price': float(order.limit_price) if order.limit_price else None,
-                'stop_price': float(order.stop_price) if order.stop_price else None,
-                'time_in_force': order.time_in_force,
-                'order_class': order.order_class,
-                'legs': [leg.id for leg in order.legs] if order.legs else []
+                "id": order.id,
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": order.side,
+                "order_type": order.order_type,
+                "status": order.status,
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+                "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
+                "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else 0,
+                "limit_price": float(order.limit_price) if order.limit_price else None,
+                "stop_price": float(order.stop_price) if order.stop_price else None,
+                "time_in_force": order.time_in_force,
+                "order_class": order.order_class,
+                "legs": [leg.id for leg in order.legs] if order.legs else [],
             }
 
         except Exception as e:

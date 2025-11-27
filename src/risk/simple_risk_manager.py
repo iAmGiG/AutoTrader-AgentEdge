@@ -8,8 +8,7 @@ import logging
 from typing import Optional
 
 from core.interfaces import RiskManager
-from core.models import TradeRequest, AnalysisResult, RiskAssessment
-
+from core.models import AnalysisResult, RiskAssessment, TradeRequest
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +55,7 @@ class SimpleRiskManager(RiskManager):
         )
 
     async def assess(
-        self,
-        request: TradeRequest,
-        analysis: AnalysisResult,
-        user_id: str = "default"
+        self, request: TradeRequest, analysis: AnalysisResult, user_id: str = "default"
     ) -> RiskAssessment:
         """
         Assess risk and recommend position size.
@@ -168,7 +164,7 @@ class SimpleRiskManager(RiskManager):
                 portfolio_pct=0.0,
                 max_loss_usd=0.0,
                 risk_reward_ratio=0.0,
-                warnings=[f"⚠️  Risk assessment error: {e}"]
+                warnings=[f"⚠️  Risk assessment error: {e}"],
             )
 
     async def get_portfolio_value(self, user_id: str = "default") -> float:
@@ -193,7 +189,9 @@ class SimpleRiskManager(RiskManager):
         logger.warning("Using fallback portfolio value: $100,000")
         return 100000.0
 
-    async def get_buying_power(self, user_id: str = "default", portfolio_value: Optional[float] = None) -> float:
+    async def get_buying_power(
+        self, user_id: str = "default", portfolio_value: Optional[float] = None
+    ) -> float:
         """
         Get available buying power for user.
 

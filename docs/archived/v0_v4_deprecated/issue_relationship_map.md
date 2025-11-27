@@ -1,4 +1,4 @@
-# Issue Relationship Map: RH2MAS Development Strategy
+# Issue Relationship Map: AutoTrader Development Strategy
 
 **Last Updated**: 2025-01-14  
 **Scope**: Issues #258-289 (32 issues total)  

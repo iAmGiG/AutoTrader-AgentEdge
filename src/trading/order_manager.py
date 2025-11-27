@@ -8,11 +8,19 @@ Alpaca's actual response structure and proper order lifecycle.
 
 import logging
 import time
-from typing import Dict, List, Optional, Any
-from datetime import datetime  # TODO Date utils
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest, StopOrderRequest
-from alpaca.trading.requests import OrderSide, TimeInForce, OrderClass
-from alpaca.trading.requests import TakeProfitRequest, StopLossRequest
+from typing import Any, Dict, List, Optional
+
+from alpaca.trading.requests import (
+    LimitOrderRequest,
+    MarketOrderRequest,
+    OrderClass,
+    OrderSide,
+    StopLossRequest,
+    TakeProfitRequest,
+    TimeInForce,
+)
+
+from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +64,8 @@ class OrderManager:
             order_request = MarketOrderRequest(
                 symbol=symbol,
                 qty=qty,
-                side=OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL,
-                time_in_force=TimeInForce.DAY
+                side=OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL,
+                time_in_force=TimeInForce.DAY,
             )
 
             # Submit to broker
@@ -65,16 +73,16 @@ class OrderManager:
 
             # Convert to our standard format
             order_data = {
-                'id': order.id,
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': order.side.value,
-                'order_type': order.order_type.value,
-                'status': order.status.value,
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'time_in_force': order.time_in_force.value,
-                'order_class': order.order_class.value if order.order_class else 'simple',
-                'legs': []
+                "id": order.id,
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": order.side.value,
+                "order_type": order.order_type.value,
+                "status": order.status.value,
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "time_in_force": order.time_in_force.value,
+                "order_class": order.order_class.value if order.order_class else "simple",
+                "legs": [],
             }
 
             # Track for fill monitoring
@@ -85,10 +93,11 @@ class OrderManager:
 
         except Exception as e:
             logger.error(f"Failed to place market order {side} {qty} {symbol}: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
-    def place_bracket_order(self, symbol: str, qty: int, stop_price: float,
-                            target_price: float) -> Dict[str, Any]:
+    def place_bracket_order(
+        self, symbol: str, qty: int, stop_price: float, target_price: float
+    ) -> Dict[str, Any]:
         """
         Place a bracket order with stop loss and take profit.
 
@@ -115,7 +124,7 @@ class OrderManager:
                 time_in_force=TimeInForce.DAY,
                 order_class=OrderClass.BRACKET,
                 stop_loss=StopLossRequest(stop_price=stop_price),
-                take_profit=TakeProfitRequest(limit_price=target_price)
+                take_profit=TakeProfitRequest(limit_price=target_price),
             )
 
             # Submit bracket order
@@ -123,39 +132,41 @@ class OrderManager:
 
             # Extract bracket components from Alpaca response
             entry_order = {
-                'id': order.id,
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': order.side.value,
-                'order_type': order.order_type.value,
-                'status': order.status.value,
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'order_class': 'bracket',
-                'stop_price': stop_price,
-                'target_price': target_price,
-                'legs': [leg.id for leg in order.legs] if order.legs else []
+                "id": order.id,
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": order.side.value,
+                "order_type": order.order_type.value,
+                "status": order.status.value,
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "order_class": "bracket",
+                "stop_price": stop_price,
+                "target_price": target_price,
+                "legs": [leg.id for leg in order.legs] if order.legs else [],
             }
 
             # Track main order for fill monitoring
             self.pending_orders[order.id] = entry_order
 
             logger.info(
-                f"Bracket order placed: BUY {qty} {symbol} @ Stop:{stop_price} Target:{target_price} (ID: {order.id})")
+                f"Bracket order placed: BUY {qty} {symbol} @ Stop:{stop_price} Target:{target_price} (ID: {order.id})"
+            )
 
             return {
-                'entry_id': order.id,
-                'stop_price': stop_price,
-                'target_price': target_price,
-                'legs': entry_order['legs'],
-                'status': 'submitted'
+                "entry_id": order.id,
+                "stop_price": stop_price,
+                "target_price": target_price,
+                "legs": entry_order["legs"],
+                "status": "submitted",
             }
 
         except Exception as e:
             logger.error(f"Failed to place bracket order {symbol}: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
-    def place_limit_order(self, symbol: str, qty: int, side: str,
-                          limit_price: float) -> Dict[str, Any]:
+    def place_limit_order(
+        self, symbol: str, qty: int, side: str, limit_price: float
+    ) -> Dict[str, Any]:
         """
         Place a limit order.
 
@@ -172,34 +183,35 @@ class OrderManager:
             order_request = LimitOrderRequest(
                 symbol=symbol,
                 qty=qty,
-                side=OrderSide.BUY if side.lower() == 'buy' else OrderSide.SELL,
+                side=OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL,
                 limit_price=limit_price,
-                time_in_force=TimeInForce.DAY
+                time_in_force=TimeInForce.DAY,
             )
 
             order = self.broker.submit_order(order_data=order_request)
 
             order_data = {
-                'id': order.id,
-                'symbol': order.symbol,
-                'qty': float(order.qty),
-                'side': order.side.value,
-                'order_type': order.order_type.value,
-                'status': order.status.value,
-                'limit_price': float(order.limit_price),
-                'submitted_at': order.submitted_at.isoformat() if order.submitted_at else None,
-                'time_in_force': order.time_in_force.value
+                "id": order.id,
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": order.side.value,
+                "order_type": order.order_type.value,
+                "status": order.status.value,
+                "limit_price": float(order.limit_price),
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "time_in_force": order.time_in_force.value,
             }
 
             self.pending_orders[order.id] = order_data
 
             logger.info(
-                f"Limit order placed: {side} {qty} {symbol} @ ${limit_price} (ID: {order.id})")
+                f"Limit order placed: {side} {qty} {symbol} @ ${limit_price} (ID: {order.id})"
+            )
             return order_data
 
         except Exception as e:
             logger.error(f"Failed to place limit order {side} {qty} {symbol} @ ${limit_price}: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def monitor_order_fills(self) -> List[Dict[str, Any]]:
         """
@@ -232,42 +244,42 @@ class OrderManager:
                     orders_to_remove.append(order_id)
                     continue
 
-                status = current_order['status'].lower()
+                status = current_order["status"].lower()
 
-                if status == 'filled':
+                if status == "filled":
                     # Order is filled!
                     filled_order = {
-                        'id': order_id,
-                        'symbol': current_order['symbol'],
-                        'qty': current_order['filled_qty'],
-                        'side': current_order['side'],
-                        'filled_price': current_order['filled_avg_price'],
-                        'filled_at': current_order['filled_at'],
-                        'original_order': order_data
+                        "id": order_id,
+                        "symbol": current_order["symbol"],
+                        "qty": current_order["filled_qty"],
+                        "side": current_order["side"],
+                        "filled_price": current_order["filled_avg_price"],
+                        "filled_at": current_order["filled_at"],
+                        "original_order": order_data,
                     }
 
                     filled_orders.append(filled_order)
                     orders_to_remove.append(order_id)
 
                     logger.info(
-                        f"Order filled: {current_order['side']} {current_order['filled_qty']} {current_order['symbol']} @ ${current_order['filled_avg_price']}")
+                        f"Order filled: {current_order['side']} {current_order['filled_qty']} {current_order['symbol']} @ ${current_order['filled_avg_price']}"
+                    )
 
-                elif status in ['cancelled', 'expired', 'rejected']:
+                elif status in ["cancelled", "expired", "rejected"]:
                     # Order is done but not filled
                     orders_to_remove.append(order_id)
                     logger.info(f"Order {status}: {order_id}")
 
                 # Update pending order data with current status
                 else:
-                    self.pending_orders[order_id].update({
-                        'status': status,
-                        'filled_qty': current_order['filled_qty']
-                    })
+                    self.pending_orders[order_id].update(
+                        {"status": status, "filled_qty": current_order["filled_qty"]}
+                    )
 
             except Exception as e:
                 logger.error(f"Error checking order {order_id}: {e}")
                 # Remove problematic orders after 1 hour
-                if now - order_data.get('submitted_timestamp', now) > 3600:
+                if now - order_data.get("submitted_timestamp", now) > 3600:
                     orders_to_remove.append(order_id)
 
         # Clean up completed orders
@@ -320,10 +332,10 @@ class OrderManager:
         Returns:
             State update information
         """
-        symbol = filled_order['symbol']
-        side = filled_order['side']
-        qty = filled_order['qty']
-        price = filled_order['filled_price']
+        symbol = filled_order["symbol"]
+        side = filled_order["side"]
+        qty = filled_order["qty"]
+        price = filled_order["filled_price"]
 
         # Refresh position cache since we have a new fill
         self.position_manager.refresh_cache()
@@ -332,13 +344,13 @@ class OrderManager:
         position = self.position_manager.get_position(symbol)
 
         state_update = {
-            'symbol': symbol,
-            'action': 'position_opened' if side == 'buy' else 'position_closed',
-            'fill_price': price,
-            'fill_qty': qty,
-            'fill_time': filled_order['filled_at'],
-            'position': position,
-            'timestamp': datetime.now().isoformat()
+            "symbol": symbol,
+            "action": "position_opened" if side == "buy" else "position_closed",
+            "fill_price": price,
+            "fill_qty": qty,
+            "fill_time": filled_order["filled_at"],
+            "position": position,
+            "timestamp": now_iso(),
         }
 
         logger.info(f"Fill handled: {side} {qty} {symbol} @ ${price}")

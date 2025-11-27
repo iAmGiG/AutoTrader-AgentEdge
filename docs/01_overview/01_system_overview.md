@@ -1,4 +1,4 @@
-# AutoGen-TradingSystem Overview
+# AutoTrader-AgentEdge Overview
 
 **Status**: Production-Ready Multi-Agent Trading Platform
 **Foundation**: Microsoft AutoGen Framework
@@ -6,7 +6,7 @@
 
 ## What Is This System?
 
-AutoGen-TradingSystem is a professional algorithmic trading platform built on Microsoft's AutoGen multi-agent framework. The system employs ensemble voting methodologies backed by academic research to achieve superior risk-adjusted returns compared to single-indicator strategies.
+AutoTrader-AgentEdge is a professional algorithmic trading platform built on Microsoft's AutoGen multi-agent framework. The system employs ensemble voting methodologies backed by academic research to achieve superior risk-adjusted returns compared to single-indicator strategies.
 
 ### Core Purpose
 
@@ -28,22 +28,26 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 ### ✅ Production Components
 
 **VoterAgent** - Production-ready MACD+RSI voting with proven performance:
+
 - Validated Sharpe Ratio: 0.856
 - Win Rate: 51.4%
 - Max Drawdown: -10.10%
 - Configuration: Fibonacci MACD (13/34/8) + RSI(14)
 
 **Position Manager** - Unified position and account tracking:
+
 - Real-time account monitoring
 - Position state management
 - Integration with all agents via tools
 
 **Order Manager** - Complete order placement and monitoring:
+
 - Order types: Market, limit, stop, trailing, bracket
 - Risk management: Market hours, daily limits, position validation
 - Fill monitoring with automatic state transitions
 
 **Trading Cycle** - Comprehensive position monitoring:
+
 - Entry signal detection
 - Position tracking during hold
 - Stop management and exit execution
@@ -51,18 +55,21 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 ### ✅ Integration Complete
 
 **Alpaca Markets**:
+
 - Full paper and live trading support
 - Real-time and historical market data
 - Order execution and monitoring
 - Account and position management
 
 **Market Data**:
+
 - Real-time data via Alpaca SDK
 - Intelligent caching (>90% API call reduction)
 - Multi-provider normalization (Polygon, Alpha Vantage fallbacks)
 - AutoGen tool wrappers for agent access
 
 **Order Types**:
+
 - Market orders (immediate execution)
 - Limit orders (price-specific)
 - Stop orders (risk management)
@@ -72,6 +79,7 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 ### 🔄 In Development
 
 **Multi-Agent Ecosystem** (Issue #310):
+
 1. **Scanner Agent**: Multi-ticker market scanning
 2. **Risk Agent**: Portfolio risk management
 3. **Executor Agent**: Trade execution coordination
@@ -141,29 +149,34 @@ The system architecture is grounded in peer-reviewed research:
 4. **LLM Trading Behavior**: Bias mitigation through regime-aware approaches
 
 **Academic Support**:
+
 - Machine Learning Ensemble Methods for Stock Market Forecasting (2020)
 - Enhanced Trading Performance through Multi-Indicator Signal Integration (2024)
 - Hierarchical Multi-Agent Trading with Dynamic Strategy Selection (2023)
 - FINSABER: LLM Trading Behavior Analysis (2024)
 
-See `research_papers.md` for detailed citations and implementation impact.
+See [research_foundation.md](../presentations/research_foundation.md) for detailed citations and implementation impact.
 
 ## Technology Stack
 
 **Core Framework**:
+
 - Microsoft AutoGen (multi-agent coordination)
 - Python 3.8+ (primary language)
 
 **Trading Integration**:
+
 - Alpaca Markets API (broker integration)
 - alpaca-py SDK (official Python SDK)
 
 **Data & Analysis**:
+
 - pandas (data manipulation)
 - NumPy (numerical computations)
 - TA-Lib / custom indicators (technical analysis)
 
 **Caching & Performance**:
+
 - TradingCacheManager (SQLite: 8-10x performance, 90%+ hit rate)
 - ACID transactions with thread-safe concurrent access
 - Smart expiration: Historical data (10 year TTL), Recent data (24 hour TTL)
@@ -171,16 +184,19 @@ See `research_papers.md` for detailed citations and implementation impact.
 ## Current Development Status
 
 ### Phase 1-2: Complete ✅
+
 - Core voting architecture implemented
 - MACD+RSI validation successful
 - Production-ready single-agent system
 
 ### Phase 3: In Progress 🚧
+
 - Expanded ensemble with additional indicators (RSI, Bollinger Bands, Volume)
 - Multi-agent coordination framework
 - Scanner and Risk agents
 
 ### Phase 4-5: Planned 📋
+
 - Weighted voting and confidence scoring
 - Market regime detection and adaptation
 - Production deployment with live trading

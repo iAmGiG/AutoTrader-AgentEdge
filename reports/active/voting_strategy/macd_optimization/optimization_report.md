@@ -6,6 +6,7 @@
 ## Executive Summary
 
 Tested 10 MACD parameter combinations across 7 tech stocks to identify:
+
 1. Optimal parameters per ticker
 2. Best universal parameters (best-of-sum)
 3. Sector-specific patterns
@@ -13,6 +14,7 @@ Tested 10 MACD parameter combinations across 7 tech stocks to identify:
 ## Best Universal Parameters
 
 **Recommended Universal Parameters**: **13/34/8**
+
 - Average Return: 15.4%
 - Average Sharpe: 0.416
 - Success Rate: 57% of tickers profitable

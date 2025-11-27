@@ -176,11 +176,13 @@
 ### User Experience Verified
 
 **Natural Language Routing:**
+
 - Keywords: "alert", "scheduler", "portfolio" → Correct handlers
 - Default behavior: Trade execution
 - No command memorization needed
 
 **Entry Point Simplification:**
+
 - Before: `python main.py trade-assist` (required)
 - After: `python main.py` (just works!)
 
@@ -197,21 +199,25 @@
 ### Cross-Feature Integration
 
 **CLI ↔ Alerts:**
+
 - ✅ "check my alerts" routes to `_handle_alerts_request()`
 - ✅ Position tracker accessible from CLI
 - ✅ Alert history displayed correctly
 
 **CLI ↔ Scheduler:**
+
 - ✅ "show scheduler status" routes to `_handle_scheduler_request()`
 - ✅ Config and execution history accessible
 - ✅ Daemon mode launches scheduler
 
 **CLI ↔ Portfolio:**
+
 - ✅ "show portfolio" routes to `_handle_portfolio_request()`
 - ✅ Account monitor accessible
 - ✅ Position status displayed
 
 **Scheduler ↔ Alerts:**
+
 - ✅ Morning routine checks position alerts
 - ✅ Evening routine checks position alerts
 - ✅ Alert history persists across scheduler runs

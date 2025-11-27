@@ -2,9 +2,10 @@
 Utilities for dynamic date handling in data tools.
 """
 
-import re
 import datetime
 import os
+import re
+
 from src.utils.config_loader import ConfigLoader
 
 config = ConfigLoader()
@@ -57,8 +58,7 @@ def get_default_date_range(days_back=5):
     end_date = datetime.datetime.now()
 
     # Log the actual date being used (for debugging)
-    print(
-        f"Current date used for calculations: {end_date.strftime('%Y-%m-%d')}")
+    print(f"Current date used for calculations: {end_date.strftime('%Y-%m-%d')}")
 
     # Calculate start date (approximately days_back trading days)
     # Add extra days to account for weekends and holidays
@@ -97,7 +97,12 @@ def process_date_param(date_param):
         return None
 
     # If it's already a YYYY-MM-DD format, return as-is
-    if isinstance(date_param, str) and len(date_param) == 10 and date_param[4] == "-" and date_param[7] == "-":
+    if (
+        isinstance(date_param, str)
+        and len(date_param) == 10
+        and date_param[4] == "-"
+        and date_param[7] == "-"
+    ):
         return date_param
 
     today = datetime.datetime.now()
@@ -156,11 +161,7 @@ def process_date_param(date_param):
     return None
 
 
-def get_processed_date_range(
-    start_date=None,
-    end_date=None,
-    default_days_back=5
-):
+def get_processed_date_range(start_date=None, end_date=None, default_days_back=5):
     """
     Process start and end date parameters, applying defaults if needed.
 
@@ -267,6 +268,7 @@ def resolve_anchor(df, anchor_token):
         value is returned.
     """
     import pandas as pd
+
     warning = None
 
     if df.empty or not isinstance(df.index, pd.DatetimeIndex):
@@ -286,8 +288,7 @@ def resolve_anchor(df, anchor_token):
         else:
             token = str(anchor_token).lower()
             if token == "year_open":
-                year_start = pd.Timestamp(df.index[-1].year, 1, 1,
-                                          tz=df.index.tz)
+                year_start = pd.Timestamp(df.index[-1].year, 1, 1, tz=df.index.tz)
                 idx = df.index.get_indexer([year_start], method="bfill")[0]
                 anchor_ts = df.index[idx]
             elif token in {"earnings", "fomc"}:
@@ -313,13 +314,19 @@ def resolve_anchor(df, anchor_token):
 # === COMMON DATETIME UTILITIES ===
 # Consolidation functions to reduce datetime import duplication across modules
 
-def get_datetime_now() -> datetime.datetime:
+
+def get_datetime_now(tz=None) -> datetime.datetime:
     """
-    Get current datetime object.
+    Get current datetime object, optionally timezone-aware.
+
+    Args:
+        tz: Optional timezone (e.g., pytz.timezone("America/New_York"))
 
     Returns:
-        Current datetime.datetime object
+        Current datetime.datetime object (timezone-aware if tz provided)
     """
+    if tz is not None:
+        return datetime.datetime.now(tz)
     return datetime.datetime.now()
 
 
@@ -367,7 +374,7 @@ def now_timestamp() -> str:
     Returns:
         Current timestamp as YYYYMMDD_HHMMSS string
     """
-    return datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 def today_str() -> str:
@@ -377,7 +384,7 @@ def today_str() -> str:
     Returns:
         Today's date in YYYY-MM-DD format
     """
-    return datetime.datetime.now().strftime('%Y-%m-%d')
+    return datetime.datetime.now().strftime("%Y-%m-%d")
 
 
 def add_business_days(date_str, days) -> str:
@@ -394,17 +401,17 @@ def add_business_days(date_str, days) -> str:
     import pandas as pd
 
     # Convert to datetime
-    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Add business days using pandas
-    result_dt = pd.bdate_range(start=dt, periods=abs(days) + 1, freq='B')
+    result_dt = pd.bdate_range(start=dt, periods=abs(days) + 1, freq="B")
 
     if days >= 0:
-        return result_dt[-1].strftime('%Y-%m-%d')
+        return result_dt[-1].strftime("%Y-%m-%d")
     else:
         # For negative days, go backwards
-        result_dt = pd.bdate_range(end=dt, periods=abs(days) + 1, freq='B')
-        return result_dt[0].strftime('%Y-%m-%d')
+        result_dt = pd.bdate_range(end=dt, periods=abs(days) + 1, freq="B")
+        return result_dt[0].strftime("%Y-%m-%d")
 
 
 def parse_date_string(date_str) -> datetime.datetime:
@@ -422,12 +429,12 @@ def parse_date_string(date_str) -> datetime.datetime:
     """
     # Handle standard date formats
     formats_to_try = [
-        '%Y-%m-%d',
-        '%Y-%m-%d %H:%M:%S',
-        '%Y-%m-%dT%H:%M:%S',
-        '%Y-%m-%dT%H:%M:%S.%f',
-        '%m/%d/%Y',
-        '%d/%m/%Y',
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%m/%d/%Y",
+        "%d/%m/%Y",
     ]
 
     for fmt in formats_to_try:
@@ -452,13 +459,13 @@ def date_range_trading_days(start_date, end_date) -> list:
     """
     import pandas as pd
 
-    start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-    end_dt = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
     # Generate business days
-    trading_days = pd.bdate_range(start=start_dt, end=end_dt, freq='B')
+    trading_days = pd.bdate_range(start=start_dt, end=end_dt, freq="B")
 
-    return [dt.strftime('%Y-%m-%d') for dt in trading_days]
+    return [dt.strftime("%Y-%m-%d") for dt in trading_days]
 
 
 def calculate_duration_minutes(start_iso, end_iso) -> float:
@@ -503,12 +510,11 @@ def is_opex_week(date) -> bool:
     """
     # Ensure date is a datetime object
     if isinstance(date, str):
-        date = datetime.datetime.strptime(date, '%Y-%m-%d')
+        date = datetime.datetime.strptime(date, "%Y-%m-%d")
 
     # Third Friday of the month
     first_day = date.replace(day=1)
-    first_friday = first_day + \
-        datetime.timedelta(days=(4 - first_day.weekday()) % 7)
+    first_friday = first_day + datetime.timedelta(days=(4 - first_day.weekday()) % 7)
     third_friday = first_friday + datetime.timedelta(weeks=2)
 
     # Check if within OPEX week (Mon-Fri of third Friday week)
@@ -528,7 +534,7 @@ def is_business_day(date_str) -> bool:
     Returns:
         True if it's a business day, False otherwise
     """
-    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Check if it's a weekday
     if dt.weekday() >= 5:  # Saturday = 5, Sunday = 6
@@ -554,7 +560,7 @@ def is_valid_trading_date(date_str: str, allow_future: bool = False) -> bool:
         import pytz
 
         # Parse the date
-        dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+        dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
         # Check if it's a business day
         if not is_business_day(date_str):
@@ -563,7 +569,7 @@ def is_valid_trading_date(date_str: str, allow_future: bool = False) -> bool:
         # Check if it's in the future
         if not allow_future:
             # Get current time in EDT/EST
-            eastern = pytz.timezone('America/New_York')
+            eastern = pytz.timezone("America/New_York")
             now = datetime.datetime.now(eastern).replace(tzinfo=None)
 
             # Date is in the future if after today
@@ -593,7 +599,7 @@ def format_for_filename(dt: datetime.datetime = None) -> str:
     if dt is None:
         dt = datetime.datetime.now()
 
-    return dt.strftime('%Y%m%d_%H%M%S')
+    return dt.strftime("%Y%m%d_%H%M%S")
 
 
 def get_market_open_time(date_str, timezone: str = "America/New_York") -> datetime.datetime:
@@ -609,7 +615,7 @@ def get_market_open_time(date_str, timezone: str = "America/New_York") -> dateti
     """
     import pytz
 
-    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Set to 9:30 AM
     market_open = dt.replace(hour=9, minute=30, second=0, microsecond=0)
@@ -632,7 +638,7 @@ def get_market_close_time(date_str, timezone: str = "America/New_York") -> datet
     """
     import pytz
 
-    dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Set to 4:00 PM
     market_close = dt.replace(hour=16, minute=0, second=0, microsecond=0)
@@ -663,14 +669,16 @@ def calculate_days_to_expiration(expiration_dates, trade_dates):
         trade_dates = pd.to_datetime(trade_dates)
 
     # Handle parsing if needed
-    if isinstance(expiration_dates, pd.Series) and expiration_dates.dtype == 'object':
+    if isinstance(expiration_dates, pd.Series) and expiration_dates.dtype == "object":
         expiration_dates = expiration_dates.apply(
-            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x)
+            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x
+        )
         expiration_dates = pd.to_datetime(expiration_dates)
 
-    if isinstance(trade_dates, pd.Series) and trade_dates.dtype == 'object':
+    if isinstance(trade_dates, pd.Series) and trade_dates.dtype == "object":
         trade_dates = trade_dates.apply(
-            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x)
+            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x
+        )
         trade_dates = pd.to_datetime(trade_dates)
 
     # Calculate the difference in days

@@ -8,9 +8,11 @@ Updated to use TradingCacheManager for better performance and futures support.
 """
 
 import json
-import pandas as pd
 from pathlib import Path
 from typing import Optional
+
+import pandas as pd
+
 from .sqlite_cache import TradingCacheManager
 
 
@@ -28,13 +30,11 @@ class CacheAdapter:
 
     def __init__(self):
         self.cache = TradingCacheManager()  # SQLite-based cache
-        self.legacy_locations = [
-            Path(".cache/polygon/prices"),
-            Path(".cache/market_data")
-        ]
+        self.legacy_locations = [Path(".cache/polygon/prices"), Path(".cache/market_data")]
 
-    def get_market_data(self, symbol: str, start_date: str, end_date: str,
-                        source: str = "any") -> Optional[pd.DataFrame]:
+    def get_market_data(
+        self, symbol: str, start_date: str, end_date: str, source: str = "any"
+    ) -> Optional[pd.DataFrame]:
         """
         Get market data from SQLite cache, falling back to legacy file cache.
 
@@ -69,8 +69,9 @@ class CacheAdapter:
 
         return None
 
-    def set_market_data(self, symbol: str, start_date: str, end_date: str,
-                        source: str, data: pd.DataFrame) -> None:
+    def set_market_data(
+        self, symbol: str, start_date: str, end_date: str, source: str, data: pd.DataFrame
+    ) -> None:
         """
         Store market data using SQLite cache (with set-based union logic).
 
@@ -92,8 +93,9 @@ class CacheAdapter:
         # no need to pass start/end explicitly
         self.cache.set(symbol, data, source=source)
 
-    def _check_legacy_cache(self, cache_dir: Path, symbol: str,
-                            start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+    def _check_legacy_cache(
+        self, cache_dir: Path, symbol: str, start_date: str, end_date: str
+    ) -> Optional[pd.DataFrame]:
         """Check legacy cache locations for matching data."""
         if not cache_dir.exists():
             return None
@@ -118,18 +120,18 @@ class CacheAdapter:
     def _load_legacy_file(self, file_path: Path) -> Optional[pd.DataFrame]:
         """Load data from legacy cache file format."""
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 cache_data = json.load(f)
 
             # Handle different legacy formats
             if isinstance(cache_data, dict):
-                if 'data' in cache_data:
-                    data = cache_data['data']
-                    if isinstance(data, dict) and 'values' in data:
+                if "data" in cache_data:
+                    data = cache_data["data"]
+                    if isinstance(data, dict) and "values" in data:
                         # New format
-                        df = pd.DataFrame(data['values'])
-                        if 'index' in data and not df.empty:
-                            df.index = pd.to_datetime(data['index'])
+                        df = pd.DataFrame(data["values"])
+                        if "index" in data and not df.empty:
+                            df.index = pd.to_datetime(data["index"])
                         return df
                     elif isinstance(data, list):
                         # List format
@@ -159,7 +161,7 @@ class CacheAdapter:
         combined = pd.concat([existing, new])
 
         # Remove duplicates, keeping last occurrence (newer data)
-        combined = combined[~combined.index.duplicated(keep='last')]
+        combined = combined[~combined.index.duplicated(keep="last")]
 
         # Sort by index
         combined = combined.sort_index()
@@ -173,7 +175,7 @@ class CacheAdapter:
         """
         print("⚠️  This will permanently delete legacy JSON cache files!")
         print("   Make sure you've backed up and migrated to SQLite first!")
-        if input("Continue? (y/N): ").lower().startswith('y'):
+        if input("Continue? (y/N): ").lower().startswith("y"):
             count = 0
             for location in self.legacy_locations:
                 if location.exists():

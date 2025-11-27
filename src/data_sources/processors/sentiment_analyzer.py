@@ -17,7 +17,7 @@ Usage Example:
     >>> analyzer = SentimentAnalyzer()
     >>> score = analyzer.analyze_text("Apple beats earnings expectations")
     >>> print(f"Sentiment: {score}")  # Expected: ~0.6 (positive)
-    
+
     >>> headlines_df['sentiment'] = analyzer.analyze_dataframe(headlines_df, 'title')
 
 V0-V4 Integration:
@@ -28,9 +28,10 @@ V0-V4 Integration:
 Note: Designed for V0-V4 sentiment analysis framework where consistent,
 reproducible sentiment scoring is critical for cross-version comparison.
 """
+
 import nltk
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import pandas as pd
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 
 class SentimentAnalyzer:
@@ -71,7 +72,7 @@ class SentimentAnalyzer:
 
     Integration Notes:
         - V1 Agent: Primary sentiment engine for news analysis
-        - V3 Agent: Combined with VIX/market fear indicators  
+        - V3 Agent: Combined with VIX/market fear indicators
         - Consistent scoring enables valid V0-V4 performance comparison
     """
 
@@ -79,7 +80,7 @@ class SentimentAnalyzer:
         """Initialize the sentiment analyzer with VADER lexicon."""
         try:
             # Download required NLTK resources if not already present
-            nltk.download('vader_lexicon', quiet=True)
+            nltk.download("vader_lexicon", quiet=True)
             self.analyzer = SentimentIntensityAnalyzer()
 
             # Customize VADER lexicon for financial terms
@@ -93,81 +94,83 @@ class SentimentAnalyzer:
         """Add financial domain-specific terms to the VADER lexicon including Austrian economics concepts."""
         if self.analyzer:
             # Positive financial terms
-            self.analyzer.lexicon.update({
-                # Standard financial terms
-                'bull': 3.0,
-                'bullish': 3.0,
-                'outperform': 2.5,
-                'upgrade': 2.0,
-                'growth': 1.5,
-                'profit': 2.0,
-                'upside': 2.0,
-                'rally': 2.0,
-                'gain': 1.5,
-                'beat': 1.5,
-                'exceed': 1.5,
-                'dividend': 1.0,
-
-                # Austrian economics positive terms
-                'free market': 2.5,
-                'deregulation': 2.0,
-                'sound money': 3.0,
-                'gold standard': 2.0,
-                'free banking': 2.0,
-                'capital accumulation': 2.0,
-                'entrepreneurship': 2.5,
-                'voluntary exchange': 2.0,
-                'price discovery': 1.5,
-                'economic calculation': 1.5,
-                'savings': 2.0,
-                'hard money': 2.0,
-                'private property': 2.0,
-                'decentralization': 1.5,
-                'liquidation': 1.0,  # In Austrian terms, liquidation of malinvestment is positive
-                'deflation': 1.0,    # Price deflation from productivity is positive in Austrian view
-                'austerity': 1.0,    # Often viewed positively in Austrian economics
-            })
+            self.analyzer.lexicon.update(
+                {
+                    # Standard financial terms
+                    "bull": 3.0,
+                    "bullish": 3.0,
+                    "outperform": 2.5,
+                    "upgrade": 2.0,
+                    "growth": 1.5,
+                    "profit": 2.0,
+                    "upside": 2.0,
+                    "rally": 2.0,
+                    "gain": 1.5,
+                    "beat": 1.5,
+                    "exceed": 1.5,
+                    "dividend": 1.0,
+                    # Austrian economics positive terms
+                    "free market": 2.5,
+                    "deregulation": 2.0,
+                    "sound money": 3.0,
+                    "gold standard": 2.0,
+                    "free banking": 2.0,
+                    "capital accumulation": 2.0,
+                    "entrepreneurship": 2.5,
+                    "voluntary exchange": 2.0,
+                    "price discovery": 1.5,
+                    "economic calculation": 1.5,
+                    "savings": 2.0,
+                    "hard money": 2.0,
+                    "private property": 2.0,
+                    "decentralization": 1.5,
+                    "liquidation": 1.0,  # In Austrian terms, liquidation of malinvestment is positive
+                    "deflation": 1.0,  # Price deflation from productivity is positive in Austrian view
+                    "austerity": 1.0,  # Often viewed positively in Austrian economics
+                }
+            )
 
             # Negative financial terms
-            self.analyzer.lexicon.update({
-                # Standard financial terms
-                'bear': -3.0,
-                'bearish': -3.0,
-                'underperform': -2.5,
-                'downgrade': -2.0,
-                'decline': -1.5,
-                'loss': -2.0,
-                'downside': -2.0,
-                'selloff': -2.0,
-                'drop': -1.5,
-                'miss': -1.5,
-                'below': -1.0,
-                'debt': -1.0,
-
-                # Austrian economics negative terms
-                'central planning': -3.0,
-                'monetary expansion': -2.5,
-                'quantitative easing': -2.5,
-                'fiat currency': -2.0,
-                'federal reserve': -1.5,
-                'money printing': -3.0,
-                'malinvestment': -2.5,
-                'government spending': -2.0,
-                'stimulus': -1.5,
-                'bailout': -2.5,
-                'subsidy': -2.0,
-                'intervention': -2.0,
-                'regulation': -2.0,
-                'price control': -2.5,
-                'central bank': -2.0,
-                'fractional reserve': -1.5,
-                'inflation': -2.5,
-                'credit expansion': -2.0,
-                'business cycle': -1.0,  # Often discussed negatively in Austrian context
-                'fiscal policy': -1.0,
-                'keynes': -1.5,
-                'keynesian': -1.5,
-            })
+            self.analyzer.lexicon.update(
+                {
+                    # Standard financial terms
+                    "bear": -3.0,
+                    "bearish": -3.0,
+                    "underperform": -2.5,
+                    "downgrade": -2.0,
+                    "decline": -1.5,
+                    "loss": -2.0,
+                    "downside": -2.0,
+                    "selloff": -2.0,
+                    "drop": -1.5,
+                    "miss": -1.5,
+                    "below": -1.0,
+                    "debt": -1.0,
+                    # Austrian economics negative terms
+                    "central planning": -3.0,
+                    "monetary expansion": -2.5,
+                    "quantitative easing": -2.5,
+                    "fiat currency": -2.0,
+                    "federal reserve": -1.5,
+                    "money printing": -3.0,
+                    "malinvestment": -2.5,
+                    "government spending": -2.0,
+                    "stimulus": -1.5,
+                    "bailout": -2.5,
+                    "subsidy": -2.0,
+                    "intervention": -2.0,
+                    "regulation": -2.0,
+                    "price control": -2.5,
+                    "central bank": -2.0,
+                    "fractional reserve": -1.5,
+                    "inflation": -2.5,
+                    "credit expansion": -2.0,
+                    "business cycle": -1.0,  # Often discussed negatively in Austrian context
+                    "fiscal policy": -1.0,
+                    "keynes": -1.5,
+                    "keynesian": -1.5,
+                }
+            )
 
     def analyze_text(self, text):
         """
@@ -180,9 +183,9 @@ class SentimentAnalyzer:
             return 0.0
 
         sentiment_dict = self.analyzer.polarity_scores(text)
-        return sentiment_dict['compound']
+        return sentiment_dict["compound"]
 
-    def analyze_dataframe(self, df, text_column, output_column='sentiment_score'):
+    def analyze_dataframe(self, df, text_column, output_column="sentiment_score"):
         """
         Analyze sentiment for a text column in a DataFrame.
 

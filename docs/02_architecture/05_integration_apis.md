@@ -10,6 +10,7 @@
 Complete integration with Alpaca Markets providing both market data acquisition and order execution capabilities. Built on the official alpaca-py SDK with intelligent caching, comprehensive error handling, and AutoGen agent integration.
 
 **Integrated Capabilities**:
+
 1. **Market Data**: Real-time and historical OHLCV bars, quotes, trades, snapshots
 2. **Order Management**: All order types with advanced risk management
 3. **Account Monitoring**: Real-time account status and position tracking
@@ -22,6 +23,7 @@ Complete integration with Alpaca Markets providing both market data acquisition 
 ### Status
 
 ✅ **Production-Ready** (Issue #312 Complete)
+
 - **File**: `src/data_sources/sources/market/alpaca_market_data.py`
 - **Tests**: 3/3 passing
 - **Cache Integration**: >90% API call reduction
@@ -148,6 +150,7 @@ count = result['count']     # Number of bars retrieved
 ### Status
 
 ✅ **Production-Ready** (Issue #313 Complete)
+
 - **File**: `src/trading/alpaca_trading_client.py`
 - **Tests**: 29/29 passing
 - **AutoGen Integration**: `src/trading/alpaca_autogen_tools.py`
@@ -326,11 +329,13 @@ All methods return standardized response format:
 ### Test Results: 32/32 Passing
 
 **Market Data Tests** (3/3):
+
 - ✅ API Connection - Authentication working
 - ✅ Market Data Retrieval - Retrieved bars for SPY/QQQ
 - ✅ Data Normalization - Alpaca format → standard schema
 
 **Order Management Tests** (29/29):
+
 - ✅ Basic Orders (9/9) - Market, limit, validation, risk
 - ✅ Advanced Orders (6/6) - Stop, trailing, bracket
 - ✅ Advanced Features (14/14) - Modification, cancellation, market hours
@@ -388,6 +393,7 @@ python tests/test_alpaca_advanced_orders.py
 ### Complete Tool Suite
 
 **Market Data Tool** (All agents):
+
 ```python
 from src.data_sources.sources.market.alpaca_market_data import create_alpaca_market_data_tool
 
@@ -396,6 +402,7 @@ market_tool = create_alpaca_market_data_tool()
 ```
 
 **Account Tool** (Read-only for most agents):
+
 ```python
 from src.trading.alpaca_autogen_tools import AlpacaAccountTool
 
@@ -404,6 +411,7 @@ account_tool = AlpacaAccountTool(mode="paper")
 ```
 
 **Order Tool** (Executor agent only):
+
 ```python
 from src.trading.alpaca_autogen_tools import AlpacaOrderTool
 

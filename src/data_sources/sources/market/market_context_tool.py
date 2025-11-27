@@ -4,24 +4,24 @@ Fetches SPY/QQQ market context data to enhance sentiment analysis
 """
 
 import logging
-import sys
 import os
-from typing import Dict, Any, List
+import sys
 from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
 from autogen_core.tools import FunctionTool
+
 from ...cache.sqlite_cache import TradingCacheManager
 
 # Add path for agent_utils
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 from utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
 
 
 def fetch_market_context_data(
-    date: str = "2024-01-15",
-    symbols: List[str] = ["SPY", "QQQ"]
+    date: str = "2024-01-15", symbols: List[str] = ["SPY", "QQQ"]
 ) -> Dict[str, Any]:
     """
     Fetch market context data (SPY/QQQ) for enhanced sentiment analysis.
@@ -47,10 +47,12 @@ def fetch_market_context_data(
         for symbol in symbols:
             try:
                 # Fetch recent data around the target date
-                start_date = (datetime.strptime(date, "%Y-%m-%d") -
-                              timedelta(days=7)).strftime("%Y-%m-%d")
-                end_date = (datetime.strptime(date, "%Y-%m-%d") +
-                            timedelta(days=1)).strftime("%Y-%m-%d")
+                start_date = (datetime.strptime(date, "%Y-%m-%d") - timedelta(days=7)).strftime(
+                    "%Y-%m-%d"
+                )
+                end_date = (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)).strftime(
+                    "%Y-%m-%d"
+                )
 
                 # Get market data using Polygon.io primary + Alpha Vantage fallback pattern
                 data = cache_manager.get(symbol, start_date, end_date, source="polygon")
@@ -62,7 +64,8 @@ def fetch_market_context_data(
 
                 if data is None or data.empty:
                     logger.warning(
-                        f"No market data available from either Polygon.io or Alpha Vantage for {symbol}")
+                        f"No market data available from either Polygon.io or Alpha Vantage for {symbol}"
+                    )
                     data_source = "None"
 
                 if data is not None and len(data) > 0:
@@ -74,27 +77,31 @@ def fetch_market_context_data(
                         # Calculate daily change
                         daily_change = 0.0
                         if prev is not None:
-                            daily_change = ((latest['close'] - prev['close']) / prev['close']) * 100
+                            daily_change = ((latest["close"] - prev["close"]) / prev["close"]) * 100
 
                         # Calculate recent trend (5-day if available)
                         trend_change = 0.0
                         if len(data) >= 5:
                             first = data.iloc[-5]
                             trend_change = (
-                                (latest['close'] - first['close']) / first['close']) * 100
+                                (latest["close"] - first["close"]) / first["close"]
+                            ) * 100
 
                         market_data[symbol] = {
                             "symbol": symbol,
                             "date_analyzed": date,
-                            "current_price": float(latest['close']),
-                            "volume": int(latest['volume']) if 'volume' in latest else 0,
+                            "current_price": float(latest["close"]),
+                            "volume": int(latest["volume"]) if "volume" in latest else 0,
                             "daily_change_pct": round(daily_change, 2),
                             "trend_5day_pct": round(trend_change, 2),
-                            "interpretation": _interpret_market_signal(symbol, daily_change, trend_change)
+                            "interpretation": _interpret_market_signal(
+                                symbol, daily_change, trend_change
+                            ),
                         }
 
                         logger.info(
-                            f"Market context for {symbol}: {daily_change:+.2f}% daily, {trend_change:+.2f}% 5-day (source: {data_source})")
+                            f"Market context for {symbol}: {daily_change:+.2f}% daily, {trend_change:+.2f}% 5-day (source: {data_source})"
+                        )
                     else:
                         logger.warning(f"No data available for {symbol} on {date}")
                         market_data[symbol] = _create_fallback_data(symbol, date)
@@ -114,7 +121,7 @@ def fetch_market_context_data(
             "market_summary": summary,
             "date_analyzed": date,
             "symbols_analyzed": symbols,
-            "tool_name": "market_context"
+            "tool_name": "market_context",
         }
 
         logger.info(f"Market context analysis complete: {summary['overall_sentiment']}")
@@ -127,7 +134,7 @@ def fetch_market_context_data(
             "market_summary": {"overall_sentiment": "NEUTRAL", "error": str(e)},
             "date_analyzed": date,
             "symbols_analyzed": symbols,
-            "tool_name": "market_context"
+            "tool_name": "market_context",
         }
 
 
@@ -202,7 +209,7 @@ def _create_market_summary(market_data: Dict[str, Any]) -> Dict[str, Any]:
         "market_trend_avg": round(trend_avg, 2),
         "spy_signal": spy_data.get("interpretation", "No data"),
         "qqq_signal": qqq_data.get("interpretation", "No data"),
-        "interpretation": f"Market sentiment: {overall} (daily: {daily_avg:+.1f}%, trend: {trend_avg:+.1f}%)"
+        "interpretation": f"Market sentiment: {overall} (daily: {daily_avg:+.1f}%, trend: {trend_avg:+.1f}%)",
     }
 
 
@@ -216,7 +223,7 @@ def _create_fallback_data(symbol: str, date: str, error: str = None) -> Dict[str
         "daily_change_pct": 0.0,
         "trend_5day_pct": 0.0,
         "interpretation": f"{symbol}: No data available" + (f" ({error})" if error else ""),
-        "error": error
+        "error": error,
     }
 
 
@@ -248,10 +255,10 @@ of individual stock decisions."""
     except Exception:
         return default_desc
 
+
 # Create the FunctionTool for AutoGen
 market_context_tool = FunctionTool(
-    fetch_market_context_data,
-    description=_get_market_context_description()
+    fetch_market_context_data, description=_get_market_context_description()
 )
 
 # Set agent type compatibility

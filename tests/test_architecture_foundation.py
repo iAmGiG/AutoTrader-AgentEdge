@@ -4,24 +4,17 @@ Basic tests for plugin architecture foundation.
 Tests validate that core components work correctly before building more.
 """
 
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../src'))
+import sys
 
-import asyncio
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
+
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from core.models import (
-    TradeRequest,
-    AnalysisResult,
-    RiskAssessment,
-    TradeSuggestion,
-    Signal,
-    AssetType,
-    OrderType,
-    TimeInForce,
-)
+from core.models import (AnalysisResult, AssetType, OrderType, RiskAssessment,
+                         Signal, TimeInForce, TradeRequest, TradeSuggestion)
 from core.trading_orchestrator import TradingOrchestrator
 from strategies.voter_strategy import VoterStrategy
 
@@ -32,11 +25,7 @@ class TestCoreModels:
     def test_trade_request_creation(self):
         """Test creating a TradeRequest."""
         request = TradeRequest(
-            ticker="SPY",
-            action="review",
-            quantity=10,
-            price=600.0,
-            asset_type=AssetType.STOCK
+            ticker="SPY", action="review", quantity=10, price=600.0, asset_type=AssetType.STOCK
         )
 
         assert request.ticker == "SPY"
@@ -54,7 +43,7 @@ class TestCoreModels:
             stop_loss=588.0,
             take_profit=620.0,
             reasoning=["Test reason 1", "Test reason 2"],
-            analyzer_name="TestAnalyzer"
+            analyzer_name="TestAnalyzer",
         )
 
         assert analysis.signal == Signal.BUY
@@ -69,7 +58,7 @@ class TestCoreModels:
             portfolio_pct=5.0,
             max_loss_usd=120.0,
             risk_reward_ratio=1.6,
-            warnings=["Test warning"]
+            warnings=["Test warning"],
         )
 
         assert risk.approved is True
@@ -92,7 +81,7 @@ class TestCoreModels:
             warnings=[],
             ticker="SPY",
             order_type=OrderType.LIMIT,
-            time_in_force=TimeInForce.GTC
+            time_in_force=TimeInForce.GTC,
         )
 
         assert suggestion.ticker == "SPY"
@@ -107,11 +96,7 @@ class TestVoterStrategyStub:
         """Test VoterStrategy.analyze() returns valid AnalysisResult."""
         strategy = VoterStrategy()
 
-        request = TradeRequest(
-            ticker="SPY",
-            action="review",
-            price=600.0
-        )
+        request = TradeRequest(ticker="SPY", action="review", price=600.0)
 
         result = await strategy.analyze(request)
 
@@ -130,11 +115,7 @@ class TestVoterStrategyStub:
         """Test that VoterStrategy uses price from request."""
         strategy = VoterStrategy()
 
-        request = TradeRequest(
-            ticker="AAPL",
-            action="review",
-            price=150.0
-        )
+        request = TradeRequest(ticker="AAPL", action="review", price=150.0)
 
         result = await strategy.analyze(request)
 
@@ -158,11 +139,7 @@ class TestTradingOrchestratorWithMocks:
         """Test complete process_request workflow with mocks."""
         # Create mocks
         mock_parser = AsyncMock()
-        mock_parser.parse.return_value = TradeRequest(
-            ticker="SPY",
-            action="review",
-            price=600.0
-        )
+        mock_parser.parse.return_value = TradeRequest(ticker="SPY", action="review", price=600.0)
         mock_parser.validate.return_value = True
 
         mock_analyzer = AsyncMock()
@@ -173,7 +150,7 @@ class TestTradingOrchestratorWithMocks:
             stop_loss=588.0,
             take_profit=620.0,
             reasoning=["Mock analysis"],
-            analyzer_name="MockAnalyzer"
+            analyzer_name="MockAnalyzer",
         )
         mock_analyzer.name = "MockAnalyzer"
 
@@ -184,7 +161,7 @@ class TestTradingOrchestratorWithMocks:
             portfolio_pct=5.0,
             max_loss_usd=120.0,
             risk_reward_ratio=1.6,
-            warnings=[]
+            warnings=[],
         )
 
         mock_executor = AsyncMock()
@@ -195,7 +172,7 @@ class TestTradingOrchestratorWithMocks:
             strategy_analyzer=mock_analyzer,
             risk_manager=mock_risk,
             execution_manager=mock_executor,
-            session_store=None  # Optional
+            session_store=None,  # Optional
         )
 
         # Process request
@@ -230,7 +207,7 @@ class TestTradingOrchestratorWithMocks:
             stop_loss=147.0,
             take_profit=156.0,
             reasoning=["Strong buy signal"],
-            analyzer_name="Test"
+            analyzer_name="Test",
         )
         mock_analyzer.name = "Test"
 
@@ -241,7 +218,7 @@ class TestTradingOrchestratorWithMocks:
             portfolio_pct=8.0,
             max_loss_usd=150.0,
             risk_reward_ratio=2.0,
-            warnings=["High allocation"]
+            warnings=["High allocation"],
         )
 
         mock_executor = AsyncMock()
@@ -250,7 +227,7 @@ class TestTradingOrchestratorWithMocks:
             input_parser=mock_parser,
             strategy_analyzer=mock_analyzer,
             risk_manager=mock_risk,
-            execution_manager=mock_executor
+            execution_manager=mock_executor,
         )
 
         decision = await orchestrator.process_request("buy 50 AAPL", "test_user")
@@ -267,12 +244,14 @@ def run_tests():
     print("=" * 70)
 
     # Run pytest
-    exit_code = pytest.main([
-        __file__,
-        "-v",  # Verbose
-        "--tb=short",  # Short traceback
-        "-s",  # Show print statements
-    ])
+    exit_code = pytest.main(
+        [
+            __file__,
+            "-v",  # Verbose
+            "--tb=short",  # Short traceback
+            "-s",  # Show print statements
+        ]
+    )
 
     return exit_code
 

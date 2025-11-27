@@ -11,8 +11,7 @@ import logging
 from typing import Dict, Optional
 
 from core.interfaces import StrategyAnalyzer
-from core.models import TradeRequest, AnalysisResult, Signal, AssetType
-
+from core.models import AnalysisResult, AssetType, Signal, TradeRequest
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +87,7 @@ class VoterStrategy(StrategyAnalyzer):
             reasoning=[
                 "MACD: BUY (bullish crossover) [MVP STUB]",
                 "RSI: NEUTRAL (value: 52) [MVP STUB]",
-                "Note: Using placeholder analysis for MVP testing"
+                "Note: Using placeholder analysis for MVP testing",
             ],
             indicators={
                 "macd_signal": "BUY",
@@ -98,7 +97,7 @@ class VoterStrategy(StrategyAnalyzer):
                 "is_consensus": False,
                 "is_stub": True,  # Flag for testing
             },
-            analyzer_name="VoterStrategy (MVP Stub)"
+            analyzer_name="VoterStrategy (MVP Stub)",
         )
 
         logger.info(

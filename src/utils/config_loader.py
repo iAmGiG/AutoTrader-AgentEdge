@@ -13,8 +13,7 @@ class ConfigLoader:
         if config_path is None:
             # Assuming config folder is in the project root
             # This file is at src/utils/config_loader.py, so go up 3 levels to project root
-            base_dir = os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             # Try YAML first, fallback to JSON
             yaml_path = os.path.join(base_dir, "config", "config.yaml")
             json_path = os.path.join(base_dir, "config", "config.json")
@@ -33,7 +32,7 @@ class ConfigLoader:
     def load_config(self):
         try:
             with open(self.config_path, "r") as file:
-                if self.config_path.endswith('.yaml') or self.config_path.endswith('.yml'):
+                if self.config_path.endswith(".yaml") or self.config_path.endswith(".yml"):
                     if yaml is None:
                         raise ImportError("PyYAML not installed. Install with: pip install pyyaml")
                     config = yaml.safe_load(file)

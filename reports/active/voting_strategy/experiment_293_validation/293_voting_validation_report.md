@@ -6,6 +6,7 @@
 ## Executive Summary
 
 The voting strategy (MACD+RSI) **outperformed** the single MACD indicator on both primary success metrics:
+
 - **Sharpe Ratio**: 0.856 (voting) vs 0.841 (MACD-only) - **1.8% improvement**
 - **Max Drawdown**: -10.10% (voting) vs -10.58% (MACD-only) - **4.5% improvement**
 
@@ -53,10 +54,12 @@ The voting strategy (MACD+RSI) **outperformed** the single MACD indicator on bot
 ### Performance Gap to Buy-Hold
 
 Both strategies significantly underperformed buy-and-hold (34.90%):
+
 - MACD-only: -21.56% gap
 - Voting: -22.28% gap
 
 This suggests need for:
+
 1. Parameter optimization
 2. Market regime detection
 3. Additional indicators

@@ -14,9 +14,10 @@ Key Features:
 """
 
 import logging
-import pandas as pd
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import pandas as pd
 
 from .alpha_vantage_market import AlphaVantageMarketTool
 
@@ -25,10 +26,10 @@ logger = logging.getLogger(__name__)
 # VXX Contrarian Sentiment Thresholds - "Buy Fear, Sell Greed"
 # VXX is a CONTRARIAN indicator: High VXX = Buy opportunity, Low VXX = Sell signal
 VXX_THRESHOLDS = {
-    "extreme_fear": 50,    # VXX > 50: Extreme fear = STRONG BUY (+0.8 sentiment)
-    "high_fear": 40,       # VXX > 40: High fear = Buy opportunity (+0.6 sentiment)
-    "moderate_fear": 30,   # VXX > 30: Moderate fear = Mild bullish (+0.3 sentiment)
-    "low_fear": 20,        # VXX < 20: Low fear/complacency = Caution (-0.1 to -0.3 sentiment)
+    "extreme_fear": 50,  # VXX > 50: Extreme fear = STRONG BUY (+0.8 sentiment)
+    "high_fear": 40,  # VXX > 40: High fear = Buy opportunity (+0.6 sentiment)
+    "moderate_fear": 30,  # VXX > 30: Moderate fear = Mild bullish (+0.3 sentiment)
+    "low_fear": 20,  # VXX < 20: Low fear/complacency = Caution (-0.1 to -0.3 sentiment)
 }
 
 
@@ -92,7 +93,7 @@ class VXXVolatilityTool:
             vxx_df = self.market_tool.fetch_stock_data(
                 symbol="VXX",
                 start_date=start_date.strftime("%Y-%m-%d"),
-                end_date=end_date.strftime("%Y-%m-%d")
+                end_date=end_date.strftime("%Y-%m-%d"),
             )
 
             if vxx_df is None or vxx_df.empty:
@@ -103,18 +104,19 @@ class VXXVolatilityTool:
             vxx_df = vxx_df.sort_index(ascending=False)  # Most recent first
 
             for i, (date_idx, row) in enumerate(vxx_df.iterrows()):
-                vxx_close = row.get('close')
+                vxx_close = row.get("close")
                 if pd.notna(vxx_close) and vxx_close > 0:
                     actual_date = date_idx.strftime("%Y-%m-%d")
 
                     logger.info(
-                        f"Found VXX data: ${vxx_close:.2f} on {actual_date} ({i} days back)")
+                        f"Found VXX data: ${vxx_close:.2f} on {actual_date} ({i} days back)"
+                    )
 
                     return {
                         "vxx_value": float(vxx_close),
                         "date_used": actual_date,
                         "days_back": i,
-                        "data_source": "alpha_vantage"
+                        "data_source": "alpha_vantage",
                     }
 
             logger.warning(f"No valid VXX data found in {lookback_days} day lookback from {date}")
@@ -129,7 +131,7 @@ class VXXVolatilityTool:
         Fetch VXX historical data for percentile analysis.
 
         Uses SHORT lookback (30 days max) to avoid structural decay distortion.
-        VXX decays ~0.5-1% per week due to futures contango, making long 
+        VXX decays ~0.5-1% per week due to futures contango, making long
         historical comparisons meaningless.
 
         Args:
@@ -148,7 +150,7 @@ class VXXVolatilityTool:
             vxx_df = self.market_tool.fetch_stock_data(
                 symbol="VXX",
                 start_date=start_date.strftime("%Y-%m-%d"),
-                end_date=end_date.strftime("%Y-%m-%d")
+                end_date=end_date.strftime("%Y-%m-%d"),
             )
 
             if vxx_df is None or vxx_df.empty:
@@ -163,13 +165,17 @@ class VXXVolatilityTool:
             logger.error(f"Error fetching VXX history for {date}: {str(e)}")
             return None
 
-    def vxx_to_sentiment(self, vxx_value: float, vxx_history: Optional[pd.DataFrame] = None,
-                         vix_value: Optional[float] = None) -> Dict[str, Any]:
+    def vxx_to_sentiment(
+        self,
+        vxx_value: float,
+        vxx_history: Optional[pd.DataFrame] = None,
+        vix_value: Optional[float] = None,
+    ) -> Dict[str, Any]:
         """
         Convert VXX level to sentiment score using decay-resistant contrarian logic.
 
         CRITICAL: Uses 30-day rolling percentiles instead of fixed thresholds to handle
-        VXX structural decay (~0.5-1% weekly from futures contango). VIX override 
+        VXX structural decay (~0.5-1% weekly from futures contango). VIX override
         provides sanity checks since VIX doesn't decay.
 
         Args:
@@ -191,9 +197,10 @@ class VXXVolatilityTool:
         try:
             # PRIMARY: Use 30-day rolling percentiles for year-over-year adaptability
             if vxx_history is not None and not vxx_history.empty:
-                vxx_closes = vxx_history['close'].dropna()
+                vxx_closes = vxx_history["close"].dropna()
                 if len(vxx_closes) >= 10:  # Need minimum data for percentiles
                     from scipy import stats
+
                     percentile = stats.percentileofscore(vxx_closes, vxx_value)
 
                     # CONTRARIAN percentile logic: High VXX percentile = High fear = BUY
@@ -248,12 +255,16 @@ class VXXVolatilityTool:
                 elif vix_value < 12:
                     # Force CONTRARIAN SELL on extreme complacency (VIX < 12 = low fear = SELL signal)
                     sentiment_score = min(sentiment_score, -0.6)
-                    reasoning += f" | VIX override: {vix_value:.1f} extreme complacency = CONTRARIAN SELL"
+                    reasoning += (
+                        f" | VIX override: {vix_value:.1f} extreme complacency = CONTRARIAN SELL"
+                    )
                 elif 18 <= vix_value <= 25:
                     # Wall of worry zone - sustained moderate fear is BULLISH (2024-specific condition)
                     if 40 <= percentile <= 70:  # Elevated but not spiking
                         sentiment_score = max(sentiment_score, 0.3)
-                        reasoning += f" | Wall of worry: VIX {vix_value:.1f} sustained elevation = BULLISH"
+                        reasoning += (
+                            f" | Wall of worry: VIX {vix_value:.1f} sustained elevation = BULLISH"
+                        )
 
             return {
                 "sentiment_score": sentiment_score,
@@ -261,7 +272,7 @@ class VXXVolatilityTool:
                 "interpretation": interpretation,
                 "reasoning": reasoning,
                 "vxx_value": vxx_value,
-                "method": "percentile_analysis" if vxx_history is not None else "fixed_thresholds"
+                "method": "percentile_analysis" if vxx_history is not None else "fixed_thresholds",
             }
 
         except Exception as e:
@@ -271,7 +282,7 @@ class VXXVolatilityTool:
                 "confidence": 0.0,
                 "interpretation": "error",
                 "reasoning": f"Error processing VXX value: {str(e)}",
-                "vxx_value": vxx_value
+                "vxx_value": vxx_value,
             }
 
     def _fallback_fixed_thresholds(self, vxx_value: float) -> Dict[str, Any]:
@@ -281,7 +292,9 @@ class VXXVolatilityTool:
             if vxx_value > VXX_THRESHOLDS["extreme_fear"]:
                 sentiment_score = 0.8
                 interpretation = "extreme_fear_buy"
-                reasoning = f"VXX at ${vxx_value:.2f} signals extreme market fear - STRONG BUY opportunity"
+                reasoning = (
+                    f"VXX at ${vxx_value:.2f} signals extreme market fear - STRONG BUY opportunity"
+                )
                 confidence = 0.95
             elif vxx_value > VXX_THRESHOLDS["high_fear"]:
                 sentiment_score = 0.6
@@ -311,7 +324,7 @@ class VXXVolatilityTool:
                 "reasoning": reasoning,
                 "vxx_value": vxx_value,
                 "thresholds_used": VXX_THRESHOLDS,
-                "method": "fixed_thresholds_fallback"
+                "method": "fixed_thresholds_fallback",
             }
         except Exception as e:
             logger.error(f"Error in fallback VXX sentiment: {str(e)}")
@@ -320,11 +333,12 @@ class VXXVolatilityTool:
                 "confidence": 0.0,
                 "interpretation": "error",
                 "reasoning": f"Error in fallback processing: {str(e)}",
-                "vxx_value": vxx_value
+                "vxx_value": vxx_value,
             }
 
-    def get_vxx_sentiment(self, date: str, lookback_days: int = 5,
-                          include_vix: bool = True) -> Dict[str, Any]:
+    def get_vxx_sentiment(
+        self, date: str, lookback_days: int = 5, include_vix: bool = True
+    ) -> Dict[str, Any]:
         """
         Get complete VXX-based sentiment analysis with decay-resistant logic.
 
@@ -360,7 +374,7 @@ class VXXVolatilityTool:
                     "reasoning": f"No VXX volatility data available for {date}",
                     "version": "V2",
                     "mode": "vxx_decay_resistant",
-                    "error": "no_vxx_data"
+                    "error": "no_vxx_data",
                 }
 
             # Fetch 60-day VXX history for percentile analysis (decay-resistant)
@@ -371,21 +385,17 @@ class VXXVolatilityTool:
             if include_vix:
                 try:
                     vix_df = self.market_tool.fetch_stock_data(
-                        symbol="^VIX",
-                        start_date=date,
-                        end_date=date
+                        symbol="^VIX", start_date=date, end_date=date
                     )
                     if vix_df is not None and not vix_df.empty:
-                        vix_value = vix_df.iloc[0]['close']
+                        vix_value = vix_df.iloc[0]["close"]
                         logger.info(f"VIX value for {date}: {vix_value:.2f}")
                 except Exception as e:
                     logger.warning(f"Could not fetch VIX for {date}: {e}")
 
             # Apply decay-resistant sentiment analysis
             sentiment_analysis = self.vxx_to_sentiment(
-                vxx_data["vxx_value"],
-                vxx_history=vxx_history,
-                vix_value=vix_value
+                vxx_data["vxx_value"], vxx_history=vxx_history, vix_value=vix_value
             )
 
             # Combine results with decay-resistant metadata
@@ -399,7 +409,7 @@ class VXXVolatilityTool:
                 "interpretation": sentiment_analysis["interpretation"],
                 "method": sentiment_analysis.get("method", "percentile_analysis"),
                 "vix_value": vix_value,
-                "history_days": 60 if vxx_history is not None else 0
+                "history_days": 60 if vxx_history is not None else 0,
             }
 
             logger.info(
@@ -418,10 +428,12 @@ class VXXVolatilityTool:
                 "version": "V2",
                 "mode": "vxx_volatility",
                 "vxx_data": None,
-                "error": str(e)
+                "error": str(e),
             }
 
-    def validate_vxx_thresholds(self, test_cases: Optional[Dict[str, float]] = None) -> Dict[str, bool]:
+    def validate_vxx_thresholds(
+        self, test_cases: Optional[Dict[str, float]] = None
+    ) -> Dict[str, bool]:
         """
         Validate VXX sentiment thresholds against test cases.
 
@@ -434,17 +446,15 @@ class VXXVolatilityTool:
         if test_cases is None:
             # Default test cases based on contrarian analysis
             test_cases = {
-                "COVID crash peak (2020-03)": 80.0,      # Should be STRONG BUY (+0.8)
-                "High volatility period": 45.0,          # Should be Buy opportunity (+0.6)
-                "Moderate concern": 35.0,                # Should be Mild bullish (+0.3)
-                "Normal market": 25.0,                   # Should be normal (0.1)
-                "Low volatility/complacency": 15.0       # Should be caution (-0.3)
+                "COVID crash peak (2020-03)": 80.0,  # Should be STRONG BUY (+0.8)
+                "High volatility period": 45.0,  # Should be Buy opportunity (+0.6)
+                "Moderate concern": 35.0,  # Should be Mild bullish (+0.3)
+                "Normal market": 25.0,  # Should be normal (0.1)
+                "Low volatility/complacency": 15.0,  # Should be caution (-0.3)
             }
 
         results = {}
-        expected_sentiments = {
-            80.0: 0.8, 45.0: 0.6, 35.0: 0.3, 25.0: 0.1, 15.0: -0.3
-        }
+        expected_sentiments = {80.0: 0.8, 45.0: 0.6, 35.0: 0.3, 25.0: 0.1, 15.0: -0.3}
 
         for description, vxx_value in test_cases.items():
             sentiment_result = self.vxx_to_sentiment(vxx_value)
@@ -456,7 +466,7 @@ class VXXVolatilityTool:
                 "vxx_value": vxx_value,
                 "calculated_sentiment": sentiment_result["sentiment_score"],
                 "expected_sentiment": expected,
-                "interpretation": sentiment_result["interpretation"]
+                "interpretation": sentiment_result["interpretation"],
             }
 
             logger.info(
@@ -474,7 +484,7 @@ def fetch_vxx_volatility_data(symbol: str, date: str, lookback_days: int = 5) ->
 
     Args:
         symbol: Stock symbol (used for context, VXX data is market-wide)
-        date: Target date in YYYY-MM-DD format  
+        date: Target date in YYYY-MM-DD format
         lookback_days: Days to look back if target date has no data
 
     Returns:

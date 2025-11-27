@@ -8,8 +8,8 @@ Available strategies:
 - MultiAgentStrategy: Multi-agent coordination (future #331)
 """
 
-from .voter_strategy import VoterStrategy
 from .real_voter_strategy import RealVoterStrategy
+from .voter_strategy import VoterStrategy
 
 __all__ = [
     "VoterStrategy",

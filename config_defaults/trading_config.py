@@ -5,8 +5,8 @@ Centralized configuration for all trading parameters.
 
 import json
 import os
-from typing import Dict, Any, Optional
 from dataclasses import dataclass
+from typing import Any, Dict
 
 try:
     import yaml
@@ -17,6 +17,7 @@ except ImportError:
 @dataclass
 class MACDConfig:
     """MACD indicator configuration."""
+
     fast: int = 13
     slow: int = 34
     signal: int = 8
@@ -25,6 +26,7 @@ class MACDConfig:
 @dataclass
 class RSIConfig:
     """RSI indicator configuration."""
+
     period: int = 14
     oversold: int = 30
     overbought: int = 70
@@ -33,6 +35,7 @@ class RSIConfig:
 @dataclass
 class ExitConfig:
     """Exit strategy configuration."""
+
     take_profit: float
     stop_loss: float
     description: str
@@ -57,8 +60,8 @@ class TradingConfig:
         if config_file is None:
             config_path = os.path.dirname(__file__)
             # Try YAML first, fallback to JSON
-            yaml_file = os.path.join(config_path, 'trading_config.yaml')
-            json_file = os.path.join(config_path, 'trading_config.json')
+            yaml_file = os.path.join(config_path, "trading_config.yaml")
+            json_file = os.path.join(config_path, "trading_config.json")
 
             if os.path.exists(yaml_file):
                 config_file = yaml_file
@@ -73,8 +76,8 @@ class TradingConfig:
     def _load_config(self) -> Dict:
         """Load configuration from YAML or JSON file."""
         if os.path.exists(self.config_file):
-            with open(self.config_file, 'r', encoding='utf-8') as f:
-                if self.config_file.endswith('.yaml') or self.config_file.endswith('.yml'):
+            with open(self.config_file, "r", encoding="utf-8") as f:
+                if self.config_file.endswith(".yaml") or self.config_file.endswith(".yml"):
                     if yaml is None:
                         raise ImportError("PyYAML not installed. Install with: pip install pyyaml")
                     return yaml.safe_load(f)
@@ -95,48 +98,51 @@ class TradingConfig:
                         "take_profit": 0.08,
                         "stop_loss": 0.05,
                         "expected_value_50wr": 0.015,
-                        "breakeven_win_rate": 0.385
+                        "breakeven_win_rate": 0.385,
                     },
-                    "default": "balanced"
-                }
-            }
+                    "default": "balanced",
+                },
+            },
+            "risk_management": {
+                "max_position_pct": 0.15,
+                "max_position_value": 5000,
+                "max_portfolio_pct": 0.20,
+                "max_positions": 10,
+                "risk_per_trade": 0.02,
+                "min_confidence": 0.65,
+                "risk_free_rate": 0.02,
+            },
         }
 
     def get_macd_config(self) -> MACDConfig:
         """Get MACD configuration."""
-        params = self.config['strategy_parameters']['macd']
-        return MACDConfig(
-            fast=params['fast'],
-            slow=params['slow'],
-            signal=params['signal']
-        )
+        params = self.config["strategy_parameters"]["macd"]
+        return MACDConfig(fast=params["fast"], slow=params["slow"], signal=params["signal"])
 
     def get_rsi_config(self) -> RSIConfig:
         """Get RSI configuration."""
-        params = self.config['strategy_parameters']['rsi']
+        params = self.config["strategy_parameters"]["rsi"]
         return RSIConfig(
-            period=params['period'],
-            oversold=params['oversold'],
-            overbought=params['overbought']
+            period=params["period"], oversold=params["oversold"], overbought=params["overbought"]
         )
 
     def get_exit_config(self, strategy: str = None) -> ExitConfig:
         """Get exit strategy configuration."""
-        exits = self.config['strategy_parameters']['exits']
+        exits = self.config["strategy_parameters"]["exits"]
 
         if strategy is None:
-            strategy = exits.get('default', 'balanced')
+            strategy = exits.get("default", "balanced")
 
         if strategy not in exits:
-            strategy = 'balanced'  # Fallback to balanced
+            strategy = "balanced"  # Fallback to balanced
 
         params = exits[strategy]
         return ExitConfig(
-            take_profit=params['take_profit'],
-            stop_loss=params['stop_loss'],
-            description=params.get('description', ''),
-            expected_value_50wr=params.get('expected_value_50wr', 0),
-            breakeven_win_rate=params.get('breakeven_win_rate', 0.5)
+            take_profit=params["take_profit"],
+            stop_loss=params["stop_loss"],
+            description=params.get("description", ""),
+            expected_value_50wr=params.get("expected_value_50wr", 0),
+            breakeven_win_rate=params.get("breakeven_win_rate", 0.5),
         )
 
     def update_config(self, section: str, key: str, value: Any):
@@ -147,25 +153,55 @@ class TradingConfig:
 
     def _save_config(self):
         """Save configuration to file."""
-        with open(self.config_file, 'w') as f:
+        with open(self.config_file, "w") as f:
             json.dump(self.config, f, indent=2)
 
     def get_all_exit_strategies(self) -> Dict[str, ExitConfig]:
         """Get all available exit strategies."""
-        exits = self.config['strategy_parameters']['exits']
+        exits = self.config["strategy_parameters"]["exits"]
         strategies = {}
 
         for name, params in exits.items():
-            if name != 'default' and isinstance(params, dict):
+            if name != "default" and isinstance(params, dict):
                 strategies[name] = ExitConfig(
-                    take_profit=params['take_profit'],
-                    stop_loss=params['stop_loss'],
-                    description=params.get('description', ''),
-                    expected_value_50wr=params.get('expected_value_50wr', 0),
-                    breakeven_win_rate=params.get('breakeven_win_rate', 0.5)
+                    take_profit=params["take_profit"],
+                    stop_loss=params["stop_loss"],
+                    description=params.get("description", ""),
+                    expected_value_50wr=params.get("expected_value_50wr", 0),
+                    breakeven_win_rate=params.get("breakeven_win_rate", 0.5),
                 )
 
         return strategies
+
+    def get_risk_config(self, key: str = None) -> Any:
+        """
+        Get risk management configuration.
+
+        Args:
+            key: Specific risk parameter (e.g., 'max_position_pct', 'stop_loss')
+                 If None, returns entire risk_management dict
+
+        Returns:
+            Risk parameter value or entire risk config dict
+        """
+        risk_config = self.config.get("risk_management", {})
+
+        # Fallback to default if not in config
+        if not risk_config:
+            risk_config = self._get_default_config()["risk_management"]
+
+        if key is None:
+            return risk_config
+
+        # Also check in exits for backward compatibility
+        if key in ["stop_loss", "take_profit"]:
+            exit_config = self.get_exit_config()
+            if key == "stop_loss":
+                return exit_config.stop_loss
+            elif key == "take_profit":
+                return exit_config.take_profit
+
+        return risk_config.get(key)
 
     def validate_config(self) -> bool:
         """Validate configuration parameters."""

@@ -637,6 +637,7 @@ Fix known issues from #334:
 ### Test 8.1: Bare Ticker - No Position, SELL Signal
 
 **Input:**
+
 ```
 > pltr
 ```
@@ -651,10 +652,12 @@ Fix known issues from #334:
 4. ✅ User chooses direction or review-only
 
 **Previous Behavior (BROKEN):**
+
 - ❌ Parser returned `TradeRequest(ticker='', ...)` (empty ticker)
 - ❌ Error: "Invalid ticker format"
 
 **Success Criteria:**
+
 - [x] Bare ticker successfully parsed (FIXED 2025-01-12)
 - [x] Clarification prompt appears for SELL signal + no position
 - [x] User can choose BUY/SHORT/REVIEW
@@ -666,11 +669,13 @@ Fix known issues from #334:
 ### Test 8.2: Bare Ticker - No Position, BUY Signal
 
 **Input:**
+
 ```
 > aapl
 ```
 
 **Expected Behavior:**
+
 1. ✅ Reformats to "analyze AAPL"
 2. ✅ If analysis suggests BUY:
    - Shows suggestion normally
@@ -678,6 +683,7 @@ Fix known issues from #334:
 3. ✅ User confirms/rejects as usual
 
 **Success Criteria:**
+
 - [ ] Works smoothly without clarification
 - [ ] Displays BUY suggestion
 - [ ] Executes if confirmed
@@ -687,6 +693,7 @@ Fix known issues from #334:
 ### Test 8.3: Review Request - No Position, SELL Signal
 
 **Input:**
+
 ```
 > review pltr at market price for trade idea
 ```
@@ -700,9 +707,11 @@ Fix known issues from #334:
    - Shows clarification prompt (same as 8.1)
 
 **Previous Behavior (BROKEN):**
+
 - ❌ Immediately blocked: "Cannot execute SELL... system does not support short selling"
 
 **Success Criteria:**
+
 - [ ] Clarification prompt appears
 - [ ] User can choose direction
 - [ ] No premature blocking
@@ -714,22 +723,26 @@ Fix known issues from #334:
 ### Test 9.1: Layman Sell Terminology
 
 **Input:**
+
 ```
 > get out of my position in meta
 ```
 
 **Expected Behavior:**
+
 1. ✅ Detects "get out" as sell indicator
 2. ✅ If position exists: proceeds with SELL
 3. ✅ If no position: blocks with educational message
 
 **Other Layman Terms Supported:**
+
 - "close my position"
 - "dump my shares"
 - "liquidate"
 - "cash out"
 
 **Success Criteria:**
+
 - [ ] Recognizes layman sell terms
 - [ ] Handles correctly based on position status
 
@@ -740,6 +753,7 @@ Fix known issues from #334:
 **Setup:** Trigger clarification prompt (bare ticker + SELL signal + no position)
 
 **Input:**
+
 ```
 > pltr
 [Clarification prompt appears]
@@ -747,11 +761,13 @@ Fix known issues from #334:
 ```
 
 **Expected Behavior:**
+
 1. ✅ Accepts number "1" as BUY choice
 2. ✅ Also accepts: "buy", "b", "long", "l", "up", "bullish"
 3. ✅ Reprocesses with "buy PLTR"
 
 **Success Criteria:**
+
 - [x] Multiple response formats work (FIXED 2025-01-12)
 - [x] Clear confirmation message
 - [x] No reprocessing loop - flips signal in place
@@ -762,11 +778,13 @@ Fix known issues from #334:
 ### Test 9.3: Educational Tips Command
 
 **Input:**
+
 ```
 > /tips
 ```
 
 **Expected Behavior:**
+
 1. ✅ Displays trading basics guide
 2. ✅ Explains BUY vs SHORT
 3. ✅ Explains signals
@@ -774,6 +792,7 @@ Fix known issues from #334:
 5. ✅ Shows quick tips for beginners
 
 **Success Criteria:**
+
 - [ ] Guide displays correctly
 - [ ] Uses simple, non-jargon language
 - [ ] Includes examples
@@ -785,6 +804,7 @@ Fix known issues from #334:
 **Setup:** Trigger clarification (bare ticker + SELL + no position)
 
 **Expected Prompt Text:**
+
 ```
 ❓ The analysis suggests PLTR might go DOWN, but you don't own any shares yet.
 
@@ -797,12 +817,14 @@ Your choice [1/2/3 or buy/short/review]: _
 ```
 
 **Key Features:**
+
 - ✅ Avoids jargon ("LONG" → "BUY shares")
 - ✅ Explains in simple terms ("bet the stock will go UP")
 - ✅ Labels SHORT as advanced
 - ✅ Provides clear options
 
 **Success Criteria:**
+
 - [ ] Text matches expected format
 - [ ] No technical jargon
 - [ ] Options are clear
@@ -824,6 +846,7 @@ Your choice [1/2/3 or buy/short/review]: _
 **Goal:** ✅ User-friendly improvements verified for non-traders
 
 **Key Fixes Applied:**
+
 - Bare ticker reformatting (e.g., "pltr" → "analyze PLTR")
 - Signal override without infinite loops
 - Quantity preservation throughout flows

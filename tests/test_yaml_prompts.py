@@ -4,13 +4,13 @@ Validation tests for YAML prompt loading
 Tests for issue #328: YAML Optimization
 """
 
-import sys
 import os
+import sys
 import unittest
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.utils.agent_utils import load_agent_config
 
@@ -20,12 +20,13 @@ class TestYAMLPromptLoading(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.config_file = Path(__file__).parent.parent / 'config' / 'agent_prompts.yaml'
+        self.config_file = Path(__file__).parent.parent / "config" / "agent_prompts.yaml"
 
     def test_yaml_file_exists(self):
         """Test that the agent_prompts.yaml file exists."""
-        self.assertTrue(self.config_file.exists(),
-                       f"YAML config file not found at {self.config_file}")
+        self.assertTrue(
+            self.config_file.exists(), f"YAML config file not found at {self.config_file}"
+        )
 
     def test_load_agents_section(self):
         """Test loading the agents section."""
@@ -38,8 +39,7 @@ class TestYAMLPromptLoading(unittest.TestCase):
         agents = load_agent_config("agents")
         voter_config = agents.get("voter_agent", {})
 
-        self.assertIn("system_prompt", voter_config,
-                     "voter_agent should have a system_prompt")
+        self.assertIn("system_prompt", voter_config, "voter_agent should have a system_prompt")
 
         prompt = voter_config["system_prompt"]
         self.assertIsInstance(prompt, str, "system_prompt should be a string")
@@ -56,8 +56,12 @@ class TestYAMLPromptLoading(unittest.TestCase):
         self.assertIsInstance(tools, dict, "Tools config should be a dictionary")
 
         # Check for expected tools
-        expected_tools = ["unified_market_data", "vxx_volatility_data",
-                         "hierarchical_news", "market_context"]
+        expected_tools = [
+            "unified_market_data",
+            "vxx_volatility_data",
+            "hierarchical_news",
+            "market_context",
+        ]
         for tool in expected_tools:
             self.assertIn(tool, tools, f"{tool} should be in tools config")
 
@@ -67,25 +71,23 @@ class TestYAMLPromptLoading(unittest.TestCase):
 
         # Check unified_market_data tool
         unified_tool = tools.get("unified_market_data", {})
-        self.assertIn("description", unified_tool,
-                     "unified_market_data should have a description")
-        self.assertGreater(len(unified_tool["description"]), 20,
-                          "Tool description should not be empty")
+        self.assertIn("description", unified_tool, "unified_market_data should have a description")
+        self.assertGreater(
+            len(unified_tool["description"]), 20, "Tool description should not be empty"
+        )
 
     def test_load_interface_section(self):
         """Test loading the interface section."""
         interface = load_agent_config("interface")
         self.assertIsInstance(interface, dict, "Interface config should be a dictionary")
-        self.assertIn("llm_assistant", interface,
-                     "llm_assistant should be in interface config")
+        self.assertIn("llm_assistant", interface, "llm_assistant should be in interface config")
 
     def test_llm_assistant_help_text(self):
         """Test LLM assistant help text."""
         interface = load_agent_config("interface")
         llm_config = interface.get("llm_assistant", {})
 
-        self.assertIn("help_text", llm_config,
-                     "llm_assistant should have help_text")
+        self.assertIn("help_text", llm_config, "llm_assistant should have help_text")
 
         help_text = llm_config["help_text"]
         self.assertIsInstance(help_text, str, "help_text should be a string")
@@ -106,8 +108,7 @@ class TestYAMLPromptLoading(unittest.TestCase):
         tools = load_agent_config("tools")
         market_context = tools.get("market_context", {})
 
-        self.assertIn("description", market_context,
-                     "market_context should have a description")
+        self.assertIn("description", market_context, "market_context should have a description")
 
         desc = market_context["description"]
         self.assertIn("SPY", desc, "Description should mention SPY")
@@ -120,10 +121,8 @@ class TestYAMLPromptLoading(unittest.TestCase):
 
         for section in sections:
             config = load_agent_config(section)
-            self.assertIsInstance(config, dict,
-                                f"Section '{section}' should load as dictionary")
-            self.assertGreater(len(config), 0,
-                             f"Section '{section}' should not be empty")
+            self.assertIsInstance(config, dict, f"Section '{section}' should load as dictionary")
+            self.assertGreater(len(config), 0, f"Section '{section}' should not be empty")
 
 
 class TestPromptUsage(unittest.TestCase):
@@ -131,25 +130,29 @@ class TestPromptUsage(unittest.TestCase):
 
     def test_voter_agent_imports_agent_utils(self):
         """Test that voter_agent.py imports agent_utils."""
-        voter_agent_file = Path(__file__).parent.parent / 'src' / 'autogen_agents' / 'voter_agent.py'
+        voter_agent_file = (
+            Path(__file__).parent.parent / "src" / "autogen_agents" / "voter_agent.py"
+        )
 
-        with open(voter_agent_file, 'r') as f:
+        with open(voter_agent_file, "r") as f:
             content = f.read()
 
-        self.assertIn("from src.utils.agent_utils import load_agent_config", content,
-                     "voter_agent.py should import load_agent_config")
+        self.assertIn(
+            "from src.utils.agent_utils import load_agent_config",
+            content,
+            "voter_agent.py should import load_agent_config",
+        )
 
     def test_tools_py_imports_agent_utils(self):
         """Test that tools.py imports agent_utils."""
-        tools_file = Path(__file__).parent.parent / 'src' / 'data_sources' / 'tools.py'
+        tools_file = Path(__file__).parent.parent / "src" / "data_sources" / "tools.py"
 
-        with open(tools_file, 'r') as f:
+        with open(tools_file, "r") as f:
             content = f.read()
 
-        self.assertIn("load_agent_config", content,
-                     "tools.py should import load_agent_config")
+        self.assertIn("load_agent_config", content, "tools.py should import load_agent_config")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run tests with verbose output
     unittest.main(verbosity=2)

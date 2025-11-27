@@ -76,6 +76,7 @@ TradingCacheManager(
 ```
 
 **Parameters:**
+
 - `db_path`: Path to SQLite database file (default: `.cache/trading_data.db`)
 
 ---
@@ -94,6 +95,7 @@ def get(
 ```
 
 **Parameters:**
+
 - `symbol`: Stock ticker (e.g., "AAPL", "SPY")
 - `start`: Start date in YYYY-MM-DD format
 - `end`: End date in YYYY-MM-DD format
@@ -101,6 +103,7 @@ def get(
 - `asset_type`: Asset type ("stock", "option", "future")
 
 **Returns:**
+
 - `pd.DataFrame` with OHLCV data if found
 - `None` if cache miss
 
@@ -130,6 +133,7 @@ def set(
 ```
 
 **Parameters:**
+
 - `symbol`: Stock ticker
 - `data`: DataFrame with OHLCV columns (must have 'close' column minimum)
 - `source`: Data source ("alpaca", "polygon", "alpha_vantage")
@@ -137,6 +141,7 @@ def set(
 - `ttl_hours`: Optional custom TTL (overrides smart expiration)
 
 **Required DataFrame Columns:**
+
 - `close` (required)
 - `open`, `high`, `low`, `volume` (recommended)
 - `vwap`, `transactions` (optional)
@@ -167,6 +172,7 @@ def delete(
 ```
 
 **Parameters:**
+
 - `symbol`: Stock ticker
 - `start`: Optional start date filter
 - `end`: Optional end date filter
@@ -174,6 +180,7 @@ def delete(
 - `asset_type`: Asset type
 
 **Returns:**
+
 - Number of entries deleted
 
 **Examples:**
@@ -240,6 +247,7 @@ def cleanup_expired(self) -> int:
 ```
 
 **Returns:**
+
 - Number of expired entries deleted
 
 **Example:**
@@ -275,9 +283,11 @@ def get_symbols(self, asset_type: str = "stock") -> List[str]:
 ```
 
 **Parameters:**
+
 - `asset_type`: Asset type filter
 
 **Returns:**
+
 - List of unique symbols
 
 **Example:**
@@ -541,9 +551,30 @@ python scripts/cache_manager.py clear --all --confirm
 
 ## Migration from Legacy Cache
 
-See [CACHE_MIGRATION.md](../../CACHE_MIGRATION.md) for complete migration guide.
+### Step 1: Run Migration Script
 
-**Quick migration:**
+```bash
+# Preview migration (dry run)
+python scripts/migrate_cache_to_sqlite.py --dry-run
+
+# Full migration (creates backup automatically)
+python scripts/migrate_cache_to_sqlite.py
+
+# Skip backup if you're confident
+python scripts/migrate_cache_to_sqlite.py --no-backup
+```
+
+**What the script does:**
+
+- Backs up all JSON files to `.cache/backup_TIMESTAMP/`
+- Converts 3 cache formats: UnifiedCacheManager, MarketDataCache, and raw JSON
+- Removes duplicates automatically
+- Creates `.cache/trading_data.db` SQLite database
+- Preserves all metadata (sources, timestamps)
+
+### Step 2: Update Your Code
+
+**Quick migration (minimal changes):**
 
 ```python
 # Before (UnifiedCacheManager)
@@ -561,6 +592,54 @@ df = cache.get(symbol, start, end, source=source)
 # Or use CacheAdapter (no code changes)
 from src.data_sources.cache import cache_adapter
 df = cache_adapter.get_market_data(symbol, start, end, source)
+```
+
+### Step 3: Update Data Sources
+
+**Pattern for data source integration:**
+
+```python
+from src.data_sources.cache import TradingCacheManager
+
+class AlpacaMarketData:
+    def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
+        self.cache = cache_manager or TradingCacheManager()
+
+    def get_bars(self, symbols, start, end):
+        # New cache API
+        cached = self.cache.get(symbol, start, end, source="alpaca")
+
+        # After fetching...
+        # Remove 'symbol' and 'source' columns before caching
+        cache_data = df.drop(columns=['symbol', 'source'], errors='ignore')
+        self.cache.set(symbol, cache_data, source="alpaca")
+```
+
+**Important:** Drop 'symbol' and 'source' columns before caching (stored as metadata).
+
+### Step 4: Rollback Plan (If Needed)
+
+If you need to rollback to the old system:
+
+```bash
+# 1. Restore JSON files from backup
+cp -r .cache/backup_TIMESTAMP/* .cache/
+
+# 2. Remove SQLite database
+mv .cache/trading_data.db .cache/trading_data.db.backup
+
+# 3. Update git to previous commit
+git log --oneline  # Find commit before migration
+git checkout <commit-hash>
+```
+
+**Temporary rollback in code:**
+
+```python
+# Switch back temporarily (will show deprecation warnings)
+from src.data_sources.cache import UnifiedCacheManager
+cache = UnifiedCacheManager()
+# Use old API...
 ```
 
 ---
@@ -605,12 +684,63 @@ Query performance (production data):
 
 ---
 
+## Additional Tables (Issue #373)
+
+The cache database also includes:
+
+### Raw Options Chain Storage
+
+```python
+from src.data_sources.cache import TradingCacheManager
+
+cache = TradingCacheManager()
+
+# Store raw options data
+cache.store_raw_options(
+    symbol="SPY",
+    trading_date="2024-01-15",
+    options_df=options_data,
+    source="polygon"
+)
+
+# Retrieve options
+options = cache.get_raw_options("SPY", "2024-01-15")
+```
+
+### Trade History Analytics
+
+```python
+# Archive completed trade
+cache.archive_trade({
+    'trade_id': 'AAPL_2024-01-15T10:30:00',
+    'symbol': 'AAPL',
+    'entry_date': '2024-01-15T10:30:00',
+    'entry_price': 185.50,
+    'quantity': 100,
+    'exit_price': 188.20,
+    'realized_pnl': 270.00,
+    'strategy_name': 'VoterAgent'
+})
+
+# Query trade history
+trades = cache.get_trade_history(strategy="VoterAgent")
+
+# Get statistics
+stats = cache.get_trade_stats(strategy="VoterAgent")
+print(f"Win rate: {stats['win_rate_pct']:.1f}%")
+```
+
+See [Trade History Database](../02_architecture/trade_history_database.md) for complete API reference.
+
+---
+
 ## Related Documentation
 
 - **[Cache System Architecture](../02_architecture/04_cache_system.md)** - Technical design
-- **[CACHE_MIGRATION.md](../../CACHE_MIGRATION.md)** - Migration guide
+- **[Trade History Database](../02_architecture/trade_history_database.md)** - Trade analytics API
 - **[Troubleshooting](../03_reference/04_troubleshooting.md)** - Common issues
-- **Issue #336** - Implementation details
+- **Issue #336** - SQLite cache implementation
+- **Issue #373** - Multi-provider options and trade history storage
 
 ---
 

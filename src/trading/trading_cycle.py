@@ -9,21 +9,24 @@ Core Principle: Let the broker do the work via GTC orders, minimize LLM/API call
 - JSON is for humans, broker is truth
 """
 
-import sys
-import os
 import json
 import logging
-from datetime import datetime  # TODO date utils
-from typing import Dict, List, Any
-from dataclasses import dataclass, asdict
+import os
+import sys
+from dataclasses import asdict, dataclass
 from enum import Enum
+from typing import Any, Dict, List
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
+from config_defaults.trading_config import TradingConfig
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
-from src.trading_tools.position_tracker import PositionTracker, AlertType
+from src.trading_tools.position_tracker import PositionTracker
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Discrepancy:
     """Represents a mismatch between local state and broker reality"""
+
     type: str  # UNKNOWN_POSITION, GHOST_POSITION, ORDER_MISMATCH
     symbol: str
     details: Dict[str, Any]
@@ -41,6 +45,7 @@ class Discrepancy:
 @dataclass
 class StopAdjustment:
     """Represents a stop order modification needed"""
+
     symbol: str
     order_id: str
     current_stop: float
@@ -52,6 +57,7 @@ class StopAdjustment:
 @dataclass
 class PositionAlertSummary:
     """Summary of position alerts for reporting"""
+
     symbol: str
     alert_type: str
     severity: str
@@ -64,6 +70,7 @@ class PositionAlertSummary:
 @dataclass
 class PositionSummary:
     """Summary of a position for reporting"""
+
     symbol: str
     entry_price: float
     current_price: float
@@ -99,11 +106,14 @@ class CostEfficientTradeCycle:
         self.account_monitor = AlpacaAccountMonitor(mode="paper")
         self.order_manager = AlpacaOrderManager(mode="paper")
 
+        # Load trading config
+        self.config = TradingConfig()
+
         # Initialize position tracker for alerts
         self.position_tracker = PositionTracker(
-            take_profit_pct=0.08,
-            stop_loss_pct=0.05,
-            alert_cooldown_seconds=300  # 5 minutes between alerts
+            take_profit_pct=self.config.get_risk_config("take_profit"),
+            stop_loss_pct=self.config.get_risk_config("stop_loss"),
+            alert_cooldown_seconds=300,  # 5 minutes between alerts
         )
 
         # Ensure state directory exists
@@ -118,13 +128,13 @@ class CostEfficientTradeCycle:
         """Load local JSON state (for human reference)"""
         if os.path.exists(self.state_file):
             try:
-                with open(self.state_file, 'r') as f:
+                with open(self.state_file, "r") as f:
                     state = json.load(f)
 
                 # Restore position tracker with alert history
-                if 'position_tracker_state' in state:
+                if "position_tracker_state" in state:
                     try:
-                        self.position_tracker.restore_from_dict(state['position_tracker_state'])
+                        self.position_tracker.restore_from_dict(state["position_tracker_state"])
                         logger.info("Restored position tracker with alert history")
                     except Exception as e:
                         logger.warning(f"Failed to restore position tracker state: {e}")
@@ -137,16 +147,17 @@ class CostEfficientTradeCycle:
 
     def save_local_state(self):
         """Save local state to JSON including position tracker with alert history"""
-        self.local_state["last_update"] = datetime.now().isoformat()
+        self.local_state["last_update"] = now_iso()
 
         # Persist position tracker state (including alert history)
         self.local_state["position_tracker_state"] = self.position_tracker.to_dict()
 
         try:
-            with open(self.state_file, 'w') as f:
+            with open(self.state_file, "w") as f:
                 json.dump(self.local_state, f, indent=2)
             logger.debug(
-                f"Saved local state with {len(self.position_tracker.positions)} tracked positions")
+                f"Saved local state with {len(self.position_tracker.positions)} tracked positions"
+            )
         except IOError as e:
             logger.error(f"Failed to save state: {e}")
 
@@ -161,7 +172,7 @@ class CostEfficientTradeCycle:
 
             # Get all orders (one API call)
             # Use 'all' to include pending_new, accepted, and other statuses
-            orders = self.account_monitor.get_orders(status='all')
+            orders = self.account_monitor.get_orders(status="all")
 
             # Get account info (one API call)
             account = self.account_monitor.get_account_status()
@@ -171,77 +182,87 @@ class CostEfficientTradeCycle:
                 "positions": {},
                 "orders": {},
                 "account": {
-                    "buying_power": float(account.get('buying_power', 0)),
-                    "portfolio_value": float(account.get('portfolio_value', 0)),
-                    "cash": float(account.get('cash', 0))
+                    "buying_power": float(account.get("buying_power", 0)),
+                    "portfolio_value": float(account.get("portfolio_value", 0)),
+                    "cash": float(account.get("cash", 0)),
                 },
-                "timestamp": datetime.now().isoformat()
+                "timestamp": now_iso(),
             }
 
             # Process positions
             for pos in positions:
-                symbol = pos['symbol']
+                symbol = pos["symbol"]
                 broker_state["positions"][symbol] = {
                     "symbol": symbol,
-                    "quantity": int(pos['qty']),
-                    "entry_price": float(pos['avg_entry_price']),
-                    "current_price": float(pos['market_value']) / abs(int(pos['qty'])),
-                    "unrealized_pl": float(pos['unrealized_pl']),
-                    "side": pos['side']  # long/short
+                    "quantity": int(pos["qty"]),
+                    "entry_price": float(pos["avg_entry_price"]),
+                    "current_price": float(pos["market_value"]) / abs(int(pos["qty"])),
+                    "unrealized_pl": float(pos["unrealized_pl"]),
+                    "side": pos["side"],  # long/short
                 }
 
             # Process orders (group by symbol)
             # Only include active orders (not filled, cancelled, expired, etc.)
-            active_statuses = ['new', 'pending_new', 'accepted', 'partially_filled', 'held']
+            active_statuses = ["new", "pending_new", "accepted", "partially_filled", "held"]
 
             for order in orders:
                 # Filter to only active orders
-                order_status = str(order.get('status', '')).lower()
+                order_status = str(order.get("status", "")).lower()
                 if not any(status in order_status for status in active_statuses):
                     continue  # Skip filled, cancelled, expired orders
 
-                symbol = order['symbol']
+                symbol = order["symbol"]
                 if symbol not in broker_state["orders"]:
                     broker_state["orders"][symbol] = []
 
                 # Convert enums to strings for consistent comparison
                 order_entry = {
-                    "id": order['id'],
-                    "type": str(order['order_type']),  # Convert enum to string
-                    "side": str(order['side']),        # Convert enum to string
-                    "quantity": int(order['qty']),
-                    "limit_price": float(order.get('limit_price', 0)) if order.get('limit_price') else None,
-                    "stop_price": float(order.get('stop_price', 0)) if order.get('stop_price') else None,
-                    "status": str(order['status']),    # Convert enum to string
-                    "time_in_force": str(order['time_in_force'])  # Convert enum to string
+                    "id": order["id"],
+                    "type": str(order["order_type"]),  # Convert enum to string
+                    "side": str(order["side"]),  # Convert enum to string
+                    "quantity": int(order["qty"]),
+                    "limit_price": (
+                        float(order.get("limit_price", 0)) if order.get("limit_price") else None
+                    ),
+                    "stop_price": (
+                        float(order.get("stop_price", 0)) if order.get("stop_price") else None
+                    ),
+                    "status": str(order["status"]),  # Convert enum to string
+                    "time_in_force": str(order["time_in_force"]),  # Convert enum to string
                 }
                 broker_state["orders"][symbol].append(order_entry)
                 logger.debug(f"Order {symbol}: {order_entry}")
 
                 # Process bracket order legs (stop-loss and take-profit)
-                if 'legs' in order and order['legs']:
-                    for leg in order['legs']:
-                        leg_status = str(leg.get('status', '')).lower()
+                if "legs" in order and order["legs"]:
+                    for leg in order["legs"]:
+                        leg_status = str(leg.get("status", "")).lower()
                         if not any(status in leg_status for status in active_statuses):
                             continue  # Skip inactive legs
 
                         leg_entry = {
-                            "id": leg['id'],
-                            "type": str(leg['order_type']),
-                            "side": str(leg['side']),
-                            "quantity": int(leg['qty']),
-                            "limit_price": float(leg.get('limit_price', 0)) if leg.get('limit_price') else None,
-                            "stop_price": float(leg.get('stop_price', 0)) if leg.get('stop_price') else None,
-                            "status": str(leg['status']),
-                            "time_in_force": str(leg['time_in_force']),
-                            "parent_order_id": order['id']  # Track parent relationship
+                            "id": leg["id"],
+                            "type": str(leg["order_type"]),
+                            "side": str(leg["side"]),
+                            "quantity": int(leg["qty"]),
+                            "limit_price": (
+                                float(leg.get("limit_price", 0)) if leg.get("limit_price") else None
+                            ),
+                            "stop_price": (
+                                float(leg.get("stop_price", 0)) if leg.get("stop_price") else None
+                            ),
+                            "status": str(leg["status"]),
+                            "time_in_force": str(leg["time_in_force"]),
+                            "parent_order_id": order["id"],  # Track parent relationship
                         }
                         broker_state["orders"][symbol].append(leg_entry)
                         logger.debug(f"  Bracket leg {symbol}: {leg_entry}")
 
-            logger.info(f"Fetched broker state: {len(broker_state['positions'])} positions, "
-                        f"{len(broker_state['orders'])} order groups, "
-                        f"total {len(orders)} orders")
+            logger.info(
+                f"Fetched broker state: {len(broker_state['positions'])} positions, "
+                f"{len(broker_state['orders'])} order groups, "
+                f"total {len(orders)} orders"
+            )
 
             return broker_state
 
@@ -249,7 +270,9 @@ class CostEfficientTradeCycle:
             logger.error(f"Failed to fetch broker state: {e}")
             raise
 
-    def _extract_stop_target_from_orders(self, symbol: str, broker_state: Dict[str, Any], entry_price: float = None) -> tuple:
+    def _extract_stop_target_from_orders(
+        self, symbol: str, broker_state: Dict[str, Any], entry_price: float = None
+    ) -> tuple:
         """
         Extract stop_price and target_price from broker's open orders for a symbol.
 
@@ -280,7 +303,8 @@ class CostEfficientTradeCycle:
                 order_type_str = str(order_type).lower() if order_type else ""
 
                 logger.debug(
-                    f"  Order: type={order_type_str}, side={side_str}, stop={order.get('stop_price')}, limit={order.get('limit_price')}")
+                    f"  Order: type={order_type_str}, side={side_str}, stop={order.get('stop_price')}, limit={order.get('limit_price')}"
+                )
 
                 # Stop-loss order: sell order with stop_price set (for long positions)
                 # Check both string comparison and if stop_price exists
@@ -307,16 +331,19 @@ class CostEfficientTradeCycle:
         # Last resort: calculate from entry price if we have no saved value
         # Alpaca hides "held" bracket order legs from get_orders() API
         if not stop_price and entry_price:
-            # Use strategy config stop_loss percentage (default 5%)
-            stop_loss_pct = 0.05  # TODO: Load from config
+            # Use strategy config stop_loss percentage
+            stop_loss_pct = self.config.get_risk_config("stop_loss")
             calculated_stop = round(entry_price * (1 - stop_loss_pct), 2)
             stop_price = calculated_stop
-            logger.warning(f"{symbol}: Stop order hidden by Alpaca API, no saved value found. "
-                           f"Calculated from entry: ${calculated_stop}. "
-                           f"Verify actual stop on Alpaca dashboard.")
+            logger.warning(
+                f"{symbol}: Stop order hidden by Alpaca API, no saved value found. "
+                f"Calculated from entry: ${calculated_stop}. "
+                f"Verify actual stop on Alpaca dashboard."
+            )
 
         logger.info(
-            f"{symbol}: Extracted stop=${stop_price} (verified={stop_verified}), target=${target_price}")
+            f"{symbol}: Extracted stop=${stop_price} (verified={stop_verified}), target=${target_price}"
+        )
 
         return stop_price, target_price, stop_verified
 
@@ -330,20 +357,22 @@ class CostEfficientTradeCycle:
         # Check for unknown positions (at broker but not in local JSON)
         for symbol, broker_pos in broker_state["positions"].items():
             if symbol not in self.local_state["positions"]:
-                discrepancies.append(Discrepancy(
-                    type="UNKNOWN_POSITION",
-                    symbol=symbol,
-                    details={
-                        "broker_quantity": broker_pos["quantity"],
-                        "broker_entry": broker_pos["entry_price"],
-                        "current_price": broker_pos["current_price"]
-                    },
-                    action="NEEDS_HUMAN_REVIEW",
-                    severity="HIGH"
-                ))
+                discrepancies.append(
+                    Discrepancy(
+                        type="UNKNOWN_POSITION",
+                        symbol=symbol,
+                        details={
+                            "broker_quantity": broker_pos["quantity"],
+                            "broker_entry": broker_pos["entry_price"],
+                            "current_price": broker_pos["current_price"],
+                        },
+                        action="NEEDS_HUMAN_REVIEW",
+                        severity="HIGH",
+                    )
+                )
 
                 # Extract stop/target prices from broker's open orders
-                entry_price = pos_data["entry_price"]
+                entry_price = broker_pos["entry_price"]
                 stop_price, target_price, stop_verified = self._extract_stop_target_from_orders(
                     symbol, broker_state, entry_price=entry_price
                 )
@@ -352,26 +381,28 @@ class CostEfficientTradeCycle:
                 self.local_state["positions"][symbol] = {
                     "entry_price": broker_pos["entry_price"],
                     "quantity": broker_pos["quantity"],
-                    "entry_time": datetime.now().isoformat(),
+                    "entry_time": now_iso(),
                     "source": "AUTO_DISCOVERED",
                     "stop_price": stop_price,
-                    "target_price": target_price
+                    "target_price": target_price,
                 }
 
         # Check for ghost positions (in local JSON but not at broker)
         for symbol in list(self.local_state["positions"].keys()):
             if symbol not in broker_state["positions"]:
                 local_pos = self.local_state["positions"][symbol]
-                discrepancies.append(Discrepancy(
-                    type="GHOST_POSITION",
-                    symbol=symbol,
-                    details={
-                        "local_quantity": local_pos.get("quantity", 0),
-                        "local_entry": local_pos.get("entry_price", 0)
-                    },
-                    action="REMOVED_FROM_JSON",
-                    severity="MEDIUM"
-                ))
+                discrepancies.append(
+                    Discrepancy(
+                        type="GHOST_POSITION",
+                        symbol=symbol,
+                        details={
+                            "local_quantity": local_pos.get("quantity", 0),
+                            "local_entry": local_pos.get("entry_price", 0),
+                        },
+                        action="REMOVED_FROM_JSON",
+                        severity="MEDIUM",
+                    )
+                )
 
                 # Remove ghost position
                 del self.local_state["positions"][symbol]
@@ -383,17 +414,19 @@ class CostEfficientTradeCycle:
                 local_qty = self.local_state["positions"][symbol].get("quantity", 0)
 
                 if broker_qty != local_qty:
-                    discrepancies.append(Discrepancy(
-                        type="QUANTITY_MISMATCH",
-                        symbol=symbol,
-                        details={
-                            "broker_quantity": broker_qty,
-                            "local_quantity": local_qty,
-                            "difference": broker_qty - local_qty
-                        },
-                        action="AUTO_FIXED",
-                        severity="LOW"
-                    ))
+                    discrepancies.append(
+                        Discrepancy(
+                            type="QUANTITY_MISMATCH",
+                            symbol=symbol,
+                            details={
+                                "broker_quantity": broker_qty,
+                                "local_quantity": local_qty,
+                                "difference": broker_qty - local_qty,
+                            },
+                            action="AUTO_FIXED",
+                            severity="LOW",
+                        )
+                    )
 
                     # Fix quantity
                     self.local_state["positions"][symbol]["quantity"] = broker_qty
@@ -414,8 +447,10 @@ class CostEfficientTradeCycle:
 
                 # Only log discrepancy if there was a change
                 if stop_price != local_stop or target_price != local_target:
-                    logger.info(f"{symbol}: Syncing stop/target from orders - "
-                                f"stop: {local_stop} -> {stop_price}, target: {local_target} -> {target_price}")
+                    logger.info(
+                        f"{symbol}: Syncing stop/target from orders - "
+                        f"stop: {local_stop} -> {stop_price}, target: {local_target} -> {target_price}"
+                    )
                     local_pos["stop_price"] = stop_price
                     local_pos["target_price"] = target_price
 
@@ -451,7 +486,8 @@ class CostEfficientTradeCycle:
             if profit_percent < 0.02:  # Under 2% profit
                 # Don't adjust stop - position too early
                 logger.debug(
-                    f"{symbol}: No stop adjustment - profit {profit_percent:.1%} < 2% threshold")
+                    f"{symbol}: No stop adjustment - profit {profit_percent:.1%} < 2% threshold"
+                )
                 continue
             elif profit_percent < 0.04:  # 2-4% profit
                 new_stop = entry_price  # Move to breakeven
@@ -480,27 +516,33 @@ class CostEfficientTradeCycle:
                 if stop_order_id:
                     adjustment_amount = new_stop - current_stop
                     adjustment_pct = (adjustment_amount / current_stop) * 100
-                    logger.info(f"{symbol}: Creating stop adjustment - "
-                                f"${current_stop:.2f} → ${new_stop:.2f} "
-                                f"(+${adjustment_amount:.2f}, +{adjustment_pct:.1f}%)")
+                    logger.info(
+                        f"{symbol}: Creating stop adjustment - "
+                        f"${current_stop:.2f} → ${new_stop:.2f} "
+                        f"(+${adjustment_amount:.2f}, +{adjustment_pct:.1f}%)"
+                    )
 
-                    adjustments.append(StopAdjustment(
-                        symbol=symbol,
-                        order_id=stop_order_id,
-                        current_stop=current_stop,
-                        new_stop=new_stop,
-                        reason=reason,
-                        profit_percent=profit_percent
-                    ))
+                    adjustments.append(
+                        StopAdjustment(
+                            symbol=symbol,
+                            order_id=stop_order_id,
+                            current_stop=current_stop,
+                            new_stop=new_stop,
+                            reason=reason,
+                            profit_percent=profit_percent,
+                        )
+                    )
 
                     # Update local state
                     self.local_state["positions"][symbol]["stop_price"] = new_stop
                 else:
                     logger.warning(
-                        f"{symbol}: Stop adjustment needed but no stop order found in broker orders")
+                        f"{symbol}: Stop adjustment needed but no stop order found in broker orders"
+                    )
             elif new_stop:
                 logger.debug(
-                    f"{symbol}: New stop ${new_stop:.2f} not significantly higher than current ${current_stop:.2f}")
+                    f"{symbol}: New stop ${new_stop:.2f} not significantly higher than current ${current_stop:.2f}"
+                )
 
         logger.info(f"Found {len(adjustments)} stop adjustments needed")
         return adjustments
@@ -536,9 +578,7 @@ class CostEfficientTradeCycle:
                 if position_id not in self.position_tracker.positions:
                     # Create position for tracking
                     self.position_tracker.create_position(
-                        ticker=symbol,
-                        entry_price=entry_price,
-                        quantity=broker_pos["quantity"]
+                        ticker=symbol, entry_price=entry_price, quantity=broker_pos["quantity"]
                     )
                     # Manually set TP/SL prices to match configured values
                     if position_id in self.position_tracker.positions:
@@ -549,21 +589,23 @@ class CostEfficientTradeCycle:
                 # Check for exit conditions/alerts
                 exit_check = self.position_tracker.check_exit_conditions(position_id, current_price)
 
-                if exit_check and exit_check.get('recommendation') == 'ALERT':
+                if exit_check and exit_check.get("recommendation") == "ALERT":
                     # Get the most recent alert for this position
                     if position_id in self.position_tracker.positions:
                         position = self.position_tracker.positions[position_id]
                         if position.alert_history:
                             recent_alert = position.alert_history[-1]
-                            alerts.append(PositionAlertSummary(
-                                symbol=symbol,
-                                alert_type=recent_alert.alert_type.value,
-                                severity=recent_alert.severity,
-                                message=recent_alert.format_message(),
-                                timestamp=recent_alert.timestamp.isoformat(),
-                                current_price=current_price,
-                                details=recent_alert.details
-                            ))
+                            alerts.append(
+                                PositionAlertSummary(
+                                    symbol=symbol,
+                                    alert_type=recent_alert.alert_type.value,
+                                    severity=recent_alert.severity,
+                                    message=recent_alert.format_message(),
+                                    timestamp=recent_alert.timestamp.isoformat(),
+                                    current_price=current_price,
+                                    details=recent_alert.details,
+                                )
+                            )
             except (KeyError, Exception) as e:
                 logger.warning(f"Position tracker error for {symbol}: {e}")
 
@@ -580,12 +622,7 @@ class CostEfficientTradeCycle:
 
         logger.info(f"Executing {len(adjustments)} stop order modifications...")
 
-        results = {
-            "success": True,
-            "modifications": 0,
-            "errors": [],
-            "details": []
-        }
+        results = {"success": True, "modifications": 0, "errors": [], "details": []}
 
         for i, adjustment in enumerate(adjustments, 1):
             try:
@@ -597,17 +634,18 @@ class CostEfficientTradeCycle:
 
                 # Modify the stop order
                 success = self.order_manager.modify_order(
-                    order_id=adjustment.order_id,
-                    stop_price=adjustment.new_stop
+                    order_id=adjustment.order_id, stop_price=adjustment.new_stop
                 )
 
                 if success:
                     results["modifications"] += 1
-                    profit_locked = adjustment.new_stop - \
-                        float(self.local_state["positions"]
-                              [adjustment.symbol].get("entry_price", 0))
-                    detail_msg = (f"✅ {adjustment.symbol}: Stop adjusted to ${adjustment.new_stop:.2f} "
-                                  f"(locking ${profit_locked:+.2f} profit)")
+                    profit_locked = adjustment.new_stop - float(
+                        self.local_state["positions"][adjustment.symbol].get("entry_price", 0)
+                    )
+                    detail_msg = (
+                        f"✅ {adjustment.symbol}: Stop adjusted to ${adjustment.new_stop:.2f} "
+                        f"(locking ${profit_locked:+.2f} profit)"
+                    )
                     results["details"].append(detail_msg)
                     logger.info(detail_msg)
                 else:
@@ -623,14 +661,17 @@ class CostEfficientTradeCycle:
                 logger.exception("Full exception details:")
                 results["success"] = False
 
-        summary = (f"Stop adjustment batch complete: {results['modifications']}/{len(adjustments)} successful, "
-                   f"{len(results['errors'])} errors")
+        summary = (
+            f"Stop adjustment batch complete: {results['modifications']}/{len(adjustments)} successful, "
+            f"{len(results['errors'])} errors"
+        )
         logger.info(summary)
 
         return results
 
-    def generate_position_summaries(self, broker_state: Dict[str, Any],
-                                    adjustments: List[StopAdjustment]) -> List[PositionSummary]:
+    def generate_position_summaries(
+        self, broker_state: Dict[str, Any], adjustments: List[StopAdjustment]
+    ) -> List[PositionSummary]:
         """Generate position summaries for reporting"""
         summaries = []
 
@@ -655,29 +696,34 @@ class CostEfficientTradeCycle:
             if symbol in adjustment_map:
                 stop_action = adjustment_map[symbol].reason
 
-            summaries.append(PositionSummary(
-                symbol=symbol,
-                entry_price=entry_price,
-                current_price=current_price,
-                stop_price=float(local_pos.get("stop_price") or 0),
-                target_price=float(local_pos.get("target_price") or 0),
-                quantity=quantity,
-                unrealized_pl=unrealized_pl,
-                unrealized_percent=unrealized_percent,
-                stop_action=stop_action
-            ))
+            summaries.append(
+                PositionSummary(
+                    symbol=symbol,
+                    entry_price=entry_price,
+                    current_price=current_price,
+                    stop_price=float(local_pos.get("stop_price") or 0),
+                    target_price=float(local_pos.get("target_price") or 0),
+                    quantity=quantity,
+                    unrealized_pl=unrealized_pl,
+                    unrealized_percent=unrealized_percent,
+                    stop_action=stop_action,
+                )
+            )
 
         return summaries
 
-    def generate_routine_report(self, routine_type: RoutineType,
-                                broker_state: Dict[str, Any],
-                                discrepancies: List[Discrepancy],
-                                adjustments: List[StopAdjustment],
-                                alerts: List[PositionAlertSummary] = None,
-                                modification_results: Dict[str, Any] = None) -> str:
+    def generate_routine_report(
+        self,
+        routine_type: RoutineType,
+        broker_state: Dict[str, Any],
+        discrepancies: List[Discrepancy],
+        adjustments: List[StopAdjustment],
+        alerts: List[PositionAlertSummary] = None,
+        modification_results: Dict[str, Any] = None,
+    ) -> str:
         """Generate human-readable trading report with alerts"""
 
-        now = datetime.now()
+        now = get_datetime_now()
         report_lines = [
             f"# {routine_type.value.title()} Trading Report - {now.strftime('%Y-%m-%d %H:%M:%S')}",
             "",
@@ -685,26 +731,30 @@ class CostEfficientTradeCycle:
 
         # Account summary
         account = broker_state.get("account", {})
-        portfolio_value = float(account.get('portfolio_value') or 0)
-        cash = float(account.get('cash') or 0)
-        buying_power = float(account.get('buying_power') or 0)
+        portfolio_value = float(account.get("portfolio_value") or 0)
+        cash = float(account.get("cash") or 0)
+        buying_power = float(account.get("buying_power") or 0)
 
-        report_lines.extend([
-            "## Account Summary",
-            f"Portfolio Value: ${portfolio_value:,.2f}",
-            f"Available Cash: ${cash:,.2f}",
-            f"Buying Power: ${buying_power:,.2f}",
-            ""
-        ])
+        report_lines.extend(
+            [
+                "## Account Summary",
+                f"Portfolio Value: ${portfolio_value:,.2f}",
+                f"Available Cash: ${cash:,.2f}",
+                f"Buying Power: ${buying_power:,.2f}",
+                "",
+            ]
+        )
 
         # Position summaries
         summaries = self.generate_position_summaries(broker_state, adjustments)
         if summaries:
-            report_lines.extend([
-                "## Active Positions",
-                "| Symbol | Entry | Current | Stop | Target | P&L | Action |",
-                "|--------|-------|---------|------|--------|-----|--------|"
-            ])
+            report_lines.extend(
+                [
+                    "## Active Positions",
+                    "| Symbol | Entry | Current | Stop | Target | P&L | Action |",
+                    "|--------|-------|---------|------|--------|-----|--------|",
+                ]
+            )
 
             for summary in summaries:
                 pl_sign = "+" if summary.unrealized_pl >= 0 else ""
@@ -735,7 +785,8 @@ class CostEfficientTradeCycle:
                     broker_qty = disc.details["broker_quantity"]
                     local_qty = disc.details["local_quantity"]
                     report_lines.append(
-                        f"   Broker: {broker_qty}, Local: {local_qty} - {disc.action}")
+                        f"   Broker: {broker_qty}, Local: {local_qty} - {disc.action}"
+                    )
 
                 report_lines.append("")
 
@@ -748,7 +799,8 @@ class CostEfficientTradeCycle:
             info_count = len([a for a in alerts if a.severity == "INFO"])
 
             report_lines.append(
-                f"Total Alerts: {len(alerts)} (🚨 {critical_count} Critical, ⚠️ {warning_count} Warning, 📊 {info_count} Info)")
+                f"Total Alerts: {len(alerts)} (🚨 {critical_count} Critical, ⚠️ {warning_count} Warning, 📊 {info_count} Info)"
+            )
             report_lines.append("")
 
             for alert in alerts:
@@ -761,7 +813,8 @@ class CostEfficientTradeCycle:
             report_lines.extend(["## Stop Adjustments"])
             if modification_results["modifications"] > 0:
                 report_lines.append(
-                    f"✅ {modification_results['modifications']} stops adjusted successfully")
+                    f"✅ {modification_results['modifications']} stops adjusted successfully"
+                )
 
             if modification_results["errors"]:
                 report_lines.append("❌ Errors:")
@@ -772,15 +825,17 @@ class CostEfficientTradeCycle:
         # Footer
         next_routine = "evening" if routine_type == RoutineType.MORNING else "morning"
         next_time = "15:50:00" if routine_type == RoutineType.MORNING else "09:20:00"
-        report_lines.extend([
-            "---",
-            f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S')}",
-            f"Next {next_routine} routine: {next_time}",
-            f"Cost: ~3-5 API calls total",
-            "",
-            "⚠️ **Note**: Stop prices calculated from entry price (Alpaca hides bracket order stop-loss legs from API).",
-            "   Verify stop orders exist on Alpaca dashboard. See Issue #355 for details."
-        ])
+        report_lines.extend(
+            [
+                "---",
+                f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S')}",
+                f"Next {next_routine} routine: {next_time}",
+                "Cost: ~3-5 API calls total",
+                "",
+                "⚠️ **Note**: Stop prices calculated from entry price (Alpaca hides bracket order stop-loss legs from API).",
+                "   Verify stop orders exist on Alpaca dashboard. See Issue #355 for details.",
+            ]
+        )
 
         return "\n".join(report_lines)
 
@@ -815,14 +870,18 @@ class CostEfficientTradeCycle:
 
             # Step 7: Generate human report with alerts
             report = self.generate_routine_report(
-                RoutineType.MORNING, broker_state, discrepancies,
-                adjustments, alerts, modification_results
+                RoutineType.MORNING,
+                broker_state,
+                discrepancies,
+                adjustments,
+                alerts,
+                modification_results,
             )
 
             # Save report to file with human-readable format: 2025-11-11_morning.md
             # If multiple runs same day, append counter: morning_2.md, morning_3.md
-            now = datetime.now()
-            date_str = now.strftime('%Y-%m-%d')
+            now = get_datetime_now()
+            date_str = now.strftime("%Y-%m-%d")
             base_name = f"reports/daily/{date_str}_morning"
 
             # Check for existing files and append counter if needed
@@ -833,7 +892,7 @@ class CostEfficientTradeCycle:
                 report_file = f"{base_name}_{counter}.md"
 
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, 'w') as f:
+            with open(report_file, "w", encoding="utf-8") as f:
                 f.write(report)
 
             logger.info(f"Morning routine complete. Report saved to {report_file}")
@@ -870,8 +929,8 @@ class CostEfficientTradeCycle:
 
             # Save report to file with human-readable format: 2025-11-11_evening.md
             # If multiple runs same day, append counter: evening_2.md, evening_3.md
-            now = datetime.now()
-            date_str = now.strftime('%Y-%m-%d')
+            now = get_datetime_now()
+            date_str = now.strftime("%Y-%m-%d")
             base_name = f"reports/daily/{date_str}_evening"
 
             # Check for existing files and append counter if needed
@@ -882,7 +941,7 @@ class CostEfficientTradeCycle:
                 report_file = f"{base_name}_{counter}.md"
 
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, 'w') as f:
+            with open(report_file, "w", encoding="utf-8") as f:
                 f.write(report)
 
             logger.info(f"Evening routine complete. Report saved to {report_file}")
@@ -907,9 +966,9 @@ class CostEfficientTradeCycle:
             # Rebuild local state from broker truth
             self.local_state = {
                 "positions": {},
-                "last_update": datetime.now().isoformat(),
+                "last_update": now_iso(),
                 "discrepancies": [],
-                "recovery_timestamp": datetime.now().isoformat()
+                "recovery_timestamp": now_iso(),
             }
 
             # Auto-discover all positions
@@ -920,14 +979,14 @@ class CostEfficientTradeCycle:
                     "entry_time": "UNKNOWN",
                     "source": "CRASH_RECOVERY",
                     "stop_price": None,  # Will need human input
-                    "target_price": None  # Will need human input
+                    "target_price": None,  # Will need human input
                 }
 
             self.save_local_state()
 
             # Generate recovery report
             recovery_lines = [
-                f"# Crash Recovery Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"# Crash Recovery Report - {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
                 "",
                 f"Recovered {len(broker_state['positions'])} positions",
                 f"Recovered {len(broker_state['orders'])} order groups",
@@ -937,23 +996,26 @@ class CostEfficientTradeCycle:
 
             for symbol, pos in self.local_state["positions"].items():
                 recovery_lines.append(
-                    f"- {symbol}: {pos['quantity']} shares @ ${pos['entry_price']:.2f}")
+                    f"- {symbol}: {pos['quantity']} shares @ ${pos['entry_price']:.2f}"
+                )
 
-            recovery_lines.extend([
-                "",
-                "⚠️ **MANUAL ACTION REQUIRED:**",
-                "- Review all positions for accuracy",
-                "- Set stop_price and target_price for each position",
-                "- Verify entry times if needed for tax reporting",
-                ""
-            ])
+            recovery_lines.extend(
+                [
+                    "",
+                    "⚠️ **MANUAL ACTION REQUIRED:**",
+                    "- Review all positions for accuracy",
+                    "- Set stop_price and target_price for each position",
+                    "- Verify entry times if needed for tax reporting",
+                    "",
+                ]
+            )
 
             report = "\n".join(recovery_lines)
 
             # Save recovery report with human-readable format: 2025-11-11_recovery.md
             # Recovery is ad-hoc, so include counter for multiple recoveries same day
-            now = datetime.now()
-            date_str = now.strftime('%Y-%m-%d')
+            now = get_datetime_now()
+            date_str = now.strftime("%Y-%m-%d")
             base_name = f"reports/daily/{date_str}_recovery"
 
             # Check for existing files and append counter if needed
@@ -964,7 +1026,7 @@ class CostEfficientTradeCycle:
                 report_file = f"{base_name}_{counter}.md"
 
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, 'w') as f:
+            with open(report_file, "w", encoding="utf-8") as f:
                 f.write(report)
 
             logger.info(f"Crash recovery complete. Report saved to {report_file}")
@@ -994,6 +1056,7 @@ def main():
     except Exception as e:
         print(f"Demo failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

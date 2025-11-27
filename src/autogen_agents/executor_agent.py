@@ -3,6 +3,7 @@
 Minimal Executor Agent - Paper trading only
 """
 from typing import Dict
+
 from .base_agent import BaseAgent
 
 

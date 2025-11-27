@@ -10,6 +10,7 @@
 ## Context
 
 Code grooming revealed:
+
 - Logger bug (used before definition)
 - 57 mid-file imports
 - 36KB dead code
@@ -44,11 +45,13 @@ AutoGen-TradingSystem/
 ```
 
 **Nesting Rules:**
+
 - **MUST** keep max 3 levels deep
 - **SHOULD** add 3rd level only if 2+ files warrant it
 - **Root level**: Only `main.py` and required files (`.gitignore`, `README.md`, etc.)
 
 **Utils Folder:**
+
 - **MUST** place utilities in `utils/` only if used by multiple classes
 - **SHOULD** question single-use "utilities" - likely belongs in the class itself
 - Example: If only `TradingOrchestrator` uses it, put it in `core/trading_orchestrator.py`
@@ -78,6 +81,7 @@ logger = logging.getLogger(__name__)  # AFTER all imports
 ```
 
 **Grammar:**
+
 ```
 imports ::= [docstring] stdlib_imports third_party_imports local_imports logger_init
 stdlib_imports ::= import | from ... import ...
@@ -85,6 +89,7 @@ terminal: logger = logging.getLogger(__name__)
 ```
 
 **Rules:**
+
 - **MUST** have three groups: stdlib → third-party → local (blank lines between)
 - **MUST** initialize logger AFTER all imports
 - **NEVER** import inside functions (use module-level try/except with availability flags)
@@ -157,6 +162,7 @@ class TradingOrchestrator:
 ```
 
 **Method Ordering Rules:**
+
 1. `__init__` (always first)
 2. Core public methods (main functionality)
 3. Helper public methods (utilities, getters)
@@ -201,6 +207,7 @@ def calculate_position_size(ticker: str, price: float, portfolio: float) -> int:
 ```
 
 **Rules:**
+
 - **MUST** include: params, return, 1-2 sentences on what it does
 - **MAY** add more detail for complex/critical methods
 - **SHOULD** be concise and actionable
@@ -210,6 +217,7 @@ def calculate_position_size(ticker: str, price: float, portfolio: float) -> int:
 ### 6. Optimization & Caching
 
 **Optimization Philosophy:**
+
 - **MUST** make it work first
 - **SHOULD** optimize after working, unless known shortcut/existing optimization exists
 - **MAY** apply known patterns upfront if they're already standard
@@ -257,6 +265,7 @@ class MarketDataCache:
 | Major feature | Multi-pass grooming before testing |
 
 **Test Folder:**
+
 - Tests in `tests/` folder (NOT root)
 - Use for one-shot testing (API keys, connections)
 - **SHOULD** groom between major prompts and critical testing phases
@@ -268,16 +277,19 @@ class MarketDataCache:
 **Do it in batches, in tiers:**
 
 **Tier 1 - Quick Wins:**
+
 - Single method refactors
 - Import organization
 - Naming consistency
 
 **Tier 2 - Medium Effort:**
+
 - Dead code removal
 - Consolidating duplicate logic
 - Adding missing docstrings
 
 **Tier 3 - Major Overhauls:**
+
 - Structure reorganization
 - Cleaning over-engineering
 - Breaking apart god classes
@@ -289,15 +301,18 @@ class MarketDataCache:
 ### 9. Development Tooling
 
 **MUST use:**
+
 - VS Code format linter (run after file completion)
 - PEP8 compliance via linter
 - Auto-format on save
 
 **SHOULD reference:**
+
 - Public Python standards (PEP8, Google Style Guide)
 - Keep thinking minimal - don't reinvent the wheel
 
 **VS Code Settings:**
+
 ```json
 {
   "editor.formatOnSave": true,
@@ -327,6 +342,7 @@ def process_data(ticker: str, data: pd.DataFrame) -> dict:
 ### 11. Quick Reference
 
 **Before committing code:**
+
 - [ ] Imports at top (stdlib → third-party → local)
 - [ ] Logger after imports
 - [ ] Methods ordered: `__init__` → core public → helpers → private

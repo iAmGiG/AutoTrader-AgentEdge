@@ -4,17 +4,19 @@ Market Data Fetching - Pure Functions
 Clean interface for market data retrieval with caching.
 """
 
-import pandas as pd
-from pathlib import Path
-from typing import Optional, Dict, List
 import sys
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import pandas as pd
 
 # Add data sources to path
-sys.path.append(str(Path(__file__).parent.parent / 'data_sources'))
+sys.path.append(str(Path(__file__).parent.parent / "data_sources"))
 
 
-def fetch_market_data(symbol: str, start_date: str, end_date: str,
-                      use_cache: bool = True) -> Optional[pd.DataFrame]:
+def fetch_market_data(
+    symbol: str, start_date: str, end_date: str, use_cache: bool = True
+) -> Optional[pd.DataFrame]:
     """
     Fetch market data for a symbol and date range.
 
@@ -41,16 +43,16 @@ def fetch_market_data(symbol: str, start_date: str, end_date: str,
 
         if data is not None and not data.empty:
             # Standardize column names
-            if 'close' in data.columns:
-                data.rename(columns={'close': 'Close'}, inplace=True)
-            if 'open' in data.columns:
-                data.rename(columns={'open': 'Open'}, inplace=True)
-            if 'high' in data.columns:
-                data.rename(columns={'high': 'High'}, inplace=True)
-            if 'low' in data.columns:
-                data.rename(columns={'low': 'Low'}, inplace=True)
-            if 'volume' in data.columns:
-                data.rename(columns={'volume': 'Volume'}, inplace=True)
+            if "close" in data.columns:
+                data.rename(columns={"close": "Close"}, inplace=True)
+            if "open" in data.columns:
+                data.rename(columns={"open": "Open"}, inplace=True)
+            if "high" in data.columns:
+                data.rename(columns={"high": "High"}, inplace=True)
+            if "low" in data.columns:
+                data.rename(columns={"low": "Low"}, inplace=True)
+            if "volume" in data.columns:
+                data.rename(columns={"volume": "Volume"}, inplace=True)
 
             return data
 
@@ -74,7 +76,7 @@ def get_cached_data(symbol: str, start_date: str, end_date: str) -> Optional[pd.
     """
     try:
         # Check cache directory structure
-        cache_dir = Path('.cache/market_data')
+        cache_dir = Path(".cache/market_data")
         if not cache_dir.exists():
             return None
 
@@ -87,12 +89,12 @@ def get_cached_data(symbol: str, start_date: str, end_date: str) -> Optional[pd.
                 start_dt = pd.to_datetime(start_date)
                 end_dt = pd.to_datetime(end_date)
 
-                if (cached_df.index.min() <= start_dt and
-                        cached_df.index.max() >= end_dt):
+                if cached_df.index.min() <= start_dt and cached_df.index.max() >= end_dt:
 
                     # Filter to requested range
-                    filtered = cached_df[(cached_df.index >= start_dt) &
-                                         (cached_df.index <= end_dt)]
+                    filtered = cached_df[
+                        (cached_df.index >= start_dt) & (cached_df.index <= end_dt)
+                    ]
 
                     if not filtered.empty:
                         return filtered
@@ -106,13 +108,15 @@ def get_cached_data(symbol: str, start_date: str, end_date: str) -> Optional[pd.
     return None
 
 
-def fetch_multiple_tickers(tickers: List[str], start_date: str, end_date: str) -> Dict[str, pd.DataFrame]:
+def fetch_multiple_tickers(
+    tickers: List[str], start_date: str, end_date: str
+) -> Dict[str, pd.DataFrame]:
     """
     Fetch market data for multiple tickers.
 
     Args:
         tickers: List of stock symbols
-        start_date: Start date  
+        start_date: Start date
         end_date: End date
 
     Returns:
@@ -141,18 +145,16 @@ def get_current_price(symbol: str) -> Optional[float]:
     try:
         # Get recent data (last few days)
         import datetime
+
         end_date = datetime.date.today()
         start_date = end_date - datetime.timedelta(days=5)
 
         data = fetch_market_data(
-            symbol,
-            start_date.strftime('%Y-%m-%d'),
-            end_date.strftime('%Y-%m-%d'),
-            use_cache=False
+            symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), use_cache=False
         )
 
         if data is not None and not data.empty:
-            return float(data['Close'].iloc[-1])
+            return float(data["Close"].iloc[-1])
 
     except Exception as e:
         print(f"Error getting current price for {symbol}: {e}")

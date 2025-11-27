@@ -13,6 +13,7 @@ The V0-V4 sentiment-based framework was retired in favor of the simpler, more ef
 ## Historical Context
 
 ### Framework Overview
+
 - **V0 (Baseline)**: Fixed sentiment = 1.0, pure MACD strategy foundation  
 - **V1 (NLP)**: VADER sentiment analysis on Google Search news
 - **V2 (Market Fear)**: VXX/VIX volatility-based sentiment
@@ -20,6 +21,7 @@ The V0-V4 sentiment-based framework was retired in favor of the simpler, more ef
 - **V4 (LLM)**: GPT-4o-mini reasoning with date obfuscation
 
 ### Results Summary
+
 - **Best Performance**: NVDA V0 (+106.73%) - notably the baseline without sentiment
 - **Complex Sentiment**: V1-V4 showed mixed results, no consistent advantage over V0 baseline
 - **Infrastructure Cost**: Required multiple APIs, complex data pipelines, higher latency
@@ -27,18 +29,22 @@ The V0-V4 sentiment-based framework was retired in favor of the simpler, more ef
 ## Archived Files
 
 ### `/analysis/` - Summary Reports
+
 - `V0-V4_Framework_Results.md` - Comprehensive performance analysis
 - `backtest_analysis_2024.json` - Advanced metrics comparison
 
 ### `/continuous_backtests/` - Raw Results  
+
 - `V0/` through `V4/` - Individual version results by ticker
 - 8 tech stocks + 2 ETFs tested across all versions
 
 ### `/continuation_states_2025/` - Portfolio States
+
 - Final portfolio positions for 2025 continuation testing
 - Preserved for historical completeness
 
 ### `/data/` - Export Files
+
 - `strategy_comparison_2024.csv` - Comparative spreadsheet analysis
 - `V0-V4_results_summary.csv` - Quick summary metrics
 
@@ -52,6 +58,7 @@ The V0-V4 sentiment-based framework was retired in favor of the simpler, more ef
 ## Migration Path
 
 Components from V0-V4 that informed current voting system:
+
 - **MACD Implementation**: Core technical analysis preserved in voting system
 - **Performance Metrics**: Risk analysis methods carried forward
 - **Testing Framework**: Systematic backtesting approach maintained

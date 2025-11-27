@@ -4,15 +4,14 @@ OpenAI LLM Service implementation.
 Uses OpenAI API for tool calling and reasoning.
 """
 
-import os
-import logging
-from typing import List, Dict, Any, Optional
 import json
+import logging
+import os
+from typing import Any, Dict, List, Optional
 
 from openai import AsyncOpenAI
 
-from .llm_service import LLMService, LLMProvider
-
+from .llm_service import LLMProvider, LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ class OpenAIService(LLMService):
         self,
         tool_calling_model: str = "gpt-4o-mini",
         reasoning_model: str = "gpt-4o-mini",  # o3-mini can be expensive
-        api_key: Optional[str] = None
+        api_key: Optional[str] = None,
     ):
         """
         Initialize OpenAI service.
@@ -55,10 +54,7 @@ class OpenAIService(LLMService):
         )
 
     async def call_tool(
-        self,
-        prompt: str,
-        tools: List[Dict[str, Any]],
-        temperature: float = 0.0
+        self, prompt: str, tools: List[Dict[str, Any]], temperature: float = 0.0
     ) -> Dict[str, Any]:
         """
         Call OpenAI with function calling.
@@ -93,20 +89,14 @@ class OpenAIService(LLMService):
 
             logger.debug(f"Tool call successful: {tool_call.function.name}, args={arguments}")
 
-            return {
-                "function_name": tool_call.function.name,
-                "arguments": arguments
-            }
+            return {"function_name": tool_call.function.name, "arguments": arguments}
 
         except Exception as e:
             logger.error(f"OpenAI tool call error: {e}", exc_info=True)
             raise
 
     async def reason(
-        self,
-        prompt: str,
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.7
+        self, prompt: str, system_prompt: Optional[str] = None, temperature: float = 0.7
     ) -> str:
         """
         Call OpenAI for reasoning.

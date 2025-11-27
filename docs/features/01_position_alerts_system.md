@@ -36,6 +36,7 @@ This document describes the enhancements made to the position management system 
 **Alert Destination:** Console/terminal output, log files, and daily reports only. No email, SMS, or webhooks in this implementation.
 
 **Manual Triggering (Current Branch Only):**
+
 ```bash
 # Run position check manually - alerts checked once
 python main.py paper-trade SYMBOL
@@ -43,10 +44,12 @@ python main.py paper-trade SYMBOL
 
 **Automatic Triggering (With GTC Daily Execution Branch #287):**
 When merged with Issue #287, alerts run automatically:
+
 - **9:20 AM ET** - Morning routine checks all positions
 - **3:50 PM ET** - Evening routine checks all positions
 
 Deployment options:
+
 ```bash
 # Option A: systemd daemon (runs continuously)
 sudo systemctl start autogen-trading-scheduler
@@ -92,6 +95,7 @@ for alert in alerts:
 #### Alert Output Locations
 
 **1. Console Output (Real-time):**
+
 ```
 📊 Checking Position Alerts...
    🔔 2 Alert(s) Generated:
@@ -100,6 +104,7 @@ for alert in alerts:
 ```
 
 **2. Log Files (Persistent):**
+
 ```
 # logs/trading.log
 2025-01-10 09:30:00 WARNING ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
@@ -107,6 +112,7 @@ for alert in alerts:
 ```
 
 **3. Daily Reports (Markdown):**
+
 ```markdown
 # reports/morning_routine_2025-01-10.md
 
@@ -119,6 +125,7 @@ Total Alerts: 2 (🚨 0 Critical, ⚠️ 2 Warning, 📊 0 Info)
 
 **4. In-Memory (During Execution):**
 Each position maintains complete alert history:
+
 ```python
 position.alert_history = [PositionAlert(...), PositionAlert(...)]
 position.last_alert_time = datetime(2025, 1, 10, 9, 30, 0)
@@ -247,11 +254,13 @@ These are hardcoded in the progressive stop logic:
 Test file location: `tests/test_position_alerts.py`
 
 Run tests:
+
 ```bash
 python tests/test_position_alerts.py
 ```
 
 Test coverage:
+
 - ✅ Alert creation and formatting
 - ✅ Alert cooldown functionality
 - ✅ Alert summary and history
@@ -304,10 +313,12 @@ Test coverage:
 ### Alert Frequency
 
 **Without GTC Branch:**
+
 - Only when manually running `python main.py paper-trade`
 - On-demand basis
 
 **With GTC Branch (Issue #287 merged):**
+
 - Twice daily automatically (9:20 AM, 3:50 PM ET)
 - Plus manual runs anytime
 - Alert history persists across runs
@@ -315,6 +326,7 @@ Test coverage:
 ### Alert Cooldown Behavior
 
 **Problem:** Stock price fluctuates near threshold
+
 ```
 09:30:00 - Price: $53.85 (1.85% from TP) → ⚠️ Alert sent
 09:30:30 - Price: $53.80 (1.95% from TP) → ⏭️ Skipped (cooldown)
@@ -338,17 +350,20 @@ Test coverage:
 ### Current Limitations
 
 **❌ No External Notifications:**
+
 - Alerts are **console/log output only**
 - No email, SMS, or push notifications
 - Must actively check logs or run system to see alerts
 - If daemon crashes, alerts are not sent
 
 **⚠️ Twice-Daily Checks Only (with GTC):**
+
 - Alerts checked at 9:20 AM and 3:50 PM ET only
 - Positions could reach exit levels between checks without alert
 - Not real-time monitoring (by design for API efficiency)
 
 **⚠️ Manual Monitoring Required:**
+
 - You must view console output or check log files
 - No proactive notification mechanism
 - Alert history in memory is lost on restart (unless persisted)
@@ -356,6 +371,7 @@ Test coverage:
 ### Recommended Workflow
 
 **For Active Monitoring:**
+
 ```bash
 # Check positions ad-hoc during trading day
 python main.py paper-trade SYMBOL
@@ -368,6 +384,7 @@ cat reports/morning_routine_$(date +%Y-%m-%d).md
 ```
 
 **For Automated Monitoring (with GTC #287):**
+
 ```bash
 # Start daemon
 sudo systemctl start autogen-trading-scheduler

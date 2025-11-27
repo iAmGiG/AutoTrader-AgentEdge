@@ -9,11 +9,14 @@ Issue #204: Smart News Sampling to reduce Google Search quota usage
 
 import json
 import logging
-from datetime import datetime
-from typing import Dict, Tuple
-from pathlib import Path
-import pandas as pd
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Tuple
+
+import pandas as pd
+
+from src.utils.date_utils import get_datetime_now, parse_date_string
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NewsSample:
     """Represents a news sampling point with metadata."""
+
     date: datetime
     symbol: str
     news_data: pd.DataFrame
@@ -41,12 +45,14 @@ class NewsGovernor:
     - Performance metrics and optimization suggestions
     """
 
-    def __init__(self,
-                 sampling_strategy: str = 'weekly',
-                 max_calls_per_test: int = 50,
-                 cache_dir: str = '.cache/news_governor',
-                 cache_window_days: int = 7,
-                 strict_sampling: bool = False):
+    def __init__(
+        self,
+        sampling_strategy: str = "weekly",
+        max_calls_per_test: int = 50,
+        cache_dir: str = ".cache/news_governor",
+        cache_window_days: int = 7,
+        strict_sampling: bool = False,
+    ):
         """
         Initialize news sampling governor.
 
@@ -74,15 +80,18 @@ class NewsGovernor:
         self._load_existing_samples()
 
         logger.info(
-            f"📰 NewsGovernor initialized: {sampling_strategy} sampling, max {max_calls_per_test} calls, {cache_window_days}d cache window")
+            f"📰 NewsGovernor initialized: {sampling_strategy} sampling, max {max_calls_per_test} calls, {cache_window_days}d cache window"
+        )
 
-    def should_fetch_news(self, date: datetime, symbol: str, volatility_level: float = None) -> Tuple[bool, str]:
+    def should_fetch_news(
+        self, date: datetime, symbol: str, volatility_level: float = None
+    ) -> Tuple[bool, str]:
         """
         Determine if we should fetch fresh news for this date/symbol.
 
         Args:
             date: Target date for news
-            symbol: Stock symbol  
+            symbol: Stock symbol
             volatility_level: Optional VXX level for smart sampling
 
         Returns:
@@ -98,16 +107,16 @@ class NewsGovernor:
             return False, "exact_match_cached"
 
         # Apply sampling strategy
-        if self.sampling_strategy == 'daily':
+        if self.sampling_strategy == "daily":
             return True, "daily_strategy"
 
-        elif self.sampling_strategy == 'weekly':
+        elif self.sampling_strategy == "weekly":
             # Monday only (or first trading day of week)
             if date.weekday() == 0:
                 return True, "weekly_monday"
             return False, "weekly_skip"
 
-        elif self.sampling_strategy == 'bi_weekly':
+        elif self.sampling_strategy == "bi_weekly":
             # First and third Monday of month
             if date.weekday() == 0:
                 week_of_month = (date.day - 1) // 7 + 1
@@ -115,21 +124,28 @@ class NewsGovernor:
                     return True, "bi_weekly_first_third"
             return False, "bi_weekly_skip"
 
-        elif self.sampling_strategy == 'monthly':
+        elif self.sampling_strategy == "monthly":
             # First Monday of each month
             if date.weekday() == 0 and date.day <= 7:
                 return True, "monthly_first_monday"
             return False, "monthly_skip"
 
-        elif self.sampling_strategy == 'smart':
+        elif self.sampling_strategy == "smart":
             return self._smart_sampling_decision(date, symbol, volatility_level)
 
         else:
             logger.warning(
-                f"Unknown sampling strategy: {self.sampling_strategy}, defaulting to weekly")
-            return self.should_fetch_news(date, symbol, volatility_level) if self.sampling_strategy == 'weekly' else (False, "unknown_strategy")
+                f"Unknown sampling strategy: {self.sampling_strategy}, defaulting to weekly"
+            )
+            return (
+                self.should_fetch_news(date, symbol, volatility_level)
+                if self.sampling_strategy == "weekly"
+                else (False, "unknown_strategy")
+            )
 
-    def _smart_sampling_decision(self, date: datetime, symbol: str, volatility_level: float = None) -> Tuple[bool, str]:
+    def _smart_sampling_decision(
+        self, date: datetime, symbol: str, volatility_level: float = None
+    ) -> Tuple[bool, str]:
         """Smart adaptive sampling based on market conditions."""
 
         # Base sampling: weekly
@@ -152,8 +168,9 @@ class NewsGovernor:
 
         return False, "smart_skip"
 
-    def get_news_for_date(self, date: datetime, symbol: str,
-                          fetch_function, volatility_level: float = None) -> Tuple[pd.DataFrame, str]:
+    def get_news_for_date(
+        self, date: datetime, symbol: str, fetch_function, volatility_level: float = None
+    ) -> Tuple[pd.DataFrame, str]:
         """
         Get news for specified date - either fresh fetch or intelligent cache reuse.
 
@@ -172,9 +189,11 @@ class NewsGovernor:
             # Fetch fresh news
             try:
                 logger.debug(
-                    f"📰 Fetching fresh news for {symbol} on {date.strftime('%Y-%m-%d')} ({reason})")
-                news_data = fetch_function(symbol, date.strftime(
-                    '%Y-%m-%d'), date.strftime('%Y-%m-%d'))
+                    f"📰 Fetching fresh news for {symbol} on {date.strftime('%Y-%m-%d')} ({reason})"
+                )
+                news_data = fetch_function(
+                    symbol, date.strftime("%Y-%m-%d"), date.strftime("%Y-%m-%d")
+                )
 
                 # Cache the result
                 sample = NewsSample(
@@ -182,8 +201,8 @@ class NewsGovernor:
                     symbol=symbol,
                     news_data=news_data,
                     cache_key=f"{symbol}_{date.strftime('%Y-%m-%d')}",
-                    fetch_timestamp=datetime.now(),
-                    sampling_reason=reason
+                    fetch_timestamp=get_datetime_now(),
+                    sampling_reason=reason,
                 )
 
                 self.news_samples[sample.cache_key] = sample
@@ -191,7 +210,8 @@ class NewsGovernor:
                 self.api_calls_made += 1
 
                 logger.info(
-                    f"📰 Fresh news fetched: {len(news_data)} articles ({self.api_calls_made}/{self.max_calls_per_test} calls)")
+                    f"📰 Fresh news fetched: {len(news_data)} articles ({self.api_calls_made}/{self.max_calls_per_test} calls)"
+                )
                 return news_data, "fresh"
 
             except Exception as e:
@@ -203,13 +223,15 @@ class NewsGovernor:
             # Use cached data (unless strict sampling mode)
             if self.strict_sampling:
                 logger.debug(
-                    f"📰 Strict sampling: no data for {symbol} on {date.strftime('%Y-%m-%d')} ({reason})")
+                    f"📰 Strict sampling: no data for {symbol} on {date.strftime('%Y-%m-%d')} ({reason})"
+                )
                 return pd.DataFrame(), f"strict_{reason}"
 
             self.cache_hits += 1
             cached_news = self._get_cached_news(date, symbol)
             logger.debug(
-                f"📰 Using cached news for {symbol} on {date.strftime('%Y-%m-%d')} ({reason})")
+                f"📰 Using cached news for {symbol} on {date.strftime('%Y-%m-%d')} ({reason})"
+            )
             return cached_news, f"cached_{reason}"
 
     def _get_cached_news(self, date: datetime, symbol: str) -> pd.DataFrame:
@@ -222,8 +244,7 @@ class NewsGovernor:
 
         # Find nearest cached samples
         symbol_samples = [
-            sample for sample in self.news_samples.values()
-            if sample.symbol == symbol
+            sample for sample in self.news_samples.values() if sample.symbol == symbol
         ]
 
         if not symbol_samples:
@@ -231,20 +252,19 @@ class NewsGovernor:
             return pd.DataFrame()
 
         # Find closest sample by date
-        closest_sample = min(
-            symbol_samples,
-            key=lambda s: abs((s.date - date).days)
-        )
+        closest_sample = min(symbol_samples, key=lambda s: abs((s.date - date).days))
 
         days_diff = abs((closest_sample.date - date).days)
 
         if days_diff <= self.cache_window_days:  # Use news within configured window
             logger.debug(
-                f"📰 Using cached news from {closest_sample.date.strftime('%Y-%m-%d')} ({days_diff} days ago)")
+                f"📰 Using cached news from {closest_sample.date.strftime('%Y-%m-%d')} ({days_diff} days ago)"
+            )
             return closest_sample.news_data
         else:
             logger.warning(
-                f"📰 Cached news too old ({days_diff} days > {self.cache_window_days}d window), returning empty DataFrame")
+                f"📰 Cached news too old ({days_diff} days > {self.cache_window_days}d window), returning empty DataFrame"
+            )
             return pd.DataFrame()
 
     def _load_existing_samples(self):
@@ -255,18 +275,18 @@ class NewsGovernor:
             return
 
         try:
-            with open(samples_file, 'r') as f:
+            with open(samples_file, "r") as f:
                 samples_data = json.load(f)
 
             for cache_key, sample_data in samples_data.items():
                 # Reconstruct NewsSample from cached data
                 sample = NewsSample(
-                    date=datetime.fromisoformat(sample_data['date']),
-                    symbol=sample_data['symbol'],
-                    news_data=pd.DataFrame(sample_data['news_data']),
+                    date=parse_date_string(sample_data["date"]),
+                    symbol=sample_data["symbol"],
+                    news_data=pd.DataFrame(sample_data["news_data"]),
                     cache_key=cache_key,
-                    fetch_timestamp=datetime.fromisoformat(sample_data['fetch_timestamp']),
-                    sampling_reason=sample_data['sampling_reason']
+                    fetch_timestamp=parse_date_string(sample_data["fetch_timestamp"]),
+                    sampling_reason=sample_data["sampling_reason"],
                 )
 
                 self.news_samples[cache_key] = sample
@@ -285,23 +305,23 @@ class NewsGovernor:
         samples_data = {}
         if samples_file.exists():
             try:
-                with open(samples_file, 'r') as f:
+                with open(samples_file, "r") as f:
                     samples_data = json.load(f)
             except:
                 pass
 
         # Add new sample
         samples_data[sample.cache_key] = {
-            'date': sample.date.isoformat(),
-            'symbol': sample.symbol,
-            'news_data': sample.news_data.to_dict('records') if not sample.news_data.empty else [],
-            'fetch_timestamp': sample.fetch_timestamp.isoformat(),
-            'sampling_reason': sample.sampling_reason
+            "date": sample.date.isoformat(),
+            "symbol": sample.symbol,
+            "news_data": sample.news_data.to_dict("records") if not sample.news_data.empty else [],
+            "fetch_timestamp": sample.fetch_timestamp.isoformat(),
+            "sampling_reason": sample.sampling_reason,
         }
 
         # Save updated samples
         try:
-            with open(samples_file, 'w') as f:
+            with open(samples_file, "w") as f:
                 json.dump(samples_data, f, indent=2)
         except Exception as e:
             logger.warning(f"⚠️ Error saving news sample cache: {e}")
@@ -313,13 +333,13 @@ class NewsGovernor:
         cache_hit_rate = (self.cache_hits / total_requests * 100) if total_requests > 0 else 0
 
         return {
-            'api_calls_made': self.api_calls_made,
-            'cache_hits': self.cache_hits,
-            'total_requests': total_requests,
-            'cache_hit_rate_pct': round(cache_hit_rate, 1),
-            'quota_remaining': self.max_calls_per_test - self.api_calls_made,
-            'quota_usage_pct': round(self.api_calls_made / self.max_calls_per_test * 100, 1),
-            'efficiency_rating': self._calculate_efficiency_rating(cache_hit_rate)
+            "api_calls_made": self.api_calls_made,
+            "cache_hits": self.cache_hits,
+            "total_requests": total_requests,
+            "cache_hit_rate_pct": round(cache_hit_rate, 1),
+            "quota_remaining": self.max_calls_per_test - self.api_calls_made,
+            "quota_usage_pct": round(self.api_calls_made / self.max_calls_per_test * 100, 1),
+            "efficiency_rating": self._calculate_efficiency_rating(cache_hit_rate),
         }
 
     def _calculate_efficiency_rating(self, cache_hit_rate: float) -> str:
@@ -339,67 +359,67 @@ class NewsGovernor:
 
         status = self.get_quota_status()
 
-        print(f"\n📊 NEWS GOVERNOR QUOTA SUMMARY")
+        print("\n📊 NEWS GOVERNOR QUOTA SUMMARY")
         print(f"{'='*50}")
         print(f"Strategy: {self.sampling_strategy}")
         print(
-            f"API Calls Made: {status['api_calls_made']}/{self.max_calls_per_test} ({status['quota_usage_pct']}%)")
+            f"API Calls Made: {status['api_calls_made']}/{self.max_calls_per_test} ({status['quota_usage_pct']}%)"
+        )
         print(f"Cache Hits: {status['cache_hits']}")
         print(f"Cache Hit Rate: {status['cache_hit_rate_pct']}%")
         print(f"Efficiency: {status['efficiency_rating']}")
         print(f"Quota Remaining: {status['quota_remaining']}")
 
         # Recommendations
-        if status['quota_usage_pct'] > 90:
-            print(f"⚠️  Warning: High quota usage, consider reducing sampling frequency")
-        elif status['cache_hit_rate_pct'] < 50:
-            print(f"💡 Tip: Low cache hit rate, consider weekly or bi-weekly sampling")
-        elif status['efficiency_rating'] == "🟢 Excellent":
-            print(f"✅ Optimal efficiency achieved!")
+        if status["quota_usage_pct"] > 90:
+            print("⚠️  Warning: High quota usage, consider reducing sampling frequency")
+        elif status["cache_hit_rate_pct"] < 50:
+            print("💡 Tip: Low cache hit rate, consider weekly or bi-weekly sampling")
+        elif status["efficiency_rating"] == "🟢 Excellent":
+            print("✅ Optimal efficiency achieved!")
 
 
 def create_conservative_governor(max_calls: int = 30) -> NewsGovernor:
     """Create a conservative news governor (1-2 day cache window, weekly sampling)."""
     return NewsGovernor(
-        sampling_strategy='weekly',
+        sampling_strategy="weekly",
         max_calls_per_test=max_calls,
         cache_window_days=2,  # Only use news within 1-2 days
-        strict_sampling=False
+        strict_sampling=False,
     )
 
 
 def create_balanced_governor(max_calls: int = 50) -> NewsGovernor:
     """Create a balanced news governor (1 week cache window, weekly sampling)."""
     return NewsGovernor(
-        sampling_strategy='weekly',
+        sampling_strategy="weekly",
         max_calls_per_test=max_calls,
         cache_window_days=7,  # Use news within a week
-        strict_sampling=False
+        strict_sampling=False,
     )
 
 
 def create_aggressive_governor(max_calls: int = 20) -> NewsGovernor:
     """Create an aggressive news governor (2 week cache window, bi-weekly sampling)."""
     return NewsGovernor(
-        sampling_strategy='bi_weekly',
+        sampling_strategy="bi_weekly",
         max_calls_per_test=max_calls,
         cache_window_days=14,  # Use news within 2 weeks
-        strict_sampling=False
+        strict_sampling=False,
     )
 
 
 def create_strict_governor(max_calls: int = 15) -> NewsGovernor:
     """Create a strict news governor (no cache reuse, only sampling days get news)."""
     return NewsGovernor(
-        sampling_strategy='weekly',
+        sampling_strategy="weekly",
         max_calls_per_test=max_calls,
         cache_window_days=0,  # No cache reuse
-        strict_sampling=True  # Only fetch on sampling days
+        strict_sampling=True,  # Only fetch on sampling days
     )
 
 
-def get_recommended_sampling_strategy(test_duration_days: int,
-                                      target_api_calls: int = 50) -> str:
+def get_recommended_sampling_strategy(test_duration_days: int, target_api_calls: int = 50) -> str:
     """
     Recommend optimal sampling strategy based on test parameters.
 
@@ -415,12 +435,10 @@ def get_recommended_sampling_strategy(test_duration_days: int,
     trading_days = int(test_duration_days * 0.7)
 
     if target_api_calls >= trading_days:
-        return 'daily'
+        return "daily"
     elif target_api_calls >= trading_days // 5:  # Weekly sampling
-        return 'weekly'
+        return "weekly"
     elif target_api_calls >= trading_days // 10:  # Bi-weekly sampling
-        return 'bi_weekly'
+        return "bi_weekly"
     else:
-        return 'monthly'
-
-
+        return "monthly"

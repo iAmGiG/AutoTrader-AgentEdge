@@ -6,7 +6,8 @@ Implementations can range from simple (portfolio %) to sophisticated (Portfolio 
 """
 
 from abc import ABC, abstractmethod
-from ..models import TradeRequest, AnalysisResult, RiskAssessment
+
+from ..models import AnalysisResult, RiskAssessment, TradeRequest
 
 
 class RiskManager(ABC):
@@ -20,10 +21,7 @@ class RiskManager(ABC):
 
     @abstractmethod
     async def assess(
-        self,
-        request: TradeRequest,
-        analysis: AnalysisResult,
-        user_id: str = "default"
+        self, request: TradeRequest, analysis: AnalysisResult, user_id: str = "default"
     ) -> RiskAssessment:
         """
         Assess risk and recommend position size.

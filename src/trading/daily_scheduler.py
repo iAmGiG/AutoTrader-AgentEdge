@@ -12,16 +12,19 @@ Foundation: Built on Issue #313 (Order Management System)
 """
 
 import asyncio
+import json
 import logging
+import os
 import sys
 import time
-from datetime import datetime, time as dt_time, timedelta
+from dataclasses import asdict, dataclass
+from datetime import time as dt_time
+from datetime import timedelta
 from enum import Enum
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass, asdict
-import json
-import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 try:
     import yaml
@@ -29,7 +32,7 @@ except ImportError:
     yaml = None
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from src.trading.trading_cycle import CostEfficientTradeCycle, RoutineType
 
@@ -38,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 class ScheduleStatus(Enum):
     """Status of scheduled task execution"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -48,6 +52,7 @@ class ScheduleStatus(Enum):
 @dataclass
 class ScheduledTask:
     """Represents a scheduled trading routine"""
+
     name: str
     routine_type: RoutineType
     scheduled_time: dt_time  # e.g., time(9, 20) for 9:20 AM
@@ -60,6 +65,7 @@ class ScheduledTask:
 @dataclass
 class ExecutionLog:
     """Log entry for task execution"""
+
     task_name: str
     scheduled_time: str
     actual_start_time: str
@@ -104,7 +110,9 @@ class DailyScheduler:
 
         self.config = self._load_config(config_file)
         # Reuse provided trading_cycle or create new one
-        self.trading_cycle = trading_cycle if trading_cycle is not None else CostEfficientTradeCycle()
+        self.trading_cycle = (
+            trading_cycle if trading_cycle is not None else CostEfficientTradeCycle()
+        )
         self.execution_log: List[ExecutionLog] = []
         self.log_file = Path("state/scheduler_execution_log.json")
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -128,16 +136,17 @@ class DailyScheduler:
             "retry_delay_seconds": 60,
             "timeout_seconds": 300,
             "enable_notifications": False,
-            "dry_run": False
+            "dry_run": False,
         }
 
         if os.path.exists(config_file):
             try:
-                with open(config_file, 'r') as f:
-                    if config_file.endswith('.yaml') or config_file.endswith('.yml'):
+                with open(config_file, "r") as f:
+                    if config_file.endswith(".yaml") or config_file.endswith(".yml"):
                         if yaml is None:
                             raise ImportError(
-                                "PyYAML not installed. Install with: pip install pyyaml")
+                                "PyYAML not installed. Install with: pip install pyyaml"
+                            )
                         user_config = yaml.safe_load(f)
                     else:
                         user_config = json.load(f)
@@ -150,7 +159,7 @@ class DailyScheduler:
             # Save default config
             try:
                 os.makedirs(os.path.dirname(config_file), exist_ok=True)
-                with open(config_file, 'w') as f:
+                with open(config_file, "w") as f:
                     json.dump(default_config, f, indent=2)
                 logger.info("Saved default config to %s", config_file)
             except Exception as e:
@@ -172,7 +181,7 @@ class DailyScheduler:
                 timezone=self.config["market_timezone"],
                 retry_count=self.config["max_retries"],
                 retry_delay_seconds=self.config["retry_delay_seconds"],
-                timeout_seconds=self.config["timeout_seconds"]
+                timeout_seconds=self.config["timeout_seconds"],
             ),
             ScheduledTask(
                 name="evening_routine",
@@ -181,15 +190,15 @@ class DailyScheduler:
                 timezone=self.config["market_timezone"],
                 retry_count=self.config["max_retries"],
                 retry_delay_seconds=self.config["retry_delay_seconds"],
-                timeout_seconds=self.config["timeout_seconds"]
-            )
+                timeout_seconds=self.config["timeout_seconds"],
+            ),
         ]
 
     def _load_execution_log(self):
         """Load execution log from disk"""
         if self.log_file.exists():
             try:
-                with open(self.log_file, 'r') as f:
+                with open(self.log_file, "r") as f:
                     log_data = json.load(f)
                     self.execution_log = [ExecutionLog(**entry) for entry in log_data]
                 logger.info("Loaded %d execution log entries", len(self.execution_log))
@@ -200,7 +209,7 @@ class DailyScheduler:
     def _save_execution_log(self):
         """Save execution log to disk"""
         try:
-            with open(self.log_file, 'w') as f:
+            with open(self.log_file, "w") as f:
                 log_data = [asdict(entry) for entry in self.execution_log]
                 json.dump(log_data, f, indent=2)
         except Exception as e:
@@ -219,8 +228,8 @@ class DailyScheduler:
         log_entry = ExecutionLog(
             task_name=task.name,
             scheduled_time=task.scheduled_time.isoformat(),
-            actual_start_time=datetime.now().isoformat(),
-            status=ScheduleStatus.RUNNING.value
+            actual_start_time=now_iso(),
+            status=ScheduleStatus.RUNNING.value,
         )
 
         max_attempts = task.retry_count + 1  # Initial attempt + retries
@@ -244,16 +253,16 @@ class DailyScheduler:
 
                 # Success!
                 log_entry.status = ScheduleStatus.COMPLETED.value
-                log_entry.actual_end_time = datetime.now().isoformat()
+                log_entry.actual_end_time = now_iso()
                 log_entry.api_calls_used = 3  # Typical API calls per routine
 
                 # Extract report path from report if available
                 # Report path is typically mentioned in the trading_cycle output
                 # Use human-readable format: 2025-11-11_morning.md (or _2.md, _3.md for multiple runs)
-                now = datetime.now()
-                date_str = now.strftime('%Y-%m-%d')
+                now = get_datetime_now()
+                date_str = now.strftime("%Y-%m-%d")
                 # Extract routine type from task name (e.g., "morning_routine" -> "morning")
-                routine_type = task.name.replace('_routine', '')
+                routine_type = task.name.replace("_routine", "")
                 base_path = f"reports/daily/{date_str}_{routine_type}"
 
                 # Check if file exists and find the right counter
@@ -286,7 +295,7 @@ class DailyScheduler:
                 else:
                     # All attempts failed
                     log_entry.status = ScheduleStatus.FAILED.value
-                    log_entry.actual_end_time = datetime.now().isoformat()
+                    log_entry.actual_end_time = now_iso()
                     logger.error("❌ %s failed after %d attempts", task.name, max_attempts)
 
         return log_entry
@@ -304,11 +313,13 @@ class DailyScheduler:
         if not self.config.get("enabled", True):
             return False
 
-        now = datetime.now()
+        now = get_datetime_now()
         current_time = now.time()
 
         # Check if we're within the scheduled time window (± 5 minutes)
-        scheduled_dt = datetime.combine(now.date(), task.scheduled_time)
+        from datetime import datetime as dt
+
+        scheduled_dt = dt.combine(now.date(), task.scheduled_time)
         window_start = (scheduled_dt - timedelta(minutes=5)).time()
         window_end = (scheduled_dt + timedelta(minutes=5)).time()
 
@@ -319,7 +330,7 @@ class DailyScheduler:
         # Check if already executed today
         today_str = now.strftime("%Y-%m-%d")
         for entry in reversed(self.execution_log):
-            entry_date = datetime.fromisoformat(entry.actual_start_time).strftime("%Y-%m-%d")
+            entry_date = parse_date_string(entry.actual_start_time).strftime("%Y-%m-%d")
             if entry.task_name == task.name and entry_date == today_str:
                 if entry.status == ScheduleStatus.COMPLETED.value:
                     logger.debug("Task %s already completed today", task.name)
@@ -350,14 +361,14 @@ class DailyScheduler:
         """Log execution summary for monitoring"""
         duration = "N/A"
         if log_entry.actual_end_time:
-            start = datetime.fromisoformat(log_entry.actual_start_time)
-            end = datetime.fromisoformat(log_entry.actual_end_time)
+            start = parse_date_string(log_entry.actual_start_time)
+            end = parse_date_string(log_entry.actual_end_time)
             duration = f"{(end - start).total_seconds():.1f}s"
 
         status_emoji = {
             ScheduleStatus.COMPLETED.value: "✅",
             ScheduleStatus.FAILED.value: "❌",
-            ScheduleStatus.RETRYING.value: "🔄"
+            ScheduleStatus.RETRYING.value: "🔄",
         }.get(log_entry.status, "⚠️")
 
         logger.info(
@@ -367,7 +378,7 @@ class DailyScheduler:
             log_entry.status,
             duration,
             log_entry.attempt,
-            log_entry.api_calls_used
+            log_entry.api_calls_used,
         )
 
         if log_entry.error_message:
@@ -380,7 +391,9 @@ class DailyScheduler:
         Args:
             check_interval_seconds: How often to check for scheduled tasks (default: 60s)
         """
-        logger.info("🤖 Starting DailyScheduler daemon (check interval: %ds)", check_interval_seconds)
+        logger.info(
+            "🤖 Starting DailyScheduler daemon (check interval: %ds)", check_interval_seconds
+        )
         logger.info("Scheduled tasks:")
         for task in self.tasks:
             logger.info("  - %s at %s ET", task.name, task.scheduled_time.strftime("%H:%M:%S"))
@@ -439,11 +452,12 @@ class DailyScheduler:
         Returns:
             List of ExecutionLog entries
         """
-        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = get_datetime_now() - timedelta(days=days)
 
         history = [
-            entry for entry in self.execution_log
-            if datetime.fromisoformat(entry.actual_start_time) >= cutoff
+            entry
+            for entry in self.execution_log
+            if parse_date_string(entry.actual_start_time) >= cutoff
         ]
 
         return sorted(history, key=lambda x: x.actual_start_time, reverse=True)
@@ -457,10 +471,10 @@ class DailyScheduler:
 
         lines = [
             "# Daily Scheduler Status Report",
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Generated: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
             "## Recent Executions (Last 7 Days)",
-            ""
+            "",
         ]
 
         # Group by task
@@ -482,14 +496,16 @@ class DailyScheduler:
             lines.append(f"Success rate: {(completed / len(entries) * 100):.1f}%")
             lines.append("")
 
-        lines.extend([
-            "## Configuration",
-            f"Morning routine: {self.config['morning_routine_time']} ET",
-            f"Evening routine: {self.config['evening_routine_time']} ET",
-            f"Max retries: {self.config['max_retries']}",
-            f"Enabled: {self.config['enabled']}",
-            ""
-        ])
+        lines.extend(
+            [
+                "## Configuration",
+                f"Morning routine: {self.config['morning_routine_time']} ET",
+                f"Evening routine: {self.config['evening_routine_time']} ET",
+                f"Max retries: {self.config['max_retries']}",
+                f"Enabled: {self.config['enabled']}",
+                "",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -503,18 +519,15 @@ def main():
         "--mode",
         choices=["daemon", "once", "status", "test"],
         default="daemon",
-        help="Execution mode"
+        help="Execution mode",
     )
     parser.add_argument(
         "--task",
         choices=["morning_routine", "evening_routine", "all"],
-        help="Specific task to run (for 'once' mode)"
+        help="Specific task to run (for 'once' mode)",
     )
     parser.add_argument(
-        "--interval",
-        type=int,
-        default=60,
-        help="Check interval in seconds (for daemon mode)"
+        "--interval", type=int, default=60, help="Check interval in seconds (for daemon mode)"
     )
 
     args = parser.parse_args()
@@ -522,11 +535,8 @@ def main():
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler('state/scheduler.log'),
-            logging.StreamHandler()
-        ]
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler("state/scheduler.log"), logging.StreamHandler()],
     )
 
     # Create scheduler

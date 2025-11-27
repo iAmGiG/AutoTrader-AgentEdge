@@ -11,19 +11,19 @@ Combines:
 """
 
 import logging
-import sys
 import os
-from datetime import datetime
-from typing import Dict, Any, Optional, List
+import sys
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+from src.utils.date_utils import get_datetime_now, now_iso
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.autogen_agents.voter_agent import VoterAgent
 from src.trading.alpaca_trading_client import AlpacaOrderManager
-from src.trading_tools.indicators import calculate_macd, calculate_rsi
+from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.trading.unified_price_fetcher import get_current_price
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TradingDecision:
     """Trading decision from VoterAgent"""
+
     symbol: str
     signal: str  # BUY, SELL, HOLD
     confidence: float
@@ -103,7 +104,7 @@ class AutomatedTradingSystem:
                         symbol,
                         decision.signal,
                         decision.confidence * 100,
-                        decision.reasoning
+                        decision.reasoning,
                     )
 
             except Exception as e:
@@ -134,7 +135,7 @@ class AutomatedTradingSystem:
                 macd_signal="HOLD",
                 rsi_signal="HOLD",
                 reasoning="Market analysis pending",
-                timestamp=datetime.now().isoformat()
+                timestamp=now_iso(),
             )
 
             return decision
@@ -156,12 +157,7 @@ class AutomatedTradingSystem:
         Returns:
             Execution summary
         """
-        results = {
-            "orders_placed": 0,
-            "orders_skipped": 0,
-            "errors": [],
-            "details": []
-        }
+        results = {"orders_placed": 0, "orders_skipped": 0, "errors": [], "details": []}
 
         for decision in decisions:
             try:
@@ -171,7 +167,7 @@ class AutomatedTradingSystem:
                         "Skipping %s: confidence %.1f%% below threshold %.1f%%",
                         decision.symbol,
                         decision.confidence * 100,
-                        min_confidence * 100
+                        min_confidence * 100,
                     )
                     results["orders_skipped"] += 1
                     continue
@@ -186,20 +182,24 @@ class AutomatedTradingSystem:
                     success = self._place_buy_order(decision)
                     if success:
                         results["orders_placed"] += 1
-                        results["details"].append({
-                            "symbol": decision.symbol,
-                            "action": "BUY",
-                            "confidence": decision.confidence
-                        })
+                        results["details"].append(
+                            {
+                                "symbol": decision.symbol,
+                                "action": "BUY",
+                                "confidence": decision.confidence,
+                            }
+                        )
                 elif decision.signal == "SELL":
                     success = self._place_sell_order(decision)
                     if success:
                         results["orders_placed"] += 1
-                        results["details"].append({
-                            "symbol": decision.symbol,
-                            "action": "SELL",
-                            "confidence": decision.confidence
-                        })
+                        results["details"].append(
+                            {
+                                "symbol": decision.symbol,
+                                "action": "SELL",
+                                "confidence": decision.confidence,
+                            }
+                        )
 
             except Exception as e:
                 error_msg = f"Error executing {decision.symbol}: {str(e)}"
@@ -209,7 +209,7 @@ class AutomatedTradingSystem:
         logger.info(
             "Execution complete: %d orders placed, %d skipped",
             results["orders_placed"],
-            results["orders_skipped"]
+            results["orders_skipped"],
         )
 
         return results
@@ -241,18 +241,15 @@ class AutomatedTradingSystem:
             limit_price = round(current_price * 0.999, 2)
 
             result = self.order_manager.place_limit_order_gtc(
-                symbol=decision.symbol,
-                qty=qty,
-                side="buy",
-                limit_price=limit_price
+                symbol=decision.symbol, qty=qty, side="buy", limit_price=limit_price
             )
 
-            if result and 'error' not in result:
+            if result and "error" not in result:
                 logger.info(
                     "✅ BUY order placed: %d shares %s @ $%.2f (GTC)",
                     qty,
                     decision.symbol,
-                    limit_price
+                    limit_price,
                 )
                 return True
             else:
@@ -276,13 +273,13 @@ class AutomatedTradingSystem:
         try:
             # Check if we have a position
             positions = self.order_manager.get_positions()
-            position = next((p for p in positions if p['symbol'] == decision.symbol), None)
+            position = next((p for p in positions if p["symbol"] == decision.symbol), None)
 
             if not position:
                 logger.warning("No position to sell for %s", decision.symbol)
                 return False
 
-            qty = abs(int(position['qty']))
+            qty = abs(int(position["qty"]))
 
             # Get current price
             current_price = get_current_price(decision.symbol)
@@ -292,18 +289,15 @@ class AutomatedTradingSystem:
             limit_price = round(current_price * 1.001, 2)
 
             result = self.order_manager.place_limit_order_gtc(
-                symbol=decision.symbol,
-                qty=qty,
-                side="sell",
-                limit_price=limit_price
+                symbol=decision.symbol, qty=qty, side="sell", limit_price=limit_price
             )
 
-            if result and 'error' not in result:
+            if result and "error" not in result:
                 logger.info(
                     "✅ SELL order placed: %d shares %s @ $%.2f (GTC)",
                     qty,
                     decision.symbol,
-                    limit_price
+                    limit_price,
                 )
                 return True
             else:
@@ -324,10 +318,10 @@ class AutomatedTradingSystem:
         logger.info("=== Starting Daily Trading Cycle ===")
 
         report_lines = [
-            f"# Daily Trading Cycle Report",
-            f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "# Daily Trading Cycle Report",
+            f"Date: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"Mode: {self.mode}",
-            ""
+            "",
         ]
 
         try:
@@ -359,9 +353,9 @@ class AutomatedTradingSystem:
             report_lines.append(f"Orders placed: {execution_results['orders_placed']}")
             report_lines.append(f"Orders skipped: {execution_results['orders_skipped']}")
 
-            if execution_results['errors']:
+            if execution_results["errors"]:
                 report_lines.append(f"Errors: {len(execution_results['errors'])}")
-                for error in execution_results['errors']:
+                for error in execution_results["errors"]:
                     report_lines.append(f"  - {error}")
 
             report_lines.append("")
@@ -369,7 +363,9 @@ class AutomatedTradingSystem:
             # Step 4: Summary
             report_lines.append("## Summary")
             report_lines.append("✅ Daily trading cycle completed successfully")
-            report_lines.append(f"Next cycle: {datetime.now().strftime('%Y-%m-%d')} 15:50:00 ET")
+            report_lines.append(
+                f"Next cycle: {get_datetime_now().strftime('%Y-%m-%d')} 15:50:00 ET"
+            )
 
         except Exception as e:
             logger.error("Daily trading cycle failed: %s", e)
@@ -379,9 +375,9 @@ class AutomatedTradingSystem:
         report = "\n".join(report_lines)
 
         # Save report
-        report_file = f"reports/daily/{datetime.now().strftime('%Y%m%d')}_trading_cycle.md"
+        report_file = f"reports/daily/{get_datetime_now().strftime('%Y%m%d')}_trading_cycle.md"
         os.makedirs(os.path.dirname(report_file), exist_ok=True)
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             f.write(report)
 
         logger.info("Report saved to %s", report_file)
@@ -394,31 +390,18 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Automated Trading System")
-    parser.add_argument(
-        "--mode",
-        choices=["paper", "live"],
-        default="paper",
-        help="Trading mode"
-    )
-    parser.add_argument(
-        "--watchlist",
-        nargs="+",
-        help="Symbols to monitor (default: SPY TQQQ QQQ)"
-    )
+    parser.add_argument("--mode", choices=["paper", "live"], default="paper", help="Trading mode")
+    parser.add_argument("--watchlist", nargs="+", help="Symbols to monitor (default: SPY TQQQ QQQ)")
 
     args = parser.parse_args()
 
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     # Create and run system
-    system = AutomatedTradingSystem(
-        watchlist=args.watchlist,
-        mode=args.mode
-    )
+    system = AutomatedTradingSystem(watchlist=args.watchlist, mode=args.mode)
 
     report = system.run_daily_trading_cycle()
     print(report)

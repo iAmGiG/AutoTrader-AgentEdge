@@ -5,6 +5,7 @@
 **Date:** 2025-01-11
 
 **Related Commits:**
+
 - `0c99ba3` - LLM parser for intelligent routing
 - `2329373` - Order status routing (deprecated approach)
 
@@ -19,6 +20,7 @@ The unified interactive CLI uses an **LLM-based classification system** to intel
 **Let the LLM understand context, not just pattern-match keywords.**
 
 Instead of maintaining lists of phrases like:
+
 ```python
 # ❌ OLD APPROACH (doesn't scale)
 if "any open orders" in input:
@@ -29,6 +31,7 @@ elif "any positions" in input:
 ```
 
 We use the LLM to classify intent:
+
 ```python
 # ✅ NEW APPROACH (scalable)
 request = await parser.parse(user_input)
@@ -64,7 +67,7 @@ Orders Handler
 
 ### Trade Request Flow
 
-```
+```text
 User Input: "buy ANY at market"
     ↓
 LLM Parser
@@ -244,6 +247,7 @@ async def _handle_trade_or_status_request(self, user_input: str):
 **Input:** "any open orders?"
 
 **LLM Analysis:**
+
 - Context: Question about status ("any...?" pattern)
 - No action verb for trading (buy/sell/analyze)
 - Request type: `status_query`
@@ -256,6 +260,7 @@ async def _handle_trade_or_status_request(self, user_input: str):
 **Input:** "is ANY a good buy at market?"
 
 **LLM Analysis:**
+
 - Context: Asking to analyze ticker for trading
 - Action: "review" (evaluate for purchase)
 - Specific ticker mentioned: ANY
@@ -271,6 +276,7 @@ async def _handle_trade_or_status_request(self, user_input: str):
 **Input:** "what positions do I have?"
 
 **LLM Analysis:**
+
 - Context: Asking about current holdings
 - No trading intent
 - Request type: `status_query`
@@ -282,6 +288,7 @@ async def _handle_trade_or_status_request(self, user_input: str):
 **Input:** "what's AAPL trading at?"
 
 **LLM Analysis:**
+
 - Context: Asking about ticker price (implies analysis)
 - Ticker: AAPL
 - Request type: `trade` (checking for potential entry)
@@ -295,6 +302,7 @@ async def _handle_trade_or_status_request(self, user_input: str):
 **Input:** "show me my SPY position"
 
 **LLM Analysis:**
+
 - Context: Status query about specific ticker
 - Request type: `status_query`
 - Ticker: "SPY" (specific position)
@@ -340,10 +348,12 @@ Run through `docs/features/05_interactive_cli_test_plan.md` test cases and verif
 ### LLM Call Overhead
 
 **Measurement:**
+
 - LLM parser call: ~200-500ms (GPT-4o-mini)
 - Keyword routing: ~1ms
 
 **Optimization:**
+
 - Scheduler/alerts still use fast keywords (0 LLM calls)
 - Trade/status queries: 1 LLM call (already needed for parsing)
 - No additional latency vs. old approach
@@ -351,6 +361,7 @@ Run through `docs/features/05_interactive_cli_test_plan.md` test cases and verif
 ### Cost
 
 **Token Usage per Request:**
+
 - Prompt: ~150 tokens
 - Response: ~50 tokens
 - Total: ~200 tokens = $0.0001 per request (negligible)
@@ -418,12 +429,14 @@ Run through `docs/features/05_interactive_cli_test_plan.md` test cases and verif
 ## References
 
 **Commits:**
+
 - `0c99ba3` - LLM-based routing implementation
 - `2329373` - Previous keyword-based approach (deprecated)
 - `f373b4f` - Routing bug fixes
 - `f6b25e9` - Toggle command with mode indicator
 
 **Design Decisions:**
+
 - Use LLM for semantic understanding, not pattern matching
 - Keep fast keywords for unambiguous system features
 - Single source of truth: LLM parser determines intent

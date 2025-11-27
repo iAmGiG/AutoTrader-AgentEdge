@@ -7,12 +7,14 @@ The Scheduler CLI provides a dedicated interactive interface for managing the da
 ## Access Methods
 
 ### From Main Trading CLI
+
 ```bash
 python main.py
 > /schedule
 ```
 
 ### Standalone Mode
+
 ```bash
 python -m src.cli.scheduler_cli
 ```
@@ -22,7 +24,9 @@ python -m src.cli.scheduler_cli
 ### Status & Monitoring
 
 #### `status`
+
 Show detailed scheduler status including:
+
 - **Config status** (enabled/disabled in config file)
 - **Service status** (daemon actually running or not)
 - Configuration summary (times, retries, timezone)
@@ -33,6 +37,7 @@ Show detailed scheduler status including:
 You must start the daemon process for automatic execution.
 
 **Example (config enabled, daemon NOT running):**
+
 ```
 Scheduler> status
 
@@ -62,6 +67,7 @@ Scheduler> status
 ```
 
 **Example (config enabled, daemon RUNNING):**
+
 ```
 Scheduler> status
 
@@ -84,9 +90,11 @@ Scheduler> status
 ```
 
 #### `history`
+
 View execution history (last 20 runs, 7 days)
 
 **Example:**
+
 ```
 Scheduler> history
 
@@ -103,9 +111,11 @@ Showing last 20 executions (7 days):
 ```
 
 #### `next`
+
 Calculate and show next scheduled run with countdown
 
 **Example:**
+
 ```
 Scheduler> next
 
@@ -121,9 +131,11 @@ Scheduler> next
 ### Configuration Management
 
 #### `config`
+
 Display current scheduler configuration file contents
 
 **Example:**
+
 ```
 Scheduler> config
 
@@ -141,15 +153,18 @@ max_retries: 3
 ```
 
 #### `edit`
+
 Interactive configuration editor
 
 **Features:**
+
 - Edit all scheduler settings interactively
 - Input validation (time format, ranges)
 - Save and reload without restart
 - Cancel without changes
 
 **Example Session:**
+
 ```
 Scheduler> edit
 
@@ -177,6 +192,7 @@ Edit setting (1-5, 0 to save, q to cancel): 0
 ### Control Commands
 
 #### `enable`
+
 Enable scheduler (sets `enabled: true` in config)
 
 ```
@@ -185,6 +201,7 @@ Scheduler> enable
 ```
 
 #### `disable`
+
 Disable scheduler (sets `enabled: false` in config)
 
 ```
@@ -195,9 +212,11 @@ Scheduler> disable
 ### Testing
 
 #### `test morning`
+
 Test morning routine without waiting for scheduled time
 
 **Example:**
+
 ```
 Scheduler> test morning
 
@@ -227,6 +246,7 @@ Full report saved to: reports/daily/
 ```
 
 #### `test evening`
+
 Test evening routine immediately
 
 ```
@@ -253,6 +273,7 @@ Full report saved to: reports/daily/
 ### Report Details
 
 Reports are saved to `reports/daily/` with human-readable filenames:
+
 - First run: `2025-11-11_morning.md`
 - Multiple runs: `2025-11-11_morning_2.md`, `2025-11-11_morning_3.md`
 
@@ -262,12 +283,14 @@ Reports are saved to `reports/daily/` with human-readable filenames:
    - Portfolio value, available cash, buying power
 
 2. **Active Positions Table**
+
    ```
    | Symbol | Entry | Current | Stop | Target | P&L | Action |
    |--------|-------|---------|------|--------|-----|--------|
    | META   | $628  | $625    | $597 | $678   | -$24 | No change |
    | SPY    | $658  | $683    | $625 | $710   | +$350| No change |
    ```
+
    - **Stop/Target prices** synced from Alpaca GTC orders (not $0.00)
    - **P&L** calculated from current price vs entry
    - **Action** shows if stops were adjusted
@@ -291,9 +314,11 @@ Reports are saved to `reports/daily/` with human-readable filenames:
 ### Other Commands
 
 #### `help`
+
 Show command list (same as welcome message)
 
 #### `exit` / `quit` / `q`
+
 Exit scheduler CLI and return to main CLI
 
 ## Configuration Fields
@@ -309,6 +334,7 @@ Editable via `edit` command:
 | `dry_run` | boolean | Test mode (no real orders) | `false` |
 
 **Read-only fields** (edit config file directly):
+
 - `market_timezone`: Always `America/New_York`
 - `retry_delay_seconds`: Initial retry delay (exponential backoff)
 - `timeout_seconds`: Max seconds per routine
@@ -319,6 +345,7 @@ Editable via `edit` command:
 ## Use Cases
 
 ### Quick Status Check
+
 ```bash
 python main.py
 > /schedule
@@ -328,6 +355,7 @@ Scheduler> exit
 ```
 
 ### Change Execution Times
+
 ```bash
 Scheduler> edit
 # Change morning time from 09:20 to 09:15
@@ -335,6 +363,7 @@ Scheduler> edit
 ```
 
 ### Troubleshoot Failed Execution
+
 ```bash
 Scheduler> history
 # Check error messages
@@ -343,6 +372,7 @@ Scheduler> test morning
 ```
 
 ### Enable/Disable Quickly
+
 ```bash
 # Disable for maintenance
 Scheduler> disable
@@ -354,6 +384,7 @@ Scheduler> enable
 ## Best Practices
 
 1. **Always test after editing config**
+
    ```
    Scheduler> edit
    # Make changes
@@ -362,12 +393,14 @@ Scheduler> enable
    ```
 
 2. **Check history before troubleshooting**
+
    ```
    Scheduler> history
    # Look for patterns in failures
    ```
 
 3. **Use dry run mode for testing**
+
    ```
    Scheduler> edit
    # Set dry_run: true
@@ -377,6 +410,7 @@ Scheduler> enable
    ```
 
 4. **Monitor next run before leaving**
+
    ```
    Scheduler> next
    # Confirm expected time before exiting
@@ -392,6 +426,7 @@ The scheduler CLI is fully integrated:
 - Seamlessly return to main CLI with `exit`
 
 **Workflow:**
+
 ```
 Main CLI> /schedule
 # Enter scheduler mode
@@ -424,6 +459,7 @@ Main CLI> show portfolio
 **Problem**: Morning/evening reports show `$0.00` in Stop column despite take-profit orders existing on Alpaca.
 
 **Example Report**:
+
 ```
 | Symbol | Entry | Current | Stop | Target | P&L | Action |
 | META | $628.07 | $627.00 | $0.00 | $634.19 | $-9 | No change |
@@ -436,6 +472,7 @@ According to [Alpaca forum discussion](https://forum.alpaca.markets/t/half-of-br
 > "When a bracket order is submitted, once the entry order is filled, two exit orders are submitted. **Only one of those two orders will be active at a time**. The other will have a status of 'held'."
 
 **The Problem**:
+
 - Alpaca implements OCO (One-Cancels-Other) with one active exit order and one "held" order
 - `get_orders()` API (even with `nested=True`) **does not return orders with status="held"**
 - Stop-loss orders exist on Alpaca but are invisible to the API
@@ -446,6 +483,7 @@ According to [Alpaca forum discussion](https://forum.alpaca.markets/t/half-of-br
 Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" approach**:
 
 1. **Priority 1: Use saved stop** from local state (the actual value sent when placing order)
+
    ```python
    # Try to use saved stop from local state first
    if symbol in self.local_state.get("positions", {}):
@@ -453,6 +491,7 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
    ```
 
 2. **Priority 2: Calculate from entry** if no saved value exists
+
    ```python
    # Last resort: calculate from entry price × (1 - stop_loss_pct)
    calculated_stop = round(entry_price * 0.95, 2)
@@ -461,6 +500,7 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
 3. **Extract take-profit** prices from API (visible as active LIMIT orders)
 
 4. **Display warning** in reports:
+
    ```markdown
    ⚠️ **Note**: Stop prices from local state (Alpaca hides bracket order stop-loss legs from API).
    Verify stop orders exist on Alpaca dashboard. See Issue #355 for details.
@@ -469,6 +509,7 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
 **Manual Sync Required**: For AUTO_DISCOVERED positions (not placed by this system), manually update `state/cost_efficient_positions.json` with actual stop prices from Alpaca dashboard.
 
 **Report Example**:
+
 ```
 | Symbol | Entry | Current | Stop | Target | P&L | Action |
 | META | $628.07 | $627.00 | $609.00 | $634.19 | $-9 | No change |
@@ -478,6 +519,7 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
 ```
 
 **User Responsibility**:
+
 1. Verify stop orders exist on Alpaca web dashboard
 2. For AUTO_DISCOVERED positions, manually update stop prices in `state/cost_efficient_positions.json`
 3. For new orders placed by this system, stop/target will be saved automatically (when Order Manager integration complete)
@@ -489,6 +531,7 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
 **Old Format** (before 2025-11-11): `20251111_1339_morning.md` (hard to read)
 
 **New Format**: `2025-11-11_morning.md` (human-readable)
+
 - Uses ISO date format with dashes
 - Multiple runs same day: `morning_2.md`, `morning_3.md`
 - Applies to morning, evening, and recovery reports
@@ -498,6 +541,7 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
 **Problem**: `status` shows `Config: ENABLED` but scheduler not executing automatically.
 
 **Solution**: "Config: ENABLED" means the config file says `enabled: true`, but you must still start the daemon process:
+
 ```bash
 # Exit scheduler CLI
 Scheduler> exit
@@ -507,12 +551,14 @@ python main.py --daemon
 ```
 
 The `status` command now shows both:
+
 - **Config status** (what's in the YAML file)
 - **Service status** (whether daemon is actually running)
 
 ## Future Enhancements
 
 See pending issues for:
+
 - Background service start/stop from CLI (#350)
 - Self-terminating background processes
 - Real-time execution monitoring
@@ -522,6 +568,7 @@ See pending issues for:
 ---
 
 **Related Documentation:**
+
 - [GTC Scheduler Quickstart](02_gtc_scheduler_quickstart.md)
 - [GTC Scheduler Technical](03_gtc_scheduler_technical.md)
 - [Interactive CLI Test Plan](05_interactive_cli_test_plan.md)

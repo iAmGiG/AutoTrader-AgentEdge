@@ -18,8 +18,13 @@ The primary cache interface providing:
 - **Multi-Asset Support**: Stocks, options, futures (schema-ready)
 - **Smart Expiration**: Historical data (10 year TTL), Recent data (24 hour TTL)
 - **Efficient Storage**: Single 0.5MB database vs 54+ scattered JSON files
+- **Live Price Integration**: Automatic fallback to live prices during market hours (Issue #384)
 
 ### Database Schema
+
+The database contains three main tables:
+
+#### 1. Market Data Cache
 
 ```sql
 CREATE TABLE market_cache (
@@ -50,11 +55,74 @@ CREATE INDEX idx_symbol_date ON market_cache(asset_type, symbol, trading_date);
 CREATE INDEX idx_expiration ON market_cache(expires_at);
 ```
 
+#### 2. Raw Options Chain (Issue #373)
+
+```sql
+CREATE TABLE raw_options_chain (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    trading_date TEXT NOT NULL,
+    strike REAL NOT NULL,
+    option_type TEXT NOT NULL CHECK(option_type IN ('call', 'put')),
+    expiration TEXT NOT NULL,
+
+    -- Pricing data
+    bid REAL, ask REAL, last REAL,
+    volume INTEGER, open_interest INTEGER,
+
+    -- Greeks
+    implied_volatility REAL, delta REAL, gamma REAL,
+    theta REAL, vega REAL, rho REAL,
+
+    -- Metadata
+    contract_symbol TEXT,
+    underlying_price REAL,
+    source TEXT NOT NULL,
+    data_quality_score REAL DEFAULT 1.0,
+
+    UNIQUE(symbol, trading_date, strike, option_type, expiration, source)
+);
+```
+
+#### 3. Trade History (Issue #373)
+
+```sql
+CREATE TABLE trade_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_id TEXT NOT NULL UNIQUE,
+    symbol TEXT NOT NULL,
+
+    -- Entry/Exit details
+    entry_date TEXT NOT NULL,
+    entry_price REAL NOT NULL,
+    quantity INTEGER NOT NULL,
+    exit_date TEXT,
+    exit_price REAL,
+    exit_reason TEXT,
+
+    -- Performance metrics
+    realized_pnl REAL,
+    realized_pnl_pct REAL,
+    holding_period_hours REAL,
+
+    -- Strategy attribution
+    strategy_name TEXT,
+    signal_strength TEXT,
+    signal_confidence REAL,
+    broker_account TEXT DEFAULT 'alpaca_paper'
+);
+```
+
+See [trade_history_database.md](trade_history_database.md) for complete trade history schema and API reference.
+
 ### Cache Directory Structure
 
 ```bash
 .cache/
-├── trading_data.db              # SQLite database (current)
+├── trading_cache.db             # SQLite database (current) - unified storage
+│   ├── market_cache             # OHLCV market data
+│   ├── raw_options_chain        # Options chains with greeks (Issue #373)
+│   └── trade_history            # Completed trades for analytics (Issue #373)
 ├── backup_*/                    # Migration backups
 └── market_data/                 # Legacy JSON files (deprecated)
 ```
@@ -89,6 +157,38 @@ df = cache.get(
 stats = cache.get_stats()
 print(f"Total entries: {stats['total_entries']}")
 print(f"Database size: {stats['db_size_mb']} MB")
+```
+
+### Live Price Integration (Issue #384)
+
+During market hours (9:30 AM - 4:00 PM ET), the system automatically detects when today's daily bar is incomplete and falls back to live prices:
+
+```python
+from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+
+# Automatically handles live prices during market hours
+# - Cache bypass for current trading day
+# - Live price bar appended to historical data
+# - Seamless fallback after market close
+data = fetch_unified_market_data('TQQQ', '2025-09-25', '2025-11-24')
+# Returns: 43 bars (42 historical + 1 live) during market hours
+```
+
+**Market Hours Detection:**
+
+```python
+from src.utils.market_hours import is_market_hours, get_market_status
+
+# Check if market is open
+if is_market_hours():
+    print("Use live prices")
+else:
+    print("Use cached daily closes")
+
+# Detailed status
+is_open, status = get_market_status()
+# Returns: (True, "Market open (Regular hours)")
+#       or (False, "Market closed (After-hours)")
 ```
 
 ### Backward Compatible Interface
@@ -277,6 +377,7 @@ For developers migrating from the old system:
 ### Quick Migration
 
 **Before (UnifiedCacheManager)**:
+
 ```python
 from src.data_sources.cache import UnifiedCacheManager
 cache = UnifiedCacheManager()
@@ -285,6 +386,7 @@ df = cache.get_market_data(symbol, start, end, source)
 ```
 
 **After (TradingCacheManager)**:
+
 ```python
 from src.data_sources.cache import TradingCacheManager
 cache = TradingCacheManager()
@@ -293,6 +395,7 @@ df = cache.get(symbol, start, end, source=source)
 ```
 
 **Or use CacheAdapter (no code changes)**:
+
 ```python
 from src.data_sources.cache import cache_adapter
 # Same API as before, automatically uses SQLite
@@ -344,6 +447,7 @@ cache.delete("SPY", "2025-01-01", "2025-01-31", source="alpaca")
 ### Cache Miss (Expected Behavior)
 
 If `cache.get()` returns `None`:
+
 1. Data not cached yet (first request)
 2. Data expired (check TTL settings)
 3. Symbol/date range not available in cache
@@ -351,6 +455,7 @@ If `cache.get()` returns `None`:
 ### Database Locked Error
 
 SQLite serializes writes. If you see "database is locked":
+
 - Reads are concurrent (no lock)
 - Writes are serialized (one at a time)
 - Default timeout: 5 seconds
@@ -359,6 +464,7 @@ SQLite serializes writes. If you see "database is locked":
 ### Performance Degradation
 
 If queries become slow:
+
 1. Run `cache.cleanup_expired()` to remove old data
 2. Run `cache.vacuum()` to reclaim space
 3. Check database size with `cache.get_stats()`
@@ -373,6 +479,7 @@ If queries become slow:
 - **Total**: 29/29 tests passing (100% pass rate)
 
 Test categories:
+
 - Basic operations (set/get/filtering)
 - Edge cases (empty data, duplicates, date handling)
 - Expiration logic (TTL, cleanup)
@@ -409,6 +516,7 @@ The old file-based cache is deprecated but maintained for backward compatibility
 - 📅 Planned removal: Q2 2025
 
 **Why deprecated:**
+
 - No concurrent access safety
 - Slower queries (200ms+ vs 25ms)
 - File fragmentation issues
@@ -441,6 +549,7 @@ with sqlite3.connect('.cache/trading_data.db') as conn:
 ## Future Enhancements
 
 Planned improvements:
+
 - [ ] Compression for large datasets (gzip BLOB columns)
 - [ ] Sharding for multi-TB deployments
 - [ ] Read replicas for high-concurrency scenarios
@@ -458,5 +567,6 @@ Planned improvements:
 ## Related Issues
 
 - Issue #336: SQLite Cache System implementation (COMPLETED)
+- Issue #373: Multi-provider database storage for options and trade history (COMPLETED)
 - Issue #287: GTC daily execution support
 - Issue #306: Position management with multi-date queries
