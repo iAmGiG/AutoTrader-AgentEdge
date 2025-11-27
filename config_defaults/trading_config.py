@@ -43,6 +43,27 @@ class ExitConfig:
     breakeven_win_rate: float
 
 
+@dataclass
+class TrailingStopConfig:
+    """Trailing stop configuration for dynamic stop management."""
+
+    enabled: bool = True
+    # Profit thresholds (as decimal, e.g., 0.02 = 2%)
+    breakeven_trigger: float = 0.005  # Move to breakeven at 0.5% profit
+    trail_start_trigger: float = 0.01  # Start trailing at 1% profit
+    # Trail distances
+    trail_distance: float = 0.005  # Trail by 0.5% below price
+    # Progressive stops (from existing adjust_stop logic)
+    progressive_enabled: bool = True
+    progressive_breakeven_pct: float = 0.02  # Move to breakeven at 2%
+    progressive_lock_25_pct: float = 0.04  # Lock 25% of gains at 4%
+    progressive_trail_50_pct: float = 0.06  # Trail 50% of gains at 6%+
+    # Rate limiting
+    min_update_interval_seconds: int = 60  # Don't update more than once per minute
+    # Safety
+    never_move_stop_down: bool = True  # Stops only move up, never down
+
+
 class TradingConfig:
     """
     Trading configuration manager.
@@ -202,6 +223,28 @@ class TradingConfig:
                 return exit_config.take_profit
 
         return risk_config.get(key)
+
+    def get_trailing_stop_config(self) -> TrailingStopConfig:
+        """
+        Get trailing stop configuration.
+
+        Returns:
+            TrailingStopConfig with all trailing stop parameters
+        """
+        trailing_config = self.config.get("trailing_stops", {})
+
+        return TrailingStopConfig(
+            enabled=trailing_config.get("enabled", True),
+            breakeven_trigger=trailing_config.get("breakeven_trigger", 0.005),
+            trail_start_trigger=trailing_config.get("trail_start_trigger", 0.01),
+            trail_distance=trailing_config.get("trail_distance", 0.005),
+            progressive_enabled=trailing_config.get("progressive_enabled", True),
+            progressive_breakeven_pct=trailing_config.get("progressive_breakeven_pct", 0.02),
+            progressive_lock_25_pct=trailing_config.get("progressive_lock_25_pct", 0.04),
+            progressive_trail_50_pct=trailing_config.get("progressive_trail_50_pct", 0.06),
+            min_update_interval_seconds=trailing_config.get("min_update_interval_seconds", 60),
+            never_move_stop_down=trailing_config.get("never_move_stop_down", True),
+        )
 
     def validate_config(self) -> bool:
         """Validate configuration parameters."""

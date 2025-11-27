@@ -452,15 +452,12 @@ class TradeCycle:
                     # Get account and try to use market data
                     account = self.position_manager.get_account_info()
                     if account and account.get("cash", 0) > 1000:
-                        # If we have cash but no price, try getting it through the broker
+                        # If we have cash but no price, use fallback
                         try:
-                            from src.trading.alpaca_trading_client import AlpacaAccountMonitor
-
-                            monitor = AlpacaAccountMonitor(mode="paper")
                             # Try to get last trade price from Alpaca directly
                             logger.warning(f"Using fallback price estimation for {self.symbol}")
-                            current_price = 100.0  # Conservative fallback that won't break orders
-                        except:
+                            current_price = 100.0  # Conservative fallback
+                        except Exception:
                             raise ValueError(f"Cannot determine current price for {self.symbol}")
 
             # Get account info for position sizing
@@ -718,6 +715,9 @@ class TradeCycle:
         """
         Update stop loss order with new price.
 
+        Uses OrderManager.replace_stop_order() which implements cancel-replace
+        pattern since Alpaca doesn't support direct stop price modification.
+
         Args:
             new_stop_price: New stop loss price
 
@@ -725,30 +725,56 @@ class TradeCycle:
             True if stop updated successfully
         """
         try:
-            # Get the current stop order ID (simplified - would need order tracking)
+            # Get the current stop order ID
             stop_order_id = self.data.order_ids.get("stop")
 
             if not stop_order_id:
-                logger.error("No stop order ID found")
+                # For bracket orders, the stop is managed by Alpaca automatically
+                # We need to find the leg order ID from the parent order
+                parent_id = self.data.order_ids.get("parent")
+                if parent_id:
+                    parent_order = self.position_manager.get_order(parent_id)
+                    if parent_order and parent_order.get("legs"):
+                        # Find the stop leg (it will have a stop_price)
+                        for leg_id in parent_order["legs"]:
+                            leg_order = self.position_manager.get_order(leg_id)
+                            if leg_order and leg_order.get("stop_price"):
+                                stop_order_id = leg_id
+                                self.data.order_ids["stop"] = stop_order_id
+                                logger.info(f"Found stop order leg: {stop_order_id}")
+                                break
+
+            if not stop_order_id:
+                logger.error("No stop order ID found - cannot update stop")
                 return False
 
-            # Modify the stop order
-            result = self.order_manager.modify_order(
-                order_id=stop_order_id, stop_price=new_stop_price
+            # Use replace_stop_order (cancel + place new)
+            result = self.order_manager.replace_stop_order(
+                order_id=stop_order_id,
+                new_stop_price=new_stop_price,
+                symbol=self.symbol,
+                qty=self.data.quantity,
             )
 
-            if result["status"] == "submitted":
+            if "error" not in result:
+                old_stop = self.data.current_stop
                 self.data.current_stop = new_stop_price
                 self.data.last_adjustment = now_iso()
                 self.data.state = TradeState.STOP_ADJUSTED.value
 
+                # Update stop order ID with the new order
+                self.data.order_ids["stop"] = result.get("id")
+
                 # Save state
                 self.save_state()
 
-                logger.info(f"Stop updated to ${new_stop_price:.2f}")
+                logger.info(
+                    f"Stop updated: ${old_stop:.2f} -> ${new_stop_price:.2f} "
+                    f"(new order ID: {result.get('id')})"
+                )
                 return True
             else:
-                logger.error(f"Stop update failed: {result['message']}")
+                logger.error(f"Stop update failed: {result.get('error')}")
                 return False
 
         except Exception as e:
@@ -1174,9 +1200,11 @@ class TradeManager:
                 exit_trade = self.active_trades[exit_symbol]
 
                 # Close existing position
-                close_success = exit_trade.close_position(
-                    f"Replacing with {opportunity.symbol} ({decision['improvement_ratio']:.1f}x better)"
+                reason = (
+                    f"Replacing with {opportunity.symbol} "
+                    f"({decision['improvement_ratio']:.1f}x better)"
                 )
+                close_success = exit_trade.close_position(reason)
 
                 if close_success:
                     # Remove from active trades
