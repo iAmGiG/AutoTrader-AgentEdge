@@ -97,6 +97,21 @@ class DailyScheduler:
             config_file: Path to scheduler configuration file (YAML or JSON)
             trading_cycle: Optional CostEfficientTradeCycle instance to reuse (reduces client instantiation)
         """
+        # Load paths configuration
+        paths_config_file = "config_defaults/paths_config.yaml"
+        try:
+            with open(paths_config_file) as f:
+                self.paths = yaml.safe_load(f) if yaml else {}
+                logger.info(f"Loaded paths config from {paths_config_file}")
+        except (FileNotFoundError, TypeError):
+            logger.warning(
+                f"Paths config not found at {paths_config_file}, using hardcoded defaults"
+            )
+            self.paths = {
+                "state_files": {"scheduler_log": "state/scheduler_execution_log.json"},
+                "log_files": {"scheduler": "state/scheduler.log"},
+            }
+
         if config_file is None:
             # Try YAML first, fallback to JSON
             yaml_file = "config_defaults/scheduler_config.yaml"
@@ -114,7 +129,12 @@ class DailyScheduler:
             trading_cycle if trading_cycle is not None else CostEfficientTradeCycle()
         )
         self.execution_log: List[ExecutionLog] = []
-        self.log_file = Path("state/scheduler_execution_log.json")
+
+        # Get log file path from config
+        log_file_path = self.paths.get("state_files", {}).get(
+            "scheduler_log", "state/scheduler_execution_log.json"
+        )
+        self.log_file = Path(log_file_path)
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Define scheduled tasks

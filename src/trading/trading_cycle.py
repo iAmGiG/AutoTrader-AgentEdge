@@ -17,6 +17,8 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any, Dict, List
 
+import yaml
+
 from src.utils.date_utils import get_datetime_now, now_iso
 
 # Add project root to path
@@ -100,8 +102,29 @@ class CostEfficientTradeCycle:
     - Crash recovery rebuilds state from broker truth
     """
 
-    def __init__(self, state_file: str = "state/cost_efficient_positions.json"):
+    def __init__(self, state_file: str = None):
+        # Load path configuration from config_defaults/paths_config.yaml
+        config_path = os.path.join("config_defaults", "paths_config.yaml")
+        try:
+            with open(config_path) as f:
+                paths_config = yaml.safe_load(f)
+                self.paths = paths_config
+                logger.info(f"Loaded paths config from {config_path}")
+        except FileNotFoundError:
+            logger.warning(f"Paths config not found at {config_path}, using hardcoded defaults")
+            # Fallback to hardcoded defaults
+            self.paths = {
+                "state_files": {"cost_efficient": "state/cost_efficient_positions.json"},
+                "report_templates": {"daily_routine": "reports/daily/{date}_{routine_type}.md"},
+            }
+
+        # Use config value if state_file not explicitly provided
+        if state_file is None:
+            state_file = self.paths.get("state_files", {}).get(
+                "cost_efficient", "state/cost_efficient_positions.json"
+            )
         self.state_file = state_file
+
         self.market_data = AlpacaMarketData()
         self.account_monitor = AlpacaAccountMonitor(mode="paper")
         self.order_manager = AlpacaOrderManager(mode="paper")
@@ -882,7 +905,12 @@ class CostEfficientTradeCycle:
             # If multiple runs same day, append counter: morning_2.md, morning_3.md
             now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
-            base_name = f"reports/daily/{date_str}_morning"
+
+            # Get report path template from config
+            template = self.paths.get("report_templates", {}).get(
+                "daily_routine", "reports/daily/{date}_{routine_type}.md"
+            )
+            base_name = template.format(date=date_str, routine_type="morning").replace(".md", "")
 
             # Check for existing files and append counter if needed
             report_file = f"{base_name}.md"
@@ -931,7 +959,12 @@ class CostEfficientTradeCycle:
             # If multiple runs same day, append counter: evening_2.md, evening_3.md
             now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
-            base_name = f"reports/daily/{date_str}_evening"
+
+            # Get report path template from config
+            template = self.paths.get("report_templates", {}).get(
+                "daily_routine", "reports/daily/{date}_{routine_type}.md"
+            )
+            base_name = template.format(date=date_str, routine_type="evening").replace(".md", "")
 
             # Check for existing files and append counter if needed
             report_file = f"{base_name}.md"
@@ -1016,7 +1049,12 @@ class CostEfficientTradeCycle:
             # Recovery is ad-hoc, so include counter for multiple recoveries same day
             now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
-            base_name = f"reports/daily/{date_str}_recovery"
+
+            # Get report path template from config
+            template = self.paths.get("report_templates", {}).get(
+                "daily_routine", "reports/daily/{date}_{routine_type}.md"
+            )
+            base_name = template.format(date=date_str, routine_type="recovery").replace(".md", "")
 
             # Check for existing files and append counter if needed
             report_file = f"{base_name}.md"

@@ -18,6 +18,7 @@ from datetime import timedelta
 from typing import Any, Dict, List, Tuple
 
 import pandas as pd
+import yaml
 
 from src.utils.date_utils import get_datetime_now, now_iso
 
@@ -75,47 +76,77 @@ class CostEfficientScanner:
     - Generate human-readable opportunity reports
     """
 
-    def __init__(self, cache_dir: str = ".cache/scanner_data"):
+    def __init__(self, cache_dir: str = None):
+        # Load scanner configuration from config_defaults/scanner_config.yaml
+        config_path = os.path.join("config_defaults", "scanner_config.yaml")
+        try:
+            with open(config_path) as f:
+                scanner_config = yaml.safe_load(f)
+                self.scanner_settings = scanner_config.get("scanner_settings", {})
+
+                # Flatten watchlist categories into single list
+                watchlist_config = scanner_config.get("default_watchlist", {})
+                self.default_watchlist = []
+                for category in watchlist_config.values():
+                    self.default_watchlist.extend(category)
+
+                logger.info(f"Loaded scanner config from {config_path}")
+                logger.debug(f"Watchlist: {len(self.default_watchlist)} symbols")
+        except FileNotFoundError:
+            logger.warning(f"Scanner config not found at {config_path}, using hardcoded defaults")
+            # Fallback to hardcoded defaults
+            self.scanner_settings = {
+                "cache_dir": ".cache/scanner_data",
+                "batch_fetch_days": 3,
+            }
+            self.default_watchlist = [
+                # Core ETFs
+                "SPY",
+                "QQQ",
+                "IWM",
+                "VTI",
+                # Leverage ETFs
+                "TQQQ",
+                "SQQQ",
+                "UPRO",
+                "SPXL",
+                # Tech giants
+                "AAPL",
+                "MSFT",
+                "NVDA",
+                "TSLA",
+                "META",
+                "GOOGL",
+                "AMZN",
+                # Other interesting stocks
+                "PLTR",
+                "COIN",
+                "AMD",
+                "CRM",
+                "NFLX",
+            ]
+
+        # Use cache_dir from config if not explicitly provided
+        if cache_dir is None:
+            cache_dir = self.scanner_settings.get("cache_dir", ".cache/scanner_data")
         self.cache_dir = cache_dir
+
         self.market_data = AlpacaMarketData()
         self.config = TradingConfig()
-
-        # Default watchlist (can be customized)
-        self.default_watchlist = [
-            # Core ETFs
-            "SPY",
-            "QQQ",
-            "IWM",
-            "VTI",
-            # Leverage ETFs
-            "TQQQ",
-            "SQQQ",
-            "UPRO",
-            "SPXL",
-            # Tech giants
-            "AAPL",
-            "MSFT",
-            "NVDA",
-            "TSLA",
-            "META",
-            "GOOGL",
-            "AMZN",
-            # Other interesting stocks
-            "PLTR",
-            "COIN",
-            "AMD",
-            "CRM",
-            "NFLX",
-        ]
 
         os.makedirs(cache_dir, exist_ok=True)
         logger.info("CostEfficientScanner initialized")
 
-    def fetch_market_data_batch(self, symbols: List[str], days: int = 3) -> Dict[str, pd.DataFrame]:
+    def fetch_market_data_batch(
+        self, symbols: List[str], days: int = None
+    ) -> Dict[str, pd.DataFrame]:
         """
         Fetch market data for all symbols in a single batch.
         This is the main API cost - minimize by caching and reusing.
         """
+        # Use config value if days not specified
+        if days is None:
+            days = self.scanner_settings.get("batch_fetch_days", 3)
         start_time = get_datetime_now()
         market_data = {}
         api_calls = 0
