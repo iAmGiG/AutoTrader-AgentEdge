@@ -315,13 +315,18 @@ def resolve_anchor(df, anchor_token):
 # Consolidation functions to reduce datetime import duplication across modules
 
 
-def get_datetime_now() -> datetime.datetime:
+def get_datetime_now(tz=None) -> datetime.datetime:
     """
-    Get current datetime object.
+    Get current datetime object, optionally timezone-aware.
+
+    Args:
+        tz: Optional timezone (e.g., pytz.timezone("America/New_York"))
 
     Returns:
-        Current datetime.datetime object
+        Current datetime.datetime object (timezone-aware if tz provided)
     """
+    if tz is not None:
+        return datetime.datetime.now(tz)
     return datetime.datetime.now()
 
 

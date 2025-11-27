@@ -332,55 +332,97 @@ class TradingOrchestrator:
 
 ## Agent Communication Protocol
 
-### Message Structure
+### Agent Factory (Issue #390) ✅
 
-**Standard Message Format**:
+All agents are now created via a centralized factory pattern:
 
 ```python
-{
-    "from_agent": "VoterAgent",
-    "to_agent": "RiskAgent",
-    "message_type": "trade_proposal",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "data": {
-        "symbol": "AAPL",
+from src.autogen_agents import AgentType, get_agent_factory, create_voter
+
+# Get factory singleton
+factory = get_agent_factory()
+
+# Create agents with consistent config
+voter_instance = factory.create(AgentType.VOTER)
+scanner_instance = factory.create(AgentType.SCANNER)
+
+# Or use convenience functions
+voter = create_voter(macd_params={"fast": 13, "slow": 34, "signal": 8})
+```
+
+**Available Agent Types**:
+
+- Multi-ticker market scanning
+- MACD+RSI voting decisions (production-ready)
+- Portfolio risk management
+- Trade execution coordination
+- Portfolio management (Issue #333)
+- Multi-agent coordination
+
+### Agent Bus (Issue #390) ✅
+
+Agents communicate via a pub-sub message bus for loose coupling:
+
+```python
+from src.autogen_agents import EventType, get_agent_bus, publish_signal
+
+# Get bus singleton
+bus = get_agent_bus()
+
+# Subscribe to events
+bus.subscribe("risk_agent", EventType.SIGNAL_DETECTED, handle_signal)
+
+# Publish events
+await publish_signal("voter_agent", "AAPL", "BUY", confidence=0.85)
+```
+
+**Key Event Types**:
+
+- Scanner finds opportunity
+- VoterAgent evaluation done
+- /  - Risk assessment result
+- Order filled
+- /  /  - Position lifecycle
+
+### Message Structure
+
+**AgentMessage Format**:
+
+```python
+from src.autogen_agents import AgentMessage, EventType
+
+msg = AgentMessage(
+    source_agent="voter_agent",
+    event_type=EventType.VOTING_COMPLETE,
+    symbol="AAPL",
+    payload={
         "action": "BUY",
-        "confidence": "strong",
-        "position_size": 1.0,
+        "confidence": 0.85,
+        "signal_type": "STRONG",
         "reasoning": "MACD bullish crossover + RSI oversold"
-    }
-}
+    },
+    correlation_id="trade-123",  # Link related events
+    ttl_seconds=300  # Optional expiration
+)
 ```
 
 ### Agent Interaction Flow
 
 ```bash
-1. ScannerAgent → Orchestrator
-   - Message: List of opportunities with signal strength
+1. ScannerAgent publishes SIGNAL_DETECTED
+   └─→ VoterAgent subscribed, receives signal
 
-2. Orchestrator → VoterAgent (for each opportunity)
-   - Message: Analyze symbol for trading signal
+2. VoterAgent publishes VOTING_COMPLETE
+   └─→ RiskAgent subscribed, receives evaluation
 
-3. VoterAgent → Orchestrator
-   - Message: Trade signal with confidence and reasoning
+3. RiskAgent publishes RISK_VALIDATED or RISK_REJECTED
+   └─→ ExecutorAgent subscribed (if approved)
 
-4. Orchestrator → RiskAgent
-   - Message: Assess risk for proposed trade
+4. ExecutorAgent publishes TRADE_EXECUTED
+   └─→ Orchestrator subscribed, logs execution
 
-5. RiskAgent → Orchestrator
-   - Message: Risk approval with position sizing
-
-6. Orchestrator → Human Interface
-   - Message: Present trade for approval
-
-7. Human Interface → Orchestrator
-   - Message: Approved/rejected trades
-
-8. Orchestrator → ExecutorAgent
-   - Message: Execute approved trade
-
-9. ExecutorAgent → Orchestrator
-   - Message: Execution confirmation with order details
+5. ExecutorAgent publishes POSITION_OPENED
+   └─→ All agents can track position lifecycle
 ```
 
 ## Tool Integration

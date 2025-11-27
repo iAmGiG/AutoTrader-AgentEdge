@@ -38,7 +38,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | **ExecutorAgent** | 🚧 Placeholder | Q1 2026 | High |
 | **TradingOrchestrator** | 🚧 Minimal | Q1 2026 | Medium |
 | **Human-in-Loop CLI** | 🚧 Not started | Q4 2025 | **CRITICAL** |
-| **Event Bus** | 🚧 Not started | Q1 2026 | Medium |
+| **Agent Factory & Bus** | ✅ Complete | Nov 2025 | Medium |
 
 ---
 
@@ -90,11 +90,11 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **Medium Priority**:
 
-- [ ] **Event Bus** (#316) - Agent communication infrastructure
-  - Decoupled agent messaging
-  - Event-driven architecture
-  - Message queue and routing
-  - Target: Q1 2026
+- [x] **Agent Factory & Event Bus** (#390) - ✅ COMPLETE
+  - Centralized agent creation via AgentFactory singleton
+  - Pub-sub messaging via AgentBus for inter-agent communication
+  - 16 trading-specific EventType values
+  - Symbol filtering, TTL, correlation tracking
 
 - [ ] **Dynamic Trailing Stops** (#321)
   - Advanced stop-loss algorithms
@@ -223,11 +223,12 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Target**: Q1-Q2 2026
 - **Status**: Exploration phase, needs design discussion
 
-**#316 - Event Bus for Agent Communication**
+**#390 - Agent Factory & Event Bus** ✅ COMPLETE (Nov 2025)
 
-- **Why Important**: Scalable agent coordination infrastructure
-- **Integrates With**: #331 (multi-agent), #333 (portfolio events)
-- **Target**: Q1 2026
+- **Scope**: Centralized agent creation and pub-sub messaging infrastructure
+- **Delivered**: AgentFactory singleton, AgentBus pub-sub, 16 EventTypes
+- **Features**: Symbol filtering, TTL, correlation IDs, async wait_for_result()
+- **Supersedes**: #316 (closed)
 
 ### Medium Priority (Feature Enhancements)
 
@@ -509,11 +510,12 @@ python main.py test-voter
 3. Build configuration system (portfolio.yaml)
 4. Add existing position conflict detection
 
-**#316 - Event Bus**:
+**#390 - Agent Factory & Event Bus** ✅ COMPLETE:
 
-1. Design decoupled agent communication architecture
-2. Implement message queue and routing
-3. Integrate with #308 CLI for agent events
+1. ✅ AgentFactory singleton with creator registration
+2. ✅ AgentBus pub-sub with symbol filtering
+3. ✅ 42 unit tests passing
+4. ✅ Orchestrator refactored to use factory/bus
 
 **#321 - Dynamic Trailing Stops**:
 
