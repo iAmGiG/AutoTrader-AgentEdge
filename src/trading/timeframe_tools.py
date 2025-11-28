@@ -9,7 +9,6 @@ from typing import Dict, List
 
 from config_defaults.trading_config import get_config
 
-
 # Alpaca API timeframe mapping
 # Our format (user-friendly) -> Alpaca format (API requirement)
 ALPACA_TIMEFRAME_MAP = {
