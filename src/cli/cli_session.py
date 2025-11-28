@@ -39,7 +39,6 @@ from config_defaults.message_loader import CLIMessages as MSG
 from config_defaults.message_loader import (
     get_alert_severity_emoji,
     get_pl_emoji,
-    get_side_emoji,
     get_signal_emoji,
     get_status_emoji,
 )
@@ -1543,6 +1542,12 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Handle order status request - shows pending/open orders.
         Groups orders by symbol and enriches with local state data.
 
+        Issue #371: Displays orders with visual hierarchy:
+        - Entry orders first
+        - Profit targets (PT1, PT2) by price
+        - Stop-loss orders last
+        - Visual connectors and emojis for quick scanning
+
         Args:
             user_input: User's natural language input
         """
@@ -1566,35 +1571,101 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # Group orders by symbol
             grouped_orders = self._group_orders_by_symbol(orders, local_state)
 
-            # Display grouped orders
+            if not grouped_orders:
+                print(MSG.NO_ORDERS)
+                return
+
+            # Display header with total count
             total_count = sum(
                 len(group["api_orders"]) + len(group["local_orders"])
                 for group in grouped_orders.values()
             )
             print(MSG.ORDERS_HEADER(count=total_count))
 
+            # Use new hierarchical formatting
             has_local_orders = False
             for idx, (symbol, group) in enumerate(grouped_orders.items()):
-                # Position header
-                position_direction = group["direction"]
-                order_count = len(group["api_orders"]) + len(group["local_orders"])
+                direction = group["direction"]
+                all_orders = group["api_orders"] + group["local_orders"]
 
-                # Box drawing characters
+                if not all_orders:
+                    continue
+
+                # Position header with box drawing
                 if idx == 0:
-                    prefix = "┌─"
+                    header_prefix = "┌─"
                 else:
-                    prefix = "\n┌─"
+                    print()  # Blank line between positions
+                    header_prefix = "┌─"
 
-                print(f"{prefix} ${symbol} Position ({order_count} orders) - {position_direction}")
+                position_header = (
+                    f"{header_prefix} ${symbol} Position ({len(all_orders)} orders) - {direction}"
+                )
+                print(position_header)
 
-                # Display API orders (from broker)
-                for order in group["api_orders"]:
-                    self._print_order_line(order, from_local=False)
+                # Separate and sort orders
+                entry_orders = []
+                profit_targets = []
+                stop_loss_orders = []
+                other_orders = []
 
-                # Display local state orders (stop/target not visible in API)
-                for order in group["local_orders"]:
-                    self._print_order_line(order, from_local=True)
-                    has_local_orders = True
+                for order in all_orders:
+                    label = order.get("label", "")
+                    order_type = order.get("order_type", "").lower()
+
+                    # Categorize orders
+                    if label == "PT" or (
+                        order_type == "limit" and order.get("side") in ["sell", "buy"]
+                    ):
+                        profit_targets.append(order)
+                    elif label == "SL" or order_type == "stop":
+                        stop_loss_orders.append(order)
+                    elif order_type == "market" or (not label and not order_type):
+                        entry_orders.append(order)
+                    else:
+                        other_orders.append(order)
+
+                    # Check if local order for footer
+                    if order.get("id", "").startswith("local"):
+                        has_local_orders = True
+
+                # Sort profit targets by price (ascending for LONG, descending for SHORT)
+                if direction == "LONG":
+                    profit_targets.sort(key=lambda o: float(o.get("price", 0)))
+                else:
+                    profit_targets.sort(key=lambda o: float(o.get("price", 0)), reverse=True)
+
+                # Display entry orders
+                for i, order in enumerate(entry_orders):
+                    is_last = (
+                        i == len(entry_orders) - 1
+                        and not profit_targets
+                        and not stop_loss_orders
+                        and not other_orders
+                    )
+                    connector = "└─" if is_last else "├─"
+                    self._print_hierarchical_order(order, connector, is_entry=True)
+
+                # Display profit targets with numbering
+                for i, order in enumerate(profit_targets):
+                    is_last = (
+                        i == len(profit_targets) - 1 and not stop_loss_orders and not other_orders
+                    )
+                    connector = "└─" if is_last else "├─"
+                    pt_num = i + 1
+                    self._print_hierarchical_order(order, connector, pt_label=f"PT{pt_num}")
+
+                # Display stop-loss
+                for i, order in enumerate(stop_loss_orders):
+                    is_last = i == len(stop_loss_orders) - 1 and not other_orders
+                    connector = "└─" if is_last else "├─"
+                    self._print_hierarchical_order(order, connector, is_stop_loss=True)
+
+                # Display other orders
+                for i, order in enumerate(other_orders):
+                    is_last = i == len(other_orders) - 1
+                    connector = "└─" if is_last else "├─"
+                    self._print_hierarchical_order(order, connector)
 
             # Footer with explanation
             if has_local_orders:
@@ -1715,14 +1786,28 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             return field.value
         return str(field).lower() if field else ""
 
-    def _print_order_line(self, order: dict, from_local: bool = False):
-        """Print a single order line with formatting"""
-        symbol = order["symbol"]
-        side = order["side"]
-        qty = order["qty"]
+    def _print_hierarchical_order(
+        self,
+        order: dict,
+        connector: str,
+        is_entry: bool = False,
+        is_stop_loss: bool = False,
+        pt_label: str = None,
+    ):
+        """
+        Print a single order with hierarchical formatting.
+
+        Args:
+            order: Order data dict
+            connector: Box drawing connector (├─, └─)
+            is_entry: Whether this is an entry order
+            is_stop_loss: Whether this is a stop-loss order
+            pt_label: Label for profit target (e.g., "PT1", "PT2")
+        """
+        side = order.get("side", "?").lower()
+        qty = order.get("qty", 0)
         price = order.get("price")
-        order_type = order["order_type"]
-        label = order.get("label", "")
+        status = order.get("status", "").lower()
         order_id = order.get("id", "N/A")
 
         # Format price
@@ -1731,19 +1816,26 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         else:
             price_str = "market"
 
-        # Side emoji
-        side_emoji = get_side_emoji(side)
+        # Emoji selection
+        if is_entry:
+            emoji = "🟢" if side == "buy" else "⚪"
+            label = ""
+        elif is_stop_loss:
+            emoji = "🛑"
+            label = "SL: "
+        elif pt_label:
+            emoji = "🎯"
+            label = f"{pt_label}: "
+        else:
+            emoji = "📌"
+            label = ""
 
-        # Label prefix (PT/SL)
-        label_prefix = f"{label}: " if label else ""
-
-        # Local indicator
-        local_marker = "*" if from_local else " "
-
-        # Format: │  [*] [emoji] [label] [side] [qty] $[symbol] @ [price] ([order_id])
-        print(
-            f"│ {local_marker}{side_emoji} {label_prefix}{side} {qty} @ {price_str} ({order_id[:8]})"
+        # Format: │ [connector] [emoji] [label] [side] [qty] @ [price] - [status] ([id])
+        order_line = (
+            f"│ {connector} {emoji} {label}{side} {qty} @ {price_str} - "
+            f"{status.upper()} ({order_id[:8]})"
         )
+        print(order_line)
 
     async def _handle_cancel_request(self, user_input: str):
         """
