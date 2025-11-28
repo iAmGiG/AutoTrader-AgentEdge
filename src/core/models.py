@@ -63,6 +63,10 @@ class TradeRequest:
     price: Optional[float] = None
     asset_type: AssetType = AssetType.STOCK
 
+    # Risk mode (Issue #400) - parsed from natural language
+    # Values: "conservative", "moderate", "aggressive", or None (use session default)
+    trading_mode: Optional[str] = None
+
     # Options-specific fields (for future #330)
     strike: Optional[float] = None
     expiration: Optional[datetime] = None

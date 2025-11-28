@@ -20,9 +20,10 @@ class LLMParser(InputParser):
     Parse natural language input using LLM.
 
     Examples:
-    - "is SPY at 600 good?" → TradeRequest(ticker="SPY", action="review", price=600)
-    - "buy 50 AAPL" → TradeRequest(ticker="AAPL", action="buy", quantity=50)
-    - "should I sell my TSLA?" → TradeRequest(ticker="TSLA", action="review")
+    - "is SPY at 600 good?" -> TradeRequest(ticker="SPY", action="review")
+    - "buy 50 AAPL" -> TradeRequest(ticker="AAPL", action="buy", quantity=50)
+    - "buy SPY aggressively" -> TradeRequest(action="buy", trading_mode="aggressive")
+    - "conservative buy AAPL" -> TradeRequest(trading_mode="conservative")
     """
 
     def __init__(self, llm_service: LLMService):
@@ -63,11 +64,17 @@ class LLMParser(InputParser):
                         "request_type": {
                             "type": "string",
                             "enum": ["trade", "status_query"],
-                            "description": "Type of request: 'trade' for buy/sell/analyze ticker, 'status_query' for asking about orders/positions/portfolio",
+                            "description": (
+                                "'trade' for buy/sell/analyze, "
+                                "'status_query' for orders/positions/portfolio"
+                            ),
                         },
                         "ticker": {
                             "type": "string",
-                            "description": "Stock ticker symbol (e.g., SPY, AAPL, TSLA). Empty string if status_query with no specific ticker.",
+                            "description": (
+                                "Stock ticker symbol (SPY, AAPL). "
+                                "Empty if status_query with no ticker."
+                            ),
                         },
                         "action": {
                             "type": "string",
@@ -80,12 +87,20 @@ class LLMParser(InputParser):
                         },
                         "price": {
                             "type": "number",
-                            "description": "Entry price mentioned (optional, null if not specified)",
+                            "description": "Entry price (optional, null if not specified)",
                         },
                         "asset_type": {
                             "type": "string",
                             "enum": ["stock", "option"],
                             "description": "Asset type (default: stock)",
+                        },
+                        "trading_mode": {
+                            "type": "string",
+                            "enum": ["conservative", "moderate", "aggressive"],
+                            "description": (
+                                "Risk mode from words like: aggressive/aggressively, "
+                                "conservative/carefully/safe. null if not mentioned."
+                            ),
                         },
                     },
                     "required": ["request_type", "ticker", "action"],
@@ -99,10 +114,10 @@ class LLMParser(InputParser):
 User input: "{corrected_input}"
 
 First, determine the request_type:
-- "trade" = User wants to buy, sell, or analyze a specific ticker (e.g., "buy AAPL", "is SPY good?", "sell my TSLA")
-- "status_query" = User is asking about their account status, orders, or positions WITHOUT specifying intent to trade
-  Examples: "any open orders?", "what positions do I have?", "show my portfolio", "any open trades?"
-  Note: Words like "any", "what", "show", "check" at the start usually indicate status queries, NOT ticker symbols!
+- "trade" = User wants to buy/sell/analyze a ticker (e.g., "buy AAPL", "is SPY good?")
+- "status_query" = Asking about account/orders/positions (no trade intent)
+  Examples: "any open orders?", "show my portfolio", "what positions do I have?"
+  Note: "any", "what", "show", "check" at start usually = status queries, NOT tickers!
 
 If request_type is "trade", extract:
 - ticker: Stock symbol
@@ -110,6 +125,11 @@ If request_type is "trade", extract:
 - quantity: Number of shares if mentioned
 - price: Price if mentioned (e.g., "at 600" means price=600)
 - asset_type: "stock" (default) or "option" if user mentions options
+- trading_mode: Risk preference if mentioned (Issue #400):
+  * "aggressive" - for: aggressively, aggressive, be aggressive, go big, full send
+  * "conservative" - for: conservative, carefully, safe, cautious, small position
+  * "moderate" - for: moderate, balanced, normal
+  * null - if not mentioned (will use session default)
 
 If request_type is "status_query":
 - ticker: Empty string (unless asking about specific ticker's position)
@@ -133,6 +153,7 @@ Use the parse_trade_request function."""
                 quantity=args.get("quantity"),
                 price=args.get("price"),
                 asset_type=AssetType(args.get("asset_type", "stock")),
+                trading_mode=args.get("trading_mode"),  # Issue #400
                 raw_input=user_input,
             )
 
@@ -140,6 +161,7 @@ Use the parse_trade_request function."""
                 f"Parsed: '{user_input}' → {request.action} {request.ticker}"
                 + (f" qty={request.quantity}" if request.quantity else "")
                 + (f" @{request.price}" if request.price else "")
+                + (f" mode={request.trading_mode}" if request.trading_mode else "")
             )
 
             return request
