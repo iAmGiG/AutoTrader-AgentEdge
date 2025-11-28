@@ -11,7 +11,7 @@ Issue #401: Multi-Account Portfolio Management
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from src.trading.account_manager import get_account_manager
 from src.utils.safe_print import get_symbol, safe_print
@@ -195,9 +195,7 @@ class AccountCommands:
         success_count = sum(1 for info in results.values() if info is not None)
         total_count = len(results)
 
-        safe_print(
-            f"{get_symbol('SUCCESS')} Discovered {success_count}/{total_count} accounts"
-        )
+        safe_print(f"{get_symbol('SUCCESS')} Discovered {success_count}/{total_count} accounts")
 
         # Show any failures
         for account_id, info in results.items():
