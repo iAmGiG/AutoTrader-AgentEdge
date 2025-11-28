@@ -718,7 +718,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # User might type "$AAPL" or just "AAPL"
             import re
 
-            ticker_match = re.search(r"([A-Z]{1,5})", user_input)
+            ticker_match = re.search(r"\b([A-Z]{1,5})\b", user_input)
             if ticker_match:
                 potential_ticker = ticker_match.group(1)
                 # Basic validation: 1-5 letters
