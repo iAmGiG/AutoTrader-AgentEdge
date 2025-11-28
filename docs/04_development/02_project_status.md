@@ -114,6 +114,27 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Automated acceptance criteria validation
   - Branch: `feature/forward-testing-achat`
 
+### Phase 2B: Multi-Account & Security 🚧 IN PROGRESS (Nov 2025)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Multi-Account Manager** | 🚧 In Progress | Account selection, API-first discovery (#401) |
+| **Security Architecture** | 📋 Planned | Credential management, OS keyring (#402) |
+
+**#401 - Multi-Account Portfolio Management**:
+
+- Account selection via CLI `--account` flag
+- API-first discovery (Alpaca tells us account details)
+- Automatic paper vs live detection
+- Alpaca-only for Phase 1 (multi-broker deferred to Phase 5)
+
+**#402 - Security Architecture** (separate from #401):
+
+- OS Keyring integration for credential storage
+- Secure credential provider interface
+- Paper/live account isolation
+- Audit logging without credential exposure
+
 ### Phase 3A: CLI & UX Improvements ✅ IN PROGRESS (Nov 2025)
 
 **Completed**:
@@ -585,6 +606,16 @@ python main.py test-voter
 ## Next Actions
 
 ### Immediate (Next 2-4 Weeks) - P0 CRITICAL
+
+**#401 - Multi-Account Portfolio Management - 🚧 IN PROGRESS**:
+
+- Account selection via `--account` CLI flag or interactive selection
+- API-first discovery (Alpaca API tells us account details)
+- Automatic paper vs live detection from API response
+- Simple config-based credentials (security hardening in #402)
+- Files: `account_manager.py`, `account_context.py`, `accounts_config.py`
+
+**Branch**: `feature/multi-account-401` (worktree: AutoGen-Trader-wt-401)
 
 **#323 - Trading Pipeline - ✅ COMPLETE**:
 

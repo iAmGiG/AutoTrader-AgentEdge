@@ -272,6 +272,16 @@ class TradingOrchestrator:
             entry_price = request.price
             reasoning.insert(0, f"📍 Using your specified entry price: ${entry_price}")
 
+        # Determine order type based on timing context (Issue #344 fix)
+        # LIMIT orders for pullback/dip/breakout wait for the price to reach entry_price
+        # MARKET orders execute immediately at current price
+        if request.timing in ("pullback", "dip", "breakout", "limit"):
+            order_type = OrderType.LIMIT
+            logger.info(f"Timing={request.timing}: Using LIMIT order at ${entry_price} (GTC)")
+        else:
+            order_type = OrderType.MARKET
+            logger.info(f"Timing={request.timing or 'now'}: Using MARKET order")
+
         # Create suggestion
         suggestion = TradeSuggestion(
             # From analysis
@@ -289,7 +299,7 @@ class TradingOrchestrator:
             warnings=risk_assessment.warnings,
             # Order details
             ticker=request.ticker,
-            order_type=OrderType.LIMIT,
+            order_type=order_type,  # LIMIT for pullback/breakout, MARKET otherwise
             time_in_force=TimeInForce.GTC,  # Always GTC per requirements
             # Metadata
             suggestion_id=suggestion_id,

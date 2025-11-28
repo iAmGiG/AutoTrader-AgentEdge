@@ -286,7 +286,9 @@ class AlpacaExecutionManager(ExecutionManager):
             if self.order_manager and hasattr(self.order_manager, "client"):
                 try:
                     # Use Alpaca's market data client for most accurate price
-                    from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+                    from src.data_sources.sources.market.alpaca_market_data import (
+                        AlpacaMarketData,
+                    )
 
                     market_data = AlpacaMarketData()
 
@@ -329,20 +331,39 @@ class AlpacaExecutionManager(ExecutionManager):
                 except Exception as e:
                     logger.error(f"UnifiedPriceFetcher failed with exception: {e}", exc_info=True)
 
-            # Recalculate bracket prices using current market price if available
-            if current_market_price and current_market_price > 0 and signal.lower() == "buy":
+            # Issue #344: Check if this is a LIMIT order (pullback/breakout)
+            # Import OrderType for comparison
+            from core.models import OrderType
+
+            is_limit_order = suggestion.order_type == OrderType.LIMIT
+
+            # For LIMIT orders (pullback/breakout), preserve the calculated entry price
+            # For MARKET orders, recalculate based on current market price
+            if is_limit_order:
+                # Preserve pullback/breakout entry price - don't recalculate
+                logger.info(
+                    f"LIMIT order: Using pullback/breakout entry price "
+                    f"${entry_price:.2f} (stop=${stop_loss:.2f}, "
+                    f"target=${take_profit:.2f})"
+                )
+            elif current_market_price and current_market_price > 0 and signal.lower() == "buy":
+                # MARKET order: recalculate bracket prices using current market price
                 entry_price = round(current_market_price, 2)
                 stop_loss = round(current_market_price * (1 - self.stop_loss_pct), 2)
                 take_profit = round(current_market_price * (1 + self.take_profit_pct), 2)
 
+                sl_pct = self.stop_loss_pct * 100
+                tp_pct = self.take_profit_pct * 100
                 logger.info(
-                    f"Recalculated bracket prices using current market price ${current_market_price:.2f}: "
-                    f"entry=${entry_price:.2f}, stop=${stop_loss:.2f} (-{self.stop_loss_pct*100}%), "
-                    f"target=${take_profit:.2f} (+{self.take_profit_pct*100}%)"
+                    f"MARKET order: Recalculated bracket prices using "
+                    f"${current_market_price:.2f}: entry=${entry_price:.2f}, "
+                    f"stop=${stop_loss:.2f} (-{sl_pct}%), "
+                    f"target=${take_profit:.2f} (+{tp_pct}%)"
                 )
             else:
                 logger.warning(
-                    f"Using suggestion prices for {ticker} (could not fetch current market price) - "
+                    f"Using suggestion prices for {ticker} "
+                    f"(could not fetch current market price) - "
                     f"may cause validation errors during off-hours"
                 )
 
@@ -427,7 +448,10 @@ class AlpacaExecutionManager(ExecutionManager):
                 msg = (
                     _MSG.get("execution.market_closed_warning")
                     if MESSAGE_LOADER_AVAILABLE
-                    else "⚠️  Market is CLOSED (weekend/off-hours). Bracket orders may fail validation during off-hours."
+                    else (
+                        "⚠️  Market is CLOSED (weekend/off-hours). "
+                        "Bracket orders may fail validation during off-hours."
+                    )
                 )
                 logger.warning(msg)
 
@@ -435,11 +459,24 @@ class AlpacaExecutionManager(ExecutionManager):
             # AlpacaOrderManager.place_bracket_order handles entry + stop + target
             # Note: Uses different parameter names than generic OrderManager
             try:
+                # Issue #344: Use limit entry for pullback/breakout orders
+                # LIMIT orders use entry_price as limit price (waits for price)
+                # MARKET orders use None (fills immediately at market)
+                limit_price = entry_price if is_limit_order else None
+
+                if is_limit_order:
+                    logger.info(
+                        f"Placing LIMIT bracket order: {ticker} @ ${entry_price:.2f} "
+                        "(waiting for pullback/breakout price)"
+                    )
+                else:
+                    logger.info(f"Placing MARKET bracket order: {ticker} (immediate fill)")
+
                 order_data = self.order_manager.place_bracket_order(
                     symbol=ticker,
                     qty=quantity,
                     side="buy",  # Always BUY (SELL signals filtered above)
-                    entry_limit_price=None,  # Market order
+                    entry_limit_price=limit_price,  # Issue #344: LIMIT for pullback
                     take_profit_price=take_profit,
                     stop_loss_price=stop_loss,
                     time_in_force="gtc",  # Good-til-canceled
@@ -559,6 +596,10 @@ class AlpacaExecutionManager(ExecutionManager):
             stop_order_id = f"{entry_order_id}_stop" if entry_order_id else None
             target_order_id = f"{entry_order_id}_target" if entry_order_id else None
 
+            # Issue #344: Include order type and entry price in message
+            order_type_str = "LIMIT" if is_limit_order else "MARKET"
+            entry_info = f"@ ${entry_price:.2f}" if is_limit_order else "(market)"
+
             result = OrderResult(
                 success=True,
                 entry_order_id=entry_order_id,
@@ -567,12 +608,16 @@ class AlpacaExecutionManager(ExecutionManager):
                 ticker=ticker,
                 quantity=quantity,
                 filled_price=None,  # Will be updated when filled
-                message=f"Bracket order placed: {signal} {quantity} {ticker} (mode: {order_data.get('mode', 'unknown')})",
+                message=(
+                    f"{order_type_str} bracket order placed: "
+                    f"{signal} {quantity} {ticker} {entry_info}"
+                ),
             )
 
             logger.info(
                 f"✅ Execution complete: {ticker} "
-                f"entry_id={entry_order_id}, stop_id={stop_order_id}, target_id={target_order_id}"
+                f"entry_id={entry_order_id}, stop_id={stop_order_id}, "
+                f"target_id={target_order_id}"
             )
 
             return result
