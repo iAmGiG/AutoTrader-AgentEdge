@@ -87,6 +87,11 @@ class LLMParser(InputParser):
                             "enum": ["stock", "option"],
                             "description": "Asset type (default: stock)",
                         },
+                        "timing": {
+                            "type": "string",
+                            "enum": ["now", "pullback", "dip", "breakout", "limit"],
+                            "description": "Entry timing context: 'now' (immediate), 'pullback'/'dip' (wait for lower price), 'breakout' (wait for breakout), 'limit' (user specified exact price)",
+                        },
                     },
                     "required": ["request_type", "ticker", "action"],
                 },
@@ -107,9 +112,17 @@ First, determine the request_type:
 If request_type is "trade", extract:
 - ticker: Stock symbol
 - action: Is user asking to review/analyze ("is X good?"), buy, or sell?
+  IMPORTANT: The action is the user's DESIRED DIRECTION, not the timing.
+  "buy QQQ at a pullback" → action="buy" (user wants to BUY, just at a lower price)
+  "sell AAPL on a bounce" → action="sell" (user wants to SELL, just at a higher price)
 - quantity: Number of shares if mentioned
-- price: Price if mentioned (e.g., "at 600" means price=600)
+- price: Specific price if mentioned (e.g., "at 600" means price=600)
 - asset_type: "stock" (default) or "option" if user mentions options
+- timing: Entry timing preference:
+  - "now" = immediate execution, no timing preference mentioned
+  - "pullback" or "dip" = user wants to enter at a LOWER price (buy the dip, wait for pullback)
+  - "breakout" = user wants to enter after a price breakout (above resistance)
+  - "limit" = user specified an exact price target
 
 If request_type is "status_query":
 - ticker: Empty string (unless asking about specific ticker's position)
@@ -133,6 +146,7 @@ Use the parse_trade_request function."""
                 quantity=args.get("quantity"),
                 price=args.get("price"),
                 asset_type=AssetType(args.get("asset_type", "stock")),
+                timing=args.get("timing"),  # Issue #344: entry timing context
                 raw_input=user_input,
             )
 
@@ -140,6 +154,7 @@ Use the parse_trade_request function."""
                 f"Parsed: '{user_input}' → {request.action} {request.ticker}"
                 + (f" qty={request.quantity}" if request.quantity else "")
                 + (f" @{request.price}" if request.price else "")
+                + (f" timing={request.timing}" if request.timing else "")
             )
 
             return request

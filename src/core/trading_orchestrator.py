@@ -233,15 +233,54 @@ class TradingOrchestrator:
         # Use modified quantity if user specified, otherwise use risk manager's recommendation
         quantity = request.quantity if request.quantity else risk_assessment.recommended_quantity
 
+        # Issue #344: Adjust entry price based on timing context
+        entry_price = analysis.entry_price
+        stop_loss = analysis.stop_loss
+        take_profit = analysis.take_profit
+        reasoning = list(analysis.reasoning)  # Copy to avoid modifying original
+
+        if request.timing in ("pullback", "dip"):
+            # Suggest entry 2.5% below current price for pullback/dip timing
+            pullback_pct = 0.025
+            entry_price = round(analysis.entry_price * (1 - pullback_pct), 2)
+            # Adjust stop loss proportionally (maintain same % distance)
+            stop_distance_pct = (analysis.entry_price - analysis.stop_loss) / analysis.entry_price
+            stop_loss = round(entry_price * (1 - stop_distance_pct), 2)
+            reasoning.insert(
+                0, f"⏳ Pullback entry: limit order 2.5% below current (${entry_price})"
+            )
+            logger.info(
+                f"Timing=pullback: adjusted entry from ${analysis.entry_price} to ${entry_price}"
+            )
+        elif request.timing == "breakout":
+            # Suggest entry 1.5% above current price for breakout timing
+            breakout_pct = 0.015
+            entry_price = round(analysis.entry_price * (1 + breakout_pct), 2)
+            # Adjust take profit proportionally
+            target_distance_pct = (
+                analysis.take_profit - analysis.entry_price
+            ) / analysis.entry_price
+            take_profit = round(entry_price * (1 + target_distance_pct), 2)
+            reasoning.insert(
+                0, f"🚀 Breakout entry: limit order 1.5% above current (${entry_price})"
+            )
+            logger.info(
+                f"Timing=breakout: adjusted entry from ${analysis.entry_price} to ${entry_price}"
+            )
+        elif request.price:
+            # User specified exact price - use it
+            entry_price = request.price
+            reasoning.insert(0, f"📍 Using your specified entry price: ${entry_price}")
+
         # Create suggestion
         suggestion = TradeSuggestion(
             # From analysis
             signal=analysis.signal,
             confidence=analysis.confidence,
-            entry_price=analysis.entry_price,
-            stop_loss=analysis.stop_loss,
-            take_profit=analysis.take_profit,
-            reasoning=analysis.reasoning,
+            entry_price=entry_price,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            reasoning=reasoning,
             # From risk assessment
             recommended_quantity=quantity,
             portfolio_pct=risk_assessment.portfolio_pct,

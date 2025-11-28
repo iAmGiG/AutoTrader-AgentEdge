@@ -48,6 +48,16 @@ class TimeInForce(Enum):
     FOK = "fok"  # Fill or kill
 
 
+class TimingContext(Enum):
+    """Entry timing context for trade requests (Issue #344)"""
+
+    NOW = "now"  # Execute immediately at market
+    PULLBACK = "pullback"  # Wait for price dip (entry below current)
+    DIP = "dip"  # Same as pullback
+    BREAKOUT = "breakout"  # Wait for price breakout (entry above current)
+    LIMIT = "limit"  # User specified exact limit price
+
+
 @dataclass
 class TradeRequest:
     """
@@ -62,6 +72,9 @@ class TradeRequest:
     quantity: Optional[int] = None
     price: Optional[float] = None
     asset_type: AssetType = AssetType.STOCK
+
+    # Issue #344: Entry timing context
+    timing: Optional[str] = None  # "now", "pullback", "dip", "breakout", "limit"
 
     # Options-specific fields (for future #330)
     strike: Optional[float] = None
