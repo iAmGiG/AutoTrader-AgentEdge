@@ -718,7 +718,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # User might type "$AAPL" or just "AAPL"
             import re
 
-            ticker_match = re.search(r"\b([A-Z]{1,5})\b", user_input)
+            ticker_match = re.search(r"([A-Z]{1,5})", user_input)
             if ticker_match:
                 potential_ticker = ticker_match.group(1)
                 # Basic validation: 1-5 letters
@@ -1385,15 +1385,27 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
         print(MSG.CONFIDENCE_DISPLAY.format(confidence=suggestion.confidence))
 
+        # Get current timeframe for display (Issue #365)
+        from src.cli.timeframe_commands import get_timeframe_commands
+
+        try:
+            timeframe = get_timeframe_commands().manager.get_current_timeframe()
+        except Exception:
+            timeframe = "1d"  # Fallback to default
+
         # Technical analysis
-        print(MSG.ANALYSIS_HEADER)
+        print(MSG.ANALYSIS_HEADER.format(timeframe=timeframe))
         for reason in suggestion.reasoning:
             print(MSG.ANALYSIS_ITEM.format(reason=reason))
+
+        # Determine trade direction
+        direction = self._get_trade_direction(suggestion.signal)
 
         # Entry plan
         print(MSG.ENTRY_PLAN_HEADER)
         print(
             MSG.ENTRY_PLAN.format(
+                direction=direction,
                 entry=suggestion.entry_price,
                 stop=suggestion.stop_loss,
                 stop_pct=self._calc_pct(suggestion.entry_price, suggestion.stop_loss),
@@ -1420,6 +1432,25 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             print(MSG.WARNINGS_HEADER)
             for warning in suggestion.warnings:
                 print(MSG.WARNING_ITEM.format(warning=warning))
+
+    def _get_trade_direction(self, signal: "Signal") -> str:
+        """
+        Format trade direction for display.
+
+        Args:
+            signal: Trading signal (BUY/SELL/HOLD)
+
+        Returns:
+            Formatted direction string (e.g., "BUY (LONG)", "SELL (SHORT)")
+        """
+        from src.core.models import Signal
+
+        if signal == Signal.BUY:
+            return "BUY (LONG)"
+        elif signal == Signal.SELL:
+            return "SELL (SHORT)"
+        else:
+            return "HOLD"
 
     def _get_confirmation(self) -> bool:
         """
