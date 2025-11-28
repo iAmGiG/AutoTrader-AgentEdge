@@ -126,18 +126,25 @@ class HelpSystem:
             "buy": {
                 "category": "Trading",
                 "description": "Place a manual buy order",
-                "usage": "buy SYMBOL QUANTITY [PRICE]",
+                "usage": "buy SYMBOL QUANTITY [PRICE] | buy SYMBOL [at a pullback/breakout]",
                 "examples": [
                     "buy AAPL 10",
                     "buy MSFT 5 $425.50",
+                    "buy QQQ at a pullback",
+                    "buy SPY on a dip",
+                    "buy NVDA at a breakout",
                 ],
                 "aliases": ["long"],
-                "tags": ["trading", "execution"],
+                "tags": ["trading", "execution", "timing"],
                 "related": ["sell", "show orders", "cancel"],
                 "details": (
                     "Place a buy order for a specific symbol and quantity.\n"
                     "If price is not specified, uses current market price.\n"
                     "Respects risk management rules and position limits.\n\n"
+                    "NEW: Entry Timing Context (Issue #344):\n"
+                    "  'at a pullback' or 'on a dip' - Entry 2.5% below current price\n"
+                    "  'at a breakout' - Entry 1.5% above current price\n"
+                    "  'now' or immediate - Entry at current market price\n\n"
                     "Execution depends on current execution_mode:\n"
                     "  CONFIRM - Asks for approval before executing\n"
                     "  AUTO    - Executes immediately\n"

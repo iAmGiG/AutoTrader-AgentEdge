@@ -247,6 +247,13 @@ class CLISession:
                 "  📉 SELL signal = indicators suggest price may go DOWN\n\n"
                 "⚠️  Remember: These are suggestions, not guarantees!"
             ),
+            "entry_timing": (
+                "NEW: You can specify WHEN you want to enter a trade:\n"
+                "  'buy QQQ at a pullback' → Enters 2.5% below current price\n"
+                "  'buy SPY on a dip' → Same as pullback, waits for lower price\n"
+                "  'buy NVDA at a breakout' → Enters 1.5% above current (momentum)\n\n"
+                "This helps you get better entry prices instead of buying at the current price!"
+            ),
         }
 
     def _setup_history(self):
@@ -486,12 +493,17 @@ class CLISession:
         safe_print("-" * 70)
         safe_print(self.trading_tips["position_required"])
 
+        safe_print("\n4️⃣  Entry Timing (NEW!)")
+        safe_print("-" * 70)
+        safe_print(self.trading_tips["entry_timing"])
+
         safe_print("\n💡 QUICK TIPS:")
         safe_print("-" * 70)
         safe_print("• Start small: Test with small amounts until you understand")
         safe_print("• Use CONFIRM mode: Always review before executing trades")
         safe_print("• Ask questions: Type naturally, the system will understand")
         safe_print("• Check analysis: Choose 'review' to see analysis without trading")
+        safe_print("• Try timing: 'buy at a pullback' for better entry prices")
         safe_print("\n" + "=" * 70)
 
     async def _classify_intent(self, user_input: str) -> dict:
