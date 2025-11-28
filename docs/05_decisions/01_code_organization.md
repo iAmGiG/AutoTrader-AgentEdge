@@ -50,6 +50,18 @@ src/
 
 ## Implementation
 
-- Use relative imports within a package: `from .models import TradeRequest`
-- Use absolute imports across packages: `from src.trading.order_manager import OrderManager`
+### Import Guidelines
+
+- **All imports at top of file**: Avoid inline imports within functions/methods (PEP 8)
+  - Exception: Circular dependency resolution (document with comment)
+- **Relative imports within a package**: `from .models import TradeRequest`
+- **Absolute imports across packages**: `from src.trading.order_manager import OrderManager`
+- **Import order** (enforced by isort):
+  1. Standard library imports
+  2. Third-party imports
+  3. Local application imports
+
+### Code Organization
+
 - Deprecated code goes to `src/deprecated/` (not deleted, for reference)
+- Configuration files in `config_defaults/` (YAML preferred over hardcoded)

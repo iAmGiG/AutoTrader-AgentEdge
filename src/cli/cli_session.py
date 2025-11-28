@@ -13,8 +13,13 @@ import json
 import logging
 import os
 import platform
+import re
 import sys
+from datetime import datetime, time, timedelta
 from typing import Optional
+
+import pytz
+import yaml
 
 # Import safe_print for Unicode handling
 from src.utils.safe_print import safe_print
@@ -150,11 +155,17 @@ from config_defaults.message_loader import (
     get_status_emoji,
 )
 
+from src.autogen_agents.trading_orchestrator import ExecutionMode
 from src.cli.account_commands import get_account_commands
 from src.cli.help_system import HelpSystem
+from src.cli.scheduler_cli import SchedulerCLI
+from src.cli.timeframe_commands import get_timeframe_commands
+from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
+from src.trading.timeframe_tools import get_timeframe_display_name
 from src.trading.trading_cycle import CostEfficientTradeCycle
+from src.utils.date_utils import get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -319,8 +330,6 @@ class CLISession:
             Config dict or None if failed to load
         """
         try:
-            import yaml
-
             # Get path to config_defaults/trading_config.yaml
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             config_path = os.path.join(base_dir, "..", "config_defaults", "trading_config.yaml")
@@ -441,7 +450,6 @@ class CLISession:
 
         elif cmd == "/schedule":
             # Enter scheduler management mode
-            from src.cli.scheduler_cli import SchedulerCLI
 
             scheduler_cli = SchedulerCLI(self.scheduler)
             await scheduler_cli.run()
@@ -693,7 +701,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             # Fallback: Try pattern matching for common formats
             # User might type "$AAPL" or just "AAPL"
-            import re
 
             ticker_match = re.search(r"([A-Z]{1,5})", user_input)
             if ticker_match:
@@ -1007,8 +1014,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         print("   → Overriding SELL signal from technical analysis")
 
                         # Flip the signal to BUY (user override)
-                        from src.core.models import Signal
-
                         decision.suggestion.signal = Signal.BUY
 
                         # Invert stop/target for BUY (were calculated for SELL)
@@ -1072,8 +1077,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         )
 
                         # Flip the signal to BUY
-                        from src.core.models import Signal
-
                         decision.suggestion.signal = Signal.BUY
 
                         # Invert stop/target for BUY (were calculated for SELL)
@@ -1367,8 +1370,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         print(MSG.CONFIDENCE_DISPLAY.format(confidence=suggestion.confidence))
 
         # Get current timeframe for display (Issue #365)
-        from src.cli.timeframe_commands import get_timeframe_commands
-        from src.trading.timeframe_tools import get_timeframe_display_name
 
         try:
             timeframe = get_timeframe_commands().manager.get_current_timeframe()
@@ -1430,8 +1431,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             - SELL with position → "SELL (CLOSE)"
             - SELL without position → "SELL (SHORT)"
         """
-        from src.core.models import Signal
-
         if signal == Signal.BUY:
             return "BUY (LONG)"
         elif signal == Signal.SELL:
@@ -1506,7 +1505,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             return
 
         try:
-            from src.utils.date_utils import now_iso
 
             suggestion = decision.suggestion
             symbol = suggestion.ticker
@@ -1702,11 +1700,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # Calculate next scheduled run
             print(MSG.SCHEDULER_NEXT_HEADER)
             try:
-                from datetime import time
-
-                import pytz
-
-                from src.utils.date_utils import get_datetime_now
 
                 et = pytz.timezone("US/Eastern")
                 now = get_datetime_now(et)
@@ -1725,7 +1718,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     next_task = "Evening Routine"
                 else:
                     # After evening, next is tomorrow morning
-                    from datetime import timedelta
 
                     next_run = morning_today + timedelta(days=1)
                     next_task = "Morning Routine (tomorrow)"
@@ -2064,7 +2056,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
     def _load_local_state(self) -> dict:
         """Load local state from cost_efficient_positions.json"""
-        import json
 
         state_file = "state/cost_efficient_positions.json"
         try:
@@ -2256,7 +2247,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             elif any(char.isdigit() for char in user_input):
                 # Extract order ID (contains digits)
-                import re
 
                 id_match = re.search(r"[a-f0-9-]{8,}", user_input, re.IGNORECASE)
                 if id_match:
@@ -2267,7 +2257,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             else:
                 # Try to extract symbol
-                import re
 
                 symbol_match = re.search(r"\b([A-Z]{1,5})\b", user_input.upper())
                 if symbol_match:
@@ -2472,7 +2461,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     time_str = ""
                     if filled_at:
                         try:
-                            from datetime import datetime
 
                             dt = datetime.fromisoformat(filled_at.replace("Z", "+00:00"))
                             time_str = dt.strftime("%Y-%m-%d %H:%M")
@@ -2608,7 +2596,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Returns:
             Ticker symbol (uppercase) or empty string if not found
         """
-        import re
 
         # Try regex pattern for ticker symbols (1-5 uppercase letters)
         # Look for words that are all caps or look like tickers
@@ -2660,7 +2647,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Args:
             user_input: User's natural language input
         """
-        from src.autogen_agents.trading_orchestrator import ExecutionMode
 
         input_lower = user_input.lower()
 
@@ -2813,9 +2799,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Args:
             user_input: User's natural language input
         """
-        import re
-
-        from src.cli.timeframe_commands import get_timeframe_commands
 
         tf_commands = get_timeframe_commands()
         input_lower = user_input.lower()
