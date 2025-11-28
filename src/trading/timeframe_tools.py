@@ -9,33 +9,98 @@ from typing import Dict, List
 
 from config_defaults.trading_config import get_config
 
-# Alpaca API timeframe mapping
+# Alpaca API timeframe mapping (common presets)
 # Our format (user-friendly) -> Alpaca format (API requirement)
+# Note: Alpaca supports custom intervals: 1-59 minutes, 1-23 hours
 ALPACA_TIMEFRAME_MAP = {
     "1m": "1Min",
     "5m": "5Min",
     "15m": "15Min",
     "30m": "30Min",
     "1h": "1Hour",
-    "2h": "2Hour",  # Not standard Alpaca
-    "4h": "4Hour",  # Not standard Alpaca
+    "2h": "2Hour",
+    "4h": "4Hour",
     "1d": "1Day",
     "1w": "1Week",
     "1M": "1Month",
 }
+
+# Human-readable display names for common timeframes
+TIMEFRAME_DISPLAY_NAMES = {
+    "1m": "1 minute",
+    "5m": "5 minutes",
+    "15m": "15 minutes",
+    "30m": "30 minutes",
+    "1h": "1 hour",
+    "2h": "2 hours",
+    "4h": "4 hours",
+    "1d": "1 day",
+    "1w": "1 week",
+    "1M": "1 month",
+}
+
+
+def get_timeframe_display_name(timeframe: str) -> str:
+    """
+    Get human-readable display name for a timeframe.
+
+    Args:
+        timeframe: Short format (e.g., "1m", "1M", "1d", "45m")
+
+    Returns:
+        Human-readable name (e.g., "1 minute", "1 month", "45 minutes")
+    """
+    if timeframe in TIMEFRAME_DISPLAY_NAMES:
+        return TIMEFRAME_DISPLAY_NAMES[timeframe]
+
+    # Handle custom timeframes dynamically (e.g., "45m", "3h")
+    import re
+
+    match = re.match(r"^(\d+)([mhdwM])$", timeframe)
+    if match:
+        value, unit = match.groups()
+        unit_names = {
+            "m": ("minute", "minutes"),
+            "h": ("hour", "hours"),
+            "d": ("day", "days"),
+            "w": ("week", "weeks"),
+            "M": ("month", "months"),
+        }
+        singular, plural = unit_names.get(unit, (unit, unit))
+        return f"{value} {singular if value == '1' else plural}"
+
+    return timeframe
 
 
 def convert_to_alpaca_timeframe(timeframe: str) -> str:
     """
     Convert user-friendly timeframe to Alpaca API format.
 
+    Alpaca supports:
+    - Minutes: 1Min to 59Min
+    - Hours: 1Hour to 23Hour
+    - Day/Week/Month: 1Day, 1Week, 1Month
+
     Args:
-        timeframe: User format (e.g., "1h", "5m", "1d")
+        timeframe: User format (e.g., "1h", "5m", "1d", "45m")
 
     Returns:
-        Alpaca format (e.g., "1Hour", "5Min", "1Day")
+        Alpaca format (e.g., "1Hour", "5Min", "1Day", "45Min")
     """
-    return ALPACA_TIMEFRAME_MAP.get(timeframe, "1Day")
+    # Check preset map first
+    if timeframe in ALPACA_TIMEFRAME_MAP:
+        return ALPACA_TIMEFRAME_MAP[timeframe]
+
+    # Handle custom timeframes dynamically
+    import re
+
+    match = re.match(r"^(\d+)([mhdwM])$", timeframe)
+    if match:
+        value, unit = match.groups()
+        unit_map = {"m": "Min", "h": "Hour", "d": "Day", "w": "Week", "M": "Month"}
+        return f"{value}{unit_map.get(unit, unit)}"
+
+    return "1Day"  # Default fallback
 
 
 def convert_from_alpaca_timeframe(alpaca_timeframe: str) -> str:
@@ -91,9 +156,10 @@ class TimeframeManager:
             }
 
         self.current_timeframe = timeframe
+        display_name = get_timeframe_display_name(timeframe)
         return {
             "success": True,
-            "message": f"Timeframe changed to {timeframe}",
+            "message": f"Timeframe changed to {display_name} ({timeframe})",
             "current_timeframe": self.current_timeframe,
         }
 

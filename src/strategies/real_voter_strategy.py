@@ -107,8 +107,11 @@ class RealVoterStrategy(StrategyAnalyzer):
 
             if market_data is None or market_data.empty:
                 logger.warning(f"No market data available for {ticker}")
-                return self._create_fallback_result(
-                    ticker, request.price, "No market data available"
+                # Raise error instead of returning fallback - invalid ticker should fail gracefully
+                raise ValueError(
+                    f"Asset '{ticker}' not found or no market data available.\n"
+                    f"   Please check the ticker symbol and try again.\n"
+                    f"   Example: AAPL, SPY, MSFT"
                 )
 
             # Ensure Close column exists
@@ -119,8 +122,11 @@ class RealVoterStrategy(StrategyAnalyzer):
                 logger.warning(
                     f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)"
                 )
-                return self._create_fallback_result(
-                    ticker, request.price, f"Insufficient data ({len(market_data)} points)"
+                # Raise error for insufficient data - cannot perform reliable technical analysis
+                raise ValueError(
+                    f"Insufficient data for {ticker}.\n"
+                    f"   Found {len(market_data)} data points, need at least 42 for MACD analysis.\n"
+                    f"   This may be a newly listed stock or delisted security."
                 )
 
             logger.info(f"✅ Loaded {len(market_data)} data points for {ticker}")

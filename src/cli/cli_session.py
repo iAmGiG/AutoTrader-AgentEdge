@@ -44,83 +44,46 @@ class TickerCompleter:
     Tab completion for stock tickers.
 
     Provides autocomplete for:
-    - Common tickers (SPY, QQQ, AAPL, etc.)
-    - Recently used tickers (persisted across sessions)
+    - Recently used tickers (persisted across sessions, auto-growing)
     - Current position tickers
+    - Seed tickers for new users (auto-populated on first run)
+
+    All tickers are file-based for dynamic management.
     """
 
-    # Common tickers for quick access
-    COMMON_TICKERS = [
-        "SPY",
-        "QQQ",
-        "TQQQ",
-        "SQQQ",
-        "IWM",
-        "DIA",
-        "AAPL",
-        "MSFT",
-        "GOOGL",
-        "GOOG",
-        "AMZN",
-        "META",
-        "NVDA",
-        "TSLA",
-        "AMD",
-        "INTC",
-        "CRM",
-        "ORCL",
-        "ADBE",
-        "NFLX",
-        "JPM",
-        "BAC",
-        "GS",
-        "MS",
-        "V",
-        "MA",
-        "XOM",
-        "CVX",
-        "COP",
-        "SLB",
-        "UNH",
-        "JNJ",
-        "PFE",
-        "ABBV",
-        "MRK",
-        "HD",
-        "LOW",
-        "TGT",
-        "WMT",
-        "COST",
-        "DIS",
-        "CMCSA",
-        "T",
-        "VZ",
+    # Default seed tickers for new installations (written to file on first run)
+    _SEED_TICKERS = [
+        "SPY", "QQQ", "TQQQ", "SQQQ", "IWM", "DIA",  # ETFs
+        "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA",  # Mag 7
     ]
 
     def __init__(self):
         self.recent_tickers = []
         self.position_tickers = []
         self._completions = []
+        self._ticker_file = os.path.expanduser("~/.autotrader_tickers")
         self._load_recent_tickers()
 
     def _load_recent_tickers(self):
-        """Load recently used tickers from file."""
-        ticker_file = os.path.expanduser("~/.autotrader_tickers")
+        """Load recently used tickers from file, seeding if first run."""
         try:
-            if os.path.exists(ticker_file):
-                with open(ticker_file, "r") as f:
-                    self.recent_tickers = [line.strip().upper() for line in f if line.strip()][
-                        :20
-                    ]  # Keep last 20
+            if os.path.exists(self._ticker_file):
+                with open(self._ticker_file, "r") as f:
+                    self.recent_tickers = [
+                        line.strip().upper() for line in f if line.strip()
+                    ][:100]  # Keep up to 100 tickers
+            else:
+                # First run - seed with common tickers
+                self.recent_tickers = list(self._SEED_TICKERS)
+                self.save_recent_tickers()
         except Exception:
-            pass
+            self.recent_tickers = list(self._SEED_TICKERS)
 
     def save_recent_tickers(self):
         """Save recently used tickers to file."""
-        ticker_file = os.path.expanduser("~/.autotrader_tickers")
         try:
-            with open(ticker_file, "w") as f:
-                for ticker in self.recent_tickers[:20]:
+            with open(self._ticker_file, "w") as f:
+                for ticker in self.recent_tickers[:100]:  # Keep up to 100
                     f.write(f"{ticker}\n")
         except Exception:
             pass
@@ -128,12 +91,14 @@ class TickerCompleter:
     def add_ticker(self, ticker: str):
         """Add a ticker to recent list (moves to front if exists)."""
         ticker = ticker.upper().strip()
-        if not ticker or len(ticker) > 5:
+        if not ticker or len(ticker) > 5 or not ticker.isalpha():
             return
         if ticker in self.recent_tickers:
             self.recent_tickers.remove(ticker)
         self.recent_tickers.insert(0, ticker)
-        self.recent_tickers = self.recent_tickers[:20]
+        self.recent_tickers = self.recent_tickers[:100]
+        # Auto-save when ticker is added
+        self.save_recent_tickers()
 
     def set_position_tickers(self, tickers: list):
         """Update list of tickers from current positions."""
@@ -142,10 +107,11 @@ class TickerCompleter:
     def get_completions(self, text: str) -> list:
         """Get ticker completions for given text."""
         text = text.upper()
-        all_tickers = set(self.recent_tickers + self.position_tickers + self.COMMON_TICKERS)
+        # Combine recent + positions (no hardcoded list)
+        all_tickers = set(self.recent_tickers + self.position_tickers)
         if not text:
-            # Return recent + position tickers first
-            return self.recent_tickers[:5] + self.position_tickers[:5]
+            # Return recent + position tickers first (most relevant)
+            return self.recent_tickers[:10]
         return sorted([t for t in all_tickers if t.startswith(text)])
 
     def complete(self, text: str, state: int):
@@ -1211,7 +1177,11 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             # Provide helpful suggestions for common errors
             if "asset" in error_msg.lower() and "not found" in error_msg.lower():
-                print(MSG.ERROR_INVALID_TICKER)
+                # New detailed error messages from real_voter_strategy.py
+                print(f"\n{MSG.EMOJI['error']} {error_msg}")
+            elif "insufficient data" in error_msg.lower():
+                # Insufficient data for technical analysis
+                print(f"\n{MSG.EMOJI['error']} {error_msg}")
             elif "invalid request" in error_msg.lower() and "ticker=''" in error_msg.lower():
                 # Empty ticker from garbage input
                 print(MSG.ERROR_GARBAGE_INPUT)
@@ -1315,9 +1285,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             position: Position dict if exists, None otherwise
             signal: Signal type (BUY/SELL/HOLD)
         """
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"📊 Position Context: {ticker}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         if position:
             # Calculate metrics
@@ -1342,7 +1312,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         else:
             print(f"   ℹ️  No position in {ticker} (0 shares)")
 
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     def _display_suggestion(
         self, suggestion, position: Optional[dict] = None, override_mode: Optional[str] = None
@@ -1387,19 +1357,21 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
         # Get current timeframe for display (Issue #365)
         from src.cli.timeframe_commands import get_timeframe_commands
+        from src.trading.timeframe_tools import get_timeframe_display_name
 
         try:
             timeframe = get_timeframe_commands().manager.get_current_timeframe()
+            timeframe_display = get_timeframe_display_name(timeframe)
         except Exception:
-            timeframe = "1d"  # Fallback to default
+            timeframe_display = "1 day"  # Fallback to default
 
         # Technical analysis
-        print(MSG.ANALYSIS_HEADER.format(timeframe=timeframe))
+        print(MSG.ANALYSIS_HEADER.format(timeframe=timeframe_display))
         for reason in suggestion.reasoning:
             print(MSG.ANALYSIS_ITEM.format(reason=reason))
 
-        # Determine trade direction
-        direction = self._get_trade_direction(suggestion.signal)
+        # Determine trade direction (CLOSE if has position, SHORT if not)
+        direction = self._get_trade_direction(suggestion.signal, has_position=bool(position))
 
         # Entry plan
         print(MSG.ENTRY_PLAN_HEADER)
@@ -1433,22 +1405,26 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             for warning in suggestion.warnings:
                 print(MSG.WARNING_ITEM.format(warning=warning))
 
-    def _get_trade_direction(self, signal: "Signal") -> str:
+    def _get_trade_direction(self, signal: "Signal", has_position: bool = False) -> str:
         """
         Format trade direction for display.
 
         Args:
             signal: Trading signal (BUY/SELL/HOLD)
+            has_position: Whether user currently holds a position in this ticker
 
         Returns:
-            Formatted direction string (e.g., "BUY (LONG)", "SELL (SHORT)")
+            Formatted direction string:
+            - BUY → "BUY (LONG)"
+            - SELL with position → "SELL (CLOSE)"
+            - SELL without position → "SELL (SHORT)"
         """
         from src.core.models import Signal
 
         if signal == Signal.BUY:
             return "BUY (LONG)"
         elif signal == Signal.SELL:
-            return "SELL (SHORT)"
+            return "SELL (CLOSE)" if has_position else "SELL (SHORT)"
         else:
             return "HOLD"
 
@@ -1872,7 +1848,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                             if stop_price:
                                 distance = ((current_price - stop_price) / current_price) * 100
                                 print(
-                                    f"   🔴 Stop Loss: ${stop_price:.2f} (-{stop_loss_pct*100:.0f}% from entry, {distance:+.1f}% away)"
+                                    f"   🔴 Stop Loss: ${stop_price:.2f} (-{stop_loss_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
                                 )
                             else:
                                 print("   🔴 Stop Loss: Not set")
@@ -1880,7 +1856,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                             if target_price:
                                 distance = ((target_price - current_price) / current_price) * 100
                                 print(
-                                    f"   🟢 Take Profit: ${target_price:.2f} (+{take_profit_pct*100:.0f}% from entry, {distance:+.1f}% away)"
+                                    f"   🟢 Take Profit: ${target_price:.2f} (+{take_profit_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
                                 )
                             else:
                                 print("   🟢 Take Profit: Not set")
@@ -2785,7 +2761,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 if phrase in input_lower:
                     # Get text after the phrase
                     idx = input_lower.find(phrase)
-                    remaining = user_input[idx + len(phrase) :].strip()
+                    remaining = user_input[idx + len(phrase):].strip()
                     # Take first word as account ID
                     if remaining:
                         account_id = remaining.split()[0].strip()
@@ -2819,21 +2795,33 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Issue #365: Timeframe specification for multi-timeframe analysis
 
         Supports:
+        - timeframe <TF>  (e.g., "timeframe 1d", "timeframe 1M")
         - list timeframes / show timeframes
-        - change timeframe to <TF> / set timeframe <TF>
-        - current timeframe
         - timeframe recommendations
 
         Args:
             user_input: User's natural language input
         """
+        import re
+
         from src.cli.timeframe_commands import get_timeframe_commands
 
         tf_commands = get_timeframe_commands()
         input_lower = user_input.lower()
 
-        # Determine intent from input
-        if any(
+        # First: Check if input contains a timeframe value to SET
+        # Alpaca supports: 1-59 minutes, 1-23 hours, days, weeks, months
+        # Pattern: digits + unit (m=minute, h=hour, d=day, w=week, M=month)
+        # Note: 1M = month (uppercase M), 1m = minute (lowercase m)
+        tf_match = re.search(r"\b(\d{1,2}[mhdw]|1M)\b", user_input)
+
+        if tf_match:
+            # User wants to set a timeframe (e.g., "timeframe 1d", "1h", "set 4h")
+            timeframe = tf_match.group(1)
+            output = tf_commands.set_timeframe(timeframe)
+            safe_print(output)
+
+        elif any(
             phrase in input_lower for phrase in ["list timeframe", "show timeframe", "available"]
         ):
             # List all timeframes
@@ -2841,41 +2829,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 "verbose" in input_lower or "detail" in input_lower or "description" in input_lower
             )
             output = tf_commands.list_timeframes(verbose=verbose)
-            safe_print(output)
-
-        elif any(
-            phrase in input_lower for phrase in ["change timeframe", "set timeframe", "switch to"]
-        ):
-            # Extract timeframe from input
-            # Look for timeframe patterns: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M
-            import re
-
-            tf_patterns = [r"\b(1m|5m|15m|30m|1h|2h|4h|1d|1w|1M)\b"]
-            timeframe = None
-
-            for pattern in tf_patterns:
-                match = re.search(pattern, input_lower)
-                if match:
-                    timeframe = match.group(1)
-                    break
-
-            if timeframe:
-                output = tf_commands.set_timeframe(timeframe)
-                safe_print(output)
-            else:
-                safe_print(
-                    "❌ Please specify a timeframe\n"
-                    "ℹ️  Usage: change timeframe to <TF>\n"
-                    "   Examples: change timeframe to 1h, set timeframe 4h"
-                )
-                safe_print(tf_commands.list_timeframes(verbose=False))
-
-        elif any(
-            phrase in input_lower
-            for phrase in ["current timeframe", "active timeframe", "which timeframe"]
-        ):
-            # Show current timeframe
-            output = tf_commands.show_current_timeframe()
             safe_print(output)
 
         elif any(

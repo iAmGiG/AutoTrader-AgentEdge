@@ -119,10 +119,12 @@ class LLMParser(InputParser):
 User input: "{corrected_input}"
 
 First, determine the request_type:
-- "trade" = User wants to buy/sell/analyze a ticker (e.g., "buy AAPL", "is SPY good?")
-- "status_query" = Asking about account/orders/positions (no trade intent)
-  Examples: "any open orders?", "show my portfolio", "what positions do I have?"
-  Note: "any", "what", "show", "check" at start usually = status queries, NOT tickers!
+- "trade" = User wants to buy/sell/analyze a ticker (e.g., "buy AAPL", "is SPY good?", "review BA")
+  IMPORTANT: If user says "review SYMBOL" or "analyze SYMBOL" where SYMBOL looks like a ticker (1-5 letters), this is a TRADE request!
+  Examples: "review ba", "analyze spy", "check aapl", "what about msft" → ALL are trade requests
+- "status_query" = Asking about account/orders/positions (no specific ticker to analyze)
+  Examples: "any open orders?", "show my portfolio", "what positions do I have?", "review positions"
+  Note: "any", "what", "show", "check" at start usually = status queries UNLESS followed by a ticker symbol!
 
 If request_type is "trade", extract:
 - ticker: Stock symbol
