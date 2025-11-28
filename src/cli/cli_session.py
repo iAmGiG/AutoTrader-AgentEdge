@@ -16,6 +16,9 @@ import platform
 import sys
 from typing import Optional
 
+# Import safe_print for Unicode handling
+from src.utils.safe_print import safe_print
+
 # Arrow key history navigation (#362) and advanced readline features (#399)
 try:
     import atexit
@@ -437,7 +440,7 @@ class CLISession:
         elif cmd.startswith("/help"):
             # Issue #369: Interactive help system
             help_output = self.help_system.handle_help_command(command)
-            print(help_output)
+            safe_print(help_output)
 
         elif cmd == "/toggle":
             # Toggle between confirm and auto modes
@@ -467,29 +470,29 @@ class CLISession:
 
     def _show_trading_tips(self):
         """Display educational trading tips for beginners."""
-        print("\n" + "=" * 70)
-        print("📚 TRADING BASICS FOR BEGINNERS")
-        print("=" * 70)
+        safe_print("\n" + "=" * 70)
+        safe_print("📚 TRADING BASICS FOR BEGINNERS")
+        safe_print("=" * 70)
 
-        print("\n1️⃣  BUY vs SHORT (Long vs Short)")
-        print("-" * 70)
-        print(self.trading_tips["buy_vs_short"])
+        safe_print("\n1️⃣  BUY vs SHORT (Long vs Short)")
+        safe_print("-" * 70)
+        safe_print(self.trading_tips["buy_vs_short"])
 
-        print("\n2️⃣  Understanding Signals")
-        print("-" * 70)
-        print(self.trading_tips["signals"])
+        safe_print("\n2️⃣  Understanding Signals")
+        safe_print("-" * 70)
+        safe_print(self.trading_tips["signals"])
 
-        print("\n3️⃣  Why You Need a Position to SELL")
-        print("-" * 70)
-        print(self.trading_tips["position_required"])
+        safe_print("\n3️⃣  Why You Need a Position to SELL")
+        safe_print("-" * 70)
+        safe_print(self.trading_tips["position_required"])
 
-        print("\n💡 QUICK TIPS:")
-        print("-" * 70)
-        print("• Start small: Test with small amounts until you understand")
-        print("• Use CONFIRM mode: Always review before executing trades")
-        print("• Ask questions: Type naturally, the system will understand")
-        print("• Check analysis: Choose 'review' to see analysis without trading")
-        print("\n" + "=" * 70)
+        safe_print("\n💡 QUICK TIPS:")
+        safe_print("-" * 70)
+        safe_print("• Start small: Test with small amounts until you understand")
+        safe_print("• Use CONFIRM mode: Always review before executing trades")
+        safe_print("• Ask questions: Type naturally, the system will understand")
+        safe_print("• Check analysis: Choose 'review' to see analysis without trading")
+        safe_print("\n" + "=" * 70)
 
     async def _classify_intent(self, user_input: str) -> dict:
         """
@@ -612,7 +615,7 @@ class CLISession:
         """
         try:
             # Construct a lean prompt for the cheap LLM
-            system_prompt = """You are a stock ticker resolver. Extract the company name from the user's input 
+            system_prompt = """You are a stock ticker resolver. Extract the company name from the user's input
 and resolve it to its stock ticker symbol.
 
 Return ONLY valid JSON with no extra text:
