@@ -762,6 +762,7 @@ class SchedulerCLI:
 
             # Wait a moment and check if it started
             import time
+
             time.sleep(2)
 
             if self._is_daemon_running():
@@ -795,12 +796,14 @@ class SchedulerCLI:
 
                 if os.name == "nt":  # Windows
                     import signal
+
                     os.kill(pid, signal.SIGTERM)
                 else:  # Unix
                     os.kill(pid, 15)  # SIGTERM
 
                 # Wait and verify
                 import time
+
                 time.sleep(2)
 
                 if not self._is_daemon_running():

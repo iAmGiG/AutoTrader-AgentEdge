@@ -8,9 +8,9 @@ Unified interactive CLI with LLM-driven routing for:
 - Portfolio status
 """
 
-import logging
-import json
 import asyncio
+import json
+import logging
 import os
 import platform
 import sys
@@ -18,14 +18,17 @@ from typing import Optional
 
 # Arrow key history navigation (#362) and advanced readline features (#399)
 try:
-    import readline
     import atexit
+    import readline
+
     READLINE_AVAILABLE = True
 except ImportError:
     # Windows may need pyreadline3
     try:
-        import pyreadline3 as readline
         import atexit
+
+        import pyreadline3 as readline
+
         READLINE_AVAILABLE = True
     except ImportError:
         READLINE_AVAILABLE = False
@@ -45,14 +48,50 @@ class TickerCompleter:
 
     # Common tickers for quick access
     COMMON_TICKERS = [
-        "SPY", "QQQ", "TQQQ", "SQQQ", "IWM", "DIA",
-        "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA",
-        "AMD", "INTC", "CRM", "ORCL", "ADBE", "NFLX",
-        "JPM", "BAC", "GS", "MS", "V", "MA",
-        "XOM", "CVX", "COP", "SLB",
-        "UNH", "JNJ", "PFE", "ABBV", "MRK",
-        "HD", "LOW", "TGT", "WMT", "COST",
-        "DIS", "CMCSA", "T", "VZ",
+        "SPY",
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        "IWM",
+        "DIA",
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "GOOG",
+        "AMZN",
+        "META",
+        "NVDA",
+        "TSLA",
+        "AMD",
+        "INTC",
+        "CRM",
+        "ORCL",
+        "ADBE",
+        "NFLX",
+        "JPM",
+        "BAC",
+        "GS",
+        "MS",
+        "V",
+        "MA",
+        "XOM",
+        "CVX",
+        "COP",
+        "SLB",
+        "UNH",
+        "JNJ",
+        "PFE",
+        "ABBV",
+        "MRK",
+        "HD",
+        "LOW",
+        "TGT",
+        "WMT",
+        "COST",
+        "DIS",
+        "CMCSA",
+        "T",
+        "VZ",
     ]
 
     def __init__(self):
@@ -67,9 +106,9 @@ class TickerCompleter:
         try:
             if os.path.exists(ticker_file):
                 with open(ticker_file, "r") as f:
-                    self.recent_tickers = [
-                        line.strip().upper() for line in f if line.strip()
-                    ][:20]  # Keep last 20
+                    self.recent_tickers = [line.strip().upper() for line in f if line.strip()][
+                        :20
+                    ]  # Keep last 20
         except Exception:
             pass
 
@@ -100,9 +139,7 @@ class TickerCompleter:
     def get_completions(self, text: str) -> list:
         """Get ticker completions for given text."""
         text = text.upper()
-        all_tickers = set(
-            self.recent_tickers + self.position_tickers + self.COMMON_TICKERS
-        )
+        all_tickers = set(self.recent_tickers + self.position_tickers + self.COMMON_TICKERS)
         if not text:
             # Return recent + position tickers first
             return self.recent_tickers[:5] + self.position_tickers[:5]
@@ -282,7 +319,6 @@ class CLISession:
         atexit.register(save_on_exit)
 
         logger.info("Advanced CLI features enabled (history, tab completion)")
-
 
     def _load_trading_config(self) -> Optional[dict]:
         """
@@ -471,15 +507,15 @@ class CLISession:
         Issue #361: LLM-based intent classification with company name resolution
         Uses gpt-4o-mini (cheapest model) for structured output.
         """
-        import json
-        import re
 
         try:
             lower_input = user_input.lower()
-            
+
             # Check if this looks like a trade request with a company/ticker name
-            has_buy = any(word in lower_input for word in ["buy", "purchase", "long", "sell", "short"])
-            
+            has_buy = any(
+                word in lower_input for word in ["buy", "purchase", "long", "sell", "short"]
+            )
+
             intent = "unknown"
             action = None
             ticker = None
@@ -491,28 +527,41 @@ class CLISession:
                 intent = "trade_request"
                 action = "buy"
                 confidence = 0.7
-                
+
             elif any(word in lower_input for word in ["sell", "short"]):
                 intent = "trade_request"
                 action = "sell"
                 confidence = 0.7
-                
-            elif any(word in lower_input for word in ["position", "holding", "portfolio", "account", "check", "show", "status"]):
+
+            elif any(
+                word in lower_input
+                for word in [
+                    "position",
+                    "holding",
+                    "portfolio",
+                    "account",
+                    "check",
+                    "show",
+                    "status",
+                ]
+            ):
                 intent = "portfolio_status"
                 confidence = 0.85
-                
+
             elif any(word in lower_input for word in ["order", "pending", "open"]):
                 intent = "open_orders"
                 confidence = 0.85
-                
+
             elif any(word in lower_input for word in ["alert", "watch"]):
                 intent = "alerts"
                 confidence = 0.85
-                
-            elif any(word in lower_input for word in ["schedule", "scheduler", "daemon", "background"]):
+
+            elif any(
+                word in lower_input for word in ["schedule", "scheduler", "daemon", "background"]
+            ):
                 intent = "scheduler"
                 confidence = 0.85
-                
+
             elif any(word in lower_input for word in ["help", "what", "how", "command"]):
                 intent = "help"
                 confidence = 0.85
@@ -523,7 +572,7 @@ class CLISession:
                 if ticker:
                     confidence = 0.95  # High confidence if LLM resolved it
                 else:
-                    confidence = 0.7   # Lower if couldn't resolve
+                    confidence = 0.7  # Lower if couldn't resolve
 
             logger.debug(
                 f"Classified intent: {intent} (action={action}, ticker={ticker}, "
@@ -589,20 +638,20 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 try:
                     # Use the parser's LLM service with gpt-4o-mini (cheapest)
                     llm_service = self.orchestrator.input_parser.llm_service
-                    
+
                     response = await llm_service.call_structured(
                         system_prompt=system_prompt,
                         user_prompt=user_prompt,
                         model="gpt-4o-mini",  # Cheapest OpenAI model
                         timeout=2.0,  # 2 second timeout
                     )
-                    
+
                     # Parse the response
                     if isinstance(response, str):
                         data = json.loads(response)
                     else:
                         data = response
-                    
+
                     if data.get("found"):
                         ticker = data.get("ticker")
                         # Issue #399: Track resolved ticker for autocomplete
@@ -616,10 +665,11 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     logger.warning("LLM call timed out, falling back to pattern matching")
                 except Exception as e:
                     logger.warning(f"LLM resolution failed: {e}")
-            
+
             # Fallback: Try pattern matching for common formats
             # User might type "$AAPL" or just "AAPL"
             import re
+
             ticker_match = re.search(r"([A-Z]{1,5})", user_input)
             if ticker_match:
                 potential_ticker = ticker_match.group(1)
@@ -629,13 +679,12 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     if _ticker_completer:
                         _ticker_completer.add_ticker(potential_ticker)
                     return potential_ticker, None
-            
+
             return None, None
 
         except Exception as e:
             logger.error(f"Error resolving ticker with LLM: {e}")
             return None, None
-
 
     async def _process_request(self, user_input: str):
         """
@@ -1119,26 +1168,52 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
         # Buy/long indicators
         buy_indicators = [
-            "buy", "long", "go long", "going long", "bullish",
-            "bet it goes up", "think it will rise", "upside",
-            "get ", "acquire", "purchase", "pick up", "grab",
+            "buy",
+            "long",
+            "go long",
+            "going long",
+            "bullish",
+            "bet it goes up",
+            "think it will rise",
+            "upside",
+            "get ",
+            "acquire",
+            "purchase",
+            "pick up",
+            "grab",
         ]
         if any(indicator in input_lower for indicator in buy_indicators):
             return "buy"
 
         # Sell/close indicators
         sell_indicators = [
-            "sell", "short", "shorting", "go short", "exit",
-            "close", "get out", "dump", "liquidate", "cash out",
-            "bet against", "profit from decline",
+            "sell",
+            "short",
+            "shorting",
+            "go short",
+            "exit",
+            "close",
+            "get out",
+            "dump",
+            "liquidate",
+            "cash out",
+            "bet against",
+            "profit from decline",
         ]
         if any(indicator in input_lower for indicator in sell_indicators):
             return "sell"
 
         # Review/analyze indicators (no explicit action)
         review_indicators = [
-            "analyze", "analysis", "review", "check", "look at",
-            "what about", "how is", "should i", "is it good",
+            "analyze",
+            "analysis",
+            "review",
+            "check",
+            "look at",
+            "what about",
+            "how is",
+            "should i",
+            "is it good",
         ]
         if any(indicator in input_lower for indicator in review_indicators):
             return None  # Just querying, no explicit intent
