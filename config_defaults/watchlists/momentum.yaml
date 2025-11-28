@@ -1,0 +1,47 @@
+# Momentum Strategy Watchlist
+# Issue #405: Strategy-specific watchlists
+#
+# Optimized for momentum/growth trading:
+# - High-beta tech stocks
+# - Strong relative strength
+# - Breakout candidates
+
+name: "Momentum Tech"
+description: "High-beta tech and growth stocks for momentum trading"
+
+# Primary tickers for this strategy
+tickers:
+  # Mega-cap tech leaders
+  - NVDA   # NVIDIA - AI/GPU leader
+  - TSLA   # Tesla - EV/Energy
+  - META   # Meta - Social/Metaverse
+  - GOOGL  # Alphabet - Search/Cloud
+  - AMZN   # Amazon - E-commerce/Cloud
+  - MSFT   # Microsoft - Cloud/Enterprise
+  - AAPL   # Apple - Consumer Tech
+
+  # High-growth tech
+  - AMD    # Advanced Micro Devices
+  - CRM    # Salesforce
+  - NFLX   # Netflix
+  - ADBE   # Adobe
+  - NOW    # ServiceNow
+  - SNOW   # Snowflake
+  - DDOG   # Datadog
+
+  # Emerging leaders
+  - PLTR   # Palantir - AI/Data
+  - NET    # Cloudflare - Edge computing
+  - CRWD   # CrowdStrike - Cybersecurity
+  - ZS     # Zscaler - Cloud security
+
+# Strategy-specific settings
+settings:
+  # Minimum relative strength vs SPY
+  min_rs_percentile: 70
+
+  # Volume confirmation
+  min_volume_ratio: 1.2
+
+  # Momentum lookback period
+  momentum_period_days: 20

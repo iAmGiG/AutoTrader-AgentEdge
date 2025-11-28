@@ -1,0 +1,108 @@
+# Trading Modes Configuration
+# Issue #400: Trading Modes Configuration System
+#
+# Each mode defines risk parameters that propagate to:
+# - Position sizing (max_position_pct, max_position_value)
+# - Stop management (stop_loss, trailing stop thresholds)
+# - Profit targets (take_profit)
+# - Portfolio limits (max_portfolio_pct, max_positions)
+
+default_mode: moderate
+
+modes:
+  conservative:
+    description: "Low risk, capital preservation focus"
+
+    # Strategy watchlist (Issue #405)
+    # Loads from config_defaults/watchlists/{watchlist_strategy}.yaml
+    watchlist_strategy: balanced
+
+    # Position sizing
+    max_position_pct: 0.05      # 5% of portfolio per position
+    max_position_value: 2500    # $2,500 max per position
+    max_portfolio_pct: 0.10     # 10% max total exposure
+    max_positions: 5            # Max 5 concurrent positions
+
+    # Exit strategy
+    stop_loss: 0.02             # 2% stop loss
+    take_profit: 0.05           # 5% profit target
+
+    # Trailing stops (progressive)
+    trailing_stops:
+      enabled: true
+      progressive_enabled: true
+      progressive_breakeven_pct: 0.02   # Move to breakeven at 2%
+      progressive_lock_25_pct: 0.03     # Lock 25% gains at 3%
+      progressive_trail_50_pct: 0.04    # Trail 50% at 4%+
+      min_update_interval_seconds: 60
+
+    # Risk metrics
+    risk_per_trade: 0.01        # 1% account risk per trade
+    min_confidence: 0.75        # Higher confidence threshold
+
+  moderate:
+    description: "Balanced risk/reward for steady growth"
+
+    # Strategy watchlist (Issue #405)
+    watchlist_strategy: momentum
+
+    # Position sizing
+    max_position_pct: 0.10      # 10% of portfolio per position
+    max_position_value: 5000    # $5,000 max per position
+    max_portfolio_pct: 0.20     # 20% max total exposure
+    max_positions: 10           # Max 10 concurrent positions
+
+    # Exit strategy
+    stop_loss: 0.05             # 5% stop loss
+    take_profit: 0.10           # 10% profit target
+
+    # Trailing stops (progressive)
+    trailing_stops:
+      enabled: true
+      progressive_enabled: true
+      progressive_breakeven_pct: 0.02   # Move to breakeven at 2%
+      progressive_lock_25_pct: 0.04     # Lock 25% gains at 4%
+      progressive_trail_50_pct: 0.06    # Trail 50% at 6%+
+      min_update_interval_seconds: 60
+
+    # Risk metrics
+    risk_per_trade: 0.02        # 2% account risk per trade
+    min_confidence: 0.65        # Standard confidence threshold
+
+  aggressive:
+    description: "Higher risk for maximum growth potential"
+
+    # Strategy watchlist (Issue #405)
+    watchlist_strategy: wheel_strategy
+
+    # Position sizing
+    max_position_pct: 0.20      # 20% of portfolio per position
+    max_position_value: 10000   # $10,000 max per position
+    max_portfolio_pct: 0.40     # 40% max total exposure
+    max_positions: 15           # Max 15 concurrent positions
+
+    # Exit strategy
+    stop_loss: 0.08             # 8% stop loss
+    take_profit: 0.20           # 20% profit target
+
+    # Trailing stops (progressive)
+    trailing_stops:
+      enabled: true
+      progressive_enabled: true
+      progressive_breakeven_pct: 0.03   # Move to breakeven at 3%
+      progressive_lock_25_pct: 0.06     # Lock 25% gains at 6%
+      progressive_trail_50_pct: 0.10    # Trail 50% at 10%+
+      min_update_interval_seconds: 30   # Faster updates
+
+    # Risk metrics
+    risk_per_trade: 0.03        # 3% account risk per trade
+    min_confidence: 0.55        # Lower confidence threshold
+
+# Per-ticker overrides (Phase 2)
+# ticker_overrides:
+#   TSLA:
+#     mode: aggressive
+#     stop_loss: 0.10           # TSLA is volatile
+#   AAPL:
+#     mode: conservative
+#     max_position_value: 3000  # Override just this parameter
