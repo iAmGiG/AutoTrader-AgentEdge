@@ -83,33 +83,67 @@ class SchedulerCLI:
     """
     Interactive CLI for scheduler management.
 
-    Provides a dedicated interface for managing the daily trading scheduler,
-    separate from the main trading CLI.
+    Commands are defined in config_defaults/scheduler_cli_messages.yaml.
+    To add/remove/disable commands, edit the 'commands' section in that file.
     """
 
     def __init__(self, scheduler: Optional[DailyScheduler] = None):
         """
-        Initialize scheduler CLI.
+        Initialize scheduler CLI with config-driven command registry.
 
         Args:
             scheduler: Optional existing DailyScheduler instance
         """
         self.scheduler = scheduler
         self.config_file = "config_defaults/scheduler_config.yaml"
+        self._running = True
 
         # Check for YAML, fallback to JSON
         if not os.path.exists(self.config_file):
             self.config_file = "config_defaults/scheduler_config.json"
 
+        # Build command registry from config
+        self._command_registry = self._build_command_registry()
+
+    def _build_command_registry(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Build command lookup table from config.
+
+        Returns:
+            Dict mapping command names and aliases to their definitions.
+        """
+        registry = {}
+        commands = MSG.get("commands", {})
+
+        for cmd_name, cmd_def in commands.items():
+            if not cmd_def.get("enabled", True):
+                continue  # Skip disabled commands
+
+            # Register primary command name
+            registry[cmd_name] = {
+                "name": cmd_name,
+                "handler": cmd_def.get("handler", cmd_name),
+                "requires_scheduler": cmd_def.get("requires_scheduler", False),
+                "category": cmd_def.get("category", ""),
+                "description": cmd_def.get("description", ""),
+                "usage": cmd_def.get("usage", ""),
+            }
+
+            # Register aliases
+            for alias in cmd_def.get("aliases", []):
+                registry[alias] = registry[cmd_name]
+
+        return registry
+
     async def run(self):
         """
         Main scheduler CLI loop.
 
-        Provides interactive menu for scheduler management.
+        Commands are routed dynamically based on config.
         """
         self._print_welcome()
 
-        while True:
+        while self._running:
             try:
                 command = input("\nScheduler> ").strip().lower()
 
@@ -120,22 +154,20 @@ class SchedulerCLI:
                 if command.startswith("/"):
                     command = command[1:]
 
-                if command in ["exit", "quit", "q"]:
-                    print("\n👋 Exiting scheduler CLI...")
-                    break
-
+                # Route command through registry
                 await self._handle_command(command)
 
             except KeyboardInterrupt:
-                print("\n\n👋 Exiting scheduler CLI...")
+                print(f"\n\n{_get_emoji('wave', '👋')} Exiting scheduler CLI...")
                 break
             except Exception as e:
-                print(f"\n❌ Error: {e}")
+                print(f"\n{_get_emoji('cross_red', '❌')} Error: {e}")
                 logger.error(f"Scheduler CLI error: {e}", exc_info=True)
 
     def _print_welcome(self):
-        """Print scheduler CLI welcome message from config."""
+        """Print scheduler CLI welcome message with auto-generated command list."""
         welcome = MSG.get("welcome", {})
+        categories = MSG.get("categories", {})
 
         # Banner and title
         banner = welcome.get("banner", "=" * 70)
@@ -145,90 +177,115 @@ class SchedulerCLI:
         )
         print(banner)
 
-        # Print each section
-        sections = [
-            ("quick_start", _get_emoji("rocket", "🚀")),
-            ("configuration", _get_emoji("gear", "⚙️")),
-            ("testing", _get_emoji("test", "🧪")),
-            ("help_section", _get_emoji("book", "📖")),
-        ]
+        # Group enabled commands by category
+        commands_by_category: Dict[str, list] = {}
+        for cmd_name, cmd_def in MSG.get("commands", {}).items():
+            if not cmd_def.get("enabled", True):
+                continue
+            category = cmd_def.get("category", "other")
+            if category not in commands_by_category:
+                commands_by_category[category] = []
+            commands_by_category[category].append(
+                {
+                    "name": cmd_name,
+                    "description": cmd_def.get("description", ""),
+                    "usage": cmd_def.get("usage", ""),
+                }
+            )
 
-        for section_key, emoji in sections:
-            section = welcome.get(section_key, {})
-            if section:
-                header = section.get("header", "")
-                print(f"\n{emoji} {header}")
-                for cmd in section.get("commands", []):
-                    print(f"  {cmd}")
+        # Sort categories by order
+        sorted_cats = sorted(categories.items(), key=lambda x: x[1].get("order", 99))
+
+        # Print each category
+        for cat_key, cat_def in sorted_cats:
+            cmds = commands_by_category.get(cat_key, [])
+            if not cmds:
+                continue
+
+            emoji_name = cat_def.get("emoji", "")
+            emoji = _get_emoji(emoji_name, "") if emoji_name else ""
+            header = cat_def.get("header", cat_key.title())
+            print(f"\n{emoji} {header}")
+
+            for cmd in cmds:
+                name = cmd["name"]
+                # Use usage if provided (e.g., "test [morning|evening]")
+                display_name = cmd.get("usage") or name
+                desc = cmd["description"]
+                print(f"  {display_name:16s} - {desc}")
 
         print("")
 
     async def _handle_command(self, command: str):
         """
-        Handle scheduler CLI commands.
+        Handle scheduler CLI commands using config-driven routing.
+
+        Commands are looked up in the registry (built from YAML config).
+        To add/remove/disable commands, edit scheduler_cli_messages.yaml.
 
         Args:
             command: User command string
         """
-        # Initialize scheduler if needed (except for commands that don't need it)
-        no_scheduler_commands = ["help", "config", "edit", "setup", "start", "stop", "logs"]
-        if self.scheduler is None and command not in no_scheduler_commands:
+        # Parse command and arguments
+        parts = command.split()
+        cmd_name = parts[0] if parts else ""
+        args = parts[1:] if len(parts) > 1 else []
+
+        # Look up command in registry
+        cmd_def = self._command_registry.get(cmd_name)
+
+        if not cmd_def:
+            print(f"{_get_emoji('cross_red', '❌')} Unknown command: {command}")
+            print("Type 'help' for available commands")
+            return
+
+        # Initialize scheduler if required by this command
+        if cmd_def.get("requires_scheduler") and self.scheduler is None:
             try:
                 self.scheduler = DailyScheduler()
             except Exception as e:
-                print(f"❌ Failed to initialize scheduler: {e}")
-                print("💡 Try running: python main.py --daemon")
+                print(f"{_get_emoji('cross_red', '❌')} Failed to initialize scheduler: {e}")
+                print(f"{_get_emoji('light', '💡')} Try running: python main.py --daemon")
                 return
 
-        if command == "help":
-            self._print_welcome()
+        # Get handler method
+        handler_name = cmd_def.get("handler", cmd_name)
+        handler = getattr(self, f"_{handler_name}", None)
 
-        elif command == "setup":
-            await self._run_setup_wizard()
+        if not handler:
+            print(f"{_get_emoji('cross_red', '❌')} Handler not implemented: {handler_name}")
+            return
 
-        elif command == "start":
-            self._start_daemon()
-
-        elif command == "stop":
-            self._stop_daemon()
-
-        elif command == "status":
-            await self._show_status()
-
-        elif command == "config":
-            self._show_config()
-
-        elif command == "info":
-            self._show_config_info()
-
-        elif command == "edit":
-            await self._edit_config()
-
-        elif command == "enable":
-            self._set_enabled(True)
-
-        elif command == "disable":
-            self._set_enabled(False)
-
-        elif command.startswith("test"):
-            parts = command.split()
-            if len(parts) == 2 and parts[1] in ["morning", "evening"]:
-                await self._test_routine(parts[1])
+        # Call handler (async or sync)
+        try:
+            if asyncio.iscoroutinefunction(handler):
+                await handler(*args)
             else:
-                print("Usage: test [morning|evening]")
+                handler(*args)
+        except TypeError as e:
+            # Wrong number of arguments
+            usage = cmd_def.get("usage", "")
+            if usage:
+                print(f"Usage: {usage}")
+            else:
+                print(f"{_get_emoji('cross_red', '❌')} Error: {e}")
 
-        elif command == "history":
-            self._show_history()
+    # =========================================================================
+    # Handler wrapper methods (for config-driven routing)
+    # =========================================================================
 
-        elif command == "next":
-            self._show_next_run()
+    def _set_enabled_true(self):
+        """Wrapper for enable command."""
+        self._set_enabled(True)
 
-        elif command == "logs":
-            self._show_logs()
+    def _set_enabled_false(self):
+        """Wrapper for disable command."""
+        self._set_enabled(False)
 
-        else:
-            print(f"Unknown command: {command}")
-            print("Type 'help' for available commands")
+    def _exit_cli(self):
+        """Exit the scheduler CLI loop."""
+        print(f"\n{_get_emoji('wave', '👋')} Exiting scheduler CLI...")
+        self._running = False
 
     async def _show_status(self):
         """Show detailed scheduler status."""
@@ -547,12 +604,17 @@ class SchedulerCLI:
         else:
             print(f"❌ Config file not found: {self.config_file}")
 
-    async def _test_routine(self, routine_type: str):
-        """Test a scheduler routine."""
-        print(f"\n🧪 Testing {routine_type} routine...")
+    async def _test_routine(self, routine_type: str = ""):
+        """Test a scheduler routine (morning or evening)."""
+        # Validate argument
+        if routine_type not in ["morning", "evening"]:
+            print("Usage: test [morning|evening]")
+            return
+
+        print(f"\n{_get_emoji('test', '🧪')} Testing {routine_type} routine...")
 
         if not self.scheduler:
-            print("❌ Scheduler not initialized")
+            print(f"{_get_emoji('cross_red', '❌')} Scheduler not initialized")
             return
 
         try:

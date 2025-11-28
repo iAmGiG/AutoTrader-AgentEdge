@@ -1,45 +1,182 @@
 # Scheduler CLI Messages Configuration
 # All user-facing messages for the scheduler CLI
 # Edit this file to customize messages without changing code
+#
+# To add/remove/disable commands: edit the 'commands' section below
+# To customize messages: edit the corresponding section (status, daemon, etc.)
 
 # ============================================================================
-# WELCOME & HELP
+# COMMAND REGISTRY - Config-driven command system
+# ============================================================================
+# Each command defines:
+#   - enabled: true/false - disable commands without removing them
+#   - handler: method name in SchedulerCLI class (without leading _)
+#   - aliases: alternative command names
+#   - requires_scheduler: whether DailyScheduler must be initialized
+#   - category: for grouping in help menu
+#   - description: shown in help menu
+#   - usage: usage string (optional)
+#
+# To add a new command:
+#   1. Add entry here with handler name
+#   2. Implement _handler_name() method in scheduler_cli.py
+#
+# To disable a command: set enabled: false
+# ============================================================================
+commands:
+  # Quick Start commands
+  setup:
+    enabled: true
+    handler: run_setup_wizard
+    aliases: ["wizard"]
+    requires_scheduler: false
+    category: quick_start
+    description: "First-time setup wizard (recommended)"
+
+  start:
+    enabled: true
+    handler: start_daemon
+    aliases: []
+    requires_scheduler: false
+    category: quick_start
+    description: "Start scheduler daemon"
+
+  stop:
+    enabled: true
+    handler: stop_daemon
+    aliases: []
+    requires_scheduler: false
+    category: quick_start
+    description: "Stop scheduler daemon"
+
+  status:
+    enabled: true
+    handler: show_status
+    aliases: ["stat"]
+    requires_scheduler: true
+    category: quick_start
+    description: "Show detailed scheduler status"
+
+  # Configuration commands
+  config:
+    enabled: true
+    handler: show_config
+    aliases: ["cfg"]
+    requires_scheduler: false
+    category: configuration
+    description: "View current configuration"
+
+  edit:
+    enabled: true
+    handler: edit_config
+    aliases: []
+    requires_scheduler: false
+    category: configuration
+    description: "Edit scheduler configuration"
+
+  enable:
+    enabled: true
+    handler: set_enabled_true
+    aliases: ["on"]
+    requires_scheduler: false
+    category: configuration
+    description: "Enable scheduler"
+
+  disable:
+    enabled: true
+    handler: set_enabled_false
+    aliases: ["off"]
+    requires_scheduler: false
+    category: configuration
+    description: "Disable scheduler"
+
+  # Testing & Monitoring commands
+  test:
+    enabled: true
+    handler: test_routine
+    aliases: []
+    requires_scheduler: true
+    category: testing
+    description: "Test morning/evening routine"
+    usage: "test [morning|evening]"
+
+  history:
+    enabled: true
+    handler: show_history
+    aliases: ["hist"]
+    requires_scheduler: true
+    category: testing
+    description: "View execution history"
+
+  next:
+    enabled: true
+    handler: show_next_run
+    aliases: []
+    requires_scheduler: true
+    category: testing
+    description: "Show next scheduled run"
+
+  logs:
+    enabled: true
+    handler: show_logs
+    aliases: ["log"]
+    requires_scheduler: false
+    category: testing
+    description: "View recent scheduler logs"
+
+  # Help commands
+  info:
+    enabled: true
+    handler: show_config_info
+    aliases: ["man", "docs"]
+    requires_scheduler: true
+    category: help
+    description: "Explain configuration settings"
+
+  help:
+    enabled: true
+    handler: print_welcome
+    aliases: ["?", "h"]
+    requires_scheduler: false
+    category: help
+    description: "Show this help message"
+
+  exit:
+    enabled: true
+    handler: exit_cli
+    aliases: ["quit", "q"]
+    requires_scheduler: false
+    category: help
+    description: "Exit scheduler CLI"
+
+# Category display order and headers for help menu
+categories:
+  quick_start:
+    order: 1
+    header: "Quick Start:"
+    emoji: rocket
+
+  configuration:
+    order: 2
+    header: "Configuration:"
+    emoji: gear
+
+  testing:
+    order: 3
+    header: "Testing & Monitoring:"
+    emoji: test
+
+  help:
+    order: 4
+    header: "Help:"
+    emoji: book
+
+# ============================================================================
+# WELCOME BANNER (auto-generated help uses commands section above)
 # ============================================================================
 welcome:
   banner: "======================================================================"
-  title: "   Scheduler Management CLI"
-
-  quick_start:
-    header: "Quick Start:"
-    commands:
-      - "setup           - First-time setup wizard (recommended)"
-      - "start           - Start scheduler daemon"
-      - "stop            - Stop scheduler daemon"
-      - "status          - Show detailed scheduler status"
-
-  configuration:
-    header: "Configuration:"
-    commands:
-      - "config          - View current configuration"
-      - "edit            - Edit scheduler configuration"
-      - "enable          - Enable scheduler"
-      - "disable         - Disable scheduler"
-
-  testing:
-    header: "Testing & Monitoring:"
-    commands:
-      - "test morning    - Test morning routine"
-      - "test evening    - Test evening routine"
-      - "history         - View execution history"
-      - "next            - Show next scheduled run"
-      - "logs            - View recent scheduler logs"
-
-  help_section:
-    header: "Help:"
-    commands:
-      - "info            - Explain configuration settings"
-      - "help            - Show this help message"
-      - "exit            - Exit scheduler CLI"
+  title: "Scheduler Management CLI"
 
 # ============================================================================
 # STATUS MESSAGES
