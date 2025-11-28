@@ -18,7 +18,13 @@ from src.utils.date_utils import get_datetime_now, get_default_timezone
 
 try:
     from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import OrderClass, OrderSide, OrderType, QueryOrderStatus, TimeInForce
+    from alpaca.trading.enums import (
+        OrderClass,
+        OrderSide,
+        OrderType,
+        QueryOrderStatus,
+        TimeInForce,
+    )
     from alpaca.trading.requests import (
         ClosePositionRequest,
         GetOrdersRequest,
@@ -69,7 +75,34 @@ class AlpacaTradingClient:
     - Safety confirmations for live trades
     - Unified API for both modes
     - Comprehensive error handling
+    - Singleton pattern per mode (prevents duplicate initialization messages)
     """
+
+    # Class-level singleton instances (one per mode)
+    _instances = {}
+
+    def __new__(cls, mode: str = "paper", require_confirmation: bool = True):
+        """
+        Singleton pattern - return existing instance for this mode if available.
+
+        Args:
+            mode: "paper" or "live"
+            require_confirmation: Extra confirmation for live trades
+
+        Returns:
+            Singleton instance for this mode
+        """
+        # Create unique key for this mode
+        key = mode
+
+        if key not in cls._instances:
+            # Create new instance
+            instance = super(AlpacaTradingClient, cls).__new__(cls)
+            cls._instances[key] = instance
+            # Mark that this instance needs initialization
+            instance._initialized = False
+
+        return cls._instances[key]
 
     def __init__(self, mode: str = "paper", require_confirmation: bool = True):
         """
@@ -82,6 +115,10 @@ class AlpacaTradingClient:
         Raises:
             ValueError: If mode is not "paper" or "live"
         """
+        # Skip initialization if already done (singleton pattern)
+        if getattr(self, "_initialized", False):
+            return
+
         if not ALPACA_TRADING_AVAILABLE:
             raise ImportError(
                 "alpaca-py SDK is required for AlpacaTradingClient. "
@@ -121,6 +158,9 @@ class AlpacaTradingClient:
         logger.warning(f"🔥 Alpaca client initialized in {mode.upper()} mode")
         if mode == "live":
             logger.warning("⚠️  LIVE TRADING MODE - Real money at risk!")
+
+        # Mark as initialized
+        self._initialized = True
 
     def _safety_check(self, action: str, details: Dict[str, Any]) -> bool:
         """
