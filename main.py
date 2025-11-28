@@ -403,13 +403,70 @@ def generate_analysis():
         return False
 
 
-def trade_assist():
+def list_accounts():
+    """
+    List all configured trading accounts.
+
+    Issue #401: Multi-account portfolio management.
+    """
+    from src.trading.account_manager import get_account_manager
+
+    safe_print(f"{get_symbol('INFO')} Configured Trading Accounts:")
+    print("=" * 60)
+
+    manager = get_account_manager()
+
+    # Discover all accounts (query Alpaca API for details)
+    safe_print(f"{get_symbol('GEAR')} Discovering account details...")
+    manager.discover_all_accounts()
+
+    accounts = manager.list_accounts()
+
+    if not accounts:
+        safe_print(f"{get_symbol('WARNING')} No accounts configured.")
+        print("\nTo add accounts, update config/config.json with:")
+        print('  "accounts": [')
+        print('    {"id": "paper_main", "api_key": "...", "api_secret": "...", "alias": "Paper"}')
+        print("  ]")
+        return False
+
+    for acc in accounts:
+        status_icon = get_symbol("SUCCESS") if acc.get("has_info") else get_symbol("WARNING")
+        active_tag = " [ACTIVE]" if acc.get("is_active") else ""
+        enabled_tag = "" if acc.get("enabled", True) else " [DISABLED]"
+
+        print(f"\n{status_icon} {acc['id']}{active_tag}{enabled_tag}")
+
+        if acc.get("alias"):
+            print(f"   Alias: {acc['alias']}")
+
+        if acc.get("has_info"):
+            acc_type = acc.get("account_type", "unknown").upper()
+            print(f"   Type: {acc_type}")
+            print(f"   Account #: {acc.get('account_number', 'N/A')}")
+            print(f"   Portfolio: ${acc.get('portfolio_value', 0):,.2f}")
+            print(f"   Buying Power: ${acc.get('buying_power', 0):,.2f}")
+            print(f"   Status: {acc.get('status', 'Unknown')}")
+        else:
+            error = acc.get("last_error", "Discovery pending")
+            print(f"   Status: Not discovered ({error})")
+
+    print("\n" + "=" * 60)
+    print(f"Total: {len(accounts)} account(s) configured")
+    print("\nUsage: python main.py --account <ACCOUNT_ID>")
+    return True
+
+
+def trade_assist(account_id: str = None):
     """Interactive CLI trading assistant.
 
     Trading modes can be set via natural language:
         > buy SPY aggressively
         > set risk mode to conservative
         > I want to be careful with this trade
+
+    Args:
+        account_id: Optional account ID to use (#401)
     """
     import asyncio
 
@@ -419,6 +476,30 @@ def trade_assist():
         from cli import CLISession
         from core.factory import OrchestratorFactory
         from core.trading_modes import get_mode_manager
+
+        # Multi-account setup (#401)
+        alpaca_mode = "paper"  # Default
+        active_account_info = None
+
+        if account_id:
+            from src.trading.account_manager import get_account_manager
+
+            manager = get_account_manager()
+
+            # Try to set the requested account as active
+            if manager.set_active_account(account_id):
+                active_account = manager.get_active_account()
+                if active_account and active_account.info:
+                    active_account_info = active_account.info
+                    alpaca_mode = active_account_info.account_type.value
+                    safe_print(
+                        f"{get_symbol('SUCCESS')} Using account: {account_id} "
+                        f"({alpaca_mode.upper()})"
+                    )
+            else:
+                safe_print(f"{get_symbol('ERROR')} Account '{account_id}' not found or not ready")
+                safe_print(f"{get_symbol('INFO')} Use --list-accounts to see available accounts")
+                return False
 
         # Get default mode info for display
         mode_manager = get_mode_manager()
@@ -430,7 +511,12 @@ def trade_assist():
         )
         print("   - LLM Parser: gpt-4o-mini")
         print("   - Strategy: RealVoterAgent (MACD+RSI, 0.856 Sharpe)")
-        print("   - Execution: AlpacaOrderManager (paper trading)")
+
+        if active_account_info:
+            print(f"   - Account: {active_account_info.alias or account_id} ({alpaca_mode})")
+            print(f"   - Portfolio: ${active_account_info.portfolio_value:,.2f}")
+        else:
+            print(f"   - Execution: AlpacaOrderManager ({alpaca_mode} trading)")
         print()
 
         # Create orchestrator with real components
@@ -439,7 +525,7 @@ def trade_assist():
             order_manager=None,  # Auto-create from factory
             use_real_voter=True,  # Use production VoterAgent
             use_real_alpaca=True,  # Use real Alpaca OrderManager
-            alpaca_mode="paper",  # Paper trading mode
+            alpaca_mode=alpaca_mode,  # Use detected mode from account
         )
 
         # Create CLI session
@@ -475,6 +561,8 @@ def main():
 QUICK START:
   python main.py                     # Launch interactive trading assistant
   python main.py --daemon            # Run automated scheduler (background)
+  python main.py --list-accounts     # List configured trading accounts (#401)
+  python main.py --account paper     # Use specific account (#401)
   python main.py --help              # Show this help
 
 INTERACTIVE CLI COMMANDS (type /help for full list):
@@ -528,6 +616,7 @@ FEATURES:
   - Daily Scheduler - Automated morning/evening routines
   - Risk Management - Portfolio limits & position sizing
   - Paper Trading - Test strategies without real money
+  - Multi-Account (#401) - Manage multiple trading accounts
 
 LEGACY COMMANDS (deprecated, use interactive CLI instead):
   python main.py --legacy test-voter           # Test VoterAgent
@@ -543,6 +632,21 @@ LEGACY COMMANDS (deprecated, use interactive CLI instead):
 
     parser.add_argument(
         "--legacy", nargs="+", metavar="COMMAND", help="Run legacy one-shot command (deprecated)"
+    )
+
+    # Multi-account support (#401)
+    parser.add_argument(
+        "--account",
+        "-a",
+        type=str,
+        metavar="ACCOUNT_ID",
+        help="Select trading account (e.g., --account paper_main)",
+    )
+
+    parser.add_argument(
+        "--list-accounts",
+        action="store_true",
+        help="List all configured trading accounts",
     )
 
     # If no arguments, launch interactive CLI
@@ -561,6 +665,29 @@ LEGACY COMMANDS (deprecated, use interactive CLI instead):
             sys.exit(1)
 
     args = parser.parse_args()
+
+    # List accounts mode (#401)
+    if args.list_accounts:
+        try:
+            success = list_accounts()
+            sys.exit(0 if success else 1)
+        except (ImportError, ValueError, RuntimeError) as e:
+            safe_print(f"{get_symbol('ERROR')} Error listing accounts: {e}")
+            sys.exit(1)
+
+    # Account selection with interactive CLI (#401)
+    if args.account and not args.legacy and not args.daemon:
+        safe_print(f"{get_symbol('ROCKET')} Launching Trading Assistant with account: {args.account}")
+        print()
+        try:
+            success = trade_assist(account_id=args.account)
+            sys.exit(0 if success else 1)
+        except KeyboardInterrupt:
+            safe_print(f"\n{get_symbol('STOP')} Cancelled by user")
+            sys.exit(0)
+        except (ImportError, ValueError, RuntimeError) as e:
+            safe_print(f"\n{get_symbol('EXPLOSION')} Error: {e}")
+            sys.exit(1)
 
     # Daemon mode - run scheduler
     if args.daemon:

@@ -173,6 +173,7 @@ from config_defaults.message_loader import (
     get_status_emoji,
 )
 
+from src.cli.account_commands import get_account_commands
 from src.cli.help_system import HelpSystem
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
@@ -205,6 +206,9 @@ class CLISession:
 
         # Initialize help system (Issue #369)
         self.help_system = HelpSystem()
+
+        # Initialize account commands (Issue #401)
+        self.account_commands = get_account_commands()
 
         # Set up command history (#362)
         self._setup_history()
@@ -577,6 +581,14 @@ class CLISession:
                 intent = "scheduler"
                 confidence = 0.85
 
+            elif any(
+                word in lower_input
+                for word in ["account", "switch", "list account", "change account", "accounts"]
+            ):
+                # Issue #401: Account management
+                intent = "account_management"
+                confidence = 0.85
+
             elif any(word in lower_input for word in ["help", "what", "how", "command"]):
                 intent = "help"
                 confidence = 0.85
@@ -741,6 +753,21 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         ):
             # Execution mode management (Issue #332)
             await self._handle_execution_mode_request(user_input)
+
+        elif any(
+            phrase in input_lower
+            for phrase in [
+                "list account",
+                "show account",
+                "switch account",
+                "use account",
+                "change account",
+                "current account",
+                "refresh account",
+            ]
+        ):
+            # Account management (Issue #401)
+            await self._handle_account_request(user_input)
 
         else:
             # For everything else, let LLM parser decide: trade vs status_query
@@ -2651,3 +2678,62 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         except ValueError:
             print(f"❌ Invalid execution mode: {target_mode}")
             print("ℹ️  Valid modes: confirm, auto, paper, disabled")
+
+    async def _handle_account_request(self, user_input: str):
+        """
+        Handle account management requests.
+        Issue #401: Multi-account portfolio management
+
+        Supports:
+        - list accounts / show accounts
+        - switch to account <ID>
+        - use account <ID>
+        - show current account
+        - refresh accounts
+
+        Args:
+            user_input: User's natural language input
+        """
+        input_lower = user_input.lower()
+
+        # Determine intent from input
+        if any(phrase in input_lower for phrase in ["list account", "show account"]):
+            # List all accounts
+            verbose = "verbose" in input_lower or "detail" in input_lower
+            self.account_commands.list_accounts(verbose=verbose)
+
+        elif any(phrase in input_lower for phrase in ["switch", "use", "change"]):
+            # Extract account ID from input
+            # Try to find account ID after key phrases
+            account_id = None
+            for phrase in ["switch to", "use account", "change to", "switch account", "use"]:
+                if phrase in input_lower:
+                    # Get text after the phrase
+                    idx = input_lower.find(phrase)
+                    remaining = user_input[idx + len(phrase) :].strip()
+                    # Take first word as account ID
+                    if remaining:
+                        account_id = remaining.split()[0].strip()
+                        break
+
+            if account_id:
+                result = self.account_commands.switch_account(account_id)
+                if result["status"] == "success":
+                    # Update orchestrator if needed
+                    print("\n💡 Tip: Restart trading assistant to use new account for trades")
+            else:
+                print("❌ Please specify an account ID")
+                print("ℹ️  Usage: switch to account <ACCOUNT_ID>")
+                print("   Example: switch to account paper_main")
+
+        elif any(phrase in input_lower for phrase in ["current account", "active account"]):
+            # Show current account
+            self.account_commands.show_current_account()
+
+        elif "refresh" in input_lower:
+            # Refresh account data
+            self.account_commands.refresh_accounts()
+
+        else:
+            # Default: show account list
+            self.account_commands.list_accounts()
