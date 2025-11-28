@@ -35,12 +35,15 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 |-----------|--------|-------|
 | **ScannerAgent** | 🚧 Implementation | Multi-ticker MACD+RSI scanning (#386) |
 | **RiskAgent** | 🚧 Implementation | Position sizing, circuit breaker (#387) |
-| **ExecutorAgent** | 🚧 Implementation | Trade execution, simulation mode (#388) |
-| **TradingOrchestrator** | 🚧 Implementation | Workflow management, state persistence (#389) |
-| **Agent Factory & Bus** | 🚧 Refactoring | Agent Bus infrastructure (#390) for pub-sub messaging. EventBus duplicate (#397) rejected. |
+| **ExecutorAgent** | ✅ Complete | Trade execution, simulation mode (#388) |
+| **TradingOrchestrator** | ✅ Complete | Workflow management, state persistence (#389) |
+| **TradingPipeline** | ✅ Complete | Full 5-phase daily workflow orchestrator (#323) |
+| **Agent Factory & Bus** | ✅ Complete | Agent Bus infrastructure (#390) for pub-sub messaging |
+| **TrailingStopManager** | ✅ Complete | Progressive stop logic (#321) |
+| **Trading Modes** | ✅ Complete | Natural language risk modes (#400) |
 | **Human-in-Loop CLI** | ✅ Complete | Interactive trade approval interface with multiple execution modes |
 
-**Branch Status**: Phase 2 agent implementations in active refactoring. Architecture decision: using Agent Bus (#390) for inter-agent communication. Event Bus (#397) duplicate discarded. Not ready for merge until refactoring complete.
+**Branch Status**: Core pipeline infrastructure complete. Phase 2 agent implementations in active refactoring. Architecture decision: using Agent Bus (#390) for inter-agent communication.
 
 ---
 
@@ -477,6 +480,49 @@ python main.py test-voter
 
 ## Recent Milestones
 
+### November 2025 - Trading Pipeline & Infrastructure Complete
+
+**TradingPipeline Implementation** (branch: `feature/trading-pipeline-323`):
+
+- ✅ Complete 5-phase daily workflow orchestrator (#323)
+- ✅ Phase 1: Data Collection - Market hours validation, data freshness
+- ✅ Phase 2: Analysis - VoterAgent MACD+RSI signal generation
+- ✅ Phase 3: Execution - ExecutorAgent order placement with position sizing
+- ✅ Phase 4: Management - PositionManager tracking (broker-as-truth)
+- ✅ Phase 5: End-of-Day - Broker reconciliation, report generation
+- ✅ Scheduled runner with configurable times (morning/afternoon/custom)
+- ✅ Comprehensive integration tests (352 lines)
+- ✅ Full documentation (README_PIPELINE.md - 466 lines)
+
+**Trading Modes Configuration** (branch: `feature/trading-modes-400`):
+
+- ✅ Natural language risk modes (#400) - "buy SPY aggressively"
+- ✅ Conservative/Moderate/Aggressive presets in YAML
+- ✅ Integration with LLMParser for natural language extraction
+- ✅ No CLI flags - everything through conversational interface
+
+**TrailingStopManager** (branch: `feature/trailing-stops-321`):
+
+- ✅ Progressive stop logic (#321) - 2%/4%/6% profit thresholds
+- ✅ Integration with trade_lifecycle.py and trading_cycle.py
+- ✅ Rate-limited updates to prevent API abuse
+
+**Agent Bus Infrastructure** (branch: `feature/agent-bus-390`):
+
+- ✅ AgentBus pub-sub messaging system (#390)
+- ✅ 16 trading-specific EventType values
+- ✅ Symbol filtering, TTL, correlation tracking
+- ✅ Supersedes #316 and #397 (duplicates closed)
+
+**Files Created**:
+
+- `src/trading/trading_pipeline.py` (608 lines) - Main orchestrator
+- `examples/run_trading_pipeline.py` (174 lines) - CLI demo
+- `examples/scheduled_pipeline_runner.py` (299 lines) - Scheduled automation
+- `src/trading/README_PIPELINE.md` (466 lines) - Documentation
+- `config_defaults/trading_modes.yaml` - Risk mode configuration
+- `src/core/trading_modes.py` - TradingModeManager
+
 ### November 2025 - Weekend Order Fix & Code Quality Improvements
 
 **Weekend Trading Enhancements** (branch: `feature/weekend-order-fix`):
@@ -540,18 +586,25 @@ python main.py test-voter
 
 ### Immediate (Next 2-4 Weeks) - P0 CRITICAL
 
-**#308 - CLI Human-in-Loop MVP**:
+**#323 - Trading Pipeline - ✅ COMPLETE**:
 
-1. Implement interactive CLI session (REPL loop)
-2. Build natural language parser (gpt-4o-mini)
-3. Integrate VoterAgent for MACD+RSI analysis
-4. Create entry suggestion formatter (entry/stop/target)
-5. Add simple portfolio % display
-6. Implement confirmation workflow (yes/no/modify)
-7. Enforce GTC order type (auto-adjust, note in output)
-8. Test in paper trading with real scenarios
+- ✅ TradingPipeline 5-phase orchestrator
+- ✅ VoterAgent integration for signal generation
+- ✅ ExecutorAgent integration for order placement
+- ✅ PositionManager broker-as-truth reconciliation
+- ✅ Scheduled runner for automation
+- ✅ Documentation and integration tests
 
-**Target**: Q4 2025 completion → **Unblocks live trading deployment**
+**Branch**: `feature/trading-pipeline-323` - Ready for merge
+
+**Next Priority - Complete Remaining Agent Implementations**:
+
+1. **ScannerAgent** (#386) - Multi-ticker screening
+2. **RiskAgent** (#387) - Pre-execution validation, position limits
+3. Integrate TrailingStopManager into pipeline management phase
+4. Add RiskAgent validation to pipeline execution phase
+
+**Target**: Q4 2025 completion → **Unblocks full automated trading**
 
 ### Short Term (Q1 2026)
 
