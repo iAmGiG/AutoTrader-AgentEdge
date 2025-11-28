@@ -4,11 +4,14 @@ AutoGen-TradingSystem Main Runner
 Unified entry point for all trading system operations.
 
 Usage:
+    python main.py                           # Launch interactive trading assistant
     python main.py --help                    # Show all commands
-    python main.py test-voter                # Test current VoterAgent
-    python main.py check-positions           # Check paper trading positions
-    python main.py paper-trade <symbol>      # Run paper trading check and action
-    python main.py analysis                  # Generate analysis reports
+    python main.py --daemon                  # Run automated scheduler
+
+In CLI, use natural language for trading modes:
+    > buy SPY aggressively
+    > I want to be conservative with this AAPL trade
+    > set risk mode to moderate
 """
 
 import argparse
@@ -401,7 +404,13 @@ def generate_analysis():
 
 
 def trade_assist():
-    """Interactive CLI trading assistant."""
+    """Interactive CLI trading assistant.
+
+    Trading modes can be set via natural language:
+        > buy SPY aggressively
+        > set risk mode to conservative
+        > I want to be careful with this trade
+    """
     import asyncio
 
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
@@ -409,11 +418,18 @@ def trade_assist():
     try:
         from cli import CLISession
         from core.factory import OrchestratorFactory
+        from core.trading_modes import get_mode_manager
+
+        # Get default mode info for display
+        mode_manager = get_mode_manager()
+        mode_params = mode_manager.get_parameters()
 
         safe_print(f"\n{get_symbol('ROCKET')} Starting Trade Assistant (Production Mode)...")
-        print("   - LLM Parser: gpt-4o-mini + o4-mini")
+        print(
+            f"   - Default Mode: {mode_params.mode.value} (say 'aggressive' or 'conservative' to change)"
+        )
+        print("   - LLM Parser: gpt-4o-mini")
         print("   - Strategy: RealVoterAgent (MACD+RSI, 0.856 Sharpe)")
-        print("   - Risk: SimpleRiskManager (portfolio % based)")
         print("   - Execution: AlpacaOrderManager (paper trading)")
         print()
 
@@ -463,11 +479,18 @@ QUICK START:
 
 INTERACTIVE CLI COMMANDS (type /help for full list):
 
-  Trading:
-    > buy AAPL 10                    # Buy 10 shares of AAPL
-    > sell MSFT 5                    # Sell 5 shares of MSFT
+  Trading (with natural language risk modes - Issue #400):
+    > buy AAPL 10                    # Buy 10 shares (default: moderate risk)
+    > buy SPY aggressively           # Buy with aggressive position sizing
+    > conservative buy MSFT 5        # Buy with conservative risk settings
+    > sell TSLA, be aggressive       # Sell with larger position
     > show positions                 # View open positions
     > show portfolio                 # Portfolio summary
+
+  Risk Modes (adjustable mid-session):
+    > set risk mode to conservative  # 5% max position, 2% stop loss
+    > I want to be aggressive        # 20% max position, 8% stop loss
+    > what's my current risk mode?   # Show active mode settings
 
   Workflows:
     > morning-routine                # Run morning market scan
@@ -497,13 +520,14 @@ INTERACTIVE CLI COMMANDS (type /help for full list):
     > /exit                          # Exit CLI
 
 FEATURES:
-  ✅ VoterAgent (MACD+RSI) - 0.856 Sharpe, production-validated
-  ✅ Configuration System - YAML-based strategy parameters
-  ✅ Timeframe Support - Trade on 1m to 1M timeframes
-  ✅ Forward Testing - 30-day validation protocol
-  ✅ Daily Scheduler - Automated morning/evening routines
-  ✅ Risk Management - Portfolio limits & position sizing
-  ✅ Paper Trading - Test strategies without real money
+  - VoterAgent (MACD+RSI) - 0.856 Sharpe, production-validated
+  - Trading Modes - Conservative/Moderate/Aggressive via natural language
+  - Configuration System - YAML-based strategy parameters
+  - Timeframe Support - Trade on 1m to 1M timeframes
+  - Forward Testing - 30-day validation protocol
+  - Daily Scheduler - Automated morning/evening routines
+  - Risk Management - Portfolio limits & position sizing
+  - Paper Trading - Test strategies without real money
 
 LEGACY COMMANDS (deprecated, use interactive CLI instead):
   python main.py --legacy test-voter           # Test VoterAgent
