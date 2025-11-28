@@ -33,7 +33,7 @@ DecisionFormatter = None
 def _get_decision_formatter():
     global DecisionFormatter
     if DecisionFormatter is None:
-        from src.human_interface.decision_formatter import DecisionFormatter as DF
+        from src.cli.decision_formatter import DecisionFormatter as DF
 
         DecisionFormatter = DF
     return DecisionFormatter
