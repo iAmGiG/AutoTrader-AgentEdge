@@ -68,9 +68,8 @@ class VoterAgent(BaseAgent):
             default_rsi = self.config.get_rsi_config()
 
             # Load timeframe from config or use provided
-            config_timeframe = self.config.config.get("strategy_parameters", {}).get(
-                "timeframe", "1d"
-            )
+            timeframe_config = self.config.get_timeframe_config()
+            config_timeframe = timeframe_config.default
             self.timeframe = timeframe or config_timeframe
 
             # Convert config objects to dicts

@@ -10,6 +10,51 @@ from typing import Dict, List
 from config_defaults.trading_config import get_config
 
 
+# Alpaca API timeframe mapping
+# Our format (user-friendly) -> Alpaca format (API requirement)
+ALPACA_TIMEFRAME_MAP = {
+    "1m": "1Min",
+    "5m": "5Min",
+    "15m": "15Min",
+    "30m": "30Min",
+    "1h": "1Hour",
+    "2h": "2Hour",  # Not standard Alpaca
+    "4h": "4Hour",  # Not standard Alpaca
+    "1d": "1Day",
+    "1w": "1Week",
+    "1M": "1Month",
+}
+
+
+def convert_to_alpaca_timeframe(timeframe: str) -> str:
+    """
+    Convert user-friendly timeframe to Alpaca API format.
+
+    Args:
+        timeframe: User format (e.g., "1h", "5m", "1d")
+
+    Returns:
+        Alpaca format (e.g., "1Hour", "5Min", "1Day")
+    """
+    return ALPACA_TIMEFRAME_MAP.get(timeframe, "1Day")
+
+
+def convert_from_alpaca_timeframe(alpaca_timeframe: str) -> str:
+    """
+    Convert Alpaca API timeframe to user-friendly format.
+
+    Args:
+        alpaca_timeframe: Alpaca format (e.g., "1Hour", "5Min")
+
+    Returns:
+        User format (e.g., "1h", "5m", "1d")
+    """
+    for user_tf, api_tf in ALPACA_TIMEFRAME_MAP.items():
+        if api_tf == alpaca_timeframe:
+            return user_tf
+    return "1d"  # Default
+
+
 class TimeframeManager:
     """Manages timeframe configuration and validation."""
 

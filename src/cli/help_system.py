@@ -302,9 +302,97 @@ class HelpSystem:
                 "examples": [
                     "show execution-mode",
                 ],
-                "aliases": ["show mode", "mode"],
-                "tags": ["configuration"],
+                "aliases": ["execution mode"],
+                "tags": ["configuration", "trading"],
                 "related": ["set execution-mode"],
+                "details": "Display the current trading execution mode setting.",
+            },
+            "change timeframe": {
+                "category": "Configuration",
+                "description": "Change analysis timeframe (Issue #365)",
+                "usage": "change timeframe to {1m|5m|15m|30m|1h|2h|4h|1d|1w|1M}",
+                "examples": [
+                    "change timeframe to 1h",
+                    "set timeframe 4h",
+                    "switch to 5m",
+                    "use 1d timeframe",
+                ],
+                "aliases": ["set timeframe", "switch timeframe", "use timeframe"],
+                "tags": ["configuration", "analysis", "timeframe"],
+                "related": ["show timeframe", "list timeframes", "timeframe recommendations"],
+                "details": (
+                    "Change the active timeframe for technical analysis:\n\n"
+                    "Scalping (aggressive):     1m, 5m\n"
+                    "Day Trading (intraday):    15m, 30m\n"
+                    "Swing Trading (medium):    1h, 2h, 4h\n"
+                    "Position Trading (default): 1d (validated 0.856 Sharpe)\n"
+                    "Long-term:                 1w, 1M\n\n"
+                    "The timeframe determines the candle period for MACD and RSI indicators.\n"
+                    "Default '1d' has been validated with the best performance."
+                ),
+            },
+            "show timeframe": {
+                "category": "Configuration",
+                "description": "Show current timeframe",
+                "usage": "show timeframe | current timeframe",
+                "examples": [
+                    "show timeframe",
+                    "current timeframe",
+                    "what timeframe",
+                ],
+                "aliases": ["current timeframe", "active timeframe"],
+                "tags": ["configuration", "analysis", "timeframe"],
+                "related": ["change timeframe", "list timeframes"],
+                "details": "Display the currently active timeframe for analysis.",
+            },
+            "list timeframes": {
+                "category": "Configuration",
+                "description": "List all available timeframes",
+                "usage": "list timeframes [verbose]",
+                "examples": [
+                    "list timeframes",
+                    "show available timeframes",
+                    "list timeframes verbose",
+                ],
+                "aliases": ["show timeframes", "available timeframes"],
+                "tags": ["configuration", "analysis", "timeframe"],
+                "related": ["change timeframe", "show timeframe", "timeframe recommendations"],
+                "details": (
+                    "List all enabled timeframes with optional descriptions.\n\n"
+                    "Use 'verbose' to see detailed descriptions of each timeframe."
+                ),
+            },
+            "timeframe recommendations": {
+                "category": "Configuration",
+                "description": "Get timeframe recommendations by strategy",
+                "usage": "timeframe recommendations",
+                "examples": [
+                    "timeframe recommendations",
+                    "suggest timeframe",
+                    "best timeframe for swing trading",
+                ],
+                "aliases": ["suggest timeframe", "recommend timeframe"],
+                "tags": ["configuration", "analysis", "timeframe"],
+                "related": ["change timeframe", "list timeframes"],
+                "details": (
+                    "Show recommended timeframes grouped by trading strategy:\n\n"
+                    "  Scalping - 1m, 5m (high frequency, micro trends)\n"
+                    "  Day Trading - 15m, 30m (intraday swings)\n"
+                    "  Swing Trading - 1h, 2h, 4h (multi-day trends)\n"
+                    "  Position Trading - 1d (validated default, best Sharpe)\n"
+                    "  Long-term - 1w, 1M (institutional moves)\n\n"
+                    "Use this to find the best timeframe for your trading style."
+                ),
+            },
+            # Closing the previous entry that was broken
+            "mode": {
+                "category": "Configuration",
+                "description": "Show current execution mode",
+                "usage": "mode",
+                "examples": ["mode"],
+                "aliases": ["show mode"],
+                "tags": ["configuration"],
+                "related": ["set execution-mode", "show execution-mode"],
                 "details": (
                     "Display the current trading execution mode.\n"
                     "This determines how your trades are processed."
