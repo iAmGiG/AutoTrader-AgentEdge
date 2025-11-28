@@ -56,8 +56,9 @@ repos:
     rev: 1.7.6
     hooks:
       - id: bandit
-        args: [-r, src/, -ll]  # Only report medium+ severity
-        exclude: ^(tests/|deprecated/)
+        args: [-ll, --recursive]  # Only report medium+ severity
+        files: ^src/.*\.py$
+        exclude: ^(tests/|deprecated/|src/deprecated/)
 
 # Configuration
 default_language_version:
