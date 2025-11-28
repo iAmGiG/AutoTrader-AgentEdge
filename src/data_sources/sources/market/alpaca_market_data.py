@@ -134,19 +134,28 @@ class AlpacaMarketData:
         cached_data = []
         symbols_to_fetch = []
 
-        # Smart cache logic: Skip cache for current trading day to ensure fresh data
-        from src.utils.date_utils import get_datetime_now
+        # Smart cache logic: Live data is priority for current trading day
+        from src.utils.date_utils import format_data_status, get_datetime_now
 
         end_dt_check = pd.to_datetime(end).date()
         today = get_datetime_now().date()
         is_current_day = end_dt_check >= today
 
-        logger.warning(
-            f"📊 CACHE CHECK: start={start}, end={end}, end_date={end_dt_check}, today={today}, is_current={is_current_day}, symbols={symbols}"
+        # Debug-level logging for cache decision details
+        logger.debug(
+            f"Cache decision: end_date={end_dt_check}, today={today}, "
+            f"is_current={is_current_day}, symbols={symbols}"
         )
 
+        # Determine data source and show clean status message
         if is_current_day:
-            logger.warning("⚠️ BYPASSING CACHE - fetching fresh data for current trading day")
+            # Live data is priority for current trading day
+            for symbol in symbols:
+                logger.info(format_data_status(symbol, "live"))
+        else:
+            # Historical data uses cache
+            for symbol in symbols:
+                logger.info(format_data_status(symbol, "cache", include_time=False))
 
         if use_cache and not is_current_day:
             # Only use cache for historical data (not today)
@@ -268,10 +277,8 @@ class AlpacaMarketData:
                         has_today = any(str(today_date) in str(idx) for idx in combined_check.index)
 
                 if not has_today:
-                    logger.warning(
-                        f"⏰ Market is OPEN - today's bar missing. Adding live prices for {symbols}"
-                    )
                     # Fetch live prices and create synthetic daily bar
+                    logger.debug("Today's bar missing, fetching live prices")
                     live_bars = []
                     for symbol in symbols:
                         try:
@@ -296,7 +303,8 @@ class AlpacaMarketData:
                                     "date": timestamp,
                                 }
                                 live_bars.append(live_bar)
-                                logger.info(f"Created live bar for {symbol} @ ${price:.2f}")
+                                # Clean status message for live price fetch
+                                logger.info(format_data_status(symbol, f"Live @ ${price:.2f}"))
                         except Exception as e:
                             logger.warning(f"Could not fetch live price for {symbol}: {e}")
 

@@ -183,10 +183,13 @@ class SimpleRiskManager(RiskManager):
             try:
                 return await self.account.get_portfolio_value(user_id)
             except Exception as e:
+                # Real error - log at warning level
                 logger.warning(f"Failed to get portfolio value: {e}")
+                # Fall through to use demo values
 
-        # MVP fallback: Assume $100,000 portfolio
-        logger.warning("Using fallback portfolio value: $100,000")
+        # MVP: Using demo portfolio value (account service not configured)
+        # This is expected during MVP - only log at DEBUG level
+        logger.debug("Account service not configured - using demo portfolio: $100,000")
         return 100000.0
 
     async def get_buying_power(
@@ -208,12 +211,16 @@ class SimpleRiskManager(RiskManager):
             try:
                 return await self.account.get_buying_power(user_id)
             except Exception as e:
+                # Real error - log at warning level
                 logger.warning(f"Failed to get buying power: {e}")
+                # Fall through to use demo values
 
-        # MVP fallback: Assume 50% cash available
-        # Use provided portfolio_value to avoid duplicate get_portfolio_value call
+        # MVP: Using demo buying power (account service not configured)
+        # This is expected during MVP - only log at DEBUG level
         if portfolio_value is None:
             portfolio_value = await self.get_portfolio_value(user_id)
         buying_power = portfolio_value * 0.5
-        logger.warning(f"Using fallback buying power: ${buying_power:,.0f}")
+        logger.debug(
+            f"Account service not configured - using demo buying power: ${buying_power:,.0f}"
+        )
         return buying_power
