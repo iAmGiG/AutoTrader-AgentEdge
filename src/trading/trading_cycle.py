@@ -15,7 +15,8 @@ import os
 import sys
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -153,7 +154,12 @@ class CostEfficientTradeCycle:
         # Load local state
         self.local_state = self.load_local_state()
 
-        logger.info("CostEfficientTradeCycle initialized with alert monitoring")
+        # Issue #337: Broker state caching to reduce API calls
+        self.broker_state_cache: Optional[Dict[str, Any]] = None
+        self.cache_timestamp: Optional[datetime] = None
+        self.cache_ttl_seconds: int = 60  # 1 minute cache TTL
+
+        logger.info("CostEfficientTradeCycle initialized with alert monitoring and state caching")
 
     def load_local_state(self) -> Dict[str, Any]:
         """Load local JSON state (for human reference)"""
@@ -192,11 +198,28 @@ class CostEfficientTradeCycle:
         except IOError as e:
             logger.error(f"Failed to save state: {e}")
 
-    def fetch_broker_state(self) -> Dict[str, Any]:
+    def fetch_broker_state(self, force_refresh: bool = False) -> Dict[str, Any]:
         """
-        Single API call to get all positions and orders from broker.
+        Get all positions and orders from broker with smart caching.
         This is the source of truth.
+
+        Issue #337: Added caching to reduce API calls. Cache TTL is 60 seconds.
+
+        Args:
+            force_refresh: If True, bypass cache and fetch fresh data from broker
+
+        Returns:
+            Dict with positions, orders, account info, and timestamp
         """
+        # Check if cached data is still valid
+        if not force_refresh and self.broker_state_cache is not None:
+            cache_age = (get_datetime_now() - self.cache_timestamp).total_seconds()
+            if cache_age < self.cache_ttl_seconds:
+                logger.debug(f"Using cached broker state (age: {cache_age:.1f}s)")
+                return self.broker_state_cache
+
+        logger.debug("Cache miss or force_refresh - fetching from broker")
+
         try:
             # Get all positions (one API call)
             positions = self.account_monitor.get_positions()
@@ -295,11 +318,43 @@ class CostEfficientTradeCycle:
                 f"total {len(orders)} orders"
             )
 
+            # Issue #337: Cache the broker state
+            self.broker_state_cache = broker_state
+            self.cache_timestamp = get_datetime_now()
+
             return broker_state
 
         except Exception as e:
             logger.error(f"Failed to fetch broker state: {e}")
             raise
+
+    def invalidate_broker_cache(self):
+        """
+        Invalidate the broker state cache.
+
+        Issue #337: Call this after placing/modifying/cancelling orders
+        to ensure the next fetch_broker_state() gets fresh data.
+        """
+        self.broker_state_cache = None
+        self.cache_timestamp = None
+        logger.debug("Broker state cache invalidated")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics for debugging/monitoring.
+
+        Returns:
+            Dict with cache_valid, cache_age_seconds, ttl_seconds
+        """
+        if self.broker_state_cache is None:
+            return {"cache_valid": False, "cache_age_seconds": None, "ttl_seconds": self.cache_ttl_seconds}
+
+        cache_age = (get_datetime_now() - self.cache_timestamp).total_seconds()
+        return {
+            "cache_valid": cache_age < self.cache_ttl_seconds,
+            "cache_age_seconds": round(cache_age, 1),
+            "ttl_seconds": self.cache_ttl_seconds,
+        }
 
     def _extract_stop_target_from_orders(
         self, symbol: str, broker_state: Dict[str, Any], entry_price: float = None
@@ -713,6 +768,10 @@ class CostEfficientTradeCycle:
             f"{len(results['errors'])} errors"
         )
         logger.info(summary)
+
+        # Issue #337: Invalidate cache after modifying orders
+        if results["modifications"] > 0:
+            self.invalidate_broker_cache()
 
         return results
 
