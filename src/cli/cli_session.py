@@ -24,7 +24,23 @@ import yaml
 # Import safe_print for Unicode handling
 from src.utils.safe_print import safe_print
 
+
 # Arrow key history navigation (#362) and advanced readline features (#399)
+# Note: Tab completion works in cmd.exe and Git Bash, but NOT in PowerShell
+# PowerShell uses PSReadLine which has its own completion system
+def _is_powershell() -> bool:
+    """Detect if running in PowerShell (where readline doesn't work)."""
+    # Check common PowerShell environment indicators
+    ps_indicators = [
+        os.environ.get("PSModulePath"),  # PowerShell sets this
+        os.environ.get("POWERSHELL_DISTRIBUTION_CHANNEL"),
+    ]
+    return any(ps_indicators)
+
+
+READLINE_AVAILABLE = False
+readline = None
+
 try:
     import atexit
     import readline
@@ -39,8 +55,12 @@ except ImportError:
 
         READLINE_AVAILABLE = True
     except ImportError:
-        READLINE_AVAILABLE = False
-        readline = None
+        pass
+
+# Disable readline in PowerShell (it doesn't work there)
+if READLINE_AVAILABLE and _is_powershell():
+    READLINE_AVAILABLE = False
+    readline = None
 
 
 # Issue #399: Ticker completer for tab completion
@@ -51,49 +71,62 @@ class TickerCompleter:
     Provides autocomplete for:
     - Recently used tickers (persisted across sessions, auto-growing)
     - Current position tickers
-    - Seed tickers for new users (auto-populated on first run)
+    - Seed tickers from config (loaded from scanner_config.yaml on first run)
 
     All tickers are file-based for dynamic management.
     """
 
-    # Default seed tickers for new installations (written to file on first run)
-    _SEED_TICKERS = [
-        "SPY",
-        "QQQ",
-        "TQQQ",
-        "SQQQ",
-        "IWM",
-        "DIA",  # ETFs
-        "AAPL",
-        "MSFT",
-        "GOOGL",
-        "AMZN",
-        "META",
-        "NVDA",
-        "TSLA",  # Mag 7
-    ]
+    # Fallback seed tickers if config loading fails
+    _FALLBACK_SEED_TICKERS = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA"]
 
     def __init__(self):
         self.recent_tickers = []
         self.position_tickers = []
         self._completions = []
         self._ticker_file = os.path.expanduser("~/.autotrader_tickers")
+        self._seed_tickers = self._load_seed_tickers_from_config()
         self._load_recent_tickers()
+
+    def _load_seed_tickers_from_config(self) -> list:
+        """Load seed tickers from scanner_config.yaml watchlist."""
+        try:
+            config_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "config_defaults", "scanner_config.yaml"
+            )
+            config_path = os.path.normpath(config_path)
+
+            if not os.path.exists(config_path):
+                return list(self._FALLBACK_SEED_TICKERS)
+
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+
+            # Extract all tickers from default_watchlist categories
+            tickers = []
+            watchlist = config.get("default_watchlist", {})
+            for symbols in watchlist.values():
+                if isinstance(symbols, list):
+                    tickers.extend(symbols)
+
+            return tickers if tickers else list(self._FALLBACK_SEED_TICKERS)
+
+        except Exception:
+            return list(self._FALLBACK_SEED_TICKERS)
 
     def _load_recent_tickers(self):
         """Load recently used tickers from file, seeding if first run."""
         try:
             if os.path.exists(self._ticker_file):
-                with open(self._ticker_file, "r") as f:
+                with open(self._ticker_file, "r", encoding="utf-8") as f:
                     self.recent_tickers = [line.strip().upper() for line in f if line.strip()][
                         :100
                     ]  # Keep up to 100 tickers
             else:
-                # First run - seed with common tickers
-                self.recent_tickers = list(self._SEED_TICKERS)
+                # First run - seed with tickers from scanner_config.yaml
+                self.recent_tickers = list(self._seed_tickers)
                 self.save_recent_tickers()
         except Exception:
-            self.recent_tickers = list(self._SEED_TICKERS)
+            self.recent_tickers = list(self._seed_tickers)
 
     def save_recent_tickers(self):
         """Save recently used tickers to file."""
@@ -403,6 +436,11 @@ class CLISession:
         print(MSG.WELCOME_BANNER)
         print(f"Mode: {self.autonomy_mode.upper()}")
         print(MSG.HELP_COMMANDS)
+
+        # PowerShell notice - tab completion doesn't work there
+        if _is_powershell():
+            print("\nNote: Tab completion is not available in PowerShell.")
+            print("      For tab completion, use cmd.exe or Git Bash.")
 
         # Issue #399: Update ticker completer with current positions
         self._update_position_tickers()
