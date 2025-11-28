@@ -27,7 +27,9 @@ from .base_agent import BaseAgent
 
 # Agent Bus for event publishing (Issue #390)
 from src.autogen_agents.agent_bus import EventType, create_message, get_agent_bus
-from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+from src.data_sources.sources.market.unified_market_tool import (
+    fetch_unified_market_data,
+)
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from src.utils.date_utils import get_datetime_now
 
@@ -623,7 +625,7 @@ class ScannerAgent(BaseAgent):
                 if result.action != "HOLD":
                     msg = create_message(
                         source_agent=self.name,
-                        event_type=EventType.MARKET_DATA_RECEIVED,
+                        event_type=EventType.SCAN_COMPLETE,
                         symbol=result.symbol,
                         payload={
                             "action": result.action,
