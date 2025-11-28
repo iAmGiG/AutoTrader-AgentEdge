@@ -152,6 +152,14 @@ async def _handle_command(self, command: str):
   - Exception: readline in platform-specific try/except (valid use case)
   - Updated ADR 01 with import guidelines
 
+- ✅ **Pylint Fixes (Nov 2025)** - Fixed E0203, E1102, E0606, W0613, W0108 across 6 files:
+  - **agent_bus.py:152** - Added class-level `_initialized` declaration for singleton pattern
+  - **scheduler_cli.py:262** - Added `callable()` check for handler validation
+  - **timeframe_commands.py:27** - Added class-level `_initialized` declaration for singleton
+  - **scanner_agent.py:63** - Replaced unnecessary lambda with `list` factory
+  - **indicator_library.py:184** - Prefixed unused `close` param with underscore (`_close`)
+  - **alpaca_execution_manager.py:506** - Initialize `error_data = None` before try block
+
 ### Pre-commit Hook Fixes
 
 - ✅ **Bandit security scanner** - Fixed configuration in `.pre-commit-config.yaml`
@@ -305,6 +313,46 @@ check = _get_emoji("check_green", default="✅")
 ```
 
 This pattern keeps all user-facing text in YAML for easy maintenance.
+
+## Folder Consolidation (Nov 2025)
+
+### CLI Folder Cleanup
+
+Consolidated `src/human_interface/` into `src/cli/`:
+
+- ✅ **decision_formatter.py** - Moved to `src/cli/decision_formatter.py`
+  - Formats trading decisions for human display
+  - Used by `orchestrator.py`
+
+- ✅ **cli_interface.py** - **REMOVED** (dead code)
+  - Never imported anywhere in codebase
+  - Only had `if __name__ == "__main__"` entry point
+  - Superseded by `src/cli/cli_session.py`
+
+- ✅ **human_interface/ folder** - **REMOVED**
+  - Empty after moving decision_formatter.py
+
+- ✅ **src/services/llm/** - **KEPT** (actively used)
+  - Used by `src/parsers/llm_parser.py` for NL parsing
+  - Used by `src/core/factory.py` for OrchestratorFactory
+  - Provides LLM abstraction (OpenAIService, LLMService base)
+
+### Final src/ Structure
+
+```text
+src/
+├── cli/                    # ✅ Unified CLI layer
+│   ├── cli_session.py      # Main interactive CLI
+│   ├── decision_formatter.py # Trade decision formatting (moved from human_interface)
+│   ├── account_commands.py
+│   ├── help_system.py
+│   ├── scheduler_cli.py
+│   └── timeframe_commands.py
+├── autogen_agents/         # AutoGen agent implementations
+├── services/
+│   └── llm/                # ✅ LLM service abstraction (actively used)
+├── ...
+```
 
 ## Recent Commits (Session Summary)
 
