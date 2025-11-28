@@ -22,11 +22,29 @@ class HelpSystem:
 
     def __init__(self):
         """Initialize help system with command documentation."""
-        self.commands = self._build_help_data()
+        self.commands = self._load_help_data()
         self.categories = self._extract_categories()
 
-    def _build_help_data(self) -> Dict[str, Dict]:
-        """Build comprehensive help data for all commands."""
+    def _load_help_data(self) -> Dict[str, Dict]:
+        """Load help data from YAML configuration file."""
+        import os
+
+        import yaml
+
+        config_path = os.path.join(
+            os.path.dirname(__file__), "../../config_defaults/help_commands.yaml"
+        )
+
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            print(f"Warning: Could not load help commands from YAML: {e}")
+            print("Falling back to hardcoded commands...")
+            return self._build_help_data_fallback()
+
+    def _build_help_data_fallback(self) -> Dict[str, Dict]:
+        """Build comprehensive help data for all commands (DEPRECATED - use YAML)."""
         return {
             # ==================== WORKFLOW COMMANDS ====================
             "morning-routine": {
@@ -450,7 +468,8 @@ class HelpSystem:
                 "related": ["forward-test report", "forward-test status"],
                 "details": (
                     "Initialize a new 30-day forward testing validation cycle.\n"
-                    "Forward testing validates trading strategy performance before live deployment.\n\n"
+                    "Forward testing validates trading strategy performance before "
+                    "live deployment.\n\n"
                     "The test will:\n"
                     "  - Track all signals generated over 30 days\n"
                     "  - Monitor trade outcomes and P&L\n"
@@ -529,25 +548,6 @@ class HelpSystem:
                     "  market-hours - Market hours and holiday calendar\n\n"
                     "Without --file, shows summary of all config files.\n\n"
                     "Note: Config files are in config_defaults/ directory."
-                ),
-            },
-            "show timeframe": {
-                "category": "Configuration",
-                "description": "Show current trading timeframe",
-                "usage": "show timeframe",
-                "examples": [
-                    "show timeframe",
-                ],
-                "aliases": ["timeframe"],
-                "tags": ["configuration", "timeframe", "issue-365"],
-                "related": ["set timeframe", "show config"],
-                "details": (
-                    "Display the current timeframe used for technical analysis (Issue #365).\n\n"
-                    "Shows:\n"
-                    "  - Strategy-level timeframe (applies to all indicators)\n"
-                    "  - Indicator-specific overrides (if any)\n"
-                    "  - Supported timeframes: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M\n\n"
-                    "Default is 1d (daily) - validated with 0.856 Sharpe ratio."
                 ),
             },
             "set timeframe": {
@@ -801,14 +801,14 @@ class HelpSystem:
         candidates = []
         command_lower = command.lower()
 
-        for cmd in self.commands.keys():
+        for cmd, cmd_data in self.commands.items():
             distance = levenshtein_distance(command_lower, cmd.lower())
             # Only suggest if edit distance is reasonable (< 40% of command length)
             if distance <= max(2, len(command) * 0.4):
                 candidates.append((cmd, distance))
 
             # Also check aliases
-            aliases = self.commands[cmd].get("aliases", [])
+            aliases = cmd_data.get("aliases", [])
             for alias in aliases:
                 distance = levenshtein_distance(command_lower, alias.lower())
                 if distance <= max(2, len(command) * 0.4):
@@ -831,7 +831,7 @@ class HelpSystem:
     def get_help_command(self, command: str) -> str:
         """Get detailed help for a specific command."""
         # Handle partial command names
-        matching = [cmd for cmd in self.commands.keys() if cmd.startswith(command.lower())]
+        matching = [cmd for cmd in self.commands if cmd.startswith(command.lower())]
 
         if not matching:
             # Try to suggest similar commands
