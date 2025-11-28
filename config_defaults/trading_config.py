@@ -33,6 +33,45 @@ class RSIConfig:
 
 
 @dataclass
+class TimeframeConfig:
+    """Timeframe configuration for multi-timeframe analysis."""
+
+    default: str = "1d"
+    enabled_timeframes: list = None
+
+    def __post_init__(self):
+        """Initialize default enabled timeframes."""
+        if self.enabled_timeframes is None:
+            # Standard timeframes from minute to monthly
+            self.enabled_timeframes = [
+                "1m",  # 1 minute - scalping
+                "5m",  # 5 minutes - fast intraday
+                "15m",  # 15 minutes - intraday
+                "30m",  # 30 minutes - intraday swing
+                "1h",  # 1 hour - medium-term
+                "2h",  # 2 hours - swing
+                "4h",  # 4 hours - swing/position
+                "1d",  # 1 day - position trading
+                "1w",  # 1 week - intermediate-term
+                "1M",  # 1 month - long-term
+            ]
+
+    def is_valid(self, timeframe: str) -> bool:
+        """Check if a timeframe is valid."""
+        return timeframe in self.enabled_timeframes
+
+    def validate(self) -> bool:
+        """Validate timeframe configuration."""
+        # Check default is in enabled timeframes
+        if self.default not in self.enabled_timeframes:
+            return False
+        # Check at least one timeframe is enabled
+        if not self.enabled_timeframes or len(self.enabled_timeframes) == 0:
+            return False
+        return True
+
+
+@dataclass
 class ExitConfig:
     """Exit strategy configuration."""
 
@@ -114,6 +153,21 @@ class TradingConfig:
             "strategy_parameters": {
                 "macd": {"fast": 13, "slow": 34, "signal": 8},
                 "rsi": {"period": 14, "oversold": 30, "overbought": 70},
+                "timeframe": {
+                    "default": "1d",
+                    "enabled_timeframes": [
+                        "1m",
+                        "5m",
+                        "15m",
+                        "30m",
+                        "1h",
+                        "2h",
+                        "4h",
+                        "1d",
+                        "1w",
+                        "1M",
+                    ],
+                },
                 "exits": {
                     "balanced": {
                         "take_profit": 0.08,
@@ -145,6 +199,14 @@ class TradingConfig:
         params = self.config["strategy_parameters"]["rsi"]
         return RSIConfig(
             period=params["period"], oversold=params["oversold"], overbought=params["overbought"]
+        )
+
+    def get_timeframe_config(self) -> TimeframeConfig:
+        """Get timeframe configuration."""
+        params = self.config.get("strategy_parameters", {}).get("timeframe", {})
+        return TimeframeConfig(
+            default=params.get("default", "1d"),
+            enabled_timeframes=params.get("enabled_timeframes", None),
         )
 
     def get_exit_config(self, strategy: str = None) -> ExitConfig:
@@ -256,6 +318,9 @@ class TradingConfig:
             rsi = self.get_rsi_config()
             assert 0 < rsi.oversold < rsi.overbought < 100
             assert rsi.period > 0
+
+            timeframe = self.get_timeframe_config()
+            assert timeframe.validate(), "Timeframe configuration invalid"
 
             exits = self.get_all_exit_strategies()
             for name, exit_cfg in exits.items():

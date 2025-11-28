@@ -589,6 +589,27 @@ class CLISession:
                 intent = "account_management"
                 confidence = 0.85
 
+            elif any(
+                word in lower_input
+                for word in [
+                    "timeframe",
+                    "interval",
+                    "change timeframe",
+                    "set timeframe",
+                    "5m",
+                    "15m",
+                    "30m",
+                    "1h",
+                    "4h",
+                    "1d",
+                    "1w",
+                    "1m",
+                ]
+            ):
+                # Issue #365: Timeframe management
+                intent = "timeframe_management"
+                confidence = 0.85
+
             elif any(word in lower_input for word in ["help", "what", "how", "command"]):
                 intent = "help"
                 confidence = 0.85
@@ -768,6 +789,29 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         ):
             # Account management (Issue #401)
             await self._handle_account_request(user_input)
+
+        elif any(
+            phrase in input_lower
+            for phrase in [
+                "timeframe",
+                "interval",
+                "change timeframe",
+                "set timeframe",
+                "current timeframe",
+                "show timeframe",
+                "list timeframe",
+                "5m",
+                "15m",
+                "30m",
+                "1h",
+                "4h",
+                "1d",
+                "1w",
+                "1m",
+            ]
+        ):
+            # Timeframe management (Issue #365)
+            await self._handle_timeframe_request(user_input)
 
         else:
             # For everything else, let LLM parser decide: trade vs status_query
@@ -2737,3 +2781,71 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         else:
             # Default: show account list
             self.account_commands.list_accounts()
+
+    async def _handle_timeframe_request(self, user_input: str):
+        """
+        Handle timeframe management requests.
+        Issue #365: Timeframe specification for multi-timeframe analysis
+
+        Supports:
+        - list timeframes / show timeframes
+        - change timeframe to <TF> / set timeframe <TF>
+        - current timeframe
+        - timeframe recommendations
+
+        Args:
+            user_input: User's natural language input
+        """
+        from src.cli.timeframe_commands import get_timeframe_commands
+
+        tf_commands = get_timeframe_commands()
+        input_lower = user_input.lower()
+
+        # Determine intent from input
+        if any(phrase in input_lower for phrase in ["list timeframe", "show timeframe", "available"]):
+            # List all timeframes
+            verbose = "verbose" in input_lower or "detail" in input_lower or "description" in input_lower
+            output = tf_commands.list_timeframes(verbose=verbose)
+            safe_print(output)
+
+        elif any(phrase in input_lower for phrase in ["change timeframe", "set timeframe", "switch to"]):
+            # Extract timeframe from input
+            # Look for timeframe patterns: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M
+            import re
+
+            tf_patterns = [
+                r"\b(1m|5m|15m|30m|1h|2h|4h|1d|1w|1M)\b"
+            ]
+            timeframe = None
+
+            for pattern in tf_patterns:
+                match = re.search(pattern, input_lower)
+                if match:
+                    timeframe = match.group(1)
+                    break
+
+            if timeframe:
+                output = tf_commands.set_timeframe(timeframe)
+                safe_print(output)
+            else:
+                safe_print(
+                    "❌ Please specify a timeframe\n"
+                    "ℹ️  Usage: change timeframe to <TF>\n"
+                    "   Examples: change timeframe to 1h, set timeframe 4h"
+                )
+                safe_print(tf_commands.list_timeframes(verbose=False))
+
+        elif any(phrase in input_lower for phrase in ["current timeframe", "active timeframe", "which timeframe"]):
+            # Show current timeframe
+            output = tf_commands.show_current_timeframe()
+            safe_print(output)
+
+        elif any(phrase in input_lower for phrase in ["recommendation", "suggest", "best timeframe"]):
+            # Show recommendations
+            output = tf_commands.show_timeframe_recommendations()
+            safe_print(output)
+
+        else:
+            # Default: show current timeframe
+            output = tf_commands.show_current_timeframe()
+            safe_print(output)
