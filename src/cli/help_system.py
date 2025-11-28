@@ -12,7 +12,10 @@ Features:
 """
 
 import logging
+import os
 from typing import Dict, List
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +30,6 @@ class HelpSystem:
 
     def _load_help_data(self) -> Dict[str, Dict]:
         """Load help data from YAML configuration file."""
-        import os
-
-        import yaml
 
         config_path = os.path.join(
             os.path.dirname(__file__), "../../config_defaults/help_commands.yaml"

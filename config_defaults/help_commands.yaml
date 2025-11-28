@@ -246,21 +246,48 @@ show orders:
     \ including stops/targets."
 show account:
   category: Information
-  description: Show account details and limits
-  usage: show account
+  description: Show trading account status (equity, cash, positions)
+  usage: show account | account
   examples:
   - show account
+  - account
   aliases:
   - account
   - account info
   tags:
   - information
   - account
+  - portfolio
   related:
   - show portfolio
   - show positions
-  details: "Display account information:\n  - Account type (paper/live)\n  - Total equity\n  - Available\
-    \ cash\n  - Buying power\n  - Account restrictions"
+  - list accounts
+  details: "Display trading account information:\n  - Account type (paper/live)\n  - Total\
+    \ equity\n  - Available cash\n  - Buying power\n  - Pattern Day Trader status\n  - Current\
+    \ positions with P&L\n\nNote: This shows your TRADING account status. To list/switch\
+    \ between multiple configured accounts, use 'list accounts' or 'show accounts' (plural)."
+list accounts:
+  category: Configuration
+  description: List configured trading accounts (Issue #401)
+  usage: list accounts | show accounts
+  examples:
+  - list accounts
+  - show accounts
+  - list accounts verbose
+  aliases:
+  - show accounts
+  - accounts
+  tags:
+  - configuration
+  - account
+  - multi-account
+  related:
+  - switch account
+  - show account
+  details: "List all configured trading accounts for multi-account management.\n\nShows:\n  - Account\
+    \ IDs\n  - Account types (paper/live)\n  - Discovery status\n\nUse 'switch account <ID>'\
+    \ to change active account.\n\nNote: This is for ACCOUNT MANAGEMENT (switching between\
+    \ accounts). To see your current account status/positions, use 'show account' (singular)."
 set execution-mode:
   category: Configuration
   description: Set trading execution mode

@@ -756,7 +756,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             phrase in input_lower
             for phrase in [
                 "list account",
-                "show account",
+                "show accounts",  # Plural = list accounts
                 "switch account",
                 "use account",
                 "change account",
@@ -764,7 +764,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 "refresh account",
             ]
         ):
-            # Account management (Issue #401)
+            # Account management (Issue #401) - multi-account switching/listing
             await self._handle_account_request(user_input)
 
         elif any(
@@ -2759,8 +2759,8 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         input_lower = user_input.lower()
 
         # Determine intent from input
-        if any(phrase in input_lower for phrase in ["list account", "show account"]):
-            # List all accounts
+        if any(phrase in input_lower for phrase in ["list account", "show accounts"]):
+            # List all accounts (note: "show accounts" plural, not "show account" singular)
             verbose = "verbose" in input_lower or "detail" in input_lower
             self.account_commands.list_accounts(verbose=verbose)
 
