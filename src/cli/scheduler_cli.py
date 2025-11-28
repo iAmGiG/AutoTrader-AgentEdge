@@ -88,17 +88,24 @@ class SchedulerCLI:
         print("\n" + "=" * 70)
         print("   📅 Scheduler Management CLI")
         print("=" * 70)
-        print("\nCommands:")
+        print("\n🚀 Quick Start:")
+        print("  setup           - First-time setup wizard (recommended)")
+        print("  start           - Start scheduler daemon")
+        print("  stop            - Stop scheduler daemon")
         print("  status          - Show detailed scheduler status")
+        print("\n⚙️  Configuration:")
         print("  config          - View current configuration")
-        print("  info            - Explain configuration settings")
         print("  edit            - Edit scheduler configuration")
         print("  enable          - Enable scheduler")
         print("  disable         - Disable scheduler")
+        print("\n🧪 Testing & Monitoring:")
         print("  test morning    - Test morning routine")
         print("  test evening    - Test evening routine")
         print("  history         - View execution history")
         print("  next            - Show next scheduled run")
+        print("  logs            - View recent scheduler logs")
+        print("\n📖 Help:")
+        print("  info            - Explain configuration settings")
         print("  help            - Show this help message")
         print("  exit            - Exit scheduler CLI")
         print("")
@@ -110,8 +117,9 @@ class SchedulerCLI:
         Args:
             command: User command string
         """
-        # Initialize scheduler if needed
-        if self.scheduler is None and command not in ["help", "config", "edit"]:
+        # Initialize scheduler if needed (except for commands that don't need it)
+        no_scheduler_commands = ["help", "config", "edit", "setup", "start", "stop", "logs"]
+        if self.scheduler is None and command not in no_scheduler_commands:
             try:
                 self.scheduler = DailyScheduler()
             except Exception as e:
@@ -121,6 +129,15 @@ class SchedulerCLI:
 
         if command == "help":
             self._print_welcome()
+
+        elif command == "setup":
+            await self._run_setup_wizard()
+
+        elif command == "start":
+            self._start_daemon()
+
+        elif command == "stop":
+            self._stop_daemon()
 
         elif command == "status":
             await self._show_status()
@@ -152,6 +169,9 @@ class SchedulerCLI:
 
         elif command == "next":
             self._show_next_run()
+
+        elif command == "logs":
+            self._show_logs()
 
         else:
             print(f"Unknown command: {command}")
@@ -593,6 +613,261 @@ class SchedulerCLI:
 
         except Exception as e:
             print(f"❌ Error calculating next run: {e}")
+
+    async def _run_setup_wizard(self):
+        """
+        Issue #338: First-time setup wizard for layman users.
+
+        Guides through:
+        1. Welcome and explanation
+        2. Schedule frequency (twice daily, morning only, evening only)
+        3. Time configuration
+        4. Save and optionally start
+        """
+        print("\n" + "=" * 70)
+        print("   🧙 Scheduler Setup Wizard")
+        print("=" * 70)
+
+        print("\n📖 What does the scheduler do?")
+        print("   The scheduler automatically runs trading routines at set times:")
+        print("   • Morning routine: Pre-market check, prepare for trading day")
+        print("   • Evening routine: End-of-day review, adjust stops")
+
+        print("\n" + "-" * 70)
+
+        # Step 1: Schedule frequency
+        print("\n1️⃣  How often should the scheduler run?")
+        print("   1. Twice daily (morning + evening) - RECOMMENDED")
+        print("   2. Morning only (pre-market)")
+        print("   3. Evening only (end-of-day)")
+        print("   4. Cancel setup")
+
+        choice = input("\nChoice [1-4]: ").strip()
+
+        if choice == "4":
+            print("\n❌ Setup cancelled")
+            return
+
+        enable_morning = choice in ["1", "2"]
+        enable_evening = choice in ["1", "3"]
+
+        # Step 2: Time configuration
+        config = self._get_default_config()
+
+        if enable_morning:
+            print("\n2️⃣  Morning routine time (default: 9:20 AM ET, 10 min before market)")
+            print("   Press Enter for default, or enter time like '9:00' or '09:30'")
+            time_input = input("   Morning time: ").strip()
+            if time_input:
+                try:
+                    # Parse simple time formats
+                    if ":" in time_input:
+                        parts = time_input.replace("am", "").replace("pm", "").strip().split(":")
+                        hour = int(parts[0])
+                        minute = int(parts[1]) if len(parts) > 1 else 0
+                        config["morning_routine_time"] = f"{hour:02d}:{minute:02d}:00"
+                except ValueError:
+                    print("   ⚠️  Invalid format, using default 9:20 AM")
+
+        if enable_evening:
+            print("\n3️⃣  Evening routine time (default: 3:50 PM ET, 10 min before close)")
+            print("   Press Enter for default, or enter time like '15:30' or '3:45'")
+            time_input = input("   Evening time: ").strip()
+            if time_input:
+                try:
+                    if ":" in time_input:
+                        parts = time_input.replace("pm", "").strip().split(":")
+                        hour = int(parts[0])
+                        if hour < 12:
+                            hour += 12  # Assume PM for evening
+                        minute = int(parts[1]) if len(parts) > 1 else 0
+                        config["evening_routine_time"] = f"{hour:02d}:{minute:02d}:00"
+                except ValueError:
+                    print("   ⚠️  Invalid format, using default 3:50 PM")
+
+        # Disable routines if not selected
+        if not enable_morning:
+            config["morning_routine_enabled"] = False
+        if not enable_evening:
+            config["evening_routine_enabled"] = False
+
+        config["enabled"] = True
+
+        # Step 3: Summary and save
+        print("\n" + "-" * 70)
+        print("\n📋 Configuration Summary:")
+        print(f"   Morning routine: {'✅ Enabled' if enable_morning else '❌ Disabled'}")
+        if enable_morning:
+            print(f"      Time: {config.get('morning_routine_time', 'N/A')} ET")
+        print(f"   Evening routine: {'✅ Enabled' if enable_evening else '❌ Disabled'}")
+        if enable_evening:
+            print(f"      Time: {config.get('evening_routine_time', 'N/A')} ET")
+
+        confirm = input("\nSave this configuration? [yes/no]: ").strip().lower()
+
+        if confirm in ["yes", "y"]:
+            self._save_config(config)
+            print("\n✅ Configuration saved!")
+
+            # Offer to start
+            start_now = input("\nStart scheduler now? [yes/no]: ").strip().lower()
+            if start_now in ["yes", "y"]:
+                self._start_daemon()
+        else:
+            print("\n❌ Setup cancelled, configuration not saved")
+
+    def _start_daemon(self):
+        """
+        Issue #338: Start the scheduler daemon.
+
+        Starts the daemon process in the background.
+        """
+        print("\n🚀 Starting Scheduler Daemon...")
+
+        # Check if already running
+        if self._is_daemon_running():
+            print("⚠️  Scheduler daemon is already running!")
+            print("   Use 'stop' to stop it first, or 'status' to check")
+            return
+
+        # Start daemon in background
+        import subprocess
+        import sys
+
+        try:
+            # Get the python executable and main.py path
+            python_exe = sys.executable
+            main_py = Path(__file__).parent.parent.parent / "main.py"
+
+            if not main_py.exists():
+                # Try alternative path
+                main_py = Path("main.py")
+
+            # Start in background
+            if os.name == "nt":  # Windows
+                # Use START /B for background
+                subprocess.Popen(
+                    [python_exe, str(main_py), "--daemon"],
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:  # Unix/Linux/Mac
+                subprocess.Popen(
+                    [python_exe, str(main_py), "--daemon"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+
+            # Wait a moment and check if it started
+            import time
+            time.sleep(2)
+
+            if self._is_daemon_running():
+                print("✅ Scheduler daemon started successfully!")
+                print("   Use 'status' to see details")
+                print("   Use 'stop' to stop it later")
+            else:
+                print("⚠️  Daemon may have started but couldn't verify")
+                print("   Check logs with 'logs' command")
+
+        except Exception as e:
+            print(f"❌ Failed to start daemon: {e}")
+            print("   Try running manually: python main.py --daemon")
+
+    def _stop_daemon(self):
+        """
+        Issue #338: Stop the scheduler daemon.
+        """
+        print("\n🛑 Stopping Scheduler Daemon...")
+
+        if not self._is_daemon_running():
+            print("ℹ️  Scheduler daemon is not running")
+            return
+
+        # Try to stop gracefully
+        pid_file = Path("state/scheduler.pid")
+
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text())
+
+                if os.name == "nt":  # Windows
+                    import signal
+                    os.kill(pid, signal.SIGTERM)
+                else:  # Unix
+                    os.kill(pid, 15)  # SIGTERM
+
+                # Wait and verify
+                import time
+                time.sleep(2)
+
+                if not self._is_daemon_running():
+                    print("✅ Scheduler daemon stopped successfully!")
+                    # Clean up PID file
+                    pid_file.unlink(missing_ok=True)
+                else:
+                    print("⚠️  Daemon may still be running")
+                    print("   Try: kill -9 " + str(pid))
+
+            except (OSError, ValueError) as e:
+                print(f"⚠️  Could not stop daemon: {e}")
+                print("   You may need to kill the process manually")
+        else:
+            print("⚠️  PID file not found, daemon may not be managed")
+            print("   Check running processes for 'main.py --daemon'")
+
+    def _show_logs(self, lines: int = 50):
+        """
+        Issue #338: Show recent scheduler logs.
+        """
+        print("\n📜 Recent Scheduler Logs")
+        print("=" * 70)
+
+        # Look for log files
+        log_paths = [
+            Path("logs/scheduler.log"),
+            Path("logs/autotrader.log"),
+            Path("state/scheduler_history.json"),
+        ]
+
+        log_file = None
+        for path in log_paths:
+            if path.exists():
+                log_file = path
+                break
+
+        if not log_file:
+            print("ℹ️  No log files found")
+            print("   Logs are created when the scheduler runs")
+            print("   Try 'test morning' or 'start' first")
+            return
+
+        print(f"\nShowing last {lines} lines from: {log_file}\n")
+        print("-" * 70)
+
+        try:
+            with open(log_file, "r") as f:
+                all_lines = f.readlines()
+                recent = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+                for line in recent:
+                    # Highlight errors and warnings
+                    if "ERROR" in line or "error" in line.lower():
+                        print(f"❌ {line.rstrip()}")
+                    elif "WARNING" in line or "warn" in line.lower():
+                        print(f"⚠️  {line.rstrip()}")
+                    elif "SUCCESS" in line or "completed" in line.lower():
+                        print(f"✅ {line.rstrip()}")
+                    else:
+                        print(f"   {line.rstrip()}")
+
+        except Exception as e:
+            print(f"❌ Error reading logs: {e}")
+
+        print("-" * 70)
+        print(f"\n💡 Full logs at: {log_file}")
 
 
 async def main():
