@@ -144,6 +144,13 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **Completed**:
 
+- [x] **Pullback/Breakout Limit Orders** (#344) - ✅ FIXED (Nov 28, 2025)
+  - Pullback orders now place LIMIT orders at 2.5% below current price
+  - Breakout orders place LIMIT orders at 1.5% above current price
+  - GTC (Good-Til-Canceled) ensures orders wait indefinitely
+  - Fixed execution manager to pass entry_limit_price for timing contexts
+  - Merged to feature/development Nov 28, 2025
+
 - [x] **Interactive Help System** (#369) - ✅ COMPLETE
   - `/help` command with category-based organization
   - `/help search KEYWORD` for searchable documentation
@@ -153,7 +160,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 - [x] **Order Cancellation** (#360) - ✅ COMPLETE (B-chat)
   - `cancel all orders` with confirmation
-  - `cancel order <id>` with partial ID matching  
+  - `cancel order <id>` with partial ID matching
   - `cancel <SYMBOL> orders` for symbol-specific cancellation
   - Merged to feature/development Nov 2025
 
