@@ -14,8 +14,8 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import yaml
@@ -355,7 +355,11 @@ class CostEfficientTradeCycle:
             Dict with cache_valid, cache_age_seconds, ttl_seconds
         """
         if self.broker_state_cache is None:
-            return {"cache_valid": False, "cache_age_seconds": None, "ttl_seconds": self.cache_ttl_seconds}
+            return {
+                "cache_valid": False,
+                "cache_age_seconds": None,
+                "ttl_seconds": self.cache_ttl_seconds,
+            }
 
         cache_age = (get_datetime_now() - self.cache_timestamp).total_seconds()
         return {
