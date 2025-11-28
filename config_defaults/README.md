@@ -19,6 +19,12 @@ This directory contains **non-sensitive default configuration files** for the Au
   - Technical indicator confidence calculations (Issue #358)
   - Position management trailing stops (Issue #358)
 
+- **`trading_modes.yaml`** - Risk profile configurations (Issue #400)
+  - Conservative/Moderate/Aggressive preset modes
+  - Per-mode position sizing, stop loss, take profit parameters
+  - Trailing stop configurations per mode
+  - Natural language accessible via CLI
+
 ### Market Scanner Configuration
 
 - **`scanner_config.yaml`** - Market scanner watchlists and operational settings (Issue #358)
@@ -167,6 +173,68 @@ print(f"Signal: {result['action']} on {result['timeframe']} timeframe")
 - `1h, 2h, 4h` - Intraday swing trading
 - `1d` - Daily swing/position trading (validated default, 0.856 Sharpe)
 - `1w, 1M` - Position/long-term trading
+
+### Trading Modes Configuration (Issue #400)
+
+Trading modes are accessible via **natural language** in the CLI:
+
+```bash
+> buy SPY aggressively           # Uses aggressive position sizing
+> conservative buy AAPL 10       # Uses conservative risk settings
+> set risk mode to moderate      # Change session default
+```
+
+**Using Trading Modes Programmatically**:
+
+```python
+from src.core.trading_modes import TradingMode, get_mode_manager
+
+# Get the global mode manager
+mode_manager = get_mode_manager()
+
+# Change mode
+mode_manager.set_mode(TradingMode.AGGRESSIVE)
+
+# Get current parameters
+params = mode_manager.get_parameters()
+print(f"Max position: {params.max_position_pct:.0%}")  # 20%
+print(f"Stop loss: {params.stop_loss:.0%}")           # 8%
+print(f"Take profit: {params.take_profit:.0%}")       # 20%
+```
+
+**Mode Parameters**:
+
+| Mode | Position | Stop | Target | Description |
+|------|----------|------|--------|-------------|
+| Conservative | 5% | 2% | 5% | Capital preservation |
+| Moderate | 10% | 5% | 10% | Balanced (default) |
+| Aggressive | 20% | 8% | 20% | Maximum growth |
+
+**Configuration in `trading_modes.yaml`**:
+
+```yaml
+default_mode: moderate
+
+modes:
+  conservative:
+    max_position_pct: 0.05
+    stop_loss: 0.02
+    take_profit: 0.05
+    trailing_stops:
+      progressive_breakeven_pct: 0.02
+      progressive_lock_25_pct: 0.03
+      progressive_trail_50_pct: 0.04
+
+  moderate:
+    max_position_pct: 0.10
+    stop_loss: 0.05
+    take_profit: 0.10
+
+  aggressive:
+    max_position_pct: 0.20
+    stop_loss: 0.08
+    take_profit: 0.20
+```
 
 ## Sensitive Configuration (config/)
 
