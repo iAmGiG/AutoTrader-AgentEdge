@@ -448,22 +448,68 @@ def main():
     --legacy: Access legacy one-shot commands
     """
     parser = argparse.ArgumentParser(
-        description="AutoGen Trading System - Unified Interactive CLI",
+        description="AutoGen Trading System - Production-Ready Multi-Agent Trading Platform",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  python main.py                               # Interactive CLI (default)
-  python main.py --daemon                      # Run scheduler in background
-  python main.py --legacy test-voter           # Legacy: test voter agent
-  python main.py --legacy check-positions      # Legacy: check positions
+╔════════════════════════════════════════════════════════════════╗
+║                    AUTOGEN-TRADER CLI v2.0                      ║
+║     Production-Ready MACD+RSI Voting (0.856 Sharpe Ratio)      ║
+╚════════════════════════════════════════════════════════════════╝
 
-Interactive CLI Usage:
-  > buy 10 AAPL                # Execute trade
-  > check my alerts            # Show position alerts
-  > show scheduler status      # View scheduler
-  > show portfolio             # Account status
-  > /help                      # Show all commands
-  > /exit                      # Exit
+QUICK START:
+  python main.py                     # Launch interactive trading assistant
+  python main.py --daemon            # Run automated scheduler (background)
+  python main.py --help              # Show this help
+
+INTERACTIVE CLI COMMANDS (type /help for full list):
+
+  Trading:
+    > buy AAPL 10                    # Buy 10 shares of AAPL
+    > sell MSFT 5                    # Sell 5 shares of MSFT
+    > show positions                 # View open positions
+    > show portfolio                 # Portfolio summary
+
+  Workflows:
+    > morning-routine                # Run morning market scan
+    > monitor                        # Monitor positions for exit signals
+    > evening-summary                # Generate end-of-day report
+
+  Configuration (Issue #358, #365):
+    > show config-file               # View YAML config files
+    > show timeframe                 # Show current timeframe (1d default)
+    > set timeframe 1h               # Change to hourly timeframe
+    > show watchlist                 # View scanner watchlist
+
+  Forward Testing (Issue #324):
+    > forward-test start TEST_NAME   # Start 30-day validation test
+    > forward-test report TEST_NAME  # Generate test report
+    > forward-test status            # Check test progress
+
+  Scheduler & Automation:
+    > show scheduler                 # View scheduler status
+    > enable scheduler               # Enable automated trading
+    > disable scheduler              # Disable automation
+
+  Help:
+    > /help                          # Show all commands
+    > /help COMMAND                  # Detailed help for command
+    > /help search KEYWORD           # Search commands
+    > /exit                          # Exit CLI
+
+FEATURES:
+  ✅ VoterAgent (MACD+RSI) - 0.856 Sharpe, production-validated
+  ✅ Configuration System - YAML-based strategy parameters
+  ✅ Timeframe Support - Trade on 1m to 1M timeframes
+  ✅ Forward Testing - 30-day validation protocol
+  ✅ Daily Scheduler - Automated morning/evening routines
+  ✅ Risk Management - Portfolio limits & position sizing
+  ✅ Paper Trading - Test strategies without real money
+
+LEGACY COMMANDS (deprecated, use interactive CLI instead):
+  python main.py --legacy test-voter           # Test VoterAgent
+  python main.py --legacy check-positions      # Check positions
+  python main.py --legacy paper-trade SYMBOL   # Paper trade symbol
+  python main.py --legacy analysis             # Generate reports
         """,
     )
 

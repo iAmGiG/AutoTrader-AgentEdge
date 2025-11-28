@@ -341,6 +341,257 @@ class HelpSystem:
                     "Use --all to see all available config options."
                 ),
             },
+            # ==================== FORWARD TESTING COMMANDS ====================
+            "forward-test start": {
+                "category": "Testing",
+                "description": "Start a new 30-day forward test",
+                "usage": "forward-test start TEST_NAME [--capital AMOUNT]",
+                "examples": [
+                    "forward-test start production_validation_2025",
+                    "forward-test start my_test --capital 10000",
+                ],
+                "aliases": ["ftest start", "test start"],
+                "tags": ["testing", "validation", "forward-testing"],
+                "related": ["forward-test report", "forward-test status"],
+                "details": (
+                    "Initialize a new 30-day forward testing validation cycle.\n"
+                    "Forward testing validates trading strategy performance before live deployment.\n\n"
+                    "The test will:\n"
+                    "  - Track all signals generated over 30 days\n"
+                    "  - Monitor trade outcomes and P&L\n"
+                    "  - Calculate performance metrics (Sharpe, win rate, drawdown)\n"
+                    "  - Generate go/no-go recommendation after 30 days\n\n"
+                    "Options:\n"
+                    "  --capital AMOUNT    Starting capital for test (default: $10,000)"
+                ),
+            },
+            "forward-test report": {
+                "category": "Testing",
+                "description": "Generate forward test reports",
+                "usage": "forward-test report TEST_NAME [--type {daily|weekly|final}]",
+                "examples": [
+                    "forward-test report production_validation_2025",
+                    "forward-test report my_test --type daily",
+                    "forward-test report my_test --type weekly --week 2",
+                ],
+                "aliases": ["ftest report", "test report"],
+                "tags": ["testing", "reporting"],
+                "related": ["forward-test start", "forward-test status"],
+                "details": (
+                    "Generate performance reports for ongoing or completed forward tests.\n\n"
+                    "Report Types:\n"
+                    "  daily   - Daily summary of signals and trades\n"
+                    "  weekly  - Week 1-4 performance breakdown\n"
+                    "  final   - 30-day validation report with go/no-go recommendation\n\n"
+                    "Reports include:\n"
+                    "  - Sharpe ratio and risk-adjusted returns\n"
+                    "  - Win rate and profit factor\n"
+                    "  - Maximum drawdown\n"
+                    "  - Trade-by-trade breakdown"
+                ),
+            },
+            "forward-test status": {
+                "category": "Testing",
+                "description": "Show status of running forward tests",
+                "usage": "forward-test status [TEST_NAME]",
+                "examples": [
+                    "forward-test status",
+                    "forward-test status production_validation_2025",
+                ],
+                "aliases": ["ftest status", "test status"],
+                "tags": ["testing", "status"],
+                "related": ["forward-test start", "forward-test report"],
+                "details": (
+                    "Display status of active forward testing cycles.\n\n"
+                    "Shows:\n"
+                    "  - Days completed (X/30)\n"
+                    "  - Number of signals generated\n"
+                    "  - Open positions\n"
+                    "  - Current P&L\n"
+                    "  - Next milestone (week 1, 2, 3, 4, or final)\n\n"
+                    "Without TEST_NAME, shows all active tests."
+                ),
+            },
+            # ==================== CONFIGURATION COMMANDS (ENHANCED) ====================
+            "show config-file": {
+                "category": "Configuration",
+                "description": "Show current configuration file settings",
+                "usage": "show config-file [--file {trading|scanner|paths|market-hours}]",
+                "examples": [
+                    "show config-file",
+                    "show config-file --file trading",
+                    "show config-file --file scanner",
+                ],
+                "aliases": ["config-file", "show yaml"],
+                "tags": ["configuration", "files", "issue-358"],
+                "related": ["show config", "edit config"],
+                "details": (
+                    "Display contents of configuration YAML files (Issue #358).\n\n"
+                    "Configuration Files:\n"
+                    "  trading      - Strategy parameters (MACD, RSI, exits, timeframe)\n"
+                    "  scanner      - Market scanner watchlist and settings\n"
+                    "  paths        - File paths and directory structure\n"
+                    "  market-hours - Market hours and holiday calendar\n\n"
+                    "Without --file, shows summary of all config files.\n\n"
+                    "Note: Config files are in config_defaults/ directory."
+                ),
+            },
+            "show timeframe": {
+                "category": "Configuration",
+                "description": "Show current trading timeframe",
+                "usage": "show timeframe",
+                "examples": [
+                    "show timeframe",
+                ],
+                "aliases": ["timeframe"],
+                "tags": ["configuration", "timeframe", "issue-365"],
+                "related": ["set timeframe", "show config"],
+                "details": (
+                    "Display the current timeframe used for technical analysis (Issue #365).\n\n"
+                    "Shows:\n"
+                    "  - Strategy-level timeframe (applies to all indicators)\n"
+                    "  - Indicator-specific overrides (if any)\n"
+                    "  - Supported timeframes: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M\n\n"
+                    "Default is 1d (daily) - validated with 0.856 Sharpe ratio."
+                ),
+            },
+            "set timeframe": {
+                "category": "Configuration",
+                "description": "Change trading timeframe",
+                "usage": "set timeframe {1m|5m|15m|30m|1h|2h|4h|1d|1w|1M}",
+                "examples": [
+                    "set timeframe 1d",
+                    "set timeframe 1h",
+                    "set timeframe 15m",
+                ],
+                "aliases": ["timeframe"],
+                "tags": ["configuration", "timeframe", "issue-365"],
+                "related": ["show timeframe", "show config"],
+                "details": (
+                    "Change the timeframe for technical analysis (Issue #365).\n\n"
+                    "Supported Timeframes:\n"
+                    "  1m, 5m, 15m, 30m - Scalping/day trading\n"
+                    "  1h, 2h, 4h        - Intraday swing trading\n"
+                    "  1d                - Daily swing/position trading (validated default)\n"
+                    "  1w, 1M            - Position/long-term trading\n\n"
+                    "⚠️  Note: Only 1d timeframe has been validated (0.856 Sharpe).\n"
+                    "   Other timeframes are experimental - use with caution.\n\n"
+                    "Timeframe affects:\n"
+                    "  - MACD and RSI calculations\n"
+                    "  - Signal generation frequency\n"
+                    "  - Stop loss and take profit levels"
+                ),
+            },
+            "show indicators": {
+                "category": "Configuration",
+                "description": "List available technical indicators",
+                "usage": "show indicators [--detailed]",
+                "examples": [
+                    "show indicators",
+                    "show indicators --detailed",
+                ],
+                "aliases": ["indicators", "list indicators"],
+                "tags": ["configuration", "indicators", "analysis"],
+                "related": ["show config", "set voter-system"],
+                "details": (
+                    "Display all available technical indicators and their current parameters.\n\n"
+                    "Current Indicators:\n"
+                    "  MACD  - Moving Average Convergence Divergence (13/34/8)\n"
+                    "  RSI   - Relative Strength Index (14, 30/70 levels)\n\n"
+                    "Use --detailed to see full parameter descriptions and formulas.\n\n"
+                    "Note: MACD uses Fibonacci parameters optimized across tech stocks."
+                ),
+            },
+            "show watchlist": {
+                "category": "Configuration",
+                "description": "Show market scanner watchlist",
+                "usage": "show watchlist [--category {etf|tech|all}]",
+                "examples": [
+                    "show watchlist",
+                    "show watchlist --category tech",
+                    "show watchlist --category etf",
+                ],
+                "aliases": ["watchlist", "symbols"],
+                "tags": ["configuration", "scanner", "watchlist"],
+                "related": ["show config-file", "morning-routine"],
+                "details": (
+                    "Display symbols in the market scanner watchlist.\n\n"
+                    "Categories:\n"
+                    "  etf  - Core ETFs (SPY, QQQ, IWM, VTI) + Leverage (TQQQ, SQQQ)\n"
+                    "  tech - Tech giants (AAPL, MSFT, NVDA, TSLA, META, GOOGL, AMZN)\n"
+                    "  all  - Complete watchlist (default)\n\n"
+                    "Watchlist is configurable in config_defaults/scanner_config.yaml (Issue #358)."
+                ),
+            },
+            # ==================== SCHEDULER COMMANDS ====================
+            "show scheduler": {
+                "category": "System",
+                "description": "Show daily scheduler status",
+                "usage": "show scheduler",
+                "examples": [
+                    "show scheduler",
+                ],
+                "aliases": ["scheduler", "scheduler status"],
+                "tags": ["system", "scheduler", "automation"],
+                "related": ["enable scheduler", "disable scheduler"],
+                "details": (
+                    "Display status of the daily automated scheduler.\n\n"
+                    "Shows:\n"
+                    "  - Scheduler state (enabled/disabled)\n"
+                    "  - Next scheduled run (morning 9:20 AM ET or evening 3:50 PM ET)\n"
+                    "  - Last run time and result\n"
+                    "  - Configured tasks\n\n"
+                    "The scheduler automates:\n"
+                    "  - Morning market scan\n"
+                    "  - Position monitoring\n"
+                    "  - Stop loss adjustments\n"
+                    "  - Evening summary reports"
+                ),
+            },
+            "enable scheduler": {
+                "category": "System",
+                "description": "Enable daily automated scheduler",
+                "usage": "enable scheduler",
+                "examples": [
+                    "enable scheduler",
+                ],
+                "aliases": ["scheduler on", "start scheduler"],
+                "tags": ["system", "scheduler", "automation"],
+                "related": ["disable scheduler", "show scheduler"],
+                "details": (
+                    "Enable the daily automated trading scheduler.\n\n"
+                    "When enabled, the scheduler runs:\n"
+                    "  Morning (9:20 AM ET):\n"
+                    "    - Market scan for opportunities\n"
+                    "    - Signal generation\n"
+                    "    - Trade execution (if execution_mode = AUTO)\n\n"
+                    "  Evening (3:50 PM ET):\n"
+                    "    - Position review\n"
+                    "    - Stop loss updates\n"
+                    "    - Daily summary report\n\n"
+                    "⚠️  Note: Scheduler respects your execution_mode setting."
+                ),
+            },
+            "disable scheduler": {
+                "category": "System",
+                "description": "Disable daily automated scheduler",
+                "usage": "disable scheduler",
+                "examples": [
+                    "disable scheduler",
+                ],
+                "aliases": ["scheduler off", "stop scheduler"],
+                "tags": ["system", "scheduler"],
+                "related": ["enable scheduler", "show scheduler"],
+                "details": (
+                    "Disable the daily automated scheduler.\n\n"
+                    "Disabling the scheduler means:\n"
+                    "  - No automatic morning scans\n"
+                    "  - No automatic position monitoring\n"
+                    "  - No automatic stop adjustments\n"
+                    "  - You must run commands manually\n\n"
+                    "Existing positions remain active - disabling scheduler doesn't close trades."
+                ),
+            },
             # ==================== HELP & SYSTEM COMMANDS ====================
             "help": {
                 "category": "Help",
@@ -418,13 +669,90 @@ class HelpSystem:
 
         return "\n".join(output)
 
+    def _get_similar_commands(self, command: str, max_suggestions: int = 3) -> List[str]:
+        """
+        Get similar command suggestions using fuzzy matching.
+
+        Uses Levenshtein-like distance to find commands that might be typos.
+
+        Args:
+            command: User's input command
+            max_suggestions: Maximum number of suggestions to return
+
+        Returns:
+            List of similar command names
+        """
+
+        def levenshtein_distance(s1: str, s2: str) -> int:
+            """Calculate edit distance between two strings."""
+            if len(s1) < len(s2):
+                return levenshtein_distance(s2, s1)
+            if len(s2) == 0:
+                return len(s1)
+
+            previous_row = range(len(s2) + 1)
+            for i, c1 in enumerate(s1):
+                current_row = [i + 1]
+                for j, c2 in enumerate(s2):
+                    insertions = previous_row[j + 1] + 1
+                    deletions = current_row[j] + 1
+                    substitutions = previous_row[j] + (c1 != c2)
+                    current_row.append(min(insertions, deletions, substitutions))
+                previous_row = current_row
+
+            return previous_row[-1]
+
+        # Calculate distances for all commands and aliases
+        candidates = []
+        command_lower = command.lower()
+
+        for cmd in self.commands.keys():
+            distance = levenshtein_distance(command_lower, cmd.lower())
+            # Only suggest if edit distance is reasonable (< 40% of command length)
+            if distance <= max(2, len(command) * 0.4):
+                candidates.append((cmd, distance))
+
+            # Also check aliases
+            aliases = self.commands[cmd].get("aliases", [])
+            for alias in aliases:
+                distance = levenshtein_distance(command_lower, alias.lower())
+                if distance <= max(2, len(command) * 0.4):
+                    candidates.append((cmd, distance))
+
+        # Sort by distance and return top suggestions
+        candidates.sort(key=lambda x: x[1])
+        suggestions = [cmd for cmd, _ in candidates[:max_suggestions]]
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_suggestions = []
+        for cmd in suggestions:
+            if cmd not in seen:
+                seen.add(cmd)
+                unique_suggestions.append(cmd)
+
+        return unique_suggestions[:max_suggestions]
+
     def get_help_command(self, command: str) -> str:
         """Get detailed help for a specific command."""
         # Handle partial command names
         matching = [cmd for cmd in self.commands.keys() if cmd.startswith(command.lower())]
 
         if not matching:
-            return f"❌ Command '{command}' not found. Type '/help' to see all commands."
+            # Try to suggest similar commands
+            suggestions = self._get_similar_commands(command)
+            error_msg = f"❌ Command '{command}' not found."
+
+            if suggestions:
+                error_msg += "\n\n💡 Did you mean one of these?\n"
+                for suggestion in suggestions:
+                    desc = self.commands[suggestion].get("description", "")
+                    error_msg += f"  - {suggestion:25} {desc}\n"
+                error_msg += "\nType '/help COMMAND' to see details for any command."
+            else:
+                error_msg += " Type '/help' to see all commands."
+
+            return error_msg
 
         if len(matching) > 1:
             return f"❓ Ambiguous: '{command}' matches: {', '.join(matching)}"
