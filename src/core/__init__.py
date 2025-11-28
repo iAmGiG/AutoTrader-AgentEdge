@@ -12,17 +12,17 @@ from .interfaces import ExecutionManager, InputParser, RiskManager, StrategyAnal
 
 # New plugin architecture
 from .models import (
-    AnalysisResult,
-    AssetType,
-    OrderResult,
-    OrderType,
-    RiskAssessment,
-    SessionState,
-    Signal,
-    TimeInForce,
-    TradeDecision,
-    TradeRequest,
-    TradeSuggestion,
+                         AnalysisResult,
+                         AssetType,
+                         OrderResult,
+                         OrderType,
+                         RiskAssessment,
+                         SessionState,
+                         Signal,
+                         TimeInForce,
+                         TradeDecision,
+                         TradeRequest,
+                         TradeSuggestion,
 )
 from .trading_orchestrator import TradingOrchestrator
 
