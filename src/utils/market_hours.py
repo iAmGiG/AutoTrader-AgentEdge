@@ -30,7 +30,6 @@ def _get_alpaca_calendar():
     """
     try:
         from alpaca.trading.client import TradingClient
-
         from config_defaults.env_config import get_env_config
 
         config = get_env_config()
