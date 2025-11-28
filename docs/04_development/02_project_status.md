@@ -118,15 +118,19 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Multi-Account Manager** | 🚧 In Progress | Account selection, API-first discovery (#401) |
+| **Multi-Account Manager** | ✅ Complete | Account selection, API-first discovery (#401) |
 | **Security Architecture** | 📋 Planned | Credential management, OS keyring (#402) |
 
-**#401 - Multi-Account Portfolio Management**:
+**#401 - Multi-Account Portfolio Management** - ✅ COMPLETE:
 
-- Account selection via CLI `--account` flag
-- API-first discovery (Alpaca tells us account details)
-- Automatic paper vs live detection
-- Alpaca-only for Phase 1 (multi-broker deferred to Phase 5)
+- ✅ Account selection via CLI `--account` flag
+- ✅ Natural language commands: "list accounts", "switch to account X"
+- ✅ Agent tools: AutoGen-compatible function calls
+- ✅ API-first discovery (Alpaca tells us account details)
+- ✅ Automatic paper vs live detection
+- ✅ Legacy single-account config backward compatibility
+- ✅ 19 unit tests (all passing)
+- 📁 Files: `account_manager.py`, `account_commands.py`, `account_tools.py`, `accounts_config.py`
 
 **#402 - Security Architecture** (separate from #401):
 
@@ -134,6 +138,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - Secure credential provider interface
 - Paper/live account isolation
 - Audit logging without credential exposure
+- TODO markers added in #401 code for future integration
 
 ### Phase 3A: CLI & UX Improvements ✅ IN PROGRESS (Nov 2025)
 
@@ -607,15 +612,19 @@ python main.py test-voter
 
 ### Immediate (Next 2-4 Weeks) - P0 CRITICAL
 
-**#401 - Multi-Account Portfolio Management - 🚧 IN PROGRESS**:
+**#401 - Multi-Account Portfolio Management - ✅ COMPLETE**:
 
-- Account selection via `--account` CLI flag or interactive selection
-- API-first discovery (Alpaca API tells us account details)
-- Automatic paper vs live detection from API response
-- Simple config-based credentials (security hardening in #402)
-- Files: `account_manager.py`, `account_context.py`, `accounts_config.py`
+- ✅ Account selection via `--account` CLI flag
+- ✅ Natural language commands: "list accounts", "switch to account X"
+- ✅ Agent tools for AutoGen function calls
+- ✅ API-first discovery (Alpaca API tells us account details)
+- ✅ Automatic paper vs live detection from API response
+- ✅ Legacy single-account config backward compatibility
+- ✅ Simple config-based credentials (security hardening in #402)
+- ✅ 19 unit tests (all passing)
+- 📁 Files: `account_manager.py`, `account_commands.py`, `account_tools.py`, `accounts_config.py`
 
-**Branch**: `feature/multi-account-401` (worktree: AutoGen-Trader-wt-401)
+**Branch**: `feature/multi-account-401` - Ready for merge to `feature/development`
 
 **#323 - Trading Pipeline - ✅ COMPLETE**:
 
