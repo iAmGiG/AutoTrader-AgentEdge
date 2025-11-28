@@ -252,7 +252,7 @@ class SchedulerCLI:
         handler_name = cmd_def.get("handler", cmd_name)
         handler = getattr(self, f"_{handler_name}", None)
 
-        if not handler:
+        if not handler or not callable(handler):
             print(f"{_get_emoji('cross_red', '❌')} Handler not implemented: {handler_name}")
             return
 

@@ -148,7 +148,7 @@ class AlpacaExecutionManager(ExecutionManager):
                 take_profit_pct=take_profit_pct * 100,
             )
             if MESSAGE_LOADER_AVAILABLE
-            else f"Using strategy config: stop_loss={stop_loss_pct*100}%, take_profit={take_profit_pct*100}%"
+            else f"Using strategy config: stop_loss={stop_loss_pct * 100}%, take_profit={take_profit_pct * 100}%"
         )
         logger.info(msg)
 
@@ -286,7 +286,9 @@ class AlpacaExecutionManager(ExecutionManager):
             if self.order_manager and hasattr(self.order_manager, "client"):
                 try:
                     # Use Alpaca's market data client for most accurate price
-                    from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+                    from src.data_sources.sources.market.alpaca_market_data import (
+                        AlpacaMarketData,
+                    )
 
                     market_data = AlpacaMarketData()
 
@@ -456,6 +458,7 @@ class AlpacaExecutionManager(ExecutionManager):
             # Execute via OrderManager (only BUY orders reach here)
             # AlpacaOrderManager.place_bracket_order handles entry + stop + target
             # Note: Uses different parameter names than generic OrderManager
+            error_data = None  # Initialize for exception handler
             try:
                 # Issue #344: Use limit entry for pullback/breakout orders
                 # LIMIT orders use entry_price as limit price (waits for price)
@@ -495,7 +498,7 @@ class AlpacaExecutionManager(ExecutionManager):
                 # Check if this is an off-hours bracket validation error using error codes
                 # error_data was set above if the error came from order_manager
                 # If not set, create minimal error_data for analysis
-                if "error_data" not in locals():
+                if error_data is None:
                     error_data = {
                         "status": "error",
                         "message": str(e),

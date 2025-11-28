@@ -8,30 +8,30 @@ This package provides:
 """
 
 from .agent_bus import (
-                        AgentBus,
-                        AgentMessage,
-                        EventType,
-                        Subscription,
-                        create_message,
-                        get_agent_bus,
-                        publish_result,
-                        publish_signal,
-                        publish_trade_executed,
+    AgentBus,
+    AgentMessage,
+    EventType,
+    Subscription,
+    create_message,
+    get_agent_bus,
+    publish_result,
+    publish_signal,
+    publish_trade_executed,
 )
 
 # Agent Infrastructure (Issue #390)
 from .agent_factory import (
-                        AgentConfig,
-                        AgentFactory,
-                        AgentInstance,
-                        AgentType,
-                        create_agent,
-                        create_executor,
-                        create_orchestrator,
-                        create_risk,
-                        create_scanner,
-                        create_voter,
-                        get_agent_factory,
+    AgentConfig,
+    AgentFactory,
+    AgentInstance,
+    AgentType,
+    create_agent,
+    create_executor,
+    create_orchestrator,
+    create_risk,
+    create_scanner,
+    create_voter,
+    get_agent_factory,
 )
 from .executor_agent import ExecutorAgent, create_executor_agent
 from .risk_agent import RiskAgent, create_risk_agent
@@ -39,11 +39,11 @@ from .scanner_agent import ScanConfig, ScannerAgent, ScanResult, create_scanner_
 
 # TradingOrchestrator - Multi-agent workflow coordination (Issue #389)
 from .trading_orchestrator import (
-                        ExecutionMode,
-                        TradingOrchestrator,
-                        WorkflowPhase,
-                        WorkflowState,
-                        create_trading_orchestrator,
+    ExecutionMode,
+    TradingOrchestrator,
+    WorkflowPhase,
+    WorkflowState,
+    create_trading_orchestrator,
 )
 
 # Production-ready agents

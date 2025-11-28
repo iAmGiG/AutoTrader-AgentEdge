@@ -60,7 +60,7 @@ DEFAULT_WATCHLIST = [
 class ScanConfig:
     """Configuration for market scanning."""
 
-    watchlist: List[str] = field(default_factory=lambda: DEFAULT_WATCHLIST.copy())
+    watchlist: List[str] = field(default_factory=list)
     lookback_days: int = 60  # Days of price data to fetch
     max_concurrent_requests: int = 5  # Rate limiting
     request_delay_seconds: float = 0.2  # Delay between requests

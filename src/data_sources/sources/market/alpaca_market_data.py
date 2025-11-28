@@ -10,6 +10,9 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+# Smart cache logic: Live data is priority for current trading day
+from src.utils.date_utils import format_data_status, get_datetime_now
+
 try:
     from alpaca.data import StockHistoricalDataClient
     from alpaca.data.models import Bar, Quote, Snapshot, Trade
@@ -133,9 +136,6 @@ class AlpacaMarketData:
         # Check cache first
         cached_data = []
         symbols_to_fetch = []
-
-        # Smart cache logic: Live data is priority for current trading day
-        from src.utils.date_utils import format_data_status, get_datetime_now
 
         end_dt_check = pd.to_datetime(end).date()
         today = get_datetime_now().date()

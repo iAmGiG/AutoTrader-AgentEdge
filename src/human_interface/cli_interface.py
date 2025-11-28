@@ -170,9 +170,9 @@ class TradingCLI:
             risk_validation = trade_info["risk_validation"]
             trade_summary = risk_validation["trade_summary"]
 
-            print(f"\n{'='*40}")
+            print(f"\n{'=' * 40}")
             print(f"EXECUTE TRADE: {symbol}?")
-            print(f"{'='*40}")
+            print(f"{'=' * 40}")
             print(f"Entry Price: ${trade_summary['entry_price']:.2f}")
             print(f"Shares: {trade_summary['recommended_shares']}")
             print(f"Position Value: ${trade_summary['position_value']:,.2f}")

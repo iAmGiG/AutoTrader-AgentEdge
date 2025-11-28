@@ -139,6 +139,7 @@ class AgentBus:
     """
 
     _instance: Optional["AgentBus"] = None
+    _initialized: bool = False  # Class-level declaration for Pylint
 
     def __new__(cls):
         """Singleton pattern for global bus access."""

@@ -181,7 +181,7 @@ def adx(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> 
 def ichimoku(
     high: pd.Series,
     low: pd.Series,
-    close: pd.Series,
+    _close: pd.Series,  # Unused but kept for API compatibility
     conv_period: int = 9,
     base_period: int = 26,
     span_b_period: int = 52,

@@ -64,7 +64,7 @@ class DecisionFormatter:
 
             # Trade details
             prompt_parts.extend(
-                [f"{'='*40}", f"📊 OPPORTUNITY #{approved_count}: {symbol}", f"{'='*40}", ""]
+                [f"{'=' * 40}", f"📊 OPPORTUNITY #{approved_count}: {symbol}", f"{'=' * 40}", ""]
             )
 
             # Signal analysis
@@ -142,9 +142,9 @@ class DecisionFormatter:
             prompt_parts.extend(
                 [
                     "🎲 EXPECTED OUTCOMES:",
-                    f"   Profit Target (+{take_profit_pct*100:.0f}%): ${profit_target:+,.2f}",
-                    f"   Stop Loss (-{stop_loss_pct*100:.0f}%): ${-loss_target:,.2f}",
-                    f"   Expected Value: +{(take_profit_pct - stop_loss_pct)*50:.1f}% at 50% win rate",
+                    f"   Profit Target (+{take_profit_pct * 100:.0f}%): ${profit_target:+,.2f}",
+                    f"   Stop Loss (-{stop_loss_pct * 100:.0f}%): ${-loss_target:,.2f}",
+                    f"   Expected Value: +{(take_profit_pct - stop_loss_pct) * 50:.1f}% at 50% win rate",
                     "",
                 ]
             )

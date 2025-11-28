@@ -14,6 +14,7 @@ class TimeframeCommands:
     """CLI commands for timeframe management."""
 
     _instance = None
+    _initialized: bool = False  # Class-level declaration for Pylint
 
     def __new__(cls):
         """Singleton pattern."""
