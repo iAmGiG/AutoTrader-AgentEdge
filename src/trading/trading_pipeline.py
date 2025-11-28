@@ -232,8 +232,7 @@ class TradingPipeline:
             logger.info("=" * 80)
             status_msg = self.pipeline_status.value.upper()
             phase_progress = (
-                f"{self.current_metrics.phases_completed}/"
-                f"{self.current_metrics.total_phases}"
+                f"{self.current_metrics.phases_completed}/" f"{self.current_metrics.total_phases}"
             )
             logger.info(f"PIPELINE COMPLETE: {status_msg} ({phase_progress} phases)")
             logger.info(
