@@ -239,6 +239,10 @@ class TradingOrchestrator:
         take_profit = analysis.take_profit
         reasoning = list(analysis.reasoning)  # Copy to avoid modifying original
 
+        # Analysis timeframe context for user display
+        # Currently using daily (1D) candles for MACD+RSI analysis
+        analysis_timeframe = "1D"  # TODO: Make configurable if needed
+
         if request.timing in ("pullback", "dip"):
             # Suggest entry 2.5% below current price for pullback/dip timing
             pullback_pct = 0.025
@@ -247,7 +251,9 @@ class TradingOrchestrator:
             stop_distance_pct = (analysis.entry_price - analysis.stop_loss) / analysis.entry_price
             stop_loss = round(entry_price * (1 - stop_distance_pct), 2)
             reasoning.insert(
-                0, f"⏳ Pullback entry: limit order 2.5% below current (${entry_price})"
+                0,
+                f"⏳ Pullback entry ({analysis_timeframe} analysis): "
+                f"limit @ ${entry_price} (2.5% below current, GTC)",
             )
             logger.info(
                 f"Timing=pullback: adjusted entry from ${analysis.entry_price} to ${entry_price}"
@@ -262,7 +268,9 @@ class TradingOrchestrator:
             ) / analysis.entry_price
             take_profit = round(entry_price * (1 + target_distance_pct), 2)
             reasoning.insert(
-                0, f"🚀 Breakout entry: limit order 1.5% above current (${entry_price})"
+                0,
+                f"🚀 Breakout entry ({analysis_timeframe} analysis): "
+                f"limit @ ${entry_price} (1.5% above current, GTC)",
             )
             logger.info(
                 f"Timing=breakout: adjusted entry from ${analysis.entry_price} to ${entry_price}"
