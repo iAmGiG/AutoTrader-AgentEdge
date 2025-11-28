@@ -159,6 +159,11 @@ class CostEfficientTradeCycle:
         self.cache_timestamp: Optional[datetime] = None
         self.cache_ttl_seconds: int = 60  # 1 minute cache TTL
 
+        # Issue #337 Phase 2: Piggyback alert updates
+        self.cached_alerts: List[Any] = []  # PositionAlertSummary objects
+        self.last_alert_check: Optional[datetime] = None
+        self.alert_refresh_interval: int = 300  # 5 minutes between alert checks
+
         logger.info("CostEfficientTradeCycle initialized with alert monitoring and state caching")
 
     def load_local_state(self) -> Dict[str, Any]:
@@ -322,6 +327,9 @@ class CostEfficientTradeCycle:
             self.broker_state_cache = broker_state
             self.cache_timestamp = get_datetime_now()
 
+            # Issue #337 Phase 2: Piggyback alert check if enough time has passed
+            self._maybe_refresh_alerts(broker_state)
+
             return broker_state
 
         except Exception as e:
@@ -355,6 +363,54 @@ class CostEfficientTradeCycle:
             "cache_age_seconds": round(cache_age, 1),
             "ttl_seconds": self.cache_ttl_seconds,
         }
+
+    def _should_refresh_alerts(self) -> bool:
+        """
+        Check if alerts should be refreshed.
+
+        Returns:
+            True if enough time has passed since last alert check
+        """
+        if self.last_alert_check is None:
+            return True
+        elapsed = (get_datetime_now() - self.last_alert_check).total_seconds()
+        return elapsed >= self.alert_refresh_interval
+
+    def _maybe_refresh_alerts(self, broker_state: Dict[str, Any]):
+        """
+        Opportunistically refresh alerts if enough time has passed.
+
+        Issue #337 Phase 2: This is called from fetch_broker_state() to
+        "piggyback" alert checks on broker state fetches without additional API calls.
+
+        Args:
+            broker_state: Current broker state (already fetched)
+        """
+        if not self._should_refresh_alerts():
+            return
+
+        try:
+            self.cached_alerts = self.check_position_alerts(broker_state)
+            self.last_alert_check = get_datetime_now()
+            logger.debug(f"Background alert refresh: {len(self.cached_alerts)} alerts")
+        except Exception as e:
+            logger.warning(f"Failed to refresh alerts: {e}")
+
+    def get_current_alerts(self) -> List[Any]:
+        """
+        Get cached alerts without additional API calls.
+
+        Issue #337 Phase 2: Returns cached alerts. If alerts are stale or missing,
+        triggers a broker state fetch which will refresh alerts via piggyback.
+
+        Returns:
+            List of PositionAlertSummary objects
+        """
+        if not self.cached_alerts or self._should_refresh_alerts():
+            # Trigger broker fetch which will piggyback alert refresh
+            self.fetch_broker_state()
+
+        return self.cached_alerts
 
     def _extract_stop_target_from_orders(
         self, symbol: str, broker_state: Dict[str, Any], entry_price: float = None
