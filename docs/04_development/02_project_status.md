@@ -29,18 +29,18 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | **Market Data** | ✅ Complete | Alpaca + Polygon + Alpha Vantage | Multi-source with fallback |
 | **Documentation** | ✅ Complete | Restructured with numbering | Presentation-ready |
 
-### ✅ Phase 2 Agents Complete (Nov 2025)
+### 🚧 Phase 2 Agents in Development (Nov 2025)
 
-| Component | Status | Completed | Notes |
-|-----------|--------|-----------|-------|
-| **ScannerAgent** | ✅ Complete | Nov 2025 | Multi-ticker MACD+RSI scanning (#386) |
-| **RiskAgent** | ✅ Complete | Nov 2025 | Position sizing, circuit breaker (#387) |
-| **ExecutorAgent** | ✅ Complete | Nov 2025 | Trade execution, simulation mode (#388) |
-| **TradingOrchestrator** | ✅ Complete | Nov 2025 | Workflow management, state persistence (#389) |
-| **Human-in-Loop CLI** | ✅ Complete | Nov 2025 | Trade assistant with approval modes |
-| **Agent Factory & Bus** | ✅ Complete | Nov 2025 | Pub-sub messaging infrastructure (#390) |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **ScannerAgent** | 🚧 Implementation | Multi-ticker MACD+RSI scanning (#386) |
+| **RiskAgent** | 🚧 Implementation | Position sizing, circuit breaker (#387) |
+| **ExecutorAgent** | 🚧 Implementation | Trade execution, simulation mode (#388) |
+| **TradingOrchestrator** | 🚧 Implementation | Workflow management, state persistence (#389) |
+| **Agent Factory & Bus** | 🚧 Refactoring | Agent Bus infrastructure (#390) for pub-sub messaging. EventBus duplicate (#397) rejected. |
+| **Human-in-Loop CLI** | ✅ Complete | Interactive trade approval interface with multiple execution modes |
 
-**Branch Status**: All agent work in `feature/development` - ready for final testing before merge to `development`.
+**Branch Status**: Phase 2 agent implementations in active refactoring. Architecture decision: using Agent Bus (#390) for inter-agent communication. Event Bus (#397) duplicate discarded. Not ready for merge until refactoring complete.
 
 ---
 
@@ -74,35 +74,33 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **High Priority**:
 
-- [ ] **Human-in-Loop CLI** (#308) - **CRITICAL**
+- [x] **Human-in-Loop CLI** (#308) - ✅ COMPLETE (Nov 2025)
   - Interactive trade review interface
   - Decision explanation and override capability
   - Risk assessment display
-  - Target: Q4 2025
-  - **Why Critical**: Core design principle is human oversight
-  - **Blocker For**: Live trading deployment
+  - Multiple execution modes: CONFIRM, AUTO, PAPER, DISABLED
 
-- [ ] **Complete Remaining Agents** (#310)
-  - ScannerAgent: Market opportunity identification
-  - RiskAgent: Position sizing and risk limits
-  - ExecutorAgent: Order execution coordination
-  - TradingOrchestrator: Multi-agent workflow management
-  - Target: Q1 2026
-  - **Why Critical**: Multi-agent coordination needed for scale
+- [x] **Complete Remaining Agents** (#310) - ✅ IMPLEMENTATIONS COMPLETE, REFACTORING (Nov 2025)
+  - ScannerAgent: Multi-ticker MACD+RSI scanning (#386)
+  - RiskAgent: Position sizing and circuit breaker (#387)
+  - ExecutorAgent: Trade execution coordination (#388)
+  - TradingOrchestrator: Multi-agent workflow management (#389)
+  - Note: Refactoring to resolve Agent Bus integration collision
 
 **Medium Priority**:
 
-- [x] **Agent Factory & Event Bus** (#390) - ✅ COMPLETE
+- [x] **Agent Factory & Event Bus** (#390) - 🚧 IN REFACTORING
   - Centralized agent creation via AgentFactory singleton
   - Pub-sub messaging via AgentBus for inter-agent communication
   - 16 trading-specific EventType values
   - Symbol filtering, TTL, correlation tracking
+  - Note: Event Bus (#397) duplicate rejected; using Agent Bus
 
-- [ ] **Dynamic Trailing Stops** (#321)
-  - Advanced stop-loss algorithms
-  - Profit protection logic
-  - Volatility-adjusted stops
-  - Target: Q1 2026
+- [x] **Dynamic Trailing Stops** (#321) - ✅ COMPLETE (Nov 2025)
+  - TrailingStopManager with progressive stop logic
+  - 2% breakeven, 4% lock 25%, 6% trail 50% profit
+  - Integrated into trade_lifecycle.py and trading_cycle.py
+  - Rate-limited to prevent API abuse
 
 **Low Priority**:
 
