@@ -53,8 +53,19 @@ class TickerCompleter:
 
     # Default seed tickers for new installations (written to file on first run)
     _SEED_TICKERS = [
-        "SPY", "QQQ", "TQQQ", "SQQQ", "IWM", "DIA",  # ETFs
-        "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA",  # Mag 7
+        "SPY",
+        "QQQ",
+        "TQQQ",
+        "SQQQ",
+        "IWM",
+        "DIA",  # ETFs
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "AMZN",
+        "META",
+        "NVDA",
+        "TSLA",  # Mag 7
     ]
 
     def __init__(self):
@@ -69,9 +80,9 @@ class TickerCompleter:
         try:
             if os.path.exists(self._ticker_file):
                 with open(self._ticker_file, "r") as f:
-                    self.recent_tickers = [
-                        line.strip().upper() for line in f if line.strip()
-                    ][:100]  # Keep up to 100 tickers
+                    self.recent_tickers = [line.strip().upper() for line in f if line.strip()][
+                        :100
+                    ]  # Keep up to 100 tickers
             else:
                 # First run - seed with common tickers
                 self.recent_tickers = list(self._SEED_TICKERS)
@@ -2761,7 +2772,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 if phrase in input_lower:
                     # Get text after the phrase
                     idx = input_lower.find(phrase)
-                    remaining = user_input[idx + len(phrase):].strip()
+                    remaining = user_input[idx + len(phrase) :].strip()
                     # Take first word as account ID
                     if remaining:
                         account_id = remaining.split()[0].strip()
