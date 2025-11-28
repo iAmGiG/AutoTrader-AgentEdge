@@ -17,8 +17,9 @@ Key Features:
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -242,14 +243,14 @@ class TradingOrchestrator:
         health = self._agent_health.get(agent_type, AgentHealth(agent_type=agent_type))
 
         try:
-            start = datetime.now()
+            start = time.time()
             agent = self._get_agent(agent_type)
 
             # Simple health check - verify agent has expected methods
             if hasattr(agent, "name"):
                 _ = agent.name
 
-            health.response_time_ms = (datetime.now() - start).total_seconds() * 1000
+            health.response_time_ms = (time.time() - start) * 1000
             health.is_healthy = True
             health.last_check = now_iso()
 
@@ -431,11 +432,11 @@ class TradingOrchestrator:
         print(f"📈 Starting Continuous Monitoring (every {interval_minutes} min)...")
         self._update_state(WorkflowPhase.MONITORING)
 
-        start_time = datetime.now()
+        start_time = get_datetime_now()
         end_time = start_time + timedelta(hours=duration_hours) if duration_hours else None
 
         while not self._shutdown_requested:
-            if end_time and datetime.now() >= end_time:
+            if end_time and get_datetime_now() >= end_time:
                 print("⏰ Monitoring duration reached, stopping...")
                 break
 
@@ -461,8 +462,6 @@ class TradingOrchestrator:
                 self._record_error("monitoring", "continuous", str(e))
 
             # Wait for next interval
-            import time
-
             time.sleep(interval_minutes * 60)
 
         self._update_state(WorkflowPhase.IDLE)
@@ -772,8 +771,6 @@ class TradingOrchestrator:
                 logger.warning(f"{operation_name} failed (attempt {attempt + 1}/{retries}): {e}")
 
                 if attempt < retries - 1:
-                    import time
-
                     time.sleep(self.RETRY_DELAY_SECONDS * (attempt + 1))
                 else:
                     raise
