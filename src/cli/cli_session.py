@@ -787,12 +787,19 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         """
         Process user trade request via orchestrator.
 
+        Issue #347: Respects user intent - when user says "buy", we show "BUY (as requested)"
+        and treat signals as context, not override.
+
         Args:
             user_input: User's natural language input
         """
         print(MSG.ANALYZING_TRADE)
 
         try:
+            # Issue #347: Detect user intent EARLY so we can respect it
+            original_input = user_input.lower().strip()
+            user_intent = self._detect_user_intent(original_input)
+
             # Step 1: Process request via orchestrator
             decision = await self.orchestrator.process_request(user_input, self.user_id)
 
@@ -807,8 +814,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # Step 2b: Check for signal vs user intent mismatch
             # If analyzer suggests SELL but no position exists, check user's explicit intent
             if decision.suggestion.signal.value.upper() == "SELL" and not position:
-                original_input = user_input.lower().strip()
-
                 # Check if user explicitly wants to BUY/LONG (override signal)
                 explicit_buy_indicators = [
                     "buy",
@@ -1039,7 +1044,13 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 )
 
             # Step 3: Display suggestion
-            self._display_suggestion(decision.suggestion, position)
+            # Issue #347: Determine override mode based on user intent
+            override_mode = None
+            if user_intent == "buy":
+                override_mode = "USER_OVERRIDE_LONG"
+            elif user_intent == "sell":
+                override_mode = "USER_OVERRIDE_SHORT"
+            self._display_suggestion(decision.suggestion, position, override_mode)
 
             # Step 3: Get user confirmation (if confirm mode)
             if self.autonomy_mode == "confirm":
@@ -1095,6 +1106,45 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             logger.warning(f"Failed to check position for {ticker}: {e}")
             return None
 
+    def _detect_user_intent(self, user_input: str) -> Optional[str]:
+        """
+        Issue #347: Detect explicit user intent from input.
+
+        Returns:
+            "buy" if user explicitly wants to buy/go long
+            "sell" if user explicitly wants to sell/close
+            None if no explicit intent (just querying/analyzing)
+        """
+        input_lower = user_input.lower()
+
+        # Buy/long indicators
+        buy_indicators = [
+            "buy", "long", "go long", "going long", "bullish",
+            "bet it goes up", "think it will rise", "upside",
+            "get ", "acquire", "purchase", "pick up", "grab",
+        ]
+        if any(indicator in input_lower for indicator in buy_indicators):
+            return "buy"
+
+        # Sell/close indicators
+        sell_indicators = [
+            "sell", "short", "shorting", "go short", "exit",
+            "close", "get out", "dump", "liquidate", "cash out",
+            "bet against", "profit from decline",
+        ]
+        if any(indicator in input_lower for indicator in sell_indicators):
+            return "sell"
+
+        # Review/analyze indicators (no explicit action)
+        review_indicators = [
+            "analyze", "analysis", "review", "check", "look at",
+            "what about", "how is", "should i", "is it good",
+        ]
+        if any(indicator in input_lower for indicator in review_indicators):
+            return None  # Just querying, no explicit intent
+
+        return None  # Default: no explicit intent
+
     def _display_position_context(self, ticker: str, position: Optional[dict], signal: str):
         """
         Display current position context before showing suggestion.
@@ -1148,15 +1198,24 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=suggestion.entry_price))
         print(MSG.SUGGESTION_SEPARATOR)
 
-        # Signal (with override warning if applicable)
+        # Issue #347: Respect user intent when signals disagree
+        # Signal display prioritizes user's explicit request
         signal_emoji = get_signal_emoji(suggestion.signal.value)
+
         if override_mode == "USER_OVERRIDE_LONG":
-            print(f"⚠️  SYSTEM RECOMMENDS: {signal_emoji} {suggestion.signal.value.upper()}")
-            print("👤 USER INTENT: ⬆️ BUY (LONG)")
+            # User wants BUY but signals say something else
+            print("👤 ACTION: ⬆️ BUY (as requested)")
+            if suggestion.signal.value.upper() != "BUY":
+                print(f"   📊 Signals suggest: {signal_emoji} {suggestion.signal.value.upper()}")
+                print("   ℹ️  Proceeding with your requested action")
         elif override_mode == "USER_OVERRIDE_SHORT":
-            print(f"⚠️  SYSTEM RECOMMENDS: {signal_emoji} {suggestion.signal.value.upper()}")
-            print("👤 USER INTENT: ⬇️ SELL (SHORT)")
+            # User wants SELL but signals say something else
+            print("👤 ACTION: ⬇️ SELL (as requested)")
+            if suggestion.signal.value.upper() != "SELL":
+                print(f"   📊 Signals suggest: {signal_emoji} {suggestion.signal.value.upper()}")
+                print("   ℹ️  Proceeding with your requested action")
         else:
+            # No explicit user intent - show signal recommendation
             print(
                 MSG.SIGNAL_DISPLAY.format(
                     emoji=signal_emoji, signal=suggestion.signal.value.upper()
