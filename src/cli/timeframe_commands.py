@@ -102,15 +102,15 @@ class TimeframeCommands:
 
         output = "📈 Timeframe Recommendations\n"
         output += "=" * 50 + "\n"
-        output += f"\n🎯 Scalping (Aggressive):\n"
+        output += "\n🎯 Scalping (Aggressive):\n"
         output += f"   {', '.join(recs['scalping'])}\n"
-        output += f"\n📊 Day Trading (Intraday):\n"
+        output += "\n📊 Day Trading (Intraday):\n"
         output += f"   {', '.join(recs['day_trading'])}\n"
-        output += f"\n🔄 Swing Trading (Medium):\n"
+        output += "\n🔄 Swing Trading (Medium):\n"
         output += f"   {', '.join(recs['swing_trading'])}\n"
-        output += f"\n📍 Position Trading (Recommended):\n"
+        output += "\n📍 Position Trading (Recommended):\n"
         output += f"   {', '.join(recs['position_trading'])}\n"
-        output += f"\n📈 Long-Term (Conservative):\n"
+        output += "\n📈 Long-Term (Conservative):\n"
         output += f"   {', '.join(recs['intermediate_term'])} - {', '.join(recs['long_term'])}\n"
 
         return output

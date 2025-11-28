@@ -5,7 +5,7 @@ Provides agent-compatible tools for changing, querying, and validating trading t
 Designed for use with AutoGen agents and CLI natural language commands.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from config_defaults.trading_config import get_config
 

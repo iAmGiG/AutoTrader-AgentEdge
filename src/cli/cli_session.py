@@ -2802,20 +2802,24 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         input_lower = user_input.lower()
 
         # Determine intent from input
-        if any(phrase in input_lower for phrase in ["list timeframe", "show timeframe", "available"]):
+        if any(
+            phrase in input_lower for phrase in ["list timeframe", "show timeframe", "available"]
+        ):
             # List all timeframes
-            verbose = "verbose" in input_lower or "detail" in input_lower or "description" in input_lower
+            verbose = (
+                "verbose" in input_lower or "detail" in input_lower or "description" in input_lower
+            )
             output = tf_commands.list_timeframes(verbose=verbose)
             safe_print(output)
 
-        elif any(phrase in input_lower for phrase in ["change timeframe", "set timeframe", "switch to"]):
+        elif any(
+            phrase in input_lower for phrase in ["change timeframe", "set timeframe", "switch to"]
+        ):
             # Extract timeframe from input
             # Look for timeframe patterns: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M
             import re
 
-            tf_patterns = [
-                r"\b(1m|5m|15m|30m|1h|2h|4h|1d|1w|1M)\b"
-            ]
+            tf_patterns = [r"\b(1m|5m|15m|30m|1h|2h|4h|1d|1w|1M)\b"]
             timeframe = None
 
             for pattern in tf_patterns:
@@ -2835,12 +2839,17 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 )
                 safe_print(tf_commands.list_timeframes(verbose=False))
 
-        elif any(phrase in input_lower for phrase in ["current timeframe", "active timeframe", "which timeframe"]):
+        elif any(
+            phrase in input_lower
+            for phrase in ["current timeframe", "active timeframe", "which timeframe"]
+        ):
             # Show current timeframe
             output = tf_commands.show_current_timeframe()
             safe_print(output)
 
-        elif any(phrase in input_lower for phrase in ["recommendation", "suggest", "best timeframe"]):
+        elif any(
+            phrase in input_lower for phrase in ["recommendation", "suggest", "best timeframe"]
+        ):
             # Show recommendations
             output = tf_commands.show_timeframe_recommendations()
             safe_print(output)

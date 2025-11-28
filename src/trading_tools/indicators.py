@@ -54,7 +54,11 @@ def calculate_macd(
 
 
 def calculate_rsi(
-    prices: pd.Series, period: int = 14, oversold: int = 30, overbought: int = 70, timeframe: str = "1d"
+    prices: pd.Series,
+    period: int = 14,
+    oversold: int = 30,
+    overbought: int = 70,
+    timeframe: str = "1d",
 ) -> Dict[str, pd.Series]:
     """
     Calculate RSI with validated parameters (14/30/70).
