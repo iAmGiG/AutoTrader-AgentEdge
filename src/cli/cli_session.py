@@ -14,6 +14,22 @@ import platform
 import sys
 from typing import Optional
 
+# Arrow key history navigation (#362)
+try:
+    import readline
+    import atexit
+    READLINE_AVAILABLE = True
+except ImportError:
+    # Windows may need pyreadline3
+    try:
+        import pyreadline3 as readline
+        import atexit
+        READLINE_AVAILABLE = True
+    except ImportError:
+        READLINE_AVAILABLE = False
+        readline = None
+
+
 # Add imports for new features
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 # Import CLI messages configuration
@@ -59,6 +75,9 @@ class CLISession:
         # Initialize help system (Issue #369)
         self.help_system = HelpSystem()
 
+        # Set up command history (#362)
+        self._setup_history()
+
         # Initialize additional components for unified CLI
         # Share instances to reduce Alpaca client instantiations
         try:
@@ -98,6 +117,46 @@ class CLISession:
                 "⚠️  Remember: These are suggestions, not guarantees!"
             ),
         }
+
+    def _setup_history(self):
+        """
+        Set up arrow key command history navigation.
+
+        Enables up/down arrow keys to navigate command history.
+        History is saved to ~/.autotrader_history and persists across sessions.
+        
+        Issue #362: Add command history navigation with arrow keys (readline support)
+        """
+        if not READLINE_AVAILABLE:
+            logger.info("Readline not available - arrow key history disabled")
+            return
+
+        # Set up history file
+        history_file = os.path.expanduser("~/.autotrader_history")
+
+        # Load existing history
+        if os.path.exists(history_file):
+            try:
+                readline.read_history_file(history_file)
+                logger.debug(f"Loaded command history from {history_file}")
+            except Exception as e:
+                logger.warning(f"Could not load history file: {e}")
+
+        # Set history length (default: 1000 commands)
+        readline.set_history_length(1000)
+
+        # Save history on exit
+        def save_history():
+            try:
+                readline.write_history_file(history_file)
+                logger.debug(f"Saved command history to {history_file}")
+            except Exception as e:
+                logger.warning(f"Could not save history file: {e}")
+
+        atexit.register(save_history)
+
+        logger.info("Arrow key command history enabled")
+
 
     def _load_trading_config(self) -> Optional[dict]:
         """
