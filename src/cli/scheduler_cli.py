@@ -7,6 +7,8 @@ Provides dedicated commands for:
 - Testing scheduler routines
 - Monitoring execution history
 - Starting/stopping scheduler service
+
+Messages are loaded from config_defaults/scheduler_cli_messages.yaml
 """
 
 import asyncio
@@ -14,19 +16,67 @@ import logging
 import os
 from datetime import time as dt_time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from src.utils.date_utils import get_datetime_now
-
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
+import yaml
 
 from src.trading.daily_scheduler import DailyScheduler
+from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
+
+
+def _load_scheduler_messages() -> Dict[str, Any]:
+    """Load scheduler CLI messages from YAML configuration."""
+    config_path = (
+        Path(__file__).parent.parent.parent / "config_defaults" / "scheduler_cli_messages.yaml"
+    )
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        logger.warning(f"Could not load scheduler messages from YAML: {e}")
+        return {}
+
+
+# Load messages at module level
+MSG = _load_scheduler_messages()
+
+
+def _get_msg(path: str, default: str = "", **kwargs) -> str:
+    """
+    Get a message from the config by dot-notation path.
+
+    Args:
+        path: Dot-notation path like "welcome.title" or "status.header"
+        default: Default value if path not found
+        **kwargs: Format arguments for the message
+
+    Returns:
+        Formatted message string
+    """
+    keys = path.split(".")
+    value = MSG
+
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return default
+
+    if isinstance(value, str):
+        try:
+            return value.format(**kwargs) if kwargs else value
+        except KeyError:
+            return value
+
+    return str(value) if value else default
+
+
+def _get_emoji(name: str, default: str = "") -> str:
+    """Get an emoji from config."""
+    return _get_msg(f"emoji.{name}", default)
 
 
 class SchedulerCLI:
@@ -84,30 +134,33 @@ class SchedulerCLI:
                 logger.error(f"Scheduler CLI error: {e}", exc_info=True)
 
     def _print_welcome(self):
-        """Print scheduler CLI welcome message."""
-        print("\n" + "=" * 70)
-        print("   📅 Scheduler Management CLI")
-        print("=" * 70)
-        print("\n🚀 Quick Start:")
-        print("  setup           - First-time setup wizard (recommended)")
-        print("  start           - Start scheduler daemon")
-        print("  stop            - Stop scheduler daemon")
-        print("  status          - Show detailed scheduler status")
-        print("\n⚙️  Configuration:")
-        print("  config          - View current configuration")
-        print("  edit            - Edit scheduler configuration")
-        print("  enable          - Enable scheduler")
-        print("  disable         - Disable scheduler")
-        print("\n🧪 Testing & Monitoring:")
-        print("  test morning    - Test morning routine")
-        print("  test evening    - Test evening routine")
-        print("  history         - View execution history")
-        print("  next            - Show next scheduled run")
-        print("  logs            - View recent scheduler logs")
-        print("\n📖 Help:")
-        print("  info            - Explain configuration settings")
-        print("  help            - Show this help message")
-        print("  exit            - Exit scheduler CLI")
+        """Print scheduler CLI welcome message from config."""
+        welcome = MSG.get("welcome", {})
+
+        # Banner and title
+        banner = welcome.get("banner", "=" * 70)
+        print("\n" + banner)
+        print(
+            f"   {_get_emoji('calendar', '📅')} {welcome.get('title', 'Scheduler Management CLI')}"
+        )
+        print(banner)
+
+        # Print each section
+        sections = [
+            ("quick_start", _get_emoji("rocket", "🚀")),
+            ("configuration", _get_emoji("gear", "⚙️")),
+            ("testing", _get_emoji("test", "🧪")),
+            ("help_section", _get_emoji("book", "📖")),
+        ]
+
+        for section_key, emoji in sections:
+            section = welcome.get(section_key, {})
+            if section:
+                header = section.get("header", "")
+                print(f"\n{emoji} {header}")
+                for cmd in section.get("commands", []):
+                    print(f"  {cmd}")
+
         print("")
 
     async def _handle_command(self, command: str):
@@ -272,107 +325,92 @@ class SchedulerCLI:
             print("💡 Will be created with defaults on first run")
 
     def _show_config_info(self):
-        """Display explanations for configuration settings."""
-        print("\n📖 Scheduler Configuration Guide")
+        """Display explanations for configuration settings from config."""
+        info = MSG.get("config_info", {})
+        settings = info.get("settings", {})
+
+        # Header
+        print(f"\n{_get_emoji('book', '📖')} {info.get('header', 'Scheduler Configuration Guide')}")
         print("=" * 70)
 
-        print("\n🔧 EDITABLE SETTINGS")
+        # Editable settings section
+        print(f"\n🔧 {info.get('editable_header', 'EDITABLE SETTINGS')}")
         print("-" * 70)
 
-        print("\n1. enabled (boolean)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("enabled", "N/A") if self.scheduler else "N/A"
-            )
-        )
-        print("   Purpose: Master switch for automated trading")
-        print("   Values:  true = scheduler runs automatically")
-        print("            false = scheduler paused (safe mode)")
-        print("   Tip:     Set to 'false' when testing or during holidays")
+        # Map setting names to config keys for current value lookup
+        setting_order = ["enabled", "morning_time", "evening_time", "max_retries", "dry_run"]
+        config_keys = {
+            "enabled": "enabled",
+            "morning_time": "morning_routine_time",
+            "evening_time": "evening_routine_time",
+            "max_retries": "max_retries",
+            "dry_run": "dry_run",
+        }
 
-        print("\n2. morning_routine_time (HH:MM:SS)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("morning_routine_time", "N/A")
-                if self.scheduler
-                else "N/A"
-            )
-        )
-        print("   Purpose: Daily pre-market check and position setup")
-        print("   Default: 09:20:00 (9:20 AM ET, 10 min before market open)")
-        print("   Tip:     Run before market opens to prepare for trading day")
+        for i, setting_key in enumerate(setting_order, 1):
+            setting = settings.get(setting_key, {})
+            if not setting:
+                continue
 
-        print("\n3. evening_routine_time (HH:MM:SS)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("evening_routine_time", "N/A")
-                if self.scheduler
-                else "N/A"
-            )
-        )
-        print("   Purpose: End-of-day position review and trailing stop adjustments")
-        print("   Default: 15:50:00 (3:50 PM ET, 10 min before market close)")
-        print("   Tip:     Run before market closes to lock in profits")
+            config_key = config_keys.get(setting_key, setting_key)
+            current = self.scheduler.config.get(config_key, "N/A") if self.scheduler else "N/A"
 
-        print("\n4. max_retries (integer 1-10)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("max_retries", "N/A") if self.scheduler else "N/A"
-            )
-        )
-        print("   Purpose: Number of retry attempts if routine fails")
-        print("   Default: 3")
-        print("   Tip:     Higher values = more resilient to network issues")
+            print(f"\n{i}. {setting.get('name', setting_key)}")
+            print(f"   Current: {current}")
+            print(f"   Purpose: {setting.get('purpose', '')}")
 
-        print("\n5. dry_run (boolean)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("dry_run", "N/A") if self.scheduler else "N/A"
-            )
-        )
-        print("   Purpose: Test mode - simulates actions without placing orders")
-        print("   Values:  true = simulation only (NO real orders)")
-        print("            false = normal operation (places orders)")
-        print("   ⚠️  NOTE: dry_run enforcement is NOT YET IMPLEMENTED")
-        print("   Status:  Currently logs but doesn't prevent order execution")
-        print("   Tip:     Always use paper trading account for testing")
+            if "default" in setting:
+                print(f"   Default: {setting['default']}")
 
-        print("\n\n📋 READ-ONLY SETTINGS (edit config file directly)")
+            for val in setting.get("values", []):
+                print(f"   Values:  {val}")
+
+            if "warning" in setting:
+                print(f"   {_get_emoji('warning', '⚠️')}  NOTE: {setting['warning']}")
+
+            if "status" in setting:
+                print(f"   Status:  {setting['status']}")
+
+            if "tip" in setting:
+                print(f"   Tip:     {setting['tip']}")
+
+        # Read-only settings section
+        readonly_header = info.get("readonly_header", "READ-ONLY SETTINGS")
+        print(f"\n\n{_get_emoji('clipboard', '📋')} {readonly_header}")
         print("-" * 70)
 
-        print("\n• market_timezone: America/New_York")
-        print("  All times are in Eastern Time (NYSE timezone)")
+        for setting in info.get("readonly_settings", []):
+            print(f"\n• {setting.get('name', '')}: {setting.get('value', '')}")
+            print(f"  {setting.get('description', '')}")
 
-        print("\n• retry_delay_seconds: 60")
-        print("  Initial wait time between retries (uses exponential backoff)")
-
-        print("\n• timeout_seconds: 300")
-        print("  Maximum time (5 minutes) for a single routine execution")
-
-        print("\n• monitoring.alert_threshold_consecutive_failures: 2")
-        print("  Number of consecutive failures before raising alert")
-
-        print("\n• api_limits.max_calls_per_routine: 5")
-        print("  Maximum API calls per routine to stay within rate limits")
-
-        print("\n\n💡 QUICK REFERENCE")
+        # Quick reference section
+        qref = info.get("quick_reference", {})
+        print(f"\n\n{_get_emoji('light', '💡')} {qref.get('header', 'QUICK REFERENCE')}")
         print("-" * 70)
-        print("\nPaper Trading vs Dry Run:")
-        print("  • Paper Trading (mode='paper'): Places real test orders on Alpaca paper account")
-        print("  • Dry Run (dry_run=true): Simulates logic without any orders [NOT IMPLEMENTED]")
-        print("  • Current system uses: Paper trading account (hardcoded in trading_cycle.py)")
 
-        print("\nSafety Levels (intended design):")
-        print("  1. Live mode + dry_run=false  → Real money, real orders ⚠️")
-        print("  2. Paper mode + dry_run=false → Paper account, test orders ✅ (current)")
-        print("  3. Paper mode + dry_run=true  → No orders, just logging 📝 (not implemented)")
+        # Paper vs Dry Run
+        paper_dry = qref.get("paper_vs_dry", {})
+        if paper_dry:
+            print(f"\n{paper_dry.get('title', '')}:")
+            for item in paper_dry.get("items", []):
+                print(f"  • {item}")
 
-        print("\nRelated Issues:")
-        print("  • #369 - Advanced documentation/man command")
-        print("  • #370 - LLM-powered trade journaling")
+        # Safety Levels
+        safety = qref.get("safety_levels", {})
+        if safety:
+            print(f"\n{safety.get('title', '')}:")
+            for item in safety.get("items", []):
+                print(f"  {item}")
+
+        # Related Issues
+        issues = qref.get("related_issues", {})
+        if issues:
+            print(f"\n{issues.get('title', '')}:")
+            for item in issues.get("items", []):
+                print(f"  • {item}")
 
         print("\n" + "=" * 70)
-        print("Type 'edit' to modify settings or 'config' to view raw file")
+        print(info.get("footer", "Type 'edit' to modify settings or 'config' to view raw file"))
         print("")
 
     async def _edit_config(self):
