@@ -16,7 +16,7 @@ import platform
 import sys
 from typing import Optional
 
-# Arrow key history navigation (#362)
+# Arrow key history navigation (#362) and advanced readline features (#399)
 try:
     import readline
     import atexit
@@ -30,6 +30,96 @@ except ImportError:
     except ImportError:
         READLINE_AVAILABLE = False
         readline = None
+
+
+# Issue #399: Ticker completer for tab completion
+class TickerCompleter:
+    """
+    Tab completion for stock tickers.
+
+    Provides autocomplete for:
+    - Common tickers (SPY, QQQ, AAPL, etc.)
+    - Recently used tickers (persisted across sessions)
+    - Current position tickers
+    """
+
+    # Common tickers for quick access
+    COMMON_TICKERS = [
+        "SPY", "QQQ", "TQQQ", "SQQQ", "IWM", "DIA",
+        "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "NVDA", "TSLA",
+        "AMD", "INTC", "CRM", "ORCL", "ADBE", "NFLX",
+        "JPM", "BAC", "GS", "MS", "V", "MA",
+        "XOM", "CVX", "COP", "SLB",
+        "UNH", "JNJ", "PFE", "ABBV", "MRK",
+        "HD", "LOW", "TGT", "WMT", "COST",
+        "DIS", "CMCSA", "T", "VZ",
+    ]
+
+    def __init__(self):
+        self.recent_tickers = []
+        self.position_tickers = []
+        self._completions = []
+        self._load_recent_tickers()
+
+    def _load_recent_tickers(self):
+        """Load recently used tickers from file."""
+        ticker_file = os.path.expanduser("~/.autotrader_tickers")
+        try:
+            if os.path.exists(ticker_file):
+                with open(ticker_file, "r") as f:
+                    self.recent_tickers = [
+                        line.strip().upper() for line in f if line.strip()
+                    ][:20]  # Keep last 20
+        except Exception:
+            pass
+
+    def save_recent_tickers(self):
+        """Save recently used tickers to file."""
+        ticker_file = os.path.expanduser("~/.autotrader_tickers")
+        try:
+            with open(ticker_file, "w") as f:
+                for ticker in self.recent_tickers[:20]:
+                    f.write(f"{ticker}\n")
+        except Exception:
+            pass
+
+    def add_ticker(self, ticker: str):
+        """Add a ticker to recent list (moves to front if exists)."""
+        ticker = ticker.upper().strip()
+        if not ticker or len(ticker) > 5:
+            return
+        if ticker in self.recent_tickers:
+            self.recent_tickers.remove(ticker)
+        self.recent_tickers.insert(0, ticker)
+        self.recent_tickers = self.recent_tickers[:20]
+
+    def set_position_tickers(self, tickers: list):
+        """Update list of tickers from current positions."""
+        self.position_tickers = [t.upper() for t in tickers if t]
+
+    def get_completions(self, text: str) -> list:
+        """Get ticker completions for given text."""
+        text = text.upper()
+        all_tickers = set(
+            self.recent_tickers + self.position_tickers + self.COMMON_TICKERS
+        )
+        if not text:
+            # Return recent + position tickers first
+            return self.recent_tickers[:5] + self.position_tickers[:5]
+        return sorted([t for t in all_tickers if t.startswith(text)])
+
+    def complete(self, text: str, state: int):
+        """Readline completer function."""
+        if state == 0:
+            self._completions = self.get_completions(text)
+        try:
+            return self._completions[state]
+        except IndexError:
+            return None
+
+
+# Global ticker completer instance
+_ticker_completer = TickerCompleter() if READLINE_AVAILABLE else None
 
 
 # Add imports for new features
@@ -121,15 +211,20 @@ class CLISession:
 
     def _setup_history(self):
         """
-        Set up arrow key command history navigation.
+        Set up readline features for CLI.
 
-        Enables up/down arrow keys to navigate command history.
-        History is saved to ~/.autotrader_history and persists across sessions.
-        
-        Issue #362: Add command history navigation with arrow keys (readline support)
+        Issue #362: Arrow key command history navigation
+        Issue #399: Advanced readline features (tab completion, word deletion)
+
+        Features enabled:
+        - Up/down arrow keys for command history
+        - Tab completion for stock tickers
+        - Word deletion keybindings (Ctrl+W, Alt+Backspace)
+        - History persisted to ~/.autotrader_history
+        - Recent tickers persisted to ~/.autotrader_tickers
         """
         if not READLINE_AVAILABLE:
-            logger.info("Readline not available - arrow key history disabled")
+            logger.info("Readline not available - advanced CLI features disabled")
             return
 
         # Set up history file
@@ -146,17 +241,47 @@ class CLISession:
         # Set history length (default: 1000 commands)
         readline.set_history_length(1000)
 
-        # Save history on exit
-        def save_history():
+        # Issue #399: Set up tab completion for tickers
+        if _ticker_completer:
+            readline.set_completer(_ticker_completer.complete)
+            # Use tab for completion
+            readline.parse_and_bind("tab: complete")
+            # Show all completions on double-tab
+            readline.parse_and_bind("set show-all-if-ambiguous on")
+            # Case-insensitive completion
+            readline.parse_and_bind("set completion-ignore-case on")
+            logger.debug("Tab completion for tickers enabled")
+
+        # Issue #399: Word deletion keybindings
+        # Note: Some keybindings may not work on all terminals/platforms
+        try:
+            # Ctrl+W: Delete word backward (unix-word-rubout)
+            readline.parse_and_bind('"\\C-w": unix-word-rubout')
+            # Alt+Backspace: Delete word backward
+            readline.parse_and_bind('"\\e\\C-h": backward-kill-word')
+            # Alt+d: Delete word forward
+            readline.parse_and_bind('"\\ed": kill-word')
+            # Ctrl+U: Delete to beginning of line
+            readline.parse_and_bind('"\\C-u": unix-line-discard')
+            # Ctrl+K: Delete to end of line
+            readline.parse_and_bind('"\\C-k": kill-line')
+            logger.debug("Word deletion keybindings configured")
+        except Exception as e:
+            logger.debug(f"Some keybindings may not be available: {e}")
+
+        # Save history and recent tickers on exit
+        def save_on_exit():
             try:
                 readline.write_history_file(history_file)
                 logger.debug(f"Saved command history to {history_file}")
             except Exception as e:
                 logger.warning(f"Could not save history file: {e}")
+            if _ticker_completer:
+                _ticker_completer.save_recent_tickers()
 
-        atexit.register(save_history)
+        atexit.register(save_on_exit)
 
-        logger.info("Arrow key command history enabled")
+        logger.info("Advanced CLI features enabled (history, tab completion)")
 
 
     def _load_trading_config(self) -> Optional[dict]:
@@ -242,6 +367,21 @@ class CLISession:
         print(MSG.WELCOME_BANNER)
         print(f"Mode: {self.autonomy_mode.upper()}")
         print(MSG.HELP_COMMANDS)
+
+        # Issue #399: Update ticker completer with current positions
+        self._update_position_tickers()
+
+    def _update_position_tickers(self):
+        """Update ticker completer with tickers from current positions."""
+        if not _ticker_completer or not self.account_monitor:
+            return
+        try:
+            positions = self.account_monitor.get_positions()
+            tickers = [p.get("symbol") for p in positions if p.get("symbol")]
+            _ticker_completer.set_position_tickers(tickers)
+            logger.debug(f"Updated position tickers: {tickers}")
+        except Exception as e:
+            logger.debug(f"Could not update position tickers: {e}")
 
     async def _handle_command(self, command: str) -> bool:
         """
@@ -464,8 +604,12 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         data = response
                     
                     if data.get("found"):
-                        return data.get("ticker"), data.get("company_name")
-                    
+                        ticker = data.get("ticker")
+                        # Issue #399: Track resolved ticker for autocomplete
+                        if ticker and _ticker_completer:
+                            _ticker_completer.add_ticker(ticker)
+                        return ticker, data.get("company_name")
+
                 except json.JSONDecodeError:
                     logger.warning(f"Failed to parse LLM response as JSON: {response}")
                 except asyncio.TimeoutError:
@@ -481,6 +625,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 potential_ticker = ticker_match.group(1)
                 # Basic validation: 1-5 letters
                 if 1 <= len(potential_ticker) <= 5 and potential_ticker.isalpha():
+                    # Issue #399: Track resolved ticker for autocomplete
+                    if _ticker_completer:
+                        _ticker_completer.add_ticker(potential_ticker)
                     return potential_ticker, None
             
             return None, None
