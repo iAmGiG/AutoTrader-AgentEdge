@@ -2,11 +2,16 @@
 OpenAI LLM Service implementation.
 
 Uses OpenAI API for tool calling and reasoning.
+
+DEPRECATED: This module is deprecated as of Issue #406.
+Use AutoGen's native OpenAIChatCompletionClient instead.
+See: src/parsers/autogen_llm_parser.py for the recommended approach.
 """
 
 import json
 import logging
 import os
+import warnings
 from typing import Any, Dict, List, Optional
 
 from openai import AsyncOpenAI
@@ -18,9 +23,13 @@ logger = logging.getLogger(__name__)
 
 class OpenAIService(LLMService):
     """
-    OpenAI implementation of LLMService.
+    DEPRECATED: Use AutoGen's OpenAIChatCompletionClient instead.
 
-    Supports:
+    This class is kept for backward compatibility but will be removed
+    in a future version. See src/parsers/autogen_llm_parser.py for
+    the recommended approach using AutoGen's native LLM client.
+
+    Original functionality:
     - gpt-4o-mini: Fast, cheap tool calling
     - o3-mini: Reasoning model (more expensive)
     """
@@ -39,6 +48,13 @@ class OpenAIService(LLMService):
             reasoning_model: Model for reasoning (default: gpt-4o-mini, can use o3-mini)
             api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
         """
+        warnings.warn(
+            "OpenAIService is deprecated. Use AutoGen's OpenAIChatCompletionClient instead. "
+            "See src/parsers/autogen_llm_parser.py for the recommended approach.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         self.tool_calling_model = tool_calling_model
         self.reasoning_model = reasoning_model
 

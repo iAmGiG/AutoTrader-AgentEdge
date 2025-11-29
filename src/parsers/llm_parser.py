@@ -2,10 +2,15 @@
 LLM-based natural language parser.
 
 Uses LLM (via LLMService) to parse conversational user input into structured TradeRequest.
+
+DEPRECATED: This module is deprecated as of Issue #406.
+Use AutoGenLLMParser instead, which uses AutoGen's native LLM client.
+See: src/parsers/autogen_llm_parser.py
 """
 
 import logging
 import re
+import warnings
 from typing import Optional
 
 from core.interfaces import InputParser
@@ -17,12 +22,15 @@ logger = logging.getLogger(__name__)
 
 class LLMParser(InputParser):
     """
+    DEPRECATED: Use AutoGenLLMParser instead.
+
     Parse natural language input using LLM.
+    This class uses a custom LLMService wrapper which is deprecated.
+    Use AutoGenLLMParser for the recommended approach with AutoGen's native client.
 
     Examples:
-    - "is SPY at 600 good?" → TradeRequest(ticker="SPY", action="review", price=600)
-    - "buy 50 AAPL" → TradeRequest(ticker="AAPL", action="buy", quantity=50)
-    - "should I sell my TSLA?" → TradeRequest(ticker="TSLA", action="review")
+    - "is SPY at 600 good?" -> TradeRequest(ticker="SPY", action="review", price=600)
+    - "buy 50 AAPL" -> TradeRequest(ticker="AAPL", action="buy", quantity=50)
     """
 
     def __init__(self, llm_service: LLMService):
@@ -32,8 +40,15 @@ class LLMParser(InputParser):
         Args:
             llm_service: LLM service for parsing
         """
+        warnings.warn(
+            "LLMParser is deprecated. Use AutoGenLLMParser instead. "
+            "See src/parsers/autogen_llm_parser.py for the recommended approach.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         self.llm = llm_service
-        logger.info(f"LLMParser initialized with {llm_service.provider.value}")
+        logger.info("LLMParser initialized with %s", llm_service.provider.value)
 
     async def parse(self, user_input: str, user_id: Optional[str] = None) -> TradeRequest:
         """
