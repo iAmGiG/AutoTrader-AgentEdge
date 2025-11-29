@@ -95,7 +95,8 @@ class DailyScheduler:
 
         Args:
             config_file: Path to scheduler configuration file (YAML or JSON)
-            trading_cycle: Optional CostEfficientTradeCycle instance to reuse (reduces client instantiation)
+            trading_cycle: Optional CostEfficientTradeCycle instance to reuse
+                (reduces client instantiation)
         """
         # Load paths configuration
         paths_config_file = "config_defaults/paths_config.yaml"
@@ -278,7 +279,8 @@ class DailyScheduler:
 
                 # Extract report path from report if available
                 # Report path is typically mentioned in the trading_cycle output
-                # Use human-readable format: 2025-11-11_morning.md (or _2.md, _3.md for multiple runs)
+                # Use human-readable format: 2025-11-11_morning.md
+                # (or _2.md, _3.md for multiple runs)
                 now = get_datetime_now()
                 date_str = now.strftime("%Y-%m-%d")
                 # Extract routine type from task name (e.g., "morning_routine" -> "morning")

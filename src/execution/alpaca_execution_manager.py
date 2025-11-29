@@ -155,7 +155,10 @@ class AlpacaExecutionManager(ExecutionManager):
                 take_profit_pct=take_profit_pct * 100,
             )
             if MESSAGE_LOADER_AVAILABLE
-            else f"Using strategy config: stop_loss={stop_loss_pct * 100}%, take_profit={take_profit_pct * 100}%"
+            else (
+                f"Using strategy config: stop_loss={stop_loss_pct * 100}%, "
+                f"take_profit={take_profit_pct * 100}%"
+            )
         )
         logger.info(msg)
 
@@ -207,7 +210,8 @@ class AlpacaExecutionManager(ExecutionManager):
         Uses Alpaca API error codes when available, falls back to heuristics.
 
         Args:
-            error_data: Error dict from order_manager (contains status, message, error_code, status_code)
+            error_data: Error dict from order_manager
+                (contains status, message, error_code, status_code)
 
         Returns:
             True if this is a bracket order validation error, False otherwise
@@ -331,7 +335,8 @@ class AlpacaExecutionManager(ExecutionManager):
                         )
                     else:
                         logger.warning(
-                            f"UnifiedPriceFetcher returned default fallback price ${fetched_price:.2f} - not using"
+                            f"UnifiedPriceFetcher returned default fallback price "
+                            f"${fetched_price:.2f} - not using"
                         )
                 except Exception as e:
                     logger.error(f"UnifiedPriceFetcher failed with exception: {e}", exc_info=True)
@@ -392,12 +397,18 @@ class AlpacaExecutionManager(ExecutionManager):
 
                 # If no position, reject SELL to prevent short selling
                 if not has_position:
-                    log_msg = f"SELL signal rejected for {ticker} - no position held (prevents short selling)"
+                    log_msg = (
+                        f"SELL signal rejected for {ticker} - no position held "
+                        "(prevents short selling)"
+                    )
                     logger.warning(log_msg)
                     user_msg = (
                         _MSG.get("execution.sell_no_position", ticker=ticker)
                         if MESSAGE_LOADER_AVAILABLE
-                        else f"SELL signal rejected: No position in {ticker}. Short selling not supported."
+                        else (
+                            f"SELL signal rejected: No position in {ticker}. "
+                            "Short selling not supported."
+                        )
                     )
                     return OrderResult(
                         success=False,
@@ -439,7 +450,8 @@ class AlpacaExecutionManager(ExecutionManager):
                     )
 
                 logger.info(
-                    f"SELL signal approved - have {position_qty} shares of {ticker}, selling {quantity}"
+                    f"SELL signal approved - have {position_qty} shares of {ticker}, "
+                    f"selling {quantity}"
                 )
 
             if not self.order_manager:
@@ -522,7 +534,12 @@ class AlpacaExecutionManager(ExecutionManager):
                             status_code=error_data.get("status_code", "N/A"),
                         )
                         if MESSAGE_LOADER_AVAILABLE
-                        else f"❌ Bracket order validation failed (off-hours): {e}\nError code: {error_data.get('error_code', 'N/A')}, Status: {error_data.get('status_code', 'N/A')}\n🔄 Attempting fallback: simple market order without brackets..."
+                        else (
+                            f"❌ Bracket order validation failed (off-hours): {e}\n"
+                            f"Error code: {error_data.get('error_code', 'N/A')}, "
+                            f"Status: {error_data.get('status_code', 'N/A')}\n"
+                            "🔄 Attempting fallback: simple market order without brackets..."
+                        )
                     )
                     logger.warning(msg)
 
@@ -547,7 +564,13 @@ class AlpacaExecutionManager(ExecutionManager):
                                 stop=stop_loss,
                             )
                             if MESSAGE_LOADER_AVAILABLE
-                            else f"✅ Simple market order placed: {fallback_order_id}\n⚠️  NOTE: Stop-loss and take-profit NOT set (bracket order failed).\nManual risk management required!\nTarget: ${take_profit:.2f}, Stop: ${stop_loss:.2f}"
+                            else (
+                                f"✅ Simple market order placed: {fallback_order_id}\n"
+                                "⚠️  NOTE: Stop-loss and take-profit NOT set "
+                                "(bracket order failed).\n"
+                                "Manual risk management required!\n"
+                                f"Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f}"
+                            )
                         )
                         logger.info(msg)
 
@@ -558,7 +581,11 @@ class AlpacaExecutionManager(ExecutionManager):
                                 stop=stop_loss,
                             )
                             if MESSAGE_LOADER_AVAILABLE
-                            else f"⚠️  Market order placed WITHOUT brackets (off-hours fallback). Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f} (NOT automatically set). Manual risk management required!"
+                            else (
+                                f"⚠️  Market order placed WITHOUT brackets (off-hours fallback). "
+                                f"Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f} "
+                                "(NOT automatically set). Manual risk management required!"
+                            )
                         )
                         return OrderResult(
                             success=True,
@@ -675,17 +702,22 @@ class AlpacaExecutionManager(ExecutionManager):
                 if code == 42210000:
                     if "stop_loss" in api_message and "must be <=" in api_message:
                         return (
-                            f"Order rejected: Stop loss price (${stop:.2f}) doesn't match market price",
-                            f"The market is closed and price data may be stale. "
+                            f"Order rejected: Stop loss price (${stop:.2f}) "
+                            "doesn't match market price",
+                            "The market is closed and price data may be stale. "
                             f"Alpaca expects stop=${base_price} but we calculated ${stop:.2f}. "
-                            f"Try again during market hours (9:30 AM - 4:00 PM ET) for accurate pricing.",
+                            "Try again during market hours (9:30 AM - 4:00 PM ET) "
+                            "for accurate pricing.",
                         )
                     elif "take_profit" in api_message and "must be >=" in api_message:
                         return (
-                            f"Order rejected: Take profit price (${target:.2f}) doesn't match market price",
-                            f"The market is closed and price data may be stale. "
-                            f"Alpaca expects target>=${base_price} but we calculated ${target:.2f}. "
-                            f"Try again during market hours (9:30 AM - 4:00 PM ET) for accurate pricing.",
+                            f"Order rejected: Take profit price (${target:.2f}) "
+                            "doesn't match market price",
+                            "The market is closed and price data may be stale. "
+                            f"Alpaca expects target>=${base_price} "
+                            f"but we calculated ${target:.2f}. "
+                            "Try again during market hours (9:30 AM - 4:00 PM ET) "
+                            "for accurate pricing.",
                         )
 
                 # Insufficient buying power
@@ -701,14 +733,16 @@ class AlpacaExecutionManager(ExecutionManager):
                 ):
                     return (
                         f"Order rejected: {ticker} is not a valid or tradeable symbol",
-                        "Double-check the ticker symbol. It may be delisted or not supported by Alpaca.",
+                        "Double-check the ticker symbol. "
+                        "It may be delisted or not supported by Alpaca.",
                     )
 
                 # Market hours
                 if "market" in api_message.lower() and "closed" in api_message.lower():
                     return (
                         "Order rejected: Market is closed",
-                        "Regular market hours: 9:30 AM - 4:00 PM ET. Your order may execute when the market opens.",
+                        "Regular market hours: 9:30 AM - 4:00 PM ET. "
+                        "Your order may execute when the market opens.",
                     )
 
         except (json.JSONDecodeError, AttributeError):
