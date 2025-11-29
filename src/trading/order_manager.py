@@ -16,6 +16,7 @@ from alpaca.trading.requests import (
     OrderClass,
     OrderSide,
     StopLossRequest,
+    StopOrderRequest,
     TakeProfitRequest,
     TimeInForce,
 )
@@ -320,8 +321,6 @@ class OrderManager:
         Returns:
             Dict with new order details or error
         """
-        from alpaca.trading.requests import StopOrderRequest
-
         try:
             # Get existing order details if not provided
             if symbol is None or qty is None:
@@ -342,8 +341,6 @@ class OrderManager:
                 return {"error": f"Failed to cancel existing stop order {order_id}"}
 
             # Small delay to ensure cancellation is processed
-            import time
-
             time.sleep(0.5)
 
             # Step 2: Place new stop order at updated price
