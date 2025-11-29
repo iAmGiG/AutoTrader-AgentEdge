@@ -75,14 +75,34 @@ class AlpacaMarketData:
             )
 
         # Initialize TIMEFRAME_MAP now that we know alpaca is available
+        # Includes Fibonacci sequences (1, 2, 3, 5, 8, 13, 21, 34, 55) for technical analysis
         if AlpacaMarketData.TIMEFRAME_MAP is None:
             AlpacaMarketData.TIMEFRAME_MAP = {
+                # Minute intervals (Alpaca supports 1-59 minutes)
                 "1Min": TimeFrame(1, TimeFrameUnit.Minute),
+                "2Min": TimeFrame(2, TimeFrameUnit.Minute),
+                "3Min": TimeFrame(3, TimeFrameUnit.Minute),
                 "5Min": TimeFrame(5, TimeFrameUnit.Minute),
+                "8Min": TimeFrame(8, TimeFrameUnit.Minute),
+                "13Min": TimeFrame(13, TimeFrameUnit.Minute),
                 "15Min": TimeFrame(15, TimeFrameUnit.Minute),
+                "21Min": TimeFrame(21, TimeFrameUnit.Minute),
                 "30Min": TimeFrame(30, TimeFrameUnit.Minute),
+                "34Min": TimeFrame(34, TimeFrameUnit.Minute),
+                "45Min": TimeFrame(45, TimeFrameUnit.Minute),
+                "55Min": TimeFrame(55, TimeFrameUnit.Minute),
+                # Hour intervals (Alpaca supports 1-23 hours)
                 "1Hour": TimeFrame(1, TimeFrameUnit.Hour),
+                "2Hour": TimeFrame(2, TimeFrameUnit.Hour),
+                "3Hour": TimeFrame(3, TimeFrameUnit.Hour),
+                "4Hour": TimeFrame(4, TimeFrameUnit.Hour),
+                "5Hour": TimeFrame(5, TimeFrameUnit.Hour),
+                "8Hour": TimeFrame(8, TimeFrameUnit.Hour),
+                "13Hour": TimeFrame(13, TimeFrameUnit.Hour),
+                # Day/Week/Month
                 "1Day": TimeFrame(1, TimeFrameUnit.Day),
+                "1Week": TimeFrame(1, TimeFrameUnit.Week),
+                "1Month": TimeFrame(1, TimeFrameUnit.Month),
             }
 
         config_loader = ConfigLoader()

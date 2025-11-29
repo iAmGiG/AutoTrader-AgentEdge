@@ -9,17 +9,33 @@ from typing import Dict, List
 
 from config_defaults.trading_config import get_config
 
-# Alpaca API timeframe mapping (common presets)
+# Alpaca API timeframe mapping (common presets + Fibonacci sequences)
 # Our format (user-friendly) -> Alpaca format (API requirement)
 # Note: Alpaca supports custom intervals: 1-59 minutes, 1-23 hours
+# Fibonacci minutes: 1, 2, 3, 5, 8, 13, 21, 34, 55 (all supported by Alpaca)
 ALPACA_TIMEFRAME_MAP = {
+    # Standard minute intervals
     "1m": "1Min",
+    "2m": "2Min",
+    "3m": "3Min",
     "5m": "5Min",
+    "8m": "8Min",
+    "13m": "13Min",
     "15m": "15Min",
+    "21m": "21Min",
     "30m": "30Min",
+    "34m": "34Min",
+    "45m": "45Min",
+    "55m": "55Min",
+    # Hour intervals
     "1h": "1Hour",
     "2h": "2Hour",
+    "3h": "3Hour",
     "4h": "4Hour",
+    "5h": "5Hour",
+    "8h": "8Hour",
+    "13h": "13Hour",
+    # Day/Week/Month
     "1d": "1Day",
     "1w": "1Week",
     "1M": "1Month",
@@ -168,12 +184,13 @@ class TimeframeManager:
         timeframe_config = self.config.get_timeframe_config()
 
         return {
-            "scalping": ["1m", "5m"],
-            "day_trading": ["15m", "30m"],
-            "swing_trading": ["1h", "2h", "4h"],
+            "scalping": ["1m", "2m", "3m", "5m"],
+            "day_trading": ["8m", "13m", "15m", "21m", "30m"],
+            "swing_trading": ["34m", "45m", "55m", "1h", "2h", "4h"],
             "position_trading": ["1d"],
             "intermediate_term": ["1w"],
             "long_term": ["1M"],
+            "fibonacci": ["2m", "3m", "5m", "8m", "13m", "21m", "34m", "55m", "3h", "5h", "8h", "13h"],
             "all_enabled": timeframe_config.enabled_timeframes,
         }
 
@@ -208,13 +225,28 @@ class TimeframeManager:
             Dictionary with timeframe information
         """
         timeframe_descriptions = {
+            # Standard + Fibonacci minute intervals
             "1m": "1 minute - scalping/EA signals, micro trends",
-            "5m": "5 minutes - fast intraday trading, quick reactions",
+            "2m": "2 minutes - Fibonacci, ultra-short scalping",
+            "3m": "3 minutes - Fibonacci, quick momentum plays",
+            "5m": "5 minutes - Fibonacci, fast intraday trading",
+            "8m": "8 minutes - Fibonacci, short-term momentum",
+            "13m": "13 minutes - Fibonacci, half-cycle intraday",
             "15m": "15 minutes - standard intraday, trend following",
+            "21m": "21 minutes - Fibonacci, cycle analysis",
             "30m": "30 minutes - intraday swing trading, medium trends",
+            "34m": "34 minutes - Fibonacci, momentum cycles",
+            "45m": "45 minutes - 3/4 hour, extended intraday",
+            "55m": "55 minutes - Fibonacci, near-hourly analysis",
+            # Hour intervals
             "1h": "1 hour - medium-term trading, strong support/resistance",
             "2h": "2 hours - medium-term swing, consolidation patterns",
+            "3h": "3 hours - Fibonacci, extended swing trading",
             "4h": "4 hours - swing/position trading, strong for crypto",
+            "5h": "5 hours - Fibonacci, multi-session analysis",
+            "8h": "8 hours - Fibonacci, overnight/session analysis",
+            "13h": "13 hours - Fibonacci, multi-day short-term",
+            # Day/Week/Month
             "1d": "1 day - VALIDATED DEFAULT, best Sharpe (0.856), position trading",
             "1w": "1 week - intermediate-term, major trends",
             "1M": "1 month - long-term positioning, institutional moves",
@@ -365,6 +397,11 @@ def get_timeframe_recommendations() -> Dict[str, any]:
                 "timeframes": available["intermediate_term"] + available["long_term"],
                 "description": "Major trends and institutional moves",
                 "risk_level": "Low",
+            },
+            "fibonacci": {
+                "timeframes": available["fibonacci"],
+                "description": "Natural market cycles aligned with Fibonacci sequence (2,3,5,8,13,21,34,55)",
+                "risk_level": "Varies - for backtesting/research",
             },
         },
         "default_recommended": "1d",
