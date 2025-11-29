@@ -21,6 +21,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from core.interfaces import InputParser
 from core.models import AssetType, TradeRequest
+
 from src.utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)

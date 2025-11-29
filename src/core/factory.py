@@ -7,7 +7,6 @@ Issue #406: Uses AutoGen's native LLM client instead of custom OpenAIService.
 
 import json
 import logging
-import os
 
 from core.trading_orchestrator import TradingOrchestrator
 from execution import AlpacaExecutionManager
