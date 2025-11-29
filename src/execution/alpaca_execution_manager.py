@@ -293,9 +293,7 @@ class AlpacaExecutionManager(ExecutionManager):
             if self.order_manager and hasattr(self.order_manager, "client"):
                 try:
                     # Use Alpaca's market data client for most accurate price
-                    from src.data_sources.sources.market.alpaca_market_data import (
-                        AlpacaMarketData,
-                    )
+                    from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
 
                     market_data = AlpacaMarketData()
 
