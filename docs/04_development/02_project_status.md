@@ -360,7 +360,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### Code Quality & Technical Debt
 
-#### #409 - Refactor Complex Functions (C901 Warnings) (P2 - NEW)
+#### #409 - Refactor Complex Functions (C901 Warnings) (P2 - OPEN)
 
 - **Scope**: Break down complex functions in main.py
 - **Target Functions**: `run_paper_trading_check()` (26), `main()` (22)
@@ -368,23 +368,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Status**: Currently blocking commits without `--no-verify`
 - **Target**: Q1 2026
 
-#### #411 - Add Comprehensive Type Hints (P2 - NEW)
-
-- **Scope**: Add type hints across core modules (3 phases)
-- **Phase 1**: Core trading logic (VoterAgent, position_manager, etc.)
-- **Why Important**: Better IDE support, early error detection, safer refactoring
-- **Status**: Design phase - phased approach planned
-- **Target**: Q1-Q2 2026
-
-#### #412 - Audit Scripts Directory Imports (P3 - NEW)
-
-- **Scope**: Review and normalize imports in scripts/ directory
-- **Current**: scripts/ excluded from import linting
-- **Goal**: Apply standard conventions where possible
-- **Status**: Audit needed
-- **Target**: Q1 2026
-
-#### #413 - Validate Test Coverage After Import Consolidation (P1 - NEW)
+#### #413 - Validate Test Coverage After Import Consolidation (P1 - OPEN)
 
 - **Scope**: Ensure recent import changes didn't break functionality
 - **Coverage**: Run full test suite with coverage metrics
@@ -401,6 +385,23 @@ See [Code Quality Guide](06_code_quality.md) for detailed tracking and standards
 - Fixed all import errors
 - Validated Alpaca integration
 - All 4 commands working
+
+#### #412 - Scripts Directory Import Audit - ✅ PARTIAL (Nov 29, 2025)
+
+- Audited all scripts in scripts/ directory
+- Fixed 2 research scripts with incorrect sys.path
+- Updated pyproject.toml with minimal targeted exclusions
+- Active utility scripts normalized, deprecated research preserved
+- Commit: b486c03
+- Files: config_usage_demo.py, generate_results_summary.py, pyproject.toml
+
+#### #411 - Type Hints Assessment - ✅ ASSESSED (Nov 29, 2025)
+
+- Assessed Phase 1 core trading logic (5 files)
+- Found 85-90% type coverage already present
+- Determined current coverage is production-ready
+- Deferred further work until mypy is available
+- Files: voter_agent.py, position_manager.py, account_manager.py, trailing_stop_manager.py, unified_price_fetcher.py
 
 #### #410 - Line Length Violations (E501) - ✅ COMPLETE (Nov 29, 2025)
 
