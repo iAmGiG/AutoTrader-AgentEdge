@@ -8,7 +8,6 @@ Issue #406: Uses AutoGen's native LLM client instead of custom OpenAIService.
 
 import json
 import logging
-import os
 from typing import Optional
 
 from core.trading_modes import TradingMode, get_mode_manager
