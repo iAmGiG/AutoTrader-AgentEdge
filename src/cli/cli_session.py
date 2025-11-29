@@ -2243,11 +2243,12 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             emoji = "📌"
             label = ""
 
-        # Format: │ [connector] [emoji] [label] [side] [qty] @ [price] - [status] ([id])
-        order_line = (
-            f"│ {connector} {emoji} {label}{side} {qty} @ {price_str} - "
-            f"{status.upper()} ({order_id[:8]})"
-        )
+        # Format: │ [connector] [emoji] [label] [side] [qty] @ [price] [*]
+        # * indicates local order (not yet confirmed by broker)
+        is_local = order_id.startswith("local-")
+        local_marker = " *" if is_local else ""
+
+        order_line = f"│ {connector} {emoji} {label}{side} {qty} @ {price_str}{local_marker}"
         print(order_line)
 
     async def _handle_cancel_request(self, user_input: str):
