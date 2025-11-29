@@ -190,7 +190,20 @@ class TimeframeManager:
             "position_trading": ["1d"],
             "intermediate_term": ["1w"],
             "long_term": ["1M"],
-            "fibonacci": ["2m", "3m", "5m", "8m", "13m", "21m", "34m", "55m", "3h", "5h", "8h", "13h"],
+            "fibonacci": [
+                "2m",
+                "3m",
+                "5m",
+                "8m",
+                "13m",
+                "21m",
+                "34m",
+                "55m",
+                "3h",
+                "5h",
+                "8h",
+                "13h",
+            ],
             "all_enabled": timeframe_config.enabled_timeframes,
         }
 
