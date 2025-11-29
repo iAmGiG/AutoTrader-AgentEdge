@@ -1563,9 +1563,9 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
 
             # Replace the order
-            updated_order = self.client.trading.replace_order_by_id(
+            updated_order = self.client.trading.replace_order_by_id(  # pylint: disable=no-member
                 order_id, replace_request
-            )  # pylint: disable=no-member
+            )
 
             return {
                 "status": "submitted",
@@ -1630,16 +1630,18 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get open orders
             if symbol:
-                request = GetOrdersRequest(
-                    status=OrderStatus.OPEN, symbols=[symbol]
-                )  # pylint: disable=no-member
+                request = GetOrdersRequest(  # pylint: disable=possibly-used-before-assignment,no-member
+                    status=OrderStatus.OPEN, symbols=[symbol]  # pylint: disable=no-member
+                )
                 orders = self.client.trading_client.get_orders(request)
             else:
                 orders = self.get_orders(status="open")
                 # Convert to alpaca order objects if needed
                 if orders and isinstance(orders[0], dict):
                     # These are our formatted orders, we need the raw ones
-                    request = GetOrdersRequest(status=OrderStatus.OPEN)
+                    request = GetOrdersRequest(  # pylint: disable=possibly-used-before-assignment
+                        status=OrderStatus.OPEN  # pylint: disable=no-member
+                    )
                     orders = self.client.trading.get_orders(request)  # pylint: disable=no-member
 
             if not orders:

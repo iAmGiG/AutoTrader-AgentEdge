@@ -6,22 +6,15 @@ the plugin architecture while handling market data fetching.
 """
 
 import logging
-import os
-import sys
 from datetime import timedelta
 from typing import Dict, Optional
 
-from src.utils.date_utils import get_datetime_now
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-
 from config_defaults.trading_config import TradingConfig
-
 from src.autogen_agents.voter_agent import VoterAgent
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.tools import fetch_unified_market_data
+from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
 
