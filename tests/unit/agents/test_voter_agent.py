@@ -130,12 +130,15 @@ def create_mock_trading_config():
 # =============================================================================
 
 
-class TestableVoterAgent:
+class MockableVoterAgent:
     """
-    A testable version of VoterAgent that doesn't require BaseAgent initialization.
+    A mockable version of VoterAgent that doesn't require BaseAgent initialization.
 
     This class replicates VoterAgent's core logic (evaluate_voting, reconfigure, etc.)
     without the AutoGen framework dependencies.
+
+    Note: Named 'Mockable' instead of 'Testable' to avoid pytest collection warning
+    (pytest tries to collect classes starting with 'Test' as test classes).
     """
 
     def __init__(
@@ -393,8 +396,8 @@ class TestableVoterAgent:
 
 @pytest.fixture
 def voter_agent():
-    """Create TestableVoterAgent."""
-    return TestableVoterAgent(name="test_voter")
+    """Create MockableVoterAgent."""
+    return MockableVoterAgent(name="test_voter")
 
 
 # =============================================================================
@@ -407,7 +410,7 @@ class TestVoterAgentInit:
 
     def test_init_with_default_params(self):
         """Test initialization with default parameters."""
-        agent = TestableVoterAgent(name="test")
+        agent = MockableVoterAgent(name="test")
 
         assert agent.macd_params["fast"] == 13
         assert agent.macd_params["slow"] == 34
@@ -419,7 +422,7 @@ class TestVoterAgentInit:
     def test_init_with_custom_macd_params(self):
         """Test initialization with custom MACD parameters."""
         custom_macd = {"fast": 12, "slow": 26, "signal": 9}
-        agent = TestableVoterAgent(name="test", macd_params=custom_macd)
+        agent = MockableVoterAgent(name="test", macd_params=custom_macd)
 
         assert agent.macd_params["fast"] == 12
         assert agent.macd_params["slow"] == 26
@@ -428,7 +431,7 @@ class TestVoterAgentInit:
     def test_init_with_custom_rsi_params(self):
         """Test initialization with custom RSI parameters."""
         custom_rsi = {"period": 21, "oversold": 25, "overbought": 75}
-        agent = TestableVoterAgent(name="test", rsi_params=custom_rsi)
+        agent = MockableVoterAgent(name="test", rsi_params=custom_rsi)
 
         assert agent.rsi_params["period"] == 21
         assert agent.rsi_params["oversold"] == 25
@@ -436,13 +439,13 @@ class TestVoterAgentInit:
 
     def test_init_with_valid_timeframe(self):
         """Test initialization with valid timeframe."""
-        agent = TestableVoterAgent(name="test", timeframe="4h")
+        agent = MockableVoterAgent(name="test", timeframe="4h")
 
         assert agent.timeframe == "4h"
 
     def test_init_with_invalid_timeframe_defaults_to_1d(self):
         """Test that invalid timeframe defaults to 1d."""
-        agent = TestableVoterAgent(name="test", timeframe="invalid")
+        agent = MockableVoterAgent(name="test", timeframe="invalid")
 
         assert agent.timeframe == "1d"
 
@@ -688,11 +691,11 @@ class TestErrorHandling:
 
 
 class TestVoterAgentAPIContract:
-    """Test that TestableVoterAgent matches the real VoterAgent API contract."""
+    """Test that MockableVoterAgent matches the real VoterAgent API contract."""
 
     def test_api_contract_evaluate_voting(self):
         """Test that evaluate_voting returns expected keys."""
-        agent = TestableVoterAgent(name="test")
+        agent = MockableVoterAgent(name="test")
         data = create_bullish_price_data()
 
         result = agent.evaluate_voting("SPY", data)
@@ -704,7 +707,7 @@ class TestVoterAgentAPIContract:
 
     def test_api_contract_reconfigure(self):
         """Test that reconfigure updates parameters correctly."""
-        agent = TestableVoterAgent(name="test")
+        agent = MockableVoterAgent(name="test")
 
         # Reconfigure should update macd_params
         agent.reconfigure(macd_params={"fast": 10})
@@ -716,7 +719,7 @@ class TestVoterAgentAPIContract:
 
     def test_api_contract_get_current_configuration(self):
         """Test that get_current_configuration returns expected structure."""
-        agent = TestableVoterAgent(name="test")
+        agent = MockableVoterAgent(name="test")
 
         config = agent.get_current_configuration()
 
