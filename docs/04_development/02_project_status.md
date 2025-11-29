@@ -242,7 +242,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | **API Calls/Day** | 10-15 | 90% fewer vs reactive |
 | **Cache Hit Rate** | 85%+ | 90%+ faster access |
 | **Response Time** | <500ms | Real-time decisions |
-| **Test Coverage** | 35/35 passing | 100% core features |
+| **Test Coverage** | 137 passing | Priority 1-2 components (Issue #408) |
 
 ### Live Validation Results
 
@@ -518,7 +518,7 @@ python main.py test-voter
 - [x] Win rate > 50% (achieved 51.4%)
 - [x] Max drawdown < 15% (achieved 10.10%)
 - [x] API efficiency > 80% reduction (achieved 90%)
-- [x] Core test coverage 100% (35/35 passing)
+- [x] Core test coverage 80%+ (137 tests passing - #408)
 
 ### User Experience
 
@@ -564,6 +564,34 @@ python main.py test-voter
 ---
 
 ## Recent Milestones
+
+### November 2025 - Unit Testing Infrastructure (Issue #408)
+
+**Unit Test Suite** (branch: `feature/testing-408`):
+
+- ✅ **137 unit tests** across Priority 1-2 components
+- ✅ PositionManager: 32 tests (broker reconciliation, state management, edge cases)
+- ✅ OrderManager: 30 tests (market/limit/bracket orders, cancellation, replacement)
+- ✅ Indicators: 29 tests (MACD, RSI, voting consensus, current signals)
+- ✅ SimpleSignals: 19 tests (signal evaluation, thresholds, voting logic)
+- ✅ VoterAgent: 27 tests (MACD+RSI voting logic without AutoGen dependencies)
+- ✅ Test fixtures in conftest.py (MockPosition, MockOrder, MockAccount)
+- ✅ TestableVoterAgent class for framework-independent testing
+
+**Files Created**:
+
+- `tests/unit/trading/test_position_manager.py` (32 tests)
+- `tests/unit/trading/test_order_manager.py` (30 tests)
+- `tests/unit/trading/test_indicators.py` (29 tests)
+- `tests/unit/trading/test_simple_signals.py` (19 tests)
+- `tests/unit/agents/test_voter_agent.py` (27 tests)
+- `tests/conftest.py` (shared fixtures)
+
+**Run Tests**:
+
+```bash
+python -m pytest tests/unit/trading/ tests/unit/agents/test_voter_agent.py -v --no-cov
+```
 
 ### November 2025 - Trading Pipeline & Infrastructure Complete
 
