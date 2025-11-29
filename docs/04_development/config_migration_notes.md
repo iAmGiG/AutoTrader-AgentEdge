@@ -332,14 +332,11 @@ Consolidated `src/human_interface/` into `src/cli/`:
 - ✅ **human_interface/ folder** - **REMOVED**
   - Empty after moving decision_formatter.py
 
-- ✅ **src/services/llm/** - **KEPT** (actively used)
-  - Used by `src/parsers/llm_parser.py` for NL parsing
-  - Used by `src/core/factory.py` for OrchestratorFactory (called from main.py `trade_assist()`)
-  - Provides LLM abstraction (OpenAIService, LLMService base)
-  - **NOTE**: Separate from AutoGen's internal LLM config
-    - AutoGen: agent-to-agent conversations
-    - OpenAIService: CLI user input parsing (e.g., "buy 50 SPY" → structured trade request)
-  - Part of production interactive CLI (`python main.py`)
+- ✅ **src/services/llm/** - **REMOVED** (Issue #406)
+  - Replaced by AutoGen's native `OpenAIChatCompletionClient`
+  - New parser: `src/parsers/autogen_llm_parser.py`
+  - 500+ lines of code removed
+  - See `docs/04_development/llm_consolidation_analysis.md` for details
 
 ### Final src/ Structure
 
@@ -353,8 +350,8 @@ src/
 │   ├── scheduler_cli.py
 │   └── timeframe_commands.py
 ├── autogen_agents/         # AutoGen agent implementations
-├── services/
-│   └── llm/                # ✅ LLM service abstraction (actively used)
+├── parsers/
+│   └── autogen_llm_parser.py # ✅ NL parsing using AutoGen's native client (#406)
 ├── ...
 ```
 
