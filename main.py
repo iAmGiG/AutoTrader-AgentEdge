@@ -28,10 +28,16 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 # Import all trading system components at startup for efficiency
 from src.autogen_agents.voter_agent import VoterAgent
 from src.data_sources.tools import fetch_unified_market_data
+from src.trading.account_manager import get_account_manager
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
 from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.utils.date_utils import get_datetime_now
 from src.utils.safe_print import get_severity_symbol, get_symbol, safe_print
+
+try:
+    from scripts.analysis.generate_results_summary import main as generate_summary
+except ImportError:
+    generate_summary = None
 
 
 def test_voter_agent():
@@ -387,7 +393,8 @@ def generate_analysis():
     safe_print(f"{get_symbol('INFO')} Generating Analysis Reports...")
     try:
         # Try to run analysis script
-        from scripts.analysis.generate_results_summary import main as generate_summary
+        if generate_summary is None:
+            raise ImportError("Analysis script not available")
 
         # Save original sys.argv and temporarily set it for argparse
         original_argv = sys.argv
@@ -409,8 +416,6 @@ def list_accounts():
 
     Issue #401: Multi-account portfolio management.
     """
-    from src.trading.account_manager import get_account_manager
-
     safe_print(f"{get_symbol('INFO')} Configured Trading Accounts:")
     print("=" * 60)
 
@@ -677,7 +682,9 @@ LEGACY COMMANDS (deprecated, use interactive CLI instead):
 
     # Account selection with interactive CLI (#401)
     if args.account and not args.legacy and not args.daemon:
-        safe_print(f"{get_symbol('ROCKET')} Launching Trading Assistant with account: {args.account}")
+        safe_print(
+            f"{get_symbol('ROCKET')} Launching Trading Assistant with account: {args.account}"
+        )
         print()
         try:
             success = trade_assist(account_id=args.account)
