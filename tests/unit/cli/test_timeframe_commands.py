@@ -381,10 +381,8 @@ class TestSingletonPattern(TestTimeframeCommands):
             "src.cli.timeframe_commands.TimeframeManager",
             return_value=mock_timeframe_manager,
         ):
-            from src.cli.timeframe_commands import (
-                TimeframeCommands,
-                get_timeframe_commands,
-            )
+            from src.cli.timeframe_commands import (TimeframeCommands,
+                                                    get_timeframe_commands)
 
             # Reset singleton
             TimeframeCommands._instance = None
