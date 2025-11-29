@@ -18,10 +18,6 @@ scripts/
 │   ├── install_scheduler.sh     # Installation script for systemd
 │   └── setup_cron.sh            # Alternative cron-based setup
 │
-├── data/                        # Market data collection utilities
-│   ├── collect_benchmark_data.py  # Benchmark data fetching
-│   └── polygon_data_collector.py  # Polygon.io data collection
-│
 └── research/                    # Documented experiments and analysis
     ├── configuration_system/    # Config system demonstrations
     ├── exit_strategy_analysis/  # Exit strategy performance research
@@ -131,24 +127,6 @@ bash scripts/deployment/setup_cron.sh
 
 **Schedule**: Runs morning and evening routines automatically.
 
-## Data Collection
-
-### Benchmark Data Collector (`data/collect_benchmark_data.py`)
-
-Fetch benchmark index data for performance comparison:
-
-```bash
-python scripts/data/collect_benchmark_data.py
-```
-
-### Polygon Data Collector (`data/polygon_data_collector.py`)
-
-Direct Polygon.io data fetching utility:
-
-```bash
-python scripts/data/polygon_data_collector.py SPY 2025-01-01 2025-12-31
-```
-
 ## Research Scripts
 
 ### V0-V4 Sentiment Analysis (`research/v0_v4_analysis/`)
@@ -218,8 +196,10 @@ Scripts that were one-time migrations or superseded by current architecture have
 
 - **backtest.py** - Continuous backtesting for V0-V4 sentiment agents
 - **obfuscation_test.py** - V4 date obfuscation validation testing
+- **collect_benchmark_data.py** - VXX/SPY/QQQ data collector (broken imports)
+- **polygon_data_collector.py** - MAG 7 + leveraged ETFs collector (broken imports)
 
-**Status**: V0-V4 sentiment framework deprecated in favor of simpler MACD+RSI voting strategy. Research preserved for reference.
+**Status**: V0-V4 sentiment framework deprecated in favor of simpler MACD+RSI voting strategy. Data collectors have broken import paths from old architecture. Research preserved for reference.
 
 ## Cross-Platform Notes
 
@@ -268,7 +248,7 @@ python scripts/research/v0_v4_analysis/generate_results_summary.py --advanced
 
 When adding new scripts:
 
-1. Place in appropriate subdirectory (utilities/, data/, research/)
+1. Place in appropriate subdirectory (utilities/, deployment/, research/)
 2. Add shebang line: `#!/usr/bin/env python3`
 3. Include docstring with purpose and usage examples
 4. Update this README with script description
