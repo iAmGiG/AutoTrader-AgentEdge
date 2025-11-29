@@ -11,7 +11,9 @@ from datetime import time
 from typing import Optional, Tuple
 
 import pytz
+from alpaca.trading.client import TradingClient
 
+from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
@@ -29,13 +31,10 @@ def _get_alpaca_calendar():
         Alpaca trading client or None if unavailable
     """
     try:
-        from alpaca.trading.client import TradingClient
-        from config_defaults.env_config import get_env_config
-
-        config = get_env_config()
+        config_loader = ConfigLoader()
         client = TradingClient(
-            api_key=config.get("ALPACA_API_KEY"),
-            secret_key=config.get("ALPACA_SECRET_KEY"),
+            api_key=config_loader.get("ALPACA_API_KEY"),
+            secret_key=config_loader.get("ALPACA_SECRET_KEY"),
         )
         return client
     except Exception as e:
@@ -71,8 +70,11 @@ def get_market_hours_for_date(
             # Fallback to hardcoded defaults
             return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, True
 
-        # Get calendar for the date
-        calendar = client.get_calendar(start=date, end=date)
+        # Get calendar for the date (Alpaca expects YYYY-MM-DD strings)
+        date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(date)
+        calendar = client.get_calendar(
+            start=date_str, end=date_str
+        )  # pylint: disable=unexpected-keyword-arg
 
         if not calendar:
             # Market is closed (holiday)

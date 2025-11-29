@@ -21,8 +21,33 @@ from typing import Optional
 import pytz
 import yaml
 
+# Add imports for new features
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+# Import CLI messages configuration
+from config_defaults.message_loader import CLIMessages as MSG
+from config_defaults.message_loader import (
+    get_alert_severity_emoji,
+    get_pl_emoji,
+    get_signal_emoji,
+    get_status_emoji,
+)
+
+from src.autogen_agents.trading_orchestrator import ExecutionMode
+from src.cli.account_commands import get_account_commands
+from src.cli.help_system import HelpSystem
+from src.cli.scheduler_cli import SchedulerCLI
+from src.cli.timeframe_commands import get_timeframe_commands
+from src.core.models import Signal
+from src.core.trading_orchestrator import TradingOrchestrator
+from src.trading.daily_scheduler import DailyScheduler
+from src.trading.timeframe_tools import get_timeframe_display_name
+from src.trading.trading_cycle import CostEfficientTradeCycle
+from src.utils.date_utils import get_datetime_now, now_iso
+
 # Import safe_print for Unicode handling
 from src.utils.safe_print import safe_print
+
+logger = logging.getLogger(__name__)
 
 
 # Arrow key history navigation (#362) and advanced readline features (#399)
@@ -175,32 +200,6 @@ class TickerCompleter:
 
 # Global ticker completer instance
 _ticker_completer = TickerCompleter() if READLINE_AVAILABLE else None
-
-
-# Add imports for new features
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-# Import CLI messages configuration
-from config_defaults.message_loader import CLIMessages as MSG
-from config_defaults.message_loader import (
-    get_alert_severity_emoji,
-    get_pl_emoji,
-    get_signal_emoji,
-    get_status_emoji,
-)
-
-from src.autogen_agents.trading_orchestrator import ExecutionMode
-from src.cli.account_commands import get_account_commands
-from src.cli.help_system import HelpSystem
-from src.cli.scheduler_cli import SchedulerCLI
-from src.cli.timeframe_commands import get_timeframe_commands
-from src.core.models import Signal
-from src.core.trading_orchestrator import TradingOrchestrator
-from src.trading.daily_scheduler import DailyScheduler
-from src.trading.timeframe_tools import get_timeframe_display_name
-from src.trading.trading_cycle import CostEfficientTradeCycle
-from src.utils.date_utils import get_datetime_now, now_iso
-
-logger = logging.getLogger(__name__)
 
 
 class CLISession:
@@ -2499,10 +2498,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     time_str = ""
                     if filled_at:
                         try:
-
                             dt = datetime.fromisoformat(filled_at.replace("Z", "+00:00"))
                             time_str = dt.strftime("%Y-%m-%d %H:%M")
-                        except:
+                        except Exception:  # noqa: E722
                             time_str = filled_at[:16]
 
                     print(f"   {side} {qty} shares @ ${filled_price:.2f}")

@@ -15,7 +15,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from alpaca.trading.client import TradingClient
+
 from src.utils.config_loader import ConfigLoader
+from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
 
@@ -248,8 +251,6 @@ class AccountManager:
         managed = self._accounts[account_id]
 
         try:
-            from alpaca.trading.client import TradingClient
-
             # Try paper endpoint first, then live
             # Alpaca paper uses paper=True, live uses paper=False
             for is_paper in [True, False]:
@@ -268,8 +269,6 @@ class AccountManager:
                     account_type = AccountType.PAPER if is_paper else AccountType.LIVE
 
                     # Build discovered info
-                    from src.utils.date_utils import get_datetime_now
-
                     info = AccountInfo(
                         account_id=account_id,
                         account_number=str(account.account_number),
@@ -452,8 +451,6 @@ class AccountManager:
             return None
 
         try:
-            from alpaca.trading.client import TradingClient
-
             is_paper = managed.info.account_type == AccountType.PAPER
             return TradingClient(
                 api_key=managed.credentials.api_key,

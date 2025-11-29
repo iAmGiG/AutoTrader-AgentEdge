@@ -6,6 +6,7 @@ emoji/symbol rendering across Windows, Linux, and macOS.
 """
 
 import os
+import subprocess
 import sys
 from typing import Dict
 
@@ -25,21 +26,21 @@ def _supports_utf8() -> bool:
         # Check stdout encoding
         if hasattr(sys.stdout, "encoding"):
             encoding = sys.stdout.encoding or ""
-            if "utf" in encoding.lower():
+            if encoding and "utf" in encoding.lower():  # pylint: disable=no-member
                 return True
 
         # Windows: Check if console is UTF-8 (chcp 65001)
         if IS_WINDOWS:
-            import subprocess
-
             try:
-                result = subprocess.run(["chcp"], capture_output=True, text=True, shell=True)
+                result = subprocess.run(
+                    ["chcp"], capture_output=True, text=True, shell=True  # nosec B602
+                )
                 return "65001" in result.stdout
-            except:
+            except Exception:  # noqa: E722
                 pass
 
         return False
-    except:
+    except Exception:  # noqa: E722
         return False
 
 
@@ -173,7 +174,7 @@ if __name__ == "__main__":
     print()
 
     print("Symbol Tests:")
-    for symbol_name in EMOJI_CONFIG.keys():
+    for symbol_name in EMOJI_CONFIG:
         symbol = get_symbol(symbol_name)
         safe_print(f"  {symbol_name}: {symbol}")
     print()

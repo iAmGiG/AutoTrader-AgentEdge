@@ -89,20 +89,24 @@ class SimpleSignalGenerator:
                     "raw_data": {},
                 }
 
-            # Calculate indicators
-            macd_line, macd_signal_line, macd_histogram = calculate_macd(
-                price_data,
-                fast_period=self.macd_fast,
-                slow_period=self.macd_slow,
-                signal_period=self.macd_signal,
+            # Calculate indicators (functions expect Series, return Dict)
+            close_prices = (
+                price_data["close"] if "close" in price_data.columns else price_data["Close"]
             )
 
-            rsi_values = calculate_rsi(price_data, period=self.rsi_period)
+            macd_data = calculate_macd(
+                close_prices,
+                fast=self.macd_fast,
+                slow=self.macd_slow,
+                signal=self.macd_signal,
+            )
 
-            # Get latest values
-            latest_macd = macd_line.iloc[-1]
-            latest_macd_signal = macd_signal_line.iloc[-1]
-            latest_rsi = rsi_values.iloc[-1]
+            rsi_data = calculate_rsi(close_prices, period=self.rsi_period)
+
+            # Get latest values from dict returns
+            latest_macd = macd_data["macd"].iloc[-1]
+            latest_macd_signal = macd_data["signal"].iloc[-1]
+            latest_rsi = rsi_data["rsi"].iloc[-1]
             macd_crossover = latest_macd - latest_macd_signal
 
             # Raw technical data
@@ -111,7 +115,7 @@ class SimpleSignalGenerator:
                 "macd_signal": latest_macd_signal,
                 "macd_crossover": macd_crossover,
                 "rsi": latest_rsi,
-                "price": price_data["close"].iloc[-1],
+                "price": close_prices.iloc[-1],
             }
 
             # Simple threshold decisions

@@ -8,7 +8,7 @@ enabling agents to access account information and place orders with unified live
 import logging
 from typing import Any, Dict, List, Optional
 
-from .alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
 
 logger = logging.getLogger(__name__)
 

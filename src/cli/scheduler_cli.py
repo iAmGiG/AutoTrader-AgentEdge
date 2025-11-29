@@ -16,7 +16,7 @@ import logging
 import os
 from datetime import time as dt_time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import yaml
 
@@ -257,11 +257,12 @@ class SchedulerCLI:
             return
 
         # Call handler (async or sync)
+        handler = cast(Any, handler)  # Type assertion after callable check
         try:
             if asyncio.iscoroutinefunction(handler):
-                await handler(*args)
+                await handler(*args)  # pylint: disable=not-callable
             else:
-                handler(*args)
+                handler(*args)  # pylint: disable=not-callable
         except TypeError as e:
             # Wrong number of arguments
             usage = cmd_def.get("usage", "")

@@ -10,6 +10,7 @@ Phase 2: Write operations (order placement, modification, cancellation)
 
 import logging
 from datetime import time as dt_time
+from datetime import timezone
 from typing import Any, Dict, List, Optional
 
 import pytz
@@ -17,13 +18,22 @@ import pytz
 from src.utils.date_utils import get_datetime_now, get_default_timezone
 
 try:
+    from alpaca.common.exceptions import APIError
     from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import OrderClass, OrderSide, OrderType, QueryOrderStatus, TimeInForce
+    from alpaca.trading.enums import (
+        OrderClass,
+        OrderSide,
+        OrderStatus,
+        OrderType,
+        QueryOrderStatus,
+        TimeInForce,
+    )
     from alpaca.trading.requests import (
         ClosePositionRequest,
         GetOrdersRequest,
         LimitOrderRequest,
         MarketOrderRequest,
+        ReplaceOrderRequest,
         StopLimitOrderRequest,
         StopLossRequest,
         StopOrderRequest,
@@ -33,6 +43,7 @@ try:
 
     ALPACA_TRADING_AVAILABLE = True
 except ImportError:
+    APIError = None
     TradingClient = None
     GetOrdersRequest = None
     MarketOrderRequest = None
@@ -43,7 +54,9 @@ except ImportError:
     ClosePositionRequest = None
     TakeProfitRequest = None
     StopLossRequest = None
+    ReplaceOrderRequest = None
     OrderSide = None
+    OrderStatus = None
     OrderType = None
     TimeInForce = None
     QueryOrderStatus = None
@@ -763,11 +776,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         """
         try:
             # Get today's orders
-            from datetime import timezone
-
-            import pytz
-            from alpaca.trading.requests import GetOrdersRequest
-
             # Get ET timezone for market day calculation
             et_tz = pytz.timezone("America/New_York")
             now_et = get_datetime_now(et_tz)
@@ -1446,8 +1454,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Try to extract error code from Alpaca APIError
             try:
-                from alpaca.common.exceptions import APIError
-
                 if isinstance(e, APIError):
                     status_code = getattr(e, "status_code", None)
                     error_code = getattr(e, "code", None)
@@ -1499,7 +1505,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get current order to validate it exists
             try:
-                self.client.trading.get_order_by_id(order_id)
+                self.client.trading_client.get_order_by_id(order_id)
             except Exception:
                 return {
                     "status": "error",
@@ -1508,9 +1514,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 }
 
             # Build replacement order request
-            from alpaca.trading.enums import TimeInForce
-            from alpaca.trading.requests import ReplaceOrderRequest
-
             # Start with current order values
             replace_request_params = {}
 
@@ -1546,7 +1549,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Mode-aware logging
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE ORDER MODIFICATION: {order_id}")
-                if self.require_confirmation:
+                if self.client.require_confirmation:
                     confirmation = input(
                         f"Confirm LIVE order modification for {order_id}? (yes/no): "
                     )
@@ -1560,7 +1563,9 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
 
             # Replace the order
-            updated_order = self.client.trading.replace_order_by_id(order_id, replace_request)
+            updated_order = self.client.trading.replace_order_by_id(
+                order_id, replace_request
+            )  # pylint: disable=no-member
 
             return {
                 "status": "submitted",
@@ -1612,47 +1617,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             logger.error(f"❌ Failed to modify stop order {order_id}: {error_msg}")
             return False
 
-    def cancel_order(self, order_id: str) -> Dict[str, Any]:
-        """
-        Cancel an existing order.
-
-        Args:
-            order_id: ID of the order to cancel
-
-        Returns:
-            Dict with cancellation status or error information
-        """
-        try:
-            # Mode-aware logging
-            if self.client.mode == "live":
-                logger.warning(f"🔥 LIVE ORDER CANCELLATION: {order_id}")
-                if self.require_confirmation:
-                    confirmation = input(
-                        f"Confirm LIVE order cancellation for {order_id}? (yes/no): "
-                    )
-                    if confirmation.lower() != "yes":
-                        return {
-                            "status": "cancelled",
-                            "message": "Order cancellation cancelled by user",
-                            "order_id": order_id,
-                        }
-            else:
-                logger.info(f"📝 PAPER ORDER CANCELLATION: {order_id}")
-
-            # Cancel the order
-            self.client.trading.cancel_order_by_id(order_id)
-
-            return {
-                "status": "cancelled",
-                "message": "Order cancelled successfully",
-                "order_id": order_id,
-                "mode": self.client.mode,
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to cancel order {order_id}: {e}")
-            return {"status": "error", "message": str(e), "order_id": order_id}
-
     def cancel_all_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
         Cancel all open orders, optionally filtered by symbol.
@@ -1666,21 +1630,17 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get open orders
             if symbol:
-                from alpaca.trading.enums import OrderStatus
-                from alpaca.trading.requests import GetOrdersRequest
-
-                request = GetOrdersRequest(status=OrderStatus.OPEN, symbols=[symbol])
-                orders = self.client.trading.get_orders(request)
+                request = GetOrdersRequest(
+                    status=OrderStatus.OPEN, symbols=[symbol]
+                )  # pylint: disable=no-member
+                orders = self.client.trading_client.get_orders(request)
             else:
                 orders = self.get_orders(status="open")
                 # Convert to alpaca order objects if needed
                 if orders and isinstance(orders[0], dict):
                     # These are our formatted orders, we need the raw ones
-                    from alpaca.trading.enums import OrderStatus
-                    from alpaca.trading.requests import GetOrdersRequest
-
                     request = GetOrdersRequest(status=OrderStatus.OPEN)
-                    orders = self.client.trading.get_orders(request)
+                    orders = self.client.trading.get_orders(request)  # pylint: disable=no-member
 
             if not orders:
                 return {
@@ -1696,7 +1656,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE BULK CANCELLATION: {order_count} orders{symbol_desc}")
-                if self.require_confirmation:
+                if self.client.require_confirmation:
                     confirmation = input(
                         f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): "
                     )
@@ -1716,7 +1676,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             for order in orders:
                 try:
-                    self.client.trading.cancel_order_by_id(order.id)
+                    self.client.trading.cancel_order_by_id(order.id)  # pylint: disable=no-member
                     cancelled_orders.append(str(order.id))
                 except Exception as e:
                     errors.append(f"Failed to cancel {order.id}: {str(e)}")

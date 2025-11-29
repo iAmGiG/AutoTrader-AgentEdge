@@ -100,7 +100,7 @@ class HelpSystem:
         def levenshtein_distance(s1: str, s2: str) -> int:
             """Calculate edit distance between two strings."""
             if len(s1) < len(s2):
-                return levenshtein_distance(s2, s1)
+                return levenshtein_distance(s2, s1)  # pylint: disable=arguments-out-of-order
             if len(s2) == 0:
                 return len(s1)
 
