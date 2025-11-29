@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 
 from config_defaults.trading_config import TradingConfig
 
+from src.trading.unified_price_fetcher import get_current_price
 from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)
@@ -347,8 +348,6 @@ class TrailingStopManager:
             Dict mapping symbol to update result
         """
         if price_fetcher is None:
-            from src.trading.unified_price_fetcher import get_current_price
-
             price_fetcher = get_current_price
 
         results = {}

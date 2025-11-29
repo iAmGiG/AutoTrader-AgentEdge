@@ -1,6 +1,6 @@
 # Trading Pipeline - Complete Daily Workflow
 
-**Issue #323: Full Trading Pipeline Workflow**
+## Issue #323: Full Trading Pipeline Workflow
 
 ## Overview
 
@@ -10,7 +10,7 @@ The `TradingPipeline` orchestrates all system components into a seamless, automa
 
 ### Five-Phase Workflow
 
-```
+```text
 ┌─────────────────┐
 │ Data Collection │ ─→ Validate market data, check market hours
 └────────┬────────┘
@@ -284,7 +284,7 @@ class PipelineMetrics:
 
 Example output:
 
-```
+```text
 Status: COMPLETED
 Duration: 45.2s
 Phases Completed: 5/5

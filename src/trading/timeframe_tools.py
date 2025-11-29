@@ -5,6 +5,7 @@ Provides agent-compatible tools for changing, querying, and validating trading t
 Designed for use with AutoGen agents and CLI natural language commands.
 """
 
+import re
 from typing import Dict, List
 
 from config_defaults.trading_config import get_config
@@ -70,8 +71,6 @@ def get_timeframe_display_name(timeframe: str) -> str:
         return TIMEFRAME_DISPLAY_NAMES[timeframe]
 
     # Handle custom timeframes dynamically (e.g., "45m", "3h")
-    import re
-
     match = re.match(r"^(\d+)([mhdwM])$", timeframe)
     if match:
         value, unit = match.groups()
@@ -108,8 +107,6 @@ def convert_to_alpaca_timeframe(timeframe: str) -> str:
         return ALPACA_TIMEFRAME_MAP[timeframe]
 
     # Handle custom timeframes dynamically
-    import re
-
     match = re.match(r"^(\d+)([mhdwM])$", timeframe)
     if match:
         value, unit = match.groups()
@@ -315,7 +312,7 @@ _timeframe_manager = None
 
 def _get_timeframe_manager() -> TimeframeManager:
     """Get global timeframe manager instance."""
-    global _timeframe_manager
+    global _timeframe_manager  # pylint: disable=global-statement
     if _timeframe_manager is None:
         _timeframe_manager = TimeframeManager()
     return _timeframe_manager

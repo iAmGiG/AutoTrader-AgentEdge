@@ -4,7 +4,10 @@ AlpacaExecutionManager - Executes trades via Alpaca broker.
 Integrates existing OrderManager into the plugin architecture.
 """
 
+import json
 import logging
+import os
+import re
 import uuid
 from typing import Optional, Tuple
 
@@ -12,6 +15,11 @@ from core.interfaces import ExecutionManager
 from core.models import OrderResult, TradeDecision, TradeSuggestion
 
 from src.utils.date_utils import get_datetime_now
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 # Import message loader for user-facing messages
 try:
@@ -28,9 +36,8 @@ except ImportError:
 def _load_market_hours_config():
     """Load market hours configuration from config_defaults/market_hours.yaml"""
     try:
-        import os
-
-        import yaml
+        if yaml is None:
+            raise ImportError("PyYAML not installed")
 
         # Get path to config file
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -286,7 +293,9 @@ class AlpacaExecutionManager(ExecutionManager):
             if self.order_manager and hasattr(self.order_manager, "client"):
                 try:
                     # Use Alpaca's market data client for most accurate price
-                    from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+                    from src.data_sources.sources.market.alpaca_market_data import (
+                        AlpacaMarketData,
+                    )
 
                     market_data = AlpacaMarketData()
 
@@ -654,9 +663,6 @@ class AlpacaExecutionManager(ExecutionManager):
         Returns:
             Tuple of (user_message, user_error)
         """
-        import json
-        import re
-
         # Try to parse JSON error from Alpaca
         try:
             # Extract JSON if embedded in error string

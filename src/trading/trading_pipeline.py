@@ -23,9 +23,20 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.utils.date_utils import get_datetime_now
+import pytz
+
+from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+from src.trading.position_manager import PositionManager
+from src.trading.unified_price_fetcher import get_current_price
+from src.utils.date_utils import get_datetime_now, subtract_days
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +151,8 @@ class TradingPipeline:
     def _load_default_watchlist(self) -> List[str]:
         """Load watchlist from scanner_config.yaml"""
         try:
-            import yaml
+            if yaml is None:
+                raise ImportError("PyYAML not installed")
 
             with open("config_defaults/scanner_config.yaml") as f:
                 config = yaml.safe_load(f)
@@ -330,10 +342,6 @@ class TradingPipeline:
 
         logger.info(f"Running VoterAgent on {len(self.watchlist)} tickers...")
 
-        # Import market data fetcher
-        from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
-        from src.utils.date_utils import get_datetime_now, subtract_days
-
         market_data = AlpacaMarketData()
 
         # Fetch historical data for analysis (60 days for MACD calculation)
@@ -382,7 +390,7 @@ class TradingPipeline:
 
         return {"signals": signals, "total_analyzed": len(self.watchlist)}
 
-    async def _execution_phase(self, signals: List[Dict] = None, **kwargs) -> Dict[str, Any]:
+    async def _execution_phase(self, signals: List[Dict] = None) -> Dict[str, Any]:
         """
         Phase 3: Execution
 
@@ -407,8 +415,6 @@ class TradingPipeline:
         account_value = 100000.0  # Default
         if self.order_manager:
             try:
-                from src.trading.position_manager import PositionManager
-
                 pos_mgr = PositionManager(self.order_manager.client)
                 account_info = pos_mgr.get_account_info()
                 account_value = account_info.get("portfolio_value", 100000.0)
@@ -430,8 +436,6 @@ class TradingPipeline:
                 adjusted_allocation = base_allocation * position_size_mult
 
                 # Get current price for quantity calculation
-                from src.trading.unified_price_fetcher import get_current_price
-
                 current_price = get_current_price(ticker)
                 if current_price <= 0:
                     logger.error(f"Invalid price for {ticker}: {current_price}")
@@ -571,8 +575,6 @@ class TradingPipeline:
                 logger.error(f"EOD reconciliation failed: {e}")
 
         # Generate report path
-        from pathlib import Path
-
         date_str = get_datetime_now().strftime("%Y-%m-%d")
         report_dir = Path("reports/daily")
         report_dir.mkdir(parents=True, exist_ok=True)
@@ -591,8 +593,6 @@ class TradingPipeline:
     def _is_market_hours(self) -> bool:
         """Check if current time is during market hours"""
         try:
-            import pytz
-
             et_tz = pytz.timezone("America/New_York")
             now_et = get_datetime_now(et_tz)
 

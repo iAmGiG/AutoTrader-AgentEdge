@@ -8,6 +8,7 @@ integration path.
 Issue #406: Consolidate LLM services
 """
 
+import json
 import logging
 import os
 import re
@@ -18,7 +19,6 @@ from typing import Literal, Optional
 from autogen_core.models import UserMessage
 from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-
 from core.interfaces import InputParser
 from core.models import AssetType, TradeRequest
 
@@ -205,8 +205,6 @@ class AutoGenLLMParser(InputParser):
             # Parse arguments (already a dict from AutoGen)
             args = tool_call.arguments
             if isinstance(args, str):
-                import json
-
                 args = json.loads(args)
 
             # Create TradeRequest

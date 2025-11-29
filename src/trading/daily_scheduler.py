@@ -11,6 +11,7 @@ Automates daily trading execution with:
 Foundation: Built on Issue #313 (Order Management System)
 """
 
+import argparse
 import asyncio
 import json
 import logging
@@ -18,12 +19,13 @@ import os
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from datetime import time as dt_time
-from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from src.trading.trading_cycle import CostEfficientTradeCycle, RoutineType
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 try:
@@ -33,8 +35,6 @@ except ImportError:
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-
-from src.trading.trading_cycle import CostEfficientTradeCycle, RoutineType
 
 logger = logging.getLogger(__name__)
 
@@ -263,11 +263,11 @@ class DailyScheduler:
 
                 # Execute the appropriate routine
                 if task.routine_type == RoutineType.MORNING:
-                    report = self.trading_cycle.morning_routine()
+                    _ = self.trading_cycle.morning_routine()  # pylint: disable=unused-variable
                 elif task.routine_type == RoutineType.EVENING:
-                    report = self.trading_cycle.evening_routine()
+                    _ = self.trading_cycle.evening_routine()  # pylint: disable=unused-variable
                 elif task.routine_type == RoutineType.RECOVERY:
-                    report = self.trading_cycle.recover_from_crash()
+                    _ = self.trading_cycle.recover_from_crash()  # pylint: disable=unused-variable
                 else:
                     raise ValueError(f"Unknown routine type: {task.routine_type}")
 
@@ -337,14 +337,12 @@ class DailyScheduler:
         current_time = now.time()
 
         # Check if we're within the scheduled time window (± 5 minutes)
-        from datetime import datetime as dt
-
-        scheduled_dt = dt.combine(now.date(), task.scheduled_time)
+        scheduled_dt = datetime.combine(now.date(), task.scheduled_time)
         window_start = (scheduled_dt - timedelta(minutes=5)).time()
         window_end = (scheduled_dt + timedelta(minutes=5)).time()
 
         # Check if current time is in window
-        if not (window_start <= current_time <= window_end):
+        if window_start > current_time or current_time > window_end:
             return False
 
         # Check if already executed today
@@ -532,8 +530,6 @@ class DailyScheduler:
 
 def main():
     """Main entry point for the daily scheduler"""
-    import argparse
-
     parser = argparse.ArgumentParser(description="AutoGen Daily Trading Scheduler")
     parser.add_argument(
         "--mode",

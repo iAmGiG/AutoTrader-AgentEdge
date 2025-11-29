@@ -12,6 +12,7 @@ import pandas as pd
 
 # Smart cache logic: Live data is priority for current trading day
 from src.utils.date_utils import format_data_status, get_datetime_now
+from src.utils.market_hours import is_market_hours
 
 try:
     from alpaca.data import StockHistoricalDataClient
@@ -280,8 +281,6 @@ class AlpacaMarketData:
 
         # Add live price for current day during market hours if today's bar is missing
         if is_current_day and timeframe == "1Day":
-            from src.utils.market_hours import is_market_hours
-
             if is_market_hours():
                 # Check if today's bar exists in the data
                 today_date = get_datetime_now().date()

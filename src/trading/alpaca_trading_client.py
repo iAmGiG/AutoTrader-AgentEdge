@@ -1237,7 +1237,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
             # Mode-aware logging
-            trail_desc = f"{trail_percent*100:.1f}%" if trail_percent else f"${trail_price:.2f}"
+            trail_desc = f"{trail_percent * 100:.1f}%" if trail_percent else f"${trail_price:.2f}"
             if self.client.mode == "live":
                 logger.warning(
                     f"🔥 LIVE TRAILING STOP: {side.upper()} {qty} {symbol} trail {trail_desc}"
