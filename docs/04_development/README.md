@@ -37,6 +37,13 @@ This directory contains guides for developers working on AutoGen-Trader.
    - Auto-formatting and linting
    - **Use this** to set up your development environment
 
+6. **[Code Quality & Maintenance](06_code_quality.md)**
+   - Linting standards and configuration
+   - Active code quality issues
+   - Technical debt tracking
+   - Import consolidation history
+   - **Reference this** for code quality improvements
+
 ---
 
 ## Related Documentation
@@ -88,18 +95,29 @@ This directory contains guides for developers working on AutoGen-Trader.
 
 ## Code Quality Standards
 
-All code must follow standards in [docs/05_decisions/](../05_decisions/):
+All code must follow standards documented in:
+
+**Decision Records** ([docs/05_decisions/](../05_decisions/)):
 
 - **01_code_organization.md** - Directory structure and imports
 - **02_error_handling_logging.md** - Error handling patterns
 - **03_api_caching_patterns.md** - Cache implementation
 - **04_agent_singleton_patterns.md** - Agent lifecycle
 
+**Code Quality Guide** ([06_code_quality.md](06_code_quality.md)):
+
+- Linting configuration (Ruff, Black, isort, MyPy)
+- Import conventions and patterns
+- Type hint guidelines
+- Active code quality issues (#409-#413)
+
 Pre-commit hooks enforce:
 
 - Black formatting
 - Ruff linting
 - isort import ordering
+- Trailing whitespace removal
+- Security scanning (Bandit)
 
 ---
 
@@ -127,3 +145,4 @@ See [docs/testing/](../testing/) for:
 3. **How's the cache implemented?** → [04_cache_developer_guide.md](04_cache_developer_guide.md)
 4. **What's the project status?** → [02_project_status.md](02_project_status.md)
 5. **How should I design this?** → [docs/05_decisions/](../05_decisions/)
+6. **What are the code quality standards?** → [06_code_quality.md](06_code_quality.md)

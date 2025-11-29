@@ -294,7 +294,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### High Priority (Multi-Agent System)
 
-**#310 - Complete Remaining AutoGen Agents**
+#### #310 - Complete Remaining AutoGen Agents
 
 - **Why Critical**: Multi-agent coordination needed for scale
 - **Blocker For**: Full system deployment
@@ -302,7 +302,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Target**: Q1 2026
 - **Status**: Placeholders exist
 
-**#331 - Multi-Agent Coordination & Debate System** (P2 - NEW)
+#### #331 - Multi-Agent Coordination & Debate System (P2 - NEW)
 
 - **Scope**: Agent collaboration patterns (sequential, group chat, voting)
 - **Features**: Multi-agent analysis, consensus building, dissenting opinions
@@ -311,7 +311,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Target**: Q1-Q2 2026
 - **Status**: Exploration phase, needs design discussion
 
-**#390 - Agent Factory & Event Bus** ✅ COMPLETE (Nov 2025)
+#### #390 - Agent Factory & Event Bus ✅ COMPLETE (Nov 2025)
 
 - **Scope**: Centralized agent creation and pub-sub messaging infrastructure
 - **Delivered**: AgentFactory singleton, AgentBus pub-sub, 16 EventTypes
@@ -320,7 +320,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### Medium Priority (Feature Enhancements)
 
-**#330 - Options Analysis Support** (P2 - NEW)
+#### #330 - Options Analysis Support (P2 - NEW)
 
 - **Scope**: Options contracts analysis (Greeks, IV, OI)
 - **Features**: Call/put analysis, unusual activity detection, liquidity checks
@@ -329,13 +329,13 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Target**: Q1 2026
 - **Status**: Data access validation needed (Alpaca options API)
 
-**#321 - Dynamic Trailing Stop Logic**
+#### #321 - Dynamic Trailing Stop Logic
 
 - **Why Important**: Enhanced profit protection
 - **Integrates With**: #308 (order lifecycle), #333 (risk management)
 - **Target**: Q1 2026
 
-**#332 - Autonomy Levels Expansion** (P2 - NEW)
+#### #332 - Autonomy Levels Expansion (P2 - NEW)
 
 - **Scope**: Expand beyond basic confirm/auto to conditional execution
 - **Features**: Per-ticker whitelists, conditional auto-execute, risk-based autonomy
@@ -344,7 +344,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Target**: Q2 2026
 - **Status**: Design phase
 
-**#324 - Forward Testing Protocol**
+#### #324 - Forward Testing Protocol
 
 - **Why Useful**: Statistical validation before live trading
 - **Depends On**: #308 (needs human-in-loop CLI complete)
@@ -352,19 +352,71 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### Low Priority (Optimization)
 
-**#328 - JSON→YAML Token Optimization**
+#### #328 - JSON→YAML Token Optimization
 
 - **Why Useful**: Cost reduction for LLM agents
 - **Depends On**: LLM-based agents active (#331)
 - **Target**: Q2 2026
 
+### Code Quality & Technical Debt
+
+#### #409 - Refactor Complex Functions (C901 Warnings) (P2 - NEW)
+
+- **Scope**: Break down complex functions in main.py
+- **Target Functions**: `run_paper_trading_check()` (26), `main()` (22)
+- **Why Important**: Improves testability and maintainability
+- **Status**: Currently blocking commits without `--no-verify`
+- **Target**: Q1 2026
+
+#### #410 - Address Line Length Violations (E501) (P3 - NEW)
+
+- **Scope**: Fix 33 pre-existing line length violations
+- **Approach**: Automated (Black/isort) + manual fixes
+- **Why Useful**: GitHub CI will enforce these limits
+- **Status**: Deferred to GitHub CI for now
+- **Target**: Q1 2026
+
+#### #411 - Add Comprehensive Type Hints (P2 - NEW)
+
+- **Scope**: Add type hints across core modules (3 phases)
+- **Phase 1**: Core trading logic (VoterAgent, position_manager, etc.)
+- **Why Important**: Better IDE support, early error detection, safer refactoring
+- **Status**: Design phase - phased approach planned
+- **Target**: Q1-Q2 2026
+
+#### #412 - Audit Scripts Directory Imports (P3 - NEW)
+
+- **Scope**: Review and normalize imports in scripts/ directory
+- **Current**: scripts/ excluded from import linting
+- **Goal**: Apply standard conventions where possible
+- **Status**: Audit needed
+- **Target**: Q1 2026
+
+#### #413 - Validate Test Coverage After Import Consolidation (P1 - NEW)
+
+- **Scope**: Ensure recent import changes didn't break functionality
+- **Coverage**: Run full test suite with coverage metrics
+- **Why Important**: Import pattern changes may have subtle effects
+- **Status**: Test plan defined
+- **Target**: December 2025
+
+See [Code Quality Guide](06_code_quality.md) for detailed tracking and standards.
+
 ### Completed
 
-**#327 - ✅ Make main.py Functional (COMPLETED Oct 2025)**
+#### #327 - ✅ Make main.py Functional (COMPLETED Oct 2025)
 
 - Fixed all import errors
 - Validated Alpaca integration
 - All 4 commands working
+
+#### Import Consolidation - ✅ COMPLETE (Nov 29, 2025)
+
+- Moved all inline imports to toplevel (C0415 resolved)
+- Added try/except wrappers for optional dependencies
+- Fixed import order across 10+ files
+- Commits: c77f407, 77f3a8b, 21c8df5
+- Files: main.py, alpaca_*, daily_scheduler, trading_pipeline, etc.
 
 ---
 
@@ -372,25 +424,25 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### What Works (Keep These)
 
-**1. Pure Math Over LLM Sentiment**
+#### 1. Pure Math Over LLM Sentiment
 
 - MACD+RSI voting: 0.856 Sharpe (validated)
 - LLM sentiment: ~60% accuracy (deprecated)
 - **Decision**: VoterAgent uses pure calculations, no LLM
 
-**2. Human-in-Loop Design**
+#### 2. Human-in-Loop Design
 
 - System assists, humans decide
 - Not autonomous AI trading
 - **Decision**: Mandatory human approval for trades
 
-**3. Cost-Efficient Architecture**
+#### 3. Cost-Efficient Architecture
 
 - GTC orders reduce API calls 90%
 - Broker-as-truth prevents state drift
 - **Decision**: Batch operations, minimize API usage
 
-**4. Dual Model Configuration**
+#### 4. Dual Model Configuration
 
 - gpt-4o-mini for tool calling (cheap, fast)
 - o3-mini for reasoning (better analysis)
@@ -398,19 +450,19 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### What Doesn't Work (Avoid These)
 
-**1. LLM Sentiment Analysis**
+#### 1. LLM Sentiment Analysis
 
 - Extensively tested in V0-V4 framework
 - Performance inferior to pure math
 - **Decision**: Deprecated, archived for reference
 
-**2. Reactive Trading Systems**
+#### 2. Reactive Trading Systems
 
 - 100+ API calls/day
 - Expensive, rate-limited
 - **Decision**: Proactive batching with GTC orders
 
-**3. Complex Multi-Indicator Ensembles**
+#### 3. Complex Multi-Indicator Ensembles
 
 - Diminishing returns beyond MACD+RSI
 - Over-optimization risk
