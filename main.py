@@ -37,7 +37,9 @@ from src.utils.date_utils import get_datetime_now
 from src.utils.safe_print import get_severity_symbol, get_symbol, safe_print
 
 try:
-    from scripts.analysis.generate_results_summary import main as generate_summary
+    from scripts.research.v0_v4_analysis.generate_results_summary import (
+        main as generate_summary,
+    )
 except ImportError:
     generate_summary = None
 
