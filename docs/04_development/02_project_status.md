@@ -368,14 +368,6 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Status**: Currently blocking commits without `--no-verify`
 - **Target**: Q1 2026
 
-#### #410 - Address Line Length Violations (E501) (P3 - NEW)
-
-- **Scope**: Fix 33 pre-existing line length violations
-- **Approach**: Automated (Black/isort) + manual fixes
-- **Why Useful**: GitHub CI will enforce these limits
-- **Status**: Deferred to GitHub CI for now
-- **Target**: Q1 2026
-
 #### #411 - Add Comprehensive Type Hints (P2 - NEW)
 
 - **Scope**: Add type hints across core modules (3 phases)
@@ -409,6 +401,15 @@ See [Code Quality Guide](06_code_quality.md) for detailed tracking and standards
 - Fixed all import errors
 - Validated Alpaca integration
 - All 4 commands working
+
+#### #410 - Line Length Violations (E501) - ✅ COMPLETE (Nov 29, 2025)
+
+- Fixed 33 E501 line length violations across 5 files
+- Ran Black/isort formatters for auto-fixes
+- Manually split long f-strings and docstrings
+- All changes purely stylistic - no functional modifications
+- Commit: c0e9703
+- Files: alpaca_execution_manager, timeframe_tools, alpaca_trading_client, alpaca_market_data, daily_scheduler
 
 #### Import Consolidation - ✅ COMPLETE (Nov 29, 2025)
 
