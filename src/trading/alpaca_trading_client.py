@@ -1630,8 +1630,10 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get open orders
             if symbol:
-                request = GetOrdersRequest(  # pylint: disable=possibly-used-before-assignment,no-member
-                    status=OrderStatus.OPEN, symbols=[symbol]  # pylint: disable=no-member
+                request = (
+                    GetOrdersRequest(  # pylint: disable=possibly-used-before-assignment,no-member
+                        status=OrderStatus.OPEN, symbols=[symbol]  # pylint: disable=no-member
+                    )
                 )
                 orders = self.client.trading_client.get_orders(request)
             else:

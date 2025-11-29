@@ -10,6 +10,7 @@ from datetime import timedelta
 from typing import Dict, Optional
 
 from config_defaults.trading_config import TradingConfig
+
 from src.autogen_agents.voter_agent import VoterAgent
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
