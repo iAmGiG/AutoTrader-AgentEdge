@@ -399,9 +399,8 @@ class AlpacaAccountMonitor:
                         leg_id_str = str(leg_id)
                         leg_ids.add(leg_id_str)
                         parent_map[leg_id_str] = str(order.id)
-                    logger.info(
-                        f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}"
-                    )
+                    leg_ids = [str(leg_id) for leg_id in order.legs]
+                    logger.info(f"Bracket order {order.id} has leg IDs: {leg_ids}")
 
                 result.append(order_dict)
 
@@ -434,7 +433,8 @@ class AlpacaAccountMonitor:
 
                         if hasattr(full_order, "legs") and full_order.legs:
                             logger.info(
-                                f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id"
+                                f"Found {len(full_order.legs)} legs for bracket "
+                                f"order {order_dict['id']} via get_order_by_id"
                             )
 
                             # Fetch each leg order individually
@@ -465,10 +465,12 @@ class AlpacaAccountMonitor:
                                     order_dict["legs"].append(leg_dict)
                                     legs_found += 1
                                     logger.info(
-                                        f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}"
+                                        f"  Fetched leg {leg_order.id}: "
+                                        f"{leg_order.order_type} status={leg_order.status}"
                                     )
                                 except Exception as e:
-                                    # Don't spam users with leg fetch errors (common for bracket orders)
+                                    # Don't spam users with leg fetch errors
+                                    # (common for bracket orders)
                                     logger.debug(f"  Failed to fetch leg {leg_id}: {e}")
                     except Exception as e:
                         logger.warning(
@@ -756,7 +758,9 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if warn_only:
                 # Note: We submit immediately to Alpaca - THEY queue it, not us
                 # If validation fails, order is rejected (no local queue/retry)
-                logger.warning(f"⚠️  {message} - Order will be sent to broker (may fail validation)")
+                logger.warning(
+                    f"⚠️  {message} - Order will be sent to broker " "(may fail validation)"
+                )
                 return True
             else:
                 logger.error(f"❌ {message} - Order blocked")

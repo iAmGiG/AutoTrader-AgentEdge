@@ -27,7 +27,10 @@ from typing import Any, Dict, List, Optional
 from config_defaults.trading_config import TradingConfig
 
 from .base_agent import BaseAgent
-from src.trading_tools.risk_calculator import calculate_portfolio_risk, check_portfolio_limits
+from src.trading_tools.risk_calculator import (
+    calculate_portfolio_risk,
+    check_portfolio_limits,
+)
 from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)

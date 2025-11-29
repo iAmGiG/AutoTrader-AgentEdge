@@ -164,7 +164,10 @@ class TimeframeManager:
         if not timeframe_config.is_valid(timeframe):
             return {
                 "success": False,
-                "message": f"Invalid timeframe '{timeframe}'. Valid options: {', '.join(timeframe_config.enabled_timeframes)}",
+                "message": (
+                    f"Invalid timeframe '{timeframe}'. "
+                    f"Valid options: {', '.join(timeframe_config.enabled_timeframes)}"
+                ),
                 "current_timeframe": self.current_timeframe,
             }
 
@@ -410,7 +413,9 @@ def get_timeframe_recommendations() -> Dict[str, any]:
             },
             "fibonacci": {
                 "timeframes": available["fibonacci"],
-                "description": "Natural market cycles aligned with Fibonacci sequence (2,3,5,8,13,21,34,55)",
+                "description": (
+                    "Natural market cycles aligned with Fibonacci sequence " "(2,3,5,8,13,21,34,55)"
+                ),
                 "risk_level": "Varies - for backtesting/research",
             },
         },
@@ -435,13 +440,18 @@ TIMEFRAME_TOOLS = [
         "type": "function",
         "function": {
             "name": "set_current_timeframe",
-            "description": "Change the active trading timeframe. For example, change from 1d to 4h for more frequent trading.",
+            "description": (
+                "Change the active trading timeframe. "
+                "For example, change from 1d to 4h for more frequent trading."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "timeframe": {
                         "type": "string",
-                        "description": "Timeframe to activate: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M",
+                        "description": (
+                            "Timeframe to activate: " "1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M"
+                        ),
                     }
                 },
                 "required": ["timeframe"],
@@ -486,7 +496,10 @@ TIMEFRAME_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_timeframe_recommendations",
-            "description": "Get recommended timeframes for different trading strategies (scalping, day trading, swing trading, etc)",
+            "description": (
+                "Get recommended timeframes for different trading strategies "
+                "(scalping, day trading, swing trading, etc)"
+            ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },

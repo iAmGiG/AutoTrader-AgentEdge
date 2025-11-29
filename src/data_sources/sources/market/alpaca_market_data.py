@@ -208,7 +208,8 @@ class AlpacaMarketData:
                 tf = self.TIMEFRAME_MAP.get(timeframe)
                 if not tf:
                     raise ValueError(
-                        f"Invalid timeframe: {timeframe}. Must be one of: {list(self.TIMEFRAME_MAP.keys())}"
+                        f"Invalid timeframe: {timeframe}. "
+                        f"Must be one of: {list(self.TIMEFRAME_MAP.keys())}"
                     )
 
                 # Create request using SDK
@@ -229,11 +230,13 @@ class AlpacaMarketData:
 
                 # Convert to DataFrame
                 if bars_response and bars_response.data:
-                    # The SDK returns a BarSet with .data attribute containing symbol -> list of Bar objects
+                    # The SDK returns a BarSet with .data attribute
+                    # containing symbol -> list of Bar objects
                     all_bars = []
                     for symbol, bars_list in bars_response.data.items():
                         for bar in bars_list:
-                            # Bar object has attributes: timestamp, open, high, low, close, volume, trade_count, vwap
+                            # Bar object has attributes: timestamp, open, high,
+                            # low, close, volume, trade_count, vwap
                             bar_dict = {
                                 "timestamp": bar.timestamp,
                                 "symbol": symbol,
@@ -268,7 +271,8 @@ class AlpacaMarketData:
 
                         fetched_data.append(df)
                         logger.info(
-                            f"Fetched {len(df)} bars for {len(symbols_to_fetch)} symbols from Alpaca"
+                            f"Fetched {len(df)} bars for "
+                            f"{len(symbols_to_fetch)} symbols from Alpaca"
                         )
 
             except Exception as e:
