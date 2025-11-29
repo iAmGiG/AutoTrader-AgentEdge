@@ -15,6 +15,7 @@ In CLI, use natural language for trading modes:
 """
 
 import argparse
+import asyncio
 import os
 import sys
 import traceback
@@ -30,6 +31,7 @@ from src.autogen_agents.voter_agent import VoterAgent
 from src.data_sources.tools import fetch_unified_market_data
 from src.trading.account_manager import get_account_manager
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.daily_scheduler import DailyScheduler
 from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.utils.date_utils import get_datetime_now
 from src.utils.safe_print import get_severity_symbol, get_symbol, safe_print
@@ -38,6 +40,20 @@ try:
     from scripts.analysis.generate_results_summary import main as generate_summary
 except ImportError:
     generate_summary = None
+
+# CLI imports (may not be available in all environments)
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+    from cli import CLISession
+    from core.factory import OrchestratorFactory
+    from core.trading_modes import get_mode_manager
+
+    CLI_AVAILABLE = True
+except ImportError:
+    CLI_AVAILABLE = False
+    CLISession = None
+    OrchestratorFactory = None
+    get_mode_manager = None
 
 
 def test_voter_agent():
@@ -473,22 +489,16 @@ def trade_assist(account_id: str = None):
     Args:
         account_id: Optional account ID to use (#401)
     """
-    import asyncio
-
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+    if not CLI_AVAILABLE:
+        safe_print(f"{get_symbol('ERROR')} CLI components not available")
+        sys.exit(1)
 
     try:
-        from cli import CLISession
-        from core.factory import OrchestratorFactory
-        from core.trading_modes import get_mode_manager
-
         # Multi-account setup (#401)
         alpaca_mode = "paper"  # Default
         active_account_info = None
 
         if account_id:
-            from src.trading.account_manager import get_account_manager
-
             manager = get_account_manager()
 
             # Try to set the requested account as active
@@ -702,11 +712,7 @@ LEGACY COMMANDS (deprecated, use interactive CLI instead):
         print("   Press Ctrl+C to stop")
         print()
         try:
-            from src.trading.daily_scheduler import DailyScheduler
-
             scheduler = DailyScheduler()
-            import asyncio
-
             asyncio.run(scheduler.run_daemon(check_interval_seconds=60))
             sys.exit(0)
         except KeyboardInterrupt:
