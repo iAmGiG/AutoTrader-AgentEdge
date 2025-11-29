@@ -18,11 +18,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.trading.forward_test_manager import (
-    ForwardTestManager,
-    SignalType,
-    TradeOutcome,
-)
+from src.trading.forward_test_manager import (ForwardTestManager, SignalType,
+                                              TradeOutcome)
 from src.trading.performance_validator import PerformanceValidator
 from src.trading.test_reporter import TestReporter
 
