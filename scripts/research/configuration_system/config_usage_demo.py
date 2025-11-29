@@ -4,12 +4,19 @@ Configuration Usage Demo
 Shows the benefits of having a flexible configuration system.
 """
 
-import os
 import sys
+from pathlib import Path
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path (scripts/research/configuration_system -> project root is 3 levels up)
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
-from config.trading_config import get_config
+from config_defaults.trading_config import TradingConfig
+
+
+def get_config():
+    """Get trading configuration instance."""
+    return TradingConfig()
 
 
 def demo_basic_usage():

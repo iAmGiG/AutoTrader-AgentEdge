@@ -24,11 +24,12 @@ from typing import Dict
 
 import pandas as pd
 
-# Add src to path for advanced metrics import
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+# Add project root to path (scripts/research/v0_v4_analysis -> project root is 3 levels up)
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 try:
-    from analysis.metrics_analyzer import MetricsAnalyzer
+    from src.analysis.metrics_analyzer import MetricsAnalyzer
 
     ADVANCED_AVAILABLE = True
 except ImportError:
