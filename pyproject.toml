@@ -55,15 +55,17 @@ exclude = [".git", "__pycache__", ".venv", ".cache", "reports"]
 
 [tool.ruff.lint]
 # E402: module level import not at top of file
-ignore = ["E402"]
-select = ["E", "F", "I"]
+# E501: line too long (handled by formatters, GitHub linter will catch in CI)
+ignore = ["E402", "E501"]
+select = ["E", "F", "I", "W", "C", "N"]
 
 [tool.ruff.lint.isort]
 known-local-folder = ["src", "config"]
 
 [tool.ruff.lint.per-file-ignores]
-# Don't sort imports in scripts directory
-"scripts/*.py" = ["I001", "E402"]
+# Don't sort imports in scripts directory, ignore line length in all files
+"scripts/*.py" = ["I001", "E402", "E501"]
+"*" = ["E501"]  # Line length is handled by formatters and GitHub CI
 
 [tool.pycodestyle]
 # For tools that read from pyproject.toml
