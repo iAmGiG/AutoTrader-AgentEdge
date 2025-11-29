@@ -1,0 +1,44 @@
+# Wheel Strategy Watchlist
+# Issue #405: Strategy-specific watchlists
+#
+# Optimized for Wheel/CSP (Cash-Secured Put) strategy:
+# - High IV for premium collection
+# - Leveraged ETFs for amplified moves
+# - Liquid options markets
+
+name: "Wheel Strategy"
+description: "Leveraged ETFs and high-IV stocks for wheel/CSP strategy"
+
+# Primary tickers for this strategy
+tickers:
+  # 3x Leveraged Bull ETFs (high IV, liquid options)
+  - TQQQ   # 3x Nasdaq-100 Bull
+  - SOXL   # 3x Semiconductor Bull
+  - UPRO   # 3x S&P 500 Bull
+  - SPXL   # 3x S&P 500 Bull
+  - TECL   # 3x Technology Bull
+  - FNGU   # 3x FANG+ Bull
+  - TNA    # 3x Russell 2000 Bull
+  - LABU   # 3x Biotech Bull
+
+  # 2x Leveraged ETFs (slightly less volatile)
+  - QLD    # 2x Nasdaq-100 Bull
+  - SSO    # 2x S&P 500 Bull
+  - USD    # 2x Semiconductor Bull
+
+  # High-IV individual stocks (wheel-friendly)
+  - MARA   # Marathon Digital (crypto proxy)
+  - COIN   # Coinbase (crypto proxy)
+  - RIOT   # Riot Platforms (crypto proxy)
+
+# Strategy-specific settings
+settings:
+  # Minimum IV percentile for put selling
+  min_iv_percentile: 30
+
+  # Preferred delta for CSP
+  target_delta: 0.30
+
+  # Days to expiration range
+  min_dte: 21
+  max_dte: 45

@@ -3,6 +3,7 @@ OrchestratorFactory - Creates fully wired TradingOrchestrator.
 
 MVP: Hardcoded component creation (YAML config deferred to later iteration).
 Issue #400: Trading modes integration.
+Issue #406: Uses AutoGen's native LLM client instead of custom OpenAIService.
 """
 
 import json
@@ -13,9 +14,8 @@ from typing import Optional
 from core.trading_modes import TradingMode, get_mode_manager
 from core.trading_orchestrator import TradingOrchestrator
 from execution import AlpacaExecutionManager
-from parsers import LLMParser
+from parsers import AutoGenLLMParser
 from risk import SimpleRiskManager
-from services.llm import OpenAIService
 from strategies import RealVoterStrategy, VoterStrategy
 
 logger = logging.getLogger(__name__)
@@ -100,24 +100,14 @@ class OrchestratorFactory:
             f"Creating TradingOrchestrator (mode: {mode_params.mode.value}) from config.json..."
         )
 
-        # Load API key and models from config
-        api_key = self.config.get("OPEN_AI_KEY") or os.getenv("OPENAI_API_KEY")
+        # Load API key and model from config (used by AutoGenLLMParser)
         tool_model = self.config.get("OPENAI_TOOL_MODEL", "gpt-4o-mini")
-        reasoning_model = self.config.get("OPENAI_PROMPT_MODEL", "gpt-4o-mini")
 
-        # 1. Create LLM Service
-        logger.info(
-            f"  - Creating OpenAIService (tool: {tool_model}, reasoning: {reasoning_model})..."
-        )
-        llm_service = OpenAIService(
-            tool_calling_model=tool_model, reasoning_model=reasoning_model, api_key=api_key
-        )
+        # 1. Create Input Parser using AutoGen's native LLM client (#406)
+        logger.info(f"  - Creating AutoGenLLMParser (model: {tool_model})...")
+        input_parser = AutoGenLLMParser(model=tool_model)
 
-        # 2. Create Input Parser
-        logger.info("  - Creating LLMParser...")
-        input_parser = LLMParser(llm_service=llm_service)
-
-        # 3. Create Strategy Analyzer
+        # 2. Create Strategy Analyzer
         if use_real_voter:
             logger.info("  - Creating RealVoterStrategy (production MACD+RSI)...")
             strategy_analyzer = RealVoterStrategy(
@@ -129,7 +119,7 @@ class OrchestratorFactory:
             logger.info("  - Creating VoterStrategy (stub)...")
             strategy_analyzer = VoterStrategy()
 
-        # 4. Create Risk Manager (using trading mode parameters - Issue #400)
+        # 3. Create Risk Manager (using trading mode parameters - Issue #400)
         logger.info(
             f"  - Creating SimpleRiskManager "
             f"(position: {mode_params.max_position_pct:.0%}, "
@@ -141,7 +131,7 @@ class OrchestratorFactory:
             max_position_pct=mode_params.max_position_pct * 100,  # Convert to percentage
         )
 
-        # 5. Create Execution Manager
+        # 4. Create Execution Manager
         logger.info("  - Creating AlpacaExecutionManager...")
 
         # Auto-create OrderManager if requested and not provided
@@ -161,7 +151,7 @@ class OrchestratorFactory:
 
         execution_manager = AlpacaExecutionManager(order_manager=order_manager)
 
-        # 6. Create TradingOrchestrator
+        # 5. Create TradingOrchestrator
         logger.info("  - Wiring TradingOrchestrator...")
         orchestrator = TradingOrchestrator(
             input_parser=input_parser,

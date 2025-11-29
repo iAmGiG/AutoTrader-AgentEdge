@@ -8,16 +8,19 @@ Produces ranked opportunity list for downstream processing by VoterAgent.
 Issue #386: ScannerAgent - Multi-Ticker Market Scanning with Technical Analysis
 """
 
+import datetime
 import json
 import logging
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
+import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
@@ -29,36 +32,119 @@ from .base_agent import BaseAgent
 from src.autogen_agents.agent_bus import EventType, create_message, get_agent_bus
 from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
-from src.utils.date_utils import get_datetime_now
+from src.utils.date_utils import get_datetime_now, now_iso, subtract_days, today_str
 
 logger = logging.getLogger(__name__)
 
+# Config paths
+CONFIG_DIR = Path(__file__).parent.parent.parent / "config_defaults"
+SCANNER_CONFIG_PATH = CONFIG_DIR / "scanner_config.yaml"
+TRADING_MODES_PATH = CONFIG_DIR / "trading_modes.yaml"
+WATCHLISTS_DIR = CONFIG_DIR / "watchlists"
 
-# Default watchlist - tech stocks and leveraged ETFs
-DEFAULT_WATCHLIST = [
-    # Large-cap tech
-    "AAPL",
-    "MSFT",
-    "GOOGL",
-    "AMZN",
-    "META",
-    "NVDA",
-    "TSLA",
-    # Leveraged ETFs
-    "TQQQ",
-    "SOXL",
-    "UPRO",
-    # Index ETFs
-    "SPY",
-    "QQQ",
-]
+
+# Fallback watchlist when config unavailable
+FALLBACK_WATCHLIST = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA"]
+
+
+def _load_scanner_config() -> Dict[str, Any]:
+    """Load scanner configuration from YAML."""
+    try:
+        with open(SCANNER_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.warning(f"Could not load scanner config: {e}")
+        return {}
+
+
+def _load_trading_modes() -> Dict[str, Any]:
+    """Load trading modes configuration from YAML."""
+    try:
+        with open(TRADING_MODES_PATH, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.warning(f"Could not load trading modes: {e}")
+        return {}
+
+
+def _load_strategy_watchlist(strategy_name: str) -> List[str]:
+    """Load tickers from a strategy watchlist file."""
+    try:
+        watchlist_path = WATCHLISTS_DIR / f"{strategy_name}.yaml"
+        if not watchlist_path.exists():
+            logger.warning(f"Strategy watchlist not found: {strategy_name}")
+            return []
+
+        with open(watchlist_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        tickers = data.get("tickers", [])
+        logger.debug(f"Loaded {len(tickers)} tickers from {strategy_name} watchlist")
+        return tickers
+    except Exception as e:
+        logger.warning(f"Could not load strategy watchlist {strategy_name}: {e}")
+        return []
+
+
+def _load_discovery_tickers() -> List[str]:
+    """Load discovery tickers from default_watchlist in scanner_config."""
+    config = _load_scanner_config()
+    default_watchlist = config.get("default_watchlist", {})
+
+    tickers = []
+    for category_tickers in default_watchlist.values():
+        if isinstance(category_tickers, list):
+            tickers.extend(category_tickers)
+
+    return tickers if tickers else FALLBACK_WATCHLIST
+
+
+@dataclass
+class TierLimits:
+    """Limits for each watchlist tier."""
+
+    positions: int = 10
+    pending_orders: int = 5
+    strategy: int = 8
+    discovery: int = 5
+
+
+@dataclass
+class TieredWatchlistConfig:
+    """Configuration for tiered watchlist system (Issue #405)."""
+
+    enabled: bool = True
+    max_symbols_per_scan: int = 25
+    tier_limits: TierLimits = field(default_factory=TierLimits)
+    fallback_to_config: bool = True
+
+    @classmethod
+    def from_config(cls) -> "TieredWatchlistConfig":
+        """Load tiered config from scanner_config.yaml."""
+        config = _load_scanner_config()
+        tiered = config.get("tiered_watchlist", {})
+
+        limits_data = tiered.get("tier_limits", {})
+        tier_limits = TierLimits(
+            positions=limits_data.get("positions", 10),
+            pending_orders=limits_data.get("pending_orders", 5),
+            strategy=limits_data.get("strategy", 8),
+            discovery=limits_data.get("discovery", 5),
+        )
+
+        return cls(
+            enabled=tiered.get("enabled", True),
+            max_symbols_per_scan=tiered.get("max_symbols_per_scan", 25),
+            tier_limits=tier_limits,
+            fallback_to_config=tiered.get("fallback_to_config", True),
+        )
 
 
 @dataclass
 class ScanConfig:
     """Configuration for market scanning."""
 
-    watchlist: List[str] = field(default_factory=list)
+    watchlist: List[str] = field(default_factory=lambda: FALLBACK_WATCHLIST.copy())
     lookback_days: int = 60  # Days of price data to fetch
     max_concurrent_requests: int = 5  # Rate limiting
     request_delay_seconds: float = 0.2  # Delay between requests
@@ -71,6 +157,9 @@ class ScanConfig:
     )
     volume_threshold: float = 1.0  # Minimum volume ratio vs 20-day average
     min_confidence: float = 0.5  # Minimum confidence for inclusion
+
+    # Tiered watchlist config (Issue #405)
+    tiered_config: TieredWatchlistConfig = field(default_factory=TieredWatchlistConfig.from_config)
 
 
 @dataclass
@@ -178,10 +267,16 @@ class ScannerAgent(BaseAgent):
 
         # Scan state
         self._last_scan_results: List[ScanResult] = []
-        self._last_scan_time: Optional[datetime] = None
+        self._last_scan_time: Optional[datetime.datetime] = None
+
+        # Tiered watchlist support (Issue #405)
+        self._position_fetcher: Optional[Callable[[], List[str]]] = None
+        self._pending_order_fetcher: Optional[Callable[[], List[str]]] = None
+        self._current_trading_mode: str = "moderate"  # Default mode
 
         logger.info(f"ScannerAgent '{name}' initialized:")
         logger.info(f"  Watchlist: {len(self.scan_config.watchlist)} symbols")
+        logger.info(f"  Tiered Watchlist: {self.scan_config.tiered_config.enabled}")
         logger.info(
             f"  MACD({self.scan_config.macd_params['fast']}/"
             f"{self.scan_config.macd_params['slow']}/"
@@ -191,6 +286,114 @@ class ScannerAgent(BaseAgent):
             f"  RSI({self.scan_config.rsi_params['period']}) "
             f"[{self.scan_config.rsi_params['oversold']}/{self.scan_config.rsi_params['overbought']}]"
         )
+
+    # ==================== Tiered Watchlist Methods (Issue #405) ====================
+
+    def set_position_fetcher(self, fetcher: Callable[[], List[str]]) -> None:
+        """
+        Set callback to fetch current position symbols from broker.
+
+        Args:
+            fetcher: Callable that returns list of symbols for open positions
+        """
+        self._position_fetcher = fetcher
+
+    def set_pending_order_fetcher(self, fetcher: Callable[[], List[str]]) -> None:
+        """
+        Set callback to fetch pending order symbols from broker.
+
+        Args:
+            fetcher: Callable that returns list of symbols with pending orders
+        """
+        self._pending_order_fetcher = fetcher
+
+    def set_trading_mode(self, mode: str) -> None:
+        """
+        Set current trading mode (affects strategy watchlist selection).
+
+        Args:
+            mode: Trading mode name (conservative, moderate, aggressive)
+        """
+        self._current_trading_mode = mode
+        logger.info(f"Trading mode set to: {mode}")
+
+    def build_scan_list(self) -> List[str]:
+        """
+        Build prioritized scan list using tiered watchlist system.
+
+        Tier priority:
+            0: Active positions (broker-sourced) - ALWAYS included
+            1: Pending orders (broker-sourced)
+            2: Strategy watchlist (based on trading mode)
+            3: Discovery tickers (from scanner_config)
+
+        Returns:
+            List of symbols to scan, respecting tier limits
+        """
+        config = self.scan_config.tiered_config
+
+        if not config.enabled:
+            # Tiered system disabled - use static watchlist
+            return self.scan_config.watchlist[: config.max_symbols_per_scan]
+
+        symbols: List[str] = []
+        limits = config.tier_limits
+
+        # Tier 0: Active positions (broker-sourced)
+        if self._position_fetcher:
+            try:
+                position_symbols = self._position_fetcher()
+                for symbol in position_symbols[: limits.positions]:
+                    if symbol not in symbols:
+                        symbols.append(symbol)
+                logger.debug(f"Tier 0: Added {len(position_symbols)} position symbols")
+            except Exception as e:
+                logger.warning(f"Failed to fetch positions: {e}")
+
+        # Tier 1: Pending orders (broker-sourced)
+        if self._pending_order_fetcher:
+            try:
+                pending_symbols = self._pending_order_fetcher()
+                added = 0
+                for symbol in pending_symbols:
+                    if symbol not in symbols and added < limits.pending_orders:
+                        symbols.append(symbol)
+                        added += 1
+                logger.debug(f"Tier 1: Added {added} pending order symbols")
+            except Exception as e:
+                logger.warning(f"Failed to fetch pending orders: {e}")
+
+        # Tier 2: Strategy watchlist (based on trading mode)
+        strategy_name = self._get_strategy_for_mode(self._current_trading_mode)
+        if strategy_name:
+            strategy_tickers = _load_strategy_watchlist(strategy_name)
+            added = 0
+            for ticker in strategy_tickers:
+                if ticker not in symbols and added < limits.strategy:
+                    symbols.append(ticker)
+                    added += 1
+            logger.debug(f"Tier 2: Added {added} strategy tickers from '{strategy_name}'")
+
+        # Tier 3: Discovery tickers (from default_watchlist)
+        discovery_tickers = _load_discovery_tickers()
+        added = 0
+        for ticker in discovery_tickers:
+            if ticker not in symbols and added < limits.discovery:
+                symbols.append(ticker)
+                added += 1
+        logger.debug(f"Tier 3: Added {added} discovery tickers")
+
+        # Apply hard limit
+        final_list = symbols[: config.max_symbols_per_scan]
+        logger.info(f"Built scan list: {len(final_list)} symbols")
+        return final_list
+
+    def _get_strategy_for_mode(self, mode: str) -> Optional[str]:
+        """Get the watchlist strategy name for a trading mode."""
+        modes_config = _load_trading_modes()
+        modes = modes_config.get("modes", {})
+        mode_config = modes.get(mode, {})
+        return mode_config.get("watchlist_strategy")
 
     # ==================== Core Scanning Methods ====================
 
@@ -209,10 +412,17 @@ class ScannerAgent(BaseAgent):
         Returns:
             List of ScanResult sorted by ranking_score
         """
-        symbols = watchlist or self.scan_config.watchlist
+        # Use provided watchlist, build tiered list, or fall back to static config
+        if watchlist:
+            symbols = watchlist
+        elif self.scan_config.tiered_config.enabled:
+            symbols = self.build_scan_list()
+        else:
+            symbols = self.scan_config.watchlist
+
         logger.info(f"Starting market scan for {len(symbols)} symbols...")
 
-        start_time = datetime.now()
+        start_time = time.time()
 
         if parallel:
             results = self._scan_parallel(symbols)
@@ -231,9 +441,9 @@ class ScannerAgent(BaseAgent):
 
         # Store results
         self._last_scan_results = valid_results
-        self._last_scan_time = datetime.now()
+        self._last_scan_time = get_datetime_now()
 
-        elapsed = (datetime.now() - start_time).total_seconds()
+        elapsed = time.time() - start_time
         logger.info(
             f"Scan complete: {len(valid_results)} opportunities "
             f"from {len(symbols)} symbols in {elapsed:.2f}s"
@@ -247,8 +457,6 @@ class ScannerAgent(BaseAgent):
 
     def _scan_sequential(self, symbols: List[str]) -> List[ScanResult]:
         """Scan symbols sequentially with rate limiting."""
-        import time
-
         results = []
         for symbol in symbols:
             try:
@@ -298,11 +506,11 @@ class ScannerAgent(BaseAgent):
         Returns:
             ScanResult with signal analysis
         """
-        timestamp = get_datetime_now().isoformat()
+        timestamp = now_iso()
 
         # Calculate date range
-        end_date = get_datetime_now().strftime("%Y-%m-%d")
-        start_date = (get_datetime_now() - timedelta(days=self.scan_config.lookback_days)).strftime(
+        end_date = today_str()
+        start_date = subtract_days(get_datetime_now(), self.scan_config.lookback_days).strftime(
             "%Y-%m-%d"
         )
 
@@ -623,7 +831,7 @@ class ScannerAgent(BaseAgent):
                 if result.action != "HOLD":
                     msg = create_message(
                         source_agent=self.name,
-                        event_type=EventType.SCAN_COMPLETE,
+                        event_type=EventType.MARKET_DATA_RECEIVED,
                         symbol=result.symbol,
                         payload={
                             "action": result.action,

@@ -1,0 +1,47 @@
+# Balanced Strategy Watchlist
+# Issue #405: Strategy-specific watchlists
+#
+# Optimized for balanced/diversified approach:
+# - Mix of growth and value
+# - Index ETFs for core exposure
+# - Lower volatility selections
+
+name: "Balanced"
+description: "Diversified mix of ETFs and blue-chip stocks"
+
+# Primary tickers for this strategy
+tickers:
+  # Core index ETFs
+  - SPY    # S&P 500
+  - QQQ    # Nasdaq-100
+  - IWM    # Russell 2000
+  - VTI    # Total Stock Market
+  - DIA    # Dow Jones Industrial
+
+  # Sector ETFs
+  - XLK    # Technology Select
+  - XLF    # Financial Select
+  - XLE    # Energy Select
+  - XLV    # Healthcare Select
+
+  # Blue-chip stocks
+  - AAPL   # Apple
+  - MSFT   # Microsoft
+  - JPM    # JPMorgan Chase
+  - JNJ    # Johnson & Johnson
+  - V      # Visa
+  - PG     # Procter & Gamble
+  - UNH    # UnitedHealth
+
+  # Dividend/Value
+  - SCHD   # Schwab US Dividend Equity
+  - VYM    # Vanguard High Dividend Yield
+
+# Strategy-specific settings
+settings:
+  # Target beta range
+  min_beta: 0.7
+  max_beta: 1.3
+
+  # Sector diversification
+  max_sector_allocation: 0.25

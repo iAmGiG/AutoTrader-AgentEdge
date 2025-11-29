@@ -334,8 +334,12 @@ Consolidated `src/human_interface/` into `src/cli/`:
 
 - ✅ **src/services/llm/** - **KEPT** (actively used)
   - Used by `src/parsers/llm_parser.py` for NL parsing
-  - Used by `src/core/factory.py` for OrchestratorFactory
+  - Used by `src/core/factory.py` for OrchestratorFactory (called from main.py `trade_assist()`)
   - Provides LLM abstraction (OpenAIService, LLMService base)
+  - **NOTE**: Separate from AutoGen's internal LLM config
+    - AutoGen: agent-to-agent conversations
+    - OpenAIService: CLI user input parsing (e.g., "buy 50 SPY" → structured trade request)
+  - Part of production interactive CLI (`python main.py`)
 
 ### Final src/ Structure
 

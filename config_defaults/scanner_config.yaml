@@ -1,7 +1,44 @@
 # Market Scanner Configuration
 # Issue #358: Externalize scanner watchlist and settings
+# Issue #405: Tiered watchlist system
 
-# Default Watchlist - symbols scanned when no specific list is provided
+# =============================================================================
+# TIERED WATCHLIST SYSTEM
+# =============================================================================
+# Priority order for building scan lists:
+#   Tier 0: Active positions (broker-sourced) - ALWAYS included
+#   Tier 1: Pending orders (broker-sourced) - High priority
+#   Tier 2: Strategy watchlist (config-driven) - Based on trading mode
+#   Tier 3: Discovery list (config-driven) - Research/new ideas
+
+tiered_watchlist:
+  # Enable tiered system (false = use default_watchlist only)
+  enabled: true
+
+  # Hard limit - never scan more than this many symbols
+  max_symbols_per_scan: 25
+
+  # Per-tier symbol limits (prioritized allocation)
+  tier_limits:
+    positions: 10       # Tier 0: Active positions (broker API)
+    pending_orders: 5   # Tier 1: Pending/recent orders (broker API)
+    strategy: 8         # Tier 2: Strategy-specific watchlist
+    discovery: 5        # Tier 3: Discovery/research tickers
+
+  # Refresh intervals by tier (seconds) - for continuous monitoring
+  refresh_intervals:
+    positions: 60       # Every 1 min - your money is here
+    pending_orders: 300 # Every 5 min - active interest
+    strategy: 900       # Every 15 min - strategy tickers
+    discovery: 3600     # Every hour - research tickers
+
+  # Fallback behavior when broker unavailable
+  fallback_to_config: true
+
+# =============================================================================
+# DEFAULT WATCHLIST (Tier 3: Discovery)
+# =============================================================================
+# Used as fallback and for discovery tier when tiered system enabled
 default_watchlist:
   # Core broad market ETFs
   core_etfs:
