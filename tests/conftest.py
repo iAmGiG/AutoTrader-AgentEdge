@@ -70,7 +70,7 @@ class MockAccount:
     cash: str = "50000.00"
     portfolio_value: str = "150000.00"
     equity: str = "150000.00"
-    daytrade_buying_power: str = "400000.00"
+    daytrade_buying_power: str = "400000"  # Integer string for int() conversion
     status: str = "ACTIVE"
 
 

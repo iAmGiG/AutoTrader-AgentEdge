@@ -13,8 +13,7 @@ import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -22,44 +21,59 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
 from src.trading.position_manager import PositionManager
 
+# =============================================================================
+# Helper: Create PositionManager with tmp_path for state file
+# =============================================================================
+
+
+def create_position_manager(broker_client, tmp_path):
+    """
+    Create a PositionManager with state file in tmp_path.
+
+    This avoids patching builtins.open which breaks pytest internals.
+    The config_defaults/paths_config.yaml is loaded normally, then we
+    override the state_file path to use tmp_path.
+    """
+    pm = PositionManager(broker_client)
+    pm.state_file = tmp_path / "positions.json"
+    return pm
+
+
+# =============================================================================
+# Initialization Tests
+# =============================================================================
+
 
 class TestPositionManagerInit:
     """Test PositionManager initialization."""
 
     def test_init_with_broker_client(self, mock_broker_client, tmp_path):
         """Test basic initialization with broker client."""
-        with patch("src.trading.position_manager.Path") as mock_path:
-            # Mock the state file path to use temp directory
-            mock_path.return_value = tmp_path / "state" / "positions.json"
+        pm = create_position_manager(mock_broker_client, tmp_path)
 
-            pm = PositionManager(mock_broker_client)
-
-            assert pm.broker == mock_broker_client
-            assert pm._session_cache == {}
-            assert pm._cache_timestamp is None
-            assert pm._cache_ttl_seconds == 60
+        assert pm.broker == mock_broker_client
+        assert pm._session_cache == {}
+        assert pm._cache_timestamp is None
+        assert pm._cache_ttl_seconds == 60
 
     def test_init_creates_state_directory(self, mock_broker_client, tmp_path):
         """Test that init creates state directory if missing."""
-        with patch("builtins.open", MagicMock(side_effect=FileNotFoundError)):
-            with patch.object(Path, "mkdir"):
-                pm = PositionManager(mock_broker_client)
-                # Should not raise even if config file missing
-                assert pm is not None
+        # PositionManager creates state directory in __init__
+        pm = PositionManager(mock_broker_client)
+        # Should not raise even if state directory was missing
+        assert pm is not None
+        assert pm.state_file.parent.exists()
 
-    def test_init_with_custom_config(self, mock_broker_client, tmp_path):
-        """Test initialization with custom paths config."""
-        config_content = {"state_files": {"positions": str(tmp_path / "custom_positions.json")}}
+    def test_init_loads_paths_config(self, mock_broker_client, tmp_path):
+        """Test initialization loads paths from config."""
+        pm = PositionManager(mock_broker_client)
+        # Default path from paths_config.yaml
+        assert "positions.json" in str(pm.state_file)
 
-        config_file = tmp_path / "paths_config.yaml"
-        import yaml
 
-        with open(config_file, "w") as f:
-            yaml.dump(config_content, f)
-
-        with patch("src.trading.position_manager.open", MagicMock()):
-            pm = PositionManager(mock_broker_client)
-            assert pm is not None
+# =============================================================================
+# Get Positions Tests
+# =============================================================================
 
 
 class TestGetPositions:
@@ -67,117 +81,103 @@ class TestGetPositions:
 
     def test_get_positions_from_broker(self, mock_broker_with_positions, tmp_path):
         """Test fetching positions from broker."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            positions = pm.get_positions()
+        positions = pm.get_positions()
 
-            assert len(positions) == 3
-            assert "SPY" in positions
-            assert "AAPL" in positions
-            assert "MSFT" in positions
+        assert len(positions) == 3
+        assert "SPY" in positions
+        assert "AAPL" in positions
+        assert "MSFT" in positions
 
     def test_position_data_format(self, mock_broker_with_positions, tmp_path):
         """Test position data is correctly formatted."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            positions = pm.get_positions()
-            spy = positions["SPY"]
+        positions = pm.get_positions()
+        spy = positions["SPY"]
 
-            # Verify all expected fields
-            assert spy["symbol"] == "SPY"
-            assert spy["qty"] == 10.0
-            assert spy["side"] == "long"
-            assert spy["avg_entry_price"] == 450.0
-            assert spy["market_value"] == 4800.0
-            assert spy["unrealized_pl"] == 300.0
-            assert spy["cost_basis"] == 4500.0
-            assert "last_updated" in spy
+        # Verify all expected fields
+        assert spy["symbol"] == "SPY"
+        assert spy["qty"] == 10.0
+        assert spy["side"] == "long"
+        assert spy["avg_entry_price"] == 450.0
+        assert spy["market_value"] == 4800.0
+        assert spy["unrealized_pl"] == 300.0
+        assert spy["cost_basis"] == 4500.0
+        assert "last_updated" in spy
 
     def test_cache_prevents_repeated_api_calls(self, mock_broker_with_positions, tmp_path):
         """Test that cache prevents repeated API calls within TTL."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # First call
-            pm.get_positions()
-            # Second call (should use cache)
-            pm.get_positions()
-            # Third call (should use cache)
-            pm.get_positions()
+        # First call
+        pm.get_positions()
+        # Second call (should use cache)
+        pm.get_positions()
+        # Third call (should use cache)
+        pm.get_positions()
 
-            # API should only be called once
-            assert mock_broker_with_positions.get_all_positions.call_count == 1
+        # API should only be called once
+        assert mock_broker_with_positions.get_all_positions.call_count == 1
 
     def test_force_refresh_bypasses_cache(self, mock_broker_with_positions, tmp_path):
         """Test force_refresh bypasses cache."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # First call
-            pm.get_positions()
-            # Force refresh call
-            pm.get_positions(force_refresh=True)
+        # First call
+        pm.get_positions()
+        # Force refresh call
+        pm.get_positions(force_refresh=True)
 
-            # API should be called twice
-            assert mock_broker_with_positions.get_all_positions.call_count == 2
+        # API should be called twice
+        assert mock_broker_with_positions.get_all_positions.call_count == 2
 
     def test_cache_expires_after_ttl(self, mock_broker_with_positions, tmp_path):
         """Test cache expires after TTL."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
-            pm._cache_ttl_seconds = 1  # 1 second TTL for testing
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
+        pm._cache_ttl_seconds = 1  # 1 second TTL for testing
 
-            # First call
-            pm.get_positions()
+        # First call
+        pm.get_positions()
 
-            # Wait for cache to expire
-            import time
+        # Wait for cache to expire
+        import time
 
-            time.sleep(1.5)
+        time.sleep(1.5)
 
-            # Second call (cache expired)
-            pm.get_positions()
+        # Second call (cache expired)
+        pm.get_positions()
 
-            # API should be called twice
-            assert mock_broker_with_positions.get_all_positions.call_count == 2
+        # API should be called twice
+        assert mock_broker_with_positions.get_all_positions.call_count == 2
 
     def test_empty_positions(self, mock_broker_client, tmp_path):
         """Test handling of empty positions."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_client)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_client, tmp_path)
 
-            positions = pm.get_positions()
+        positions = pm.get_positions()
 
-            assert positions == {}
+        assert positions == {}
 
     def test_api_error_uses_cache_fallback(self, mock_broker_with_positions, tmp_path):
         """Test API error falls back to cached data."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # First call (populates cache)
-            positions1 = pm.get_positions(force_refresh=True)
-            assert len(positions1) == 3
+        # First call (populates cache)
+        positions1 = pm.get_positions(force_refresh=True)
+        assert len(positions1) == 3
 
-            # Simulate API error
-            mock_broker_with_positions.get_all_positions.side_effect = Exception("API Error")
+        # Simulate API error
+        mock_broker_with_positions.get_all_positions.side_effect = Exception("API Error")
 
-            # Clear cache timestamp to force API call
-            pm._cache_timestamp = None
+        # Clear cache timestamp to force API call
+        pm._cache_timestamp = None
 
-            # Second call (should use cached data)
-            positions2 = pm.get_positions()
+        # Second call (should use cached data)
+        positions2 = pm.get_positions()
 
-            assert positions2 == positions1
+        assert positions2 == positions1
 
     def test_api_error_uses_file_backup(self, mock_broker_api_error, tmp_path):
         """Test API error with no cache falls back to file backup."""
@@ -210,25 +210,21 @@ class TestGetPosition:
 
     def test_get_existing_position(self, mock_broker_with_positions, tmp_path):
         """Test getting an existing position."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            position = pm.get_position("SPY")
+        position = pm.get_position("SPY")
 
-            assert position is not None
-            assert position["symbol"] == "SPY"
-            assert position["qty"] == 10.0
+        assert position is not None
+        assert position["symbol"] == "SPY"
+        assert position["qty"] == 10.0
 
     def test_get_nonexistent_position(self, mock_broker_with_positions, tmp_path):
         """Test getting a position that doesn't exist."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            position = pm.get_position("NVDA")
+        position = pm.get_position("NVDA")
 
-            assert position is None
+        assert position is None
 
 
 class TestHasPosition:
@@ -236,19 +232,15 @@ class TestHasPosition:
 
     def test_has_position_true(self, mock_broker_with_positions, tmp_path):
         """Test has_position returns True for existing position."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            assert pm.has_position("SPY") is True
+        assert pm.has_position("SPY") is True
 
     def test_has_position_false(self, mock_broker_with_positions, tmp_path):
         """Test has_position returns False for non-existing position."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            assert pm.has_position("NVDA") is False
+        assert pm.has_position("NVDA") is False
 
 
 class TestPositionValues:
@@ -256,54 +248,44 @@ class TestPositionValues:
 
     def test_get_position_value(self, mock_broker_with_positions, tmp_path):
         """Test get_position_value returns market value."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            value = pm.get_position_value("SPY")
-            assert value == 4800.0
+        value = pm.get_position_value("SPY")
+        assert value == 4800.0
 
     def test_get_position_value_no_position(self, mock_broker_with_positions, tmp_path):
         """Test get_position_value returns 0 for no position."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            value = pm.get_position_value("NVDA")
-            assert value == 0.0
+        value = pm.get_position_value("NVDA")
+        assert value == 0.0
 
     def test_get_unrealized_pl(self, mock_broker_with_positions, tmp_path):
         """Test get_unrealized_pl returns correct P&L."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # SPY is profitable
-            assert pm.get_unrealized_pl("SPY") == 300.0
-            # AAPL is at loss
-            assert pm.get_unrealized_pl("AAPL") == -200.0
-            # MSFT is breakeven
-            assert pm.get_unrealized_pl("MSFT") == 0.0
+        # SPY is profitable
+        assert pm.get_unrealized_pl("SPY") == 300.0
+        # AAPL is at loss
+        assert pm.get_unrealized_pl("AAPL") == -200.0
+        # MSFT is breakeven
+        assert pm.get_unrealized_pl("MSFT") == 0.0
 
     def test_get_portfolio_value(self, mock_broker_with_positions, tmp_path):
         """Test get_portfolio_value returns total value."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # SPY: 4800 + AAPL: 3400 + MSFT: 2000 = 10200
-            total_value = pm.get_portfolio_value()
-            assert total_value == 10200.0
+        # SPY: 4800 + AAPL: 3400 + MSFT: 2000 = 10200
+        total_value = pm.get_portfolio_value()
+        assert total_value == 10200.0
 
     def test_get_portfolio_pl(self, mock_broker_with_positions, tmp_path):
         """Test get_portfolio_pl returns total P&L."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # SPY: +300 + AAPL: -200 + MSFT: 0 = +100
-            total_pl = pm.get_portfolio_pl()
-            assert total_pl == 100.0
+        # SPY: +300 + AAPL: -200 + MSFT: 0 = +100
+        total_pl = pm.get_portfolio_pl()
+        assert total_pl == 100.0
 
 
 class TestAccountInfo:
@@ -311,28 +293,24 @@ class TestAccountInfo:
 
     def test_get_account_info(self, mock_broker_client, tmp_path):
         """Test getting account information."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_client)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_client, tmp_path)
 
-            account = pm.get_account_info()
+        account = pm.get_account_info()
 
-            assert account["buying_power"] == 100000.0
-            assert account["cash"] == 50000.0
-            assert account["portfolio_value"] == 150000.0
-            assert account["equity"] == 150000.0
-            assert account["status"] == "ACTIVE"
-            assert "last_updated" in account
+        assert account["buying_power"] == 100000.0
+        assert account["cash"] == 50000.0
+        assert account["portfolio_value"] == 150000.0
+        assert account["equity"] == 150000.0
+        assert account["status"] == "ACTIVE"
+        assert "last_updated" in account
 
     def test_get_account_info_api_error(self, mock_broker_api_error, tmp_path):
         """Test get_account_info handles API errors."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_api_error)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_api_error, tmp_path)
 
-            account = pm.get_account_info()
+        account = pm.get_account_info()
 
-            assert account == {}
+        assert account == {}
 
 
 class TestOrders:
@@ -340,35 +318,29 @@ class TestOrders:
 
     def test_get_orders(self, mock_broker_with_orders, tmp_path):
         """Test getting orders from broker."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_orders)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_orders, tmp_path)
 
-            orders = pm.get_orders()
+        orders = pm.get_orders()
 
-            assert len(orders) == 3
-            assert orders[0]["id"] == "order-001"
-            assert orders[0]["symbol"] == "SPY"
+        assert len(orders) == 3
+        assert orders[0]["id"] == "order-001"
+        assert orders[0]["symbol"] == "SPY"
 
     def test_get_orders_with_status_filter(self, mock_broker_with_orders, tmp_path):
         """Test get_orders passes status parameter."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_orders)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_orders, tmp_path)
 
-            pm.get_orders(status="closed")
+        pm.get_orders(status="closed")
 
-            mock_broker_with_orders.get_orders.assert_called_with(status="closed", limit=100)
+        mock_broker_with_orders.get_orders.assert_called_with(status="closed", limit=100)
 
     def test_get_orders_api_error(self, mock_broker_api_error, tmp_path):
         """Test get_orders handles API errors."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_api_error)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_api_error, tmp_path)
 
-            orders = pm.get_orders()
+        orders = pm.get_orders()
 
-            assert orders == []
+        assert orders == []
 
     def test_get_single_order(self, mock_broker_with_orders, tmp_path):
         """Test getting a single order by ID."""
@@ -392,15 +364,13 @@ class TestOrders:
 
         mock_broker_with_orders.get_order.return_value = mock_order
 
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_orders)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_orders, tmp_path)
 
-            order = pm.get_order("order-001")
+        order = pm.get_order("order-001")
 
-            assert order is not None
-            assert order["id"] == "order-001"
-            assert order["symbol"] == "SPY"
+        assert order is not None
+        assert order["id"] == "order-001"
+        assert order["symbol"] == "SPY"
 
 
 class TestCacheManagement:
@@ -408,36 +378,32 @@ class TestCacheManagement:
 
     def test_refresh_cache(self, mock_broker_with_positions, tmp_path):
         """Test refresh_cache forces API call."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # Initial fetch
-            pm.get_positions()
-            call_count_before = mock_broker_with_positions.get_all_positions.call_count
+        # Initial fetch
+        pm.get_positions()
+        call_count_before = mock_broker_with_positions.get_all_positions.call_count
 
-            # Refresh
-            pm.refresh_cache()
-            call_count_after = mock_broker_with_positions.get_all_positions.call_count
+        # Refresh
+        pm.refresh_cache()
+        call_count_after = mock_broker_with_positions.get_all_positions.call_count
 
-            assert call_count_after == call_count_before + 1
+        assert call_count_after == call_count_before + 1
 
     def test_clear_cache(self, mock_broker_with_positions, tmp_path):
         """Test clear_cache clears session cache."""
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_with_positions)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_with_positions, tmp_path)
 
-            # Populate cache
-            pm.get_positions()
-            assert pm._session_cache != {}
-            assert pm._cache_timestamp is not None
+        # Populate cache
+        pm.get_positions()
+        assert pm._session_cache != {}
+        assert pm._cache_timestamp is not None
 
-            # Clear cache
-            pm.clear_cache()
+        # Clear cache
+        pm.clear_cache()
 
-            assert pm._session_cache == {}
-            assert pm._cache_timestamp is None
+        assert pm._session_cache == {}
+        assert pm._cache_timestamp is None
 
 
 class TestEdgeCases:
@@ -459,14 +425,12 @@ class TestEdgeCases:
             )
         ]
 
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_client)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_client, tmp_path)
 
-            positions = pm.get_positions()
+        positions = pm.get_positions()
 
-            assert positions["TSLA"]["side"] == "short"
-            assert positions["TSLA"]["qty"] == -10.0
+        assert positions["TSLA"]["side"] == "short"
+        assert positions["TSLA"]["qty"] == -10.0
 
     def test_zero_quantity_position(self, mock_broker_client, tmp_path):
         """Test handling of zero quantity (closed) positions."""
@@ -484,13 +448,11 @@ class TestEdgeCases:
             )
         ]
 
-        with patch("builtins.open", MagicMock()):
-            pm = PositionManager(mock_broker_client)
-            pm.state_file = tmp_path / "positions.json"
+        pm = create_position_manager(mock_broker_client, tmp_path)
 
-            # Should not crash on division by zero
-            positions = pm.get_positions()
-            assert positions["AMD"]["current_price"] == 0
+        # Should not crash on division by zero
+        positions = pm.get_positions()
+        assert positions["AMD"]["current_price"] == 0
 
     def test_corrupted_backup_file(self, mock_broker_api_error, tmp_path):
         """Test handling of corrupted backup file."""
