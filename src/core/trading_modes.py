@@ -47,7 +47,11 @@ class TradingMode(Enum):
 
 @dataclass
 class ModeParameters:
-    """Parameters for a trading mode."""
+    """
+    Parameters for a trading mode.
+
+    Issue #414: Extended with advanced trailing stop parameters.
+    """
 
     mode: TradingMode
     description: str
@@ -62,7 +66,7 @@ class ModeParameters:
     stop_loss: float
     take_profit: float
 
-    # Trailing stops
+    # Trailing stops (base)
     trailing_enabled: bool
     progressive_enabled: bool
     progressive_breakeven_pct: float
@@ -70,9 +74,15 @@ class ModeParameters:
     progressive_trail_50_pct: float
     min_update_interval_seconds: int
 
+    # Issue #414: Advanced trailing stop parameters
+    climb_rate: str = "medium"  # slow | medium | fast
+    volatility_aware: bool = False
+    atr_multiplier: float = 1.5
+    profit_zone_start_pct: float = 0.02
+
     # Risk metrics
-    risk_per_trade: float
-    min_confidence: float
+    risk_per_trade: float = 0.02
+    min_confidence: float = 0.65
 
 
 class TradingModeManager:
@@ -237,6 +247,11 @@ class TradingModeManager:
             progressive_lock_25_pct=trailing.get("progressive_lock_25_pct", 0.04),
             progressive_trail_50_pct=trailing.get("progressive_trail_50_pct", 0.06),
             min_update_interval_seconds=trailing.get("min_update_interval_seconds", 60),
+            # Issue #414: Advanced trailing stop parameters
+            climb_rate=trailing.get("climb_rate", "medium"),
+            volatility_aware=trailing.get("volatility_aware", False),
+            atr_multiplier=trailing.get("atr_multiplier", 1.5),
+            profit_zone_start_pct=trailing.get("profit_zone_start_pct", 0.02),
             risk_per_trade=mode_config.get("risk_per_trade", 0.02),
             min_confidence=mode_config.get("min_confidence", 0.65),
         )
@@ -263,6 +278,11 @@ class TradingModeManager:
             "progressive_trail_50_pct": params.progressive_trail_50_pct,
             "min_update_interval_seconds": params.min_update_interval_seconds,
             "never_move_stop_down": True,
+            # Issue #414: Advanced features
+            "climb_rate": params.climb_rate,
+            "volatility_aware": params.volatility_aware,
+            "atr_multiplier": params.atr_multiplier,
+            "profit_zone_start_pct": params.profit_zone_start_pct,
         }
 
     def get_risk_config_dict(self, mode: Optional[TradingMode] = None) -> Dict[str, Any]:

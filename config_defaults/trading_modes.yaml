@@ -1,11 +1,13 @@
 # Trading Modes Configuration
 # Issue #400: Trading Modes Configuration System
+# Issue #414: Advanced Trailing Stop Automation (KILLER FEATURE)
 #
 # Each mode defines risk parameters that propagate to:
 # - Position sizing (max_position_pct, max_position_value)
 # - Stop management (stop_loss, trailing stop thresholds)
 # - Profit targets (take_profit)
 # - Portfolio limits (max_portfolio_pct, max_positions)
+# - Advanced trailing stops (climb_rate, volatility_aware)
 
 default_mode: moderate
 
@@ -27,7 +29,7 @@ modes:
     stop_loss: 0.02             # 2% stop loss
     take_profit: 0.05           # 5% profit target
 
-    # Trailing stops (progressive)
+    # Trailing stops - Issue #414: Advanced Trailing Stop Automation
     trailing_stops:
       enabled: true
       progressive_enabled: true
@@ -35,6 +37,11 @@ modes:
       progressive_lock_25_pct: 0.03     # Lock 25% gains at 3%
       progressive_trail_50_pct: 0.04    # Trail 50% at 4%+
       min_update_interval_seconds: 60
+      # Issue #414: Advanced features (KILLER FEATURE)
+      climb_rate: slow          # slow = conservative gain locking (20%/40%/60%)
+      volatility_aware: true    # Adjust trail distance based on ATR
+      atr_multiplier: 2.0       # Wider stops for conservative mode
+      profit_zone_start_pct: 0.015  # 1.5% = enter profit zone earlier
 
     # Risk metrics
     risk_per_trade: 0.01        # 1% account risk per trade
@@ -56,7 +63,7 @@ modes:
     stop_loss: 0.05             # 5% stop loss
     take_profit: 0.10           # 10% profit target
 
-    # Trailing stops (progressive)
+    # Trailing stops - Issue #414: Advanced Trailing Stop Automation
     trailing_stops:
       enabled: true
       progressive_enabled: true
@@ -64,6 +71,11 @@ modes:
       progressive_lock_25_pct: 0.04     # Lock 25% gains at 4%
       progressive_trail_50_pct: 0.06    # Trail 50% at 6%+
       min_update_interval_seconds: 60
+      # Issue #414: Advanced features (KILLER FEATURE)
+      climb_rate: medium        # medium = balanced gain locking (25%/50%/75%)
+      volatility_aware: true    # Adjust trail distance based on ATR
+      atr_multiplier: 1.5       # Standard ATR multiplier
+      profit_zone_start_pct: 0.02   # 2% = standard profit zone threshold
 
     # Risk metrics
     risk_per_trade: 0.02        # 2% account risk per trade
@@ -85,14 +97,19 @@ modes:
     stop_loss: 0.08             # 8% stop loss
     take_profit: 0.20           # 20% profit target
 
-    # Trailing stops (progressive)
+    # Trailing stops - Issue #414: Advanced Trailing Stop Automation
     trailing_stops:
       enabled: true
       progressive_enabled: true
       progressive_breakeven_pct: 0.03   # Move to breakeven at 3%
       progressive_lock_25_pct: 0.06     # Lock 25% gains at 6%
       progressive_trail_50_pct: 0.10    # Trail 50% at 10%+
-      min_update_interval_seconds: 30   # Faster updates
+      min_update_interval_seconds: 30   # Faster updates for aggressive
+      # Issue #414: Advanced features (KILLER FEATURE)
+      climb_rate: fast          # fast = aggressive gain locking (33%/60%/80%)
+      volatility_aware: true    # Adjust trail distance based on ATR
+      atr_multiplier: 1.0       # Tighter stops for aggressive mode
+      profit_zone_start_pct: 0.025  # 2.5% = slightly higher threshold
 
     # Risk metrics
     risk_per_trade: 0.03        # 3% account risk per trade

@@ -69,6 +69,8 @@ known-local-folder = ["src", "config"]
 "scripts/research/**/*.py" = ["I001", "E402", "E501"]
 # Line length handled by formatters and GitHub CI
 "*" = ["E501"]
+# Issue #414: TrailingStopManager has justified complexity for profit zone logic
+"src/trading/trailing_stop_manager.py" = ["C901"]
 
 [tool.pycodestyle]
 # For tools that read from pyproject.toml
