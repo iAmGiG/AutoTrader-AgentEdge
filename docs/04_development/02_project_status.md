@@ -575,6 +575,7 @@ Branch: `feature/trailing-stops-414`
 Status: Ready for integration testing
 
 **Features Implemented**:
+
 - ClimbRate class with slow/medium/fast gain lock presets (20%-80% of gains)
 - TrailingStopConfig extended with volatility-aware parameters
 - ATR-based volatility adjustment (configurable multiplier)
@@ -583,6 +584,7 @@ Status: Ready for integration testing
 - Mode-specific config in trading_modes.yaml
 
 **Climb Rate Gain Locking**:
+
 - slow: 20%/40%/60% of gains
 - medium: 25%/50%/75% of gains (default)
 - fast: 33%/60%/80% of gains
@@ -590,6 +592,7 @@ Status: Ready for integration testing
 **Tests**: 19 unit tests (all passing)
 
 **Next Steps**:
+
 - Integrate into trading cycle scheduler (#323)
 - CLI command for trailing stop status (`show trailing stops`)
 - Documentation of CLI usage
@@ -600,6 +603,58 @@ Status: Ready for integration testing
 - Uses cancel-replace pattern (Alpaca's recommended approach)
 - TrailingStopManager already integrates at line 288
 - Partial exits (#248) can proceed using existing infrastructure
+
+### November 2025 - Partial Position Exits Implementation (Nov 30, 2025)
+
+**Issue #248 - Implement Partial Position Exits** (✅ IMPLEMENTATION COMPLETE)
+
+Branch: `feature/partial-exits-248`
+Status: Core implementation complete, ready for integration testing
+
+**Features Implemented**:
+
+- PartialExitManager class for multi-target position exits
+- Default 50/50 split: Target 1 (limit order) + Target 2 (trailing stop)
+- Per-mode configuration in trading_modes.yaml
+- Integration with TrailingStopManager for Target 2 dynamic stops
+- Comprehensive test coverage (21 tests, 90% coverage)
+
+**Configuration by Trading Mode**:
+
+- Conservative: Target 1 at 4% profit
+- Moderate: Target 1 at 5% profit
+- Aggressive: Target 1 at 6% profit
+
+**Architecture**:
+
+- `ExitTarget` dataclass for individual targets
+- `PartialExitState` for position tracking
+- Integration with `OrderManager` for limit orders
+- Integration with `TrailingStopManager` (#414) for trailing targets
+
+**Tests**: 21 unit tests (all passing, 90% coverage)
+
+**Files Added**:
+
+- `src/trading/partial_exit_manager.py` (143 lines)
+- `tests/unit/trading/test_partial_exit_manager.py` (21 tests)
+
+**Files Modified**:
+
+- `config_defaults/trading_modes.yaml` (partial_exits config)
+- `src/core/trading_modes.py` (ModeParameters extended, `get_partial_exit_config_dict()`)
+
+**Dependencies**:
+
+- Leverages #414 (Advanced Trailing Stops) for Target 2
+- Uses #400 (Trading Modes) for per-mode configuration
+- Built on `replace_stop_order()` infrastructure from order_manager.py
+
+**Next Steps (Phase 2-4)**:
+
+- Integration with trading_cycle.py
+- CLI commands for manual position splitting
+- Per-ticker overrides via profile hierarchy
 
 ### November 2025 - Design Session & New Feature Issues (Nov 29, 2025)
 
