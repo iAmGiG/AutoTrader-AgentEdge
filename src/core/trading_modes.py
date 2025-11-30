@@ -51,6 +51,7 @@ class ModeParameters:
     Parameters for a trading mode.
 
     Issue #414: Extended with advanced trailing stop parameters.
+    Issue #248: Extended with partial exit parameters.
     """
 
     mode: TradingMode
@@ -83,6 +84,18 @@ class ModeParameters:
     # Risk metrics
     risk_per_trade: float = 0.02
     min_confidence: float = 0.65
+
+    # Issue #248: Partial exit parameters
+    partial_exits_enabled: bool = True
+    partial_exit_targets: int = 2
+    partial_exit_split: list = None  # Will be [0.5, 0.5] by default
+    partial_exit_target_1_pct: float = 0.04  # First exit at 4% profit
+    partial_exit_target_2_type: str = "trailing"  # "trailing" or "limit"
+
+    def __post_init__(self):
+        """Initialize default values for mutable fields."""
+        if self.partial_exit_split is None:
+            self.partial_exit_split = [0.5, 0.5]
 
 
 class TradingModeManager:
@@ -231,6 +244,7 @@ class TradingModeManager:
         # Build from config
         mode_config = self._config["modes"].get(mode.value, {})
         trailing = mode_config.get("trailing_stops", {})
+        partial_exits = mode_config.get("partial_exits", {})
 
         params = ModeParameters(
             mode=mode,
@@ -254,6 +268,12 @@ class TradingModeManager:
             profit_zone_start_pct=trailing.get("profit_zone_start_pct", 0.02),
             risk_per_trade=mode_config.get("risk_per_trade", 0.02),
             min_confidence=mode_config.get("min_confidence", 0.65),
+            # Issue #248: Partial exit parameters
+            partial_exits_enabled=partial_exits.get("enabled", True),
+            partial_exit_targets=partial_exits.get("targets", 2),
+            partial_exit_split=partial_exits.get("split", [0.5, 0.5]),
+            partial_exit_target_1_pct=partial_exits.get("target_1_pct", 0.04),
+            partial_exit_target_2_type=partial_exits.get("target_2", "trailing"),
         )
 
         self._mode_cache[mode] = params
@@ -305,6 +325,27 @@ class TradingModeManager:
             "min_confidence": params.min_confidence,
             "stop_loss": params.stop_loss,
             "take_profit": params.take_profit,
+        }
+
+    def get_partial_exit_config_dict(self, mode: Optional[TradingMode] = None) -> Dict[str, Any]:
+        """
+        Get partial exit configuration as dict for PartialExitManager.
+
+        Args:
+            mode: Trading mode (default: current mode)
+
+        Returns:
+            Dict compatible with PartialExitManager initialization
+
+        Issue #248: Partial Position Exits
+        """
+        params = self.get_parameters(mode)
+        return {
+            "enabled": params.partial_exits_enabled,
+            "targets": params.partial_exit_targets,
+            "split": params.partial_exit_split,
+            "target_1_pct": params.partial_exit_target_1_pct,
+            "target_2": params.partial_exit_target_2_type,
         }
 
     def get_all_modes(self) -> Dict[str, ModeParameters]:
