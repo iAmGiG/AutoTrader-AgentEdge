@@ -82,9 +82,48 @@ class ExitConfig:
     breakeven_win_rate: float
 
 
+class ClimbRate:
+    """
+    Climb rate presets for trailing stop aggressiveness.
+
+    Issue #414: Advanced Trailing Stop Automation
+
+    Climb rate affects how quickly stops move up as price increases:
+    - slow: Conservative, locks smaller gains (20%/40%/60%)
+    - medium: Balanced, standard gain locking (25%/50%/75%)
+    - fast: Aggressive, locks larger gains quickly (33%/60%/80%)
+    """
+
+    SLOW = "slow"
+    MEDIUM = "medium"
+    FAST = "fast"
+
+    # Gain lock percentages by climb rate
+    # Format: (breakeven_zone, lock_zone_1, lock_zone_2)
+    GAIN_LOCK_PERCENTAGES = {
+        "slow": (0.0, 0.20, 0.40, 0.60),  # Breakeven, 20%, 40%, 60% trail
+        "medium": (0.0, 0.25, 0.50, 0.75),  # Breakeven, 25%, 50%, 75% trail
+        "fast": (0.0, 0.33, 0.60, 0.80),  # Breakeven, 33%, 60%, 80% trail
+    }
+
+    @classmethod
+    def get_gain_locks(cls, rate: str) -> tuple:
+        """Get gain lock percentages for a climb rate."""
+        return cls.GAIN_LOCK_PERCENTAGES.get(rate, cls.GAIN_LOCK_PERCENTAGES["medium"])
+
+
 @dataclass
 class TrailingStopConfig:
-    """Trailing stop configuration for dynamic stop management."""
+    """
+    Trailing stop configuration for dynamic stop management.
+
+    Issue #414: Advanced Trailing Stop Automation - KILLER FEATURE
+
+    Enhanced with:
+    - Configurable climb rates (slow/medium/fast)
+    - Volatility-aware adjustments via ATR
+    - Profit-zone awareness with configurable thresholds
+    """
 
     enabled: bool = True
     # Profit thresholds (as decimal, e.g., 0.02 = 2%)
@@ -101,6 +140,22 @@ class TrailingStopConfig:
     min_update_interval_seconds: int = 60  # Don't update more than once per minute
     # Safety
     never_move_stop_down: bool = True  # Stops only move up, never down
+
+    # === Issue #414: Advanced Trailing Stop Features ===
+    # Climb rate: slow | medium | fast - controls how aggressively stops climb
+    climb_rate: str = "medium"
+    # Volatility awareness: adjust trail distance based on ATR
+    volatility_aware: bool = False
+    # ATR multiplier for volatility-based trailing (higher = wider stops)
+    atr_multiplier: float = 1.5
+    # ATR period for volatility calculation
+    atr_period: int = 14
+    # Profit zone start: when to enter "profit protection" mode
+    profit_zone_start_pct: float = 0.02  # 2% = in profit zone
+
+    def get_gain_lock_percentages(self) -> tuple:
+        """Get gain lock percentages based on climb rate."""
+        return ClimbRate.get_gain_locks(self.climb_rate)
 
 
 class TradingConfig:
@@ -306,6 +361,12 @@ class TradingConfig:
             progressive_trail_50_pct=trailing_config.get("progressive_trail_50_pct", 0.06),
             min_update_interval_seconds=trailing_config.get("min_update_interval_seconds", 60),
             never_move_stop_down=trailing_config.get("never_move_stop_down", True),
+            # Issue #414: Advanced features
+            climb_rate=trailing_config.get("climb_rate", "medium"),
+            volatility_aware=trailing_config.get("volatility_aware", False),
+            atr_multiplier=trailing_config.get("atr_multiplier", 1.5),
+            atr_period=trailing_config.get("atr_period", 14),
+            profit_zone_start_pct=trailing_config.get("profit_zone_start_pct", 0.02),
         )
 
     def validate_config(self) -> bool:
