@@ -567,6 +567,61 @@ python main.py test-voter
 
 ## Recent Milestones
 
+### November 2025 - Advanced Trailing Stop Implementation (Nov 30, 2025)
+
+**Issue #414 - Advanced Trailing Stop Automation** (✅ IMPLEMENTATION COMPLETE)
+
+Branch: `feature/trailing-stops-414`
+Status: Ready for integration testing
+
+**Features Implemented**:
+- ClimbRate class with slow/medium/fast gain lock presets (20%-80% of gains)
+- TrailingStopConfig extended with volatility-aware parameters
+- ATR-based volatility adjustment (configurable multiplier)
+- Profit-zone tracking (enters profit protection at threshold)
+- Factory method: `TrailingStopManager.from_mode_manager()`
+- Mode-specific config in trading_modes.yaml
+
+**Climb Rate Gain Locking**:
+- slow: 20%/40%/60% of gains
+- medium: 25%/50%/75% of gains (default)
+- fast: 33%/60%/80% of gains
+
+**Tests**: 19 unit tests (all passing)
+
+**Next Steps**:
+- Integrate into trading cycle scheduler (#323)
+- CLI command for trailing stop status (`show trailing stops`)
+- Documentation of CLI usage
+
+**Infrastructure Discovery** (Unblocks #248):
+
+- **`replace_stop_order()`** already exists in `src/trading/order_manager.py` (lines 306-378)
+- Uses cancel-replace pattern (Alpaca's recommended approach)
+- TrailingStopManager already integrates at line 288
+- Partial exits (#248) can proceed using existing infrastructure
+
+### November 2025 - Design Session & New Feature Issues (Nov 29, 2025)
+
+**Design Decisions Established**:
+
+- **Profile Hierarchy**: Portfolio-level defaults → symbol-level overrides
+- **Autonomy Gradient**: Entry (approved list) → Exit (human-approved system) → Stops (auto) → Sizing (auto)
+- **Killer Feature**: Advanced trailing stops that protect profit once in profit zone
+- **LLM Boundary**: GEX tools for price levels, not pure guessing
+
+**New Issues Created**:
+
+- **#415 - Approved Ticker List with Entry Modes** (P2)
+  - Three modes: buy, buy&add, watchOnly
+  - Agent auto-entry within approved constraints
+  - Human approval required for new tickers
+
+- **#416 - Position Sizing Automation** (P2)
+  - Profile-based sizing (conservative/moderate/aggressive)
+  - Max portfolio % limits, per-symbol overrides
+  - Symbol-specific constraints (e.g., "never more than 5% in NVDA")
+
 ### November 2025 - Unit Testing Infrastructure (Issue #408) ✅ COMPLETE
 
 **Unit Test Suite** (branch: `feature/development` - merged):
