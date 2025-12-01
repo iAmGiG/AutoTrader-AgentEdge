@@ -606,10 +606,10 @@ Status: Ready for integration testing
 
 ### November 2025 - Partial Position Exits Implementation (Nov 30, 2025)
 
-**Issue #248 - Implement Partial Position Exits** (✅ IMPLEMENTATION COMPLETE)
+**Issue #248 - Implement Partial Position Exits** (✅ COMPLETE - MERGED)
 
-Branch: `feature/partial-exits-248`
-Status: Core implementation complete, ready for integration testing
+Branch: `feature/partial-exits-248` → Merged to `feature/development`
+Status: Implementation complete, merged, and tested
 
 **Features Implemented**:
 
@@ -653,8 +653,62 @@ Status: Core implementation complete, ready for integration testing
 **Next Steps (Phase 2-4)**:
 
 - Integration with trading_cycle.py
-- CLI commands for manual position splitting
+- CLI commands for manual position splitting (#424 - see below)
 - Per-ticker overrides via profile hierarchy
+
+**Commit**: `05d7355` → Merged `9f710cd`
+
+---
+
+### November 2025 - Trailing Stop CLI Commands (Nov 30, 2025)
+
+**Issue #424 - Trailing Stop CLI Commands** (✅ COMPLETE - MERGED)
+
+Branch: `feature/trailing-stop-cli-424` → Merged to `feature/development`
+Status: Implementation complete, merged, and tested
+
+**Features Implemented**:
+
+- TrailingStopCommands class for CLI interface
+- `show_trailing_stops()` - Display all tracked positions with profit zones
+- `show_config()` - Show trailing stop configuration settings
+- `set_manual_stop()` - Manual stop price override with validation
+
+**CLI Commands Available**:
+
+1. **show trailing stops** / **trailing stops status**
+   - Lists positions with entry, current price, stop, profit %, zone status
+   - Shows climb rate, volatility settings, adjustment counts
+
+2. **trailing-stop config** / **show stop settings**
+   - Displays mode, climb rate, progressive thresholds
+   - Shows volatility-aware settings (ATR multiplier)
+
+3. **set trailing-stop SYMBOL PRICE**
+   - Manual stop override with broker integration
+   - Validates stop price range, updates broker order
+
+**Tests**: 21 unit tests + integration test examples
+
+**Files Added**:
+
+- `src/cli/trailing_stop_commands.py` (290 lines)
+- `tests/unit/cli/test_trailing_stop_commands.py` (21 tests)
+- `tests/integration/cli/test_trailing_stops_integration.py` (integration examples)
+
+**Dependencies**:
+
+- #414 (Advanced Trailing Stop Automation) - backend complete
+- #400 (Trading Modes) - configuration foundation
+
+**Next Steps**:
+
+- Register commands with CLI session natural language parser
+- Add trailing stop status to morning/evening reports
+
+**Commit**: `68b7de2` → Merged to `feature/development`
+
+---
 
 ### November 2025 - Design Session & New Feature Issues (Nov 29, 2025)
 
