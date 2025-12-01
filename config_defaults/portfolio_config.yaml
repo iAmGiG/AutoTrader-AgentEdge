@@ -1,0 +1,64 @@
+# Portfolio Configuration
+# Issue #333: Portfolio Manager Agent - Risk & Position Sizing
+#
+# This configuration controls portfolio-level constraints and settings.
+# Per-ticker overrides can be set in the approved_tickers database (#415).
+# Trading mode profiles are in trading_modes.yaml (#400).
+
+# Portfolio Settings
+portfolio:
+  # Total portfolio size (USD) - used for % calculations
+  # If not set, fetched from broker account equity
+  size_usd: null
+
+  # Risk per trade as % of portfolio
+  # Used for risk-based position sizing
+  risk_per_trade_pct: 0.02  # 2%
+
+  # Maximum single position size as % of portfolio
+  max_position_pct: 0.10  # 10%
+
+  # Maximum total exposure (sum of all positions) as % of portfolio
+  max_exposure_pct: 0.80  # 80%
+
+# Position Limits
+limits:
+  # Maximum number of open positions
+  max_open_positions: 10
+
+  # Maximum daily trades (to prevent overtrading)
+  max_daily_trades: 20
+
+  # Minimum position size (to avoid tiny positions)
+  min_position_usd: 100
+
+  # Maximum single position value (absolute cap)
+  max_position_usd: 25000
+
+# Sector Concentration Limits
+# Warn if sector allocation exceeds these thresholds
+sector_limits:
+  enabled: true
+  max_sector_pct: 0.40  # 40% max in any sector
+  warn_sector_pct: 0.30  # Warn at 30%
+
+# Correlation Settings
+correlation:
+  enabled: false  # Phase 2 feature
+  max_correlated_positions: 3
+  correlation_threshold: 0.70  # Positions with correlation > 0.7 are considered correlated
+
+# Risk Warnings
+warnings:
+  # Warn before exceeding these thresholds
+  position_size_warning_pct: 0.08  # Warn if position > 8%
+  exposure_warning_pct: 0.70  # Warn if total exposure > 70%
+
+  # Hard blocks (prevent trade if exceeded)
+  hard_block_on_limits: false  # If true, block trades exceeding limits
+
+# Rebalancing (Phase 3)
+rebalancing:
+  enabled: false
+  target_allocation: {}  # Ticker -> target %
+  drift_threshold_pct: 0.05  # Rebalance if drift > 5%
