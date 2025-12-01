@@ -283,14 +283,19 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - **Usage**: `python main.py trade-assist`
 - **Completed**: November 8, 2025
 
-**#333 - Portfolio Manager Agent** (P1 - NEW)
+**#333 - Portfolio Manager Agent** (P1 - ✅ PHASE 1 COMPLETE)
 
 - **Scope**: Risk management, position sizing, portfolio allocation checks
 - **Features**: Buying power checks, portfolio % limits, risk-based sizing, existing position handling
 - **Why Important**: Safe trading requires intelligent portfolio management
 - **Depends On**: #308 (needs basic trade interface first)
-- **Target**: Q1 2026
-- **Status**: Design phase
+- **Phase 1 Status**: ✅ COMPLETE (Nov 2025)
+  - PortfolioManager class with YAML configuration
+  - Pre-trade risk assessment (TradeAssessment)
+  - Portfolio allocation display
+  - Integration with PositionSizer (#416)
+  - 17 unit tests
+- **Remaining Phases**: Phase 2 (sector limits, correlation), Phase 3 (rebalancing)
 
 ### High Priority (Multi-Agent System)
 
@@ -567,6 +572,80 @@ python main.py test-voter
 
 ## Recent Milestones
 
+### November 2025 - Position Sizing & Portfolio Management (Nov 30, 2025)
+
+**Issue #415 - Approved Ticker List with Entry Modes** (✅ COMPLETE)
+
+Branch: `feature/development` (merged)
+Status: Implementation complete
+
+**Features Implemented**:
+
+- TickerDatabase with SQLite backend
+- ApprovedTickersManager for ticker CRUD
+- Entry modes: buy, buy_add, watch_only, disabled
+- Per-ticker position limits
+- Leveraged ETF metadata and lookups
+- 18 unit tests
+
+**Files Added**:
+
+- `src/trading/ticker_database.py` (SQLite backend)
+- `src/trading/approved_tickers.py` (Manager class)
+- `tests/unit/trading/test_approved_tickers.py`
+
+---
+
+**Issue #416 - Position Sizing Automation Phase 1** (✅ COMPLETE)
+
+Branch: `feature/development` (merged)
+Status: Phase 1 complete
+
+**Features Implemented**:
+
+- PositionSizer class for profile-based sizing
+- Conservative 5%, Moderate 10%, Aggressive 20% max positions
+- Per-ticker limit integration (#415)
+- Buying power validation
+- Existing position awareness
+- Risk calculation with stop prices
+- 20 unit tests
+
+**Files Added**:
+
+- `src/trading/position_sizer.py`
+- `tests/unit/trading/test_position_sizer.py`
+
+**Remaining Phases**: Phase 2 (risk-based sizing), Phase 3 (smart sizing)
+
+---
+
+**Issue #333 - Portfolio Manager Agent Phase 1** (✅ COMPLETE)
+
+Branch: `feature/portfolio-manager-333`
+Status: Phase 1 complete, ready for merge
+
+**Features Implemented**:
+
+- PortfolioManager class with YAML configuration
+- Pre-trade risk assessment (TradeAssessment)
+- Portfolio allocation tracking and display
+- Buying power and exposure validation
+- Existing position warnings
+- Position count limits
+- Integration with PositionSizer (#416)
+- 17 unit tests
+
+**Files Added**:
+
+- `src/trading/portfolio_manager.py`
+- `config_defaults/portfolio_config.yaml`
+- `tests/unit/trading/test_portfolio_manager.py`
+
+**Remaining Phases**: Phase 2 (sector limits, correlation), Phase 3 (rebalancing)
+
+---
+
 ### November 2025 - Advanced Trailing Stop Implementation (Nov 30, 2025)
 
 **Issue #414 - Advanced Trailing Stop Automation** (✅ IMPLEMENTATION COMPLETE)
@@ -719,17 +798,19 @@ Status: Implementation complete, merged, and tested
 - **Killer Feature**: Advanced trailing stops that protect profit once in profit zone
 - **LLM Boundary**: GEX tools for price levels, not pure guessing
 
-**New Issues Created**:
+**New Issues Created & Completed**:
 
-- **#415 - Approved Ticker List with Entry Modes** (P2)
-  - Three modes: buy, buy&add, watchOnly
-  - Agent auto-entry within approved constraints
-  - Human approval required for new tickers
+- **#415 - Approved Ticker List with Entry Modes** (✅ COMPLETE)
+  - Three modes: buy, buy_add, watchOnly, disabled
+  - SQLite backend for persistence
+  - Per-ticker position limits
+  - Leveraged ETF metadata
 
-- **#416 - Position Sizing Automation** (P2)
+- **#416 - Position Sizing Automation** (✅ PHASE 1 COMPLETE)
   - Profile-based sizing (conservative/moderate/aggressive)
   - Max portfolio % limits, per-symbol overrides
-  - Symbol-specific constraints (e.g., "never more than 5% in NVDA")
+  - Integration with #415 for per-ticker limits
+  - Phase 2-3 pending (risk-based, smart sizing)
 
 ### November 2025 - Unit Testing Infrastructure (Issue #408) ✅ COMPLETE
 
@@ -906,12 +987,14 @@ python -m pytest tests/unit/ -v --no-cov
 
 ### Short Term (Q1 2026)
 
-**#333 - Portfolio Manager Agent**:
+**#333 - Portfolio Manager Agent** ✅ PHASE 1 COMPLETE:
 
-1. Design risk management and position sizing system
-2. Implement buying power and portfolio % checks
-3. Build configuration system (portfolio.yaml)
-4. Add existing position conflict detection
+1. ✅ PortfolioManager class with YAML configuration
+2. ✅ Pre-trade risk assessment with warnings
+3. ✅ Portfolio allocation display
+4. ✅ Integration with PositionSizer (#416)
+5. [ ] Phase 2: Sector limits, correlation analysis
+6. [ ] Phase 3: Rebalancing, volatility-adjusted sizing
 
 **#390 - Agent Factory & Event Bus** ✅ COMPLETE:
 
