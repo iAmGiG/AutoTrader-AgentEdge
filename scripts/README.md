@@ -175,31 +175,31 @@ python scripts/research/exit_strategy_analysis/expected_value_analysis.py
 
 ## Deprecated Scripts
 
-Scripts that were one-time migrations or superseded by current architecture have been moved to `src/deprecated/scripts_*/`:
+One-time migration scripts have been removed from the repository (Issue #435). Historical deprecated scripts are gitignored but documented below for reference.
 
-### Migration Scripts (`src/deprecated/scripts_migrations/`)
+### Removed: Migration Scripts (formerly `src/deprecated/scripts_migrations/`)
+
+These scripts completed their purpose and were removed in Issue #435:
 
 - **cleanup_legacy_cache.py** - Post-migration JSON cache cleanup (completed)
 - **migrate_cache_to_sqlite.py** - JSON→SQLite migration (completed)
 - **migrate_help_to_yaml.py** - help_system.py→YAML migration (completed)
 
-**Status**: One-time operations completed, preserved for reference.
-
-### Forward Testing Scripts (`src/deprecated/scripts_forward_test_issue_324/`)
+### Gitignored: Forward Testing Scripts (`src/deprecated/scripts_forward_test_issue_324/`)
 
 - **example_forward_test.py** - Demo for unused forward test framework
 - **forward_test_runner.py** - CLI for unused forward test infrastructure
 
-**Status**: Issue #324 infrastructure built but never integrated. Will revisit forward/backtesting with current tooling (AutoGen, VoterAgent) in future.
+**Status**: Issue #324 infrastructure built but never integrated. Gitignored.
 
-### V0-V4 Research Scripts (`src/deprecated/scripts_v0_v4_research/`)
+### Gitignored: V0-V4 Research Scripts (`src/deprecated/scripts_v0_v4_research/`)
 
 - **backtest.py** - Continuous backtesting for V0-V4 sentiment agents
 - **obfuscation_test.py** - V4 date obfuscation validation testing
-- **collect_benchmark_data.py** - VXX/SPY/QQQ data collector (broken imports)
-- **polygon_data_collector.py** - MAG 7 + leveraged ETFs collector (broken imports)
+- **collect_benchmark_data.py** - VXX/SPY/QQQ data collector
+- **polygon_data_collector.py** - MAG 7 + leveraged ETFs collector
 
-**Status**: V0-V4 sentiment framework deprecated in favor of simpler MACD+RSI voting strategy. Data collectors have broken import paths from old architecture. Research preserved for reference.
+**Status**: V0-V4 sentiment framework deprecated in favor of simpler MACD+RSI voting strategy. Gitignored.
 
 ## Cross-Platform Notes
 

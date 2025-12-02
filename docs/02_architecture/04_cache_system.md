@@ -348,14 +348,14 @@ python scripts/cache_manager.py query SPY --start 2025-10-01 --end 2025-10-31
 
 ### Legacy File Cleanup
 
-**Location**: `scripts/cleanup_legacy_cache.py`
+> **Note**: The `cleanup_legacy_cache.py` migration script has been removed (Issue #435) after completing its purpose. Use `cache_manager.py` for ongoing maintenance.
 
 ```bash
-# Preview cleanup (dry run)
-python scripts/cleanup_legacy_cache.py --dry-run
+# Cleanup expired entries
+python scripts/utilities/cache_manager.py cleanup
 
-# Clean up with automatic backup
-python scripts/cleanup_legacy_cache.py
+# Vacuum database to reclaim space
+python scripts/utilities/cache_manager.py vacuum
 ```
 
 ## Performance Characteristics

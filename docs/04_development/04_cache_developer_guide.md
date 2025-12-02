@@ -481,9 +481,9 @@ SQLite serializes writes:
 # Check integrity
 sqlite3 .cache/trading_data.db "PRAGMA integrity_check;"
 
-# Rebuild from backup
+# Rebuild from backup (if backup exists)
 mv .cache/trading_data.db .cache/trading_data.db.corrupt
-python scripts/migrate_cache_to_sqlite.py
+# Restore from .cache/backup_TIMESTAMP/ if available, or delete and let cache rebuild naturally
 ```
 
 ---
@@ -551,26 +551,17 @@ python scripts/cache_manager.py clear --all --confirm
 
 ## Migration from Legacy Cache
 
-### Step 1: Run Migration Script
+> **Note**: The migration script `migrate_cache_to_sqlite.py` has been removed (Issue #435) after completing its purpose. The SQLite cache is now the standard. If you have legacy JSON cache files, simply delete them - the SQLite cache will rebuild automatically from API calls.
 
-```bash
-# Preview migration (dry run)
-python scripts/migrate_cache_to_sqlite.py --dry-run
+### Legacy Migration (Historical Reference)
 
-# Full migration (creates backup automatically)
-python scripts/migrate_cache_to_sqlite.py
+The migration script performed these operations:
 
-# Skip backup if you're confident
-python scripts/migrate_cache_to_sqlite.py --no-backup
-```
-
-**What the script does:**
-
-- Backs up all JSON files to `.cache/backup_TIMESTAMP/`
-- Converts 3 cache formats: UnifiedCacheManager, MarketDataCache, and raw JSON
-- Removes duplicates automatically
-- Creates `.cache/trading_data.db` SQLite database
-- Preserves all metadata (sources, timestamps)
+- Backed up all JSON files to `.cache/backup_TIMESTAMP/`
+- Converted 3 cache formats: UnifiedCacheManager, MarketDataCache, and raw JSON
+- Removed duplicates automatically
+- Created `.cache/trading_data.db` SQLite database
+- Preserved all metadata (sources, timestamps)
 
 ### Step 2: Update Your Code
 
