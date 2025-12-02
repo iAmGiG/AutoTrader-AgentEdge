@@ -1,6 +1,6 @@
 # AutoTrader: Multi-Agent Trading System
 
-**Powered by AgentEdge - Autonomous AI agents seeking trading edge**
+## Powered by AgentEdge - Autonomous AI agents seeking trading edge
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
@@ -52,6 +52,7 @@ By using this software, you acknowledge that you understand these risks and agre
 - **✅ Human-in-Loop CLI** - Trade approval interface (Issue #308 - COMPLETED)
 - **✅ Backtesting Framework** - In-house engine with TSMOM signal support
 - **✅ Code Quality Refactoring** - Major modules extracted and modularized
+- **✅ CLI FunctionTool Infrastructure** - Tool registry + mode/timeframe tools (Issues #455, #456 - Phase 1 COMPLETE)
 - **🚧 Multi-Agent System** - Scanner, Risk, Executor agents (planned)
 
 **Key Metrics**:
@@ -209,7 +210,7 @@ All API credentials in `config/config.yaml` (or `config/config.json`):
 
 ### Unified Interactive CLI (✅ NEW - Priority #1)
 
-**Default: Interactive Trading Assistant**
+#### Default: Interactive Trading Assistant
 
 ```bash
 # Launch unified interactive CLI (default)
@@ -224,7 +225,7 @@ python main.py
 > /exit                    # Exit
 ```
 
-**Daemon Mode: Background Scheduler**
+#### Daemon Mode: Background Scheduler
 
 ```bash
 # Run daily scheduler in background
@@ -235,7 +236,7 @@ python main.py --daemon
 #   - Evening: 3:50 PM ET (performance review)
 ```
 
-**Legacy Commands (Deprecated)**
+#### Legacy Commands (Deprecated)
 
 ```bash
 # Legacy one-shot commands (will be removed)
@@ -246,7 +247,7 @@ python main.py --legacy paper-trade SPY
 
 **Example Interactive Session**:
 
-```
+```text
 🚀 Launching Interactive Trading Assistant...
 
 ======================================================================
