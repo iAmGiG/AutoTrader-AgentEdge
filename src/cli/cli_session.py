@@ -1272,8 +1272,17 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 override_mode = "USER_OVERRIDE_SHORT"
             self._display_suggestion(decision.suggestion, position, override_mode)
 
-            # Step 3: Get user confirmation (if confirm mode)
-            if self.autonomy_mode == "confirm":
+            # Step 3a: Check if this is review-only (no execution intent)
+            # Parse the original input to see if user explicitly wanted to execute
+            parsed_request = await self.orchestrator.parser.parse(user_input, self.user_id)
+            is_review_only = parsed_request.action == "review"
+
+            # Step 3b: Get user confirmation (if confirm mode AND user wants to execute)
+            if is_review_only:
+                # Review-only: Just show analysis, don't prompt for execution
+                print("\n📊 Analysis complete. No trade execution requested.")
+                decision.approved = False
+            elif self.autonomy_mode == "confirm":
                 approved = self._get_confirmation()
                 decision.approved = approved
             else:
