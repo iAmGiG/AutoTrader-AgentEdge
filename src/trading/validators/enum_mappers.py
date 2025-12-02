@@ -10,6 +10,7 @@ from typing import Optional
 
 try:
     from alpaca.trading.enums import OrderSide, TimeInForce
+
     ALPACA_ENUMS_AVAILABLE = True
 except ImportError:
     OrderSide = None
