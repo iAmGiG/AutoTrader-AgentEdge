@@ -199,6 +199,15 @@ from src.data_sources.cache import cache_adapter
 # Old API still works (uses SQLite under the hood)
 df = cache_adapter.get_market_data("SPY", "2025-01-01", "2025-01-31", source="alpaca")
 cache_adapter.set_market_data("SPY", "2025-01-01", "2025-01-31", "alpaca", df)
+
+# With timeframe support (Issue #445)
+df_hourly = cache_adapter.get_market_data(
+    "SPY", "2025-01-01", "2025-01-31", source="alpaca", timeframe="1Hour"
+)
+cache_adapter.set_market_data(
+    "SPY", "2025-01-01", "2025-01-31", "alpaca", df_hourly, timeframe="1Hour"
+)
+# Different timeframes are cached separately via source suffix (e.g., "alpaca_1Hour")
 ```
 
 ### Multi-Asset Support (Future Ready)
@@ -339,14 +348,14 @@ python scripts/cache_manager.py query SPY --start 2025-10-01 --end 2025-10-31
 
 ### Legacy File Cleanup
 
-**Location**: `scripts/cleanup_legacy_cache.py`
+> **Note**: The `cleanup_legacy_cache.py` migration script has been removed (Issue #435) after completing its purpose. Use `cache_manager.py` for ongoing maintenance.
 
 ```bash
-# Preview cleanup (dry run)
-python scripts/cleanup_legacy_cache.py --dry-run
+# Cleanup expired entries
+python scripts/utilities/cache_manager.py cleanup
 
-# Clean up with automatic backup
-python scripts/cleanup_legacy_cache.py
+# Vacuum database to reclaim space
+python scripts/utilities/cache_manager.py vacuum
 ```
 
 ## Performance Characteristics

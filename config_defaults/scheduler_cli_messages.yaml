@@ -1,0 +1,488 @@
+# Scheduler CLI Messages Configuration
+# All user-facing messages for the scheduler CLI
+# Edit this file to customize messages without changing code
+#
+# To add/remove/disable commands: edit the 'commands' section below
+# To customize messages: edit the corresponding section (status, daemon, etc.)
+
+# ============================================================================
+# COMMAND REGISTRY - Config-driven command system
+# ============================================================================
+# Each command defines:
+#   - enabled: true/false - disable commands without removing them
+#   - handler: method name in SchedulerCLI class (without leading _)
+#   - aliases: alternative command names
+#   - requires_scheduler: whether DailyScheduler must be initialized
+#   - category: for grouping in help menu
+#   - description: shown in help menu
+#   - usage: usage string (optional)
+#
+# To add a new command:
+#   1. Add entry here with handler name
+#   2. Implement _handler_name() method in scheduler_cli.py
+#
+# To disable a command: set enabled: false
+# ============================================================================
+commands:
+  # Quick Start commands
+  setup:
+    enabled: true
+    handler: run_setup_wizard
+    aliases: ["wizard"]
+    requires_scheduler: false
+    category: quick_start
+    description: "First-time setup wizard (recommended)"
+
+  start:
+    enabled: true
+    handler: start_daemon
+    aliases: []
+    requires_scheduler: false
+    category: quick_start
+    description: "Start scheduler daemon"
+
+  stop:
+    enabled: true
+    handler: stop_daemon
+    aliases: []
+    requires_scheduler: false
+    category: quick_start
+    description: "Stop scheduler daemon"
+
+  status:
+    enabled: true
+    handler: show_status
+    aliases: ["stat"]
+    requires_scheduler: true
+    category: quick_start
+    description: "Show detailed scheduler status"
+
+  # Configuration commands
+  config:
+    enabled: true
+    handler: show_config
+    aliases: ["cfg"]
+    requires_scheduler: false
+    category: configuration
+    description: "View current configuration"
+
+  edit:
+    enabled: true
+    handler: edit_config
+    aliases: []
+    requires_scheduler: false
+    category: configuration
+    description: "Edit scheduler configuration"
+
+  enable:
+    enabled: true
+    handler: set_enabled_true
+    aliases: ["on"]
+    requires_scheduler: false
+    category: configuration
+    description: "Enable scheduler"
+
+  disable:
+    enabled: true
+    handler: set_enabled_false
+    aliases: ["off"]
+    requires_scheduler: false
+    category: configuration
+    description: "Disable scheduler"
+
+  # Testing & Monitoring commands
+  test:
+    enabled: true
+    handler: test_routine
+    aliases: []
+    requires_scheduler: true
+    category: testing
+    description: "Test morning/evening routine"
+    usage: "test [morning|evening]"
+
+  history:
+    enabled: true
+    handler: show_history
+    aliases: ["hist"]
+    requires_scheduler: true
+    category: testing
+    description: "View execution history"
+
+  next:
+    enabled: true
+    handler: show_next_run
+    aliases: []
+    requires_scheduler: true
+    category: testing
+    description: "Show next scheduled run"
+
+  logs:
+    enabled: true
+    handler: show_logs
+    aliases: ["log"]
+    requires_scheduler: false
+    category: testing
+    description: "View recent scheduler logs"
+
+  # Help commands
+  info:
+    enabled: true
+    handler: show_config_info
+    aliases: ["man", "docs"]
+    requires_scheduler: true
+    category: help
+    description: "Explain configuration settings"
+
+  help:
+    enabled: true
+    handler: print_welcome
+    aliases: ["?", "h"]
+    requires_scheduler: false
+    category: help
+    description: "Show this help message"
+
+  exit:
+    enabled: true
+    handler: exit_cli
+    aliases: ["quit", "q"]
+    requires_scheduler: false
+    category: help
+    description: "Exit scheduler CLI"
+
+# Category display order and headers for help menu
+categories:
+  quick_start:
+    order: 1
+    header: "Quick Start:"
+    emoji: rocket
+
+  configuration:
+    order: 2
+    header: "Configuration:"
+    emoji: gear
+
+  testing:
+    order: 3
+    header: "Testing & Monitoring:"
+    emoji: test
+
+  help:
+    order: 4
+    header: "Help:"
+    emoji: book
+
+# ============================================================================
+# WELCOME BANNER (auto-generated help uses commands section above)
+# ============================================================================
+welcome:
+  banner: "======================================================================"
+  title: "Scheduler Management CLI"
+
+# ============================================================================
+# STATUS MESSAGES
+# ============================================================================
+status:
+  header: "Scheduler Status"
+  not_initialized: "Scheduler not initialized"
+
+  config:
+    enabled: "Config: ENABLED"
+    disabled: "Config: DISABLED"
+
+  service:
+    running: "Service: RUNNING (automatic execution active)"
+    not_running: "Service: NOT RUNNING (no automatic execution)"
+    daemon_hint: |
+      Config is enabled but daemon is not running.
+      To start automatic execution:
+      1. Exit this CLI
+      2. Run: python main.py --daemon
+      3. Scheduler will run automatically at scheduled times
+
+      Or use 'test morning/evening' to run manually now
+
+  configuration_section:
+    header: "Configuration:"
+    morning: "Morning: {time} ET"
+    evening: "Evening: {time} ET"
+    timezone: "Timezone: {tz}"
+    max_retries: "Max Retries: {count}"
+    dry_run: "Dry Run: {enabled}"
+
+  executions:
+    header: "Today's Executions: {count}"
+    none: "No executions today"
+    daemon_note: "(Daemon not running - no automatic executions)"
+
+# ============================================================================
+# CONFIG INFO (Documentation)
+# ============================================================================
+config_info:
+  header: "Scheduler Configuration Guide"
+
+  editable_header: "EDITABLE SETTINGS"
+
+  settings:
+    enabled:
+      name: "enabled (boolean)"
+      purpose: "Master switch for automated trading"
+      values:
+        - "true = scheduler runs automatically"
+        - "false = scheduler paused (safe mode)"
+      tip: "Set to 'false' when testing or during holidays"
+
+    morning_time:
+      name: "morning_routine_time (HH:MM:SS)"
+      purpose: "Daily pre-market check and position setup"
+      default: "09:20:00 (9:20 AM ET, 10 min before market open)"
+      tip: "Run before market opens to prepare for trading day"
+
+    evening_time:
+      name: "evening_routine_time (HH:MM:SS)"
+      purpose: "End-of-day position review and trailing stop adjustments"
+      default: "15:50:00 (3:50 PM ET, 10 min before market close)"
+      tip: "Run before market closes to lock in profits"
+
+    max_retries:
+      name: "max_retries (integer 1-10)"
+      purpose: "Number of retry attempts if routine fails"
+      default: "3"
+      tip: "Higher values = more resilient to network issues"
+
+    dry_run:
+      name: "dry_run (boolean)"
+      purpose: "Test mode - simulates actions without placing orders"
+      values:
+        - "true = simulation only (NO real orders)"
+        - "false = normal operation (places orders)"
+      warning: "dry_run enforcement is NOT YET IMPLEMENTED"
+      status: "Currently logs but doesn't prevent order execution"
+      tip: "Always use paper trading account for testing"
+
+  readonly_header: "READ-ONLY SETTINGS (edit config file directly)"
+
+  readonly_settings:
+    - name: "market_timezone"
+      value: "America/New_York"
+      description: "All times are in Eastern Time (NYSE timezone)"
+
+    - name: "retry_delay_seconds"
+      value: "60"
+      description: "Initial wait time between retries (uses exponential backoff)"
+
+    - name: "timeout_seconds"
+      value: "300"
+      description: "Maximum time (5 minutes) for a single routine execution"
+
+    - name: "monitoring.alert_threshold_consecutive_failures"
+      value: "2"
+      description: "Number of consecutive failures before raising alert"
+
+    - name: "api_limits.max_calls_per_routine"
+      value: "5"
+      description: "Maximum API calls per routine to stay within rate limits"
+
+  quick_reference:
+    header: "QUICK REFERENCE"
+
+    paper_vs_dry:
+      title: "Paper Trading vs Dry Run:"
+      items:
+        - "Paper Trading (mode='paper'): Places real test orders on Alpaca paper account"
+        - "Dry Run (dry_run=true): Simulates logic without any orders [NOT IMPLEMENTED]"
+        - "Current system uses: Paper trading account (hardcoded in trading_cycle.py)"
+
+    safety_levels:
+      title: "Safety Levels (intended design):"
+      items:
+        - "1. Live mode + dry_run=false  -> Real money, real orders"
+        - "2. Paper mode + dry_run=false -> Paper account, test orders (current)"
+        - "3. Paper mode + dry_run=true  -> No orders, just logging (not implemented)"
+
+    related_issues:
+      title: "Related Issues:"
+      items:
+        - "#369 - Advanced documentation/man command"
+        - "#370 - LLM-powered trade journaling"
+
+  footer: "Type 'edit' to modify settings or 'config' to view raw file"
+
+# ============================================================================
+# EDIT CONFIG
+# ============================================================================
+edit:
+  header: "Scheduler Configuration Editor"
+  current_settings: "Current settings:"
+
+  prompts:
+    choice: "Edit setting (1-5, 0 to save, q to cancel): "
+    enabled: "Enable scheduler? (yes/no): "
+    morning_time: "Morning routine time (HH:MM:SS): "
+    evening_time: "Evening routine time (HH:MM:SS): "
+    max_retries: "Max retries (1-10): "
+    dry_run: "Enable dry run mode? (yes/no): "
+
+  messages:
+    cancelled: "Cancelled"
+    saved: "Configuration saved!"
+    reloading: "Reloading scheduler..."
+    reloaded: "Scheduler reloaded"
+    invalid_time: "Invalid time format. Use HH:MM:SS"
+    invalid_retries: "Value must be between 1 and 10"
+    invalid_number: "Invalid number"
+    invalid_choice: "Invalid choice"
+
+# ============================================================================
+# SETUP WIZARD
+# ============================================================================
+setup:
+  header: "Scheduler Setup Wizard"
+
+  intro:
+    title: "What does the scheduler do?"
+    description: |
+      The scheduler automatically runs trading routines at set times:
+      - Morning routine: Pre-market check, prepare for trading day
+      - Evening routine: End-of-day review, adjust stops
+
+  step1:
+    title: "How often should the scheduler run?"
+    options:
+      - "Twice daily (morning + evening) - RECOMMENDED"
+      - "Morning only (pre-market)"
+      - "Evening only (end-of-day)"
+      - "Cancel setup"
+    prompt: "Choice [1-4]: "
+
+  step2_morning:
+    title: "Morning routine time (default: 9:20 AM ET, 10 min before market)"
+    hint: "Press Enter for default, or enter time like '9:00' or '09:30'"
+    prompt: "Morning time: "
+    invalid: "Invalid format, using default 9:20 AM"
+
+  step3_evening:
+    title: "Evening routine time (default: 3:50 PM ET, 10 min before close)"
+    hint: "Press Enter for default, or enter time like '15:30' or '3:45'"
+    prompt: "Evening time: "
+    invalid: "Invalid format, using default 3:50 PM"
+
+  summary:
+    title: "Configuration Summary:"
+    morning_enabled: "Morning routine: Enabled"
+    morning_disabled: "Morning routine: Disabled"
+    evening_enabled: "Evening routine: Enabled"
+    evening_disabled: "Evening routine: Disabled"
+    time_format: "Time: {time} ET"
+
+  confirm:
+    prompt: "Save this configuration? [yes/no]: "
+    saved: "Configuration saved!"
+    start_prompt: "Start scheduler now? [yes/no]: "
+    cancelled: "Setup cancelled, configuration not saved"
+
+# ============================================================================
+# DAEMON CONTROL
+# ============================================================================
+daemon:
+  start:
+    starting: "Starting Scheduler Daemon..."
+    already_running: |
+      Scheduler daemon is already running!
+      Use 'stop' to stop it first, or 'status' to check
+    success: |
+      Scheduler daemon started successfully!
+      Use 'status' to see details
+      Use 'stop' to stop it later
+    unverified: |
+      Daemon may have started but couldn't verify
+      Check logs with 'logs' command
+    failed: "Failed to start daemon: {error}"
+    manual_hint: "Try running manually: python main.py --daemon"
+
+  stop:
+    stopping: "Stopping Scheduler Daemon..."
+    not_running: "Scheduler daemon is not running"
+    success: "Scheduler daemon stopped successfully!"
+    may_running: "Daemon may still be running"
+    kill_hint: "Try: kill -9 {pid}"
+    stop_failed: "Could not stop daemon: {error}"
+    manual_hint: "You may need to kill the process manually"
+    no_pid: |
+      PID file not found, daemon may not be managed
+      Check running processes for 'main.py --daemon'
+
+# ============================================================================
+# TESTING & HISTORY
+# ============================================================================
+testing:
+  running: "Testing {routine} routine..."
+  completed: "{routine} routine completed"
+  report_preview: "Report preview:"
+  report_saved: "Full report saved to: reports/daily/"
+  failed: "Test failed: {error}"
+
+history:
+  header: "Execution History"
+  not_initialized: "Scheduler not initialized"
+  empty: "No execution history found"
+  showing: "Showing last 20 executions (7 days):"
+
+next_run:
+  header: "Next Scheduled Run"
+  not_initialized: "Scheduler not initialized"
+  time_format: "Time: {time} ET"
+  countdown: "Countdown: {hours}h {minutes}m"
+  date_format: "Date: {date}"
+  error: "Error calculating next run: {error}"
+
+logs:
+  header: "Recent Scheduler Logs"
+  not_found: |
+    No log files found
+    Logs are created when the scheduler runs
+    Try 'test morning' or 'start' first
+  showing: "Showing last {lines} lines from: {file}"
+  full_logs: "Full logs at: {file}"
+  read_error: "Error reading logs: {error}"
+
+# ============================================================================
+# COMMON MESSAGES
+# ============================================================================
+common:
+  exit: "Exiting scheduler CLI..."
+  error: "Error: {message}"
+  config_not_found: "Config file not found: {file}"
+  config_hint: "Will be created with defaults on first run"
+  scheduler_enabled: "Scheduler enabled"
+  scheduler_disabled: "Scheduler disabled"
+  init_failed: "Failed to initialize scheduler: {error}"
+  init_hint: "Try running: python main.py --daemon"
+  unknown_command: "Unknown command: {command}"
+  help_hint: "Type 'help' for available commands"
+  usage_test: "Usage: test [morning|evening]"
+
+# ============================================================================
+# EMOJIS (can be customized for different terminals)
+# ============================================================================
+emoji:
+  calendar: "📅"
+  rocket: "🚀"
+  gear: "⚙️"
+  test: "🧪"
+  book: "📖"
+  clock: "⏰"
+  check_green: "✅"
+  cross_red: "❌"
+  warning: "⚠️"
+  info: "ℹ️"
+  wave: "👋"
+  wizard: "🧙"
+  scroll: "📜"
+  crystal: "🔮"
+  stop: "🛑"
+  circle_green: "🟢"
+  circle_red: "🔴"
+  clipboard: "📋"
+  memo: "📝"
+  light: "💡"
+  reload: "🔄"

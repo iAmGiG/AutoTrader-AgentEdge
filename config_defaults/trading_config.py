@@ -33,6 +33,45 @@ class RSIConfig:
 
 
 @dataclass
+class TimeframeConfig:
+    """Timeframe configuration for multi-timeframe analysis."""
+
+    default: str = "1d"
+    enabled_timeframes: list = None
+
+    def __post_init__(self):
+        """Initialize default enabled timeframes."""
+        if self.enabled_timeframes is None:
+            # Standard timeframes from minute to monthly
+            self.enabled_timeframes = [
+                "1m",  # 1 minute - scalping
+                "5m",  # 5 minutes - fast intraday
+                "15m",  # 15 minutes - intraday
+                "30m",  # 30 minutes - intraday swing
+                "1h",  # 1 hour - medium-term
+                "2h",  # 2 hours - swing
+                "4h",  # 4 hours - swing/position
+                "1d",  # 1 day - position trading
+                "1w",  # 1 week - intermediate-term
+                "1M",  # 1 month - long-term
+            ]
+
+    def is_valid(self, timeframe: str) -> bool:
+        """Check if a timeframe is valid."""
+        return timeframe in self.enabled_timeframes
+
+    def validate(self) -> bool:
+        """Validate timeframe configuration."""
+        # Check default is in enabled timeframes
+        if self.default not in self.enabled_timeframes:
+            return False
+        # Check at least one timeframe is enabled
+        if not self.enabled_timeframes or len(self.enabled_timeframes) == 0:
+            return False
+        return True
+
+
+@dataclass
 class ExitConfig:
     """Exit strategy configuration."""
 
@@ -41,6 +80,82 @@ class ExitConfig:
     description: str
     expected_value_50wr: float
     breakeven_win_rate: float
+
+
+class ClimbRate:
+    """
+    Climb rate presets for trailing stop aggressiveness.
+
+    Issue #414: Advanced Trailing Stop Automation
+
+    Climb rate affects how quickly stops move up as price increases:
+    - slow: Conservative, locks smaller gains (20%/40%/60%)
+    - medium: Balanced, standard gain locking (25%/50%/75%)
+    - fast: Aggressive, locks larger gains quickly (33%/60%/80%)
+    """
+
+    SLOW = "slow"
+    MEDIUM = "medium"
+    FAST = "fast"
+
+    # Gain lock percentages by climb rate
+    # Format: (breakeven_zone, lock_zone_1, lock_zone_2)
+    GAIN_LOCK_PERCENTAGES = {
+        "slow": (0.0, 0.20, 0.40, 0.60),  # Breakeven, 20%, 40%, 60% trail
+        "medium": (0.0, 0.25, 0.50, 0.75),  # Breakeven, 25%, 50%, 75% trail
+        "fast": (0.0, 0.33, 0.60, 0.80),  # Breakeven, 33%, 60%, 80% trail
+    }
+
+    @classmethod
+    def get_gain_locks(cls, rate: str) -> tuple:
+        """Get gain lock percentages for a climb rate."""
+        return cls.GAIN_LOCK_PERCENTAGES.get(rate, cls.GAIN_LOCK_PERCENTAGES["medium"])
+
+
+@dataclass
+class TrailingStopConfig:
+    """
+    Trailing stop configuration for dynamic stop management.
+
+    Issue #414: Advanced Trailing Stop Automation - KILLER FEATURE
+
+    Enhanced with:
+    - Configurable climb rates (slow/medium/fast)
+    - Volatility-aware adjustments via ATR
+    - Profit-zone awareness with configurable thresholds
+    """
+
+    enabled: bool = True
+    # Profit thresholds (as decimal, e.g., 0.02 = 2%)
+    breakeven_trigger: float = 0.005  # Move to breakeven at 0.5% profit
+    trail_start_trigger: float = 0.01  # Start trailing at 1% profit
+    # Trail distances
+    trail_distance: float = 0.005  # Trail by 0.5% below price
+    # Progressive stops (from existing adjust_stop logic)
+    progressive_enabled: bool = True
+    progressive_breakeven_pct: float = 0.02  # Move to breakeven at 2%
+    progressive_lock_25_pct: float = 0.04  # Lock 25% of gains at 4%
+    progressive_trail_50_pct: float = 0.06  # Trail 50% of gains at 6%+
+    # Rate limiting
+    min_update_interval_seconds: int = 60  # Don't update more than once per minute
+    # Safety
+    never_move_stop_down: bool = True  # Stops only move up, never down
+
+    # === Issue #414: Advanced Trailing Stop Features ===
+    # Climb rate: slow | medium | fast - controls how aggressively stops climb
+    climb_rate: str = "medium"
+    # Volatility awareness: adjust trail distance based on ATR
+    volatility_aware: bool = False
+    # ATR multiplier for volatility-based trailing (higher = wider stops)
+    atr_multiplier: float = 1.5
+    # ATR period for volatility calculation
+    atr_period: int = 14
+    # Profit zone start: when to enter "profit protection" mode
+    profit_zone_start_pct: float = 0.02  # 2% = in profit zone
+
+    def get_gain_lock_percentages(self) -> tuple:
+        """Get gain lock percentages based on climb rate."""
+        return ClimbRate.get_gain_locks(self.climb_rate)
 
 
 class TradingConfig:
@@ -93,6 +208,21 @@ class TradingConfig:
             "strategy_parameters": {
                 "macd": {"fast": 13, "slow": 34, "signal": 8},
                 "rsi": {"period": 14, "oversold": 30, "overbought": 70},
+                "timeframe": {
+                    "default": "1d",
+                    "enabled_timeframes": [
+                        "1m",
+                        "5m",
+                        "15m",
+                        "30m",
+                        "1h",
+                        "2h",
+                        "4h",
+                        "1d",
+                        "1w",
+                        "1M",
+                    ],
+                },
                 "exits": {
                     "balanced": {
                         "take_profit": 0.08,
@@ -124,6 +254,14 @@ class TradingConfig:
         params = self.config["strategy_parameters"]["rsi"]
         return RSIConfig(
             period=params["period"], oversold=params["oversold"], overbought=params["overbought"]
+        )
+
+    def get_timeframe_config(self) -> TimeframeConfig:
+        """Get timeframe configuration."""
+        params = self.config.get("strategy_parameters", {}).get("timeframe", {})
+        return TimeframeConfig(
+            default=params.get("default", "1d"),
+            enabled_timeframes=params.get("enabled_timeframes", None),
         )
 
     def get_exit_config(self, strategy: str = None) -> ExitConfig:
@@ -203,6 +341,34 @@ class TradingConfig:
 
         return risk_config.get(key)
 
+    def get_trailing_stop_config(self) -> TrailingStopConfig:
+        """
+        Get trailing stop configuration.
+
+        Returns:
+            TrailingStopConfig with all trailing stop parameters
+        """
+        trailing_config = self.config.get("trailing_stops", {})
+
+        return TrailingStopConfig(
+            enabled=trailing_config.get("enabled", True),
+            breakeven_trigger=trailing_config.get("breakeven_trigger", 0.005),
+            trail_start_trigger=trailing_config.get("trail_start_trigger", 0.01),
+            trail_distance=trailing_config.get("trail_distance", 0.005),
+            progressive_enabled=trailing_config.get("progressive_enabled", True),
+            progressive_breakeven_pct=trailing_config.get("progressive_breakeven_pct", 0.02),
+            progressive_lock_25_pct=trailing_config.get("progressive_lock_25_pct", 0.04),
+            progressive_trail_50_pct=trailing_config.get("progressive_trail_50_pct", 0.06),
+            min_update_interval_seconds=trailing_config.get("min_update_interval_seconds", 60),
+            never_move_stop_down=trailing_config.get("never_move_stop_down", True),
+            # Issue #414: Advanced features
+            climb_rate=trailing_config.get("climb_rate", "medium"),
+            volatility_aware=trailing_config.get("volatility_aware", False),
+            atr_multiplier=trailing_config.get("atr_multiplier", 1.5),
+            atr_period=trailing_config.get("atr_period", 14),
+            profit_zone_start_pct=trailing_config.get("profit_zone_start_pct", 0.02),
+        )
+
     def validate_config(self) -> bool:
         """Validate configuration parameters."""
         try:
@@ -213,6 +379,9 @@ class TradingConfig:
             rsi = self.get_rsi_config()
             assert 0 < rsi.oversold < rsi.overbought < 100
             assert rsi.period > 0
+
+            timeframe = self.get_timeframe_config()
+            assert timeframe.validate(), "Timeframe configuration invalid"
 
             exits = self.get_all_exit_strategies()
             for name, exit_cfg in exits.items():

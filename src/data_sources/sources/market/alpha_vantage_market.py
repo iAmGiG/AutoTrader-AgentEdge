@@ -107,7 +107,7 @@ class AlphaVantageMarketTool:
 
             # Check for errors in the response
             if "Error Message" in data:
-                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.debug(f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
             # Extract time series data
@@ -155,7 +155,7 @@ class AlphaVantageMarketTool:
             return df
 
         except Exception as e:
-            self.logger.error(f"Error fetching Alpha Vantage data: {e}")
+            self.logger.debug(f"Error fetching Alpha Vantage data: {e}")
             return pd.DataFrame()
 
     def fetch_company_overview(self, symbol: str) -> Dict[str, Any]:
@@ -183,7 +183,7 @@ class AlphaVantageMarketTool:
 
             # Check for errors
             if "Error Message" in data:
-                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.debug(f"Alpha Vantage API error: {data['Error Message']}")
                 return {}
 
             return data
@@ -225,7 +225,7 @@ class AlphaVantageMarketTool:
 
             # Check for errors
             if "Error Message" in data:
-                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.debug(f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
             # Extract time series data
@@ -299,7 +299,7 @@ class AlphaVantageMarketTool:
 
             # Check for errors
             if "Error Message" in data:
-                self.logger.error(f"Alpha Vantage API error: {data['Error Message']}")
+                self.logger.debug(f"Alpha Vantage API error: {data['Error Message']}")
                 return pd.DataFrame()
 
             # Extract exchange rate data

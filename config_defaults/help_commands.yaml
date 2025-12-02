@@ -1,0 +1,727 @@
+# CLI Help Command Documentation
+# Auto-generated from help_system.py _build_help_data()
+# Format: command_name -> {category, description, usage, examples, aliases, tags, related, details}
+
+morning-routine:
+  category: Workflow
+  description: Run morning market scan and analysis
+  usage: morning-routine [symbols]
+  examples:
+  - morning-routine
+  - morning-routine AAPL,MSFT,TSLA
+  - morning-routine --approve-all
+  aliases:
+  - morning
+  - scan
+  tags:
+  - workflow
+  - scanning
+  - analysis
+  related:
+  - approve
+  - reject
+  - monitor
+  - evening-summary
+  details: "Scans your watchlist for trading opportunities using technical analysis.\nShows buy/sell signals\
+    \ with confidence levels.\nEnters approval mode if execution_mode is set to CONFIRM.\n\nOptions:\n\
+    \  --approve-all    Auto-approve all pending trades\n  --paper          Run in paper trading mode\
+    \ only"
+approve:
+  category: Workflow
+  description: Approve a pending trade
+  usage: approve SYMBOL | approve all
+  examples:
+  - approve AAPL
+  - approve all
+  aliases:
+  - 'yes'
+  - ok
+  tags:
+  - workflow
+  - execution
+  related:
+  - reject
+  - morning-routine
+  - show orders
+  details: 'Approves a pending trade for execution.
+
+    After approval, the trade is executed using your current execution mode.
+
+
+    Use ''approve all'' to approve all pending trades at once.'
+reject:
+  category: Workflow
+  description: Reject a pending trade
+  usage: reject SYMBOL | reject all
+  examples:
+  - reject MSFT
+  - reject all
+  aliases:
+  - 'no'
+  - skip
+  tags:
+  - workflow
+  - execution
+  related:
+  - approve
+  - morning-routine
+  details: 'Rejects a pending trade without executing it.
+
+    The signal is logged for analysis but not traded.
+
+
+    Use ''reject all'' to reject all pending trades at once.'
+monitor:
+  category: Workflow
+  description: Monitor active positions
+  usage: monitor [--check-exits]
+  examples:
+  - monitor
+  - monitor --check-exits
+  aliases:
+  - watch
+  - positions
+  tags:
+  - workflow
+  - monitoring
+  related:
+  - show portfolio
+  - show positions
+  - evening-summary
+  details: "Continuously monitors your active trading positions.\nDisplays position updates, profit/loss,\
+    \ and exit signals.\n\nOptions:\n  --check-exits    Check for exit signals on open positions\n  --interval\
+    \ 5     Update every N minutes (default: 5)"
+evening-summary:
+  category: Workflow
+  description: Generate end-of-day report
+  usage: evening-summary [--save FILE]
+  examples:
+  - evening-summary
+  - evening-summary --save report.txt
+  aliases:
+  - summary
+  - report
+  - eod
+  tags:
+  - workflow
+  - reporting
+  related:
+  - morning-routine
+  - show portfolio
+  details: "Generates a comprehensive end-of-day report.\nIncludes trades executed, P&L, market insights,\
+    \ and next steps.\n\nOptions:\n  --save FILE      Save report to file\n  --detailed       Include\
+    \ detailed trade breakdown"
+buy:
+  category: Trading
+  description: Place a manual buy order
+  usage: buy SYMBOL QUANTITY [PRICE] | buy SYMBOL [at a pullback/breakout]
+  examples:
+  - buy AAPL 10
+  - buy MSFT 5 $425.50
+  - buy QQQ at a pullback
+  - buy SPY on a dip
+  - buy NVDA at a breakout
+  aliases:
+  - long
+  tags:
+  - trading
+  - execution
+  - timing
+  related:
+  - sell
+  - show orders
+  - cancel
+  details: "Place a buy order for a specific symbol and quantity.\nIf price is not specified, uses current\
+    \ market price.\nRespects risk management rules and position limits.\n\nNEW: Entry Timing Context\
+    \ (Issue #344):\n  'at a pullback' or 'on a dip' - Entry 2.5% below current price\n  'at a breakout'\
+    \ - Entry 1.5% above current price\n  'now' or immediate - Entry at current market price\n\nExecution\
+    \ depends on current execution_mode:\n  CONFIRM - Asks for approval before executing\n  AUTO    -\
+    \ Executes immediately\n  PAPER   - Simulates the trade without real money\n  DISABLED - Blocks all\
+    \ trading"
+sell:
+  category: Trading
+  description: Place a manual sell order
+  usage: sell SYMBOL QUANTITY [PRICE]
+  examples:
+  - sell AAPL 10
+  - sell MSFT 5 $427.00
+  aliases:
+  - close
+  - exit
+  tags:
+  - trading
+  - execution
+  related:
+  - buy
+  - show orders
+  - cancel
+  details: 'Place a sell order to close a position.
+
+    You can only sell if you own the position.
+
+    If price is not specified, uses current market price.
+
+
+    Note: To short sell (sell without owning), use ''short'' command.'
+cancel:
+  category: Trading
+  description: Cancel pending or open orders
+  usage: cancel ORDER_ID | cancel SYMBOL | cancel all
+  examples:
+  - cancel 12345
+  - cancel AAPL
+  - cancel all
+  aliases:
+  - delete
+  - remove
+  tags:
+  - trading
+  - order management
+  related:
+  - show orders
+  - buy
+  - sell
+  details: "Cancel one or more pending orders.\n\nUsage:\n  cancel ORDER_ID  - Cancel specific order by\
+    \ ID\n  cancel SYMBOL    - Cancel all orders for a symbol\n  cancel all       - Cancel all pending\
+    \ orders (with confirmation)\n\nNote: Canceled orders are logged for record-keeping."
+show portfolio:
+  category: Information
+  description: Show portfolio summary and allocation
+  usage: show portfolio [--detailed]
+  examples:
+  - show portfolio
+  - show portfolio --detailed
+  aliases:
+  - portfolio
+  - positions overview
+  tags:
+  - information
+  - portfolio
+  related:
+  - show positions
+  - show orders
+  - show account
+  details: "Display portfolio summary including:\n  - Total portfolio value\n  - Cash available\n  - Position\
+    \ allocation\n  - Daily P&L\n  - Risk metrics\n\nUse --detailed for full breakdown by symbol."
+show positions:
+  category: Information
+  description: Show open positions with details
+  usage: show positions [SYMBOL]
+  examples:
+  - show positions
+  - show positions AAPL
+  aliases:
+  - positions
+  - holdings
+  tags:
+  - information
+  - portfolio
+  related:
+  - show portfolio
+  - show orders
+  - monitor
+  details: "Display all open positions with:\n  - Entry price and quantity\n  - Current price and P&L\n\
+    \  - Stop loss and take profit levels\n  - Position duration\n\nOptionally filter by symbol."
+show orders:
+  category: Information
+  description: Show open and closed orders
+  usage: show orders [--detailed] [SYMBOL]
+  examples:
+  - show orders
+  - show orders --detailed
+  - show orders AAPL
+  aliases:
+  - orders
+  - order history
+  tags:
+  - information
+  - orders
+  related:
+  - show positions
+  - cancel
+  - buy
+  - sell
+  details: "Display order history including:\n  - Open orders with status\n  - Closed orders from today\n\
+    \  - Entry and exit prices\n  - P&L for completed trades\n\nUse --detailed for full order details\
+    \ including stops/targets."
+show account:
+  category: Information
+  description: Show trading account status (equity, cash, positions)
+  usage: show account | account
+  examples:
+  - show account
+  - account
+  aliases:
+  - account
+  - account info
+  tags:
+  - information
+  - account
+  - portfolio
+  related:
+  - show portfolio
+  - show positions
+  - list accounts
+  details: "Display trading account information:\n  - Account type (paper/live)\n  - Total\
+    \ equity\n  - Available cash\n  - Buying power\n  - Pattern Day Trader status\n  - Current\
+    \ positions with P&L\n\nNote: This shows your TRADING account status. To list/switch\
+    \ between multiple configured accounts, use 'list accounts' or 'show accounts' (plural)."
+list accounts:
+  category: Configuration
+  description: List configured trading accounts (Issue #401)
+  usage: list accounts | show accounts
+  examples:
+  - list accounts
+  - show accounts
+  - list accounts verbose
+  aliases:
+  - show accounts
+  - accounts
+  tags:
+  - configuration
+  - account
+  - multi-account
+  related:
+  - switch account
+  - show account
+  details: "List all configured trading accounts for multi-account management.\n\nShows:\n  - Account\
+    \ IDs\n  - Account types (paper/live)\n  - Discovery status\n\nUse 'switch account <ID>'\
+    \ to change active account.\n\nNote: This is for ACCOUNT MANAGEMENT (switching between\
+    \ accounts). To see your current account status/positions, use 'show account' (singular)."
+set execution-mode:
+  category: Configuration
+  description: Set trading execution mode
+  usage: set execution-mode {confirm|auto|paper|disabled}
+  examples:
+  - set execution-mode confirm
+  - set execution-mode auto
+  - set execution-mode paper
+  aliases:
+  - set mode
+  - execution mode
+  tags:
+  - configuration
+  - trading
+  related:
+  - show execution-mode
+  details: "Change how trades are executed:\n\n  CONFIRM  - Ask for approval before each trade (default)\n\
+    \  AUTO     - Execute trades automatically without approval\n  PAPER    - Simulate trades without\
+    \ real money (testing)\n  DISABLED - Block all trading\n\n⚠️  WARNING: Switching from paper to auto/confirm\
+    \ requires confirmation."
+show execution-mode:
+  category: Configuration
+  description: Show current execution mode
+  usage: show execution-mode
+  examples:
+  - show execution-mode
+  aliases:
+  - execution mode
+  tags:
+  - configuration
+  - trading
+  related:
+  - set execution-mode
+  details: Display the current trading execution mode setting.
+change timeframe:
+  category: Configuration
+  description: 'Change analysis timeframe (Issue #365)'
+  usage: change timeframe to {1m|5m|15m|30m|1h|2h|4h|1d|1w|1M}
+  examples:
+  - change timeframe to 1h
+  - set timeframe 4h
+  - switch to 5m
+  - use 1d timeframe
+  aliases:
+  - set timeframe
+  - switch timeframe
+  - use timeframe
+  tags:
+  - configuration
+  - analysis
+  - timeframe
+  related:
+  - show timeframe
+  - list timeframes
+  - timeframe recommendations
+  details: 'Change the active timeframe for technical analysis:
+
+
+    Scalping (aggressive):     1m, 5m
+
+    Day Trading (intraday):    15m, 30m
+
+    Swing Trading (medium):    1h, 2h, 4h
+
+    Position Trading (default): 1d (validated 0.856 Sharpe)
+
+    Long-term:                 1w, 1M
+
+
+    The timeframe determines the candle period for MACD and RSI indicators.
+
+    Default ''1d'' has been validated with the best performance.'
+show timeframe:
+  category: Configuration
+  description: Show current timeframe
+  usage: show timeframe | current timeframe
+  examples:
+  - show timeframe
+  - current timeframe
+  - what timeframe
+  aliases:
+  - current timeframe
+  - active timeframe
+  tags:
+  - configuration
+  - analysis
+  - timeframe
+  related:
+  - change timeframe
+  - list timeframes
+  details: Display the currently active timeframe for analysis.
+list timeframes:
+  category: Configuration
+  description: List all available timeframes
+  usage: list timeframes [verbose]
+  examples:
+  - list timeframes
+  - show available timeframes
+  - list timeframes verbose
+  aliases:
+  - show timeframes
+  - available timeframes
+  tags:
+  - configuration
+  - analysis
+  - timeframe
+  related:
+  - change timeframe
+  - show timeframe
+  - timeframe recommendations
+  details: 'List all enabled timeframes with optional descriptions.
+
+
+    Use ''verbose'' to see detailed descriptions of each timeframe.'
+timeframe recommendations:
+  category: Configuration
+  description: Get timeframe recommendations by strategy
+  usage: timeframe recommendations
+  examples:
+  - timeframe recommendations
+  - suggest timeframe
+  - best timeframe for swing trading
+  aliases:
+  - suggest timeframe
+  - recommend timeframe
+  tags:
+  - configuration
+  - analysis
+  - timeframe
+  related:
+  - change timeframe
+  - list timeframes
+  details: "Show recommended timeframes grouped by trading strategy:\n\n  Scalping - 1m, 5m (high frequency,\
+    \ micro trends)\n  Day Trading - 15m, 30m (intraday swings)\n  Swing Trading - 1h, 2h, 4h (multi-day\
+    \ trends)\n  Position Trading - 1d (validated default, best Sharpe)\n  Long-term - 1w, 1M (institutional\
+    \ moves)\n\nUse this to find the best timeframe for your trading style."
+mode:
+  category: Configuration
+  description: Show current execution mode
+  usage: mode
+  examples:
+  - mode
+  aliases:
+  - show mode
+  tags:
+  - configuration
+  related:
+  - set execution-mode
+  - show execution-mode
+  details: 'Display the current trading execution mode.
+
+    This determines how your trades are processed.'
+set voter-system:
+  category: Configuration
+  description: Switch between voter systems
+  usage: set voter-system {single|ranked}
+  examples:
+  - set voter-system single
+  - set voter-system ranked
+  aliases:
+  - voter system
+  tags:
+  - configuration
+  - analysis
+  related:
+  - show config
+  details: "Choose which voting system to use for signals:\n\n  SINGLE - Simple MACD+RSI voting (fast,\
+    \ tested)\n  RANKED - Multi-indicator consensus voting (more signals)\n\nRanked voter uses multiple\
+    \ indicators for higher confidence."
+show config:
+  category: Configuration
+  description: Show current configuration
+  usage: show config [--all]
+  examples:
+  - show config
+  - show config --all
+  aliases:
+  - config
+  - settings
+  tags:
+  - configuration
+  - information
+  related:
+  - set execution-mode
+  - set voter-system
+  details: "Display current system configuration including:\n  - Execution mode\n  - Risk parameters\n\
+    \  - Indicator parameters\n  - Position limits\n\nUse --all to see all available config options."
+forward-test start:
+  category: Testing
+  description: Start a new 30-day forward test
+  usage: forward-test start TEST_NAME [--capital AMOUNT]
+  examples:
+  - forward-test start production_validation_2025
+  - forward-test start my_test --capital 10000
+  aliases:
+  - ftest start
+  - test start
+  tags:
+  - testing
+  - validation
+  - forward-testing
+  related:
+  - forward-test report
+  - forward-test status
+  details: "Initialize a new 30-day forward testing validation cycle.\nForward testing validates trading\
+    \ strategy performance before live deployment.\n\nThe test will:\n  - Track all signals generated\
+    \ over 30 days\n  - Monitor trade outcomes and P&L\n  - Calculate performance metrics (Sharpe, win\
+    \ rate, drawdown)\n  - Generate go/no-go recommendation after 30 days\n\nOptions:\n  --capital AMOUNT\
+    \    Starting capital for test (default: $10,000)"
+forward-test report:
+  category: Testing
+  description: Generate forward test reports
+  usage: forward-test report TEST_NAME [--type {daily|weekly|final}]
+  examples:
+  - forward-test report production_validation_2025
+  - forward-test report my_test --type daily
+  - forward-test report my_test --type weekly --week 2
+  aliases:
+  - ftest report
+  - test report
+  tags:
+  - testing
+  - reporting
+  related:
+  - forward-test start
+  - forward-test status
+  details: "Generate performance reports for ongoing or completed forward tests.\n\nReport Types:\n  daily\
+    \   - Daily summary of signals and trades\n  weekly  - Week 1-4 performance breakdown\n  final   -\
+    \ 30-day validation report with go/no-go recommendation\n\nReports include:\n  - Sharpe ratio and\
+    \ risk-adjusted returns\n  - Win rate and profit factor\n  - Maximum drawdown\n  - Trade-by-trade\
+    \ breakdown"
+forward-test status:
+  category: Testing
+  description: Show status of running forward tests
+  usage: forward-test status [TEST_NAME]
+  examples:
+  - forward-test status
+  - forward-test status production_validation_2025
+  aliases:
+  - ftest status
+  - test status
+  tags:
+  - testing
+  - status
+  related:
+  - forward-test start
+  - forward-test report
+  details: "Display status of active forward testing cycles.\n\nShows:\n  - Days completed (X/30)\n  -\
+    \ Number of signals generated\n  - Open positions\n  - Current P&L\n  - Next milestone (week 1, 2,\
+    \ 3, 4, or final)\n\nWithout TEST_NAME, shows all active tests."
+show config-file:
+  category: Configuration
+  description: Show current configuration file settings
+  usage: show config-file [--file {trading|scanner|paths|market-hours}]
+  examples:
+  - show config-file
+  - show config-file --file trading
+  - show config-file --file scanner
+  aliases:
+  - config-file
+  - show yaml
+  tags:
+  - configuration
+  - files
+  - issue-358
+  related:
+  - show config
+  - edit config
+  details: "Display contents of configuration YAML files (Issue #358).\n\nConfiguration Files:\n  trading\
+    \      - Strategy parameters (MACD, RSI, exits, timeframe)\n  scanner      - Market scanner watchlist\
+    \ and settings\n  paths        - File paths and directory structure\n  market-hours - Market hours\
+    \ and holiday calendar\n\nWithout --file, shows summary of all config files.\n\nNote: Config files\
+    \ are in config_defaults/ directory."
+set timeframe:
+  category: Configuration
+  description: Change trading timeframe
+  usage: set timeframe {1m|5m|15m|30m|1h|2h|4h|1d|1w|1M}
+  examples:
+  - set timeframe 1d
+  - set timeframe 1h
+  - set timeframe 15m
+  aliases:
+  - timeframe
+  tags:
+  - configuration
+  - timeframe
+  - issue-365
+  related:
+  - show timeframe
+  - show config
+  details: "Change the timeframe for technical analysis (Issue #365).\n\nSupported Timeframes:\n  1m,\
+    \ 5m, 15m, 30m - Scalping/day trading\n  1h, 2h, 4h        - Intraday swing trading\n  1d        \
+    \        - Daily swing/position trading (validated default)\n  1w, 1M            - Position/long-term\
+    \ trading\n\n⚠️  Note: Only 1d timeframe has been validated (0.856 Sharpe).\n   Other timeframes are\
+    \ experimental - use with caution.\n\nTimeframe affects:\n  - MACD and RSI calculations\n  - Signal\
+    \ generation frequency\n  - Stop loss and take profit levels"
+show indicators:
+  category: Configuration
+  description: List available technical indicators
+  usage: show indicators [--detailed]
+  examples:
+  - show indicators
+  - show indicators --detailed
+  aliases:
+  - indicators
+  - list indicators
+  tags:
+  - configuration
+  - indicators
+  - analysis
+  related:
+  - show config
+  - set voter-system
+  details: "Display all available technical indicators and their current parameters.\n\nCurrent Indicators:\n\
+    \  MACD  - Moving Average Convergence Divergence (13/34/8)\n  RSI   - Relative Strength Index (14,\
+    \ 30/70 levels)\n\nUse --detailed to see full parameter descriptions and formulas.\n\nNote: MACD uses\
+    \ Fibonacci parameters optimized across tech stocks."
+show watchlist:
+  category: Configuration
+  description: Show market scanner watchlist
+  usage: show watchlist [--category {etf|tech|all}]
+  examples:
+  - show watchlist
+  - show watchlist --category tech
+  - show watchlist --category etf
+  aliases:
+  - watchlist
+  - symbols
+  tags:
+  - configuration
+  - scanner
+  - watchlist
+  related:
+  - show config-file
+  - morning-routine
+  details: "Display symbols in the market scanner watchlist.\n\nCategories:\n  etf  - Core ETFs (SPY,\
+    \ QQQ, IWM, VTI) + Leverage (TQQQ, SQQQ)\n  tech - Tech giants (AAPL, MSFT, NVDA, TSLA, META, GOOGL,\
+    \ AMZN)\n  all  - Complete watchlist (default)\n\nWatchlist is configurable in config_defaults/scanner_config.yaml\
+    \ (Issue #358)."
+show scheduler:
+  category: System
+  description: Show daily scheduler status
+  usage: show scheduler
+  examples:
+  - show scheduler
+  aliases:
+  - scheduler
+  - scheduler status
+  tags:
+  - system
+  - scheduler
+  - automation
+  related:
+  - enable scheduler
+  - disable scheduler
+  details: "Display status of the daily automated scheduler.\n\nShows:\n  - Scheduler state (enabled/disabled)\n\
+    \  - Next scheduled run (morning 9:20 AM ET or evening 3:50 PM ET)\n  - Last run time and result\n\
+    \  - Configured tasks\n\nThe scheduler automates:\n  - Morning market scan\n  - Position monitoring\n\
+    \  - Stop loss adjustments\n  - Evening summary reports"
+enable scheduler:
+  category: System
+  description: Enable daily automated scheduler
+  usage: enable scheduler
+  examples:
+  - enable scheduler
+  aliases:
+  - scheduler on
+  - start scheduler
+  tags:
+  - system
+  - scheduler
+  - automation
+  related:
+  - disable scheduler
+  - show scheduler
+  details: "Enable the daily automated trading scheduler.\n\nWhen enabled, the scheduler runs:\n  Morning\
+    \ (9:20 AM ET):\n    - Market scan for opportunities\n    - Signal generation\n    - Trade execution\
+    \ (if execution_mode = AUTO)\n\n  Evening (3:50 PM ET):\n    - Position review\n    - Stop loss updates\n\
+    \    - Daily summary report\n\n⚠️  Note: Scheduler respects your execution_mode setting."
+disable scheduler:
+  category: System
+  description: Disable daily automated scheduler
+  usage: disable scheduler
+  examples:
+  - disable scheduler
+  aliases:
+  - scheduler off
+  - stop scheduler
+  tags:
+  - system
+  - scheduler
+  related:
+  - enable scheduler
+  - show scheduler
+  details: "Disable the daily automated scheduler.\n\nDisabling the scheduler means:\n  - No automatic\
+    \ morning scans\n  - No automatic position monitoring\n  - No automatic stop adjustments\n  - You\
+    \ must run commands manually\n\nExisting positions remain active - disabling scheduler doesn't close\
+    \ trades."
+help:
+  category: Help
+  description: Show interactive help
+  usage: /help [COMMAND] [--search KEYWORD]
+  examples:
+  - /help
+  - /help morning-routine
+  - /help search workflow
+  - /help --examples
+  aliases:
+  - '?'
+  - h
+  tags:
+  - help
+  - documentation
+  related: []
+  details: "Get help on commands.\n\nUsage:\n  /help                - Show all commands by category\n\
+    \  /help COMMAND        - Show help for specific command\n  /help search KEYWORD - Search commands\
+    \ by keyword\n  /help --examples     - Show all command examples\n\nType '/help COMMAND' to see detailed\
+    \ help for any command."
+exit:
+  category: Help
+  description: Exit the trading CLI
+  usage: exit | quit
+  examples:
+  - exit
+  - quit
+  aliases:
+  - quit
+  - q
+  tags:
+  - help
+  - system
+  related: []
+  details: 'Exit the interactive CLI session.
+
+    All positions remain active - exiting the CLI doesn''t close trades.
+
+    Use ''sell'' or ''cancel'' to close positions before exiting.'

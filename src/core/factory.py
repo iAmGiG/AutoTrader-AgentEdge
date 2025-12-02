@@ -2,12 +2,15 @@
 OrchestratorFactory - Creates fully wired TradingOrchestrator.
 
 MVP: Hardcoded component creation (YAML config deferred to later iteration).
+Issue #400: Trading modes integration.
 Issue #406: Uses AutoGen's native LLM client instead of custom OpenAIService.
 """
 
 import json
 import logging
+from typing import Optional
 
+from core.trading_modes import TradingMode, get_mode_manager
 from core.trading_orchestrator import TradingOrchestrator
 from execution import AlpacaExecutionManager
 from parsers import AutoGenLLMParser
@@ -66,6 +69,7 @@ class OrchestratorFactory:
         use_real_voter: bool = True,
         use_real_alpaca: bool = True,
         alpaca_mode: str = "paper",
+        trading_mode: Optional[TradingMode] = None,
     ) -> TradingOrchestrator:
         """
         Create TradingOrchestrator with all components wired.
@@ -80,11 +84,20 @@ class OrchestratorFactory:
             use_real_alpaca: If True, create real AlpacaOrderManager (default: True)
                            If False, use stub execution
             alpaca_mode: "paper" or "live" trading mode (default: "paper")
+            trading_mode: Trading mode (conservative/moderate/aggressive) - Issue #400
 
         Returns:
             Fully wired TradingOrchestrator ready to use
         """
-        logger.info("Creating TradingOrchestrator with config from config.json...")
+        # Initialize trading mode manager (Issue #400)
+        mode_manager = get_mode_manager()
+        if trading_mode:
+            mode_manager.set_mode(trading_mode)
+        mode_params = mode_manager.get_parameters()
+
+        logger.info(
+            f"Creating TradingOrchestrator (mode: {mode_params.mode.value}) from config.json..."
+        )
 
         # Load API key and model from config (used by AutoGenLLMParser)
         tool_model = self.config.get("OPENAI_TOOL_MODEL", "gpt-4o-mini")
@@ -99,18 +112,22 @@ class OrchestratorFactory:
             strategy_analyzer = RealVoterStrategy(
                 macd_params={"fast": 13, "slow": 34, "signal": 8},  # Validated Fibonacci parameters
                 rsi_params={"period": 14, "oversold": 30, "overbought": 70},
-                lookback_days=60,
+                lookback_days=90,  # Increased from 60 to ensure 42+ trading days (accounting for weekends/holidays)
             )
         else:
             logger.info("  - Creating VoterStrategy (stub)...")
             strategy_analyzer = VoterStrategy()
 
-        # 3. Create Risk Manager
-        logger.info("  - Creating SimpleRiskManager...")
+        # 3. Create Risk Manager (using trading mode parameters - Issue #400)
+        logger.info(
+            f"  - Creating SimpleRiskManager "
+            f"(position: {mode_params.max_position_pct:.0%}, "
+            f"portfolio: {mode_params.max_portfolio_pct:.0%})..."
+        )
         risk_manager = SimpleRiskManager(
             account_service=None,  # Will use fallback ($100k portfolio)
-            default_position_pct=5.0,
-            max_position_pct=15.0,
+            default_position_pct=mode_params.risk_per_trade * 100,  # Convert to percentage
+            max_position_pct=mode_params.max_position_pct * 100,  # Convert to percentage
         )
 
         # 4. Create Execution Manager
@@ -143,10 +160,14 @@ class OrchestratorFactory:
             session_store=None,  # Optional, defer to later
         )
 
-        logger.info("✅ TradingOrchestrator created successfully!")
+        logger.info("TradingOrchestrator created successfully!")
+        logger.info(f"   Mode: {mode_params.mode.value} ({mode_params.description})")
         logger.info(f"   Parser: {type(input_parser).__name__}")
         logger.info(f"   Analyzer: {strategy_analyzer.name}")
         logger.info(f"   Risk: {type(risk_manager).__name__}")
         logger.info(f"   Executor: {type(execution_manager).__name__}")
+
+        # Store mode manager reference for later access
+        orchestrator._mode_manager = mode_manager
 
         return orchestrator

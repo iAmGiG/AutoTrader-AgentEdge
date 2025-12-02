@@ -10,8 +10,8 @@ This allows us to test the plugin architecture without complex dependencies.
 import logging
 from typing import Dict, Optional
 
-from core.interfaces import StrategyAnalyzer
-from core.models import AnalysisResult, AssetType, Signal, TradeRequest
+from src.core.interfaces import StrategyAnalyzer
+from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class VoterStrategy(StrategyAnalyzer):
         logger.info(
             f"VoterStrategy initialized (MVP stub) - "
             f"MACD({self.macd_params['fast']}/{self.macd_params['slow']}/{self.macd_params['signal']}), "
-            f"RSI({self.rsi_params['period']})"
+            f"RSI({self.rsi_params['period']})"  # noqa: F541
         )
 
     async def analyze(self, request: TradeRequest) -> AnalysisResult:

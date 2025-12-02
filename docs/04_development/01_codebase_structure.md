@@ -74,12 +74,16 @@ AutoGen-TradingSystem/
 ├── config/                          # API configuration (gitignored)
 │   └── config.json                  # API keys and secrets
 │
-├── config_defaults/                 # Default configurations
-│   ├── trading_config.yaml          # Trading strategy parameters
+├── config_defaults/                 # Default configurations (Issue #358)
+│   ├── README.md                    # Configuration system documentation
+│   ├── trading_config.yaml          # Trading strategy & risk parameters
+│   ├── scanner_config.yaml          # Market scanner watchlist & settings
+│   ├── paths_config.yaml            # File paths & directory structure
 │   ├── market_hours.yaml            # Market hours & holidays
 │   ├── cli_messages.yaml            # User-facing message templates
 │   ├── message_loader.py            # Message template loader
 │   └── safe_print.py                # Platform-aware output utilities
+│
 │
 ├── scripts/                         # Utility scripts
 │   ├── experiments/                 # Backtesting experiments
@@ -394,7 +398,7 @@ tests/
 
 ### Core Framework
 
-```
+```text
 autogen-agentchat>=0.7.2      # AutoGen agents
 autogen-core>=0.7.2           # AutoGen core
 autogen-ext>=0.7.2            # AutoGen extensions
@@ -402,7 +406,7 @@ autogen-ext>=0.7.2            # AutoGen extensions
 
 ### Trading & Data
 
-```
+```text
 alpaca-py                     # Alpaca trading
 polygon-api-client>=1.15.0    # Market data
 pandas>=2.2.0                 # Data manipulation
@@ -411,7 +415,7 @@ numpy>=2.0.0                  # Numerical computing
 
 ### AI & LLM
 
-```
+```text
 openai>=1.71.0                # LLM integration
 tiktoken                      # Token counting
 ```

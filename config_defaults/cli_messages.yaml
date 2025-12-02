@@ -165,11 +165,12 @@ suggestion:
   signal_display: "{emoji} {signal} SUGGESTED"
   confidence: "   Confidence: {confidence:.1%}"
 
-  analysis_header: "\n📈 Analysis:"
+  analysis_header: "\n📈 Analysis ({timeframe} timeframe):"
   analysis_item: "   • {reason}"
 
   entry_plan_header: "\n💰 Entry Plan:"
   entry_plan: |
+       Direction: {direction}
        Entry:  ${entry:.2f}
        Stop:   ${stop:.2f} ({stop_pct:+.1f}%)
        Target: ${target:.2f} ({target_pct:+.1f}%)

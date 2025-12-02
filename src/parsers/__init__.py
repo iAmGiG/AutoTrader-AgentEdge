@@ -2,16 +2,15 @@
 Input parsers for converting user input into structured TradeRequest.
 
 Available parsers:
-- AutoGenLLMParser: Natural language parsing using AutoGen's native LLM client (recommended)
-- LLMParser: Legacy parser using custom OpenAIService (deprecated, use AutoGenLLMParser)
+- AutoGenLLMParser: Natural language parsing using AutoGen's native LLM client
 - RegexParser: Simple pattern matching (future fallback)
 - StructuredParser: Direct input from GUI (future)
+
+Issue #406: Consolidated to use AutoGen's native OpenAIChatCompletionClient.
 """
 
 from .autogen_llm_parser import AutoGenLLMParser
-from .llm_parser import LLMParser
 
 __all__ = [
-    "AutoGenLLMParser",  # Recommended
-    "LLMParser",  # Deprecated - kept for backward compatibility
+    "AutoGenLLMParser",
 ]

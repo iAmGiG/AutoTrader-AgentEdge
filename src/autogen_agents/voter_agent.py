@@ -17,6 +17,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from config_defaults.trading_config import TradingConfig
 
 from .base_agent import BaseAgent
+
+# Agent Bus for event publishing (Issue #390)
+from src.autogen_agents.agent_bus import EventType, create_message, get_agent_bus
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from src.utils.agent_utils import load_agent_config
 
@@ -37,6 +40,7 @@ class VoterAgent(BaseAgent):
     def __init__(
         self,
         name: str = "voter_agent",
+        timeframe: Optional[str] = None,
         macd_params: Optional[Dict[str, int]] = None,
         rsi_params: Optional[Dict[str, int]] = None,
         voting_thresholds: Optional[Dict[str, float]] = None,
@@ -48,6 +52,7 @@ class VoterAgent(BaseAgent):
 
         Args:
             name: Agent identifier
+            timeframe: Timeframe for analysis (5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M). Default: 1d
             macd_params: Override MACD parameters {"fast": 13, "slow": 34, "signal": 8}
             rsi_params: Override RSI parameters {"period": 14, "oversold": 30, "overbought": 70}
             voting_thresholds: Override decision thresholds {"macd_threshold": 0.1, "consensus_boost": 0.15}
@@ -62,6 +67,11 @@ class VoterAgent(BaseAgent):
             default_macd = self.config.get_macd_config()
             default_rsi = self.config.get_rsi_config()
 
+            # Load timeframe from config or use provided
+            timeframe_config = self.config.get_timeframe_config()
+            config_timeframe = timeframe_config.default
+            self.timeframe = timeframe or config_timeframe
+
             # Convert config objects to dicts
             self.macd_params = macd_params or {
                 "fast": default_macd.fast,
@@ -75,8 +85,18 @@ class VoterAgent(BaseAgent):
             }
         else:
             # Use provided params or hardcoded defaults
+            self.timeframe = timeframe or "1d"
             self.macd_params = macd_params or {"fast": 13, "slow": 34, "signal": 8}
             self.rsi_params = rsi_params or {"period": 14, "oversold": 30, "overbought": 70}
+
+        # Validate timeframe
+        valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
+        if self.timeframe not in valid_timeframes:
+            logger.warning(
+                f"Invalid timeframe '{self.timeframe}', defaulting to '1d'. "
+                f"Valid options: {valid_timeframes}"
+            )
+            self.timeframe = "1d"
 
         # Voting thresholds (can be tuned for optimization)
         self.voting_thresholds = voting_thresholds or {
@@ -88,12 +108,18 @@ class VoterAgent(BaseAgent):
 
         # Track configuration for logging
         self.current_config = {
+            "timeframe": self.timeframe,
             "macd": self.macd_params.copy(),
             "rsi": self.rsi_params.copy(),
             "thresholds": self.voting_thresholds.copy(),
         }
 
+        # Agent Bus for event publishing
+        self._bus = get_agent_bus()
+        self._publish_events = True  # Can be disabled for backtesting
+
         logger.info(f"VoterAgent '{name}' initialized with:")
+        logger.info(f"  Timeframe: {self.timeframe}")
         logger.info(
             f"  MACD({self.macd_params['fast']}/{self.macd_params['slow']}/{self.macd_params['signal']})"
         )
@@ -103,6 +129,7 @@ class VoterAgent(BaseAgent):
 
     def reconfigure(
         self,
+        timeframe: Optional[str] = None,
         macd_params: Optional[Dict[str, int]] = None,
         rsi_params: Optional[Dict[str, int]] = None,
         voting_thresholds: Optional[Dict[str, float]] = None,
@@ -111,7 +138,23 @@ class VoterAgent(BaseAgent):
         Reconfigure agent parameters on the fly for testing.
 
         This allows dynamic parameter testing without recreating the agent.
+
+        Args:
+            timeframe: New timeframe (5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M)
+            macd_params: New MACD parameters
+            rsi_params: New RSI parameters
+            voting_thresholds: New voting thresholds
         """
+        if timeframe:
+            valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
+            if timeframe in valid_timeframes:
+                self.timeframe = timeframe
+                self.current_config["timeframe"] = self.timeframe
+            else:
+                logger.warning(
+                    f"Invalid timeframe '{timeframe}' ignored. Valid options: {valid_timeframes}"
+                )
+
         if macd_params:
             self.macd_params.update(macd_params)
             self.current_config["macd"] = self.macd_params.copy()
@@ -249,9 +292,14 @@ class VoterAgent(BaseAgent):
                 "position_size": position_size,
                 "reasoning": reasoning,
                 "signal_type": signal_type,
+                "timeframe": self.timeframe,  # Issue #365: Explicit timeframe in results
                 "current_price": float(prices.iloc[-1]),
                 "parameters_used": self.current_config,
             }
+
+            # Publish voting complete event via bus
+            if self._publish_events and action != "HOLD":
+                self._publish_voting_result(symbol, result)
 
             # Add component details if requested
             if return_components:
@@ -287,6 +335,30 @@ class VoterAgent(BaseAgent):
                 "error": str(e),
                 "parameters_used": self.current_config,
             }
+
+    def _publish_voting_result(self, symbol: str, result: dict) -> None:
+        """Publish voting result to the agent bus."""
+        try:
+            msg = create_message(
+                source_agent=self.name,
+                event_type=EventType.VOTING_COMPLETE,
+                symbol=symbol,
+                payload={
+                    "action": result["action"],
+                    "confidence": result["confidence"],
+                    "position_size": result["position_size"],
+                    "signal_type": result["signal_type"],
+                    "reasoning": result["reasoning"],
+                },
+            )
+            self._bus.publish_sync(msg)
+            logger.debug(f"Published voting result for {symbol}: {result['action']}")
+        except Exception as e:
+            logger.warning(f"Failed to publish voting result: {e}")
+
+    def set_publish_events(self, enabled: bool) -> None:
+        """Enable or disable event publishing (useful for backtesting)."""
+        self._publish_events = enabled
 
     def generate_reply(self, messages, context=None) -> str:
         """

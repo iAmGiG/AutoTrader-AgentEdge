@@ -64,13 +64,7 @@ python scripts/test_cache_advanced.py
 
 ## Migration
 
-To migrate from legacy JSON cache:
-
-```bash
-python scripts/migrate_cache_to_sqlite.py
-```
-
-See [CACHE_MIGRATION.md](../../../CACHE_MIGRATION.md) for detailed migration instructions.
+> **Note**: The migration script has been removed (Issue #435) after completing its purpose. SQLite cache is now the standard. Legacy JSON cache files can be safely deleted - the cache will rebuild automatically from API calls.
 
 ---
 

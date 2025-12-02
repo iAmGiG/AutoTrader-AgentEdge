@@ -11,6 +11,7 @@ Automates daily trading execution with:
 Foundation: Built on Issue #313 (Order Management System)
 """
 
+import argparse
 import asyncio
 import json
 import logging
@@ -18,12 +19,13 @@ import os
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from datetime import time as dt_time
-from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from src.trading.trading_cycle import CostEfficientTradeCycle, RoutineType
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 try:
@@ -33,8 +35,6 @@ except ImportError:
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-
-from src.trading.trading_cycle import CostEfficientTradeCycle, RoutineType
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +95,24 @@ class DailyScheduler:
 
         Args:
             config_file: Path to scheduler configuration file (YAML or JSON)
-            trading_cycle: Optional CostEfficientTradeCycle instance to reuse (reduces client instantiation)
+            trading_cycle: Optional CostEfficientTradeCycle instance to reuse
+                (reduces client instantiation)
         """
+        # Load paths configuration
+        paths_config_file = "config_defaults/paths_config.yaml"
+        try:
+            with open(paths_config_file) as f:
+                self.paths = yaml.safe_load(f) if yaml else {}
+                logger.info(f"Loaded paths config from {paths_config_file}")
+        except (FileNotFoundError, TypeError):
+            logger.warning(
+                f"Paths config not found at {paths_config_file}, using hardcoded defaults"
+            )
+            self.paths = {
+                "state_files": {"scheduler_log": "state/scheduler_execution_log.json"},
+                "log_files": {"scheduler": "state/scheduler.log"},
+            }
+
         if config_file is None:
             # Try YAML first, fallback to JSON
             yaml_file = "config_defaults/scheduler_config.yaml"
@@ -114,7 +130,12 @@ class DailyScheduler:
             trading_cycle if trading_cycle is not None else CostEfficientTradeCycle()
         )
         self.execution_log: List[ExecutionLog] = []
-        self.log_file = Path("state/scheduler_execution_log.json")
+
+        # Get log file path from config
+        log_file_path = self.paths.get("state_files", {}).get(
+            "scheduler_log", "state/scheduler_execution_log.json"
+        )
+        self.log_file = Path(log_file_path)
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Define scheduled tasks
@@ -243,11 +264,11 @@ class DailyScheduler:
 
                 # Execute the appropriate routine
                 if task.routine_type == RoutineType.MORNING:
-                    report = self.trading_cycle.morning_routine()
+                    _ = self.trading_cycle.morning_routine()  # pylint: disable=unused-variable
                 elif task.routine_type == RoutineType.EVENING:
-                    report = self.trading_cycle.evening_routine()
+                    _ = self.trading_cycle.evening_routine()  # pylint: disable=unused-variable
                 elif task.routine_type == RoutineType.RECOVERY:
-                    report = self.trading_cycle.recover_from_crash()
+                    _ = self.trading_cycle.recover_from_crash()  # pylint: disable=unused-variable
                 else:
                     raise ValueError(f"Unknown routine type: {task.routine_type}")
 
@@ -258,7 +279,8 @@ class DailyScheduler:
 
                 # Extract report path from report if available
                 # Report path is typically mentioned in the trading_cycle output
-                # Use human-readable format: 2025-11-11_morning.md (or _2.md, _3.md for multiple runs)
+                # Use human-readable format: 2025-11-11_morning.md
+                # (or _2.md, _3.md for multiple runs)
                 now = get_datetime_now()
                 date_str = now.strftime("%Y-%m-%d")
                 # Extract routine type from task name (e.g., "morning_routine" -> "morning")
@@ -317,14 +339,12 @@ class DailyScheduler:
         current_time = now.time()
 
         # Check if we're within the scheduled time window (± 5 minutes)
-        from datetime import datetime as dt
-
-        scheduled_dt = dt.combine(now.date(), task.scheduled_time)
+        scheduled_dt = datetime.combine(now.date(), task.scheduled_time)
         window_start = (scheduled_dt - timedelta(minutes=5)).time()
         window_end = (scheduled_dt + timedelta(minutes=5)).time()
 
         # Check if current time is in window
-        if not (window_start <= current_time <= window_end):
+        if window_start > current_time or current_time > window_end:
             return False
 
         # Check if already executed today
@@ -512,8 +532,6 @@ class DailyScheduler:
 
 def main():
     """Main entry point for the daily scheduler"""
-    import argparse
-
     parser = argparse.ArgumentParser(description="AutoGen Daily Trading Scheduler")
     parser.add_argument(
         "--mode",

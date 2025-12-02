@@ -11,12 +11,11 @@ import os
 import sys
 from typing import Optional
 
-from src.utils.date_utils import get_datetime_now, subtract_days
-
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+from src.utils.date_utils import get_datetime_now, subtract_days
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ class UnifiedPriceFetcher:
 
         try:
             # Try latest trade first
-            trade_data = self.market_data.get_latest_trade(symbol)
+            trade_data = self.market_data.get_latest_trade(symbol)  # pylint: disable=no-member
             # Handle nested structure: trade_data['trade']['p']
             if trade_data:
                 if "price" in trade_data:
@@ -81,7 +80,7 @@ class UnifiedPriceFetcher:
                     return price
 
             # Fallback to quote mid-price
-            quote_data = self.market_data.get_latest_quote(symbol)
+            quote_data = self.market_data.get_latest_quote(symbol)  # pylint: disable=no-member
             # Handle nested structure: quote_data['quote']['bp'] and ['ap']
             if quote_data:
                 # Try direct keys first (legacy format)
@@ -108,7 +107,7 @@ class UnifiedPriceFetcher:
             # Try historical data
             end_date = get_datetime_now()
             start_date = subtract_days(end_date, 5)
-            historical = self.market_data.get_bars(
+            historical = self.market_data.get_bars(  # pylint: disable=no-member
                 symbols=[symbol],
                 start=start_date.strftime("%Y-%m-%d"),
                 end=end_date.strftime("%Y-%m-%d"),

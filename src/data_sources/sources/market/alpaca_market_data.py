@@ -10,6 +10,10 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+# Smart cache logic: Live data is priority for current trading day
+from src.utils.date_utils import format_data_status, get_datetime_now
+from src.utils.market_hours import is_market_hours
+
 try:
     from alpaca.data import StockHistoricalDataClient
     from alpaca.data.models import Bar, Quote, Snapshot, Trade
@@ -72,14 +76,34 @@ class AlpacaMarketData:
             )
 
         # Initialize TIMEFRAME_MAP now that we know alpaca is available
+        # Includes Fibonacci sequences (1, 2, 3, 5, 8, 13, 21, 34, 55) for technical analysis
         if AlpacaMarketData.TIMEFRAME_MAP is None:
             AlpacaMarketData.TIMEFRAME_MAP = {
+                # Minute intervals (Alpaca supports 1-59 minutes)
                 "1Min": TimeFrame(1, TimeFrameUnit.Minute),
+                "2Min": TimeFrame(2, TimeFrameUnit.Minute),
+                "3Min": TimeFrame(3, TimeFrameUnit.Minute),
                 "5Min": TimeFrame(5, TimeFrameUnit.Minute),
+                "8Min": TimeFrame(8, TimeFrameUnit.Minute),
+                "13Min": TimeFrame(13, TimeFrameUnit.Minute),
                 "15Min": TimeFrame(15, TimeFrameUnit.Minute),
+                "21Min": TimeFrame(21, TimeFrameUnit.Minute),
                 "30Min": TimeFrame(30, TimeFrameUnit.Minute),
+                "34Min": TimeFrame(34, TimeFrameUnit.Minute),
+                "45Min": TimeFrame(45, TimeFrameUnit.Minute),
+                "55Min": TimeFrame(55, TimeFrameUnit.Minute),
+                # Hour intervals (Alpaca supports 1-23 hours)
                 "1Hour": TimeFrame(1, TimeFrameUnit.Hour),
+                "2Hour": TimeFrame(2, TimeFrameUnit.Hour),
+                "3Hour": TimeFrame(3, TimeFrameUnit.Hour),
+                "4Hour": TimeFrame(4, TimeFrameUnit.Hour),
+                "5Hour": TimeFrame(5, TimeFrameUnit.Hour),
+                "8Hour": TimeFrame(8, TimeFrameUnit.Hour),
+                "13Hour": TimeFrame(13, TimeFrameUnit.Hour),
+                # Day/Week/Month
                 "1Day": TimeFrame(1, TimeFrameUnit.Day),
+                "1Week": TimeFrame(1, TimeFrameUnit.Week),
+                "1Month": TimeFrame(1, TimeFrameUnit.Month),
             }
 
         config_loader = ConfigLoader()
@@ -134,19 +158,25 @@ class AlpacaMarketData:
         cached_data = []
         symbols_to_fetch = []
 
-        # Smart cache logic: Skip cache for current trading day to ensure fresh data
-        from src.utils.date_utils import get_datetime_now
-
         end_dt_check = pd.to_datetime(end).date()
         today = get_datetime_now().date()
         is_current_day = end_dt_check >= today
 
-        logger.warning(
-            f"📊 CACHE CHECK: start={start}, end={end}, end_date={end_dt_check}, today={today}, is_current={is_current_day}, symbols={symbols}"
+        # Debug-level logging for cache decision details
+        logger.debug(
+            f"Cache decision: end_date={end_dt_check}, today={today}, "
+            f"is_current={is_current_day}, symbols={symbols}"
         )
 
+        # Determine data source and show clean status message
         if is_current_day:
-            logger.warning("⚠️ BYPASSING CACHE - fetching fresh data for current trading day")
+            # Live data is priority for current trading day
+            for symbol in symbols:
+                logger.info(format_data_status(symbol, "live"))
+        else:
+            # Historical data uses cache
+            for symbol in symbols:
+                logger.info(format_data_status(symbol, "cache", include_time=False))
 
         if use_cache and not is_current_day:
             # Only use cache for historical data (not today)
@@ -178,7 +208,8 @@ class AlpacaMarketData:
                 tf = self.TIMEFRAME_MAP.get(timeframe)
                 if not tf:
                     raise ValueError(
-                        f"Invalid timeframe: {timeframe}. Must be one of: {list(self.TIMEFRAME_MAP.keys())}"
+                        f"Invalid timeframe: {timeframe}. "
+                        f"Must be one of: {list(self.TIMEFRAME_MAP.keys())}"
                     )
 
                 # Create request using SDK
@@ -199,11 +230,13 @@ class AlpacaMarketData:
 
                 # Convert to DataFrame
                 if bars_response and bars_response.data:
-                    # The SDK returns a BarSet with .data attribute containing symbol -> list of Bar objects
+                    # The SDK returns a BarSet with .data attribute
+                    # containing symbol -> list of Bar objects
                     all_bars = []
                     for symbol, bars_list in bars_response.data.items():
                         for bar in bars_list:
-                            # Bar object has attributes: timestamp, open, high, low, close, volume, trade_count, vwap
+                            # Bar object has attributes: timestamp, open, high,
+                            # low, close, volume, trade_count, vwap
                             bar_dict = {
                                 "timestamp": bar.timestamp,
                                 "symbol": symbol,
@@ -238,11 +271,12 @@ class AlpacaMarketData:
 
                         fetched_data.append(df)
                         logger.info(
-                            f"Fetched {len(df)} bars for {len(symbols_to_fetch)} symbols from Alpaca"
+                            f"Fetched {len(df)} bars for "
+                            f"{len(symbols_to_fetch)} symbols from Alpaca"
                         )
 
             except Exception as e:
-                logger.error(f"Failed to fetch bars from Alpaca: {e}")
+                logger.debug(f"Failed to fetch bars from Alpaca: {e}")
                 if not cached_data:
                     raise
 
@@ -251,8 +285,6 @@ class AlpacaMarketData:
 
         # Add live price for current day during market hours if today's bar is missing
         if is_current_day and timeframe == "1Day":
-            from src.utils.market_hours import is_market_hours
-
             if is_market_hours():
                 # Check if today's bar exists in the data
                 today_date = get_datetime_now().date()
@@ -268,10 +300,8 @@ class AlpacaMarketData:
                         has_today = any(str(today_date) in str(idx) for idx in combined_check.index)
 
                 if not has_today:
-                    logger.warning(
-                        f"⏰ Market is OPEN - today's bar missing. Adding live prices for {symbols}"
-                    )
                     # Fetch live prices and create synthetic daily bar
+                    logger.debug("Today's bar missing, fetching live prices")
                     live_bars = []
                     for symbol in symbols:
                         try:
@@ -296,7 +326,8 @@ class AlpacaMarketData:
                                     "date": timestamp,
                                 }
                                 live_bars.append(live_bar)
-                                logger.info(f"Created live bar for {symbol} @ ${price:.2f}")
+                                # Clean status message for live price fetch
+                                logger.info(format_data_status(symbol, f"Live @ ${price:.2f}"))
                         except Exception as e:
                             logger.warning(f"Could not fetch live price for {symbol}: {e}")
 

@@ -6,15 +6,8 @@ the plugin architecture while handling market data fetching.
 """
 
 import logging
-import os
-import sys
 from datetime import timedelta
 from typing import Dict, Optional
-
-from src.utils.date_utils import get_datetime_now
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from config_defaults.trading_config import TradingConfig
 
@@ -22,6 +15,8 @@ from src.autogen_agents.voter_agent import VoterAgent
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.tools import fetch_unified_market_data
+from src.trading.timeframe_tools import convert_to_alpaca_timeframe, get_current_timeframe
+from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
 
@@ -94,34 +89,52 @@ class RealVoterStrategy(StrategyAnalyzer):
         ticker = request.ticker
 
         try:
-            # 1. Fetch market data
-            logger.info(f"Fetching market data for {ticker} ({self.lookback_days} days)...")
-            end_date = get_datetime_now().strftime("%Y-%m-%d")
-            start_date = (get_datetime_now() - timedelta(days=self.lookback_days)).strftime(
-                "%Y-%m-%d"
-            )
+            # 1. Get current timeframe setting
+            timeframe_info = get_current_timeframe()
+            user_timeframe = timeframe_info.get("current_timeframe", "1d")
+            alpaca_timeframe = convert_to_alpaca_timeframe(user_timeframe)
 
-            market_data = fetch_unified_market_data(
-                ticker, start_date=start_date, end_date=end_date
+            # Calculate appropriate lookback based on timeframe
+            # Intraday timeframes need more calendar days to get enough bars
+            if user_timeframe.endswith("m"):  # Minutes
+                lookback_days = max(self.lookback_days, 14)  # At least 2 weeks for intraday
+            elif user_timeframe.endswith("h"):  # Hours
+                lookback_days = max(self.lookback_days, 30)  # At least 1 month for hourly
+            else:  # Days, weeks, months
+                lookback_days = self.lookback_days
+
+            # 2. Fetch market data
+            logger.info(
+                f"Fetching market data for {ticker} ({lookback_days} days, {user_timeframe})..."
             )
+            end_date = get_datetime_now().strftime("%Y-%m-%d")
+            start_date = (get_datetime_now() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+
+            # Catch API errors and convert to simple messages
+            try:
+                market_data = fetch_unified_market_data(
+                    ticker,
+                    start_date=start_date,
+                    end_date=end_date,
+                    timeframe=alpaca_timeframe,
+                )
+            except Exception as api_error:
+                # Log full API error for debugging
+                logger.debug(f"API error fetching data for {ticker}: {api_error}", exc_info=True)
+                # Return simple message to user
+                raise ValueError("Ticker not found")
 
             if market_data is None or market_data.empty:
-                logger.warning(f"No market data available for {ticker}")
-                return self._create_fallback_result(
-                    ticker, request.price, "No market data available"
-                )
+                logger.info(f"No market data returned for {ticker}")
+                raise ValueError("Ticker not found")
 
             # Ensure Close column exists
             if "Close" not in market_data.columns and "close" in market_data.columns:
                 market_data["Close"] = market_data["close"]
 
             if len(market_data) < 42:
-                logger.warning(
-                    f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)"
-                )
-                return self._create_fallback_result(
-                    ticker, request.price, f"Insufficient data ({len(market_data)} points)"
-                )
+                logger.info(f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)")
+                raise ValueError("Data unavailable")
 
             logger.info(f"✅ Loaded {len(market_data)} data points for {ticker}")
 
@@ -156,6 +169,9 @@ class RealVoterStrategy(StrategyAnalyzer):
             # Build reasoning list
             reasoning = [result["reasoning"]]
 
+            # Add timeframe context
+            reasoning.append(f"Timeframe: {user_timeframe}")
+
             if "components" in result:
                 macd = result["components"]["macd"]
                 rsi = result["components"]["rsi"]
@@ -187,13 +203,18 @@ class RealVoterStrategy(StrategyAnalyzer):
                     ),
                     "signal_type": signal_type,
                     "position_size_multiplier": result.get("position_size", 1.0),
+                    "timeframe": user_timeframe,
                 },
                 analyzer_name=self.name,
             )
 
+        except ValueError:
+            # Re-raise ValueError (user-friendly messages already set)
+            raise
         except Exception as e:
-            logger.error(f"Error analyzing {ticker}: {e}", exc_info=True)
-            return self._create_fallback_result(ticker, request.price, f"Analysis error: {str(e)}")
+            # Log unexpected errors and return generic message
+            logger.error(f"Unexpected error analyzing {ticker}: {e}", exc_info=True)
+            raise ValueError("Error processing request")
 
     def _create_fallback_result(
         self, ticker: str, price: Optional[float], reason: str

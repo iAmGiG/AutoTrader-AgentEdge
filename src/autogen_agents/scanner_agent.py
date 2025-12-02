@@ -514,13 +514,14 @@ class ScannerAgent(BaseAgent):
             "%Y-%m-%d"
         )
 
-        # Fetch market data
+        # Fetch market data (uses daily timeframe for scanning)
         try:
             data = fetch_unified_market_data(
                 symbol=symbol,
                 start_date=start_date,
                 end_date=end_date,
                 source="auto",
+                timeframe="1Day",  # Scanner uses daily data for broad screening
             )
         except Exception as e:
             logger.warning(f"Data fetch failed for {symbol}: {e}")
