@@ -250,10 +250,15 @@ python main.py
 > show mode
 
 # Account management (Issue #401 - WORKING)
-> list accounts
-> switch to paper_main
-> show current account
-> refresh accounts
+> accounts              # List all trading accounts
+> list accounts         # List all trading accounts
+> switch to paper_main  # Switch active account
+> show current account  # Show current account
+> refresh accounts      # Re-discover accounts
+
+# Important distinction:
+> accounts   → Show trading accounts (Alpaca paper/live)
+> account    → Show portfolio positions (your holdings)
 
 # Timeframe commands (WORKING)
 > set timeframe 1d

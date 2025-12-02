@@ -840,19 +840,23 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # Execution mode management (Issue #332)
             await self._handle_execution_mode_request(user_input)
 
-        elif any(
-            phrase in input_lower
-            for phrase in [
-                "list account",
-                "show accounts",  # Plural = list accounts
-                "switch account",
-                "use account",
-                "change account",
-                "current account",
-                "refresh account",
-            ]
+        elif (
+            any(
+                phrase in input_lower
+                for phrase in [
+                    "list account",
+                    "show accounts",  # Plural = list accounts
+                    "switch account",
+                    "use account",
+                    "change account",
+                    "current account",
+                    "refresh account",
+                ]
+            )
+            or input_lower.strip() == "accounts"
         ):
             # Account management (Issue #401) - multi-account switching/listing
+            # Note: "accounts" alone = list accounts, "account" alone = show portfolio
             await self._handle_account_request(user_input)
 
         elif any(
