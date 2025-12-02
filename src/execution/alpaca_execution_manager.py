@@ -2,24 +2,20 @@
 AlpacaExecutionManager - Executes trades via Alpaca broker.
 
 Integrates existing OrderManager into the plugin architecture.
+Refactored to use extracted components (Issue #441).
 """
 
-import json
 import logging
-import os
-import re
 import uuid
-from typing import Optional, Tuple
+from typing import Optional
 
 from core.interfaces import ExecutionManager
-from core.models import OrderResult, TradeDecision, TradeSuggestion
+from core.models import OrderResult, OrderType, TradeDecision, TradeSuggestion
 
-from src.utils.date_utils import get_datetime_now
-
-try:
-    import yaml
-except ImportError:
-    yaml = None
+# Import extracted components
+from src.trading.api_error_translator import APIErrorTranslator
+from src.trading.validators.bracket_validator import BracketOrderValidator
+from src.utils.market_hours import is_market_hours
 
 # Import message loader for user-facing messages
 try:
@@ -30,61 +26,6 @@ try:
 except ImportError:
     MESSAGE_LOADER_AVAILABLE = False
     logging.warning("MessageLoader not available - using fallback messages")
-
-
-# Load market hours configuration from YAML
-def _load_market_hours_config():
-    """Load market hours configuration from config_defaults/market_hours.yaml"""
-    try:
-        if yaml is None:
-            raise ImportError("PyYAML not installed")
-
-        # Get path to config file
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        config_path = os.path.join(base_dir, "config_defaults", "market_hours.yaml")
-
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        return config
-    except Exception as e:
-        logging.warning(f"Failed to load market_hours.yaml, using defaults: {e}")
-        # Fallback to hardcoded defaults
-        return {
-            "timezone": "America/New_York",
-            "regular_hours": {
-                "open_hour": 9,
-                "open_minute": 30,
-                "close_hour": 16,
-                "close_minute": 0,
-            },
-            "weekend": {"saturday": 5, "sunday": 6},
-        }
-
-
-# Load configuration at module level
-_MARKET_CONFIG = _load_market_hours_config()
-
-# Extract configuration values (backward compatibility with existing code)
-MARKET_TIMEZONE = _MARKET_CONFIG.get("timezone", "America/New_York")
-SATURDAY = _MARKET_CONFIG.get("weekend", {}).get("saturday", 5)
-SUNDAY = _MARKET_CONFIG.get("weekend", {}).get("sunday", 6)
-MARKET_OPEN_HOUR = _MARKET_CONFIG.get("regular_hours", {}).get("open_hour", 9)
-MARKET_OPEN_MINUTE = _MARKET_CONFIG.get("regular_hours", {}).get("open_minute", 30)
-MARKET_CLOSE_HOUR = _MARKET_CONFIG.get("regular_hours", {}).get("close_hour", 16)
-MARKET_CLOSE_MINUTE = _MARKET_CONFIG.get("regular_hours", {}).get("close_minute", 0)
-DEFAULT_FALLBACK_PRICE = 100.0  # UnifiedPriceFetcher default when data unavailable
-
-# Try to import pytz for timezone handling
-try:
-    import pytz
-
-    PYTZ_AVAILABLE = True
-except ImportError:
-    PYTZ_AVAILABLE = False
-    logging.warning(
-        "pytz not available - market hours detection may fail. " "Install with: pip install pytz"
-    )
 
 # Import price fetcher for current market prices
 try:
@@ -100,6 +41,8 @@ except ImportError:
         PRICE_FETCHER_AVAILABLE = False
         logging.warning("UnifiedPriceFetcher not available - will use suggestion prices")
 
+# Default fallback price when data unavailable
+DEFAULT_FALLBACK_PRICE = 100.0
 
 logger = logging.getLogger(__name__)
 
@@ -170,88 +113,6 @@ class AlpacaExecutionManager(ExecutionManager):
         else:
             logger.warning("UnifiedPriceFetcher NOT available - will use suggestion prices")
 
-    def _is_market_hours(self) -> bool:
-        """
-        Check if current time is during regular market hours (9:30 AM - 4:00 PM ET, Mon-Fri).
-
-        Returns:
-            True if during market hours, False otherwise
-        """
-        if not PYTZ_AVAILABLE:
-            logger.warning("pytz not available - cannot determine market hours")
-            return False
-
-        try:
-            et_tz = pytz.timezone(MARKET_TIMEZONE)
-            now_et = get_datetime_now(et_tz)
-
-            # Check if weekend
-            if now_et.weekday() >= SATURDAY:  # Saturday or Sunday
-                return False
-
-            # Check if within market hours
-            market_open = now_et.replace(
-                hour=MARKET_OPEN_HOUR, minute=MARKET_OPEN_MINUTE, second=0, microsecond=0
-            )
-            market_close = now_et.replace(
-                hour=MARKET_CLOSE_HOUR, minute=MARKET_CLOSE_MINUTE, second=0, microsecond=0
-            )
-
-            return market_open <= now_et <= market_close
-
-        except Exception as e:
-            logger.warning(f"Could not determine market hours: {e}")
-            return False  # Assume off-hours if we can't determine
-
-    def _is_bracket_validation_error(self, error_data: dict) -> bool:
-        """
-        Detect if an error is a bracket order validation failure.
-
-        Uses Alpaca API error codes when available, falls back to heuristics.
-
-        Args:
-            error_data: Error dict from order_manager
-                (contains status, message, error_code, status_code)
-
-        Returns:
-            True if this is a bracket order validation error, False otherwise
-        """
-        # Method 1: Check Alpaca API error codes (most reliable)
-        error_code = error_data.get("error_code")
-        status_code = error_data.get("status_code")
-
-        if status_code == 422:  # Unprocessable Entity - validation failed
-            # Alpaca returns 422 for bracket order validation failures
-            logger.debug(f"Detected HTTP 422 validation error (error_code={error_code})")
-            return True
-
-        # Alpaca error code 42210000 series: Invalid order parameters
-        if error_code and str(error_code).startswith("4221"):
-            logger.debug(f"Detected Alpaca error code {error_code} - bracket order validation")
-            return True
-
-        # Method 2: Message-based heuristics (fallback for when error codes unavailable)
-        error_msg = error_data.get("message", "").lower()
-
-        # Common bracket order validation error patterns
-        bracket_error_keywords = [
-            "limit_price",
-            "base_price",
-            "take_profit",
-            "stop_loss",
-            "bracket",
-            "order_class",
-        ]
-
-        matches = sum(1 for keyword in bracket_error_keywords if keyword in error_msg)
-        if matches >= 2:  # Multiple keywords suggest bracket order issue
-            logger.debug(
-                f"Detected bracket validation via message pattern (matched {matches} keywords)"
-            )
-            return True
-
-        return False
-
     async def execute_trade(
         self, suggestion: TradeSuggestion, decision: Optional[TradeDecision] = None
     ) -> OrderResult:
@@ -303,7 +164,7 @@ class AlpacaExecutionManager(ExecutionManager):
             logger.debug(f"Execution error for {suggestion.ticker}: {e}", exc_info=True)
 
             # Translate API errors to user-friendly messages
-            user_message, user_error = self._translate_api_error(
+            user_message, user_error = APIErrorTranslator.translate(
                 str(e),
                 suggestion.ticker,
                 suggestion.entry_price,
@@ -356,9 +217,7 @@ class AlpacaExecutionManager(ExecutionManager):
 
     async def _fetch_current_price(self, ticker: str) -> Optional[float]:
         """
-        Fetch current market price from multiple sources with fallbacks.
-
-        Tries Alpaca market data first, then UnifiedPriceFetcher.
+        Fetch current market price using UnifiedPriceFetcher.
 
         Args:
             ticker: Stock symbol
@@ -439,8 +298,6 @@ class AlpacaExecutionManager(ExecutionManager):
         Returns:
             Tuple of (entry_price, stop_loss, take_profit)
         """
-        from core.models import OrderType
-
         is_limit_order = order_type == OrderType.LIMIT
 
         # For LIMIT orders (pullback/breakout), preserve the calculated entry price
@@ -595,18 +452,16 @@ class AlpacaExecutionManager(ExecutionManager):
         Returns:
             OrderResult with order details
         """
-        from core.models import OrderType
-
         is_limit_order = order_type == OrderType.LIMIT
 
         if not self.order_manager:
             # Stub mode: Return mock order result
             return self._create_stub_result(ticker, quantity, entry_price, signal)
 
-        # Check if we're during market hours
-        is_market_hours = self._is_market_hours()
+        # Check if we're during market hours (using centralized utility)
+        market_open = is_market_hours()
 
-        if not is_market_hours:
+        if not market_open:
             msg = (
                 _MSG.get("execution.market_closed_warning")
                 if MESSAGE_LOADER_AVAILABLE
@@ -660,80 +515,14 @@ class AlpacaExecutionManager(ExecutionManager):
                     "status_code": None,
                 }
 
-            is_bracket_error = self._is_bracket_validation_error(error_data)
+            # Use extracted BracketOrderValidator
+            is_bracket_error = BracketOrderValidator.is_bracket_validation_error(error_data)
 
-            if not is_market_hours and is_bracket_error:
+            if not market_open and is_bracket_error:
                 # Fallback to simple market order
-                msg = (
-                    _MSG.get(
-                        "execution.bracket_validation_failed",
-                        error=str(e),
-                        error_code=error_data.get("error_code", "N/A"),
-                        status_code=error_data.get("status_code", "N/A"),
-                    )
-                    if MESSAGE_LOADER_AVAILABLE
-                    else (
-                        f"❌ Bracket order validation failed (off-hours): {e}\\n"
-                        f"Error code: {error_data.get('error_code', 'N/A')}, "
-                        f"Status: {error_data.get('status_code', 'N/A')}\\n"
-                        "🔄 Attempting fallback: simple market order without brackets..."
-                    )
+                return await self._handle_bracket_fallback(
+                    ticker, quantity, stop_loss, take_profit, e, error_data
                 )
-                logger.warning(msg)
-
-                try:
-                    fallback_order = self.order_manager.place_market_order(
-                        symbol=ticker, qty=quantity, side="buy"
-                    )
-
-                    if fallback_order.get("status") == "error":
-                        raise Exception(fallback_order.get("message", "Unknown error"))
-
-                    fallback_order_id = fallback_order.get("order_id") or fallback_order.get("id")
-
-                    user_msg = (
-                        _MSG.get(
-                            "execution.fallback_order_warning",
-                            target=take_profit,
-                            stop=stop_loss,
-                        )
-                        if MESSAGE_LOADER_AVAILABLE
-                        else (
-                            f"⚠️  Market order placed WITHOUT brackets (off-hours fallback). "
-                            f"Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f} "
-                            "(NOT automatically set). Manual risk management required!"
-                        )
-                    )
-                    return OrderResult(
-                        success=True,
-                        entry_order_id=fallback_order_id,
-                        stop_order_id=None,
-                        target_order_id=None,
-                        ticker=ticker,
-                        quantity=quantity,
-                        filled_price=None,
-                        message=user_msg,
-                        error=None,
-                    )
-
-                except Exception as fallback_error:
-                    logger.error(f"❌ Fallback market order also failed: {fallback_error}")
-                    user_msg = (
-                        _MSG.get("execution.fallback_order_failed")
-                        if MESSAGE_LOADER_AVAILABLE
-                        else "Both bracket and fallback market orders failed during off-hours"
-                    )
-                    return OrderResult(
-                        success=False,
-                        entry_order_id=None,
-                        stop_order_id=None,
-                        target_order_id=None,
-                        ticker=ticker,
-                        quantity=quantity,
-                        filled_price=None,
-                        message=user_msg,
-                        error=f"Bracket error: {e}; Fallback error: {fallback_error}",
-                    )
             else:
                 # Re-raise if not an off-hours issue
                 raise
@@ -769,87 +558,99 @@ class AlpacaExecutionManager(ExecutionManager):
 
         return result
 
-    def _translate_api_error(
-        self, error_str: str, ticker: str, entry: float, stop: float, target: float
-    ) -> Tuple[str, str]:
+    async def _handle_bracket_fallback(
+        self,
+        ticker: str,
+        quantity: int,
+        stop_loss: float,
+        take_profit: float,
+        original_error: Exception,
+        error_data: dict,
+    ) -> OrderResult:
         """
-        Translate Alpaca API errors into user-friendly messages.
+        Handle fallback to simple market order when bracket fails off-hours.
 
         Args:
-            error_str: The raw error string
-            ticker: Stock ticker
-            entry: Entry price
-            stop: Stop loss price
-            target: Take profit price
+            ticker: Stock symbol
+            quantity: Quantity to order
+            stop_loss: Stop loss price (for warning message)
+            take_profit: Take profit price (for warning message)
+            original_error: The original bracket order error
+            error_data: Error data dict
 
         Returns:
-            Tuple of (user_message, user_error)
+            OrderResult from fallback attempt
         """
-        # Try to parse JSON error from Alpaca
-        try:
-            # Extract JSON if embedded in error string
-            json_match = re.search(r"\{.*\}", error_str)
-            if json_match:
-                error_data = json.loads(json_match.group())
-                code = error_data.get("code")
-                base_price = error_data.get("base_price")
-                api_message = error_data.get("message", "")
-
-                # Bracket order validation errors (42210000 series)
-                if code == 42210000:
-                    if "stop_loss" in api_message and "must be <=" in api_message:
-                        return (
-                            f"Order rejected: Stop loss price (${stop:.2f}) "
-                            "doesn't match market price",
-                            "The market is closed and price data may be stale. "
-                            f"Alpaca expects stop=${base_price} but we calculated ${stop:.2f}. "
-                            "Try again during market hours (9:30 AM - 4:00 PM ET) "
-                            "for accurate pricing.",
-                        )
-                    elif "take_profit" in api_message and "must be >=" in api_message:
-                        return (
-                            f"Order rejected: Take profit price (${target:.2f}) "
-                            "doesn't match market price",
-                            "The market is closed and price data may be stale. "
-                            f"Alpaca expects target>=${base_price} "
-                            f"but we calculated ${target:.2f}. "
-                            "Try again during market hours (9:30 AM - 4:00 PM ET) "
-                            "for accurate pricing.",
-                        )
-
-                # Insufficient buying power
-                if "buying power" in api_message.lower() or "insufficient" in api_message.lower():
-                    return (
-                        "Order rejected: Not enough cash available",
-                        "Check your account balance and reduce the order size.",
-                    )
-
-                # Invalid symbol
-                if "symbol" in api_message.lower() and (
-                    "invalid" in api_message.lower() or "not found" in api_message.lower()
-                ):
-                    return (
-                        f"Order rejected: {ticker} is not a valid or tradeable symbol",
-                        "Double-check the ticker symbol. "
-                        "It may be delisted or not supported by Alpaca.",
-                    )
-
-                # Market hours
-                if "market" in api_message.lower() and "closed" in api_message.lower():
-                    return (
-                        "Order rejected: Market is closed",
-                        "Regular market hours: 9:30 AM - 4:00 PM ET. "
-                        "Your order may execute when the market opens.",
-                    )
-
-        except (json.JSONDecodeError, AttributeError):
-            pass
-
-        # Generic fallback
-        return (
-            f"Order failed for {ticker}",
-            "Please try again during market hours or contact support if the issue persists.",
+        msg = (
+            _MSG.get(
+                "execution.bracket_validation_failed",
+                error=str(original_error),
+                error_code=error_data.get("error_code", "N/A"),
+                status_code=error_data.get("status_code", "N/A"),
+            )
+            if MESSAGE_LOADER_AVAILABLE
+            else (
+                f"❌ Bracket order validation failed (off-hours): {original_error}\n"
+                f"Error code: {error_data.get('error_code', 'N/A')}, "
+                f"Status: {error_data.get('status_code', 'N/A')}\n"
+                "🔄 Attempting fallback: simple market order without brackets..."
+            )
         )
+        logger.warning(msg)
+
+        try:
+            fallback_order = self.order_manager.place_market_order(
+                symbol=ticker, qty=quantity, side="buy"
+            )
+
+            if fallback_order.get("status") == "error":
+                raise Exception(fallback_order.get("message", "Unknown error"))
+
+            fallback_order_id = fallback_order.get("order_id") or fallback_order.get("id")
+
+            user_msg = (
+                _MSG.get(
+                    "execution.fallback_order_warning",
+                    target=take_profit,
+                    stop=stop_loss,
+                )
+                if MESSAGE_LOADER_AVAILABLE
+                else (
+                    f"⚠️  Market order placed WITHOUT brackets (off-hours fallback). "
+                    f"Target: ${take_profit:.2f}, Stop: ${stop_loss:.2f} "
+                    "(NOT automatically set). Manual risk management required!"
+                )
+            )
+            return OrderResult(
+                success=True,
+                entry_order_id=fallback_order_id,
+                stop_order_id=None,
+                target_order_id=None,
+                ticker=ticker,
+                quantity=quantity,
+                filled_price=None,
+                message=user_msg,
+                error=None,
+            )
+
+        except Exception as fallback_error:
+            logger.error(f"❌ Fallback market order also failed: {fallback_error}")
+            user_msg = (
+                _MSG.get("execution.fallback_order_failed")
+                if MESSAGE_LOADER_AVAILABLE
+                else "Both bracket and fallback market orders failed during off-hours"
+            )
+            return OrderResult(
+                success=False,
+                entry_order_id=None,
+                stop_order_id=None,
+                target_order_id=None,
+                ticker=ticker,
+                quantity=quantity,
+                filled_price=None,
+                message=user_msg,
+                error=f"Bracket error: {original_error}; Fallback error: {fallback_error}",
+            )
 
     async def cancel_order(self, order_id: str) -> bool:
         """
