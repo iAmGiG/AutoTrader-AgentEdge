@@ -172,6 +172,16 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **In Progress**:
 
+- [x] **CLI FunctionTool Infrastructure** (#433, #455, #456) - ✅ PHASE 1 COMPLETE (Dec 2025)
+  - ✅ Tool registry with category-based organization
+  - ✅ Auto-discovery mechanism for tool modules
+  - ✅ Mode tools: 6 tools wrapping TradingModeManager
+  - ✅ Timeframe tools: 6 tools wrapping TimeframeCommands
+  - 🔜 Phase 2: Extract remaining CLI commands (account, portfolio, order, scheduler, alert)
+  - 🔜 Phase 3: Update cli_session.py to use tools
+  - Branch: `feature/cli-tools-455-456`
+  - Goal: Refactor 3000-line cli_session.py into modular, testable, agent-compatible tools
+
 - [ ] **Execution Mode Switching** (#332)
   - `/toggle` command for quick mode switching
   - `set execution-mode {confirm|auto|paper|disabled}`
@@ -1094,17 +1104,46 @@ Massive refactoring initiative to improve code organization, testability, and ma
 5. **Backtesting Framework** (`src/backtesting/`):
    - `backtest_engine.py` - Main engine compatible with any signal generator
    - `portfolio.py` - Position/cash tracking with commission modeling
-   - `results.py` - Performance metrics (Sharpe, drawdown, etc.)
-   - `signals/tsmom_signal.py` - TSMOM signal generator
+**Phase 1 Refactoring Complete** - All 4 files refactored:
 
-6. **API Error Translation** (`src/trading/`):
-   - `api_error_translator.py` - User-friendly error messages
+- ✅ #437 - alpaca_trading_client.py (validators extracted)
+- ✅ #438 - sqlite_cache.py (65% reduction)
+- ✅ #439 - trading_cycle.py (59% reduction, 4 components extracted)
+- 🚧 #433 - cli_session.py (FunctionTool architecture, in progress)
+
+**Issue #439 Results** (PR #454, merged Dec 2):
+
+- trading_cycle.py: 1248 → 512 lines (59% reduction)
+- Created 4 new components:
+  - `local_state_manager.py` (140 lines) - JSON state persistence
+  - `broker_state_cache.py` (278 lines) - TTL-based caching
+  - `state_reconciler.py` (475 lines) - State reconciliation logic
+  - `report_generator.py` (251 lines) - Report formatting
+- Maintained full backward compatibility via property accessors
+
+**Issue #433 Progress** (cli_session.py - 3024 lines):
+
+- Broken into 5 sequential sub-issues (#455-459)
+- ✅ #455 - Tool infrastructure (C-chat - Phase 1A complete)
+- ✅ #456 - Mode & timeframe tools (C-chat - Phase 1B complete)
+- ✅ #457 - Display tools (Phase 1C complete, ready for integration)
+  - Created `portfolio_tools.py` (340 lines) - Portfolio/position display
+  - Created `account_display_tools.py` (130 lines) - Account management
+  - 6 FunctionTools in CLI_TOOLS registry
+- ⏸️ #458 - Execution tools (Phase 1D, waiting for integration)
+- ⏸️ #459 - Final integration (Phase 1E, target: 50-59% reduction)
+
+---
+
+- `api_error_translator.py` - User-friendly error messages
 
 **Critical Bugs Fixed**:
+
 - Fixed `self.client.trading` → `self.client.trading_client` (4 instances)
 - Removed duplicate `cancel_order()` method bypassing safety checks
 
 **Remaining from EPIC #436**:
+
 - #433 - cli_session.py FunctionTool architecture (deferred)
 - #439 - trading_cycle.py extraction (deferred)
 
@@ -1124,4 +1163,3 @@ Massive refactoring initiative to improve code organization, testability, and ma
 - TSMOMSignalGenerator implemented (12-month momentum)
 - Ready for 2016-2024 validation experiments
 - Research paper in progress
-
