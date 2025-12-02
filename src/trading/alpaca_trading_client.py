@@ -1526,7 +1526,9 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
 
             # Replace the order
-            updated_order = self.client.trading_client.replace_order_by_id(order_id, replace_request)
+            updated_order = self.client.trading_client.replace_order_by_id(
+                order_id, replace_request
+            )
 
             return {
                 "status": "submitted",
