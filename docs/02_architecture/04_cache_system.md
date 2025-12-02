@@ -199,6 +199,15 @@ from src.data_sources.cache import cache_adapter
 # Old API still works (uses SQLite under the hood)
 df = cache_adapter.get_market_data("SPY", "2025-01-01", "2025-01-31", source="alpaca")
 cache_adapter.set_market_data("SPY", "2025-01-01", "2025-01-31", "alpaca", df)
+
+# With timeframe support (Issue #445)
+df_hourly = cache_adapter.get_market_data(
+    "SPY", "2025-01-01", "2025-01-31", source="alpaca", timeframe="1Hour"
+)
+cache_adapter.set_market_data(
+    "SPY", "2025-01-01", "2025-01-31", "alpaca", df_hourly, timeframe="1Hour"
+)
+# Different timeframes are cached separately via source suffix (e.g., "alpaca_1Hour")
 ```
 
 ### Multi-Asset Support (Future Ready)

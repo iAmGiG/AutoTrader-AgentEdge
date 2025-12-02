@@ -30,7 +30,9 @@ from .base_agent import BaseAgent
 
 # Agent Bus for event publishing (Issue #390)
 from src.autogen_agents.agent_bus import EventType, create_message, get_agent_bus
-from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+from src.data_sources.sources.market.unified_market_tool import (
+    fetch_unified_market_data,
+)
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from src.utils.date_utils import get_datetime_now, now_iso, subtract_days, today_str
 
@@ -514,13 +516,14 @@ class ScannerAgent(BaseAgent):
             "%Y-%m-%d"
         )
 
-        # Fetch market data
+        # Fetch market data (uses daily timeframe for scanning)
         try:
             data = fetch_unified_market_data(
                 symbol=symbol,
                 start_date=start_date,
                 end_date=end_date,
                 source="auto",
+                timeframe="1Day",  # Scanner uses daily data for broad screening
             )
         except Exception as e:
             logger.warning(f"Data fetch failed for {symbol}: {e}")

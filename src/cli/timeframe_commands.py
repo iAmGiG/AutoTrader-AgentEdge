@@ -7,7 +7,7 @@ Integrates with CLI LLM interface for user-friendly timeframe management.
 
 from typing import Dict, Optional
 
-from src.trading.timeframe_tools import TimeframeManager
+from src.trading.timeframe_tools import _get_timeframe_manager
 
 
 class TimeframeCommands:
@@ -27,7 +27,8 @@ class TimeframeCommands:
         """Initialize timeframe commands."""
         if self._initialized:
             return
-        self.manager = TimeframeManager()
+        # Use the global timeframe manager to share state with agents
+        self.manager = _get_timeframe_manager()
         self._initialized = True
 
     def list_timeframes(self, verbose: bool = False) -> str:

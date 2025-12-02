@@ -15,6 +15,10 @@ from src.autogen_agents.voter_agent import VoterAgent
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.tools import fetch_unified_market_data
+from src.trading.timeframe_tools import (
+    convert_to_alpaca_timeframe,
+    get_current_timeframe,
+)
 from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
@@ -88,17 +92,34 @@ class RealVoterStrategy(StrategyAnalyzer):
         ticker = request.ticker
 
         try:
-            # 1. Fetch market data
-            logger.info(f"Fetching market data for {ticker} ({self.lookback_days} days)...")
-            end_date = get_datetime_now().strftime("%Y-%m-%d")
-            start_date = (get_datetime_now() - timedelta(days=self.lookback_days)).strftime(
-                "%Y-%m-%d"
+            # 1. Get current timeframe setting
+            timeframe_info = get_current_timeframe()
+            user_timeframe = timeframe_info.get("current_timeframe", "1d")
+            alpaca_timeframe = convert_to_alpaca_timeframe(user_timeframe)
+
+            # Calculate appropriate lookback based on timeframe
+            # Intraday timeframes need more calendar days to get enough bars
+            if user_timeframe.endswith("m"):  # Minutes
+                lookback_days = max(self.lookback_days, 14)  # At least 2 weeks for intraday
+            elif user_timeframe.endswith("h"):  # Hours
+                lookback_days = max(self.lookback_days, 30)  # At least 1 month for hourly
+            else:  # Days, weeks, months
+                lookback_days = self.lookback_days
+
+            # 2. Fetch market data
+            logger.info(
+                f"Fetching market data for {ticker} ({lookback_days} days, {user_timeframe})..."
             )
+            end_date = get_datetime_now().strftime("%Y-%m-%d")
+            start_date = (get_datetime_now() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
 
             # Catch API errors and convert to simple messages
             try:
                 market_data = fetch_unified_market_data(
-                    ticker, start_date=start_date, end_date=end_date
+                    ticker,
+                    start_date=start_date,
+                    end_date=end_date,
+                    timeframe=alpaca_timeframe,
                 )
             except Exception as api_error:
                 # Log full API error for debugging
@@ -151,6 +172,9 @@ class RealVoterStrategy(StrategyAnalyzer):
             # Build reasoning list
             reasoning = [result["reasoning"]]
 
+            # Add timeframe context
+            reasoning.append(f"Timeframe: {user_timeframe}")
+
             if "components" in result:
                 macd = result["components"]["macd"]
                 rsi = result["components"]["rsi"]
@@ -182,6 +206,7 @@ class RealVoterStrategy(StrategyAnalyzer):
                     ),
                     "signal_type": signal_type,
                     "position_size_multiplier": result.get("position_size", 1.0),
+                    "timeframe": user_timeframe,
                 },
                 analyzer_name=self.name,
             )

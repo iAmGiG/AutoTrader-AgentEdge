@@ -598,6 +598,35 @@ Originally developed as a research framework (RH2MAS), this project has evolved 
 
 ## Recent Updates
 
+### December 2025 - Timeframe Analysis Fix (Issue #445)
+
+**✅ Completed**:
+
+- **Fixed timeframe not affecting MACD/RSI analysis** - Different timeframes now produce different indicator values
+- **Global TimeframeManager instance** - CLI and strategy now share the same state
+- **Timeframe in cache keys** - Hourly vs daily data cached separately
+- **Timeframe format conversion** - Automatic conversion between user format ("1h") and Alpaca format ("1Hour")
+
+**🐛 Bug Fixed**:
+
+Previously, changing the timeframe via CLI (`set timeframe 1h`) did not affect the MACD/RSI calculations. All analysis always used daily data regardless of the timeframe setting. This was caused by:
+
+- CLI's `TimeframeCommands` creating its own `TimeframeManager()` instance
+- Strategy using a different global `_timeframe_manager` instance
+- They weren't sharing state!
+
+**✅ Solution**:
+
+- Both CLI and strategy now use `_get_timeframe_manager()` to share the same global instance
+- Added `timeframe` parameter throughout the data fetching pipeline
+- Cache keys now include timeframe to prevent collisions
+
+**Impact**: Timeframe feature now works correctly - changing to 1h timeframe fetches hourly bars and calculates indicators on hourly data.
+
+**See Issue**: [#445](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/445)
+
+---
+
 ### November 2025 - Enhanced Scheduler CLI & YAML Configuration Migration
 
 **✅ Completed**:

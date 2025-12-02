@@ -12,6 +12,7 @@ Issue #365 implements comprehensive timeframe support for the AutoGen-Trader sys
 ## What is a Timeframe?
 
 A timeframe (or interval) represents the time period of each candle in technical analysis:
+
 - **1m** = 1 minute (60 candles per hour)
 - **5m** = 5 minutes (12 candles per hour)
 - **15m** = 15 minutes (4 candles per hour)
@@ -55,6 +56,7 @@ class TimeframeConfig:
 ```
 
 **Features:**
+
 - Default timeframe set to "1d" (validated best Sharpe ratio: 0.856)
 - 10 enabled timeframes by default (1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M)
 - Validation methods for both individual timeframes and complete configuration
@@ -187,6 +189,7 @@ strategy_parameters:
 ```
 
 **Output:**
+
 ```
 📊 Available Timeframes:
 ==================================================
@@ -212,6 +215,7 @@ strategy_parameters:
 ```
 
 **Output:**
+
 ```
 ✅ Timeframe changed to 1h
 ```
@@ -225,6 +229,7 @@ strategy_parameters:
 ```
 
 **Output:**
+
 ```
 📍 Current Timeframe
 ==================================================
@@ -240,6 +245,7 @@ strategy_parameters:
 ```
 
 **Output:**
+
 ```
 📈 Timeframe Recommendations
 ==================================================
@@ -376,12 +382,14 @@ if tf_config.validate():
 ### 3. **Consider Data Requirements**
 
 Shorter timeframes require:
+
 - More frequent market data updates
 - More computational resources
 - More market noise/whipsaws
 - Higher slippage costs
 
 Longer timeframes require:
+
 - More historical data for indicators
 - More patience (fewer trades)
 - But: fewer false signals
@@ -459,6 +467,63 @@ Potential future improvements (not in Phase 1):
    - Auto-adjust indicator periods based on timeframe
    - e.g., RSI period = 14 for 1d, but 7 for 1h
 
+## Technical Implementation Details
+
+### Global TimeframeManager Instance (Issue #445 Fix)
+
+**Important:** All components must use the same global `TimeframeManager` instance to share state:
+
+```python
+# CORRECT - Use the global getter
+from src.trading.timeframe_tools import _get_timeframe_manager
+
+manager = _get_timeframe_manager()  # Gets global singleton
+
+# INCORRECT - Creates separate instance (won't share state)
+from src.trading.timeframe_tools import TimeframeManager
+
+manager = TimeframeManager()  # DON'T DO THIS
+```
+
+The CLI's `TimeframeCommands` and the strategy's `get_current_timeframe()` both use `_get_timeframe_manager()` to ensure they share the same state.
+
+### Data Fetching with Timeframe
+
+The `fetch_unified_market_data()` function accepts a timeframe parameter:
+
+```python
+from src.data_sources.tools import fetch_unified_market_data
+
+# Fetch hourly bars
+data = fetch_unified_market_data(
+    symbol="SPY",
+    start_date="2025-01-01",
+    end_date="2025-01-31",
+    timeframe="1Hour"  # Alpaca format: 1Min, 5Min, 1Hour, 1Day
+)
+```
+
+### Timeframe Format Conversion
+
+User format ("1h") must be converted to Alpaca format ("1Hour"):
+
+```python
+from src.trading.timeframe_tools import convert_to_alpaca_timeframe
+
+user_tf = "1h"
+alpaca_tf = convert_to_alpaca_timeframe(user_tf)  # Returns "1Hour"
+```
+
+### Cache Keys Include Timeframe
+
+Different timeframes are cached separately:
+
+```python
+# Cache key: symbol + date_range + source + timeframe
+# "SPY_2025-01-01_2025-01-31_alpaca_1Hour"
+# "SPY_2025-01-01_2025-01-31_alpaca_1Day"
+```
+
 ## Troubleshooting
 
 ### "Invalid timeframe" Error
@@ -480,6 +545,14 @@ Potential future improvements (not in Phase 1):
 
 **Solution:** Edit `config_defaults/trading_config.yaml` to add "1h" to `enabled_timeframes`
 
+### MACD/RSI Values Same Across Timeframes (Fixed in #445)
+
+**Issue:** Changed timeframe but MACD/RSI values remain identical
+
+**Cause (fixed):** CLI and strategy were using different `TimeframeManager` instances
+
+**Solution:** Update to latest code - all components now use global `_get_timeframe_manager()`
+
 ### Indicator Not Respecting Timeframe
 
 **Issue:** Indicator output doesn't match expected candle frequency
@@ -496,12 +569,14 @@ Potential future improvements (not in Phase 1):
 - **#400** - Trading Modes (risk adjusted per timeframe)
 - **#401** - Multi-Account (account-level timeframe settings)
 - **#402** - Security Architecture (secure timeframe storage)
+- **#445** - Timeframe affecting MACD/RSI analysis (fixed)
 
 ## Summary
 
 Issue #365 provides a complete, extensible timeframe system:
 
 ✅ **Phase 1 Complete:**
+
 - Configuration management (TimeframeConfig)
 - State management (TimeframeManager)
 - Agent tools (5 functions, AutoGen-ready)

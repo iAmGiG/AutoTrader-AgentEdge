@@ -10,11 +10,17 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+from src.data_sources.sources.market.unified_market_tool import (
+    fetch_unified_market_data,
+)
 
 
 def fetch_market_data(
-    symbol: str, start_date: str, end_date: str, use_cache: bool = True
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    use_cache: bool = True,
+    timeframe: str = "1Day",
 ) -> Optional[pd.DataFrame]:
     """
     Fetch market data for a symbol and date range.
@@ -24,6 +30,7 @@ def fetch_market_data(
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
         use_cache: Whether to use cached data first
+        timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
     Returns:
         DataFrame with OHLCV data or None if failed
@@ -35,7 +42,7 @@ def fetch_market_data(
                 return cached_data
 
         # Fetch using unified market data function
-        data = fetch_unified_market_data(symbol, start_date, end_date)
+        data = fetch_unified_market_data(symbol, start_date, end_date, timeframe=timeframe)
 
         if data is not None and not data.empty:
             # Standardize column names

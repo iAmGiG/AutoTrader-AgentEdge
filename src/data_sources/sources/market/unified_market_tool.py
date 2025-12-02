@@ -47,6 +47,7 @@ def fetch_unified_market_data(
     start_date: str = "2024-01-01",
     end_date: str = "2024-12-31",
     source: str = "auto",
+    timeframe: str = "1Day",
 ) -> pd.DataFrame:
     """
     Fetch market data using unified cache system with Alpaca as primary source.
@@ -56,6 +57,7 @@ def fetch_unified_market_data(
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
         source: Data source ("auto", "alpaca", "polygon", "alpha_vantage")
+        timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
     Returns:
         DataFrame with OHLCV data
@@ -69,40 +71,42 @@ def fetch_unified_market_data(
 
     # Skip cache for current trading day during market hours
     if not is_current_day:
-        cached_data = cache_adapter.get_market_data(symbol, start_date, end_date, source)
+        cached_data = cache_adapter.get_market_data(symbol, start_date, end_date, source, timeframe)
         if cached_data is not None:
             return cached_data
 
     # Cache miss - fetch from appropriate source
     if source == "auto":
         # Priority order: Alpaca -> Polygon -> Alpha Vantage
-        data = _fetch_from_alpaca(symbol, start_date, end_date)
+        data = _fetch_from_alpaca(symbol, start_date, end_date, timeframe)
         if data is not None and not data.empty:
             source = "alpaca"
         else:
-            data = _fetch_from_polygon(symbol, start_date, end_date)
+            data = _fetch_from_polygon(symbol, start_date, end_date, timeframe)
             if data is not None and not data.empty:
                 source = "polygon"
             else:
-                data = _fetch_from_alpha_vantage(symbol, start_date, end_date)
+                data = _fetch_from_alpha_vantage(symbol, start_date, end_date, timeframe)
                 source = "alpha_vantage"
     elif source == "alpaca":
-        data = _fetch_from_alpaca(symbol, start_date, end_date)
+        data = _fetch_from_alpaca(symbol, start_date, end_date, timeframe)
     elif source == "polygon":
-        data = _fetch_from_polygon(symbol, start_date, end_date)
+        data = _fetch_from_polygon(symbol, start_date, end_date, timeframe)
     elif source == "alpha_vantage":
-        data = _fetch_from_alpha_vantage(symbol, start_date, end_date)
+        data = _fetch_from_alpha_vantage(symbol, start_date, end_date, timeframe)
     else:
         raise ValueError(f"Unknown source: {source}")
 
     # Store in unified cache for future use
     if data is not None and not data.empty:
-        cache_adapter.set_market_data(symbol, start_date, end_date, source, data)
+        cache_adapter.set_market_data(symbol, start_date, end_date, source, data, timeframe)
 
     return data if data is not None else pd.DataFrame()
 
 
-def _fetch_from_alpaca(symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+def _fetch_from_alpaca(
+    symbol: str, start_date: str, end_date: str, timeframe: str = "1Day"
+) -> Optional[pd.DataFrame]:
     """Fetch from Alpaca Markets API (primary source)."""
     if not ALPACA_AVAILABLE:
         logger.debug("Alpaca not available")
@@ -114,7 +118,7 @@ def _fetch_from_alpaca(symbol: str, start_date: str, end_date: str) -> Optional[
             symbols=[symbol],
             start=start_date,
             end=end_date,
-            timeframe="1Day",
+            timeframe=timeframe,
             use_cache=False,  # Cache handled by unified cache
         )
 
@@ -140,7 +144,9 @@ def _fetch_from_alpaca(symbol: str, start_date: str, end_date: str) -> Optional[
         return None
 
 
-def _fetch_from_polygon(symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+def _fetch_from_polygon(
+    symbol: str, start_date: str, end_date: str, timeframe: str = "1Day"
+) -> Optional[pd.DataFrame]:
     """Fetch from Polygon.io API (fallback source)."""
     if not POLYGON_AVAILABLE:
         logger.debug("Polygon not available")
@@ -148,6 +154,7 @@ def _fetch_from_polygon(symbol: str, start_date: str, end_date: str) -> Optional
 
     try:
         polygon_client = PolygonHistoricalData()
+        # Note: Polygon timeframe support may need adjustment
         data = polygon_client.fetch_historical_prices(symbol, start_date, end_date)
         return data
     except Exception as e:
@@ -156,15 +163,19 @@ def _fetch_from_polygon(symbol: str, start_date: str, end_date: str) -> Optional
 
 
 def _fetch_from_alpha_vantage(
-    symbol: str, start_date: str, end_date: str
+    symbol: str, start_date: str, end_date: str, timeframe: str = "1Day"
 ) -> Optional[pd.DataFrame]:
-    """Fetch from Alpha Vantage API (fallback source)."""
+    """Fetch from Alpha Vantage API (fallback source).
+
+    Note: Alpha Vantage has limited intraday support on free tier.
+    """
     if not ALPHA_VANTAGE_AVAILABLE:
         logger.debug("Alpha Vantage not available")
         return None
 
     try:
         av_client = AlphaVantageMarketTool()
+        # Note: Alpha Vantage may not support all timeframes on free tier
         data = av_client.fetch_stock_data(symbol, start_date, end_date)
         return data
     except Exception as e:
