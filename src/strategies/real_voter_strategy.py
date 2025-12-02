@@ -14,6 +14,7 @@ from config_defaults.trading_config import TradingConfig
 from src.autogen_agents.voter_agent import VoterAgent
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
+from src.data_sources.database import AnalysisHistoryManager
 from src.data_sources.tools import fetch_unified_market_data
 from src.trading.timeframe_tools import convert_to_alpaca_timeframe, get_current_timeframe
 from src.utils.date_utils import get_datetime_now
@@ -61,6 +62,9 @@ class RealVoterStrategy(StrategyAnalyzer):
             rsi_params=self.rsi_params,
             use_config_file=True,
         )
+
+        # Initialize analysis history manager for ML tracking
+        self.analysis_history = AnalysisHistoryManager()
 
         logger.info(
             f"RealVoterStrategy initialized with MACD({self.macd_params['fast']}/{self.macd_params['slow']}/{self.macd_params['signal']}) + RSI({self.rsi_params['period']})"
@@ -175,6 +179,9 @@ class RealVoterStrategy(StrategyAnalyzer):
         # Extract indicators
         indicators = self._extract_indicators(result, user_timeframe)
 
+        # Record analysis for ML training and strategy improvement
+        self._record_analysis(request.ticker, user_timeframe, result, signal)
+
         return AnalysisResult(
             signal=signal,
             confidence=result["confidence"],
@@ -244,6 +251,59 @@ class RealVoterStrategy(StrategyAnalyzer):
             "position_size_multiplier": result.get("position_size", 1.0),
             "timeframe": user_timeframe,
         }
+
+    def _record_analysis(
+        self, ticker: str, timeframe: str, result: Dict[str, Any], signal: Signal
+    ) -> None:
+        """
+        Records analysis details to database for ML training and strategy analysis.
+
+        Args:
+            ticker: Stock symbol
+            timeframe: Current timeframe
+            result: VoterAgent evaluation result
+            signal: Final signal (BUY/SELL/HOLD)
+        """
+        try:
+            components = result.get("components", {})
+            macd = components.get("macd", {})
+            rsi = components.get("rsi", {})
+
+            # Extract individual component signals and values
+            macd_histogram = macd.get("histogram")
+            macd_signal = macd.get("action")  # BUY/SELL/HOLD
+            rsi_value = rsi.get("value")
+            rsi_signal = rsi.get("action")  # BUY/SELL/HOLD
+
+            # Final signal and confidence
+            final_signal = signal.value  # Convert enum to string
+            confidence = result.get("confidence", 0.0)
+
+            # Action taken (this will be updated later if trade is executed)
+            # For now, mark as "pending" - ExecutorAgent will update this
+            action_taken = "pending" if signal != Signal.HOLD else "hold_signal"
+
+            # Record to database
+            self.analysis_history.record_analysis(
+                ticker=ticker,
+                timeframe=timeframe,
+                macd_histogram=macd_histogram,
+                macd_signal=macd_signal,
+                rsi_value=rsi_value,
+                rsi_signal=rsi_signal,
+                final_signal=final_signal,
+                confidence=confidence,
+                action_taken=action_taken,
+            )
+
+            logger.debug(
+                f"Recorded analysis for {ticker}: {final_signal} "
+                f"(MACD: {macd_signal}, RSI: {rsi_signal}, conf: {confidence:.1%})"
+            )
+
+        except Exception as e:
+            # Don't let recording errors break the trading flow
+            logger.error(f"Error recording analysis for {ticker}: {e}", exc_info=True)
 
     def _create_fallback_result(self, reason: str) -> AnalysisResult:
         """Create fallback result when analysis fails."""
