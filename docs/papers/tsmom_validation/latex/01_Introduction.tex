@@ -1,0 +1,39 @@
+\section{Introduction}
+
+Momentum strategies have been a cornerstone of quantitative finance since the 1990s \cite{jegadeesh1993returns}, with time series momentum (TSMOM) emerging as a particularly robust approach across diverse asset classes \cite{moskowitz2012time}. Unlike cross-sectional momentum, which compares assets relative to each other, TSMOM generates trading signals based solely on an asset's own historical price trajectory. This property makes TSMOM particularly attractive for automated trading systems operating on individual equities.
+
+\subsection{Motivation}
+
+The AutoGen-Trader project implements a multi-agent trading architecture where specialized agents generate independent signals that are combined through voting mechanisms. The current production system employs dual voting between MACD (Moving Average Convergence Divergence) and RSI (Relative Strength Index) indicators, achieving a Sharpe ratio of 0.856 on AAPL during 2024 validation. However, both MACD and RSI are technical indicators operating on similar timeframes (days to weeks), potentially exhibiting high correlation during regime shifts.
+
+TSMOM operates on longer timeframes (typically 12 months), offering the potential for:
+\begin{itemize}
+    \item \textbf{Diversification}: Uncorrelated signals from different temporal perspectives
+    \item \textbf{Regime Capture}: Longer lookback captures macro trends missed by short-term indicators
+    \item \textbf{Consensus Robustness}: Third voter reduces false signals through triple voting
+\end{itemize}
+
+\subsection{Research Questions}
+
+This paper addresses three key questions:
+
+\begin{enumerate}
+    \item \textbf{RQ1}: Does 12-month TSMOM achieve Sharpe > 0.6 as a standalone strategy on individual equities?
+    \item \textbf{RQ2}: Is TSMOM correlation with MACD+RSI voting < 0.5, providing true diversification?
+    \item \textbf{RQ3}: Does triple voting (MACD + RSI + TSMOM) improve risk-adjusted returns over dual voting?
+\end{enumerate}
+
+\subsection{Contributions}
+
+Our work makes the following contributions:
+
+\begin{itemize}
+    \item Empirical validation of TSMOM on individual equities (2016-2024)
+    \item Comparative analysis of TSMOM vs technical indicator strategies
+    \item Design and validation of triple voting consensus mechanisms
+    \item Open-source backtesting framework for multi-agent trading research
+\end{itemize}
+
+\subsection{Paper Organization}
+
+Section II reviews related work on momentum strategies and multi-agent trading. Section III describes our methodology, including the backtesting framework and signal generation algorithms. Section IV details the experimental setup and validation approach. Section V presents results from TSMOM standalone testing and comparative analysis. Section VI discusses implications for multi-agent integration. Section VII concludes with contributions and future work.

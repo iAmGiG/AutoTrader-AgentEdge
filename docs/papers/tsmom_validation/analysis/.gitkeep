@@ -1,0 +1,10 @@
+# Analysis Directory
+
+Store YAML results files here:
+- tsmom_backtest_results_AAPL_2016_2024.yaml
+- tsmom_backtest_results_GOOGL_2016_2024.yaml
+- correlation_analysis.yaml
+- regime_analysis.yaml
+- walk_forward_validation.yaml
+
+Generated after running experiments in Issue #420.
