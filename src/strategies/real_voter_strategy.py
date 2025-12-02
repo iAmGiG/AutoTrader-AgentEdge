@@ -15,7 +15,10 @@ from src.autogen_agents.voter_agent import VoterAgent
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.tools import fetch_unified_market_data
-from src.trading.timeframe_tools import convert_to_alpaca_timeframe, get_current_timeframe
+from src.trading.timeframe_tools import (
+    convert_to_alpaca_timeframe,
+    get_current_timeframe,
+)
 from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
@@ -76,7 +79,7 @@ class RealVoterStrategy(StrategyAnalyzer):
         """Currently supports stocks only."""
         return [AssetType.STOCK]
 
-    async def analyze(self, request: TradeRequest) -> AnalysisResult:
+    async def analyze(self, request: TradeRequest) -> AnalysisResult:  # noqa: C901
         """
         Analyze trade request using MACD+RSI voting.
 
@@ -162,9 +165,10 @@ class RealVoterStrategy(StrategyAnalyzer):
                 stop_loss = round(current_price * (1 + stop_loss_pct), 2)  # inverse for shorts
                 take_profit = round(current_price * (1 - take_profit_pct), 2)  # inverse for shorts
             else:
-                entry_price = round(current_price, 2)
-                stop_loss = round(current_price * (1 - stop_loss_pct), 2)
-                take_profit = round(current_price * (1 + take_profit_pct), 2)
+                # HOLD signal: no position, no entry/exit prices
+                entry_price = None
+                stop_loss = None
+                take_profit = None
 
             # Build reasoning list
             reasoning = [result["reasoning"]]
@@ -216,22 +220,14 @@ class RealVoterStrategy(StrategyAnalyzer):
             logger.error(f"Unexpected error analyzing {ticker}: {e}", exc_info=True)
             raise ValueError("Error processing request")
 
-    def _create_fallback_result(
-        self, ticker: str, price: Optional[float], reason: str
-    ) -> AnalysisResult:
+    def _create_fallback_result(self, reason: str) -> AnalysisResult:
         """Create fallback result when analysis fails."""
-        current_price = price if price else 100.0
-
-        # Use minimal safe stop/profit for fallback
-        stop_loss_pct = self.config.get_risk_config("stop_loss")
-        take_profit_pct = self.config.get_risk_config("take_profit")
-
         return AnalysisResult(
             signal=Signal.HOLD,
             confidence=0.0,
-            entry_price=current_price,
-            stop_loss=current_price * (1 - stop_loss_pct),
-            take_profit=current_price * (1 + take_profit_pct),
+            entry_price=None,
+            stop_loss=None,
+            take_profit=None,
             reasoning=[f"⚠️ {reason}", "Defaulting to HOLD with no position"],
             indicators={"error": reason},
             analyzer_name=f"{self.name} (Fallback)",
