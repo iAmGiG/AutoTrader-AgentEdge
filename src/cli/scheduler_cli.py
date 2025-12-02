@@ -7,6 +7,8 @@ Provides dedicated commands for:
 - Testing scheduler routines
 - Monitoring execution history
 - Starting/stopping scheduler service
+
+Messages are loaded from config_defaults/scheduler_cli_messages.yaml
 """
 
 import asyncio
@@ -14,52 +16,134 @@ import logging
 import os
 from datetime import time as dt_time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional, cast
 
-from src.utils.date_utils import get_datetime_now
-
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
+import yaml
 
 from src.trading.daily_scheduler import DailyScheduler
+from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
+
+
+def _load_scheduler_messages() -> Dict[str, Any]:
+    """Load scheduler CLI messages from YAML configuration."""
+    config_path = (
+        Path(__file__).parent.parent.parent / "config_defaults" / "scheduler_cli_messages.yaml"
+    )
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        logger.warning(f"Could not load scheduler messages from YAML: {e}")
+        return {}
+
+
+# Load messages at module level
+MSG = _load_scheduler_messages()
+
+
+def _get_msg(path: str, default: str = "", **kwargs) -> str:
+    """
+    Get a message from the config by dot-notation path.
+
+    Args:
+        path: Dot-notation path like "welcome.title" or "status.header"
+        default: Default value if path not found
+        **kwargs: Format arguments for the message
+
+    Returns:
+        Formatted message string
+    """
+    keys = path.split(".")
+    value = MSG
+
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return default
+
+    if isinstance(value, str):
+        try:
+            return value.format(**kwargs) if kwargs else value
+        except KeyError:
+            return value
+
+    return str(value) if value else default
+
+
+def _get_emoji(name: str, default: str = "") -> str:
+    """Get an emoji from config."""
+    return _get_msg(f"emoji.{name}", default)
 
 
 class SchedulerCLI:
     """
     Interactive CLI for scheduler management.
 
-    Provides a dedicated interface for managing the daily trading scheduler,
-    separate from the main trading CLI.
+    Commands are defined in config_defaults/scheduler_cli_messages.yaml.
+    To add/remove/disable commands, edit the 'commands' section in that file.
     """
 
     def __init__(self, scheduler: Optional[DailyScheduler] = None):
         """
-        Initialize scheduler CLI.
+        Initialize scheduler CLI with config-driven command registry.
 
         Args:
             scheduler: Optional existing DailyScheduler instance
         """
         self.scheduler = scheduler
         self.config_file = "config_defaults/scheduler_config.yaml"
+        self._running = True
 
         # Check for YAML, fallback to JSON
         if not os.path.exists(self.config_file):
             self.config_file = "config_defaults/scheduler_config.json"
 
+        # Build command registry from config
+        self._command_registry = self._build_command_registry()
+
+    def _build_command_registry(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Build command lookup table from config.
+
+        Returns:
+            Dict mapping command names and aliases to their definitions.
+        """
+        registry = {}
+        commands = MSG.get("commands", {})
+
+        for cmd_name, cmd_def in commands.items():
+            if not cmd_def.get("enabled", True):
+                continue  # Skip disabled commands
+
+            # Register primary command name
+            registry[cmd_name] = {
+                "name": cmd_name,
+                "handler": cmd_def.get("handler", cmd_name),
+                "requires_scheduler": cmd_def.get("requires_scheduler", False),
+                "category": cmd_def.get("category", ""),
+                "description": cmd_def.get("description", ""),
+                "usage": cmd_def.get("usage", ""),
+            }
+
+            # Register aliases
+            for alias in cmd_def.get("aliases", []):
+                registry[alias] = registry[cmd_name]
+
+        return registry
+
     async def run(self):
         """
         Main scheduler CLI loop.
 
-        Provides interactive menu for scheduler management.
+        Commands are routed dynamically based on config.
         """
         self._print_welcome()
 
-        while True:
+        while self._running:
             try:
                 command = input("\nScheduler> ").strip().lower()
 
@@ -70,92 +154,139 @@ class SchedulerCLI:
                 if command.startswith("/"):
                     command = command[1:]
 
-                if command in ["exit", "quit", "q"]:
-                    print("\n👋 Exiting scheduler CLI...")
-                    break
-
+                # Route command through registry
                 await self._handle_command(command)
 
             except KeyboardInterrupt:
-                print("\n\n👋 Exiting scheduler CLI...")
+                print(f"\n\n{_get_emoji('wave', '👋')} Exiting scheduler CLI...")
                 break
             except Exception as e:
-                print(f"\n❌ Error: {e}")
+                print(f"\n{_get_emoji('cross_red', '❌')} Error: {e}")
                 logger.error(f"Scheduler CLI error: {e}", exc_info=True)
 
     def _print_welcome(self):
-        """Print scheduler CLI welcome message."""
-        print("\n" + "=" * 70)
-        print("   📅 Scheduler Management CLI")
-        print("=" * 70)
-        print("\nCommands:")
-        print("  status          - Show detailed scheduler status")
-        print("  config          - View current configuration")
-        print("  info            - Explain configuration settings")
-        print("  edit            - Edit scheduler configuration")
-        print("  enable          - Enable scheduler")
-        print("  disable         - Disable scheduler")
-        print("  test morning    - Test morning routine")
-        print("  test evening    - Test evening routine")
-        print("  history         - View execution history")
-        print("  next            - Show next scheduled run")
-        print("  help            - Show this help message")
-        print("  exit            - Exit scheduler CLI")
+        """Print scheduler CLI welcome message with auto-generated command list."""
+        welcome = MSG.get("welcome", {})
+        categories = MSG.get("categories", {})
+
+        # Banner and title
+        banner = welcome.get("banner", "=" * 70)
+        print("\n" + banner)
+        print(
+            f"   {_get_emoji('calendar', '📅')} {welcome.get('title', 'Scheduler Management CLI')}"
+        )
+        print(banner)
+
+        # Group enabled commands by category
+        commands_by_category: Dict[str, list] = {}
+        for cmd_name, cmd_def in MSG.get("commands", {}).items():
+            if not cmd_def.get("enabled", True):
+                continue
+            category = cmd_def.get("category", "other")
+            if category not in commands_by_category:
+                commands_by_category[category] = []
+            commands_by_category[category].append(
+                {
+                    "name": cmd_name,
+                    "description": cmd_def.get("description", ""),
+                    "usage": cmd_def.get("usage", ""),
+                }
+            )
+
+        # Sort categories by order
+        sorted_cats = sorted(categories.items(), key=lambda x: x[1].get("order", 99))
+
+        # Print each category
+        for cat_key, cat_def in sorted_cats:
+            cmds = commands_by_category.get(cat_key, [])
+            if not cmds:
+                continue
+
+            emoji_name = cat_def.get("emoji", "")
+            emoji = _get_emoji(emoji_name, "") if emoji_name else ""
+            header = cat_def.get("header", cat_key.title())
+            print(f"\n{emoji} {header}")
+
+            for cmd in cmds:
+                name = cmd["name"]
+                # Use usage if provided (e.g., "test [morning|evening]")
+                display_name = cmd.get("usage") or name
+                desc = cmd["description"]
+                print(f"  {display_name:16s} - {desc}")
+
         print("")
 
     async def _handle_command(self, command: str):
         """
-        Handle scheduler CLI commands.
+        Handle scheduler CLI commands using config-driven routing.
+
+        Commands are looked up in the registry (built from YAML config).
+        To add/remove/disable commands, edit scheduler_cli_messages.yaml.
 
         Args:
             command: User command string
         """
-        # Initialize scheduler if needed
-        if self.scheduler is None and command not in ["help", "config", "edit"]:
+        # Parse command and arguments
+        parts = command.split()
+        cmd_name = parts[0] if parts else ""
+        args = parts[1:] if len(parts) > 1 else []
+
+        # Look up command in registry
+        cmd_def = self._command_registry.get(cmd_name)
+
+        if not cmd_def:
+            print(f"{_get_emoji('cross_red', '❌')} Unknown command: {command}")
+            print("Type 'help' for available commands")
+            return
+
+        # Initialize scheduler if required by this command
+        if cmd_def.get("requires_scheduler") and self.scheduler is None:
             try:
                 self.scheduler = DailyScheduler()
             except Exception as e:
-                print(f"❌ Failed to initialize scheduler: {e}")
-                print("💡 Try running: python main.py --daemon")
+                print(f"{_get_emoji('cross_red', '❌')} Failed to initialize scheduler: {e}")
+                print(f"{_get_emoji('light', '💡')} Try running: python main.py --daemon")
                 return
 
-        if command == "help":
-            self._print_welcome()
+        # Get handler method
+        handler_name = cmd_def.get("handler", cmd_name)
+        handler = getattr(self, f"_{handler_name}", None)
 
-        elif command == "status":
-            await self._show_status()
+        if not handler or not callable(handler):
+            print(f"{_get_emoji('cross_red', '❌')} Handler not implemented: {handler_name}")
+            return
 
-        elif command == "config":
-            self._show_config()
-
-        elif command == "info":
-            self._show_config_info()
-
-        elif command == "edit":
-            await self._edit_config()
-
-        elif command == "enable":
-            self._set_enabled(True)
-
-        elif command == "disable":
-            self._set_enabled(False)
-
-        elif command.startswith("test"):
-            parts = command.split()
-            if len(parts) == 2 and parts[1] in ["morning", "evening"]:
-                await self._test_routine(parts[1])
+        # Call handler (async or sync)
+        handler = cast(Any, handler)  # Type assertion after callable check
+        try:
+            if asyncio.iscoroutinefunction(handler):
+                await handler(*args)  # pylint: disable=not-callable
             else:
-                print("Usage: test [morning|evening]")
+                handler(*args)  # pylint: disable=not-callable
+        except TypeError as e:
+            # Wrong number of arguments
+            usage = cmd_def.get("usage", "")
+            if usage:
+                print(f"Usage: {usage}")
+            else:
+                print(f"{_get_emoji('cross_red', '❌')} Error: {e}")
 
-        elif command == "history":
-            self._show_history()
+    # =========================================================================
+    # Handler wrapper methods (for config-driven routing)
+    # =========================================================================
 
-        elif command == "next":
-            self._show_next_run()
+    def _set_enabled_true(self):
+        """Wrapper for enable command."""
+        self._set_enabled(True)
 
-        else:
-            print(f"Unknown command: {command}")
-            print("Type 'help' for available commands")
+    def _set_enabled_false(self):
+        """Wrapper for disable command."""
+        self._set_enabled(False)
+
+    def _exit_cli(self):
+        """Exit the scheduler CLI loop."""
+        print(f"\n{_get_emoji('wave', '👋')} Exiting scheduler CLI...")
+        self._running = False
 
     async def _show_status(self):
         """Show detailed scheduler status."""
@@ -252,107 +383,92 @@ class SchedulerCLI:
             print("💡 Will be created with defaults on first run")
 
     def _show_config_info(self):
-        """Display explanations for configuration settings."""
-        print("\n📖 Scheduler Configuration Guide")
+        """Display explanations for configuration settings from config."""
+        info = MSG.get("config_info", {})
+        settings = info.get("settings", {})
+
+        # Header
+        print(f"\n{_get_emoji('book', '📖')} {info.get('header', 'Scheduler Configuration Guide')}")
         print("=" * 70)
 
-        print("\n🔧 EDITABLE SETTINGS")
+        # Editable settings section
+        print(f"\n🔧 {info.get('editable_header', 'EDITABLE SETTINGS')}")
         print("-" * 70)
 
-        print("\n1. enabled (boolean)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("enabled", "N/A") if self.scheduler else "N/A"
-            )
-        )
-        print("   Purpose: Master switch for automated trading")
-        print("   Values:  true = scheduler runs automatically")
-        print("            false = scheduler paused (safe mode)")
-        print("   Tip:     Set to 'false' when testing or during holidays")
+        # Map setting names to config keys for current value lookup
+        setting_order = ["enabled", "morning_time", "evening_time", "max_retries", "dry_run"]
+        config_keys = {
+            "enabled": "enabled",
+            "morning_time": "morning_routine_time",
+            "evening_time": "evening_routine_time",
+            "max_retries": "max_retries",
+            "dry_run": "dry_run",
+        }
 
-        print("\n2. morning_routine_time (HH:MM:SS)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("morning_routine_time", "N/A")
-                if self.scheduler
-                else "N/A"
-            )
-        )
-        print("   Purpose: Daily pre-market check and position setup")
-        print("   Default: 09:20:00 (9:20 AM ET, 10 min before market open)")
-        print("   Tip:     Run before market opens to prepare for trading day")
+        for i, setting_key in enumerate(setting_order, 1):
+            setting = settings.get(setting_key, {})
+            if not setting:
+                continue
 
-        print("\n3. evening_routine_time (HH:MM:SS)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("evening_routine_time", "N/A")
-                if self.scheduler
-                else "N/A"
-            )
-        )
-        print("   Purpose: End-of-day position review and trailing stop adjustments")
-        print("   Default: 15:50:00 (3:50 PM ET, 10 min before market close)")
-        print("   Tip:     Run before market closes to lock in profits")
+            config_key = config_keys.get(setting_key, setting_key)
+            current = self.scheduler.config.get(config_key, "N/A") if self.scheduler else "N/A"
 
-        print("\n4. max_retries (integer 1-10)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("max_retries", "N/A") if self.scheduler else "N/A"
-            )
-        )
-        print("   Purpose: Number of retry attempts if routine fails")
-        print("   Default: 3")
-        print("   Tip:     Higher values = more resilient to network issues")
+            print(f"\n{i}. {setting.get('name', setting_key)}")
+            print(f"   Current: {current}")
+            print(f"   Purpose: {setting.get('purpose', '')}")
 
-        print("\n5. dry_run (boolean)")
-        print(
-            "   Current: {}".format(
-                self.scheduler.config.get("dry_run", "N/A") if self.scheduler else "N/A"
-            )
-        )
-        print("   Purpose: Test mode - simulates actions without placing orders")
-        print("   Values:  true = simulation only (NO real orders)")
-        print("            false = normal operation (places orders)")
-        print("   ⚠️  NOTE: dry_run enforcement is NOT YET IMPLEMENTED")
-        print("   Status:  Currently logs but doesn't prevent order execution")
-        print("   Tip:     Always use paper trading account for testing")
+            if "default" in setting:
+                print(f"   Default: {setting['default']}")
 
-        print("\n\n📋 READ-ONLY SETTINGS (edit config file directly)")
+            for val in setting.get("values", []):
+                print(f"   Values:  {val}")
+
+            if "warning" in setting:
+                print(f"   {_get_emoji('warning', '⚠️')}  NOTE: {setting['warning']}")
+
+            if "status" in setting:
+                print(f"   Status:  {setting['status']}")
+
+            if "tip" in setting:
+                print(f"   Tip:     {setting['tip']}")
+
+        # Read-only settings section
+        readonly_header = info.get("readonly_header", "READ-ONLY SETTINGS")
+        print(f"\n\n{_get_emoji('clipboard', '📋')} {readonly_header}")
         print("-" * 70)
 
-        print("\n• market_timezone: America/New_York")
-        print("  All times are in Eastern Time (NYSE timezone)")
+        for setting in info.get("readonly_settings", []):
+            print(f"\n• {setting.get('name', '')}: {setting.get('value', '')}")
+            print(f"  {setting.get('description', '')}")
 
-        print("\n• retry_delay_seconds: 60")
-        print("  Initial wait time between retries (uses exponential backoff)")
-
-        print("\n• timeout_seconds: 300")
-        print("  Maximum time (5 minutes) for a single routine execution")
-
-        print("\n• monitoring.alert_threshold_consecutive_failures: 2")
-        print("  Number of consecutive failures before raising alert")
-
-        print("\n• api_limits.max_calls_per_routine: 5")
-        print("  Maximum API calls per routine to stay within rate limits")
-
-        print("\n\n💡 QUICK REFERENCE")
+        # Quick reference section
+        qref = info.get("quick_reference", {})
+        print(f"\n\n{_get_emoji('light', '💡')} {qref.get('header', 'QUICK REFERENCE')}")
         print("-" * 70)
-        print("\nPaper Trading vs Dry Run:")
-        print("  • Paper Trading (mode='paper'): Places real test orders on Alpaca paper account")
-        print("  • Dry Run (dry_run=true): Simulates logic without any orders [NOT IMPLEMENTED]")
-        print("  • Current system uses: Paper trading account (hardcoded in trading_cycle.py)")
 
-        print("\nSafety Levels (intended design):")
-        print("  1. Live mode + dry_run=false  → Real money, real orders ⚠️")
-        print("  2. Paper mode + dry_run=false → Paper account, test orders ✅ (current)")
-        print("  3. Paper mode + dry_run=true  → No orders, just logging 📝 (not implemented)")
+        # Paper vs Dry Run
+        paper_dry = qref.get("paper_vs_dry", {})
+        if paper_dry:
+            print(f"\n{paper_dry.get('title', '')}:")
+            for item in paper_dry.get("items", []):
+                print(f"  • {item}")
 
-        print("\nRelated Issues:")
-        print("  • #369 - Advanced documentation/man command")
-        print("  • #370 - LLM-powered trade journaling")
+        # Safety Levels
+        safety = qref.get("safety_levels", {})
+        if safety:
+            print(f"\n{safety.get('title', '')}:")
+            for item in safety.get("items", []):
+                print(f"  {item}")
+
+        # Related Issues
+        issues = qref.get("related_issues", {})
+        if issues:
+            print(f"\n{issues.get('title', '')}:")
+            for item in issues.get("items", []):
+                print(f"  • {item}")
 
         print("\n" + "=" * 70)
-        print("Type 'edit' to modify settings or 'config' to view raw file")
+        print(info.get("footer", "Type 'edit' to modify settings or 'config' to view raw file"))
         print("")
 
     async def _edit_config(self):
@@ -489,12 +605,17 @@ class SchedulerCLI:
         else:
             print(f"❌ Config file not found: {self.config_file}")
 
-    async def _test_routine(self, routine_type: str):
-        """Test a scheduler routine."""
-        print(f"\n🧪 Testing {routine_type} routine...")
+    async def _test_routine(self, routine_type: str = ""):
+        """Test a scheduler routine (morning or evening)."""
+        # Validate argument
+        if routine_type not in ["morning", "evening"]:
+            print("Usage: test [morning|evening]")
+            return
+
+        print(f"\n{_get_emoji('test', '🧪')} Testing {routine_type} routine...")
 
         if not self.scheduler:
-            print("❌ Scheduler not initialized")
+            print(f"{_get_emoji('cross_red', '❌')} Scheduler not initialized")
             return
 
         try:
@@ -593,6 +714,264 @@ class SchedulerCLI:
 
         except Exception as e:
             print(f"❌ Error calculating next run: {e}")
+
+    async def _run_setup_wizard(self):
+        """
+        Issue #338: First-time setup wizard for layman users.
+
+        Guides through:
+        1. Welcome and explanation
+        2. Schedule frequency (twice daily, morning only, evening only)
+        3. Time configuration
+        4. Save and optionally start
+        """
+        print("\n" + "=" * 70)
+        print("   🧙 Scheduler Setup Wizard")
+        print("=" * 70)
+
+        print("\n📖 What does the scheduler do?")
+        print("   The scheduler automatically runs trading routines at set times:")
+        print("   • Morning routine: Pre-market check, prepare for trading day")
+        print("   • Evening routine: End-of-day review, adjust stops")
+
+        print("\n" + "-" * 70)
+
+        # Step 1: Schedule frequency
+        print("\n1️⃣  How often should the scheduler run?")
+        print("   1. Twice daily (morning + evening) - RECOMMENDED")
+        print("   2. Morning only (pre-market)")
+        print("   3. Evening only (end-of-day)")
+        print("   4. Cancel setup")
+
+        choice = input("\nChoice [1-4]: ").strip()
+
+        if choice == "4":
+            print("\n❌ Setup cancelled")
+            return
+
+        enable_morning = choice in ["1", "2"]
+        enable_evening = choice in ["1", "3"]
+
+        # Step 2: Time configuration
+        config = self._get_default_config()
+
+        if enable_morning:
+            print("\n2️⃣  Morning routine time (default: 9:20 AM ET, 10 min before market)")
+            print("   Press Enter for default, or enter time like '9:00' or '09:30'")
+            time_input = input("   Morning time: ").strip()
+            if time_input:
+                try:
+                    # Parse simple time formats
+                    if ":" in time_input:
+                        parts = time_input.replace("am", "").replace("pm", "").strip().split(":")
+                        hour = int(parts[0])
+                        minute = int(parts[1]) if len(parts) > 1 else 0
+                        config["morning_routine_time"] = f"{hour:02d}:{minute:02d}:00"
+                except ValueError:
+                    print("   ⚠️  Invalid format, using default 9:20 AM")
+
+        if enable_evening:
+            print("\n3️⃣  Evening routine time (default: 3:50 PM ET, 10 min before close)")
+            print("   Press Enter for default, or enter time like '15:30' or '3:45'")
+            time_input = input("   Evening time: ").strip()
+            if time_input:
+                try:
+                    if ":" in time_input:
+                        parts = time_input.replace("pm", "").strip().split(":")
+                        hour = int(parts[0])
+                        if hour < 12:
+                            hour += 12  # Assume PM for evening
+                        minute = int(parts[1]) if len(parts) > 1 else 0
+                        config["evening_routine_time"] = f"{hour:02d}:{minute:02d}:00"
+                except ValueError:
+                    print("   ⚠️  Invalid format, using default 3:50 PM")
+
+        # Disable routines if not selected
+        if not enable_morning:
+            config["morning_routine_enabled"] = False
+        if not enable_evening:
+            config["evening_routine_enabled"] = False
+
+        config["enabled"] = True
+
+        # Step 3: Summary and save
+        print("\n" + "-" * 70)
+        print("\n📋 Configuration Summary:")
+        print(f"   Morning routine: {'✅ Enabled' if enable_morning else '❌ Disabled'}")
+        if enable_morning:
+            print(f"      Time: {config.get('morning_routine_time', 'N/A')} ET")
+        print(f"   Evening routine: {'✅ Enabled' if enable_evening else '❌ Disabled'}")
+        if enable_evening:
+            print(f"      Time: {config.get('evening_routine_time', 'N/A')} ET")
+
+        confirm = input("\nSave this configuration? [yes/no]: ").strip().lower()
+
+        if confirm in ["yes", "y"]:
+            self._save_config(config)
+            print("\n✅ Configuration saved!")
+
+            # Offer to start
+            start_now = input("\nStart scheduler now? [yes/no]: ").strip().lower()
+            if start_now in ["yes", "y"]:
+                self._start_daemon()
+        else:
+            print("\n❌ Setup cancelled, configuration not saved")
+
+    def _start_daemon(self):
+        """
+        Issue #338: Start the scheduler daemon.
+
+        Starts the daemon process in the background.
+        """
+        print("\n🚀 Starting Scheduler Daemon...")
+
+        # Check if already running
+        if self._is_daemon_running():
+            print("⚠️  Scheduler daemon is already running!")
+            print("   Use 'stop' to stop it first, or 'status' to check")
+            return
+
+        # Start daemon in background
+        import subprocess
+        import sys
+
+        try:
+            # Get the python executable and main.py path
+            python_exe = sys.executable
+            main_py = Path(__file__).parent.parent.parent / "main.py"
+
+            if not main_py.exists():
+                # Try alternative path
+                main_py = Path("main.py")
+
+            # Start in background
+            if os.name == "nt":  # Windows
+                # Use START /B for background
+                subprocess.Popen(
+                    [python_exe, str(main_py), "--daemon"],
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:  # Unix/Linux/Mac
+                subprocess.Popen(
+                    [python_exe, str(main_py), "--daemon"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+
+            # Wait a moment and check if it started
+            import time
+
+            time.sleep(2)
+
+            if self._is_daemon_running():
+                print("✅ Scheduler daemon started successfully!")
+                print("   Use 'status' to see details")
+                print("   Use 'stop' to stop it later")
+            else:
+                print("⚠️  Daemon may have started but couldn't verify")
+                print("   Check logs with 'logs' command")
+
+        except Exception as e:
+            print(f"❌ Failed to start daemon: {e}")
+            print("   Try running manually: python main.py --daemon")
+
+    def _stop_daemon(self):
+        """
+        Issue #338: Stop the scheduler daemon.
+        """
+        print("\n🛑 Stopping Scheduler Daemon...")
+
+        if not self._is_daemon_running():
+            print("ℹ️  Scheduler daemon is not running")
+            return
+
+        # Try to stop gracefully
+        pid_file = Path("state/scheduler.pid")
+
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text())
+
+                if os.name == "nt":  # Windows
+                    import signal
+
+                    os.kill(pid, signal.SIGTERM)
+                else:  # Unix
+                    os.kill(pid, 15)  # SIGTERM
+
+                # Wait and verify
+                import time
+
+                time.sleep(2)
+
+                if not self._is_daemon_running():
+                    print("✅ Scheduler daemon stopped successfully!")
+                    # Clean up PID file
+                    pid_file.unlink(missing_ok=True)
+                else:
+                    print("⚠️  Daemon may still be running")
+                    print("   Try: kill -9 " + str(pid))
+
+            except (OSError, ValueError) as e:
+                print(f"⚠️  Could not stop daemon: {e}")
+                print("   You may need to kill the process manually")
+        else:
+            print("⚠️  PID file not found, daemon may not be managed")
+            print("   Check running processes for 'main.py --daemon'")
+
+    def _show_logs(self, lines: int = 50):
+        """
+        Issue #338: Show recent scheduler logs.
+        """
+        print("\n📜 Recent Scheduler Logs")
+        print("=" * 70)
+
+        # Look for log files
+        log_paths = [
+            Path("logs/scheduler.log"),
+            Path("logs/autotrader.log"),
+            Path("state/scheduler_history.json"),
+        ]
+
+        log_file = None
+        for path in log_paths:
+            if path.exists():
+                log_file = path
+                break
+
+        if not log_file:
+            print("ℹ️  No log files found")
+            print("   Logs are created when the scheduler runs")
+            print("   Try 'test morning' or 'start' first")
+            return
+
+        print(f"\nShowing last {lines} lines from: {log_file}\n")
+        print("-" * 70)
+
+        try:
+            with open(log_file, "r") as f:
+                all_lines = f.readlines()
+                recent = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+                for line in recent:
+                    # Highlight errors and warnings
+                    if "ERROR" in line or "error" in line.lower():
+                        print(f"❌ {line.rstrip()}")
+                    elif "WARNING" in line or "warn" in line.lower():
+                        print(f"⚠️  {line.rstrip()}")
+                    elif "SUCCESS" in line or "completed" in line.lower():
+                        print(f"✅ {line.rstrip()}")
+                    else:
+                        print(f"   {line.rstrip()}")
+
+        except Exception as e:
+            print(f"❌ Error reading logs: {e}")
+
+        print("-" * 70)
+        print(f"\n💡 Full logs at: {log_file}")
 
 
 async def main():

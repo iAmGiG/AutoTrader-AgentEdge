@@ -1,102 +1,262 @@
 # Scripts Directory
 
-The scripts directory contains V0-V4 sentiment analysis validation and production runs.
+Production utilities, deployment tools, data collection, and research scripts for the AutoTrader-AgentEdge system.
 
 ## Directory Structure
 
 ```bash
 scripts/
-├── README.md
-├── analysis/                # General analysis utilities (experiment-agnostic)
-├── data/                   # Data collection scripts
-├── experiments/            # Organized experiment files (NEW)
-│   ├── experiment_293_validation/    # MACD+RSI voting validation
-│   ├── exit_strategy_analysis/      # Exit strategy performance analysis
-│   └── configuration_system/        # Configuration system demonstration
-├── runs/                   # V0-V4 sentiment framework runs
-│   ├── validation/         # Production validation scripts
-│   ├── analysis/          # Performance analysis scripts  
-│   └── comparison/        # Cross-version comparison runs
-└── validation/            # General validation scripts (V4 obfuscation, etc.)
+├── README.md (this file)
+│
+├── utilities/                     # General-purpose production tools
+│   ├── cache_manager.py          # SQLite cache CLI (stats, cleanup, export, etc.)
+│   ├── lint_check.py             # Ruff linting helper for code quality
+│   └── remove_commit_signatures.py  # Git filter-branch utility
+│
+├── deployment/                   # Linux deployment automation
+│   ├── autogen-trading-scheduler.service  # systemd service definition
+│   ├── install_scheduler.sh     # Installation script for systemd
+│   └── setup_cron.sh            # Alternative cron-based setup
+│
+└── research/                    # Documented experiments and analysis
+    ├── configuration_system/    # Config system demonstrations
+    ├── exit_strategy_analysis/  # Exit strategy performance research
+    ├── v0_v4_analysis/         # V0-V4 sentiment research results
+    │   └── generate_results_summary.py  # V0-V4 results summary generator
+    └── README.md               # Research documentation
 ```
 
-## Experiment-Specific Scripts
+## Production Utilities
 
-### Experiments Directory (`experiments/`)
+### SQLite Cache Manager (`utilities/cache_manager.py`)
 
-**NEW**: Organized experiment files grouped by specific research areas.
+Administrative CLI for the SQLite trading cache:
 
-#### `experiment_293_validation/`
+```bash
+# View cache statistics
+python scripts/utilities/cache_manager.py stats
 
-- **Purpose**: MACD+RSI voting system validation vs single indicators
-- **Key Finding**: Voting achieves 0.856 Sharpe vs 0.841 MACD-only
-- **Scripts**: `experiment_293_retest.py`, `experiment_294_vote_thresholds.py`
+# Cleanup expired entries
+python scripts/utilities/cache_manager.py cleanup
 
-#### `exit_strategy_analysis/`  
+# Optimize database (reclaim space)
+python scripts/utilities/cache_manager.py vacuum
 
-- **Purpose**: Exit strategy performance and expected value analysis
-- **Critical Discovery**: Conservative exits (6%/8%) have negative expected value!
-- **Recommendation**: Use Balanced exits (8%/5%) for 27.48% annual return
-- **Scripts**: `performance_clarification.py`, `expected_value_analysis.py`
+# List all cached symbols
+python scripts/utilities/cache_manager.py symbols
 
-#### `configuration_system/`
+# Export data to JSON
+python scripts/utilities/cache_manager.py export SPY --start 2025-01-01 --end 2025-12-31
 
-- **Purpose**: Flexible parameter management demonstration
-- **Benefit**: Change trading parameters without code modifications
-- **Related Issue**: #303
-- **Scripts**: `config_usage_demo.py`
+# Clear specific symbol
+python scripts/utilities/cache_manager.py clear --symbol SPY --confirm
 
-## General-Purpose Scripts
+# Query cache data
+python scripts/utilities/cache_manager.py query SPY --start 2025-10-01 --end 2025-10-31
+```
 
-### Analysis Tools (`analysis/`)
+**Features**:
 
-**General analysis and reporting scripts (experiment-agnostic):**
+- Cache statistics and health monitoring
+- Expired entry cleanup (TTL-based)
+- Database vacuum for space reclamation
+- Symbol listing and filtering
+- Data export to JSON
+- Selective or full cache clearing
+- Interactive querying
 
-- `generate_results_summary.py` - Generate V0-V4 results summary with basic and advanced metrics
-  - `--basic`: Simple performance summary (default)
-  - `--advanced`: Comprehensive metrics with sentiment effectiveness analysis
+### Code Quality Checker (`utilities/lint_check.py`)
 
-### V0-V4 Framework (`runs/`)
+Ruff-based linting for code quality validation:
 
-#### Analysis (`runs/analysis/`)
+```bash
+# Check entire project
+python scripts/utilities/lint_check.py
 
-**V0-V4 sentiment analysis frameworks:**
+# Check specific path
+python scripts/utilities/lint_check.py src/voting/
 
-- `comprehensive_2024_v0_v4_analysis.py` - Full V0-V4 comparison framework
-- `run_2024_full_analysis.py` - Complete yearly analysis
-- `simple_2024_analysis.py` - Streamlined analysis framework
-- `v0_v4_comparison_summary.py` - Performance comparison utilities
+# Check specific file
+python scripts/utilities/lint_check.py src/strategies/voter_strategy.py
+```
 
-#### Validation (`runs/validation/`)
+**Features**:
 
-**V0-V4 validation scripts:**
+- Import ordering validation (PEP 8)
+- Line length checks (configurable)
+- Unused import detection
+- Integration with pyproject.toml configuration
+- Auto-fix suggestions
 
-- `run_v0_pipeline_validation.py` - V0 baseline validation  
-- `run_v4_data_leakage_detection.py` - V4 obfuscation testing
+### Git Signature Remover (`utilities/remove_commit_signatures.py`)
 
-### General Validation (`validation/`)
+Remove Claude Code signatures from commit messages:
 
-**General validation tools (not experiment-specific):**
+```bash
+# Use with git filter-branch
+git filter-branch -f --msg-filter 'python scripts/utilities/remove_commit_signatures.py' HEAD~10..HEAD
+```
 
-- `obfuscation_test.py` - V4 date obfuscation validation
+**Use Case**: Clean up commit history by removing automated signature lines.
 
-## Archived Tools
+## Linux Deployment
 
-**One-off debugging and development tools moved to `deprecated/scripts/`:**
+### systemd Service (`deployment/autogen-trading-scheduler.service`)
 
-- Debug utilities (cache debugging, async troubleshooting)
-- Maintenance scripts (cache fixes, data refreshing)
-- Quick test scripts (exploratory testing)
-- Development analysis scripts (one-time investigations)
+systemd unit file for running the trading scheduler as a service:
 
-## V0-V4 Research Framework
+```bash
+# Install service
+sudo bash scripts/deployment/install_scheduler.sh
 
-**Objective**: Demonstrate incremental value of LLM introduction.
+# Check status
+sudo systemctl status autogen-trading-scheduler
 
-- **V0**: Fixed Baseline (sentiment = 1.0) - Pure MACD strategy
-- **V1**: NLP Analysis (VADER + Google Search news)  
-- **V2**: Market Fear (VXX/VIX volatility-based sentiment)
-- **V3**: Heuristic Combination (V1 + V2 with adaptive weighting)
-- **V4**: Enhanced LLM Analysis (GPT-4o-mini + SPY/QQQ market context)
+# View logs
+sudo journalctl -u autogen-trading-scheduler -f
+```
 
-**Current Status**: ✅ All V0-V4 agents operational with enhanced market context integration
+### Cron Setup (`deployment/setup_cron.sh`)
+
+Alternative cron-based scheduling:
+
+```bash
+# Setup cron jobs
+bash scripts/deployment/setup_cron.sh
+```
+
+**Schedule**: Runs morning and evening routines automatically.
+
+## Research Scripts
+
+### V0-V4 Sentiment Analysis (`research/v0_v4_analysis/`)
+
+Generate comprehensive results summary for V0-V4 sentiment framework backtests:
+
+```bash
+# Basic summary (default)
+python scripts/research/v0_v4_analysis/generate_results_summary.py
+
+# Advanced metrics analysis
+python scripts/research/v0_v4_analysis/generate_results_summary.py --advanced
+```
+
+**Advanced Metrics Include**:
+
+- Sentiment effectiveness analysis
+- Risk-adjusted performance metrics
+- Market regime analysis
+- Trade quality metrics
+- Execution cost modeling
+- Cost efficiency rankings
+
+**Note**: V0-V4 framework is deprecated in favor of VoterAgent (MACD+RSI), but research results preserved for reference.
+
+### Configuration System Demos (`research/configuration_system/`)
+
+Demonstrations of flexible parameter management via YAML configs:
+
+```bash
+python scripts/research/configuration_system/config_usage_demo.py
+```
+
+**Purpose**: Show how to change trading parameters without code modifications (Issue #303).
+
+### Exit Strategy Analysis (`research/exit_strategy_analysis/`)
+
+Performance and expected value analysis for exit strategies:
+
+```bash
+python scripts/research/exit_strategy_analysis/performance_clarification.py
+python scripts/research/exit_strategy_analysis/expected_value_analysis.py
+```
+
+**Key Finding**: Conservative exits (6%/8%) have negative expected value. Use Balanced exits (8%/5%) for optimal returns.
+
+## Deprecated Scripts
+
+Scripts that were one-time migrations or superseded by current architecture have been moved to `src/deprecated/scripts_*/`:
+
+### Migration Scripts (`src/deprecated/scripts_migrations/`)
+
+- **cleanup_legacy_cache.py** - Post-migration JSON cache cleanup (completed)
+- **migrate_cache_to_sqlite.py** - JSON→SQLite migration (completed)
+- **migrate_help_to_yaml.py** - help_system.py→YAML migration (completed)
+
+**Status**: One-time operations completed, preserved for reference.
+
+### Forward Testing Scripts (`src/deprecated/scripts_forward_test_issue_324/`)
+
+- **example_forward_test.py** - Demo for unused forward test framework
+- **forward_test_runner.py** - CLI for unused forward test infrastructure
+
+**Status**: Issue #324 infrastructure built but never integrated. Will revisit forward/backtesting with current tooling (AutoGen, VoterAgent) in future.
+
+### V0-V4 Research Scripts (`src/deprecated/scripts_v0_v4_research/`)
+
+- **backtest.py** - Continuous backtesting for V0-V4 sentiment agents
+- **obfuscation_test.py** - V4 date obfuscation validation testing
+- **collect_benchmark_data.py** - VXX/SPY/QQQ data collector (broken imports)
+- **polygon_data_collector.py** - MAG 7 + leveraged ETFs collector (broken imports)
+
+**Status**: V0-V4 sentiment framework deprecated in favor of simpler MACD+RSI voting strategy. Data collectors have broken import paths from old architecture. Research preserved for reference.
+
+## Cross-Platform Notes
+
+All scripts support both Windows and Linux environments:
+
+- Windows: Use `python scripts/utilities/cache_manager.py`
+- Linux: Use `python3 scripts/utilities/cache_manager.py` or make executable with shebang
+
+## Development Workflow
+
+**Before committing**:
+
+```bash
+# Run linting check
+python scripts/utilities/lint_check.py src/
+
+# Fix auto-fixable issues
+ruff check --fix src/
+```
+
+**Cache maintenance**:
+
+```bash
+# Weekly: Check cache health
+python scripts/utilities/cache_manager.py stats
+
+# Monthly: Cleanup expired entries
+python scripts/utilities/cache_manager.py cleanup --vacuum
+```
+
+**Research workflow**:
+
+```bash
+# After backtesting V0-V4: Generate summary
+python scripts/research/v0_v4_analysis/generate_results_summary.py --advanced
+```
+
+## Related Documentation
+
+- **Cache System**: `docs/02_architecture/04_cache_system.md`
+- **Development Guide**: `docs/04_development/04_cache_developer_guide.md`
+- **Deployment**: `docs/03_deployment/` (if available)
+- **Research Results**: `docs/archived/experiments/`
+
+## Contributing
+
+When adding new scripts:
+
+1. Place in appropriate subdirectory (utilities/, deployment/, research/)
+2. Add shebang line: `#!/usr/bin/env python3`
+3. Include docstring with purpose and usage examples
+4. Update this README with script description
+5. Follow existing naming conventions
+
+For research scripts:
+
+- Create dedicated subdirectory in `research/`
+- Include README explaining experiment purpose
+- Document key findings and results
+- Link to related issues/PRs

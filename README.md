@@ -280,6 +280,208 @@ Continue? [yes/no]: yes
       P/L: +$85.00 (+4.58%)
 ```
 
+## CLI Features & Commands
+
+### Interactive Help System (Issue #396)
+
+The CLI includes a comprehensive help system with command discovery, examples, and error suggestions:
+
+```bash
+# Show all available commands grouped by category
+> /help
+
+# Get detailed help for specific commands
+> /help morning-routine
+> /help buy
+> /help forward-test
+
+# Search commands by keyword
+> /help search config
+> /help search timeframe
+
+# View all command examples
+> /help --examples
+
+# Typo suggestions - intelligent error handling
+> /help mnitor
+💡 Did you mean one of these?
+  - monitor          Monitor active positions
+  - morning-routine  Run morning market scan and analysis
+```
+
+### Command Categories
+
+**Workflow Commands**:
+
+- `morning-routine` - Run morning market scan and analysis
+- `approve` / `reject` - Approve or reject pending trades
+- `monitor` - Monitor active positions for exit signals
+- `evening-summary` - Generate end-of-day performance report
+
+**Trading Commands**:
+
+- `buy SYMBOL QUANTITY` - Place buy order
+- `sell SYMBOL QUANTITY` - Place sell order
+- `cancel ORDER_ID` - Cancel pending orders
+
+**Information Commands**:
+
+- `show portfolio` - Portfolio summary and allocation
+- `show positions` - Open positions with P&L
+- `show orders` - Order history and status
+- `show account` - Account details and limits
+
+**Configuration Commands** (Issue #358):
+
+- `show config-file` - View YAML configuration files
+- `show config-file --file trading` - View specific config
+- `show watchlist` - Show market scanner symbols
+- `show indicators` - List available technical indicators
+
+**Timeframe Commands** (Issue #365):
+
+- `show timeframe` - Display current trading timeframe
+- `set timeframe 1d` - Change timeframe (1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M)
+- ⚠️ Only 1d timeframe is validated (0.856 Sharpe) - others are experimental
+
+**Forward Testing Commands** (Issue #324):
+
+- `forward-test start TEST_NAME` - Start 30-day validation test
+- `forward-test report TEST_NAME` - Generate test performance report
+- `forward-test status` - Check progress of active tests
+
+**Scheduler Commands**:
+
+- `show scheduler` - View daily scheduler status
+- `enable scheduler` - Enable automated morning/evening routines
+- `disable scheduler` - Disable automation
+
+**System Commands**:
+
+- `/help` - Interactive help system
+- `/exit` - Exit CLI
+
+### Configuration System (Issue #358)
+
+All trading parameters are externalized to YAML files in `config_defaults/`:
+
+**trading_config.yaml** - Strategy parameters:
+
+```yaml
+strategy_parameters:
+  timeframe: "1d"  # Global timeframe setting
+
+  macd:
+    fast: 13
+    slow: 34
+    signal: 8
+    timeframe: null  # Inherits from strategy_parameters.timeframe
+
+  rsi:
+    period: 14
+    oversold: 30
+    overbought: 70
+    timeframe: null
+
+  exits:
+    balanced:
+      take_profit: 0.08  # 8% profit target
+      stop_loss: 0.05    # 5% stop loss
+```
+
+**scanner_config.yaml** - Watchlist configuration:
+
+```yaml
+default_watchlist:
+  core_etfs:
+    - SPY
+    - QQQ
+    - IWM
+    - VTI
+
+  tech_giants:
+    - AAPL
+    - MSFT
+    - NVDA
+    - TSLA
+    - META
+```
+
+View configs from CLI:
+
+```bash
+> show config-file
+> show config-file --file trading
+> show watchlist --category tech
+```
+
+### Timeframe Support (Issue #365)
+
+Configure trading timeframe for all technical analysis:
+
+```bash
+# Show current timeframe
+> show timeframe
+
+# Change timeframe
+> set timeframe 1h    # Hourly
+> set timeframe 15m   # 15-minute
+> set timeframe 1d    # Daily (validated default)
+```
+
+**Supported Timeframes**:
+
+- `1m, 5m, 15m, 30m` - Scalping/day trading
+- `1h, 2h, 4h` - Intraday swing trading
+- `1d` - Daily swing/position trading (✅ validated: 0.856 Sharpe)
+- `1w, 1M` - Position/long-term trading
+
+⚠️ **Important**: Only the 1d (daily) timeframe has been validated with production-quality results. Other timeframes are experimental.
+
+### Forward Testing Protocol (Issue #324)
+
+30-day validation testing before live deployment:
+
+```bash
+# Start new forward test
+> forward-test start production_validation_2025 --capital 10000
+
+# Daily progress check
+> forward-test status production_validation_2025
+
+# Generate reports
+> forward-test report production_validation_2025 --type daily
+> forward-test report production_validation_2025 --type weekly --week 2
+> forward-test report production_validation_2025 --type final
+```
+
+**Validation Criteria**:
+
+- ✅ Sharpe Ratio > 0.7
+- ✅ Win Rate > 50%
+- ✅ Max Drawdown < 15%
+- ✅ 30 consecutive trading days
+- ✅ Consistent signal generation
+
+### Error Handling & Suggestions
+
+The CLI provides intelligent error suggestions for typos:
+
+```bash
+> forwad-test start
+❌ Command 'forwad-test' not found.
+
+💡 Did you mean one of these?
+  - forward-test start    Start a new 30-day forward test
+  - forward-test report   Generate forward test reports
+  - forward-test status   Show status of running forward tests
+
+> moniter
+💡 Did you mean one of these?
+  - monitor               Monitor active positions
+  - morning-routine       Run morning market scan
+```
+
 ### Validation & Backtesting
 
 ```bash
@@ -395,6 +597,35 @@ Originally developed as a research framework (RH2MAS), this project has evolved 
 - **Open Source**: Complete transparency in agent logic, parameters, and validation results
 
 ## Recent Updates
+
+### December 2025 - Timeframe Analysis Fix (Issue #445)
+
+**✅ Completed**:
+
+- **Fixed timeframe not affecting MACD/RSI analysis** - Different timeframes now produce different indicator values
+- **Global TimeframeManager instance** - CLI and strategy now share the same state
+- **Timeframe in cache keys** - Hourly vs daily data cached separately
+- **Timeframe format conversion** - Automatic conversion between user format ("1h") and Alpaca format ("1Hour")
+
+**🐛 Bug Fixed**:
+
+Previously, changing the timeframe via CLI (`set timeframe 1h`) did not affect the MACD/RSI calculations. All analysis always used daily data regardless of the timeframe setting. This was caused by:
+
+- CLI's `TimeframeCommands` creating its own `TimeframeManager()` instance
+- Strategy using a different global `_timeframe_manager` instance
+- They weren't sharing state!
+
+**✅ Solution**:
+
+- Both CLI and strategy now use `_get_timeframe_manager()` to share the same global instance
+- Added `timeframe` parameter throughout the data fetching pipeline
+- Cache keys now include timeframe to prevent collisions
+
+**Impact**: Timeframe feature now works correctly - changing to 1h timeframe fetches hourly bars and calculates indicators on hourly data.
+
+**See Issue**: [#445](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/445)
+
+---
 
 ### November 2025 - Enhanced Scheduler CLI & YAML Configuration Migration
 

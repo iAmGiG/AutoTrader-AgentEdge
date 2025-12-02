@@ -33,7 +33,12 @@ class CacheAdapter:
         self.legacy_locations = [Path(".cache/polygon/prices"), Path(".cache/market_data")]
 
     def get_market_data(
-        self, symbol: str, start_date: str, end_date: str, source: str = "any"
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        source: str = "any",
+        timeframe: str = "1Day",
     ) -> Optional[pd.DataFrame]:
         """
         Get market data from SQLite cache, falling back to legacy file cache.
@@ -43,12 +48,17 @@ class CacheAdapter:
             start_date: Start date (YYYY-MM-DD)
             end_date: End date (YYYY-MM-DD)
             source: Data source preference ("any", "alpaca", "polygon", "alpha_vantage", "auto")
+            timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
         Returns:
             DataFrame with OHLCV data, or None if not found
         """
-        # Normalize source name (handle "any" -> None for TradingCacheManager)
-        cache_source = None if source in ("any", "auto") else source
+        # Combine source with timeframe to create unique cache key
+        # This ensures different timeframes are cached separately
+        cache_source = f"{source}_{timeframe}" if source not in ("any", "auto") else None
+        if cache_source is None and timeframe != "1Day":
+            # For non-daily timeframes with 'any' source, include timeframe
+            cache_source = f"any_{timeframe}"
 
         # First try SQLite cache
         data = self.cache.get(symbol, start_date, end_date, source=cache_source)
@@ -56,21 +66,29 @@ class CacheAdapter:
             return data
 
         # Fallback: check legacy file-based locations (for migration)
-        for location in self.legacy_locations:
-            if not location.exists():
-                continue
+        # Note: Legacy cache doesn't support timeframes, only check for daily data
+        if timeframe == "1Day":
+            for location in self.legacy_locations:
+                if not location.exists():
+                    continue
 
-            legacy_data = self._check_legacy_cache(location, symbol, start_date, end_date)
-            if legacy_data is not None:
-                # Found in legacy cache - migrate to SQLite cache
-                detected_source = source if source not in ("any", "auto") else "migrated"
-                self.cache.set(symbol, legacy_data, source=detected_source)
-                return legacy_data
+                legacy_data = self._check_legacy_cache(location, symbol, start_date, end_date)
+                if legacy_data is not None:
+                    # Found in legacy cache - migrate to SQLite cache
+                    detected_source = source if source not in ("any", "auto") else "migrated"
+                    self.cache.set(symbol, legacy_data, source=detected_source)
+                    return legacy_data
 
         return None
 
     def set_market_data(
-        self, symbol: str, start_date: str, end_date: str, source: str, data: pd.DataFrame
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        source: str,
+        data: pd.DataFrame,
+        timeframe: str = "1Day",
     ) -> None:
         """
         Store market data using SQLite cache (with set-based union logic).
@@ -81,6 +99,7 @@ class CacheAdapter:
             end_date: End date
             source: Data source ("alpaca", "polygon", "alpha_vantage", "auto")
             data: OHLCV DataFrame
+            timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
         Note: TradingCacheManager handles duplicates with INSERT OR REPLACE,
         so we don't need explicit union logic. The database will automatically
@@ -89,9 +108,12 @@ class CacheAdapter:
         if data is None or data.empty:
             return
 
+        # Combine source with timeframe to create unique cache key
+        cache_source = f"{source}_{timeframe}" if timeframe != "1Day" else source
+
         # TradingCacheManager.set() extracts date range from DataFrame,
         # no need to pass start/end explicitly
-        self.cache.set(symbol, data, source=source)
+        self.cache.set(symbol, data, source=cache_source)
 
     def _check_legacy_cache(
         self, cache_dir: Path, symbol: str, start_date: str, end_date: str

@@ -8,6 +8,7 @@ integration path.
 Issue #406: Consolidate LLM services
 """
 
+import json
 import logging
 import os
 import re
@@ -205,8 +206,6 @@ class AutoGenLLMParser(InputParser):
             # Parse arguments (already a dict from AutoGen)
             args = tool_call.arguments
             if isinstance(args, str):
-                import json
-
                 args = json.loads(args)
 
             # Create TradeRequest
@@ -229,8 +228,15 @@ class AutoGenLLMParser(InputParser):
             return request
 
         except Exception as e:
-            logger.error(f"Parse error: {e}", exc_info=True)
-            raise ValueError(f"Could not parse input: {user_input}") from e
+            # Catch specific OpenAI API auth errors
+            error_str = str(e).lower()
+            if "401" in error_str or "authentication" in error_str or "api key" in error_str:
+                logger.error("OpenAI API authentication error", exc_info=True)
+                raise ValueError("Configuration error") from e
+
+            # Generic parse failure - simple message
+            logger.debug(f"Parse error for input '{user_input}': {e}", exc_info=True)
+            raise ValueError("Could not parse input") from e
 
     async def validate(self, request: TradeRequest) -> bool:
         """
@@ -271,14 +277,19 @@ User input: "{user_input}"
 
 First, determine the request_type:
 - "trade" = User wants to buy, sell, or analyze a specific ticker
-  Examples: "buy AAPL", "is SPY good?", "sell my TSLA"
+  Examples: "buy AAPL", "is SPY good?", "sell my TSLA", "10 shares AAPL"
 - "status_query" = User is asking about account status, orders, or positions
   Examples: "any open orders?", "what positions do I have?", "show my portfolio"
   Note: Words like "any", "what", "show", "check" at the start usually indicate status queries
 
 If request_type is "trade", extract:
-- ticker: Stock symbol (uppercase)
-- action: "review" (analyze), "buy", or "sell"
+- ticker: Stock symbol (uppercase, 1-5 letters)
+- action: IMPORTANT - Default to "review" (analyze) unless user explicitly says "buy" or "sell"
+  * "buy AAPL" → action="buy"
+  * "sell TSLA" → action="sell"
+  * "10 AAPL" → action="review" (quantity alone = review, NOT buy!)
+  * "AAPL" → action="review"
+  * "is AAPL good?" → action="review"
 - quantity: Number of shares if mentioned
 - price: Price if mentioned (e.g., "at 600" means price=600)
 - asset_type: "stock" (default) or "option"

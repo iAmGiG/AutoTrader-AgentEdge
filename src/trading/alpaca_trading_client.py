@@ -10,6 +10,7 @@ Phase 2: Write operations (order placement, modification, cancellation)
 
 import logging
 from datetime import time as dt_time
+from datetime import timezone
 from typing import Any, Dict, List, Optional
 
 import pytz
@@ -17,13 +18,22 @@ import pytz
 from src.utils.date_utils import get_datetime_now, get_default_timezone
 
 try:
+    from alpaca.common.exceptions import APIError
     from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import OrderClass, OrderSide, OrderType, QueryOrderStatus, TimeInForce
+    from alpaca.trading.enums import (
+        OrderClass,
+        OrderSide,
+        OrderStatus,
+        OrderType,
+        QueryOrderStatus,
+        TimeInForce,
+    )
     from alpaca.trading.requests import (
         ClosePositionRequest,
         GetOrdersRequest,
         LimitOrderRequest,
         MarketOrderRequest,
+        ReplaceOrderRequest,
         StopLimitOrderRequest,
         StopLossRequest,
         StopOrderRequest,
@@ -33,6 +43,7 @@ try:
 
     ALPACA_TRADING_AVAILABLE = True
 except ImportError:
+    APIError = None
     TradingClient = None
     GetOrdersRequest = None
     MarketOrderRequest = None
@@ -43,7 +54,9 @@ except ImportError:
     ClosePositionRequest = None
     TakeProfitRequest = None
     StopLossRequest = None
+    ReplaceOrderRequest = None
     OrderSide = None
+    OrderStatus = None
     OrderType = None
     TimeInForce = None
     QueryOrderStatus = None
@@ -69,7 +82,34 @@ class AlpacaTradingClient:
     - Safety confirmations for live trades
     - Unified API for both modes
     - Comprehensive error handling
+    - Singleton pattern per mode (prevents duplicate initialization messages)
     """
+
+    # Class-level singleton instances (one per mode)
+    _instances = {}
+
+    def __new__(cls, mode: str = "paper", require_confirmation: bool = True):
+        """
+        Singleton pattern - return existing instance for this mode if available.
+
+        Args:
+            mode: "paper" or "live"
+            require_confirmation: Extra confirmation for live trades
+
+        Returns:
+            Singleton instance for this mode
+        """
+        # Create unique key for this mode
+        key = mode
+
+        if key not in cls._instances:
+            # Create new instance
+            instance = super(AlpacaTradingClient, cls).__new__(cls)
+            cls._instances[key] = instance
+            # Mark that this instance needs initialization
+            instance._initialized = False
+
+        return cls._instances[key]
 
     def __init__(self, mode: str = "paper", require_confirmation: bool = True):
         """
@@ -82,6 +122,10 @@ class AlpacaTradingClient:
         Raises:
             ValueError: If mode is not "paper" or "live"
         """
+        # Skip initialization if already done (singleton pattern)
+        if getattr(self, "_initialized", False):
+            return
+
         if not ALPACA_TRADING_AVAILABLE:
             raise ImportError(
                 "alpaca-py SDK is required for AlpacaTradingClient. "
@@ -121,6 +165,9 @@ class AlpacaTradingClient:
         logger.warning(f"🔥 Alpaca client initialized in {mode.upper()} mode")
         if mode == "live":
             logger.warning("⚠️  LIVE TRADING MODE - Real money at risk!")
+
+        # Mark as initialized
+        self._initialized = True
 
     def _safety_check(self, action: str, details: Dict[str, Any]) -> bool:
         """
@@ -352,9 +399,8 @@ class AlpacaAccountMonitor:
                         leg_id_str = str(leg_id)
                         leg_ids.add(leg_id_str)
                         parent_map[leg_id_str] = str(order.id)
-                    logger.info(
-                        f"Bracket order {order.id} has leg IDs: {[str(leg_id) for leg_id in order.legs]}"
-                    )
+                    leg_ids = [str(leg_id) for leg_id in order.legs]
+                    logger.info(f"Bracket order {order.id} has leg IDs: {leg_ids}")
 
                 result.append(order_dict)
 
@@ -387,7 +433,8 @@ class AlpacaAccountMonitor:
 
                         if hasattr(full_order, "legs") and full_order.legs:
                             logger.info(
-                                f"Found {len(full_order.legs)} legs for bracket order {order_dict['id']} via get_order_by_id"
+                                f"Found {len(full_order.legs)} legs for bracket "
+                                f"order {order_dict['id']} via get_order_by_id"
                             )
 
                             # Fetch each leg order individually
@@ -418,10 +465,12 @@ class AlpacaAccountMonitor:
                                     order_dict["legs"].append(leg_dict)
                                     legs_found += 1
                                     logger.info(
-                                        f"  Fetched leg {leg_order.id}: {leg_order.order_type} status={leg_order.status}"
+                                        f"  Fetched leg {leg_order.id}: "
+                                        f"{leg_order.order_type} status={leg_order.status}"
                                     )
                                 except Exception as e:
-                                    # Don't spam users with leg fetch errors (common for bracket orders)
+                                    # Don't spam users with leg fetch errors
+                                    # (common for bracket orders)
                                     logger.debug(f"  Failed to fetch leg {leg_id}: {e}")
                     except Exception as e:
                         logger.warning(
@@ -709,7 +758,9 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             if warn_only:
                 # Note: We submit immediately to Alpaca - THEY queue it, not us
                 # If validation fails, order is rejected (no local queue/retry)
-                logger.warning(f"⚠️  {message} - Order will be sent to broker (may fail validation)")
+                logger.warning(
+                    f"⚠️  {message} - Order will be sent to broker " "(may fail validation)"
+                )
                 return True
             else:
                 logger.error(f"❌ {message} - Order blocked")
@@ -729,11 +780,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         """
         try:
             # Get today's orders
-            from datetime import timezone
-
-            import pytz
-            from alpaca.trading.requests import GetOrdersRequest
-
             # Get ET timezone for market day calculation
             et_tz = pytz.timezone("America/New_York")
             now_et = get_datetime_now(et_tz)
@@ -1195,7 +1241,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             self._validate_market_hours(symbol, extended_hours=False, warn_only=True)
 
             # Mode-aware logging
-            trail_desc = f"{trail_percent*100:.1f}%" if trail_percent else f"${trail_price:.2f}"
+            trail_desc = f"{trail_percent * 100:.1f}%" if trail_percent else f"${trail_price:.2f}"
             if self.client.mode == "live":
                 logger.warning(
                     f"🔥 LIVE TRAILING STOP: {side.upper()} {qty} {symbol} trail {trail_desc}"
@@ -1412,8 +1458,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             # Try to extract error code from Alpaca APIError
             try:
-                from alpaca.common.exceptions import APIError
-
                 if isinstance(e, APIError):
                     status_code = getattr(e, "status_code", None)
                     error_code = getattr(e, "code", None)
@@ -1465,7 +1509,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get current order to validate it exists
             try:
-                self.client.trading.get_order_by_id(order_id)
+                self.client.trading_client.get_order_by_id(order_id)
             except Exception:
                 return {
                     "status": "error",
@@ -1474,9 +1518,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 }
 
             # Build replacement order request
-            from alpaca.trading.enums import TimeInForce
-            from alpaca.trading.requests import ReplaceOrderRequest
-
             # Start with current order values
             replace_request_params = {}
 
@@ -1512,7 +1553,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             # Mode-aware logging
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE ORDER MODIFICATION: {order_id}")
-                if self.require_confirmation:
+                if self.client.require_confirmation:
                     confirmation = input(
                         f"Confirm LIVE order modification for {order_id}? (yes/no): "
                     )
@@ -1526,7 +1567,9 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
 
             # Replace the order
-            updated_order = self.client.trading.replace_order_by_id(order_id, replace_request)
+            updated_order = self.client.trading.replace_order_by_id(  # pylint: disable=no-member
+                order_id, replace_request
+            )
 
             return {
                 "status": "submitted",
@@ -1578,47 +1621,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             logger.error(f"❌ Failed to modify stop order {order_id}: {error_msg}")
             return False
 
-    def cancel_order(self, order_id: str) -> Dict[str, Any]:
-        """
-        Cancel an existing order.
-
-        Args:
-            order_id: ID of the order to cancel
-
-        Returns:
-            Dict with cancellation status or error information
-        """
-        try:
-            # Mode-aware logging
-            if self.client.mode == "live":
-                logger.warning(f"🔥 LIVE ORDER CANCELLATION: {order_id}")
-                if self.require_confirmation:
-                    confirmation = input(
-                        f"Confirm LIVE order cancellation for {order_id}? (yes/no): "
-                    )
-                    if confirmation.lower() != "yes":
-                        return {
-                            "status": "cancelled",
-                            "message": "Order cancellation cancelled by user",
-                            "order_id": order_id,
-                        }
-            else:
-                logger.info(f"📝 PAPER ORDER CANCELLATION: {order_id}")
-
-            # Cancel the order
-            self.client.trading.cancel_order_by_id(order_id)
-
-            return {
-                "status": "cancelled",
-                "message": "Order cancelled successfully",
-                "order_id": order_id,
-                "mode": self.client.mode,
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to cancel order {order_id}: {e}")
-            return {"status": "error", "message": str(e), "order_id": order_id}
-
     def cancel_all_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
         Cancel all open orders, optionally filtered by symbol.
@@ -1632,21 +1634,21 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get open orders
             if symbol:
-                from alpaca.trading.enums import OrderStatus
-                from alpaca.trading.requests import GetOrdersRequest
-
-                request = GetOrdersRequest(status=OrderStatus.OPEN, symbols=[symbol])
-                orders = self.client.trading.get_orders(request)
+                request = (
+                    GetOrdersRequest(  # pylint: disable=possibly-used-before-assignment,no-member
+                        status=OrderStatus.OPEN, symbols=[symbol]  # pylint: disable=no-member
+                    )
+                )
+                orders = self.client.trading_client.get_orders(request)
             else:
                 orders = self.get_orders(status="open")
                 # Convert to alpaca order objects if needed
                 if orders and isinstance(orders[0], dict):
                     # These are our formatted orders, we need the raw ones
-                    from alpaca.trading.enums import OrderStatus
-                    from alpaca.trading.requests import GetOrdersRequest
-
-                    request = GetOrdersRequest(status=OrderStatus.OPEN)
-                    orders = self.client.trading.get_orders(request)
+                    request = GetOrdersRequest(  # pylint: disable=possibly-used-before-assignment
+                        status=OrderStatus.OPEN  # pylint: disable=no-member
+                    )
+                    orders = self.client.trading.get_orders(request)  # pylint: disable=no-member
 
             if not orders:
                 return {
@@ -1662,7 +1664,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             if self.client.mode == "live":
                 logger.warning(f"🔥 LIVE BULK CANCELLATION: {order_count} orders{symbol_desc}")
-                if self.require_confirmation:
+                if self.client.require_confirmation:
                     confirmation = input(
                         f"Confirm cancelling {order_count} LIVE orders{symbol_desc}? (yes/no): "
                     )
@@ -1682,7 +1684,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             for order in orders:
                 try:
-                    self.client.trading.cancel_order_by_id(order.id)
+                    self.client.trading.cancel_order_by_id(order.id)  # pylint: disable=no-member
                     cancelled_orders.append(str(order.id))
                 except Exception as e:
                     errors.append(f"Failed to cancel {order.id}: {str(e)}")

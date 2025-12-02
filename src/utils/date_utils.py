@@ -315,13 +315,18 @@ def resolve_anchor(df, anchor_token):
 # Consolidation functions to reduce datetime import duplication across modules
 
 
-def get_datetime_now() -> datetime.datetime:
+def get_datetime_now(tz=None) -> datetime.datetime:
     """
-    Get current datetime object.
+    Get current datetime object, optionally timezone-aware.
+
+    Args:
+        tz: Optional timezone (e.g., pytz.timezone("America/New_York"))
 
     Returns:
-        Current datetime.datetime object
+        Current datetime.datetime object (timezone-aware if tz provided)
     """
+    if tz is not None:
+        return datetime.datetime.now(tz)
     return datetime.datetime.now()
 
 
@@ -680,3 +685,135 @@ def calculate_days_to_expiration(expiration_dates, trade_dates):
     days_diff = (expiration_dates - trade_dates).dt.days
 
     return days_diff
+
+
+# === US FORMAT DISPLAY HELPERS (Issue #403) ===
+# User-facing date/time formatting for CLI display
+
+
+def format_date_us(dt=None) -> str:
+    """
+    Format date in US format (MM/DD/YY) for user display.
+
+    Args:
+        dt: datetime object, date object, or string (defaults to now)
+
+    Returns:
+        Date string in MM/DD/YY format (e.g., "11/28/25")
+    """
+    if dt is None:
+        dt = datetime.datetime.now()
+    elif isinstance(dt, str):
+        dt = parse_date_string(dt)
+    elif hasattr(dt, "date"):
+        # datetime object - use as-is
+        pass
+    return dt.strftime("%m/%d/%y")
+
+
+def format_time_us(dt=None) -> str:
+    """
+    Format time in 12-hour US format with AM/PM for user display.
+
+    Args:
+        dt: datetime object (defaults to now)
+
+    Returns:
+        Time string in h:mm AM/PM format (e.g., "2:30 PM")
+    """
+    if dt is None:
+        dt = datetime.datetime.now()
+    elif isinstance(dt, str):
+        dt = parse_date_string(dt)
+
+    # Use %-I on Unix or %#I on Windows to remove leading zero
+    # Fallback to %I and strip leading zero manually for cross-platform
+    time_str = dt.strftime("%I:%M %p")
+    # Remove leading zero from hour (e.g., "02:30 PM" -> "2:30 PM")
+    if time_str.startswith("0"):
+        time_str = time_str[1:]
+    return time_str
+
+
+def format_datetime_us(dt=None, include_time: bool = True) -> str:
+    """
+    Format datetime in US format for user display.
+
+    Args:
+        dt: datetime object (defaults to now)
+        include_time: Whether to include time (default True)
+
+    Returns:
+        Datetime string in "MM/DD/YY h:mm AM" format
+        or just "MM/DD/YY" if include_time=False
+    """
+    if dt is None:
+        dt = datetime.datetime.now()
+    elif isinstance(dt, str):
+        dt = parse_date_string(dt)
+
+    date_str = format_date_us(dt)
+    if include_time:
+        time_str = format_time_us(dt)
+        return f"{date_str} {time_str}"
+    return date_str
+
+
+def format_data_status(
+    symbol: str,
+    source: str = "live",
+    dt=None,
+    include_time: bool = True,
+) -> str:
+    """
+    Format a clean data status message for CLI display.
+
+    Args:
+        symbol: Stock symbol (e.g., "TQQQ")
+        source: Data source - "live", "cache", or custom string
+        dt: datetime for the data (defaults to now)
+        include_time: Whether to include time in output
+
+    Returns:
+        Formatted status string like "📊 TQQQ | 11/28/25 2:30 PM | Live data"
+
+    Example:
+        >>> format_data_status("AAPL", "live")
+        '📊 AAPL | 11/28/25 2:30 PM | Live data'
+        >>> format_data_status("MSFT", "cache", include_time=False)
+        '�� MSFT | 11/28/25 | Cached (market closed)'
+    """
+    if dt is None:
+        dt = datetime.datetime.now()
+
+    datetime_str = format_datetime_us(dt, include_time=include_time)
+
+    # Format source string
+    if source.lower() == "live":
+        source_str = "Live data"
+    elif source.lower() == "cache":
+        source_str = "Cached (market closed)"
+    else:
+        source_str = source
+
+    return f"📊 {symbol} | {datetime_str} | {source_str}"
+
+
+def today_us() -> str:
+    """
+    Get today's date in US format (MM/DD/YY).
+
+    Returns:
+        Today's date string (e.g., "11/28/25")
+    """
+    return format_date_us(datetime.datetime.now())
+
+
+def now_us() -> str:
+    """
+    Get current datetime in US format.
+
+    Returns:
+        Current datetime string (e.g., "11/28/25 2:30 PM")
+    """
+    return format_datetime_us(datetime.datetime.now())

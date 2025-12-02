@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """
-Orchestrator - Coordinates multi-agent trading conversations
-Part of RH2MAS AutoGen trading system
+Orchestrator - Legacy wrapper for backward compatibility
+
+This module provides backward compatibility with the old TradingOrchestrator API.
+New code should use trading_orchestrator.TradingOrchestrator directly.
+
+Refactored to use AgentFactory and AgentBus (Issue #390).
+Enhanced with full workflow management (Issue #389).
 """
 
 import os
@@ -14,35 +19,66 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from config_defaults.trading_config import TradingConfig
 
-from src.autogen_agents.executor_agent import create_executor_agent
-from src.autogen_agents.risk_agent import create_risk_agent
-from src.autogen_agents.scanner_agent import create_scanner_agent
-from src.autogen_agents.voter_agent import create_voter_agent
-from src.human_interface.decision_formatter import DecisionFormatter
+from src.autogen_agents.agent_bus import EventType, get_agent_bus
+
+# Agent Infrastructure (Issue #390)
+from src.autogen_agents.agent_factory import AgentType, get_agent_factory
+
+# New TradingOrchestrator (Issue #389)
+
+# Lazy import to avoid circular dependency with cli_interface
+DecisionFormatter = None
+
+
+def _get_decision_formatter():
+    global DecisionFormatter
+    if DecisionFormatter is None:
+        from src.cli.decision_formatter import DecisionFormatter as DF
+
+        DecisionFormatter = DF
+    return DecisionFormatter
 
 
 class TradingOrchestrator:
     """
     Main orchestrator that coordinates multi-agent trading conversations.
     Manages the flow from market scanning to trade execution with human oversight.
+
+    Uses AgentFactory for agent creation and AgentBus for event-driven coordination.
     """
 
     def __init__(self, initial_capital: float = 100000):
         self.config = TradingConfig()
         self.initial_capital = initial_capital
 
-        # Initialize agents
-        self.scanner_agent = create_scanner_agent()
-        self.voter_agent = create_voter_agent()
-        self.risk_agent = create_risk_agent()
-        self.executor_agent = create_executor_agent(initial_capital)
+        # Get factory and bus singletons
+        self._factory = get_agent_factory()
+        self._bus = get_agent_bus()
 
-        # Human interface
-        self.decision_formatter = DecisionFormatter()
+        # Initialize agents via factory
+        self._scanner_instance = self._factory.create(AgentType.SCANNER)
+        self._voter_instance = self._factory.create(AgentType.VOTER)
+        self._risk_instance = self._factory.create(AgentType.RISK)
+        self._executor_instance = self._factory.create(
+            AgentType.EXECUTOR,
+            config_override={"extra_config": {"initial_capital": initial_capital}},
+        )
+
+        # Extract agent objects for backward compatibility
+        self.scanner_agent = self._scanner_instance.agent
+        self.voter_agent = self._voter_instance.agent
+        self.risk_agent = self._risk_instance.agent
+        self.executor_agent = self._executor_instance.agent
+
+        # Human interface (lazy loaded to avoid circular import)
+        self.decision_formatter = _get_decision_formatter()()
 
         # Conversation state
         self.active_conversations = {}
         self.trading_enabled = True
+
+        # Subscribe to key events for logging/monitoring
+        self._setup_event_subscriptions()
 
     def scan_and_analyze(self, symbols: Optional[List[str]] = None) -> Dict[str, Any]:
         """
@@ -272,9 +308,10 @@ class TradingOrchestrator:
             [
                 "🔧 CONFIGURATION:",
                 "-" * 20,
-                f"MACD: {macd_config.fast_period}/{macd_config.slow_period}/{macd_config.signal_period}",
+                f"MACD: {macd_config.fast}/{macd_config.slow}/{macd_config.signal}",
                 f"RSI: {self.config.get_rsi_config().period} period",
-                f"Exit Strategy: +{exit_config.take_profit_pct:.1%} TP / -{exit_config.stop_loss_pct:.1%} SL",
+                f"Exit Strategy: +{exit_config.take_profit_pct:.1%} TP / "
+                f"-{exit_config.stop_loss_pct:.1%} SL",
                 "",
             ]
         )
@@ -295,11 +332,41 @@ class TradingOrchestrator:
             analysis_results["validated_trades"], analysis_results["account_status"]
         )
 
+    def _setup_event_subscriptions(self):
+        """Subscribe to key events for monitoring and logging."""
+
+        # Log all trade executions
+        def log_trade(msg):
+            symbol = msg.symbol or "UNKNOWN"
+            order_id = msg.payload.get("order_id", "N/A")
+            print(f"[Orchestrator] Trade executed: {symbol} - Order {order_id}")
+
+        # Log position updates
+        def log_position(msg):
+            symbol = msg.symbol or "UNKNOWN"
+            print(f"[Orchestrator] Position updated: {symbol}")
+
+        self._bus.subscribe("orchestrator", EventType.TRADE_EXECUTED, log_trade)
+        self._bus.subscribe("orchestrator", EventType.POSITION_UPDATED, log_position)
+
+    def get_factory_stats(self) -> dict:
+        """Get agent factory statistics."""
+        return self._factory.get_factory_stats()
+
+    def get_bus_stats(self) -> dict:
+        """Get agent bus statistics."""
+        return self._bus.get_stats()
+
     def shutdown(self):
         """Gracefully shutdown the orchestrator."""
         print("🔄 Shutting down trading orchestrator...")
         self.trading_enabled = False
         self.active_conversations.clear()
+
+        # Unsubscribe from events
+        self._bus.unsubscribe("orchestrator", EventType.TRADE_EXECUTED)
+        self._bus.unsubscribe("orchestrator", EventType.POSITION_UPDATED)
+
         print("✅ Orchestrator shutdown complete")
 
 

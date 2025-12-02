@@ -539,3 +539,87 @@ The CLI Trade Assistant (#308) delivers a production-ready human-in-loop trading
 
 *Last Updated: November 8, 2025*
 *Status: ✅ Complete - Production Ready*
+
+---
+
+## Help System (Issue #369)
+
+**Status**: ✅ Complete (November 27, 2025)
+
+### Overview
+
+The CLI now includes an interactive help system with categorized commands, keyword search, and detailed examples.
+
+### Usage
+
+```bash
+# Show all commands (categorized)
+/help
+
+# Get help for specific command
+/help buy
+/help morning-routine
+
+# Search by keyword
+/help search order
+/help search stop
+
+# Show trading tips for beginners
+/tips
+```
+
+### Features
+
+- **Categorized Commands**: workflow, trading, status, config, system
+- **Keyword Search**: Find commands by searching descriptions and tags
+- **Command Aliases**: Multiple ways to invoke commands
+- **Related Commands**: Suggestions for related functionality
+- **Detailed Examples**: Usage patterns for each command
+
+### Implementation
+
+- **File**: `src/cli/help_system.py`
+- **Class**: `HelpSystem` - Centralized command documentation
+- **Integration**: `CLISession._handle_command()` routes `/help` requests
+
+### Command Categories
+
+**WORKFLOW** - Daily trading routines
+
+- `morning-routine` - Market scan and analysis
+- `approve/reject` - Human-in-loop trade approval
+- `monitor` - Position monitoring
+- `evening-summary` - End-of-day report
+
+**TRADING** - Execute trades
+
+- `buy` - Place buy orders
+- `sell` - Close positions
+- `cancel` - Cancel pending orders
+
+**STATUS** - Portfolio and positions
+
+- `show portfolio` - Account overview
+- `show positions` - Active holdings
+- `show orders` - Open and recent orders
+- `check my alerts` - Stop/target alerts
+
+**CONFIG** - Settings
+
+- `set execution-mode` - CONFIRM/AUTO/PAPER/DISABLED
+- `show execution-mode` - Current mode
+- `show config` - Trading configuration
+
+**SYSTEM** - CLI controls
+
+- `/help` - Help system
+- `/exit` - Exit CLI
+- `/toggle` - Toggle execution mode
+- `/tips` - Trading education
+
+### Future Enhancements
+
+- Context-aware help (show help for current workflow step)
+- Command history with arrow keys (#362)
+- Interactive tutorials
+- Command completion/suggestions

@@ -226,7 +226,7 @@ class PolygonHistoricalData:
                     f"Free tier limitation for {ticker}: Historical data may not be available. Consider using recent dates or upgrading to paid tier."
                 )
             else:
-                logger.error(f"Failed to fetch prices for {ticker}: {e}")
+                logger.debug(f"Failed to fetch prices for {ticker}: {e}")
             return pd.DataFrame()
 
     def fetch_ticker_news(

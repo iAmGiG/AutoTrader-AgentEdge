@@ -360,7 +360,7 @@ class NewsGovernor:
         status = self.get_quota_status()
 
         print("\n📊 NEWS GOVERNOR QUOTA SUMMARY")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
         print(f"Strategy: {self.sampling_strategy}")
         print(
             f"API Calls Made: {status['api_calls_made']}/{self.max_calls_per_test} ({status['quota_usage_pct']}%)"

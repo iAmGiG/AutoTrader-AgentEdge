@@ -16,6 +16,7 @@ from alpaca.trading.requests import (
     OrderClass,
     OrderSide,
     StopLossRequest,
+    StopOrderRequest,
     TakeProfitRequest,
     TimeInForce,
 )
@@ -149,7 +150,8 @@ class OrderManager:
             self.pending_orders[order.id] = entry_order
 
             logger.info(
-                f"Bracket order placed: BUY {qty} {symbol} @ Stop:{stop_price} Target:{target_price} (ID: {order.id})"
+                f"Bracket order placed: BUY {qty} {symbol} "
+                f"@ Stop:{stop_price} Target:{target_price} (ID: {order.id})"
             )
 
             return {
@@ -262,7 +264,9 @@ class OrderManager:
                     orders_to_remove.append(order_id)
 
                     logger.info(
-                        f"Order filled: {current_order['side']} {current_order['filled_qty']} {current_order['symbol']} @ ${current_order['filled_avg_price']}"
+                        f"Order filled: {current_order['side']} "
+                        f"{current_order['filled_qty']} {current_order['symbol']} "
+                        f"@ ${current_order['filled_avg_price']}"
                     )
 
                 elif status in ["cancelled", "expired", "rejected"]:
@@ -298,6 +302,80 @@ class OrderManager:
         except Exception as e:
             logger.error(f"Failed to cancel order {order_id}: {e}")
             return False
+
+    def replace_stop_order(
+        self, order_id: str, new_stop_price: float, symbol: str = None, qty: int = None
+    ) -> Dict[str, Any]:
+        """
+        Replace an existing stop order with a new stop price.
+
+        Alpaca doesn't support modifying stop orders directly - we must cancel and replace.
+        This implements the cancel-replace pattern for trailing stop updates.
+
+        Args:
+            order_id: ID of the stop order to replace
+            new_stop_price: New stop price (must be higher than current for long positions)
+            symbol: Symbol (required if not in pending_orders cache)
+            qty: Quantity (required if not in pending_orders cache)
+
+        Returns:
+            Dict with new order details or error
+        """
+        try:
+            # Get existing order details if not provided
+            if symbol is None or qty is None:
+                existing_order = self.position_manager.get_order(order_id)
+                if existing_order:
+                    symbol = symbol or existing_order.get("symbol")
+                    qty = qty or int(existing_order.get("qty", 0))
+                else:
+                    return {"error": f"Order {order_id} not found and symbol/qty not provided"}
+
+            if not symbol or not qty:
+                return {"error": "Missing symbol or quantity for stop order replacement"}
+
+            # Step 1: Cancel existing stop order
+            logger.info(f"Replacing stop order {order_id}: cancelling old order...")
+            cancel_success = self.cancel_order(order_id)
+            if not cancel_success:
+                return {"error": f"Failed to cancel existing stop order {order_id}"}
+
+            # Small delay to ensure cancellation is processed
+            time.sleep(0.5)
+
+            # Step 2: Place new stop order at updated price
+            logger.info(f"Placing new stop order for {symbol} at ${new_stop_price:.2f}")
+            order_request = StopOrderRequest(
+                symbol=symbol,
+                qty=qty,
+                side=OrderSide.SELL,
+                stop_price=new_stop_price,
+                time_in_force=TimeInForce.GTC,
+            )
+
+            order = self.broker.submit_order(order_data=order_request)
+
+            order_data = {
+                "id": order.id,
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": order.side.value,
+                "order_type": order.order_type.value,
+                "stop_price": float(order.stop_price) if order.stop_price else new_stop_price,
+                "status": order.status.value,
+                "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
+                "replaced_order_id": order_id,
+            }
+
+            # Track new order
+            self.pending_orders[order.id] = order_data
+
+            logger.info(f"Stop order replaced: {order_id} -> {order.id} at ${new_stop_price:.2f}")
+            return order_data
+
+        except Exception as e:
+            logger.error(f"Failed to replace stop order {order_id}: {e}")
+            return {"error": str(e)}
 
     def cancel_all_orders(self) -> int:
         """Cancel all pending orders."""

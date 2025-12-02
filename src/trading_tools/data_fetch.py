@@ -4,18 +4,21 @@ Market Data Fetching - Pure Functions
 Clean interface for market data retrieval with caching.
 """
 
-import sys
+import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import pandas as pd
 
-# Add data sources to path
-sys.path.append(str(Path(__file__).parent.parent / "data_sources"))
+from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
 
 
 def fetch_market_data(
-    symbol: str, start_date: str, end_date: str, use_cache: bool = True
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    use_cache: bool = True,
+    timeframe: str = "1Day",
 ) -> Optional[pd.DataFrame]:
     """
     Fetch market data for a symbol and date range.
@@ -25,6 +28,7 @@ def fetch_market_data(
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
         use_cache: Whether to use cached data first
+        timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
     Returns:
         DataFrame with OHLCV data or None if failed
@@ -35,11 +39,8 @@ def fetch_market_data(
             if cached_data is not None:
                 return cached_data
 
-        # Try to use existing market data tools
-        from data_sources.sources.market.unified_market_tool import UnifiedMarketTool
-
-        market_tool = UnifiedMarketTool()
-        data = market_tool.get_historical_data(symbol, start_date, end_date)
+        # Fetch using unified market data function
+        data = fetch_unified_market_data(symbol, start_date, end_date, timeframe=timeframe)
 
         if data is not None and not data.empty:
             # Standardize column names
@@ -144,8 +145,6 @@ def get_current_price(symbol: str) -> Optional[float]:
     """
     try:
         # Get recent data (last few days)
-        import datetime
-
         end_date = datetime.date.today()
         start_date = end_date - datetime.timedelta(days=5)
 

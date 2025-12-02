@@ -125,8 +125,11 @@ ipython_config.py
 .cache/**/*.csv
 deprecated/**/*.csv
 
-# Configuration files (contain API keys)
+# Configuration files (contain sensitive API keys)
+# config/ = entire directory excluded (sensitive credentials)
+# config_defaults/ = tracked in git (non-sensitive defaults)
 config/
+config/config.json
 
 # Internal documentation
 CLAUDE.md

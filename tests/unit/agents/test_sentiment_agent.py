@@ -1,6 +1,18 @@
 """
 Test script for the enhanced SentimentAgent with LLM function calling capabilities
+
+NOTE: V0-V4 Sentiment agents were deprecated and moved to src/deprecated/v0_v4_agents/
+This test file is kept for historical reference but skipped since the module no longer exists.
 """
+
+import pytest
+
+# Skip entire module - V0 sentiment agent was deprecated
+pytest.skip(
+    "V0SentimentAgent was deprecated (see src/deprecated/v0_v4_agents/). "
+    "Tests kept for reference.",
+    allow_module_level=True,
+)
 
 import logging
 import os

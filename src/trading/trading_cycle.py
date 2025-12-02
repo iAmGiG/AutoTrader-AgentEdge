@@ -14,8 +14,11 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 from src.utils.date_utils import get_datetime_now, now_iso
 
@@ -26,6 +29,7 @@ from config_defaults.trading_config import TradingConfig
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.trailing_stop_manager import TrailingStopManager
 from src.trading_tools.position_tracker import PositionTracker
 
 logger = logging.getLogger(__name__)
@@ -100,8 +104,29 @@ class CostEfficientTradeCycle:
     - Crash recovery rebuilds state from broker truth
     """
 
-    def __init__(self, state_file: str = "state/cost_efficient_positions.json"):
+    def __init__(self, state_file: str = None):
+        # Load path configuration from config_defaults/paths_config.yaml
+        config_path = os.path.join("config_defaults", "paths_config.yaml")
+        try:
+            with open(config_path) as f:
+                paths_config = yaml.safe_load(f)
+                self.paths = paths_config
+                logger.info(f"Loaded paths config from {config_path}")
+        except FileNotFoundError:
+            logger.warning(f"Paths config not found at {config_path}, using hardcoded defaults")
+            # Fallback to hardcoded defaults
+            self.paths = {
+                "state_files": {"cost_efficient": "state/cost_efficient_positions.json"},
+                "report_templates": {"daily_routine": "reports/daily/{date}_{routine_type}.md"},
+            }
+
+        # Use config value if state_file not explicitly provided
+        if state_file is None:
+            state_file = self.paths.get("state_files", {}).get(
+                "cost_efficient", "state/cost_efficient_positions.json"
+            )
         self.state_file = state_file
+
         self.market_data = AlpacaMarketData()
         self.account_monitor = AlpacaAccountMonitor(mode="paper")
         self.order_manager = AlpacaOrderManager(mode="paper")
@@ -116,13 +141,30 @@ class CostEfficientTradeCycle:
             alert_cooldown_seconds=300,  # 5 minutes between alerts
         )
 
+        # Initialize trailing stop manager for dynamic stop adjustments
+        # Note: Uses None for order_manager since we use batch_modify_orders() for broker calls
+        self.trailing_stop_manager = TrailingStopManager(
+            order_manager=None,  # We handle broker calls separately via batch_modify_orders()
+            config=self.config,
+        )
+
         # Ensure state directory exists
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
 
         # Load local state
         self.local_state = self.load_local_state()
 
-        logger.info("CostEfficientTradeCycle initialized with alert monitoring")
+        # Issue #337: Broker state caching to reduce API calls
+        self.broker_state_cache: Optional[Dict[str, Any]] = None
+        self.cache_timestamp: Optional[datetime] = None
+        self.cache_ttl_seconds: int = 60  # 1 minute cache TTL
+
+        # Issue #337 Phase 2: Piggyback alert updates
+        self.cached_alerts: List[Any] = []  # PositionAlertSummary objects
+        self.last_alert_check: Optional[datetime] = None
+        self.alert_refresh_interval: int = 300  # 5 minutes between alert checks
+
+        logger.info("CostEfficientTradeCycle initialized with alert monitoring and state caching")
 
     def load_local_state(self) -> Dict[str, Any]:
         """Load local JSON state (for human reference)"""
@@ -161,11 +203,28 @@ class CostEfficientTradeCycle:
         except IOError as e:
             logger.error(f"Failed to save state: {e}")
 
-    def fetch_broker_state(self) -> Dict[str, Any]:
+    def fetch_broker_state(self, force_refresh: bool = False) -> Dict[str, Any]:
         """
-        Single API call to get all positions and orders from broker.
+        Get all positions and orders from broker with smart caching.
         This is the source of truth.
+
+        Issue #337: Added caching to reduce API calls. Cache TTL is 60 seconds.
+
+        Args:
+            force_refresh: If True, bypass cache and fetch fresh data from broker
+
+        Returns:
+            Dict with positions, orders, account info, and timestamp
         """
+        # Check if cached data is still valid
+        if not force_refresh and self.broker_state_cache is not None:
+            cache_age = (get_datetime_now() - self.cache_timestamp).total_seconds()
+            if cache_age < self.cache_ttl_seconds:
+                logger.debug(f"Using cached broker state (age: {cache_age:.1f}s)")
+                return self.broker_state_cache
+
+        logger.debug("Cache miss or force_refresh - fetching from broker")
+
         try:
             # Get all positions (one API call)
             positions = self.account_monitor.get_positions()
@@ -264,11 +323,98 @@ class CostEfficientTradeCycle:
                 f"total {len(orders)} orders"
             )
 
+            # Issue #337: Cache the broker state
+            self.broker_state_cache = broker_state
+            self.cache_timestamp = get_datetime_now()
+
+            # Issue #337 Phase 2: Piggyback alert check if enough time has passed
+            self._maybe_refresh_alerts(broker_state)
+
             return broker_state
 
         except Exception as e:
             logger.error(f"Failed to fetch broker state: {e}")
             raise
+
+    def invalidate_broker_cache(self):
+        """
+        Invalidate the broker state cache.
+
+        Issue #337: Call this after placing/modifying/cancelling orders
+        to ensure the next fetch_broker_state() gets fresh data.
+        """
+        self.broker_state_cache = None
+        self.cache_timestamp = None
+        logger.debug("Broker state cache invalidated")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics for debugging/monitoring.
+
+        Returns:
+            Dict with cache_valid, cache_age_seconds, ttl_seconds
+        """
+        if self.broker_state_cache is None:
+            return {
+                "cache_valid": False,
+                "cache_age_seconds": None,
+                "ttl_seconds": self.cache_ttl_seconds,
+            }
+
+        cache_age = (get_datetime_now() - self.cache_timestamp).total_seconds()
+        return {
+            "cache_valid": cache_age < self.cache_ttl_seconds,
+            "cache_age_seconds": round(cache_age, 1),
+            "ttl_seconds": self.cache_ttl_seconds,
+        }
+
+    def _should_refresh_alerts(self) -> bool:
+        """
+        Check if alerts should be refreshed.
+
+        Returns:
+            True if enough time has passed since last alert check
+        """
+        if self.last_alert_check is None:
+            return True
+        elapsed = (get_datetime_now() - self.last_alert_check).total_seconds()
+        return elapsed >= self.alert_refresh_interval
+
+    def _maybe_refresh_alerts(self, broker_state: Dict[str, Any]):
+        """
+        Opportunistically refresh alerts if enough time has passed.
+
+        Issue #337 Phase 2: This is called from fetch_broker_state() to
+        "piggyback" alert checks on broker state fetches without additional API calls.
+
+        Args:
+            broker_state: Current broker state (already fetched)
+        """
+        if not self._should_refresh_alerts():
+            return
+
+        try:
+            self.cached_alerts = self.check_position_alerts(broker_state)
+            self.last_alert_check = get_datetime_now()
+            logger.debug(f"Background alert refresh: {len(self.cached_alerts)} alerts")
+        except Exception as e:
+            logger.warning(f"Failed to refresh alerts: {e}")
+
+    def get_current_alerts(self) -> List[Any]:
+        """
+        Get cached alerts without additional API calls.
+
+        Issue #337 Phase 2: Returns cached alerts. If alerts are stale or missing,
+        triggers a broker state fetch which will refresh alerts via piggyback.
+
+        Returns:
+            List of PositionAlertSummary objects
+        """
+        if not self.cached_alerts or self._should_refresh_alerts():
+            # Trigger broker fetch which will piggyback alert refresh
+            self.fetch_broker_state()
+
+        return self.cached_alerts
 
     def _extract_stop_target_from_orders(
         self, symbol: str, broker_state: Dict[str, Any], entry_price: float = None
@@ -303,7 +449,8 @@ class CostEfficientTradeCycle:
                 order_type_str = str(order_type).lower() if order_type else ""
 
                 logger.debug(
-                    f"  Order: type={order_type_str}, side={side_str}, stop={order.get('stop_price')}, limit={order.get('limit_price')}"
+                    f"  Order: type={order_type_str}, side={side_str}, "
+                    f"stop={order.get('stop_price')}, limit={order.get('limit_price')}"
                 )
 
                 # Stop-loss order: sell order with stop_price set (for long positions)
@@ -342,7 +489,8 @@ class CostEfficientTradeCycle:
             )
 
         logger.info(
-            f"{symbol}: Extracted stop=${stop_price} (verified={stop_verified}), target=${target_price}"
+            f"{symbol}: Extracted stop=${stop_price} (verified={stop_verified}), "
+            f"target=${target_price}"
         )
 
         return stop_price, target_price, stop_verified
@@ -449,7 +597,8 @@ class CostEfficientTradeCycle:
                 if stop_price != local_stop or target_price != local_target:
                     logger.info(
                         f"{symbol}: Syncing stop/target from orders - "
-                        f"stop: {local_stop} -> {stop_price}, target: {local_target} -> {target_price}"
+                        f"stop: {local_stop} -> {stop_price}, "
+                        f"target: {local_target} -> {target_price}"
                     )
                     local_pos["stop_price"] = stop_price
                     local_pos["target_price"] = target_price
@@ -460,7 +609,9 @@ class CostEfficientTradeCycle:
     def calculate_stop_adjustments(self, broker_state: Dict[str, Any]) -> List[StopAdjustment]:
         """
         Calculate which stops need adjustment based on current prices.
-        Uses the same progressive stop logic from trade_lifecycle.py
+
+        Uses TrailingStopManager for progressive stop logic calculation.
+        Broker communication is handled separately by batch_modify_orders().
         """
         adjustments = []
 
@@ -472,38 +623,43 @@ class CostEfficientTradeCycle:
             entry_price = float(local_pos.get("entry_price", 0))
             current_price = broker_pos["current_price"]
             current_stop = local_pos.get("stop_price")
+            quantity = int(broker_pos.get("quantity", 0))
 
             if not entry_price or not current_stop:
                 continue  # No entry price or stop to adjust
 
-            # Calculate profit percentage
+            # Register position with TrailingStopManager if not already tracked
+            if symbol not in self.trailing_stop_manager.stop_states:
+                self.trailing_stop_manager.register_position(
+                    symbol=symbol,
+                    entry_price=entry_price,
+                    initial_stop=current_stop,
+                    quantity=quantity,
+                    stop_order_id=None,  # We find this separately from broker_state
+                )
+
+            # Use TrailingStopManager to calculate new stop price
+            # This centralizes the progressive stop logic (2%, 4%, 6% thresholds)
+            new_stop = self.trailing_stop_manager.calculate_new_stop(symbol, current_price)
+
+            if new_stop is None:
+                continue  # No adjustment needed
+
+            # Calculate profit percentage for reporting
             profit_percent = (current_price - entry_price) / entry_price
 
-            # Progressive stop adjustment logic with enhanced logging
-            new_stop = None
-            reason = ""
-
-            if profit_percent < 0.02:  # Under 2% profit
-                # Don't adjust stop - position too early
-                logger.debug(
-                    f"{symbol}: No stop adjustment - profit {profit_percent:.1%} < 2% threshold"
-                )
-                continue
-            elif profit_percent < 0.04:  # 2-4% profit
-                new_stop = entry_price  # Move to breakeven
+            # Determine reason based on profit level (for reporting)
+            if profit_percent < 0.04:
                 reason = f"Move to breakeven ({profit_percent:.1%} profit)"
-                logger.info(f"{symbol}: Stop adjustment recommended - {reason}")
-            elif profit_percent < 0.06:  # 4-6% profit
-                new_stop = entry_price + (current_price - entry_price) * 0.25  # Lock 25%
+            elif profit_percent < 0.06:
                 reason = f"Lock 25% gains ({profit_percent:.1%} profit)"
-                logger.info(f"{symbol}: Stop adjustment recommended - {reason}")
-            else:  # Over 6% profit
-                new_stop = entry_price + (current_price - entry_price) * 0.50  # Trail 50%
+            else:
                 reason = f"Trail 50% gains ({profit_percent:.1%} profit)"
-                logger.info(f"{symbol}: Stop adjustment recommended - {reason}")
+
+            logger.info(f"{symbol}: Stop adjustment recommended - {reason}")
 
             # Only adjust if new stop is higher than current stop
-            if new_stop and new_stop > current_stop + 0.01:  # $0.01 minimum move
+            if new_stop > current_stop + 0.01:  # $0.01 minimum move
                 # Find the stop order ID from broker orders
                 stop_order_id = None
                 if symbol in broker_state["orders"]:
@@ -535,13 +691,18 @@ class CostEfficientTradeCycle:
 
                     # Update local state
                     self.local_state["positions"][symbol]["stop_price"] = new_stop
+
+                    # Update TrailingStopManager state to stay in sync
+                    if symbol in self.trailing_stop_manager.stop_states:
+                        self.trailing_stop_manager.stop_states[symbol].current_stop = new_stop
                 else:
                     logger.warning(
                         f"{symbol}: Stop adjustment needed but no stop order found in broker orders"
                     )
-            elif new_stop:
+            else:
                 logger.debug(
-                    f"{symbol}: New stop ${new_stop:.2f} not significantly higher than current ${current_stop:.2f}"
+                    f"{symbol}: New stop ${new_stop:.2f} not significantly higher "
+                    f"than current ${current_stop:.2f}"
                 )
 
         logger.info(f"Found {len(adjustments)} stop adjustments needed")
@@ -662,10 +823,15 @@ class CostEfficientTradeCycle:
                 results["success"] = False
 
         summary = (
-            f"Stop adjustment batch complete: {results['modifications']}/{len(adjustments)} successful, "
+            f"Stop adjustment batch complete: "
+            f"{results['modifications']}/{len(adjustments)} successful, "
             f"{len(results['errors'])} errors"
         )
         logger.info(summary)
+
+        # Issue #337: Invalidate cache after modifying orders
+        if results["modifications"] > 0:
+            self.invalidate_broker_cache()
 
         return results
 
@@ -758,10 +924,11 @@ class CostEfficientTradeCycle:
 
             for summary in summaries:
                 pl_sign = "+" if summary.unrealized_pl >= 0 else ""
+                pl_str = f"{pl_sign}${summary.unrealized_pl:.0f} ({summary.unrealized_percent:.1%})"
                 report_lines.append(
-                    f"| {summary.symbol} | ${summary.entry_price:.2f} | ${summary.current_price:.2f} | "
-                    f"${summary.stop_price:.2f} | ${summary.target_price:.2f} | "
-                    f"{pl_sign}${summary.unrealized_pl:.0f} ({summary.unrealized_percent:.1%}) | {summary.stop_action} |"
+                    f"| {summary.symbol} | ${summary.entry_price:.2f} | "
+                    f"${summary.current_price:.2f} | ${summary.stop_price:.2f} | "
+                    f"${summary.target_price:.2f} | {pl_str} | {summary.stop_action} |"
                 )
             report_lines.append("")
         else:
@@ -799,7 +966,8 @@ class CostEfficientTradeCycle:
             info_count = len([a for a in alerts if a.severity == "INFO"])
 
             report_lines.append(
-                f"Total Alerts: {len(alerts)} (🚨 {critical_count} Critical, ⚠️ {warning_count} Warning, 📊 {info_count} Info)"
+                f"Total Alerts: {len(alerts)} "
+                f"({critical_count} Critical, {warning_count} Warning, {info_count} Info)"
             )
             report_lines.append("")
 
@@ -832,8 +1000,9 @@ class CostEfficientTradeCycle:
                 f"Next {next_routine} routine: {next_time}",
                 "Cost: ~3-5 API calls total",
                 "",
-                "⚠️ **Note**: Stop prices calculated from entry price (Alpaca hides bracket order stop-loss legs from API).",
-                "   Verify stop orders exist on Alpaca dashboard. See Issue #355 for details.",
+                "**Note**: Stop prices calculated from entry price "
+                "(Alpaca hides bracket order stop-loss legs from API).",
+                "Verify stop orders exist on Alpaca dashboard. See Issue #355.",
             ]
         )
 
@@ -882,7 +1051,12 @@ class CostEfficientTradeCycle:
             # If multiple runs same day, append counter: morning_2.md, morning_3.md
             now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
-            base_name = f"reports/daily/{date_str}_morning"
+
+            # Get report path template from config
+            template = self.paths.get("report_templates", {}).get(
+                "daily_routine", "reports/daily/{date}_{routine_type}.md"
+            )
+            base_name = template.format(date=date_str, routine_type="morning").replace(".md", "")
 
             # Check for existing files and append counter if needed
             report_file = f"{base_name}.md"
@@ -931,7 +1105,12 @@ class CostEfficientTradeCycle:
             # If multiple runs same day, append counter: evening_2.md, evening_3.md
             now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
-            base_name = f"reports/daily/{date_str}_evening"
+
+            # Get report path template from config
+            template = self.paths.get("report_templates", {}).get(
+                "daily_routine", "reports/daily/{date}_{routine_type}.md"
+            )
+            base_name = template.format(date=date_str, routine_type="evening").replace(".md", "")
 
             # Check for existing files and append counter if needed
             report_file = f"{base_name}.md"
@@ -1016,7 +1195,12 @@ class CostEfficientTradeCycle:
             # Recovery is ad-hoc, so include counter for multiple recoveries same day
             now = get_datetime_now()
             date_str = now.strftime("%Y-%m-%d")
-            base_name = f"reports/daily/{date_str}_recovery"
+
+            # Get report path template from config
+            template = self.paths.get("report_templates", {}).get(
+                "daily_routine", "reports/daily/{date}_{routine_type}.md"
+            )
+            base_name = template.format(date=date_str, routine_type="recovery").replace(".md", "")
 
             # Check for existing files and append counter if needed
             report_file = f"{base_name}.md"
