@@ -50,6 +50,49 @@ from src.utils.safe_print import safe_print
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_error_message(error: Exception) -> str:
+    """
+    Sanitize error messages to remove API keys and sensitive details.
+
+    Returns simple user-friendly messages based on error type.
+    Full details are logged separately for debugging.
+    """
+    error_str = str(error).lower()
+
+    # API key patterns to sanitize
+    if "api" in error_str and (
+        "key" in error_str or "401" in error_str or "authentication" in error_str
+    ):
+        return "Configuration error. Nothing done."
+
+    # Parse errors
+    if "could not parse" in error_str or "parse error" in error_str:
+        return "Didn't understand that. Nothing done."
+
+    # Ticker validation errors
+    if (
+        ("asset" in error_str and "not found" in error_str)
+        or "ticker" in error_str
+        or "ticker not found" in error_str
+    ):
+        return "Didn't understand that. Nothing done."
+
+    # Data availability errors
+    if (
+        "no data" in error_str
+        or "insufficient data" in error_str
+        or "data unavailable" in error_str
+    ):
+        return "Didn't understand that. Nothing done."
+
+    # Invalid request errors
+    if "invalid request" in error_str or "invalid format" in error_str:
+        return "Didn't understand that. Nothing done."
+
+    # Generic fallback
+    return "Didn't understand that. Nothing done."
+
+
 # Arrow key history navigation (#362) and advanced readline features (#399)
 # Note: Tab completion works in cmd.exe and Git Bash, but NOT in PowerShell
 # PowerShell uses PSReadLine which has its own completion system
@@ -424,7 +467,8 @@ class CLISession:
             except Exception as e:
                 # Use ASCII error prefix on Windows
                 error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
-                print(f"\n{error_prefix} Error: {e}")
+                sanitized_msg = _sanitize_error_message(e)
+                print(f"\n{error_prefix} {sanitized_msg}")
                 logger.error(f"CLI error: {e}", exc_info=True)
                 # Don't show traceback to user - it's logged
 
@@ -834,6 +878,23 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # Timeframe management (Issue #365)
             await self._handle_timeframe_request(user_input)
 
+        elif any(
+            phrase in input_lower
+            for phrase in [
+                "trading mode",
+                "risk mode",
+                "show mode",
+                "current mode",
+                "set mode",
+                "change mode",
+                "conservative",
+                "moderate",
+                "aggressive",
+            ]
+        ):
+            # Trading mode management (Issue #400)
+            await self._handle_trading_mode_request(user_input)
+
         else:
             # For everything else, let LLM parser decide: trade vs status_query
             # This includes: orders, positions, portfolio, and actual trades
@@ -935,9 +996,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
         except Exception as e:
             logger.error(f"Error routing request: {e}", exc_info=True)
-            # Fallback to trade handler (reformat bare tickers first)
-            formatted_input = self._reformat_bare_ticker(user_input)
-            await self._handle_trade_request(formatted_input)
+            error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
+            sanitized_msg = _sanitize_error_message(e)
+            print(f"\n{error_prefix} {sanitized_msg}")
 
     async def _handle_trade_request(self, user_input: str):
         """
@@ -1224,22 +1285,12 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 print(MSG.TRADE_CANCELLED)
 
         except Exception as e:
-            error_msg = str(e)
+            # Sanitize error message for user display
+            sanitized_msg = _sanitize_error_message(e)
+            error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
+            print(f"\n{error_prefix} {sanitized_msg}")
 
-            # Provide helpful suggestions for common errors
-            if "asset" in error_msg.lower() and "not found" in error_msg.lower():
-                # New detailed error messages from real_voter_strategy.py
-                print(f"\n{MSG.EMOJI['error']} {error_msg}")
-            elif "insufficient data" in error_msg.lower():
-                # Insufficient data for technical analysis
-                print(f"\n{MSG.EMOJI['error']} {error_msg}")
-            elif "invalid request" in error_msg.lower() and "ticker=''" in error_msg.lower():
-                # Empty ticker from garbage input
-                print(MSG.ERROR_GARBAGE_INPUT)
-            else:
-                print(MSG.ERROR_PROCESSING.format(error=e))
-
-            # Log error at DEBUG level only (not shown to users)
+            # Log full error details for debugging
             logger.debug(f"Request processing error: {e}", exc_info=True)
 
     def _check_position_for_ticker(self, ticker: str) -> Optional[dict]:
@@ -2763,6 +2814,87 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         except ValueError:
             print(f"❌ Invalid execution mode: {target_mode}")
             print("ℹ️  Valid modes: confirm, auto, paper, disabled")
+
+    async def _handle_trading_mode_request(self, user_input: str):
+        """
+        Handle trading mode view/change requests.
+        Issue #400: Trading Modes Configuration System
+
+        Supports:
+        - show mode / show trading mode / current mode
+        - set mode conservative/moderate/aggressive
+        - conservative / moderate / aggressive (direct command)
+
+        Args:
+            user_input: User's natural language input
+        """
+        from core.trading_modes import TradingMode, get_mode_manager
+
+        input_lower = user_input.lower()
+        mode_manager = get_mode_manager()
+
+        # Determine if this is a "show" or "set" request
+        is_show = any(word in input_lower for word in ["show", "what", "current", "get", "display"])
+        is_set = any(word in input_lower for word in ["set", "change", "switch", "use"])
+
+        # Check if user typed a mode name directly (e.g., just "conservative")
+        mode_name_only = input_lower.strip() in ["conservative", "moderate", "aggressive"]
+
+        if (is_show and not is_set) or (not is_show and not is_set and not mode_name_only):
+            # Show current trading mode
+            current = mode_manager.current_mode
+            params = mode_manager.get_parameters()
+
+            print(f"\n📊 Current Trading Mode: {current.value.upper()}")
+            print(f"\n{params.description}")
+            print("\nRisk Parameters:")
+            print(f"  • Position Size: {params.max_position_pct * 100:.1f}% of portfolio")
+            print(f"  • Stop Loss: {params.stop_loss * 100:.1f}%")
+            print(f"  • Take Profit: {params.take_profit * 100:.1f}%")
+            print(f"  • Max Positions: {params.max_positions}")
+
+            print("\nAvailable Modes:")
+            print("  • conservative - Lower risk, smaller positions")
+            print("  • moderate     - Balanced risk/reward")
+            print("  • aggressive   - Higher risk, larger positions")
+            print("\nTo change mode: set mode {conservative|moderate|aggressive}")
+            return
+
+        # Try to extract target mode from input
+        target_mode_str = None
+        for mode in ["conservative", "moderate", "aggressive"]:
+            if mode in input_lower:
+                target_mode_str = mode
+                break
+
+        if not target_mode_str:
+            print("❌ Could not determine trading mode")
+            print("ℹ️  Usage: set mode {conservative|moderate|aggressive}")
+            return
+
+        # Set new mode
+        try:
+            new_mode = TradingMode.from_string(target_mode_str)
+            old_mode = mode_manager.current_mode
+
+            if new_mode == old_mode:
+                print(f"ℹ️  Already in {new_mode.value.upper()} mode")
+                return
+
+            mode_manager.set_mode(new_mode)
+            new_params = mode_manager.get_parameters(new_mode)
+
+            print(f"\n✅ Trading mode changed: {old_mode.value.upper()} → {new_mode.value.upper()}")
+            print(f"\n{new_params.description}")
+            print("\nNew Risk Parameters:")
+            print(f"  • Position Size: {new_params.max_position_pct * 100:.1f}% of portfolio")
+            print(f"  • Stop Loss: {new_params.stop_loss * 100:.1f}%")
+            print(f"  • Take Profit: {new_params.take_profit * 100:.1f}%")
+            print(f"  • Max Positions: {new_params.max_positions}")
+
+        except ValueError as e:
+            print(f"❌ Invalid trading mode: {target_mode_str}")
+            print(f"ℹ️  Error: {e}")
 
     async def _handle_account_request(self, user_input: str):
         """

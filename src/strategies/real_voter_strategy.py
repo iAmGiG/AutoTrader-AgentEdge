@@ -95,33 +95,28 @@ class RealVoterStrategy(StrategyAnalyzer):
                 "%Y-%m-%d"
             )
 
-            market_data = fetch_unified_market_data(
-                ticker, start_date=start_date, end_date=end_date
-            )
+            # Catch API errors and convert to simple messages
+            try:
+                market_data = fetch_unified_market_data(
+                    ticker, start_date=start_date, end_date=end_date
+                )
+            except Exception as api_error:
+                # Log full API error for debugging
+                logger.debug(f"API error fetching data for {ticker}: {api_error}", exc_info=True)
+                # Return simple message to user
+                raise ValueError("Ticker not found")
 
             if market_data is None or market_data.empty:
-                logger.warning(f"No market data available for {ticker}")
-                # Raise error instead of returning fallback - invalid ticker should fail gracefully
-                raise ValueError(
-                    f"Asset '{ticker}' not found or no market data available.\n"
-                    f"   Please check the ticker symbol and try again.\n"
-                    f"   Example: AAPL, SPY, MSFT"
-                )
+                logger.info(f"No market data returned for {ticker}")
+                raise ValueError("Ticker not found")
 
             # Ensure Close column exists
             if "Close" not in market_data.columns and "close" in market_data.columns:
                 market_data["Close"] = market_data["close"]
 
             if len(market_data) < 42:
-                logger.warning(
-                    f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)"
-                )
-                # Raise error for insufficient data - cannot perform reliable technical analysis
-                raise ValueError(
-                    f"Insufficient data for {ticker}.\n"
-                    f"   Found {len(market_data)} data points, need at least 42 for MACD analysis.\n"
-                    f"   This may be a newly listed stock or delisted security."
-                )
+                logger.info(f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)")
+                raise ValueError("Data unavailable")
 
             logger.info(f"✅ Loaded {len(market_data)} data points for {ticker}")
 
@@ -191,9 +186,13 @@ class RealVoterStrategy(StrategyAnalyzer):
                 analyzer_name=self.name,
             )
 
+        except ValueError:
+            # Re-raise ValueError (user-friendly messages already set)
+            raise
         except Exception as e:
-            logger.error(f"Error analyzing {ticker}: {e}", exc_info=True)
-            return self._create_fallback_result(ticker, request.price, f"Analysis error: {str(e)}")
+            # Log unexpected errors and return generic message
+            logger.error(f"Unexpected error analyzing {ticker}: {e}", exc_info=True)
+            raise ValueError("Error processing request")
 
     def _create_fallback_result(
         self, ticker: str, price: Optional[float], reason: str

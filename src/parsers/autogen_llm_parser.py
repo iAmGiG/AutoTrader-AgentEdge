@@ -19,7 +19,6 @@ from typing import Literal, Optional
 from autogen_core.models import UserMessage
 from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-
 from core.interfaces import InputParser
 from core.models import AssetType, TradeRequest
 
@@ -228,8 +227,15 @@ class AutoGenLLMParser(InputParser):
             return request
 
         except Exception as e:
-            logger.error(f"Parse error: {e}", exc_info=True)
-            raise ValueError(f"Could not parse input: {user_input}") from e
+            # Catch specific OpenAI API auth errors
+            error_str = str(e).lower()
+            if "401" in error_str or "authentication" in error_str or "api key" in error_str:
+                logger.error("OpenAI API authentication error", exc_info=True)
+                raise ValueError("Configuration error") from e
+
+            # Generic parse failure - simple message
+            logger.debug(f"Parse error for input '{user_input}': {e}", exc_info=True)
+            raise ValueError("Could not parse input") from e
 
     async def validate(self, request: TradeRequest) -> bool:
         """

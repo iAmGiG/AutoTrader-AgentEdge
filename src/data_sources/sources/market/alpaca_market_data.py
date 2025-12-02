@@ -276,7 +276,7 @@ class AlpacaMarketData:
                         )
 
             except Exception as e:
-                logger.error(f"Failed to fetch bars from Alpaca: {e}")
+                logger.debug(f"Failed to fetch bars from Alpaca: {e}")
                 if not cached_data:
                     raise
 

@@ -16,6 +16,7 @@ Future phases:
 
 import logging
 import os
+import sqlite3
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -123,7 +124,15 @@ class TradingModeManager:
 
         self.config_file = config_file
         self._config = self._load_config()
-        self._current_mode = mode or self._get_default_mode()
+
+        # SQLite database for persisting current mode (Issue #434 Phase 1)
+        db_dir = os.path.join(os.path.dirname(__file__), "../../state")
+        os.makedirs(db_dir, exist_ok=True)
+        self._db_path = os.path.join(db_dir, "user.db")
+        self._init_database()
+
+        # Load persisted mode or use provided/default
+        self._current_mode = mode or self._load_persisted_mode() or self._get_default_mode()
         self._mode_cache: Dict[TradingMode, ModeParameters] = {}
 
         logger.info(f"TradingModeManager initialized: mode={self._current_mode.value}")
@@ -209,6 +218,74 @@ class TradingModeManager:
         default_str = self._config.get("default_mode", "moderate")
         return TradingMode.from_string(default_str)
 
+    def _init_database(self) -> None:
+        """Initialize SQLite database with trading_mode_history table."""
+        try:
+            conn = sqlite3.connect(self._db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS trading_mode_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    mode TEXT NOT NULL,
+                    symbol TEXT,
+                    reason TEXT,
+                    session_id TEXT
+                )
+            """
+            )
+            conn.commit()
+            conn.close()
+            logger.debug(f"Initialized user.db at {self._db_path}")
+        except Exception as e:
+            logger.error(f"Failed to initialize database: {e}")
+
+    def _load_persisted_mode(self) -> Optional[TradingMode]:
+        """Load most recent trading mode from database."""
+        try:
+            conn = sqlite3.connect(self._db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT mode FROM trading_mode_history
+                WHERE symbol IS NULL
+                ORDER BY timestamp DESC LIMIT 1
+            """
+            )
+            row = cursor.fetchone()
+            conn.close()
+
+            if row:
+                mode_str = row[0]
+                logger.debug(f"Loaded persisted mode: {mode_str}")
+                return TradingMode.from_string(mode_str)
+        except Exception as e:
+            logger.warning(f"Failed to load persisted mode: {e}")
+        return None
+
+    def _save_persisted_mode(
+        self, mode: TradingMode, symbol: Optional[str] = None, reason: str = "user_change"
+    ) -> None:
+        """Save trading mode change to database history."""
+        try:
+            from src.utils.date_utils import now_iso
+
+            conn = sqlite3.connect(self._db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO trading_mode_history (timestamp, mode, symbol, reason)
+                VALUES (?, ?, ?, ?)
+            """,
+                (now_iso(), mode.value, symbol, reason),
+            )
+            conn.commit()
+            conn.close()
+            logger.debug(f"Persisted mode: {mode.value} (symbol={symbol}, reason={reason})")
+        except Exception as e:
+            logger.error(f"Failed to persist mode: {e}")
+
     @property
     def current_mode(self) -> TradingMode:
         """Get current trading mode."""
@@ -216,13 +293,14 @@ class TradingModeManager:
 
     def set_mode(self, mode: TradingMode) -> None:
         """
-        Set current trading mode.
+        Set current trading mode and persist to disk.
 
         Args:
             mode: New trading mode
         """
         old_mode = self._current_mode
         self._current_mode = mode
+        self._save_persisted_mode(mode)
         logger.info(f"Trading mode changed: {old_mode.value} -> {mode.value}")
 
     def get_parameters(self, mode: Optional[TradingMode] = None) -> ModeParameters:

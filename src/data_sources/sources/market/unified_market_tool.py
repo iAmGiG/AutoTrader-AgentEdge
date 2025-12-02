@@ -136,7 +136,7 @@ def _fetch_from_alpaca(symbol: str, start_date: str, end_date: str) -> Optional[
 
         return None
     except Exception as e:
-        logger.warning(f"Alpaca fetch failed for {symbol}: {e}")
+        logger.debug(f"Alpaca fetch failed for {symbol}: {e}")
         return None
 
 
