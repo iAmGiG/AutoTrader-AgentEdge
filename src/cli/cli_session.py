@@ -869,15 +869,18 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 "current timeframe",
                 "show timeframe",
                 "list timeframe",
-                "5m",
-                "15m",
-                "30m",
-                "1h",
-                "4h",
-                "1d",
-                "1w",
-                "1m",
             ]
+        ) or (
+            # Only match standalone timeframe patterns (not "1 zm" where m is part of ticker)
+            # Match: "1h", "5m alone", "set 1d", but NOT "1 zm" or "5 msft"
+            any(
+                input_lower.strip() == tf
+                for tf in ["5m", "15m", "30m", "1h", "4h", "1d", "1w", "1m"]
+            )
+            or any(
+                f" {tf}" in input_lower or f"set {tf}" in input_lower
+                for tf in ["5m", "15m", "30m", "1h", "4h", "1d", "1w", "1m"]
+            )
         ):
             # Timeframe management (Issue #365)
             await self._handle_timeframe_request(user_input)
