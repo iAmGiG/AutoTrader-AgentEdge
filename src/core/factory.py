@@ -10,13 +10,12 @@ import json
 import logging
 from typing import Optional
 
+from core.trading_modes import TradingMode, get_mode_manager
+from core.trading_orchestrator import TradingOrchestrator
 from execution import AlpacaExecutionManager
 from parsers import AutoGenLLMParser
 from risk import SimpleRiskManager
 from strategies import RealVoterStrategy, VoterStrategy
-
-from core.trading_modes import TradingMode, get_mode_manager
-from core.trading_orchestrator import TradingOrchestrator
 
 logger = logging.getLogger(__name__)
 
