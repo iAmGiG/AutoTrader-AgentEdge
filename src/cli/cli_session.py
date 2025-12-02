@@ -1297,7 +1297,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
                 # Issue #385: Update local state with stop/target immediately after trade
                 self._update_local_state_after_trade(decision, result)
-            else:
+            elif not is_review_only:
+                # Only show "cancelled" if user was asked to confirm but declined
+                # Don't show for review-only requests (nothing to cancel)
                 print(MSG.TRADE_CANCELLED)
 
         except Exception as e:
