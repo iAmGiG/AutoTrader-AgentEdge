@@ -1047,3 +1047,81 @@ python -m pytest tests/unit/ -v --no-cov
 ---
 
 *This document tracks project status, roadmap, and development priorities. Updated monthly or after major milestones.*
+
+---
+
+### December 2025 - Code Quality Refactoring Sprint (Dec 2, 2025)
+
+**EPIC #436 - Code Quality Refactoring** (✅ PHASE 1 COMPLETE)
+
+Massive refactoring initiative to improve code organization, testability, and maintainability.
+
+**Issues Completed**:
+
+| Issue | Description | Reduction | PR |
+|-------|-------------|-----------|-----|
+| #437 | Extract validators from alpaca_trading_client.py | New modules | #448 |
+| #438 | Split sqlite_cache.py by domain | 65% (1386→474 lines) | #448 |
+| #440 | Extract scheduler_cli.py components | 69% (984→307 lines) | #449 |
+| #441 | Extract validators from execution_manager | 20% (985→785 lines) | #450 |
+| #442 | Extract state/reporter from orchestrator | 24% (958→728 lines) | #451 |
+| #425 | In-house backtesting framework | New framework (~650 lines) | #452 |
+
+**New Modules Created**:
+
+1. **Trading Validators** (`src/trading/validators/`):
+   - `order_validator.py` - Order validation with provider injection
+   - `enum_mappers.py` - Centralized Alpaca enum mapping
+   - `error_handling.py` - API error extraction and formatting
+   - `response_parsers.py` - Account/Order/Position response parsing
+   - `bracket_validator.py` - Bracket order error detection
+
+2. **Cache Domain Separation** (`src/data_sources/cache/`):
+   - `base_cache.py` - Base SQLite cache with shared logic
+   - `ohlcv_cache.py` - Focused OHLCV market data cache
+
+3. **Scheduler CLI** (`src/cli/scheduler/`):
+   - `message_loader.py` - YAML message loading
+   - `daemon_manager.py` - Cross-platform daemon management
+   - `config_editor.py` - Interactive config editing
+   - `monitor.py` - Status/history/logs display
+   - `setup_wizard.py` - First-time setup flow
+
+4. **Trading Orchestrator** (`src/autogen_agents/`):
+   - `workflow_state_manager.py` - State persistence/recovery
+   - `workflow_reporter.py` - Report generation
+
+5. **Backtesting Framework** (`src/backtesting/`):
+   - `backtest_engine.py` - Main engine compatible with any signal generator
+   - `portfolio.py` - Position/cash tracking with commission modeling
+   - `results.py` - Performance metrics (Sharpe, drawdown, etc.)
+   - `signals/tsmom_signal.py` - TSMOM signal generator
+
+6. **API Error Translation** (`src/trading/`):
+   - `api_error_translator.py` - User-friendly error messages
+
+**Critical Bugs Fixed**:
+- Fixed `self.client.trading` → `self.client.trading_client` (4 instances)
+- Removed duplicate `cancel_order()` method bypassing safety checks
+
+**Remaining from EPIC #436**:
+- #433 - cli_session.py FunctionTool architecture (deferred)
+- #439 - trading_cycle.py extraction (deferred)
+
+---
+
+### December 2025 - Research Initiatives
+
+**Issue #425 - Backtesting Framework** (✅ COMPLETE)
+
+- In-house framework refactored from validated experiment_293
+- Validated: 0.856 Sharpe on AAPL 2024
+- CLI integration ready
+- Research paper structure (LaTeX) prepared
+
+**Issue #420 - TSMOM Research** (🔜 NEXT - Assigned to B)
+
+- TSMOMSignalGenerator implemented (12-month momentum)
+- Ready for 2016-2024 validation experiments
+- Research paper in progress
+
