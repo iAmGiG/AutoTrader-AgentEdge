@@ -6,7 +6,7 @@ Handles complex parsing of bracket orders, positions, and account data.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,9 @@ class OrderResponseParser:
             "symbol": str(order_obj.symbol),
             "qty": float(order_obj.qty) if order_obj.qty else 0.0,
             "filled_qty": float(order_obj.filled_qty) if order_obj.filled_qty else 0.0,
-            "side": order_obj.side.value if hasattr(order_obj.side, "value") else str(order_obj.side),
+            "side": (
+                order_obj.side.value if hasattr(order_obj.side, "value") else str(order_obj.side)
+            ),
             "order_type": (
                 order_obj.order_type.value
                 if hasattr(order_obj.order_type, "value")
@@ -53,7 +55,11 @@ class OrderResponseParser:
             "average_fill_price": (
                 float(order_obj.average_fill_price) if order_obj.average_fill_price else None
             ),
-            "status": order_obj.status.value if hasattr(order_obj.status, "value") else str(order_obj.status),
+            "status": (
+                order_obj.status.value
+                if hasattr(order_obj.status, "value")
+                else str(order_obj.status)
+            ),
             "created_at": order_obj.created_at.isoformat() if order_obj.created_at else None,
             "updated_at": order_obj.updated_at.isoformat() if order_obj.updated_at else None,
             "submitted_at": order_obj.submitted_at.isoformat() if order_obj.submitted_at else None,
@@ -179,10 +185,14 @@ class AccountResponseParser:
             Normalized account dict
         """
         return {
-            "account_number": str(account_obj.account_number) if account_obj.account_number else None,
+            "account_number": (
+                str(account_obj.account_number) if account_obj.account_number else None
+            ),
             "buying_power": float(account_obj.buying_power) if account_obj.buying_power else 0.0,
             "cash": float(account_obj.cash) if account_obj.cash else 0.0,
-            "portfolio_value": float(account_obj.portfolio_value) if account_obj.portfolio_value else 0.0,
+            "portfolio_value": (
+                float(account_obj.portfolio_value) if account_obj.portfolio_value else 0.0
+            ),
             "long_market_value": (
                 float(account_obj.long_market_value) if account_obj.long_market_value else 0.0
             ),
@@ -194,18 +204,26 @@ class AccountResponseParser:
                 if account_obj.daytrading_buying_power
                 else 0.0
             ),
-            "trade_suspended_by_user": bool(account_obj.trade_suspended_by_user)
-            if hasattr(account_obj, "trade_suspended_by_user")
-            else False,
-            "trading_blocked": bool(account_obj.trading_blocked)
-            if hasattr(account_obj, "trading_blocked")
-            else False,
-            "transfers_blocked": bool(account_obj.transfers_blocked)
-            if hasattr(account_obj, "transfers_blocked")
-            else False,
-            "account_blocked": bool(account_obj.account_blocked)
-            if hasattr(account_obj, "account_blocked")
-            else False,
+            "trade_suspended_by_user": (
+                bool(account_obj.trade_suspended_by_user)
+                if hasattr(account_obj, "trade_suspended_by_user")
+                else False
+            ),
+            "trading_blocked": (
+                bool(account_obj.trading_blocked)
+                if hasattr(account_obj, "trading_blocked")
+                else False
+            ),
+            "transfers_blocked": (
+                bool(account_obj.transfers_blocked)
+                if hasattr(account_obj, "transfers_blocked")
+                else False
+            ),
+            "account_blocked": (
+                bool(account_obj.account_blocked)
+                if hasattr(account_obj, "account_blocked")
+                else False
+            ),
             "created_at": account_obj.created_at.isoformat() if account_obj.created_at else None,
             "updated_at": account_obj.updated_at.isoformat() if account_obj.updated_at else None,
             "multiplier": int(account_obj.multiplier) if account_obj.multiplier else None,
@@ -230,14 +248,28 @@ class PositionResponseParser:
         return {
             "symbol": str(position_obj.symbol),
             "qty": float(position_obj.qty) if position_obj.qty else 0.0,
-            "avg_fill_price": float(position_obj.avg_fill_price) if position_obj.avg_fill_price else 0.0,
-            "side": position_obj.side.value if hasattr(position_obj.side, "value") else str(position_obj.side),
+            "avg_fill_price": (
+                float(position_obj.avg_fill_price) if position_obj.avg_fill_price else 0.0
+            ),
+            "side": (
+                position_obj.side.value
+                if hasattr(position_obj.side, "value")
+                else str(position_obj.side)
+            ),
             "market_value": float(position_obj.market_value) if position_obj.market_value else 0.0,
             "cost_basis": float(position_obj.cost_basis) if position_obj.cost_basis else 0.0,
-            "unrealized_pl": float(position_obj.unrealized_pl) if position_obj.unrealized_pl else 0.0,
-            "unrealized_plpc": float(position_obj.unrealized_plpc) if position_obj.unrealized_plpc else 0.0,
-            "current_price": float(position_obj.current_price) if position_obj.current_price else 0.0,
-            "lastday_price": float(position_obj.lastday_price) if position_obj.lastday_price else 0.0,
+            "unrealized_pl": (
+                float(position_obj.unrealized_pl) if position_obj.unrealized_pl else 0.0
+            ),
+            "unrealized_plpc": (
+                float(position_obj.unrealized_plpc) if position_obj.unrealized_plpc else 0.0
+            ),
+            "current_price": (
+                float(position_obj.current_price) if position_obj.current_price else 0.0
+            ),
+            "lastday_price": (
+                float(position_obj.lastday_price) if position_obj.lastday_price else 0.0
+            ),
             "change_today": float(position_obj.change_today) if position_obj.change_today else 0.0,
             "asset_id": str(position_obj.asset_id) if position_obj.asset_id else None,
             "asset_class": str(position_obj.asset_class) if position_obj.asset_class else None,
@@ -260,7 +292,9 @@ class PositionResponseParser:
                 parsed_position = PositionResponseParser.parse_position_response(position)
                 parsed_positions.append(parsed_position)
             except Exception as e:
-                logger.warning(f"Failed to parse position {getattr(position, 'symbol', 'unknown')}: {e}")
+                logger.warning(
+                    f"Failed to parse position {getattr(position, 'symbol', 'unknown')}: {e}"
+                )
                 continue
 
         return parsed_positions
