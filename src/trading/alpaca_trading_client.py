@@ -1465,7 +1465,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         try:
             # Get current order to validate it exists
             try:
-                self.client.trading.get_order_by_id(order_id)
+                self.client.trading_client.get_order_by_id(order_id)
             except Exception:
                 return {
                     "status": "error",
@@ -1526,7 +1526,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
 
             # Replace the order
-            updated_order = self.client.trading.replace_order_by_id(order_id, replace_request)
+            updated_order = self.client.trading_client.replace_order_by_id(order_id, replace_request)
 
             return {
                 "status": "submitted",
@@ -1606,7 +1606,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER ORDER CANCELLATION: {order_id}")
 
             # Cancel the order
-            self.client.trading.cancel_order_by_id(order_id)
+            self.client.trading_client.cancel_order_by_id(order_id)
 
             return {
                 "status": "cancelled",
@@ -1682,7 +1682,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             for order in orders:
                 try:
-                    self.client.trading.cancel_order_by_id(order.id)
+                    self.client.trading_client.cancel_order_by_id(order.id)
                     cancelled_orders.append(str(order.id))
                 except Exception as e:
                     errors.append(f"Failed to cancel {order.id}: {str(e)}")
