@@ -1124,13 +1124,14 @@ Massive refactoring initiative to improve code organization, testability, and ma
 **Issue #433 Progress** (cli_session.py - 3024 lines):
 
 - Broken into 5 sequential sub-issues (#455-459)
-- ✅ #455 - Tool infrastructure (C-chat - Phase 1A complete)
-- ✅ #456 - Mode & timeframe tools (C-chat - Phase 1B complete)
-- ✅ #457 - Display tools (Phase 1C complete, ready for integration)
-  - Created `portfolio_tools.py` (340 lines) - Portfolio/position display
-  - Created `account_display_tools.py` (130 lines) - Account management
-  - 6 FunctionTools in CLI_TOOLS registry
-- ⏸️ #458 - Execution tools (Phase 1D, waiting for integration)
+- ✅ #455 - Tool infrastructure (Phase 1A complete, PR #463)
+- ✅ #456 - Mode & timeframe tools (Phase 1B complete, PR #463)
+- ✅ #457 - Display tools (Phase 1C complete, PR #464)
+  - Created `portfolio_tools.py` (470 lines) - Portfolio/position display
+  - Created `account_display_tools.py` (177 lines) - Account management
+  - 6 FunctionTools registered in PORTFOLIO_TOOLS and ACCOUNT_TOOLS categories
+- 🚧 #458 - Execution tools (Phase 1D, in progress)
+  - order_tools.py, scheduler_tools.py, alert_tools.py
 - ⏸️ #459 - Final integration (Phase 1E, target: 50-59% reduction)
 
 ---
