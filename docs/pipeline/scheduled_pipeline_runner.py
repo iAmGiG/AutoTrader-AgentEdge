@@ -12,29 +12,33 @@ Schedule Options:
 
 Usage:
     # Run morning only
-    python examples/scheduled_pipeline_runner.py --schedule morning
+    python -m docs.pipeline.scheduled_pipeline_runner --schedule morning
 
     # Run both morning and afternoon
-    python examples/scheduled_pipeline_runner.py --schedule both
+    python -m docs.pipeline.scheduled_pipeline_runner --schedule both
 
     # Custom times (ET timezone)
-    python examples/scheduled_pipeline_runner.py --times "09:45,15:00"
+    python -m docs.pipeline.scheduled_pipeline_runner --times "09:45,15:00"
 
     # Dry-run mode (no actual trades)
-    python examples/scheduled_pipeline_runner.py --dry-run
+    python -m docs.pipeline.scheduled_pipeline_runner --dry-run
+
+Or from project root:
+    python docs/pipeline/scheduled_pipeline_runner.py --schedule morning
 """
 
 import argparse
 import asyncio
 import logging
-import os
 import sys
-from datetime import datetime, time
+from datetime import time
+from pathlib import Path
 
 import pytz
 
-# Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# Add project root to path (platform-agnostic)
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from src.autogen_agents.executor_agent import ExecutorAgent
 from src.autogen_agents.voter_agent import VoterAgent

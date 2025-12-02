@@ -5,19 +5,23 @@ Example: Run Full Trading Pipeline
 Demonstrates the complete daily trading workflow orchestration.
 
 Usage:
-    python examples/run_trading_pipeline.py --watchlist SPY,QQQ,AAPL
-    python examples/run_trading_pipeline.py --mode paper  # Use paper trading
-    python examples/run_trading_pipeline.py --dry-run     # Skip actual execution
+    python -m docs.pipeline.run_trading_pipeline --watchlist SPY,QQQ,AAPL
+    python -m docs.pipeline.run_trading_pipeline --mode paper  # Use paper trading
+    python -m docs.pipeline.run_trading_pipeline --dry-run     # Skip actual execution
+
+Or from project root:
+    python docs/pipeline/run_trading_pipeline.py --watchlist SPY,QQQ,AAPL
 """
 
 import argparse
 import asyncio
 import logging
-import os
 import sys
+from pathlib import Path
 
-# Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# Add project root to path (platform-agnostic)
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from src.autogen_agents.executor_agent import ExecutorAgent
 from src.autogen_agents.voter_agent import VoterAgent
