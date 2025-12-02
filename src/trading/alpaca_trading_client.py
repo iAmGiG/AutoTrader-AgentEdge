@@ -1578,47 +1578,6 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             logger.error(f"❌ Failed to modify stop order {order_id}: {error_msg}")
             return False
 
-    def cancel_order(self, order_id: str) -> Dict[str, Any]:
-        """
-        Cancel an existing order.
-
-        Args:
-            order_id: ID of the order to cancel
-
-        Returns:
-            Dict with cancellation status or error information
-        """
-        try:
-            # Mode-aware logging
-            if self.client.mode == "live":
-                logger.warning(f"🔥 LIVE ORDER CANCELLATION: {order_id}")
-                if self.require_confirmation:
-                    confirmation = input(
-                        f"Confirm LIVE order cancellation for {order_id}? (yes/no): "
-                    )
-                    if confirmation.lower() != "yes":
-                        return {
-                            "status": "cancelled",
-                            "message": "Order cancellation cancelled by user",
-                            "order_id": order_id,
-                        }
-            else:
-                logger.info(f"📝 PAPER ORDER CANCELLATION: {order_id}")
-
-            # Cancel the order
-            self.client.trading_client.cancel_order_by_id(order_id)
-
-            return {
-                "status": "cancelled",
-                "message": "Order cancelled successfully",
-                "order_id": order_id,
-                "mode": self.client.mode,
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to cancel order {order_id}: {e}")
-            return {"status": "error", "message": str(e), "order_id": order_id}
-
     def cancel_all_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
         Cancel all open orders, optionally filtered by symbol.
