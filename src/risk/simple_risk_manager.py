@@ -80,6 +80,20 @@ class SimpleRiskManager(RiskManager):
         entry_price = analysis.entry_price
         stop_loss = analysis.stop_loss
 
+        # Handle HOLD signals or fallback results (no entry price)
+        if entry_price is None:
+            logger.info(f"No entry price for {ticker} - signal is HOLD or analysis failed")
+            return RiskAssessment(
+                approved=False,
+                recommended_quantity=0,
+                portfolio_pct=0.0,
+                max_loss_usd=0.0,
+                risk_reward_ratio=0.0,
+                warnings=[f"No entry price available for {ticker} - HOLD signal"],
+                buying_power_available=0.0,
+                existing_position_qty=0,
+            )
+
         try:
             # Get portfolio info
             portfolio_value = await self.get_portfolio_value(user_id)
@@ -120,15 +134,24 @@ class SimpleRiskManager(RiskManager):
                     f"(>{self.max_position_pct}% threshold)"
                 )
 
-            # Calculate risk metrics
-            risk_per_share = abs(entry_price - stop_loss)
-            max_loss_usd = risk_per_share * quantity
+            # Calculate risk metrics (with None guards for stop_loss/take_profit)
+            if stop_loss is not None:
+                risk_per_share = abs(entry_price - stop_loss)
+                max_loss_usd = risk_per_share * quantity
+            else:
+                # No stop loss defined - estimate 2% risk
+                risk_per_share = entry_price * 0.02
+                max_loss_usd = risk_per_share * quantity
+                warnings.append("⚠️  No stop loss defined - using 2% estimate")
 
             # Calculate risk/reward ratio
-            if analysis.signal.value == "buy":
-                potential_gain = abs(analysis.take_profit - entry_price) * quantity
-            elif analysis.signal.value == "sell":
-                potential_gain = abs(entry_price - analysis.take_profit) * quantity
+            if analysis.take_profit is not None:
+                if analysis.signal.value == "buy":
+                    potential_gain = abs(analysis.take_profit - entry_price) * quantity
+                elif analysis.signal.value == "sell":
+                    potential_gain = abs(entry_price - analysis.take_profit) * quantity
+                else:
+                    potential_gain = 0
             else:
                 potential_gain = 0
 

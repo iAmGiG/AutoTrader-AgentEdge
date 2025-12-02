@@ -69,13 +69,12 @@ def _sanitize_error_message(error: Exception) -> str:
     if "could not parse" in error_str or "parse error" in error_str:
         return "Didn't understand that. Nothing done."
 
-    # Ticker validation errors
-    if (
-        ("asset" in error_str and "not found" in error_str)
-        or "ticker" in error_str
-        or "ticker not found" in error_str
-    ):
-        return "Didn't understand that. Nothing done."
+    # Ticker validation errors - provide actionable feedback
+    if "ticker not found" in error_str:
+        return "Symbol not found. It may not be available via your broker or data provider."
+
+    if ("asset" in error_str and "not found" in error_str) or "symbol" in error_str:
+        return "Symbol not recognized. Check the ticker spelling or try a US-listed stock."
 
     # Data availability errors
     if (
@@ -2289,7 +2288,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         side = order.get("side", "?").lower()
         qty = order.get("qty", 0)
         price = order.get("price")
-        status = order.get("status", "").lower()
+        # status = order.get("status", "").lower()  # Unused in this method
         order_id = order.get("id", "N/A")
 
         # Format price
