@@ -38,18 +38,11 @@ from .risk_agent import RiskAgent, create_risk_agent
 from .scanner_agent import ScanConfig, ScannerAgent, ScanResult, create_scanner_agent
 
 # TradingOrchestrator - Multi-agent workflow coordination (Issue #389)
-from .trading_orchestrator import (
-                        ExecutionMode,
-                        TradingOrchestrator,
-                        create_trading_orchestrator,
-)
-from .workflow_state_manager import (
-                        WorkflowPhase,
-                        WorkflowState,
-)
+from .trading_orchestrator import ExecutionMode, TradingOrchestrator, create_trading_orchestrator
 
 # Production-ready agents
 from .voter_agent import VoterAgent, create_voter_agent
+from .workflow_state_manager import WorkflowPhase, WorkflowState
 
 __all__ = [
     # Agent Infrastructure
