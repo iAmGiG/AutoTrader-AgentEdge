@@ -10,12 +10,13 @@ import json
 import logging
 from typing import Optional
 
-from core.trading_modes import TradingMode, get_mode_manager
-from core.trading_orchestrator import TradingOrchestrator
 from execution import AlpacaExecutionManager
 from parsers import AutoGenLLMParser
 from risk import SimpleRiskManager
 from strategies import RealVoterStrategy, VoterStrategy
+
+from core.trading_modes import TradingMode, get_mode_manager
+from core.trading_orchestrator import TradingOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ class OrchestratorFactory:
             strategy_analyzer = RealVoterStrategy(
                 macd_params={"fast": 13, "slow": 34, "signal": 8},  # Validated Fibonacci parameters
                 rsi_params={"period": 14, "oversold": 30, "overbought": 70},
-                lookback_days=60,
+                lookback_days=90,  # Increased from 60 to ensure 42+ trading days (accounting for weekends/holidays)
             )
         else:
             logger.info("  - Creating VoterStrategy (stub)...")

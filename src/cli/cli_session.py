@@ -83,7 +83,7 @@ def _sanitize_error_message(error: Exception) -> str:
         or "insufficient data" in error_str
         or "data unavailable" in error_str
     ):
-        return "Didn't understand that. Nothing done."
+        return "Not enough market data available for analysis. Try a more liquid symbol."
 
     # Invalid request errors
     if "invalid request" in error_str or "invalid format" in error_str:
