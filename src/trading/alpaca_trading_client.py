@@ -1567,7 +1567,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER ORDER MODIFICATION: {order_id}")
 
             # Replace the order
-            updated_order = self.client.trading.replace_order_by_id(  # pylint: disable=no-member
+            updated_order = self.client.trading_client.replace_order_by_id(
                 order_id, replace_request
             )
 
@@ -1684,7 +1684,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
 
             for order in orders:
                 try:
-                    self.client.trading.cancel_order_by_id(order.id)  # pylint: disable=no-member
+                    self.client.trading_client.cancel_order_by_id(order.id)
                     cancelled_orders.append(str(order.id))
                 except Exception as e:
                     errors.append(f"Failed to cancel {order.id}: {str(e)}")
