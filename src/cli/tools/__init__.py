@@ -3,6 +3,7 @@ CLI Tools - FunctionTool-based command handlers.
 
 Issue #433: Refactor cli_session.py to use FunctionTool architecture.
 Issue #455: Create FunctionTool infrastructure with registry.
+Issue #457: Portfolio and account display tools extraction (Phase 1C).
 
 This module contains all CLI command implementations as FunctionTool objects,
 following the same pattern as src/data_sources/tools.py and base_agent.py.
@@ -176,9 +177,6 @@ def _discover_and_register_tools() -> None:
     This function imports tool modules and automatically registers
     their tools in the global registry. Called at module import time.
     """
-    # Import tool modules as they are created
-    # Each module should call register_cli_tool() on import
-
     # Phase 1A (#455): Example tools (for demonstration)
     try:
         from . import example_tool  # noqa: F401
@@ -202,12 +200,29 @@ def _discover_and_register_tools() -> None:
     except Exception as e:
         logger.warning(f"Failed to load timeframe_tools: {e}")
 
+    # Phase 1C (#457): Portfolio and account display tools
+    try:
+        from .portfolio_tools import CLI_PORTFOLIO_TOOLS
+
+        for tool in CLI_PORTFOLIO_TOOLS:
+            register_cli_tool(tool, category=PORTFOLIO_TOOLS)
+        logger.debug("Loaded portfolio_tools")
+    except Exception as e:
+        logger.warning(f"Failed to load portfolio_tools: {e}")
+
+    try:
+        from .account_display_tools import CLI_ACCOUNT_DISPLAY_TOOLS
+
+        for tool in CLI_ACCOUNT_DISPLAY_TOOLS:
+            register_cli_tool(tool, category=ACCOUNT_TOOLS)
+        logger.debug("Loaded account_display_tools")
+    except Exception as e:
+        logger.warning(f"Failed to load account_display_tools: {e}")
+
     # Future phases: Additional tool categories
-    # from .account_tools import *  # noqa: F401, F403
-    # from .portfolio_tools import *  # noqa: F401, F403
-    # from .order_tools import *  # noqa: F401, F403
-    # from .scheduler_tools import *  # noqa: F401, F403
-    # from .alert_tools import *  # noqa: F401, F403
+    # from .order_tools import CLI_ORDER_TOOLS  # #458
+    # from .scheduler_tools import CLI_SCHEDULER_TOOLS  # #458
+    # from .alert_tools import CLI_ALERT_TOOLS  # #458
 
 
 # Auto-discover tools on import
