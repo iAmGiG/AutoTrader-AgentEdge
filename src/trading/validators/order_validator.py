@@ -6,7 +6,7 @@ Issue #437: Extract validators from alpaca_trading_client.py for better testabil
 
 import logging
 from datetime import timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import pytz
 
