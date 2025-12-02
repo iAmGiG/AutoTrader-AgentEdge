@@ -4,11 +4,13 @@ Market Hours Detection Utility
 Detects whether US stock markets (NYSE/NASDAQ) are currently open for trading.
 Uses Alpaca's Market Calendar API to handle holidays, early closes, and half-days.
 Reference: https://docs.alpaca.markets/reference/getcalendar-1
+
+Issue #437: Enhanced with extended_hours support and validation utilities.
 """
 
 import logging
 from datetime import time
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import pytz
 from alpaca.trading.client import TradingClient
@@ -165,6 +167,112 @@ def get_market_status() -> Tuple[bool, str]:
         return False, "Market closed (After-hours)"
     else:
         return False, "Market closed"
+
+
+def validate_market_hours(extended_hours: bool = False, warn_only: bool = True) -> bool:
+    """
+    Validate that market is open for trading.
+
+    Args:
+        extended_hours: Allow extended hours trading (pre-market/after-hours)
+        warn_only: If True, warn but don't block; if False, raise ValueError
+
+    Returns:
+        bool: True if should proceed with trading
+
+    Raises:
+        ValueError: If market is closed and warn_only=False
+    """
+    is_open = is_market_hours()
+
+    # For extended hours, use simple fallback check (4 AM - 8 PM ET)
+    if extended_hours and not is_open:
+        et_tz = pytz.timezone("America/New_York")
+        now_et = get_datetime_now(et_tz)
+        current_time = now_et.time()
+        extended_open = time(4, 0)
+        extended_close = time(20, 0)
+        is_open = now_et.weekday() < 5 and extended_open <= current_time <= extended_close
+
+    if not is_open:
+        status_open, status_msg = get_market_status()
+        message = f"Market is {status_msg}. Trading may be restricted."
+
+        if warn_only:
+            logger.warning(f"⚠️  {message} - Proceeding anyway (broker will validate)")
+            return True
+        else:
+            logger.error(f"❌ {message} - Order blocked")
+            raise ValueError(message)
+
+    return True
+
+
+def get_market_status_detailed() -> Dict[str, Any]:
+    """
+    Get comprehensive market status information.
+
+    Returns:
+        Dict with market status details:
+        - is_open: Whether market is open
+        - current_session: "pre-market", "market", "after-hours", "closed", "weekend"
+        - hours: (open_time, close_time) as time objects
+        - is_trading_day: Whether market is trading today
+        - current_time_et: Current time in ET timezone
+    """
+    try:
+        et_tz = pytz.timezone("America/New_York")
+        now_et = get_datetime_now(et_tz)
+        current_time = now_et.time()
+
+        if now_et.weekday() >= 5:
+            return {
+                "is_open": False,
+                "current_session": "weekend",
+                "hours": (None, None),
+                "is_trading_day": False,
+                "current_time_et": now_et.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            }
+
+        open_time, close_time, is_trading_day = get_market_hours_for_date(now_et)
+
+        if not is_trading_day:
+            return {
+                "is_open": False,
+                "current_session": "closed",
+                "hours": (None, None),
+                "is_trading_day": False,
+                "current_time_et": now_et.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            }
+
+        pre_market_start = time(4, 0)
+        after_hours_end = time(20, 0)
+
+        if current_time < open_time:
+            current_session = "pre-market"
+        elif current_time < close_time:
+            current_session = "market"
+        elif current_time < after_hours_end:
+            current_session = "after-hours"
+        else:
+            current_session = "closed"
+
+        return {
+            "is_open": open_time <= current_time < close_time,
+            "current_session": current_session,
+            "hours": (open_time, close_time),
+            "is_trading_day": True,
+            "current_time_et": now_et.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get detailed market status: {e}")
+        return {
+            "is_open": True,  # Default to open to avoid blocking
+            "current_session": "unknown",
+            "hours": (None, None),
+            "error": str(e),
+        }
 
 
 def should_use_live_prices() -> bool:
