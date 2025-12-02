@@ -16,10 +16,7 @@ from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.database import AnalysisHistoryManager
 from src.data_sources.tools import fetch_unified_market_data
-from src.trading.timeframe_tools import (
-    convert_to_alpaca_timeframe,
-    get_current_timeframe,
-)
+from src.trading.timeframe_tools import convert_to_alpaca_timeframe, get_current_timeframe
 from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
