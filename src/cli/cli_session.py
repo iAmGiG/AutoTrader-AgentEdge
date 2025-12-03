@@ -29,7 +29,6 @@ from src.cli.account_commands import get_account_commands
 from src.cli.help_system import HelpSystem
 from src.cli.scheduler_cli import SchedulerCLI
 from src.cli.timeframe_commands import get_timeframe_commands
-from src.cli.trading_tips import display_trading_tips, get_tips_dict
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
 from src.cli.tools.alert_tools import show_alerts
@@ -44,6 +43,7 @@ from src.cli.tools.mode_tools import set_mode, show_current_mode, show_mode_comp
 from src.cli.tools.order_tools import show_orders, show_position_orders
 from src.cli.tools.portfolio_tools import show_portfolio
 from src.cli.tools.scheduler_tools import show_scheduler
+from src.cli.trading_tips import display_trading_tips, get_tips_dict
 from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
