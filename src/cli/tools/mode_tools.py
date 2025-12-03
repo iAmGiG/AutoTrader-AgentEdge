@@ -15,7 +15,6 @@ from typing import Any, Dict
 
 from autogen_core.tools import FunctionTool
 
-from . import MODE_TOOLS, register_cli_tool
 from src.core.trading_modes import (
     TradingMode,
     get_current_mode,
@@ -284,21 +283,7 @@ validate_mode_tool = FunctionTool(
 )
 
 
-# ============================================================================
-# Tool Registration
-# ============================================================================
-# Register all mode tools in the global registry
-
-
-register_cli_tool(list_trading_modes_tool, category=MODE_TOOLS)
-register_cli_tool(set_mode_tool, category=MODE_TOOLS)
-register_cli_tool(show_current_mode_tool, category=MODE_TOOLS)
-register_cli_tool(show_mode_comparison_tool, category=MODE_TOOLS)
-register_cli_tool(get_mode_parameters_tool, category=MODE_TOOLS)
-register_cli_tool(validate_mode_tool, category=MODE_TOOLS)
-
-
-# Export tools for direct import
+# Export tools for direct import (registered via __init__.py auto-discovery)
 CLI_MODE_TOOLS = [
     list_trading_modes_tool,
     set_mode_tool,

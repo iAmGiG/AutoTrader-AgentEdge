@@ -19,8 +19,6 @@ from typing import Any, Dict
 
 from autogen_core.tools import FunctionTool
 
-from . import register_cli_tool
-
 logger = logging.getLogger(__name__)
 
 # Category constant for execution mode tools
@@ -292,17 +290,7 @@ set_execution_mode_tool = FunctionTool(
 )
 
 
-# ============================================================================
-# Tool Registration
-# ============================================================================
-
-
-register_cli_tool(show_execution_mode_tool, category=EXECUTION_MODE_TOOLS)
-register_cli_tool(get_execution_mode_tool, category=EXECUTION_MODE_TOOLS)
-register_cli_tool(set_execution_mode_tool, category=EXECUTION_MODE_TOOLS)
-
-
-# Export list for CLI tools registry
+# Export list for CLI tools registry (registered via __init__.py auto-discovery)
 CLI_EXECUTION_MODE_TOOLS = [
     show_execution_mode_tool,
     get_execution_mode_tool,

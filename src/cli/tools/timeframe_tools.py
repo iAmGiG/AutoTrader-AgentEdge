@@ -15,7 +15,6 @@ from typing import Dict, Optional
 
 from autogen_core.tools import FunctionTool
 
-from . import TIMEFRAME_TOOLS, register_cli_tool
 from src.cli.timeframe_commands import get_timeframe_commands
 
 # Get singleton instance for all tool functions
@@ -192,21 +191,7 @@ get_timeframe_for_agent_tool = FunctionTool(
 )
 
 
-# ============================================================================
-# Tool Registration
-# ============================================================================
-# Register all timeframe tools in the global registry
-
-
-register_cli_tool(list_timeframes_tool, category=TIMEFRAME_TOOLS)
-register_cli_tool(set_timeframe_tool, category=TIMEFRAME_TOOLS)
-register_cli_tool(show_current_timeframe_tool, category=TIMEFRAME_TOOLS)
-register_cli_tool(show_timeframe_recommendations_tool, category=TIMEFRAME_TOOLS)
-register_cli_tool(validate_timeframe_tool, category=TIMEFRAME_TOOLS)
-register_cli_tool(get_timeframe_for_agent_tool, category=TIMEFRAME_TOOLS)
-
-
-# Export tools for direct import
+# Export tools for direct import (registered via __init__.py auto-discovery)
 CLI_TIMEFRAME_TOOLS = [
     list_timeframes_tool,
     set_timeframe_tool,

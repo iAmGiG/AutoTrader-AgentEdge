@@ -23,8 +23,6 @@ from typing import Optional
 
 from autogen_core.tools import FunctionTool
 
-from . import TIMEFRAME_TOOLS, register_cli_tool
-
 
 def echo_message(message: str, prefix: Optional[str] = None) -> str:
     """
@@ -89,18 +87,13 @@ greet_tool = FunctionTool(
     description="Greet a user with optional formal style (example tool)",
 )
 
-# Register tools in the global registry
-# Using a category helps organize tools
-register_cli_tool(echo_tool, category=TIMEFRAME_TOOLS)  # Using timeframe as example
-register_cli_tool(greet_tool, category=TIMEFRAME_TOOLS)
-
-# Export tools for direct import if needed
-EXAMPLE_TOOLS = [echo_tool, greet_tool]
+# Export tools for direct import (registered via __init__.py auto-discovery)
+CLI_EXAMPLE_TOOLS = [echo_tool, greet_tool]
 
 __all__ = [
     "echo_message",
     "greet_user",
     "echo_tool",
     "greet_tool",
-    "EXAMPLE_TOOLS",
+    "CLI_EXAMPLE_TOOLS",
 ]
