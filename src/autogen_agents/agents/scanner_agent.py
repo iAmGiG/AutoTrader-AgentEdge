@@ -27,14 +27,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from config_defaults.trading_config import TradingConfig
 
 from ..core.base_agent import BaseAgent
-
 # Agent Bus for event publishing (Issue #390)
 from ..orchestration.agent_bus import EventType, create_message, get_agent_bus
-from src.data_sources.sources.market.unified_market_tool import (
-    fetch_unified_market_data,
-)
+from src.data_sources.sources.market.unified_market_tool import \
+    fetch_unified_market_data
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
-from src.utils.date_utils import get_datetime_now, now_iso, subtract_days, today_str
+from src.utils.date_utils import (get_datetime_now, now_iso, subtract_days,
+                                  today_str)
 
 logger = logging.getLogger(__name__)
 

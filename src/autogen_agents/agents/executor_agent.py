@@ -20,7 +20,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from config_defaults.trading_config import TradingConfig
 
 from ..core.base_agent import BaseAgent
-
 # Agent Bus for event publishing (Issue #390)
 from ..orchestration.agent_bus import EventType, create_message, get_agent_bus
 from src.utils.date_utils import now_iso
@@ -101,7 +100,8 @@ class ExecutorAgent(BaseAgent):
         """Lazy load OrderManager if not provided."""
         if self._order_manager is None:
             try:
-                from src.trading.alpaca_trading_client import get_trading_client
+                from src.trading.alpaca_trading_client import \
+                    get_trading_client
                 from src.trading.order_manager import OrderManager
                 from src.trading.position_manager import PositionManager
 
