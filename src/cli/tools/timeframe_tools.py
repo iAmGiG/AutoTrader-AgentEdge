@@ -15,7 +15,7 @@ from typing import Dict, Optional
 
 from autogen_core.tools import FunctionTool
 
-from src.cli.timeframe_commands import get_timeframe_commands
+from src.cli.commands.timeframe_commands import get_timeframe_commands
 
 # Get singleton instance for all tool functions
 _tf_commands = get_timeframe_commands()

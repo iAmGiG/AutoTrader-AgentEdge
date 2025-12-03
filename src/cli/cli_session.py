@@ -26,10 +26,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from config_defaults.message_loader import CLIMessages as MSG
 from config_defaults.message_loader import get_pl_emoji, get_signal_emoji
 
-from src.cli.account_commands import get_account_commands
-from src.cli.help_system import HelpSystem
+from src.cli.commands.account_commands import get_account_commands
+from src.cli.commands.timeframe_commands import get_timeframe_commands
 from src.cli.scheduler_cli import SchedulerCLI
-from src.cli.timeframe_commands import get_timeframe_commands
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
 from src.cli.tools.alert_tools import show_alerts
@@ -50,7 +49,8 @@ from src.cli.tools.order_tools import (
 )
 from src.cli.tools.portfolio_tools import show_portfolio
 from src.cli.tools.scheduler_tools import show_scheduler
-from src.cli.trading_tips import display_trading_tips, get_tips_dict
+from src.cli.utils.help_system import HelpSystem
+from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
 from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
@@ -95,6 +95,8 @@ def _sanitize_error_message(error: Exception) -> str:
         "no data" in error_str
         or "insufficient data" in error_str
         or "data unavailable" in error_str
+        or "market data may be unavailable" in error_str
+        or "invalid entry price" in error_str
     ):
         return "Not enough market data available for analysis. Try a more liquid symbol."
 
@@ -102,12 +104,18 @@ def _sanitize_error_message(error: Exception) -> str:
     if "invalid request" in error_str or "invalid format" in error_str:
         return "Didn't understand that. Nothing done."
 
-    # Generic fallback
-    return "Didn't understand that. Nothing done."
+    # Format/type errors (likely None values in display)
+    if "typeerror" in error_str or "nonetype" in error_str or "unsupported format" in error_str:
+        logger.error(f"Display format error: {error}")
+        return "Analysis failed - missing price data. Try again or check the ticker."
+
+    # Generic fallback - log the actual error for debugging
+    logger.warning(f"Unhandled error type: {type(error).__name__}: {error}")
+    return f"Something went wrong. Error: {type(error).__name__}"
 
 
 # Issue #436: Ticker completer moved to separate module
-from src.cli.ticker_completer import (
+from src.cli.utils.ticker_completer import (
     READLINE_AVAILABLE,
     get_ticker_completer,
     is_powershell,
@@ -1269,6 +1277,13 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             position: Optional position dict for additional context
             override_mode: Optional override indicator ("USER_OVERRIDE_LONG", "USER_OVERRIDE_SHORT")
         """
+        # Validate suggestion has required fields before display
+        if suggestion.entry_price is None or suggestion.entry_price <= 0:
+            raise ValueError(
+                f"Invalid entry price for {suggestion.ticker}: {suggestion.entry_price}. "
+                "Market data may be unavailable."
+            )
+
         print("\n" + MSG.SUGGESTION_SEPARATOR)
         print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=suggestion.entry_price))
         print(MSG.SUGGESTION_SEPARATOR)

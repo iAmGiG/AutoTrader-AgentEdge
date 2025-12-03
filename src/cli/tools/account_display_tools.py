@@ -21,7 +21,7 @@ from typing import Dict
 
 from autogen_core.tools import FunctionTool
 
-from src.cli.account_commands import get_account_commands
+from src.cli.commands.account_commands import get_account_commands
 
 logger = logging.getLogger(__name__)
 

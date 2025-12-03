@@ -109,10 +109,10 @@ class TestTimeframeCommands:
     def timeframe_commands(self, mock_timeframe_manager):
         """Create TimeframeCommands with mocked dependencies."""
         with patch(
-            "src.cli.timeframe_commands._get_timeframe_manager",
+            "src.cli.commands.timeframe_commands._get_timeframe_manager",
             return_value=mock_timeframe_manager,
         ):
-            from src.cli.timeframe_commands import TimeframeCommands
+            from src.cli.commands.timeframe_commands import TimeframeCommands
 
             # Reset singleton
             TimeframeCommands._instance = None
@@ -362,10 +362,10 @@ class TestSingletonPattern(TestTimeframeCommands):
     def test_singleton_returns_same_instance(self, mock_timeframe_manager):
         """Test TimeframeCommands returns singleton."""
         with patch(
-            "src.cli.timeframe_commands._get_timeframe_manager",
+            "src.cli.commands.timeframe_commands._get_timeframe_manager",
             return_value=mock_timeframe_manager,
         ):
-            from src.cli.timeframe_commands import TimeframeCommands
+            from src.cli.commands.timeframe_commands import TimeframeCommands
 
             # Reset singleton
             TimeframeCommands._instance = None
@@ -378,11 +378,13 @@ class TestSingletonPattern(TestTimeframeCommands):
     def test_get_timeframe_commands_singleton(self, mock_timeframe_manager):
         """Test get_timeframe_commands returns singleton."""
         with patch(
-            "src.cli.timeframe_commands._get_timeframe_manager",
+            "src.cli.commands.timeframe_commands._get_timeframe_manager",
             return_value=mock_timeframe_manager,
         ):
-            from src.cli.timeframe_commands import (TimeframeCommands,
-                                                    get_timeframe_commands)
+            from src.cli.commands.timeframe_commands import (
+                TimeframeCommands,
+                get_timeframe_commands,
+            )
 
             # Reset singleton
             TimeframeCommands._instance = None

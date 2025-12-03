@@ -1138,9 +1138,39 @@ Massive refactoring initiative to improve code organization, testability, and ma
   - Refactored date_utils.py complexity issues
 - ✅ #459 - Final integration (Phase 1E complete, PR #466)
   - Integrated portfolio_tools.show_portfolio() into _handle_portfolio_request
-  - Integrated mode_tools functions into _handle_trading_mode_request
+  - Integrated mode_tools functions into_handle_trading_mode_request
   - Reduced cli_session.py from 3024 to 2879 lines (-145 lines)
   - Pre-existing C901 complexity issues tracked in #436
+
+**CLI Folder Reorganization** (Dec 2, 2025):
+
+Reorganized `src/cli/` folder into logical subdirectories for better maintainability:
+
+```text
+src/cli/
+├── commands/           # Natural language command handlers
+│   ├── account_commands.py
+│   ├── timeframe_commands.py
+│   └── trailing_stop_commands.py
+├── utils/              # CLI utility modules
+│   ├── ticker_completer.py
+│   ├── trading_tips.py
+│   ├── help_system.py
+│   └── decision_formatter.py
+├── scheduler/          # Scheduler subsystem (existing)
+├── tools/              # FunctionTool wrappers (existing)
+├── scheduler_cli.py    # Main scheduler interface
+└── cli_session.py      # Main CLI session (1916 lines, target <1500)
+```
+
+**Changes Made**:
+
+- Created `commands/` subdirectory for command handler modules
+- Created `utils/` subdirectory for utility modules
+- Moved 7 files to appropriate subdirectories
+- Updated all import paths across codebase
+- Removed unused `example_tool.py`
+- Updated test files with new import paths
 
 ---
 

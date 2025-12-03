@@ -202,8 +202,6 @@ def _discover_and_register_tools() -> None:
     """
     # Define tool modules to load: (module_name, tools_attr, category)
     tool_modules = [
-        # Phase 1A (#455): Example tools
-        ("example_tool", "CLI_EXAMPLE_TOOLS", None),
         # Phase 1B (#456): Mode and timeframe tools
         ("mode_tools", "CLI_MODE_TOOLS", MODE_TOOLS),
         ("timeframe_tools", "CLI_TIMEFRAME_TOOLS", TIMEFRAME_TOOLS),

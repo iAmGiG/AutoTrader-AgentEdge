@@ -9,6 +9,8 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
+import pandas as pd
+
 from config_defaults.trading_config import TradingConfig
 
 from src.autogen_agents.voter_agent import VoterAgent
@@ -16,7 +18,10 @@ from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.database import AnalysisHistoryManager
 from src.data_sources.tools import fetch_unified_market_data
-from src.trading.timeframe_tools import convert_to_alpaca_timeframe, get_current_timeframe
+from src.trading.timeframe_tools import (
+    convert_to_alpaca_timeframe,
+    get_current_timeframe,
+)
 from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
@@ -127,11 +132,35 @@ class RealVoterStrategy(StrategyAnalyzer):
         user_timeframe = timeframe_info.get("current_timeframe", "1d")
         alpaca_timeframe = convert_to_alpaca_timeframe(user_timeframe)
 
+        # Calculate lookback based on timeframe to ensure 42+ candles for MACD
+        # Need 34 (slow) + 8 (signal) = 42 periods minimum
+        min_candles = 50  # Buffer for calculation
         lookback_days = self.lookback_days
-        if user_timeframe.endswith("m"):
-            lookback_days = max(self.lookback_days, 14)
-        elif user_timeframe.endswith("h"):
+
+        # Strategy: Always fetch DAILY data for cache efficiency, then resample
+        # This minimizes API calls and maximizes cache hits
+        fetch_timeframe = "1Day"  # Always fetch daily
+        resample_needed = False
+
+        if user_timeframe.endswith("M"):  # Monthly
+            # Monthly candles: need ~4 years of daily data
+            lookback_days = max(self.lookback_days, min_candles * 30)
+            resample_needed = True
+        elif user_timeframe.endswith("w"):  # Weekly
+            # Weekly candles: need ~1 year of daily data
+            lookback_days = max(self.lookback_days, min_candles * 7)
+            resample_needed = True
+        elif user_timeframe.endswith("d"):  # Daily
+            # Daily candles: fetch daily directly
+            lookback_days = max(self.lookback_days, min_candles)
+        elif user_timeframe.endswith("h"):  # Hourly
+            # Hourly needs actual hourly data from API (can't resample from daily)
+            fetch_timeframe = alpaca_timeframe
             lookback_days = max(self.lookback_days, 30)
+        elif user_timeframe.endswith("m"):  # Minutes
+            # Minutes need actual minute data from API
+            fetch_timeframe = alpaca_timeframe
+            lookback_days = max(self.lookback_days, 14)
 
         # 2. Fetch market data
         logger.info(
@@ -142,7 +171,7 @@ class RealVoterStrategy(StrategyAnalyzer):
 
         try:
             market_data = fetch_unified_market_data(
-                ticker, start_date=start_date, end_date=end_date, timeframe=alpaca_timeframe
+                ticker, start_date=start_date, end_date=end_date, timeframe=fetch_timeframe
             )
         except Exception as api_error:
             logger.debug(f"API error fetching data for {ticker}: {api_error}", exc_info=True)
@@ -155,12 +184,59 @@ class RealVoterStrategy(StrategyAnalyzer):
         if "Close" not in market_data.columns and "close" in market_data.columns:
             market_data["Close"] = market_data["close"]
 
+        # 3. Resample if needed (weekly/monthly from daily data)
+        if resample_needed:
+            logger.info(f"Resampling daily data to {user_timeframe}...")
+            market_data = self._resample_timeframe(market_data, user_timeframe)
+
         if len(market_data) < 42:
             logger.info(f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)")
             raise ValueError("Data unavailable")
 
         logger.info(f"✅ Loaded {len(market_data)} data points for {ticker}")
         return user_timeframe, market_data
+
+    def _resample_timeframe(self, daily_data: pd.DataFrame, target_timeframe: str) -> pd.DataFrame:
+        """
+        Resample daily OHLCV data to weekly or monthly timeframe.
+
+        Args:
+            daily_data: DataFrame with daily OHLCV data
+            target_timeframe: Target timeframe (e.g., '1w', '1M')
+
+        Returns:
+            Resampled DataFrame
+        """
+        # Map timeframe to pandas resample rule
+        resample_rules = {
+            "1w": "W-FRI",  # Weekly ending Friday
+            "1M": "ME",  # Monthly (end of month) - updated for pandas 2.2+
+        }
+
+        rule = resample_rules.get(target_timeframe)
+        if not rule:
+            logger.warning(f"Unknown resample timeframe: {target_timeframe}, returning daily")
+            return daily_data
+
+        # Resample OHLCV data
+        resampled = (
+            daily_data.resample(rule)
+            .agg(
+                {
+                    "Open": "first",
+                    "High": "max",
+                    "Low": "min",
+                    "Close": "last",
+                    "Volume": "sum",
+                }
+            )
+            .dropna()
+        )
+
+        logger.debug(
+            f"Resampled {len(daily_data)} daily bars → {len(resampled)} {target_timeframe} bars"
+        )
+        return resampled
 
     def _format_analysis_result(
         self, result: Dict[str, Any], request: TradeRequest, user_timeframe: str

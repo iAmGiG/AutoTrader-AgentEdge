@@ -75,14 +75,14 @@ class TestAccountCommands:
     def account_commands(self, mock_account_manager, mock_safe_print):
         """Create AccountCommands with mocked dependencies."""
         with patch(
-            "src.cli.account_commands.get_account_manager",
+            "src.cli.commands.account_commands.get_account_manager",
             return_value=mock_account_manager,
         ):
-            with patch("src.cli.account_commands.safe_print"):
-                with patch("src.cli.account_commands.get_symbol", return_value="*"):
+            with patch("src.cli.commands.account_commands.safe_print"):
+                with patch("src.cli.commands.account_commands.get_symbol", return_value="*"):
                     # Reset singleton
-                    import src.cli.account_commands as acc_module
-                    from src.cli.account_commands import AccountCommands
+                    import src.cli.commands.account_commands as acc_module
+                    from src.cli.commands.account_commands import AccountCommands
 
                     acc_module._account_commands = None
 
