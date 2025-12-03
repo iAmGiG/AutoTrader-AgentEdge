@@ -54,7 +54,6 @@ from src.cli.utils.suggestion_display import (
     display_position_context,
     display_result,
     display_suggestion,
-    get_trade_direction,
 )
 from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
 from src.core.models import Signal
@@ -1653,7 +1652,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 if phrase in input_lower:
                     # Get text after the phrase
                     idx = input_lower.find(phrase)
-                    remaining = user_input[idx + len(phrase):].strip()
+                    remaining = user_input[idx + len(phrase) :].strip()
                     # Take first word as account ID
                     if remaining:
                         account_id = remaining.split()[0].strip()

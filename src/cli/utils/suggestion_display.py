@@ -151,9 +151,7 @@ def display_suggestion(
             print("   ℹ️  Proceeding with your requested action")
     else:
         # No explicit user intent - show signal recommendation
-        print(
-            MSG.SIGNAL_DISPLAY.format(emoji=signal_emoji, signal=suggestion.signal.value.upper())
-        )
+        print(MSG.SIGNAL_DISPLAY.format(emoji=signal_emoji, signal=suggestion.signal.value.upper()))
 
     print(MSG.CONFIDENCE_DISPLAY.format(confidence=suggestion.confidence))
 
