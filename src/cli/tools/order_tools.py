@@ -477,9 +477,15 @@ def show_orders() -> str:
         symbol_local = local_state.get(symbol, {})
         local_orders = []
         if symbol_local.get("stop_price"):
-            local_orders.append({"side": "sell" if direction == "LONG" else "buy",
-                "type": "stop", "price": symbol_local["stop_price"],
-                "qty": symbol_local.get("quantity", 0), "id": "local-stop"})
+            local_orders.append(
+                {
+                    "side": "sell" if direction == "LONG" else "buy",
+                    "type": "stop",
+                    "price": symbol_local["stop_price"],
+                    "qty": symbol_local.get("quantity", 0),
+                    "id": "local-stop",
+                }
+            )
             has_local = True
         all_orders = orders + local_orders
         lines.append(f"┌─ ${symbol} ({len(all_orders)} orders) - {direction}")
@@ -489,14 +495,20 @@ def show_orders() -> str:
         for i, order in enumerate(limits):
             conn = "└─" if i == len(limits) - 1 and not stops and not others else "├─"
             local_mark = " *" if str(order.get("id", "")).startswith("local") else ""
-            lines.append(f"│ {conn} 🎯 PT: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}")
+            lines.append(
+                f"│ {conn} 🎯 PT: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}"
+            )
         for i, order in enumerate(stops):
             conn = "└─" if i == len(stops) - 1 and not others else "├─"
             local_mark = " *" if str(order.get("id", "")).startswith("local") else ""
-            lines.append(f"│ {conn} 🛑 SL: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}")
+            lines.append(
+                f"│ {conn} 🛑 SL: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}"
+            )
         for i, order in enumerate(others):
             conn = "└─" if i == len(others) - 1 else "├─"
-            lines.append(f"│ {conn} 📌 {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}")
+            lines.append(
+                f"│ {conn} 📌 {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}"
+            )
         lines.append("")
     if has_local:
         lines.extend(["─" * 50, "* Orders marked with * are from local state"])
@@ -515,7 +527,9 @@ def show_position_orders(ticker: str) -> str:
     if entry_orders:
         lines.append("✅ ENTRY (Filled)")
         for order in entry_orders[:3]:
-            lines.append(f"   {order.get('side', '?').upper()} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}")
+            lines.append(
+                f"   {order.get('side', '?').upper()} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}"
+            )
     open_orders = result.get("open_orders", [])
     if open_orders:
         lines.extend(["", "🟡 OPEN Exit Orders"])
@@ -523,16 +537,27 @@ def show_position_orders(ticker: str) -> str:
             otype = order.get("type", "unknown")
             price = order.get("price", 0)
             emoji = "🔴" if otype == "stop" else "🟢" if otype == "limit" else "📌"
-            label = "STOP LOSS" if otype == "stop" else "TAKE PROFIT" if otype == "limit" else otype.upper()
+            label = (
+                "STOP LOSS"
+                if otype == "stop"
+                else "TAKE PROFIT" if otype == "limit" else otype.upper()
+            )
             lines.append(f"   {emoji} {label}: ${price:.2f}")
     local_state = result.get("local_state", {})
     if local_state.get("stop_price") or local_state.get("target_price"):
         if not open_orders:
             lines.extend(["", "🟡 Exit Orders (from local state)"])
         if local_state.get("stop_price"):
-            lines.extend([f"   🔴 STOP LOSS: ${local_state['stop_price']:.2f}", "      * Verify on broker"])
+            lines.extend(
+                [f"   🔴 STOP LOSS: ${local_state['stop_price']:.2f}", "      * Verify on broker"]
+            )
         if local_state.get("target_price"):
-            lines.extend([f"   🟢 TAKE PROFIT: ${local_state['target_price']:.2f}", "      * Verify on broker"])
+            lines.extend(
+                [
+                    f"   🟢 TAKE PROFIT: ${local_state['target_price']:.2f}",
+                    "      * Verify on broker",
+                ]
+            )
     return "\n".join(lines)
 
 

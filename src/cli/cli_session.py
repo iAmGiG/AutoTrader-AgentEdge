@@ -15,7 +15,7 @@ import os
 import platform
 import re
 import sys
-from datetime import datetime, time, timedelta
+from datetime import time, timedelta
 from typing import Optional
 
 import pytz
