@@ -32,7 +32,7 @@ class HelpSystem:
         """Load help data from YAML configuration file."""
 
         config_path = os.path.join(
-            os.path.dirname(__file__), "../../config_defaults/help_commands.yaml"
+            os.path.dirname(__file__), "../../../config_defaults/help_commands.yaml"
         )
 
         try:

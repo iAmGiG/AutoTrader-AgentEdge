@@ -67,7 +67,7 @@ def _get_orchestrator():
     Returns singleton or creates new instance.
     """
     try:
-        from src.autogen_agents.trading_orchestrator import TradingOrchestrator
+        from src.autogen_agents import TradingOrchestrator
 
         return TradingOrchestrator()
     except Exception as e:

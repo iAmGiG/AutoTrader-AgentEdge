@@ -113,7 +113,7 @@ def set_execution_mode(mode: str) -> Dict[str, Any]:
         {'status': 'success', 'old_mode': 'confirm', 'new_mode': 'paper'}
     """
     try:
-        from src.autogen_agents.trading_orchestrator import ExecutionMode
+        from src.autogen_agents import ExecutionMode
 
         orchestrator = _get_orchestrator()
         target_mode = mode.lower().strip()
@@ -168,7 +168,7 @@ def confirm_and_set_auto_mode() -> Dict[str, Any]:
         Dict with status and mode information
     """
     try:
-        from src.autogen_agents.trading_orchestrator import ExecutionMode
+        from src.autogen_agents import ExecutionMode
 
         orchestrator = _get_orchestrator()
         old_mode = orchestrator.execution_mode

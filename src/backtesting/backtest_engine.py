@@ -34,7 +34,7 @@ class BacktestEngine:
 
     Usage:
         ```python
-        from src.autogen_agents.voter_agent import VoterAgent
+        from src.autogen_agents.agents.voter_agent import VoterAgent
         from src.backtesting import BacktestEngine
 
         # Initialize

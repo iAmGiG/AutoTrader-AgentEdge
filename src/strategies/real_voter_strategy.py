@@ -13,7 +13,7 @@ import pandas as pd
 
 from config_defaults.trading_config import TradingConfig
 
-from src.autogen_agents.voter_agent import VoterAgent
+from src.autogen_agents.agents.voter_agent import VoterAgent
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.database import AnalysisHistoryManager

@@ -27,7 +27,7 @@ import pandas as pd
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 # Import all trading system components at startup for efficiency
-from src.autogen_agents.voter_agent import VoterAgent
+from src.autogen_agents.agents.voter_agent import VoterAgent
 from src.data_sources.tools import fetch_unified_market_data
 from src.trading.account_manager import get_account_manager
 from src.trading.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager

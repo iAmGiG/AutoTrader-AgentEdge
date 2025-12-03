@@ -23,8 +23,11 @@ _tips_cache: Optional[Dict] = None
 
 def _get_tips_path() -> str:
     """Get path to trading_tips.yaml config file."""
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_dir, "..", "config_defaults", "trading_tips.yaml")
+    # Go up from utils/ -> cli/ -> src/ -> project root
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
+    return os.path.join(project_root, "config_defaults", "trading_tips.yaml")
 
 
 def load_trading_tips() -> Dict:
