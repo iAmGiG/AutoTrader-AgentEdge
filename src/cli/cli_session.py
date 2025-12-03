@@ -24,7 +24,6 @@ import yaml
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 # Import CLI messages configuration
 from config_defaults.message_loader import CLIMessages as MSG
-from config_defaults.message_loader import get_pl_emoji, get_signal_emoji
 
 from src.cli.commands.account_commands import get_account_commands
 from src.cli.commands.timeframe_commands import get_timeframe_commands
@@ -50,11 +49,17 @@ from src.cli.tools.order_tools import (
 from src.cli.tools.portfolio_tools import show_portfolio
 from src.cli.tools.scheduler_tools import show_scheduler
 from src.cli.utils.help_system import HelpSystem
+from src.cli.utils.suggestion_display import (
+    calc_pct,
+    display_position_context,
+    display_result,
+    display_suggestion,
+    get_trade_direction,
+)
 from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
 from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
-from src.trading.timeframe_tools import get_timeframe_display_name
 from src.trading.trading_cycle import CostEfficientTradeCycle
 from src.utils.date_utils import now_iso
 
@@ -863,7 +868,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             position = self._check_position_for_ticker(decision.suggestion.ticker)
 
             # Step 2a: Display position context
-            self._display_position_context(
+            display_position_context(
                 decision.suggestion.ticker, position, decision.suggestion.signal.value
             )
 
@@ -925,7 +930,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     )
 
                     # Show the actual technical analysis
-                    self._display_suggestion(
+                    display_suggestion(
                         decision.suggestion, position, override_mode="USER_OVERRIDE_LONG"
                     )
 
@@ -970,10 +975,10 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         print("\n   📊 Adjusted for BUY:")
                         print(f"      Entry:  ${entry:.2f}")
                         print(
-                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
+                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
                         )
                         print(
-                            f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
+                            f"      Target: ${decision.suggestion.take_profit:.2f} ({calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
                         )
                         print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
 
@@ -1030,10 +1035,10 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         print("\n   📊 Adjusted for BUY:")
                         print(f"      Entry:  ${entry:.2f}")
                         print(
-                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
+                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
                         )
                         print(
-                            f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
+                            f"      Target: ${decision.suggestion.take_profit:.2f} ({calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
                         )
                         print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
 
@@ -1062,7 +1067,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         print(
                             f"\n{MSG.EMOJI['info']} Showing analysis for {decision.suggestion.ticker} (information only, no trade)"
                         )
-                        self._display_suggestion(decision.suggestion, position)
+                        display_suggestion(decision.suggestion, position)
                         print(
                             f"\n   💡 Tip: If you want to trade on this analysis, type 'buy {decision.suggestion.ticker}' or 'short {decision.suggestion.ticker}'"
                         )
@@ -1102,7 +1107,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 override_mode = "USER_OVERRIDE_LONG"
             elif user_intent == "sell":
                 override_mode = "USER_OVERRIDE_SHORT"
-            self._display_suggestion(decision.suggestion, position, override_mode)
+            display_suggestion(decision.suggestion, position, override_mode)
 
             # Step 3a: Check if this is review-only (no execution intent)
             # Parse the original input to see if user explicitly wanted to execute
@@ -1125,7 +1130,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # Step 4: Execute if approved
             if decision.approved:
                 result = await self.orchestrator.execute_decision(decision)
-                self._display_result(result)
+                display_result(result)
 
                 # Issue #385: Update local state with stop/target immediately after trade
                 self._update_local_state_after_trade(decision, result)
@@ -1228,161 +1233,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
         return None  # Default: no explicit intent
 
-    def _display_position_context(self, ticker: str, position: Optional[dict], signal: str):
-        """
-        Display current position context before showing suggestion.
-
-        Args:
-            ticker: Stock symbol
-            position: Position dict if exists, None otherwise
-            signal: Signal type (BUY/SELL/HOLD)
-        """
-        print(f"\n{'=' * 60}")
-        print(f"📊 Position Context: {ticker}")
-        print(f"{'=' * 60}")
-
-        if position:
-            # Calculate metrics
-            qty = int(position.get("qty", 0))
-            avg_entry = float(position.get("avg_entry_price", 0))
-            market_value = float(position.get("market_value", 0))
-            current_price = (market_value / qty) if qty > 0 else 0.0
-            unrealized_pl = float(position.get("unrealized_pl", 0))
-            unrealized_plpc = float(position.get("unrealized_plpc", 0)) * 100
-
-            # Use fallback for entry price if needed
-            if avg_entry == 0.0:
-                cost_basis = float(position.get("cost_basis", 0))
-                avg_entry = (cost_basis / qty) if qty > 0 else 0.0
-
-            pl_emoji = get_pl_emoji(unrealized_pl)
-
-            print(f"   Current Position: {qty} shares @ ${avg_entry:.2f} (avg entry)")
-            print(f"   Current Price: ${current_price:.2f}")
-            print(f"   {pl_emoji} Unrealized P/L: ${unrealized_pl:+.2f} ({unrealized_plpc:+.2f}%)")
-            print(f"   Market Value: ${market_value:,.2f}")
-        else:
-            print(f"   ℹ️  No position in {ticker} (0 shares)")
-
-        print(f"{'=' * 60}\n")
-
-    def _display_suggestion(
-        self, suggestion, position: Optional[dict] = None, override_mode: Optional[str] = None
-    ):
-        """
-        Display trade suggestion to user.
-
-        Args:
-            suggestion: TradeSuggestion object
-            position: Optional position dict for additional context
-            override_mode: Optional override indicator ("USER_OVERRIDE_LONG", "USER_OVERRIDE_SHORT")
-        """
-        # Validate suggestion has required fields before display
-        if suggestion.entry_price is None or suggestion.entry_price <= 0:
-            raise ValueError(
-                f"Invalid entry price for {suggestion.ticker}: {suggestion.entry_price}. "
-                "Market data may be unavailable."
-            )
-
-        print("\n" + MSG.SUGGESTION_SEPARATOR)
-        print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=suggestion.entry_price))
-        print(MSG.SUGGESTION_SEPARATOR)
-
-        # Issue #347: Respect user intent when signals disagree
-        # Signal display prioritizes user's explicit request
-        signal_emoji = get_signal_emoji(suggestion.signal.value)
-
-        if override_mode == "USER_OVERRIDE_LONG":
-            # User wants BUY but signals say something else
-            print("👤 ACTION: ⬆️ BUY (as requested)")
-            if suggestion.signal.value.upper() != "BUY":
-                print(f"   📊 Signals suggest: {signal_emoji} {suggestion.signal.value.upper()}")
-                print("   ℹ️  Proceeding with your requested action")
-        elif override_mode == "USER_OVERRIDE_SHORT":
-            # User wants SELL but signals say something else
-            print("👤 ACTION: ⬇️ SELL (as requested)")
-            if suggestion.signal.value.upper() != "SELL":
-                print(f"   📊 Signals suggest: {signal_emoji} {suggestion.signal.value.upper()}")
-                print("   ℹ️  Proceeding with your requested action")
-        else:
-            # No explicit user intent - show signal recommendation
-            print(
-                MSG.SIGNAL_DISPLAY.format(
-                    emoji=signal_emoji, signal=suggestion.signal.value.upper()
-                )
-            )
-
-        print(MSG.CONFIDENCE_DISPLAY.format(confidence=suggestion.confidence))
-
-        # Get current timeframe for display (Issue #365)
-
-        try:
-            timeframe = get_timeframe_commands().manager.get_current_timeframe()
-            timeframe_display = get_timeframe_display_name(timeframe)
-        except Exception:
-            timeframe_display = "1 day"  # Fallback to default
-
-        # Technical analysis
-        print(MSG.ANALYSIS_HEADER.format(timeframe=timeframe_display))
-        for reason in suggestion.reasoning:
-            print(MSG.ANALYSIS_ITEM.format(reason=reason))
-
-        # Determine trade direction (CLOSE if has position, SHORT if not)
-        direction = self._get_trade_direction(suggestion.signal, has_position=bool(position))
-
-        # Entry plan
-        print(MSG.ENTRY_PLAN_HEADER)
-        print(
-            MSG.ENTRY_PLAN.format(
-                direction=direction,
-                entry=suggestion.entry_price,
-                stop=suggestion.stop_loss,
-                stop_pct=self._calc_pct(suggestion.entry_price, suggestion.stop_loss),
-                target=suggestion.take_profit,
-                target_pct=self._calc_pct(suggestion.entry_price, suggestion.take_profit),
-                qty=suggestion.recommended_quantity,
-                tif=suggestion.time_in_force.value.upper(),
-            )
-        )
-
-        # Portfolio impact
-        print(MSG.PORTFOLIO_IMPACT_HEADER)
-        print(
-            MSG.PORTFOLIO_IMPACT.format(
-                trade_value=suggestion.recommended_quantity * suggestion.entry_price,
-                portfolio_pct=suggestion.portfolio_pct,
-                max_loss=suggestion.max_loss_usd,
-                risk_reward=suggestion.risk_reward_ratio,
-            )
-        )
-
-        # Warnings
-        if suggestion.warnings:
-            print(MSG.WARNINGS_HEADER)
-            for warning in suggestion.warnings:
-                print(MSG.WARNING_ITEM.format(warning=warning))
-
-    def _get_trade_direction(self, signal: "Signal", has_position: bool = False) -> str:
-        """
-        Format trade direction for display.
-
-        Args:
-            signal: Trading signal (BUY/SELL/HOLD)
-            has_position: Whether user currently holds a position in this ticker
-
-        Returns:
-            Formatted direction string:
-            - BUY → "BUY (LONG)"
-            - SELL with position → "SELL (CLOSE)"
-            - SELL without position → "SELL (SHORT)"
-        """
-        if signal == Signal.BUY:
-            return "BUY (LONG)"
-        elif signal == Signal.SELL:
-            return "SELL (CLOSE)" if has_position else "SELL (SHORT)"
-        else:
-            return "HOLD"
-
     def _get_confirmation(self) -> bool:
         """
         Get user confirmation.
@@ -1399,35 +1249,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 return False
             else:
                 print(MSG.CONFIRM_INVALID)
-
-    def _display_result(self, result):
-        """
-        Display execution result.
-
-        Args:
-            result: OrderResult object
-        """
-        print("\n" + MSG.RESULT_SEPARATOR)
-
-        if result.success:
-            print(MSG.ORDER_SUCCESS_HEADER)
-            print(
-                MSG.ORDER_SUCCESS.format(
-                    qty=result.quantity,
-                    ticker=result.ticker,
-                    entry_id=result.entry_order_id,
-                    stop_id=result.stop_order_id,
-                    target_id=result.target_order_id,
-                    message=result.message,
-                )
-            )
-        else:
-            print(MSG.ORDER_FAILED_HEADER)
-            print(MSG.ORDER_FAILED.format(message=result.message))
-            if result.error:
-                print(MSG.ORDER_ERROR.format(error=result.error))
-
-        print(MSG.RESULT_SEPARATOR)
 
     def _update_local_state_after_trade(self, decision, result):
         """
@@ -1476,10 +1297,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
         except Exception as e:
             logger.warning(f"Failed to update local state after trade: {e}")
-
-    def _calc_pct(self, base: float, value: float) -> float:
-        """Calculate percentage change."""
-        return ((value - base) / base) * 100.0
 
     def _get_stop_loss_pct(self) -> float:
         """
@@ -1836,7 +1653,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 if phrase in input_lower:
                     # Get text after the phrase
                     idx = input_lower.find(phrase)
-                    remaining = user_input[idx + len(phrase) :].strip()
+                    remaining = user_input[idx + len(phrase):].strip()
                     # Take first word as account ID
                     if remaining:
                         account_id = remaining.split()[0].strip()
