@@ -40,8 +40,10 @@ from src.cli.timeframe_commands import get_timeframe_commands
 from src.cli.tools.mode_tools import set_mode, show_current_mode, show_mode_comparison
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
+from src.cli.tools.alert_tools import show_alerts
 from src.cli.tools.order_tools import show_orders, show_position_orders
 from src.cli.tools.portfolio_tools import show_portfolio
+from src.cli.tools.scheduler_tools import show_scheduler
 from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
@@ -1685,174 +1687,14 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             return 0.08
 
     async def _handle_alerts_request(self, user_input: str):
-        """
-        Handle position alerts request.
-
-        Args:
-            user_input: User's natural language input
-        """
-        print(MSG.CHECKING_ALERTS)
-
-        try:
-            if not self.trading_cycle:
-                print(MSG.ALERTS_NOT_INITIALIZED)
-                return
-
-            # Fetch current broker state
-            broker_state = self.trading_cycle.fetch_broker_state()
-
-            # Check alerts using position tracker
-            alerts = self.trading_cycle.position_tracker.check_alerts(broker_state)
-
-            if not alerts:
-                print(MSG.NO_ALERTS)
-                print(MSG.POSITIONS_MONITORED(count=len(broker_state.get("positions", []))))
-            else:
-                print(MSG.ALERTS_HEADER(count=len(alerts)))
-                for alert in alerts:
-                    severity_emoji = get_alert_severity_emoji(alert.severity)
-                    print(
-                        MSG.ALERT_ITEM(
-                            emoji=severity_emoji,
-                            ticker=alert.ticker,
-                            alert_type=alert.alert_type.value,
-                            price=alert.current_price,
-                        )
-                    )
-                    if alert.details:
-                        for key, value in alert.details.items():
-                            print(MSG.ALERT_DETAIL(key=key, value=value))
-
-            # Show alert history
-            history = self.trading_cycle.position_tracker.get_alert_history()
-            if history:
-                print(MSG.ALERT_HISTORY_HEADER(count=len(history)))
-                for alert in history[-5:]:  # Last 5
-                    print(
-                        MSG.ALERT_HISTORY_ITEM(
-                            ticker=alert.ticker,
-                            alert_type=alert.alert_type.value,
-                            time=alert.timestamp.strftime("%H:%M:%S"),
-                        )
-                    )
-
-        except Exception as e:
-            print(MSG.ERROR_CHECKING_ALERTS(error=e))
-            logger.error(f"Alerts error: {e}", exc_info=True)
+        """Handle position alerts request. Issue #459: Uses show_alerts()."""
+        output = show_alerts()
+        print(output)
 
     async def _handle_scheduler_request(self, user_input: str):
-        """
-        Handle scheduler status/management request with detailed information.
-
-        Args:
-            user_input: User's natural language input
-        """
-        print(MSG.SCHEDULER_HEADER)
-        print(MSG.SCHEDULER_SEPARATOR)
-
-        try:
-            if not self.scheduler:
-                print(MSG.SCHEDULER_NOT_INITIALIZED)
-                return
-
-            # Show scheduler configuration with clear status
-            enabled = self.scheduler.config.get("enabled", False)
-            status_emoji = MSG.EMOJI["profit"] if enabled else MSG.EMOJI["loss"]
-            status_text = "ENABLED" if enabled else "DISABLED"
-            print(MSG.SCHEDULER_STATUS(emoji=status_emoji, status=status_text))
-
-            print(MSG.SCHEDULER_CONFIG_HEADER)
-            print(
-                MSG.SCHEDULER_CONFIG(
-                    morning=self.scheduler.config.get("morning_routine_time", "09:20"),
-                    evening=self.scheduler.config.get("evening_routine_time", "15:50"),
-                    retries=self.scheduler.config.get("max_retries", 3),
-                )
-            )
-
-            # Show what each routine does
-            print(MSG.SCHEDULER_ROUTINES_HEADER)
-            print(MSG.MORNING_ROUTINE)
-            print(MSG.EVENING_ROUTINE)
-
-            # Show recent execution history with more detail
-            recent = self.scheduler.get_execution_history(days=7)
-            if recent:
-                print(MSG.SCHEDULER_HISTORY_HEADER)
-
-                for entry in recent[:10]:
-                    status_emoji = get_status_emoji(entry.status)
-
-                    # Format timestamp
-                    if entry.actual_end_time:
-                        time_str = entry.actual_end_time.strftime("%Y-%m-%d %H:%M")
-                    else:
-                        time_str = "In Progress"
-
-                    print(
-                        MSG.SCHEDULER_HISTORY_ITEM(
-                            emoji=status_emoji,
-                            task=entry.task_name,
-                            status=entry.status.upper(),
-                            time=time_str,
-                        )
-                    )
-
-                    if entry.error_message:
-                        print(MSG.SCHEDULER_ERROR(error=entry.error_message[:80]))
-
-                    # Show retry info if applicable
-                    if hasattr(entry, "retry_count") and entry.retry_count > 0:
-                        print(MSG.SCHEDULER_RETRIES(count=entry.retry_count))
-            else:
-                print(MSG.SCHEDULER_NO_HISTORY)
-
-            # Calculate next scheduled run
-            print(MSG.SCHEDULER_NEXT_HEADER)
-            try:
-
-                et = pytz.timezone("US/Eastern")
-                now = get_datetime_now(et)
-
-                morning_time = time(9, 20)
-                evening_time = time(15, 50)
-
-                morning_today = now.replace(hour=9, minute=20, second=0, microsecond=0)
-                evening_today = now.replace(hour=15, minute=50, second=0, microsecond=0)
-
-                if now.time() < morning_time:
-                    next_run = morning_today
-                    next_task = "Morning Routine"
-                elif now.time() < evening_time:
-                    next_run = evening_today
-                    next_task = "Evening Routine"
-                else:
-                    # After evening, next is tomorrow morning
-
-                    next_run = morning_today + timedelta(days=1)
-                    next_task = "Morning Routine (tomorrow)"
-
-                time_until = next_run - now
-                hours = int(time_until.total_seconds() // 3600)
-                minutes = int((time_until.total_seconds() % 3600) // 60)
-
-                print(
-                    MSG.SCHEDULER_NEXT(
-                        task=next_task,
-                        time=next_run.strftime("%H:%M %p"),
-                        hours=hours,
-                        minutes=minutes,
-                    )
-                )
-            except Exception as calc_error:
-                print(MSG.SCHEDULER_NEXT_ERROR(error=calc_error))
-
-            # Usage instructions
-            print(MSG.SCHEDULER_COMMANDS)
-
-        except Exception as e:
-            print(MSG.ERROR_CHECKING_SCHEDULER(error=e))
-            logger.error(f"Scheduler error: {e}", exc_info=True)
+        """Handle scheduler status request. Issue #459: Uses show_scheduler()."""
+        output = show_scheduler()
+        print(output)
 
     async def _handle_portfolio_request(self, user_input: str):
         """

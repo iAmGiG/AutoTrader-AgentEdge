@@ -287,9 +287,46 @@ def get_monitored_positions_count() -> Dict[str, Any]:
 
 
 # =============================================================================
+# Display Functions (Issue #459)
+# =============================================================================
+
+
+def show_alerts() -> str:
+    """Display current position alerts with formatted output."""
+    result = check_alerts()
+    if result["status"] == "not_initialized":
+        return "❌ Alert system not initialized"
+    if result["status"] == "error":
+        return f"❌ Error: {result.get('error', 'Unknown')}"
+    if result["status"] == "no_alerts":
+        return f"✅ No active alerts\n📊 Monitoring {result.get('positions_monitored', 0)} position(s)"
+
+    lines = [f"🚨 Position Alerts ({result['alert_count']})", ""]
+    for alert in result.get("alerts", []):
+        severity = alert.get("severity", "INFO")
+        emoji = "🔴" if severity == "CRITICAL" else "🟡" if severity == "WARNING" else "ℹ️"
+        lines.append(f"{emoji} {alert.get('ticker', '?')}: {alert.get('alert_type', 'unknown')} @ ${alert.get('current_price', 0):.2f}")
+        for key, value in alert.get("details", {}).items():
+            lines.append(f"   • {key}: {value}")
+
+    history_result = get_alert_history(limit=5)
+    if history_result.get("history"):
+        lines.extend(["", f"📜 Recent History ({len(history_result['history'])})"])
+        for hist in history_result["history"]:
+            lines.append(f"   {hist.get('ticker')}: {hist.get('alert_type')}")
+    return "\n".join(lines)
+
+
+# =============================================================================
 # FunctionTool Registration
 # =============================================================================
 
+
+show_alerts_tool = FunctionTool(
+    func=show_alerts,
+    name="show_alerts",
+    description="Display current position alerts with formatted output.",
+)
 
 check_alerts_tool = FunctionTool(
     func=check_alerts,
@@ -318,6 +355,7 @@ get_monitored_positions_count_tool = FunctionTool(
 
 # Export list for CLI tools registry
 CLI_ALERT_TOOLS = [
+    show_alerts_tool,
     check_alerts_tool,
     get_alert_history_tool,
     get_position_alert_status_tool,
@@ -325,7 +363,9 @@ CLI_ALERT_TOOLS = [
 ]
 
 __all__ = [
-    # Functions
+    # Display Functions
+    "show_alerts",
+    # Data Functions
     "check_alerts",
     "get_alert_history",
     "get_position_alert_status",
