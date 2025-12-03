@@ -191,15 +191,17 @@ class SchedulerCLI:
         handler_name = cmd_def.get("handler", cmd_name)
         handler = getattr(self, f"_{handler_name}", None)
 
-        if not handler or not callable(handler):
+        if handler is None or not callable(handler):
             print(f"{get_emoji('cross_red', '❌')} Handler not implemented: {handler_name}")
             return
 
+        # handler is guaranteed callable at this point
+        callable_handler = handler
         try:
-            if asyncio.iscoroutinefunction(handler):
-                await handler(*args)
+            if asyncio.iscoroutinefunction(callable_handler):
+                await callable_handler(*args)
             else:
-                handler(*args)
+                callable_handler(*args)
         except TypeError:
             usage = cmd_def.get("usage", "")
             if usage:
