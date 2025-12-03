@@ -15,30 +15,30 @@ Modules:
 
 from src.cli.utils.help_system import HelpSystem
 from src.cli.utils.input_parser import (
-    BUY_INDICATORS,
-    SELL_INDICATORS,
-    detect_user_intent,
-    extract_ticker_from_query,
+                                        BUY_INDICATORS,
+                                        SELL_INDICATORS,
+                                        detect_user_intent,
+                                        extract_ticker_from_query,
 )
 from src.cli.utils.suggestion_display import (
-    calc_pct,
-    display_position_context,
-    display_result,
-    display_suggestion,
-    get_trade_direction,
+                                        calc_pct,
+                                        display_position_context,
+                                        display_result,
+                                        display_suggestion,
+                                        get_trade_direction,
 )
 from src.cli.utils.ticker_completer import (
-    READLINE_AVAILABLE,
-    TickerCompleter,
-    get_ticker_completer,
-    is_powershell,
-    readline,
+                                        READLINE_AVAILABLE,
+                                        TickerCompleter,
+                                        get_ticker_completer,
+                                        is_powershell,
+                                        readline,
 )
 from src.cli.utils.trading_tips import (
-    display_trading_tips,
-    get_tips_dict,
-    load_trading_tips,
-    show_trading_tips,
+                                        display_trading_tips,
+                                        get_tips_dict,
+                                        load_trading_tips,
+                                        show_trading_tips,
 )
 
 __all__ = [

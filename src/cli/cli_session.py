@@ -881,14 +881,10 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # If analyzer suggests SELL but no position exists, check user's explicit intent
             if decision.suggestion.signal.value.upper() == "SELL" and not position:
                 # Check if user explicitly wants to BUY/LONG (override signal)
-                user_wants_buy = any(
-                    indicator in original_input for indicator in BUY_INDICATORS
-                )
+                user_wants_buy = any(indicator in original_input for indicator in BUY_INDICATORS)
 
                 # Check if user explicitly wants to SELL/SHORT
-                user_wants_sell = any(
-                    indicator in original_input for indicator in SELL_INDICATORS
-                )
+                user_wants_sell = any(indicator in original_input for indicator in SELL_INDICATORS)
 
                 if user_wants_buy:
                     # User explicitly wants to go LONG despite SELL signal
