@@ -32,6 +32,7 @@ PORTFOLIO_TOOLS = "portfolio"
 ORDER_TOOLS = "order"
 SCHEDULER_TOOLS = "scheduler"
 ALERT_TOOLS = "alert"
+EXECUTION_MODE_TOOLS = "execution_mode"
 
 
 class CliToolRegistry:
@@ -213,6 +214,8 @@ def _discover_and_register_tools() -> None:
         ("order_tools", "CLI_ORDER_TOOLS", ORDER_TOOLS),
         ("scheduler_tools", "CLI_SCHEDULER_TOOLS", SCHEDULER_TOOLS),
         ("alert_tools", "CLI_ALERT_TOOLS", ALERT_TOOLS),
+        # Phase 1E (#459): Execution mode tools
+        ("execution_mode_tools", "CLI_EXECUTION_MODE_TOOLS", EXECUTION_MODE_TOOLS),
     ]
 
     for module_name, tools_attr, category in tool_modules:
@@ -242,6 +245,7 @@ __all__ = [
     "ORDER_TOOLS",
     "SCHEDULER_TOOLS",
     "ALERT_TOOLS",
+    "EXECUTION_MODE_TOOLS",
     # AutoGen core
     "FunctionTool",
 ]

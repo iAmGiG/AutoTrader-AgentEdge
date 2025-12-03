@@ -23,12 +23,8 @@ import yaml
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 # Import CLI messages configuration
 from config_defaults.message_loader import CLIMessages as MSG
-from config_defaults.message_loader import (
-    get_pl_emoji,
-    get_signal_emoji,
-)
+from config_defaults.message_loader import get_pl_emoji, get_signal_emoji
 
-from src.autogen_agents.trading_orchestrator import ExecutionMode
 from src.cli.account_commands import get_account_commands
 from src.cli.help_system import HelpSystem
 from src.cli.scheduler_cli import SchedulerCLI
@@ -36,6 +32,13 @@ from src.cli.timeframe_commands import get_timeframe_commands
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
 from src.cli.tools.alert_tools import show_alerts
+from src.cli.tools.execution_mode_tools import (
+    confirm_and_set_auto_mode,
+    format_mode_change_result,
+    set_execution_mode,
+    set_orchestrator,
+    show_execution_mode,
+)
 from src.cli.tools.mode_tools import set_mode, show_current_mode, show_mode_comparison
 from src.cli.tools.order_tools import show_orders, show_position_orders
 from src.cli.tools.portfolio_tools import show_portfolio
@@ -95,156 +98,18 @@ def _sanitize_error_message(error: Exception) -> str:
     return "Didn't understand that. Nothing done."
 
 
-# Arrow key history navigation (#362) and advanced readline features (#399)
-# Note: Tab completion works in cmd.exe and Git Bash, but NOT in PowerShell
-# PowerShell uses PSReadLine which has its own completion system
-def _is_powershell() -> bool:
-    """Detect if running in PowerShell (where readline doesn't work)."""
-    # Check common PowerShell environment indicators
-    ps_indicators = [
-        os.environ.get("PSModulePath"),  # PowerShell sets this
-        os.environ.get("POWERSHELL_DISTRIBUTION_CHANNEL"),
-    ]
-    return any(ps_indicators)
+# Issue #436: Ticker completer moved to separate module
+import atexit
 
+from src.cli.ticker_completer import (
+    READLINE_AVAILABLE,
+    get_ticker_completer,
+    is_powershell,
+    readline,
+)
 
-READLINE_AVAILABLE = False
-readline = None
-
-try:
-    import atexit
-    import readline
-
-    READLINE_AVAILABLE = True
-except ImportError:
-    # Windows may need pyreadline3
-    try:
-        import atexit
-
-        import pyreadline3 as readline
-
-        READLINE_AVAILABLE = True
-    except ImportError:
-        pass
-
-# Disable readline in PowerShell (it doesn't work there)
-if READLINE_AVAILABLE and _is_powershell():
-    READLINE_AVAILABLE = False
-    readline = None
-
-
-# Issue #399: Ticker completer for tab completion
-class TickerCompleter:
-    """
-    Tab completion for stock tickers.
-
-    Provides autocomplete for:
-    - Recently used tickers (persisted across sessions, auto-growing)
-    - Current position tickers
-    - Seed tickers from config (loaded from scanner_config.yaml on first run)
-
-    All tickers are file-based for dynamic management.
-    """
-
-    # Fallback seed tickers if config loading fails
-    _FALLBACK_SEED_TICKERS = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA"]
-
-    def __init__(self):
-        self.recent_tickers = []
-        self.position_tickers = []
-        self._completions = []
-        self._ticker_file = os.path.expanduser("~/.autotrader_tickers")
-        self._seed_tickers = self._load_seed_tickers_from_config()
-        self._load_recent_tickers()
-
-    def _load_seed_tickers_from_config(self) -> list:
-        """Load seed tickers from scanner_config.yaml watchlist."""
-        try:
-            config_path = os.path.join(
-                os.path.dirname(__file__), "..", "..", "config_defaults", "scanner_config.yaml"
-            )
-            config_path = os.path.normpath(config_path)
-
-            if not os.path.exists(config_path):
-                return list(self._FALLBACK_SEED_TICKERS)
-
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-
-            # Extract all tickers from default_watchlist categories
-            tickers = []
-            watchlist = config.get("default_watchlist", {})
-            for symbols in watchlist.values():
-                if isinstance(symbols, list):
-                    tickers.extend(symbols)
-
-            return tickers if tickers else list(self._FALLBACK_SEED_TICKERS)
-
-        except Exception:
-            return list(self._FALLBACK_SEED_TICKERS)
-
-    def _load_recent_tickers(self):
-        """Load recently used tickers from file, seeding if first run."""
-        try:
-            if os.path.exists(self._ticker_file):
-                with open(self._ticker_file, "r", encoding="utf-8") as f:
-                    self.recent_tickers = [line.strip().upper() for line in f if line.strip()][
-                        :100
-                    ]  # Keep up to 100 tickers
-            else:
-                # First run - seed with tickers from scanner_config.yaml
-                self.recent_tickers = list(self._seed_tickers)
-                self.save_recent_tickers()
-        except Exception:
-            self.recent_tickers = list(self._seed_tickers)
-
-    def save_recent_tickers(self):
-        """Save recently used tickers to file."""
-        try:
-            with open(self._ticker_file, "w") as f:
-                for ticker in self.recent_tickers[:100]:  # Keep up to 100
-                    f.write(f"{ticker}\n")
-        except Exception:
-            pass
-
-    def add_ticker(self, ticker: str):
-        """Add a ticker to recent list (moves to front if exists)."""
-        ticker = ticker.upper().strip()
-        if not ticker or len(ticker) > 5 or not ticker.isalpha():
-            return
-        if ticker in self.recent_tickers:
-            self.recent_tickers.remove(ticker)
-        self.recent_tickers.insert(0, ticker)
-        self.recent_tickers = self.recent_tickers[:100]
-        # Auto-save when ticker is added
-        self.save_recent_tickers()
-
-    def set_position_tickers(self, tickers: list):
-        """Update list of tickers from current positions."""
-        self.position_tickers = [t.upper() for t in tickers if t]
-
-    def get_completions(self, text: str) -> list:
-        """Get ticker completions for given text."""
-        text = text.upper()
-        # Combine recent + positions (no hardcoded list)
-        all_tickers = set(self.recent_tickers + self.position_tickers)
-        if not text:
-            # Return recent + position tickers first (most relevant)
-            return self.recent_tickers[:10]
-        return sorted([t for t in all_tickers if t.startswith(text)])
-
-    def complete(self, text: str, state: int):
-        """Readline completer function."""
-        if state == 0:
-            self._completions = self.get_completions(text)
-        try:
-            return self._completions[state]
-        except IndexError:
-            return None
-
-
-# Global ticker completer instance
-_ticker_completer = TickerCompleter() if READLINE_AVAILABLE else None
+# Global ticker completer instance (from extracted module)
+_ticker_completer = get_ticker_completer()
 
 
 class CLISession:
@@ -268,6 +133,9 @@ class CLISession:
         self.orchestrator = orchestrator
         self.autonomy_mode = "confirm"  # or "auto"
         self.user_id = "cli_user"
+
+        # Issue #459: Set orchestrator for execution mode tools
+        set_orchestrator(orchestrator)
 
         # Initialize help system (Issue #369)
         self.help_system = HelpSystem()
@@ -483,7 +351,7 @@ class CLISession:
         print(MSG.HELP_COMMANDS)
 
         # PowerShell notice - tab completion doesn't work there
-        if _is_powershell():
+        if is_powershell():
             print("\nNote: Tab completion is not available in PowerShell.")
             print("      For tab completion, use cmd.exe or Git Bash.")
 
@@ -1759,17 +1627,8 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
     async def _handle_execution_mode_request(self, user_input: str):
         """
         Handle execution mode view/change requests.
-        Issue #332: Add execution mode switching commands
-
-        Supports:
-        - show execution mode
-        - set execution mode {confirm|auto|paper|disabled}
-        - execution-mode confirm/auto/paper/disabled
-
-        Args:
-            user_input: User's natural language input
+        Issue #332/#459: Uses execution_mode_tools functions.
         """
-
         input_lower = user_input.lower()
 
         # Determine if this is a "show" or "set" request
@@ -1777,18 +1636,10 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         is_set = any(word in input_lower for word in ["set", "change", "switch"])
 
         if is_show and not is_set:
-            # Show current execution mode
-            current_mode = self.orchestrator.execution_mode
-            print(f"\n📋 Current Execution Mode: {current_mode.value.upper()}")
-            print("\nMode Descriptions:")
-            print("  • CONFIRM - Requires human approval for each trade")
-            print("  • AUTO    - Executes trades automatically (within risk limits)")
-            print("  • PAPER   - Paper trading only, no real money")
-            print("  • DISABLED - Trading completely disabled")
-            print("\nTo change mode: set execution mode {confirm|auto|paper|disabled}")
+            print(show_execution_mode())
             return
 
-        # Try to extract target mode from input
+        # Extract target mode from input
         target_mode = None
         for mode in ["confirm", "auto", "paper", "disabled"]:
             if mode in input_lower:
@@ -1796,58 +1647,23 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 break
 
         if not target_mode:
-            print("❌ Could not determine execution mode")
-            print("ℹ️  Usage: set execution mode {confirm|auto|paper|disabled}")
-            print("\nAvailable modes:")
-            print("  • confirm  - Human approval required")
-            print("  • auto     - Autonomous execution")
-            print("  • paper    - Paper trading only")
-            print("  • disabled - Trading disabled")
+            print(show_execution_mode())
             return
 
-        # Validate and set new mode
-        try:
-            new_mode = ExecutionMode(target_mode)
+        # Set new mode using tools
+        result = set_execution_mode(target_mode)
 
-            # Safety confirmation for AUTO mode
-            if (
-                new_mode == ExecutionMode.AUTO
-                and self.orchestrator.execution_mode != ExecutionMode.AUTO
-            ):
-                print("\n⚠️  WARNING: Switching to AUTO mode")
-                print("   This will execute trades automatically without confirmation.")
-                print("   Risk limits and position sizing will still apply.")
-                print("\nSwitch to AUTO mode? [yes/no]: ", end="")
-                confirm = input().strip().lower()
+        if result["status"] == "requires_confirmation":
+            # AUTO mode needs user confirmation
+            print(format_mode_change_result(result))
+            print("\nSwitch to AUTO mode? [yes/no]: ", end="")
+            confirm = input().strip().lower()
+            if confirm != "yes":
+                print("❌ Mode change cancelled")
+                return
+            result = confirm_and_set_auto_mode()
 
-                if confirm != "yes":
-                    print("❌ Mode change cancelled")
-                    return
-
-            # Set new mode
-            old_mode = self.orchestrator.execution_mode
-            self.orchestrator.execution_mode = new_mode
-
-            # Confirmation message
-            print(
-                f"\n✅ Execution mode changed: {old_mode.value.upper()} → {new_mode.value.upper()}"
-            )
-
-            # Mode-specific guidance
-            if new_mode == ExecutionMode.CONFIRM:
-                print("   • Trades will require your approval before execution")
-            elif new_mode == ExecutionMode.AUTO:
-                print("   • Trades will execute automatically (within risk limits)")
-                print("   • Use 'cancel all orders' to stop pending trades")
-            elif new_mode == ExecutionMode.PAPER:
-                print("   • All trades will be simulated (no real money)")
-            elif new_mode == ExecutionMode.DISABLED:
-                print("   • Trading is now disabled")
-                print("   • No trades will be executed")
-
-        except ValueError:
-            print(f"❌ Invalid execution mode: {target_mode}")
-            print("ℹ️  Valid modes: confirm, auto, paper, disabled")
+        print(format_mode_change_result(result))
 
     async def _handle_trading_mode_request(self, user_input: str):
         """
