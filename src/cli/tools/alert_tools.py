@@ -299,13 +299,17 @@ def show_alerts() -> str:
     if result["status"] == "error":
         return f"❌ Error: {result.get('error', 'Unknown')}"
     if result["status"] == "no_alerts":
-        return f"✅ No active alerts\n📊 Monitoring {result.get('positions_monitored', 0)} position(s)"
+        return (
+            f"✅ No active alerts\n📊 Monitoring {result.get('positions_monitored', 0)} position(s)"
+        )
 
     lines = [f"🚨 Position Alerts ({result['alert_count']})", ""]
     for alert in result.get("alerts", []):
         severity = alert.get("severity", "INFO")
         emoji = "🔴" if severity == "CRITICAL" else "🟡" if severity == "WARNING" else "ℹ️"
-        lines.append(f"{emoji} {alert.get('ticker', '?')}: {alert.get('alert_type', 'unknown')} @ ${alert.get('current_price', 0):.2f}")
+        lines.append(
+            f"{emoji} {alert.get('ticker', '?')}: {alert.get('alert_type', 'unknown')} @ ${alert.get('current_price', 0):.2f}"
+        )
         for key, value in alert.get("details", {}).items():
             lines.append(f"   • {key}: {value}")
 

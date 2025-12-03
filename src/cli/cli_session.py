@@ -15,10 +15,8 @@ import os
 import platform
 import re
 import sys
-from datetime import time, timedelta
 from typing import Optional
 
-import pytz
 import yaml
 
 # Add imports for new features
@@ -26,10 +24,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 # Import CLI messages configuration
 from config_defaults.message_loader import CLIMessages as MSG
 from config_defaults.message_loader import (
-    get_alert_severity_emoji,
     get_pl_emoji,
     get_signal_emoji,
-    get_status_emoji,
 )
 
 from src.autogen_agents.trading_orchestrator import ExecutionMode
@@ -37,10 +33,10 @@ from src.cli.account_commands import get_account_commands
 from src.cli.help_system import HelpSystem
 from src.cli.scheduler_cli import SchedulerCLI
 from src.cli.timeframe_commands import get_timeframe_commands
-from src.cli.tools.mode_tools import set_mode, show_current_mode, show_mode_comparison
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
 from src.cli.tools.alert_tools import show_alerts
+from src.cli.tools.mode_tools import set_mode, show_current_mode, show_mode_comparison
 from src.cli.tools.order_tools import show_orders, show_position_orders
 from src.cli.tools.portfolio_tools import show_portfolio
 from src.cli.tools.scheduler_tools import show_scheduler
@@ -49,7 +45,7 @@ from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
 from src.trading.timeframe_tools import get_timeframe_display_name
 from src.trading.trading_cycle import CostEfficientTradeCycle
-from src.utils.date_utils import get_datetime_now, now_iso
+from src.utils.date_utils import now_iso
 
 # Import safe_print for Unicode handling
 from src.utils.safe_print import safe_print
