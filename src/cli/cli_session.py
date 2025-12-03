@@ -29,6 +29,7 @@ from src.cli.account_commands import get_account_commands
 from src.cli.help_system import HelpSystem
 from src.cli.scheduler_cli import SchedulerCLI
 from src.cli.timeframe_commands import get_timeframe_commands
+from src.cli.trading_tips import display_trading_tips, get_tips_dict
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
 from src.cli.tools.alert_tools import show_alerts
@@ -165,33 +166,8 @@ class CLISession:
         # Load trading configuration for stop/target display
         self.trading_config = self._load_trading_config()
 
-        # Educational tips for novice users
-        self.trading_tips = {
-            "buy_vs_short": (
-                "BUY = You think the stock will go UP in value\n"
-                "   Example: Buy META at $500, sell later at $550 → $50 profit per share\n\n"
-                "SHORT = You think the stock will go DOWN in value (advanced/risky)\n"
-                "   Example: Short META at $500, buy back at $450 → $50 profit per share\n"
-                "   ⚠️  Warning: If stock goes UP while shorted, you lose money!"
-            ),
-            "position_required": (
-                "To SELL a stock, you must own it first (have an open position).\n"
-                "Think of it like selling your car - you can't sell what you don't own!"
-            ),
-            "signals": (
-                "The analysis gives a signal based on technical indicators:\n"
-                "  📈 BUY signal = indicators suggest price may go UP\n"
-                "  📉 SELL signal = indicators suggest price may go DOWN\n\n"
-                "⚠️  Remember: These are suggestions, not guarantees!"
-            ),
-            "entry_timing": (
-                "NEW: You can specify WHEN you want to enter a trade:\n"
-                "  'buy QQQ at a pullback' → Enters 2.5% below current price\n"
-                "  'buy SPY on a dip' → Same as pullback, waits for lower price\n"
-                "  'buy NVDA at a breakout' → Enters 1.5% above current (momentum)\n\n"
-                "This helps you get better entry prices instead of buying at the current price!"
-            ),
-        }
+        # Educational tips for novice users (loaded from config)
+        self.trading_tips = get_tips_dict()
 
     def _setup_history(self):
         """
@@ -416,35 +392,8 @@ class CLISession:
         return True
 
     def _show_trading_tips(self):
-        """Display educational trading tips for beginners."""
-        safe_print("\n" + "=" * 70)
-        safe_print("📚 TRADING BASICS FOR BEGINNERS")
-        safe_print("=" * 70)
-
-        safe_print("\n1️⃣  BUY vs SHORT (Long vs Short)")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["buy_vs_short"])
-
-        safe_print("\n2️⃣  Understanding Signals")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["signals"])
-
-        safe_print("\n3️⃣  Why You Need a Position to SELL")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["position_required"])
-
-        safe_print("\n4️⃣  Entry Timing (NEW!)")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["entry_timing"])
-
-        safe_print("\n💡 QUICK TIPS:")
-        safe_print("-" * 70)
-        safe_print("• Start small: Test with small amounts until you understand")
-        safe_print("• Use CONFIRM mode: Always review before executing trades")
-        safe_print("• Ask questions: Type naturally, the system will understand")
-        safe_print("• Check analysis: Choose 'review' to see analysis without trading")
-        safe_print("• Try timing: 'buy at a pullback' for better entry prices")
-        safe_print("\n" + "=" * 70)
+        """Display educational trading tips. Issue #436: Uses config-based tips."""
+        display_trading_tips()
 
     async def _classify_intent(self, user_input: str) -> dict:
         """
