@@ -52,7 +52,8 @@ By using this software, you acknowledge that you understand these risks and agre
 - **✅ Human-in-Loop CLI** - Trade approval interface (Issue #308 - COMPLETED)
 - **✅ Backtesting Framework** - In-house engine with TSMOM signal support
 - **✅ Code Quality Refactoring** - Major modules extracted and modularized
-- **✅ CLI FunctionTool Infrastructure** - Tool registry + mode/timeframe tools (Issues #455, #456 - Phase 1 COMPLETE)
+- **✅ CLI FunctionTool Infrastructure Phase 1A-1B** - Tool registry + mode/timeframe tools (Issues #455, #456 - COMPLETE)
+- **🚧 CLI FunctionTool Infrastructure Phase 1C-1E** - Portfolio/account/order/scheduler tools (Issues #457-459 - IN DEVELOPMENT)
 - **🚧 Multi-Agent System** - Scanner, Risk, Executor agents (planned)
 
 **Key Metrics**:
@@ -155,9 +156,9 @@ The platform implements a Microsoft AutoGen-based multi-agent architecture with 
 
 **Technical Analysis Tools**:
 
-- **Enhanced Fibonacci Regime Module**: Advanced market regime detection
-- **Multi-Indicator Suite**: MACD, RSI, EMA filters with validated parameters
-- **Statistical Validation**: Walk-forward analysis, Monte Carlo simulation
+- **MACD+RSI Voting System**: Pure-math indicators with validated parameters (13/34/8 + 14/30/70)
+- **Consensus-Based Signals**: Strong signals when both indicators agree, weak when only one signals
+- **Statistical Validation**: Comprehensive backtesting and forward testing framework
 
 **Data Management**:
 
@@ -234,15 +235,6 @@ python main.py --daemon
 # Executes twice daily:
 #   - Morning: 9:20 AM ET (position reconciliation + alerts)
 #   - Evening: 3:50 PM ET (performance review)
-```
-
-#### Legacy Commands (Deprecated)
-
-```bash
-# Legacy one-shot commands (will be removed)
-python main.py --legacy test-voter
-python main.py --legacy check-positions
-python main.py --legacy paper-trade SPY
 ```
 
 **Example Interactive Session**:
@@ -543,14 +535,14 @@ AutoTrader-AgentEdge/
 
 **System Architecture**:
 
-- [Fibonacci Integration Guide](docs/integration/fibonacci_enhanced_integration_guide.md) - Complete integration documentation
+- [AgentEdge Architecture](docs/architecture/agent_edge_architecture.md) - Multi-agent system design and AutoGen framework integration
 - [Quick Reference](docs/integration/quick_reference.md) - Essential commands and usage
-- [Regime Detection Tools](docs/fibonacci_regime/regime_detection_tools.md) - Technical analysis modules
 
 **Reference**:
 
-- [Commands](docs/reference/commands.md) - All available scripts and commands
+- [Commands](docs/reference/commands.md) - All available CLI commands and REPL interface
 - [Troubleshooting](docs/reference/troubleshooting.md) - Common issues and solutions
+- [Legacy Systems](docs/project-history.md) - Historical architecture including deprecated V0-V4 sentiment system
 
 ## Development Status
 

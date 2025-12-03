@@ -207,16 +207,13 @@ EOF
 
 ```bash
 # View voting strategy validation
-cat reports/active/voting_strategy/experiment_293_validation/293_voting_validation_report.md
+cat docs/archived/experiments/experiment_293_validation/README.md
 
-# Check MACD optimization results  
-cat reports/active/voting_strategy/macd_optimization/optimization_report.md
+# Check validation results
+cat docs/01_overview/01_system_overview.md
 
-# Review extended period analysis
-cat reports/active/voting_strategy/extended_period_analysis/results.json
-
-# Monitor Fibonacci regime development
-ls reports/active/fibonacci_regime/
+# Review voting system design
+cat docs/02_architecture/03_voting_system.md
 ```
 
 ### Historical Analysis (Archived)
@@ -234,14 +231,15 @@ ls reports/archived/v0_v4_deprecated/continuous_backtests/
 ### GitHub Issue Management
 
 ```bash
-# View active Fibonacci regime issues
-gh issue list --repo iAmGiG/AutoTrader --label "fibonacci-regime"
+# View active development issues
+gh issue list --repo iAmGiG/AutoTrader --label "refactoring"
 
-# Check phase development status
-gh issue view 298 --repo iAmGiG/AutoTrader  # Phase 1
-gh issue view 299 --repo iAmGiG/AutoTrader  # Phase 2
-gh issue view 300 --repo iAmGiG/AutoTrader  # Phase 3
-gh issue view 301 --repo iAmGiG/AutoTrader  # Phase 4
+# Check project board status
+gh project list --repo iAmGiG/AutoTrader
+
+# View specific issue details
+gh issue view 433 --repo iAmGiG/AutoTrader  # Code quality refactoring epic
+gh issue view 436 --repo iAmGiG/AutoTrader  # Related refactoring issues
 ```
 
 ### Documentation Updates
@@ -252,8 +250,8 @@ tree docs/ -I "__pycache__"
 
 # Check documentation status
 cat docs/README.md
-cat docs/voting_strategy/validation_results.md
-cat docs/fibonacci_regime/README.md
+cat docs/01_overview/01_system_overview.md
+cat docs/02_architecture/03_voting_system.md
 ```
 
 ## Legacy Commands (Deprecated)
@@ -267,7 +265,7 @@ python scripts/runs/backtest.py --all-versions --symbol AAPL --year 2024
 python scripts/analysis/generate_results_summary.py --advanced
 ```
 
-**Note**: V0-V4 framework deprecated in favor of validated voting + Fibonacci regime approach.
+**Note**: V0-V4 framework deprecated in favor of validated MACD+RSI voting approach. Archived in `src/deprecated/v0_v4_agents/` and `docs/archived/v0_v4_deprecated/`.
 
 ## Troubleshooting Commands
 
