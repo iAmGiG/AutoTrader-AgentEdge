@@ -4,6 +4,7 @@ CLI Tools - FunctionTool-based command handlers.
 Issue #433: Refactor cli_session.py to use FunctionTool architecture.
 Issue #455: Create FunctionTool infrastructure with registry.
 Issue #457: Portfolio and account display tools extraction (Phase 1C).
+Issue #458: Order, scheduler, and alert tools extraction (Phase 1D).
 
 This module contains all CLI command implementations as FunctionTool objects,
 following the same pattern as src/data_sources/tools.py and base_agent.py.
@@ -170,6 +171,27 @@ def get_all_cli_tools() -> List[FunctionTool]:
     return _registry.get_all_tools()
 
 
+def _load_module_tools(module_name: str, tools_attr: str, category: Optional[str]) -> None:
+    """
+    Load tools from a module and register them.
+
+    Args:
+        module_name: Name of module to import (relative to this package)
+        tools_attr: Attribute name containing the tools list
+        category: Category to register tools under
+    """
+    try:
+        import importlib
+
+        module = importlib.import_module(f".{module_name}", package=__name__)
+        tools = getattr(module, tools_attr, [])
+        for tool in tools:
+            register_cli_tool(tool, category=category)
+        logger.debug("Loaded %s", module_name)
+    except Exception as e:
+        logger.warning("Failed to load %s: %s", module_name, e)
+
+
 def _discover_and_register_tools() -> None:
     """
     Auto-discover and register tools from submodules.
@@ -177,52 +199,24 @@ def _discover_and_register_tools() -> None:
     This function imports tool modules and automatically registers
     their tools in the global registry. Called at module import time.
     """
-    # Phase 1A (#455): Example tools (for demonstration)
-    try:
-        from . import example_tool  # noqa: F401
+    # Define tool modules to load: (module_name, tools_attr, category)
+    tool_modules = [
+        # Phase 1A (#455): Example tools
+        ("example_tool", "CLI_EXAMPLE_TOOLS", None),
+        # Phase 1B (#456): Mode and timeframe tools
+        ("mode_tools", "CLI_MODE_TOOLS", MODE_TOOLS),
+        ("timeframe_tools", "CLI_TIMEFRAME_TOOLS", TIMEFRAME_TOOLS),
+        # Phase 1C (#457): Portfolio and account display tools
+        ("portfolio_tools", "CLI_PORTFOLIO_TOOLS", PORTFOLIO_TOOLS),
+        ("account_display_tools", "CLI_ACCOUNT_DISPLAY_TOOLS", ACCOUNT_TOOLS),
+        # Phase 1D (#458): Order, scheduler, and alert tools
+        ("order_tools", "CLI_ORDER_TOOLS", ORDER_TOOLS),
+        ("scheduler_tools", "CLI_SCHEDULER_TOOLS", SCHEDULER_TOOLS),
+        ("alert_tools", "CLI_ALERT_TOOLS", ALERT_TOOLS),
+    ]
 
-        logger.debug("Loaded example_tool")
-    except Exception as e:
-        logger.warning(f"Failed to load example_tool: {e}")
-
-    # Phase 1B (#456): Mode and timeframe tools
-    try:
-        from . import mode_tools  # noqa: F401
-
-        logger.debug("Loaded mode_tools")
-    except Exception as e:
-        logger.warning(f"Failed to load mode_tools: {e}")
-
-    try:
-        from . import timeframe_tools  # noqa: F401
-
-        logger.debug("Loaded timeframe_tools")
-    except Exception as e:
-        logger.warning(f"Failed to load timeframe_tools: {e}")
-
-    # Phase 1C (#457): Portfolio and account display tools
-    try:
-        from .portfolio_tools import CLI_PORTFOLIO_TOOLS
-
-        for tool in CLI_PORTFOLIO_TOOLS:
-            register_cli_tool(tool, category=PORTFOLIO_TOOLS)
-        logger.debug("Loaded portfolio_tools")
-    except Exception as e:
-        logger.warning(f"Failed to load portfolio_tools: {e}")
-
-    try:
-        from .account_display_tools import CLI_ACCOUNT_DISPLAY_TOOLS
-
-        for tool in CLI_ACCOUNT_DISPLAY_TOOLS:
-            register_cli_tool(tool, category=ACCOUNT_TOOLS)
-        logger.debug("Loaded account_display_tools")
-    except Exception as e:
-        logger.warning(f"Failed to load account_display_tools: {e}")
-
-    # Future phases: Additional tool categories
-    # from .order_tools import CLI_ORDER_TOOLS  # #458
-    # from .scheduler_tools import CLI_SCHEDULER_TOOLS  # #458
-    # from .alert_tools import CLI_ALERT_TOOLS  # #458
+    for module_name, tools_attr, category in tool_modules:
+        _load_module_tools(module_name, tools_attr, category)
 
 
 # Auto-discover tools on import
