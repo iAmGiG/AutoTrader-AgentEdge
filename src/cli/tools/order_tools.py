@@ -452,9 +452,106 @@ def cancel_symbol_orders(symbol: str) -> Dict[str, Any]:
 
 
 # =============================================================================
+# Display Functions (Issue #459 - formatted output for CLI)
+# =============================================================================
+
+
+def show_orders() -> str:
+    """Display all open orders with hierarchical formatting."""
+    result = list_orders(status="open", include_local_state=True)
+    if result["status"] == "error":
+        return f"❌ Error: {result.get('error', 'Unknown')}"
+    if result["count"] == 0:
+        return "ℹ️  No open orders"
+
+    lines = [f"📋 Open Orders ({result['count']} total)", ""]
+    by_symbol = result.get("by_symbol", {})
+    local_state = result.get("local_state", {})
+    has_local = False
+
+    for symbol, orders in by_symbol.items():
+        if not orders:
+            continue
+        first_side = orders[0].get("side", "buy")
+        direction = "LONG" if first_side == "buy" else "SHORT"
+        symbol_local = local_state.get(symbol, {})
+        local_orders = []
+        if symbol_local.get("stop_price"):
+            local_orders.append({"side": "sell" if direction == "LONG" else "buy",
+                "type": "stop", "price": symbol_local["stop_price"],
+                "qty": symbol_local.get("quantity", 0), "id": "local-stop"})
+            has_local = True
+        all_orders = orders + local_orders
+        lines.append(f"┌─ ${symbol} ({len(all_orders)} orders) - {direction}")
+        stops = [o for o in all_orders if o.get("type") == "stop"]
+        limits = [o for o in all_orders if o.get("type") == "limit"]
+        others = [o for o in all_orders if o.get("type") not in ("stop", "limit")]
+        for i, order in enumerate(limits):
+            conn = "└─" if i == len(limits) - 1 and not stops and not others else "├─"
+            local_mark = " *" if str(order.get("id", "")).startswith("local") else ""
+            lines.append(f"│ {conn} 🎯 PT: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}")
+        for i, order in enumerate(stops):
+            conn = "└─" if i == len(stops) - 1 and not others else "├─"
+            local_mark = " *" if str(order.get("id", "")).startswith("local") else ""
+            lines.append(f"│ {conn} 🛑 SL: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}")
+        for i, order in enumerate(others):
+            conn = "└─" if i == len(others) - 1 else "├─"
+            lines.append(f"│ {conn} 📌 {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}")
+        lines.append("")
+    if has_local:
+        lines.extend(["─" * 50, "* Orders marked with * are from local state"])
+    return "\n".join(lines)
+
+
+def show_position_orders(ticker: str) -> str:
+    """Display detailed orders for a specific position."""
+    result = get_position_orders(ticker)
+    if result["status"] == "error":
+        return f"❌ Error: {result.get('error', 'Unknown')}"
+    if result["status"] == "no_orders":
+        return f"ℹ️  No orders found for {result['ticker']}"
+    lines = [f"📋 {result['ticker']} Orders", ""]
+    entry_orders = result.get("entry_orders", [])
+    if entry_orders:
+        lines.append("✅ ENTRY (Filled)")
+        for order in entry_orders[:3]:
+            lines.append(f"   {order.get('side', '?').upper()} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}")
+    open_orders = result.get("open_orders", [])
+    if open_orders:
+        lines.extend(["", "🟡 OPEN Exit Orders"])
+        for order in open_orders:
+            otype = order.get("type", "unknown")
+            price = order.get("price", 0)
+            emoji = "🔴" if otype == "stop" else "🟢" if otype == "limit" else "📌"
+            label = "STOP LOSS" if otype == "stop" else "TAKE PROFIT" if otype == "limit" else otype.upper()
+            lines.append(f"   {emoji} {label}: ${price:.2f}")
+    local_state = result.get("local_state", {})
+    if local_state.get("stop_price") or local_state.get("target_price"):
+        if not open_orders:
+            lines.extend(["", "🟡 Exit Orders (from local state)"])
+        if local_state.get("stop_price"):
+            lines.extend([f"   🔴 STOP LOSS: ${local_state['stop_price']:.2f}", "      * Verify on broker"])
+        if local_state.get("target_price"):
+            lines.extend([f"   🟢 TAKE PROFIT: ${local_state['target_price']:.2f}", "      * Verify on broker"])
+    return "\n".join(lines)
+
+
+# =============================================================================
 # FunctionTool Registration
 # =============================================================================
 
+
+show_orders_tool = FunctionTool(
+    func=show_orders,
+    name="show_orders",
+    description="Display all open orders with hierarchical formatting.",
+)
+
+show_position_orders_tool = FunctionTool(
+    func=show_position_orders,
+    name="show_position_orders",
+    description="Display detailed orders for a specific ticker.",
+)
 
 list_orders_tool = FunctionTool(
     func=list_orders,
@@ -489,6 +586,8 @@ cancel_symbol_orders_tool = FunctionTool(
 
 # Export list for CLI tools registry
 CLI_ORDER_TOOLS = [
+    show_orders_tool,
+    show_position_orders_tool,
     list_orders_tool,
     get_position_orders_tool,
     cancel_order_tool,
@@ -497,7 +596,10 @@ CLI_ORDER_TOOLS = [
 ]
 
 __all__ = [
-    # Functions
+    # Display Functions
+    "show_orders",
+    "show_position_orders",
+    # Data Functions
     "list_orders",
     "get_position_orders",
     "cancel_order",
@@ -505,6 +607,8 @@ __all__ = [
     "cancel_symbol_orders",
     # FunctionTools
     "CLI_ORDER_TOOLS",
+    "show_orders_tool",
+    "show_position_orders_tool",
     "list_orders_tool",
     "get_position_orders_tool",
     "cancel_order_tool",
