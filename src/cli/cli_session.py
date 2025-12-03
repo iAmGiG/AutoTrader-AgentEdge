@@ -49,6 +49,12 @@ from src.cli.tools.order_tools import (
 from src.cli.tools.portfolio_tools import show_portfolio
 from src.cli.tools.scheduler_tools import show_scheduler
 from src.cli.utils.help_system import HelpSystem
+from src.cli.utils.input_parser import (
+    BUY_INDICATORS,
+    SELL_INDICATORS,
+    detect_user_intent,
+    extract_ticker_from_query,
+)
 from src.cli.utils.suggestion_display import (
     calc_pct,
     display_position_context,
@@ -858,7 +864,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         try:
             # Issue #347: Detect user intent EARLY so we can respect it
             original_input = user_input.lower().strip()
-            user_intent = self._detect_user_intent(original_input)
+            user_intent = detect_user_intent(original_input)
 
             # Step 1: Process request via orchestrator
             decision = await self.orchestrator.process_request(user_input, self.user_id)
@@ -875,47 +881,13 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # If analyzer suggests SELL but no position exists, check user's explicit intent
             if decision.suggestion.signal.value.upper() == "SELL" and not position:
                 # Check if user explicitly wants to BUY/LONG (override signal)
-                explicit_buy_indicators = [
-                    "buy",
-                    "long",
-                    "go long",
-                    "going long",
-                    "bullish",
-                    "bet it goes up",
-                    "think it will rise",
-                    "upside",
-                    # Note: 'get ' with space to avoid 'target', 'forget'
-                    "get ",
-                    "acquire",
-                    "purchase",
-                    "pick up",
-                    "grab",
-                ]
                 user_wants_buy = any(
-                    indicator in original_input for indicator in explicit_buy_indicators
+                    indicator in original_input for indicator in BUY_INDICATORS
                 )
 
                 # Check if user explicitly wants to SELL/SHORT
-                explicit_sell_indicators = [
-                    # Trading terms
-                    "sell",
-                    "short",
-                    "shorting",
-                    "go short",
-                    "exit",
-                    # Layman terms for selling/closing
-                    "close",
-                    "get out",
-                    "dump",
-                    "liquidate",
-                    "cash out",
-                    # Explicit bearish intent
-                    "bet against",
-                    "profit from decline",
-                    "make money when it falls",
-                ]
                 user_wants_sell = any(
-                    indicator in original_input for indicator in explicit_sell_indicators
+                    indicator in original_input for indicator in SELL_INDICATORS
                 )
 
                 if user_wants_buy:
@@ -1167,71 +1139,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             logger.warning(f"Failed to check position for {ticker}: {e}")
             return None
 
-    def _detect_user_intent(self, user_input: str) -> Optional[str]:
-        """
-        Issue #347: Detect explicit user intent from input.
-
-        Returns:
-            "buy" if user explicitly wants to buy/go long
-            "sell" if user explicitly wants to sell/close
-            None if no explicit intent (just querying/analyzing)
-        """
-        input_lower = user_input.lower()
-
-        # Buy/long indicators
-        buy_indicators = [
-            "buy",
-            "long",
-            "go long",
-            "going long",
-            "bullish",
-            "bet it goes up",
-            "think it will rise",
-            "upside",
-            "get ",
-            "acquire",
-            "purchase",
-            "pick up",
-            "grab",
-        ]
-        if any(indicator in input_lower for indicator in buy_indicators):
-            return "buy"
-
-        # Sell/close indicators
-        sell_indicators = [
-            "sell",
-            "short",
-            "shorting",
-            "go short",
-            "exit",
-            "close",
-            "get out",
-            "dump",
-            "liquidate",
-            "cash out",
-            "bet against",
-            "profit from decline",
-        ]
-        if any(indicator in input_lower for indicator in sell_indicators):
-            return "sell"
-
-        # Review/analyze indicators (no explicit action)
-        review_indicators = [
-            "analyze",
-            "analysis",
-            "review",
-            "check",
-            "look at",
-            "what about",
-            "how is",
-            "should i",
-            "is it good",
-        ]
-        if any(indicator in input_lower for indicator in review_indicators):
-            return None  # Just querying, no explicit intent
-
-        return None  # Default: no explicit intent
-
     def _get_confirmation(self) -> bool:
         """
         Get user confirmation.
@@ -1401,60 +1308,13 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Issue #459: Refactored to use show_position_orders() from order_tools.
         """
         # Extract ticker from query
-        ticker = self._extract_ticker_from_query(user_input)
+        ticker = extract_ticker_from_query(user_input)
         if not ticker:
             print("❌ Could not identify symbol in query")
             print("ℹ️  Try: 'show orders for AAPL' or 'stop level on META'")
             return
         output = show_position_orders(ticker)
         print(output)
-
-    def _extract_ticker_from_query(self, user_input: str) -> str | None:
-        """
-        Extract ticker symbol from natural language query.
-
-        Issue #348: Parse user queries like 'show orders for AAPL'
-        Issue #436: Restored after accidental deletion during refactoring.
-
-        Args:
-            user_input: User's natural language input
-
-        Returns:
-            Ticker symbol or None if not found
-        """
-        # Common ticker patterns
-        # Match: $AAPL, AAPL, "AAPL", 'AAPL'
-        ticker_patterns = [
-            r"\$([A-Z]{1,5})\b",  # $AAPL format
-            r"\b([A-Z]{1,5})\b",  # Plain AAPL (must be uppercase)
-        ]
-
-        input_upper = user_input.upper()
-
-        # Try each pattern
-        for pattern in ticker_patterns:
-            matches = re.findall(pattern, input_upper)
-            if matches:
-                # Filter out common words that look like tickers
-                exclude = {
-                    "FOR",
-                    "THE",
-                    "AND",
-                    "ALL",
-                    "GET",
-                    "SET",
-                    "SHOW",
-                    "ORDER",
-                    "ORDERS",
-                    "STOP",
-                    "ON",
-                    "LEVEL",
-                }
-                for match in matches:
-                    if match not in exclude and len(match) >= 1:
-                        return match
-
-        return None
 
     async def _handle_cancel_request(self, user_input: str):
         """
@@ -1491,7 +1351,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             return
 
         # Cancel by symbol
-        ticker = self._extract_ticker_from_query(user_input)
+        ticker = extract_ticker_from_query(user_input)
         if ticker:
             print(f"⚠️  Cancelling orders for {ticker}...")
             result = cancel_symbol_orders(ticker)
