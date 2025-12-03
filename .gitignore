@@ -247,3 +247,6 @@ cython_debug/
 .pypirc
 CODEBASE_ANALYSIS.md
 PROJECT_STATUS.md
+
+# Runtime/Generated data
+data/
