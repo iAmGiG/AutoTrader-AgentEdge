@@ -129,15 +129,6 @@ Markdown rules:
 - **MD013**: Line length ❌ (disabled for docs)
 - **MD033**: Allow HTML tags for special formatting
 
-### `.flake8`
-
-Python linting rules:
-
-- Max line length: 100
-- Ignores conflicts with black (E203, W503, E501)
-- Ignores E402 (module import position) for scripts with sys.path setup
-- Per-file ignores for `__init__.py` and tests
-
 ### `pyproject.toml`
 
 Tool configuration:
@@ -388,7 +379,7 @@ Always activate the AutoTrader environment before running tools:
 
 ```bash
 conda activate AutoTrader
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"  # Installs project + dev dependencies from pyproject.toml
 pre-commit install
 ```
 
