@@ -82,7 +82,8 @@ class TestAccountCommands:
                 with patch("src.cli.commands.account_commands.get_symbol", return_value="*"):
                     # Reset singleton
                     import src.cli.commands.account_commands as acc_module
-                    from src.cli.commands.account_commands import AccountCommands
+                    from src.cli.commands.account_commands import \
+                        AccountCommands
 
                     acc_module._account_commands = None
 
