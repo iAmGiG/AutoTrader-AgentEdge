@@ -359,7 +359,7 @@ class VoterAgent(BaseAgent):
         """Enable or disable event publishing (useful for backtesting)."""
         self._publish_events = enabled
 
-    def generate_reply(  # noqa: C901  # noqa: C901self, messages, context=None) -> str:
+    def generate_reply(self, messages, context=None) -> str:  # noqa: C901
         """
         AutoGen's required method for handling incoming messages.
         Can accept parameter overrides in the message.

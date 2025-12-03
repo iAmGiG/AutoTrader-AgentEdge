@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from config_defaults.trading_config import TradingConfig
+from src.utils.agent_utils import load_agent_config
 
 from ..core.base_agent import BaseAgent
 # Agent Bus for event publishing (Issue #390)
@@ -554,7 +555,7 @@ class ExecutorAgent(BaseAgent):
 
     # ==================== AutoGen Interface ====================
 
-    def generate_reply(  # noqa: C901  # noqa: C901self, messages, context=None) -> str:
+    def generate_reply(self, messages, context=None) -> str:  # noqa: C901
         """
         AutoGen's required method for handling incoming messages.
 
@@ -621,16 +622,15 @@ class ExecutorAgent(BaseAgent):
                 return json.dumps({"error": f"Unknown command: {command}"})
 
         except json.JSONDecodeError:
-            # Natural language - use LLM to process
-            system_prompt = """You are an execution agent responsible for trade execution.
-
-Commands you can process:
-- Execute trades (buy/sell with quantity)
-- Cancel orders
-- Check account status
-- Monitor positions
-
-Return structured responses in JSON format."""
+            # Natural language - use LLM to process with prompt from YAML config
+            try:
+                agent_config = load_agent_config("agents")
+                system_prompt = agent_config.get("executor_agent", {}).get(
+                    "system_prompt",
+                    "You are an execution agent. Return JSON responses.",
+                )
+            except Exception:
+                system_prompt = "You are an execution agent. Return JSON responses."
             return self.process_with_tools(content, system_prompt)
 
 

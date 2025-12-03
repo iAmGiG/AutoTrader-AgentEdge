@@ -318,7 +318,7 @@ class ScannerAgent(BaseAgent):
         self._current_trading_mode = mode
         logger.info(f"Trading mode set to: {mode}")
 
-    def build_scan_list(  # noqa: C901  # noqa: C901self) -> List[str]:
+    def build_scan_list(self) -> List[str]:  # noqa: C901
         """
         Build prioritized scan list using tiered watchlist system.
 
@@ -857,7 +857,7 @@ class ScannerAgent(BaseAgent):
 
     # ==================== AutoGen Interface ====================
 
-    def generate_reply(  # noqa: C901  # noqa: C901self, messages, context=None) -> str:
+    def generate_reply(self, messages, context=None) -> str:  # noqa: C901
         """
         AutoGen's required method for handling incoming messages.
 
