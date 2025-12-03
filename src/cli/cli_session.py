@@ -37,6 +37,10 @@ from src.cli.account_commands import get_account_commands
 from src.cli.help_system import HelpSystem
 from src.cli.scheduler_cli import SchedulerCLI
 from src.cli.timeframe_commands import get_timeframe_commands
+from src.cli.tools.mode_tools import set_mode, show_current_mode, show_mode_comparison
+
+# Issue #459: Import extracted tool functions for Phase 1E integration
+from src.cli.tools.portfolio_tools import show_portfolio
 from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.daily_scheduler import DailyScheduler
@@ -1853,16 +1857,15 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         """
         Handle portfolio/account status request.
 
-        Also handles specific position queries like "target on SPY"
+        Issue #459: Refactored to use extracted show_portfolio() from portfolio_tools.
 
         Args:
             user_input: User's natural language input
         """
-        # Check if querying specific ticker
+        # Extract specific ticker if asking about stop/target
         input_lower = user_input.lower()
         specific_ticker = None
 
-        # Extract ticker if asking about specific position or stop/target
         keywords = [
             "target on",
             "target for",
@@ -1875,149 +1878,22 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         ]
 
         if any(keyword in input_lower for keyword in keywords):
-            # Try to extract ticker from query
             words = user_input.upper().split()
-            # Common tickers to look for
             common_tickers = ["SPY", "QQQ", "TQQQ", "SQQQ", "AAPL", "MSFT", "TSLA", "NVDA", "META"]
             for word in words:
                 if word in common_tickers:
                     specific_ticker = word
                     break
 
-        print(MSG.PORTFOLIO_HEADER)
-
-        try:
-            if not self.account_monitor:
-                print(MSG.PORTFOLIO_NOT_INITIALIZED)
-                return
-
-            # Get account status (unless querying specific ticker)
-            if not specific_ticker:
-                account = self.account_monitor.get_account_status()
-
-                print(MSG.ACCOUNT_HEADER)
-                print(
-                    MSG.ACCOUNT_INFO(
-                        equity=float(account.get("equity", 0)),
-                        cash=float(account.get("cash", 0)),
-                        buying_power=float(account.get("buying_power", 0)),
-                        pdt=account.get("pattern_day_trader", False),
-                    )
-                )
-
-            # Get positions
-            positions = self.account_monitor.get_positions()
-
-            if specific_ticker:
-                # Show details for specific position
-                position = next((p for p in positions if p.get("symbol") == specific_ticker), None)
-                if position:
-                    qty = int(position.get("qty", 0))
-                    symbol = position.get("symbol")
-                    avg_entry = float(position.get("avg_entry_price", 0))
-
-                    # Calculate current price from market value
-                    market_value = float(position.get("market_value", 0))
-                    current_price = (market_value / qty) if qty > 0 else 0.0
-
-                    # Use cost_basis as fallback if avg_entry_price is 0
-                    if avg_entry == 0.0:
-                        cost_basis = float(position.get("cost_basis", 0))
-                        avg_entry = (cost_basis / qty) if qty > 0 else 0.0
-
-                    unrealized_pl = float(position.get("unrealized_pl", 0))
-                    unrealized_plpc = float(position.get("unrealized_plpc", 0)) * 100
-
-                    pl_emoji = get_pl_emoji(unrealized_pl)
-                    print(MSG.POSITION_DETAILS_HEADER(emoji=pl_emoji, symbol=symbol))
-                    print(
-                        MSG.POSITION_DETAILS(
-                            qty=qty,
-                            entry=avg_entry,
-                            current=current_price,
-                            pl=unrealized_pl,
-                            pl_pct=unrealized_plpc,
-                        )
-                    )
-
-                    # Show stop/target levels from trading_cycle local_state
-                    # This uses the new _extract_stop_target_from_orders() with calculated fallback
-                    if self.trading_cycle:
-                        local_pos = self.trading_cycle.local_state.get("positions", {}).get(symbol)
-                        if local_pos:
-                            stop_price = local_pos.get("stop_price")
-                            target_price = local_pos.get("target_price")
-
-                            # Get configured stop loss percentage
-                            stop_loss_pct = self._get_stop_loss_pct()
-                            take_profit_pct = self._get_take_profit_pct()
-
-                            print("\n📍 Exit Levels:")
-                            if stop_price:
-                                distance = ((current_price - stop_price) / current_price) * 100
-                                print(
-                                    f"   🔴 Stop Loss: ${stop_price:.2f} (-{stop_loss_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
-                                )
-                            else:
-                                print("   🔴 Stop Loss: Not set")
-
-                            if target_price:
-                                distance = ((target_price - current_price) / current_price) * 100
-                                print(
-                                    f"   🟢 Take Profit: ${target_price:.2f} (+{take_profit_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
-                                )
-                            else:
-                                print("   🟢 Take Profit: Not set")
-
-                            # Note about calculated stops (Alpaca API limitation)
-                            if stop_price and not target_price:
-                                print(
-                                    "\n   ℹ️  Note: Stop calculated from entry (Alpaca hides bracket order legs)"
-                                )
-                                print("      Verify stop order exists on Alpaca dashboard")
-                        else:
-                            print(MSG.NO_TARGETS(symbol=symbol))
-                else:
-                    print(MSG.NO_POSITION(ticker=specific_ticker))
-
-            elif positions:
-                print(MSG.POSITIONS_HEADER(count=len(positions)))
-                for pos in positions:
-                    qty = int(pos.get("qty", 0))
-                    symbol = pos.get("symbol", "UNKNOWN")
-                    avg_entry = float(pos.get("avg_entry_price", 0))
-
-                    # Calculate current price from market value (Alpaca doesn't provide current_price directly)
-                    market_value = float(pos.get("market_value", 0))
-                    current_price = (market_value / qty) if qty > 0 else 0.0
-
-                    # Use cost_basis as fallback if avg_entry_price is 0
-                    if avg_entry == 0.0:
-                        cost_basis = float(pos.get("cost_basis", 0))
-                        avg_entry = (cost_basis / qty) if qty > 0 else 0.0
-
-                    unrealized_pl = float(pos.get("unrealized_pl", 0))
-                    unrealized_plpc = float(pos.get("unrealized_plpc", 0)) * 100
-
-                    pl_emoji = get_pl_emoji(unrealized_pl)
-                    print(
-                        MSG.POSITION_ITEM(
-                            emoji=pl_emoji,
-                            symbol=symbol,
-                            qty=qty,
-                            entry=avg_entry,
-                            current=current_price,
-                            value=market_value,
-                            pl=unrealized_pl,
-                            pl_pct=unrealized_plpc,
-                        )
-                    )
-            else:
-                print(MSG.NO_POSITIONS)
-
-        except Exception as e:
-            print(MSG.ERROR_CHECKING_PORTFOLIO(error=e))
-            logger.error(f"Portfolio error: {e}", exc_info=True)
+        # Use extracted show_portfolio function from portfolio_tools
+        output = show_portfolio(
+            account_monitor=self.account_monitor,
+            trading_cycle=self.trading_cycle,
+            specific_ticker=specific_ticker,
+            stop_loss_pct=self._get_stop_loss_pct(),
+            take_profit_pct=self._get_take_profit_pct(),
+        )
+        print(output)
 
     async def _handle_orders_request(self, user_input: str):
         """
@@ -2836,6 +2712,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         """
         Handle trading mode view/change requests.
         Issue #400: Trading Modes Configuration System
+        Issue #459: Refactored to use mode_tools functions.
 
         Supports:
         - show mode / show trading mode / current mode
@@ -2845,35 +2722,21 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Args:
             user_input: User's natural language input
         """
-        from core.trading_modes import TradingMode, get_mode_manager
-
         input_lower = user_input.lower()
-        mode_manager = get_mode_manager()
 
         # Determine if this is a "show" or "set" request
         is_show = any(word in input_lower for word in ["show", "what", "current", "get", "display"])
         is_set = any(word in input_lower for word in ["set", "change", "switch", "use"])
-
-        # Check if user typed a mode name directly (e.g., just "conservative")
         mode_name_only = input_lower.strip() in ["conservative", "moderate", "aggressive"]
 
+        # Check for comparison request
+        if "compare" in input_lower or "comparison" in input_lower:
+            print(show_mode_comparison())
+            return
+
         if (is_show and not is_set) or (not is_show and not is_set and not mode_name_only):
-            # Show current trading mode
-            current = mode_manager.current_mode
-            params = mode_manager.get_parameters()
-
-            print(f"\n📊 Current Trading Mode: {current.value.upper()}")
-            print(f"\n{params.description}")
-            print("\nRisk Parameters:")
-            print(f"  • Position Size: {params.max_position_pct * 100:.1f}% of portfolio")
-            print(f"  • Stop Loss: {params.stop_loss * 100:.1f}%")
-            print(f"  • Take Profit: {params.take_profit * 100:.1f}%")
-            print(f"  • Max Positions: {params.max_positions}")
-
-            print("\nAvailable Modes:")
-            print("  • conservative - Lower risk, smaller positions")
-            print("  • moderate     - Balanced risk/reward")
-            print("  • aggressive   - Higher risk, larger positions")
+            # Show current trading mode using mode_tools
+            print(show_current_mode())
             print("\nTo change mode: set mode {conservative|moderate|aggressive}")
             return
 
@@ -2889,29 +2752,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             print("ℹ️  Usage: set mode {conservative|moderate|aggressive}")
             return
 
-        # Set new mode
-        try:
-            new_mode = TradingMode.from_string(target_mode_str)
-            old_mode = mode_manager.current_mode
-
-            if new_mode == old_mode:
-                print(f"ℹ️  Already in {new_mode.value.upper()} mode")
-                return
-
-            mode_manager.set_mode(new_mode)
-            new_params = mode_manager.get_parameters(new_mode)
-
-            print(f"\n✅ Trading mode changed: {old_mode.value.upper()} → {new_mode.value.upper()}")
-            print(f"\n{new_params.description}")
-            print("\nNew Risk Parameters:")
-            print(f"  • Position Size: {new_params.max_position_pct * 100:.1f}% of portfolio")
-            print(f"  • Stop Loss: {new_params.stop_loss * 100:.1f}%")
-            print(f"  • Take Profit: {new_params.take_profit * 100:.1f}%")
-            print(f"  • Max Positions: {new_params.max_positions}")
-
-        except ValueError as e:
-            print(f"❌ Invalid trading mode: {target_mode_str}")
-            print(f"ℹ️  Error: {e}")
+        # Set new mode using mode_tools
+        result = set_mode(target_mode_str)
+        print(result)
 
     async def _handle_account_request(self, user_input: str):
         """
