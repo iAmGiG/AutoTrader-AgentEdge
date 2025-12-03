@@ -1594,8 +1594,8 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         # Common ticker patterns
         # Match: $AAPL, AAPL, "AAPL", 'AAPL'
         ticker_patterns = [
-            r'\$([A-Z]{1,5})\b',  # $AAPL format
-            r'\b([A-Z]{1,5})\b',  # Plain AAPL (must be uppercase)
+            r"\$([A-Z]{1,5})\b",  # $AAPL format
+            r"\b([A-Z]{1,5})\b",  # Plain AAPL (must be uppercase)
         ]
 
         input_upper = user_input.upper()
@@ -1606,8 +1606,18 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             if matches:
                 # Filter out common words that look like tickers
                 exclude = {
-                    'FOR', 'THE', 'AND', 'ALL', 'GET', 'SET', 'SHOW',
-                    'ORDER', 'ORDERS', 'STOP', 'ON', 'LEVEL',
+                    "FOR",
+                    "THE",
+                    "AND",
+                    "ALL",
+                    "GET",
+                    "SET",
+                    "SHOW",
+                    "ORDER",
+                    "ORDERS",
+                    "STOP",
+                    "ON",
+                    "LEVEL",
                 }
                 for match in matches:
                     if match not in exclude and len(match) >= 1:
@@ -1667,7 +1677,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             return
 
         # Cancel by order ID (extract from input)
-        id_match = re.search(r'([a-f0-9-]{8,})', input_lower)
+        id_match = re.search(r"([a-f0-9-]{8,})", input_lower)
         if id_match:
             order_id = id_match.group(1)
             print(f"⚠️  Cancelling order {order_id[:8]}...")
