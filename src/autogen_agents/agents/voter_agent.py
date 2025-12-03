@@ -16,10 +16,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from config_defaults.trading_config import TradingConfig
 
-from .base_agent import BaseAgent
+from ..core.base_agent import BaseAgent
 
 # Agent Bus for event publishing (Issue #390)
-from src.autogen_agents.agent_bus import EventType, create_message, get_agent_bus
+from ..orchestration.agent_bus import EventType, create_message, get_agent_bus
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from src.utils.agent_utils import load_agent_config
 
@@ -169,7 +169,7 @@ class VoterAgent(BaseAgent):
 
         logger.info(f"VoterAgent reconfigured: {self.current_config}")
 
-    def evaluate_voting(
+    def evaluate_voting(  # noqa: C901  # noqa: C901
         self, symbol: str, price_data: pd.DataFrame, return_components: bool = False
     ) -> Dict[str, Any]:
         """
@@ -360,7 +360,7 @@ class VoterAgent(BaseAgent):
         """Enable or disable event publishing (useful for backtesting)."""
         self._publish_events = enabled
 
-    def generate_reply(self, messages, context=None) -> str:
+    def generate_reply(  # noqa: C901  # noqa: C901self, messages, context=None) -> str:
         """
         AutoGen's required method for handling incoming messages.
         Can accept parameter overrides in the message.
@@ -451,7 +451,7 @@ Always return results in JSON format with action, confidence, and reasoning."""
         """
         try:
             # Use the unified market data tool through base agent
-            tool_result = self.process_with_tools(
+            _ = self.process_with_tools(
                 f"Fetch 60 days of price data for {symbol} and calculate MACD and RSI signals",
                 "You are fetching market data for technical analysis.",
             )

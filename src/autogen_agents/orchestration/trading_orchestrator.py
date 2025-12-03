@@ -26,10 +26,10 @@ from typing import Any, Callable, Dict, List, Optional
 
 from config_defaults.trading_config import TradingConfig
 
-from src.autogen_agents.agent_bus import AgentMessage, EventType, get_agent_bus
-from src.autogen_agents.agent_factory import AgentType, get_agent_factory
-from src.autogen_agents.workflow_reporter import WorkflowReporter
-from src.autogen_agents.workflow_state_manager import WorkflowPhase, WorkflowStateManager
+from ..workflow.reporter import WorkflowReporter
+from ..workflow.state_manager import WorkflowPhase, WorkflowStateManager
+from .agent_bus import AgentMessage, EventType, get_agent_bus
+from .agent_factory import AgentType, get_agent_factory
 from src.utils.date_utils import get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)

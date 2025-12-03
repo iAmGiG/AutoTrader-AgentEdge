@@ -22,9 +22,9 @@ from autogen_core.models import (
 )
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
-# Import tool dictionary and extracted utilities
-from src.autogen_agents.message_processor import build_message_sequence, extract_content
-from src.autogen_agents.tool_executor import (
+# Import tool dictionary and extracted utilities (same folder)
+from .message_processor import build_message_sequence, extract_content
+from .tool_executor import (
     execute_tool_async,
     format_tool_result,
     log_tool_call,

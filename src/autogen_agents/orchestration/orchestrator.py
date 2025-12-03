@@ -19,10 +19,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from config_defaults.trading_config import TradingConfig
 
-from src.autogen_agents.agent_bus import EventType, get_agent_bus
+from .agent_bus import EventType, get_agent_bus
 
 # Agent Infrastructure (Issue #390)
-from src.autogen_agents.agent_factory import AgentType, get_agent_factory
+from .agent_factory import AgentType, get_agent_factory
 
 # New TradingOrchestrator (Issue #389)
 
@@ -33,7 +33,9 @@ DecisionFormatter = None
 def _get_decision_formatter():
     global DecisionFormatter
     if DecisionFormatter is None:
-        from src.cli.utils.decision_formatter import DecisionFormatter as DF
+        from src.cli.utils.decision_formatter import (  # noqa: N817
+            DecisionFormatter as DF,
+        )
 
         DecisionFormatter = DF
     return DecisionFormatter

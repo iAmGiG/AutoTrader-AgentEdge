@@ -26,11 +26,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from config_defaults.trading_config import TradingConfig
 
-from .base_agent import BaseAgent
+from ..core.base_agent import BaseAgent
 
 # Agent Bus for event publishing (Issue #390)
-from src.autogen_agents.agent_bus import EventType, create_message, get_agent_bus
-from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+from ..orchestration.agent_bus import EventType, create_message, get_agent_bus
+from src.data_sources.sources.market.unified_market_tool import (
+    fetch_unified_market_data,
+)
 from src.trading_tools.indicators import calculate_macd, calculate_rsi
 from src.utils.date_utils import get_datetime_now, now_iso, subtract_days, today_str
 
@@ -317,7 +319,7 @@ class ScannerAgent(BaseAgent):
         self._current_trading_mode = mode
         logger.info(f"Trading mode set to: {mode}")
 
-    def build_scan_list(self) -> List[str]:
+    def build_scan_list(  # noqa: C901  # noqa: C901self) -> List[str]:
         """
         Build prioritized scan list using tiered watchlist system.
 
@@ -856,7 +858,7 @@ class ScannerAgent(BaseAgent):
 
     # ==================== AutoGen Interface ====================
 
-    def generate_reply(self, messages, context=None) -> str:
+    def generate_reply(  # noqa: C901  # noqa: C901self, messages, context=None) -> str:
         """
         AutoGen's required method for handling incoming messages.
 

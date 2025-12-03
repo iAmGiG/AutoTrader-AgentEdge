@@ -1,51 +1,98 @@
 """
-AutoGen Agents Package - Multi-agent trading system components
+AutoGen Agents Package - Multi-agent trading system components.
 
-This package provides:
-- Agent Factory: Centralized agent creation with typed enums
-- Agent Bus: Pub-Sub messaging for inter-agent communication
-- Trading Agents: VoterAgent (production-ready), Scanner, Risk, Executor
+Organized Structure:
+- core/: Base infrastructure (BaseAgent, tool execution, message processing)
+- agents/: Specialized trading agents (VoterAgent, ScannerAgent, RiskAgent, ExecutorAgent)
+- orchestration/: Multi-agent coordination (TradingOrchestrator, AgentBus, AgentFactory)
+- workflow/: Workflow state management and reporting
+
+This package provides backward-compatible exports from the reorganized structure.
 """
 
-from .agent_bus import (
-                        AgentBus,
-                        AgentMessage,
-                        EventType,
-                        Subscription,
-                        create_message,
-                        get_agent_bus,
-                        publish_result,
-                        publish_signal,
-                        publish_trade_executed,
+# Specialized agents
+from .agents import (
+    ExecutorAgent,
+    RiskAgent,
+    ScanConfig,
+    ScannerAgent,
+    ScanResult,
+    VoterAgent,
+    create_executor_agent,
+    create_risk_agent,
+    create_scanner_agent,
+    create_voter_agent,
 )
 
-# Agent Infrastructure (Issue #390)
-from .agent_factory import (
-                        AgentConfig,
-                        AgentFactory,
-                        AgentInstance,
-                        AgentType,
-                        create_agent,
-                        create_executor,
-                        create_orchestrator,
-                        create_risk,
-                        create_scanner,
-                        create_voter,
-                        get_agent_factory,
+# Core infrastructure
+from .core import (
+    BaseAgent,
+    build_message_sequence,
+    execute_tool_async,
+    extract_content,
+    format_tool_result,
+    log_tool_call,
+    log_tool_result,
+    parse_tool_arguments,
 )
-from .executor_agent import ExecutorAgent, create_executor_agent
-from .risk_agent import RiskAgent, create_risk_agent
-from .scanner_agent import ScanConfig, ScannerAgent, ScanResult, create_scanner_agent
 
-# TradingOrchestrator - Multi-agent workflow coordination (Issue #389)
-from .trading_orchestrator import ExecutionMode, TradingOrchestrator, create_trading_orchestrator
+# Orchestration components
+from .orchestration import (
+    AgentBus,
+    AgentConfig,
+    AgentFactory,
+    AgentInstance,
+    AgentMessage,
+    AgentType,
+    EventType,
+    ExecutionMode,
+    Subscription,
+    TradingOrchestrator,
+    create_agent,
+    create_executor,
+    create_message,
+    create_orchestrator,
+    create_risk,
+    create_scanner,
+    create_trading_orchestrator,
+    create_voter,
+    get_agent_bus,
+    get_agent_factory,
+    publish_result,
+    publish_signal,
+    publish_trade_executed,
+)
 
-# Production-ready agents
-from .voter_agent import VoterAgent, create_voter_agent
-from .workflow_state_manager import WorkflowPhase, WorkflowState
+# Workflow management
+from .workflow import (
+    WorkflowPhase,
+    WorkflowReporter,
+    WorkflowState,
+    WorkflowStateManager,
+)
 
 __all__ = [
-    # Agent Infrastructure
+    # Core Infrastructure
+    "BaseAgent",
+    "build_message_sequence",
+    "extract_content",
+    "execute_tool_async",
+    "format_tool_result",
+    "log_tool_call",
+    "log_tool_result",
+    "parse_tool_arguments",
+    # Specialized Agents
+    "VoterAgent",
+    "create_voter_agent",
+    "ExecutorAgent",
+    "create_executor_agent",
+    "RiskAgent",
+    "create_risk_agent",
+    "ScannerAgent",
+    "create_scanner_agent",
+    "ScanConfig",
+    "ScanResult",
+    # Orchestration
     "AgentType",
     "AgentConfig",
     "AgentInstance",
@@ -57,7 +104,6 @@ __all__ = [
     "create_risk",
     "create_executor",
     "create_orchestrator",
-    # Agent Bus
     "EventType",
     "AgentMessage",
     "Subscription",
@@ -67,22 +113,12 @@ __all__ = [
     "publish_result",
     "publish_signal",
     "publish_trade_executed",
-    # Production Agents
-    "VoterAgent",
-    "create_voter_agent",
-    "ExecutorAgent",
-    "create_executor_agent",
-    "RiskAgent",
-    "create_risk_agent",
-    # TradingOrchestrator
     "TradingOrchestrator",
     "create_trading_orchestrator",
     "ExecutionMode",
+    # Workflow
     "WorkflowPhase",
     "WorkflowState",
-    # ScannerAgent
-    "ScannerAgent",
-    "create_scanner_agent",
-    "ScanConfig",
-    "ScanResult",
+    "WorkflowStateManager",
+    "WorkflowReporter",
 ]

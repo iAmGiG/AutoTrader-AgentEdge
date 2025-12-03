@@ -277,13 +277,13 @@ class AgentFactory:
 
     def _create_scanner_agent(self, config: AgentConfig) -> Any:
         """Create a ScannerAgent."""
-        from src.autogen_agents.scanner_agent import create_scanner_agent
+        from ..agents.scanner_agent import create_scanner_agent
 
         return create_scanner_agent(name=config.name)
 
     def _create_voter_agent(self, config: AgentConfig) -> Any:
         """Create a VoterAgent with MACD+RSI parameters."""
-        from src.autogen_agents.voter_agent import create_voter_agent
+        from ..agents.voter_agent import create_voter_agent
 
         return create_voter_agent(
             name=config.name,
@@ -293,13 +293,13 @@ class AgentFactory:
 
     def _create_risk_agent(self, config: AgentConfig) -> Any:
         """Create a RiskAgent."""
-        from src.autogen_agents.risk_agent import create_risk_agent
+        from ..agents.risk_agent import create_risk_agent
 
         return create_risk_agent(name=config.name)
 
     def _create_executor_agent(self, config: AgentConfig) -> Any:
         """Create an ExecutorAgent."""
-        from src.autogen_agents.executor_agent import create_executor_agent
+        from ..agents.executor_agent import create_executor_agent
 
         initial_capital = config.extra_config.get("initial_capital", 100000)
         return create_executor_agent(initial_capital=initial_capital)
@@ -312,7 +312,7 @@ class AgentFactory:
 
     def _create_orchestrator(self, config: AgentConfig) -> Any:
         """Create a TradingOrchestrator."""
-        from src.autogen_agents.trading_orchestrator import create_trading_orchestrator
+        from .trading_orchestrator import create_trading_orchestrator
 
         initial_capital = config.extra_config.get("initial_capital", 100000)
         return create_trading_orchestrator(initial_capital=initial_capital)
