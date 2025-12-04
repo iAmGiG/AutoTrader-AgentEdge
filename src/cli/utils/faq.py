@@ -77,6 +77,57 @@ def _get_default_faq() -> Dict:
     }
 
 
+def _format_faq_header(header: dict) -> tuple[str, str, list[str]]:
+    """Format FAQ header and return separators."""
+    sep_char = header.get("separator_char", "=")
+    sep_width = header.get("separator_width", 60)
+    separator = sep_char * sep_width
+    thin_sep = "-" * sep_width
+
+    lines = [
+        "",
+        separator,
+        f"  {header.get('title', 'FAQ & GUIDE')}",
+        separator,
+    ]
+    return separator, thin_sep, lines
+
+
+def _format_faq_item(item: dict) -> list[str]:
+    """Format a single FAQ item."""
+    lines = []
+    item_title = item.get("title", "")
+    content = item.get("content", "").strip()
+    link = item.get("link", "")
+
+    if item_title:
+        lines.append(f"  {item_title}")
+    if content:
+        # Indent content lines
+        for line in content.split("\n"):
+            lines.append(f"    {line}")
+    if link:
+        lines.append(f"    -> {link}")
+    lines.append("")
+    return lines
+
+
+def _format_faq_section(section: dict, thin_sep: str) -> list[str]:
+    """Format a single FAQ section."""
+    emoji = section.get("emoji", "*")
+    title = section.get("title", "")
+
+    lines = [
+        f"\n[{emoji}] {title}",
+        thin_sep,
+    ]
+
+    for item in section.get("items", []):
+        lines.extend(_format_faq_item(item))
+
+    return lines
+
+
 def show_faq(section_filter: Optional[str] = None) -> str:
     """
     Format and return FAQ for display.
@@ -90,20 +141,10 @@ def show_faq(section_filter: Optional[str] = None) -> str:
     """
     faq = load_faq()
     header = faq.get("header", {})
-    lines: List[str] = []
 
-    sep_char = header.get("separator_char", "=")
-    sep_width = header.get("separator_width", 60)
-    separator = sep_char * sep_width
-    thin_sep = "-" * sep_width
+    separator, thin_sep, lines = _format_faq_header(header)
 
-    # Header
-    lines.append("")
-    lines.append(separator)
-    lines.append(f"  {header.get('title', 'FAQ & GUIDE')}")
-    lines.append(separator)
-
-    # Sections
+    # Format sections
     for section in faq.get("sections", []):
         section_id = section.get("id", "")
 
@@ -111,26 +152,7 @@ def show_faq(section_filter: Optional[str] = None) -> str:
         if section_filter and section_id != section_filter:
             continue
 
-        emoji = section.get("emoji", "*")
-        title = section.get("title", "")
-
-        lines.append(f"\n[{emoji}] {title}")
-        lines.append(thin_sep)
-
-        for item in section.get("items", []):
-            item_title = item.get("title", "")
-            content = item.get("content", "").strip()
-            link = item.get("link", "")
-
-            if item_title:
-                lines.append(f"  {item_title}")
-            if content:
-                # Indent content lines
-                for line in content.split("\n"):
-                    lines.append(f"    {line}")
-            if link:
-                lines.append(f"    -> {link}")
-            lines.append("")
+        lines.extend(_format_faq_section(section, thin_sep))
 
     # Quick reference (only show if no filter)
     if not section_filter:

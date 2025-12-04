@@ -50,7 +50,7 @@ def cmd_help(session, args: str = None):
 @command("/toggle", help_text="Switch CONFIRM/AUTO mode")
 def cmd_toggle(session):
     """Toggle between confirm and auto execution modes."""
-    from config_defaults.cli_messages import CLIMessages as MSG
+    from config_defaults.cli_messages import CLIMessages as MSG  # noqa: N814
 
     if session.autonomy_mode == "confirm":
         session.autonomy_mode = "auto"
