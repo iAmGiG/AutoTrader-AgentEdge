@@ -28,7 +28,8 @@ def _get_unified_cache():
     global _unified_cache
     if _unified_cache is None:
         try:
-            from src.data_sources.cache.unified_broker_cache import unified_broker_cache
+            from src.data_sources.cache.unified_broker_cache import \
+                unified_broker_cache
 
             _unified_cache = unified_broker_cache
             logger.debug("UnifiedBrokerCache loaded for persistent storage")
