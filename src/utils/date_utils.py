@@ -27,8 +27,6 @@ def get_default_timezone() -> str:
 
 def localize_df(df, tz):
     """Ensure a DataFrame index is timezone-aware using the provided timezone."""
-    import pandas as pd
-
     if df.empty:
         return df
 
@@ -201,8 +199,6 @@ def _get_ohlcv_aggregation(columns):
 
 def _ensure_datetime_index(df):
     """Ensure DataFrame has a DatetimeIndex."""
-    import pandas as pd
-
     if isinstance(df.index, pd.DatetimeIndex):
         return df
 
@@ -245,8 +241,6 @@ def align_interval(df, interval):
 
 def _resolve_event_anchor(df, token):
     """Resolve earnings/fomc anchor from DataFrame columns."""
-    import pandas as pd
-
     for c in df.columns:
         if token in c.lower():
             series = pd.to_datetime(df[c]).dropna()
@@ -275,8 +269,6 @@ def resolve_anchor(df, anchor_token):
         could not be matched.  If ``anchor_token`` is ``None`` the first index
         value is returned.
     """
-    import pandas as pd
-
     if df.empty or not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("DataFrame must be non-empty with a DatetimeIndex")
 
@@ -443,8 +435,6 @@ def add_business_days(date_str, days) -> str:
     Returns:
         New date in YYYY-MM-DD format
     """
-    import pandas as pd
-
     # Convert to datetime
     dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
@@ -654,8 +644,6 @@ def get_market_open_time(date_str, timezone: str = "America/New_York") -> dateti
     Returns:
         datetime object for market open (9:30 AM ET)
     """
-    import pytz
-
     dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Set to 9:30 AM
@@ -677,8 +665,6 @@ def get_market_close_time(date_str, timezone: str = "America/New_York") -> datet
     Returns:
         datetime object for market close (4:00 PM ET)
     """
-    import pytz
-
     dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Set to 4:00 PM
@@ -701,8 +687,6 @@ def calculate_days_to_expiration(expiration_dates, trade_dates):
     Returns:
         pandas Series or int: Days to expiration for each option contract
     """
-    import pandas as pd
-
     # Convert to pandas datetime if not already
     if not isinstance(expiration_dates, pd.Series):
         expiration_dates = pd.to_datetime(expiration_dates)
