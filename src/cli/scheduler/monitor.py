@@ -10,10 +10,9 @@ from datetime import time as dt_time
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from src.utils.date_utils import get_datetime_now
-
 from .daemon_manager import SchedulerDaemonManager
 from .message_loader import get_emoji, get_messages
+from src.utils.date_utils import get_datetime_now
 
 if TYPE_CHECKING:
     from src.trading.scheduling.daily_scheduler import DailyScheduler

@@ -13,9 +13,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import yaml
 
-from src.trading.scheduling.daily_scheduler import DailyScheduler
-
 from .message_loader import get_emoji
+from src.trading.scheduling.daily_scheduler import DailyScheduler
 
 if TYPE_CHECKING:
     pass
