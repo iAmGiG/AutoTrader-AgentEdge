@@ -873,9 +873,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             position = self._check_position_for_ticker(decision.suggestion.ticker)
 
             # Step 2a: Display position context
-            display_position_context(
-                decision.suggestion.ticker, position, decision.suggestion.signal.value
-            )
+            display_position_context(decision.suggestion.ticker, position)
 
             # Step 2b: Check for signal vs user intent mismatch
             # If analyzer suggests SELL but no position exists, check user's explicit intent
@@ -1238,12 +1236,12 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             logger.warning(f"Failed to get take_profit from config: {e}")
             return 0.08
 
-    async def _handle_alerts_request(self, user_input: str):
+    async def _handle_alerts_request(self, _user_input: str):
         """Handle position alerts request. Issue #459: Uses show_alerts()."""
         output = show_alerts()
         print(output)
 
-    async def _handle_scheduler_request(self, user_input: str):
+    async def _handle_scheduler_request(self, _user_input: str):
         """Handle scheduler status request. Issue #459: Uses show_scheduler()."""
         output = show_scheduler()
         print(output)
@@ -1290,7 +1288,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         )
         print(output)
 
-    async def _handle_orders_request(self, user_input: str):
+    async def _handle_orders_request(self, _user_input: str):
         """
         Handle order status request - shows pending/open orders.
         Issue #459: Refactored to use show_orders() from order_tools.

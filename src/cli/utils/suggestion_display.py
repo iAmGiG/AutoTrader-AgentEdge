@@ -69,14 +69,13 @@ def get_trade_direction(signal: Signal, has_position: bool = False) -> str:
         return "HOLD"
 
 
-def display_position_context(ticker: str, position: Optional[dict], signal: str) -> None:
+def display_position_context(ticker: str, position: Optional[dict]) -> None:
     """
     Display current position context before showing suggestion.
 
     Args:
         ticker: Stock symbol
         position: Position dict if exists, None otherwise
-        signal: Signal type (BUY/SELL/HOLD)
     """
     print(f"\n{'=' * 60}")
     print(f"📊 Position Context: {ticker}")
