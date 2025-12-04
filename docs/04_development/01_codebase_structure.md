@@ -135,41 +135,67 @@ AutoGen-TradingSystem/
 - `executor_agent.py`: Trade execution (in development)
 - `trading_orchestrator.py`: Multi-agent coordination (in development)
 
-### src/execution/ - Order Execution Layer
+### src/trading/ - Unified Trading Domain
 
-**Purpose**: Plugin architecture for broker-agnostic trade execution
+**Purpose**: All trading operations organized by concern (consolidated from src/execution/, src/risk/, src/trading_tools/)
 
-**Files**:
+**Structure** (9 subfolders):
 
+#### broker/ - Broker Integration
+
+- `alpaca_trading_client.py`: Alpaca API integration (paper + live trading)
 - `alpaca_execution_manager.py`: AlpacaExecutionManager implementing ExecutionManager interface
-  - Bracket order placement with fallback handling
-  - Off-hours validation error detection
-  - Message template integration
-  - Market hours checking
-
-### src/trading/ - Trading Operations
-
-**Purpose**: Broker integration and trade lifecycle management
-
-**Files**:
-
-- `alpaca_trading_client.py`: Alpaca API integration (paper + live)
 - `alpaca_autogen_tools.py`: AutoGen tool wrappers for agents
+- `validators/`: Order validation, response parsing, error handling
+
+#### orders/ - Order Lifecycle
+
 - `order_manager.py`: Order placement, modification, cancellation
+- `trailing_stop_manager.py`: Progressive trailing stop logic
+- `partial_exit_manager.py`: Partial position exit handling
+
+#### positions/ - Position Management
+
 - `position_manager.py`: Position tracking (broker as source of truth)
-- `trading_cycle.py`: Cost-efficient daily routines
-- `market_scanner.py`: Opportunity detection
-- `simple_signals.py`: Signal generation helpers
+- `position_sizer.py`: Profile-based position sizing automation
+- `position_tracker.py`: Exit alerts and TP/SL monitoring
+- `portfolio_manager.py`: Portfolio risk & allocation management
 
-### src/trading_tools/ - Pure Trading Functions
+#### risk/ - Risk Management
 
-**Purpose**: Stateless calculations and utilities
+- `simple_risk_manager.py`: Pre-trade risk checks (buying power, position %)
+- `risk_calculator.py`: Portfolio risk metrics and position sizing
 
-**Files**:
+#### state/ - State Management
 
-- `indicators.py`: MACD, RSI, and voting logic calculations
+- `state_reconciler.py`: Broker-to-local state synchronization
+- `broker_state_cache.py`: Broker state caching layer
+- `local_state_manager.py`: Local JSON state persistence
+
+#### scheduling/ - Trading Cycles
+
+- `trading_cycle.py`: Cost-efficient daily routines (morning/evening)
+- `trading_pipeline.py`: Complete daily workflow orchestrator
+- `daily_scheduler.py`: Automated scheduling with GTC orders
+
+#### accounts/ - Multi-Account Management
+
+- `account_manager.py`: Multi-account support with API-first discovery
+- `account_tools.py`: Agent-compatible account tools
+
+#### instruments/ - Ticker & Timeframe Management
+
+- `ticker_database.py`: Ticker metadata and approved list management
+- `approved_tickers.py`: Per-ticker entry modes and limits
+- `timeframe_tools.py`: Timeframe parsing and conversion
+- `indicators.py`: MACD, RSI, and technical indicator calculations
 - `data_fetch.py`: Market data retrieval utilities
-- `risk_calculator.py`: Position sizing and risk metrics
+
+#### utils/ - Trading Utilities
+
+- `unified_price_fetcher.py`: Current price fetching with fallback
+- `simple_signals.py`: Signal generation helpers
+- `report_generator.py`: Morning/evening report formatting
 
 ### src/data_sources/ - Data Integration
 

@@ -100,10 +100,19 @@ The system leverages Microsoft AutoGen for agent coordination:
 
 Clean architectural boundaries:
 
-1. **Integration Layer** (`src/trading/`): External service integrations, stateful operations
-2. **Business Logic Layer** (`src/trading_tools/`): Pure functions, calculations, utilities
-3. **AutoGen Agent Layer** (`src/autogen_agents/`): Multi-agent trading coordination
-4. **Data Layer** (`src/data_sources/`): Market data acquisition and normalization
+1. **Trading Domain** (`src/trading/`): All trading operations (broker API, orders, positions, risk, scheduling, etc.)
+   - **broker/**: Alpaca API integration and execution
+   - **orders/**: Order lifecycle management
+   - **positions/**: Position tracking and sizing
+   - **risk/**: Risk management and checks
+   - **state/**: State reconciliation
+   - **scheduling/**: Trading cycles and automation
+   - **accounts/**: Multi-account management
+   - **instruments/**: Tickers, timeframes, indicators
+   - **utils/**: Trading utilities
+2. **AutoGen Agent Layer** (`src/autogen_agents/`): Multi-agent trading coordination
+3. **Data Layer** (`src/data_sources/`): Market data acquisition and normalization
+4. **CLI Layer** (`src/cli/`): Human-in-loop interfaces with FunctionTool architecture
 
 ### Key Design Principles
 
