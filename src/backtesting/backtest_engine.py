@@ -11,6 +11,8 @@ Design Philosophy:
 - Validates by matching 0.856 Sharpe on AAPL 2024
 """
 
+import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -117,9 +119,9 @@ class BacktestEngine:
             )
 
         print(f"Running backtest: {symbol} ({len(data)} trading days)")
-        print(
-            f"Date range: {data.index[0].strftime('%Y-%m-%d')} to {data.index[-1].strftime('%Y-%m-%d')}"
-        )
+        start_date_str = data.index[0].strftime("%Y-%m-%d")
+        end_date_str = data.index[-1].strftime("%Y-%m-%d")
+        print(f"Date range: {start_date_str} to {end_date_str}")
 
         # Prepare price series
         prices = data["close"]
@@ -224,8 +226,8 @@ class BacktestEngine:
                 results[symbol] = result
                 print(result)
 
-            except ValueError as e:
-                print(f"Skipping {symbol}: {e}")
+            except ValueError as exc:
+                print(f"Skipping {symbol}: {exc}")
                 continue
 
         return results
@@ -238,10 +240,7 @@ def run_validation_test():
     This test verifies that our refactored BacktestEngine produces the same results
     as the original experiment_293_macd_vs_voting.py script.
     """
-    import json
-    import os
-
-    from src.autogen_agents.voter_agent import VoterAgent
+    from src.autogen_agents.agents.voter_agent import VoterAgent
 
     print("\n" + "=" * 70)
     print("VALIDATION TEST: Match Experiment #293 Results")
@@ -259,7 +258,7 @@ def run_validation_test():
         print("Please run from main project or copy .cache/market_data/ directory")
         return False
 
-    with open(cache_path, "r") as f:
+    with open(cache_path, "r", encoding="utf-8") as f:
         cache_data = json.load(f)
 
     if "data" in cache_data:
@@ -272,12 +271,8 @@ def run_validation_test():
 
     print(f"Loaded {len(df)} data points from cache")
 
-    # Create a custom signal generator that works with the data format
+    # Create voter agent for signal generation
     voter = VoterAgent()
-
-    def generate_signals(symbol, data):
-        """Wrapper to match VoterAgent signature."""
-        return voter.evaluate_voting(symbol, data)
 
     # Initialize BacktestEngine with no commission (matching experiment_293)
     engine = BacktestEngine(initial_capital=10000, commission_per_share=0.0)
@@ -368,5 +363,5 @@ def run_validation_test():
 
 if __name__ == "__main__":
     # Run validation test when executed directly
-    success = run_validation_test()
-    sys.exit(0 if success else 1)
+    SUCCESS = run_validation_test()
+    sys.exit(0 if SUCCESS else 1)
