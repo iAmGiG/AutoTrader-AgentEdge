@@ -18,6 +18,8 @@ Implementation for AutoGen-Trader:
 - Position sizing: Full position (1.0) for strong signals
 """
 
+import sys
+from pathlib import Path
 from typing import Any, Dict
 
 import pandas as pd
@@ -158,9 +160,6 @@ def run_tsmom_validation():
 
     This tests the TSMOM signal generator and validates the research approach.
     """
-    import sys
-    from pathlib import Path
-
     sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
     from src.backtesting.backtest_engine import BacktestEngine
@@ -233,7 +232,5 @@ def run_tsmom_validation():
 
 if __name__ == "__main__":
     # Run validation test when executed directly
-    import sys
-
     success = run_tsmom_validation()
     sys.exit(0 if success else 1)

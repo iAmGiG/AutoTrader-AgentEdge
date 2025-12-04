@@ -241,7 +241,8 @@ class TradingOrchestrator:
 
         # Analysis timeframe context for user display
         # Currently using daily (1D) candles for MACD+RSI analysis
-        analysis_timeframe = "1D"  # TODO: Make configurable if needed
+        # (Validated VoterAgent uses 1D - configurable in future iterations)
+        analysis_timeframe = "1D"
 
         if request.timing in ("pullback", "dip"):
             # Suggest entry 2.5% below current price for pullback/dip timing
