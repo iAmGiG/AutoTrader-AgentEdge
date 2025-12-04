@@ -240,7 +240,8 @@ def run_validation_test():
     This test verifies that our refactored BacktestEngine produces the same results
     as the original experiment_293_macd_vs_voting.py script.
     """
-    from src.autogen_agents.agents.voter_agent import VoterAgent
+    # Import here since validation test is only run via if __name__ == "__main__"
+    from src.autogen_agents.agents.voter_agent import VoterAgent  # noqa: C0415
 
     print("\n" + "=" * 70)
     print("VALIDATION TEST: Match Experiment #293 Results")

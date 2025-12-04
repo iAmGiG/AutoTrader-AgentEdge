@@ -10,6 +10,8 @@ from datetime import time as dt_time
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
+import pytz
+
 from .daemon_manager import SchedulerDaemonManager
 from .message_loader import get_emoji, get_messages
 from src.utils.date_utils import add_days, get_datetime_now
@@ -252,8 +254,6 @@ class SchedulerMonitor:
         print("=" * 70)
 
         try:
-            import pytz
-
             et = pytz.timezone("US/Eastern")
             now = get_datetime_now(et)
 
