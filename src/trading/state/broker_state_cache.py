@@ -3,6 +3,12 @@ BrokerStateCache - Cached broker state with smart TTL management.
 
 Extracted from trading_cycle.py as part of #439 refactoring.
 Handles broker state caching to reduce API calls (Issue #337).
+
+Issue #469: Now supports optional SQLite persistence via UnifiedBrokerCache.
+When use_persistent_cache=True, broker state snapshots are stored for:
+- Persistence between sessions
+- Audit trail of broker state
+- Historical queries for debugging
 """
 
 import logging
@@ -12,6 +18,25 @@ from typing import Any, Callable, Dict, List, Optional
 from src.utils.date_utils import get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)
+
+# Lazy-loaded persistent cache to avoid circular imports
+_unified_cache = None
+
+
+def _get_unified_cache():
+    """Lazy load UnifiedBrokerCache to avoid circular imports."""
+    global _unified_cache
+    if _unified_cache is None:
+        try:
+            from src.data_sources.cache.unified_broker_cache import \
+                unified_broker_cache
+
+            _unified_cache = unified_broker_cache
+            logger.debug("UnifiedBrokerCache loaded for persistent storage")
+        except ImportError:
+            logger.debug("UnifiedBrokerCache not available, using in-memory only")
+            _unified_cache = False
+    return _unified_cache if _unified_cache else None
 
 
 class BrokerStateCache:
@@ -28,6 +53,8 @@ class BrokerStateCache:
         check_alerts_callback: Optional[Callable[[Dict[str, Any]], List[Any]]] = None,
         cache_ttl_seconds: int = 60,
         alert_refresh_interval: int = 300,
+        use_persistent_cache: bool = True,
+        account_id: str = "default",
     ):
         """
         Initialize BrokerStateCache.
@@ -37,11 +64,15 @@ class BrokerStateCache:
             check_alerts_callback: Optional callback to check position alerts
             cache_ttl_seconds: How long to keep cached data (default: 60s)
             alert_refresh_interval: Time between alert refreshes (default: 300s)
+            use_persistent_cache: Store snapshots in SQLite (Issue #469)
+            account_id: Account identifier for persistent cache
         """
         self.account_monitor = account_monitor
         self.check_alerts_callback = check_alerts_callback
         self.cache_ttl_seconds = cache_ttl_seconds
         self.alert_refresh_interval = alert_refresh_interval
+        self.use_persistent_cache = use_persistent_cache
+        self.account_id = account_id
 
         # Cache state
         self._cache: Optional[Dict[str, Any]] = None
@@ -53,7 +84,8 @@ class BrokerStateCache:
 
         logger.info(
             f"BrokerStateCache initialized: TTL={cache_ttl_seconds}s, "
-            f"alert_interval={alert_refresh_interval}s"
+            f"alert_interval={alert_refresh_interval}s, "
+            f"persistent={use_persistent_cache}"
         )
 
     @property
@@ -61,7 +93,7 @@ class BrokerStateCache:
         """Get cached alerts."""
         return self._cached_alerts
 
-    def fetch(self, force_refresh: bool = False) -> Dict[str, Any]:
+    def fetch(self, force_refresh: bool = False) -> Dict[str, Any]:  # noqa: C901
         """
         Get all positions and orders from broker with smart caching.
         This is the source of truth.
@@ -185,6 +217,9 @@ class BrokerStateCache:
             self._cache = broker_state
             self._cache_timestamp = get_datetime_now()
 
+            # Issue #469: Store to persistent cache if enabled
+            self._store_to_persistent_cache(broker_state, positions, orders)
+
             # Issue #337 Phase 2: Piggyback alert check if enough time has passed
             self._maybe_refresh_alerts(broker_state)
 
@@ -276,3 +311,52 @@ class BrokerStateCache:
             self.fetch()
 
         return self._cached_alerts
+
+    def _store_to_persistent_cache(
+        self,
+        broker_state: Dict[str, Any],
+        positions: List[Dict],
+        orders: List[Dict],
+    ) -> None:
+        """
+        Store broker state to persistent SQLite cache.
+
+        Issue #469: Database-first caching architecture.
+        Stores snapshots for audit trail and historical queries.
+
+        Args:
+            broker_state: Processed broker state dict
+            positions: Raw position list from broker
+            orders: Raw order list from broker
+        """
+        if not self.use_persistent_cache:
+            return
+
+        unified_cache = _get_unified_cache()
+        if unified_cache is None:
+            return
+
+        try:
+            # Store full broker state for quick access
+            unified_cache._store_state(
+                self.account_id,
+                "broker_state",
+                broker_state,
+                ttl_seconds=self.cache_ttl_seconds,
+            )
+
+            # Store position snapshots for historical tracking
+            if positions:
+                unified_cache.store_position_snapshot(self.account_id, positions)
+
+            # Store order snapshots for historical tracking
+            if orders:
+                unified_cache.store_order_snapshot(self.account_id, orders)
+
+            logger.debug(
+                f"Stored to persistent cache: {len(positions)} positions, " f"{len(orders)} orders"
+            )
+
+        except Exception as e:
+            # Don't fail the main operation if persistent cache fails
+            logger.warning(f"Failed to store to persistent cache: {e}")
