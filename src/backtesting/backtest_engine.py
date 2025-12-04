@@ -17,12 +17,12 @@ from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from src.backtesting.portfolio import Portfolio
 from src.backtesting.results import BacktestResults
 from src.data_sources.cache.sqlite_cache import TradingCacheManager
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
 class BacktestEngine:
@@ -209,9 +209,9 @@ class BacktestEngine:
         results = {}
 
         for symbol in symbols:
-            print(f"\n{'='*70}")
+            print(f"\n{'=' * 70}")
             print(f"Backtesting: {symbol}")
-            print(f"{'='*70}")
+            print(f"{'=' * 70}")
 
             try:
                 result = self.run(

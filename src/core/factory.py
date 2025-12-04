@@ -10,19 +10,18 @@ import json
 import logging
 from typing import Optional
 
-from execution import AlpacaExecutionManager
-from risk import SimpleRiskManager
-
-from core.trading_modes import TradingMode, get_mode_manager
-from core.trading_orchestrator import TradingOrchestrator
-from parsers import AutoGenLLMParser
-from strategies import RealVoterStrategy, VoterStrategy
+from src.core.trading_modes import TradingMode, get_mode_manager
+from src.core.trading_orchestrator import TradingOrchestrator
+from src.parsers import AutoGenLLMParser
+from src.strategies import RealVoterStrategy, VoterStrategy
+from src.trading.broker.alpaca_execution_manager import AlpacaExecutionManager
+from src.trading.risk.simple_risk_manager import SimpleRiskManager
 
 logger = logging.getLogger(__name__)
 
 # Import existing OrderManager for real integration
 try:
-    from trading.alpaca_trading_client import AlpacaOrderManager
+    from src.trading.broker.alpaca_trading_client import AlpacaOrderManager
 
     ALPACA_AVAILABLE = True
 except ImportError:
@@ -169,6 +168,6 @@ class OrchestratorFactory:
         logger.info(f"   Executor: {type(execution_manager).__name__}")
 
         # Store mode manager reference for later access
-        orchestrator._mode_manager = mode_manager
+        orchestrator._mode_manager = mode_manager  # noqa: W0212
 
         return orchestrator

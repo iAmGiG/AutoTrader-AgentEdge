@@ -245,7 +245,7 @@ _account_commands: Optional[AccountCommands] = None
 
 def get_account_commands() -> AccountCommands:
     """Get singleton AccountCommands instance."""
-    global _account_commands
+    global _account_commands  # noqa: W0603
     if _account_commands is None:
         _account_commands = AccountCommands()
     return _account_commands

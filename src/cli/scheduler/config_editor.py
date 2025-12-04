@@ -9,11 +9,16 @@ import json
 import logging
 import os
 from datetime import time as dt_time
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import yaml
 
+from src.trading.scheduling.daily_scheduler import DailyScheduler
+
 from .message_loader import get_emoji
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -175,8 +180,6 @@ class SchedulerConfigEditor:
                     if scheduler:
                         print(f"{get_emoji('refresh', '🔄')} Reloading scheduler...")
                         try:
-                            from src.trading.scheduling.daily_scheduler import DailyScheduler
-
                             existing_cycle = scheduler.trading_cycle
                             scheduler = DailyScheduler(
                                 self.config_file, trading_cycle=existing_cycle
