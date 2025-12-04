@@ -26,6 +26,8 @@ try:
 except ImportError:
     yaml = None
 
+from src.utils.date_utils import now_iso
+
 logger = logging.getLogger(__name__)
 
 
@@ -269,8 +271,6 @@ class TradingModeManager:
     ) -> None:
         """Save trading mode change to database history."""
         try:
-            from src.utils.date_utils import now_iso
-
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
             cursor.execute(
