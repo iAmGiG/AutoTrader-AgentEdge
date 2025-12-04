@@ -180,7 +180,7 @@ class CLISession:
             self.scheduler = DailyScheduler(trading_cycle=self.trading_cycle)
 
             logger.info("CLISession initialized with all features (shared instances)")
-        except Exception as e:
+        except (ImportError, ValueError, AttributeError, OSError) as e:
             logger.warning(f"Some features unavailable: {e}")
             self.trading_cycle = None
             self.scheduler = None
@@ -218,7 +218,7 @@ class CLISession:
             try:
                 readline.read_history_file(history_file)
                 logger.debug(f"Loaded command history from {history_file}")
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 logger.warning(f"Could not load history file: {e}")
 
         # Set history length (default: 1000 commands)
@@ -249,7 +249,7 @@ class CLISession:
             # Ctrl+K: Delete to end of line
             readline.parse_and_bind('"\\C-k": kill-line')
             logger.debug("Word deletion keybindings configured")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.debug(f"Some keybindings may not be available: {e}")
 
         # Save history and recent tickers on exit
@@ -257,7 +257,7 @@ class CLISession:
             try:
                 readline.write_history_file(history_file)
                 logger.debug(f"Saved command history to {history_file}")
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 logger.warning(f"Could not save history file: {e}")
             if _ticker_completer:
                 _ticker_completer.save_recent_tickers()
@@ -283,11 +283,11 @@ class CLISession:
                 logger.warning(f"Trading config not found at {config_path}")
                 return None
 
-            with open(config_path, "r") as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
                 logger.info(f"Loaded trading config from {config_path}")
                 return config
-        except Exception as e:
+        except (OSError, ValueError, yaml.YAMLError) as e:
             logger.warning(f"Failed to load trading config: {e}")
             return None
 
@@ -333,7 +333,7 @@ class CLISession:
             except KeyboardInterrupt:
                 print(MSG.EXIT_MESSAGE)
                 break
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught  # Main REPL safety net
                 # Use ASCII error prefix on Windows
                 error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
                 sanitized_msg = _sanitize_error_message(e)
@@ -366,7 +366,7 @@ class CLISession:
             tickers = [p.get("symbol") for p in positions if p.get("symbol")]
             _ticker_completer.set_position_tickers(tickers)
             logger.debug(f"Updated position tickers: {tickers}")
-        except Exception as e:
+        except (AttributeError, ValueError, OSError) as e:
             logger.debug(f"Could not update position tickers: {e}")
 
     async def _handle_command(self, command: str) -> bool:
@@ -543,7 +543,7 @@ class CLISession:
                 "confidence": confidence,
             }
 
-        except Exception as e:
+        except (ValueError, AttributeError, OSError, RuntimeError) as e:
             logger.error(f"Error classifying intent: {e}", exc_info=True)
             return {
                 "intent": "unknown",
@@ -619,7 +619,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     logger.warning(f"Failed to parse LLM response as JSON: {response}")
                 except asyncio.TimeoutError:
                     logger.warning("LLM call timed out, falling back to pattern matching")
-                except Exception as e:
+                except (ValueError, OSError, RuntimeError, AttributeError) as e:
                     logger.warning(f"LLM resolution failed: {e}")
 
             # Fallback: Try pattern matching for common formats
@@ -637,7 +637,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             return None, None
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError, AttributeError) as e:
             logger.error(f"Error resolving ticker with LLM: {e}")
             return None, None
 
@@ -843,7 +843,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 # Trade request → process through orchestrator
                 await self._handle_trade_request(user_input)
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError, AttributeError) as e:
             logger.error(f"Error routing request: {e}", exc_info=True)
             error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
             sanitized_msg = _sanitize_error_message(e)
@@ -1104,7 +1104,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 # Don't show for review-only requests (nothing to cancel)
                 print(MSG.TRADE_CANCELLED)
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError, AttributeError) as e:
             # Sanitize error message for user display
             sanitized_msg = _sanitize_error_message(e)
             error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
@@ -1129,7 +1129,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             positions = self.account_monitor.get_positions()
             return next((p for p in positions if p.get("symbol") == ticker), None)
-        except Exception as e:
+        except (AttributeError, ValueError, OSError) as e:
             logger.warning(f"Failed to check position for {ticker}: {e}")
             return None
 
@@ -1195,7 +1195,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 f"stop=${suggestion.stop_loss:.2f}, target=${suggestion.take_profit:.2f}"
             )
 
-        except Exception as e:
+        except (AttributeError, ValueError, KeyError) as e:
             logger.warning(f"Failed to update local state after trade: {e}")
 
     def _get_stop_loss_pct(self) -> float:
@@ -1213,7 +1213,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             default_strategy = exits.get("default", "balanced")
             strategy_config = exits.get(default_strategy, {})
             return strategy_config.get("stop_loss", 0.05)
-        except Exception as e:
+        except (AttributeError, KeyError, TypeError) as e:
             logger.warning(f"Failed to get stop_loss from config: {e}")
             return 0.05
 
@@ -1232,7 +1232,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             default_strategy = exits.get("default", "balanced")
             strategy_config = exits.get(default_strategy, {})
             return strategy_config.get("take_profit", 0.08)
-        except Exception as e:
+        except (AttributeError, KeyError, TypeError) as e:
             logger.warning(f"Failed to get take_profit from config: {e}")
             return 0.08
 

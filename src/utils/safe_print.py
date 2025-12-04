@@ -40,7 +40,10 @@ def _supports_utf8() -> bool:
                 pass
 
         return False
-    except Exception:  # noqa: E722
+    except (AttributeError, TypeError, OSError):
+        # AttributeError: Missing encoding attribute
+        # TypeError: Invalid encoding operations
+        # OSError: Environment access errors
         return False
 
 
