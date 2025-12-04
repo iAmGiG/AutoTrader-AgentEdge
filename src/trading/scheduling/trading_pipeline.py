@@ -29,8 +29,8 @@ from typing import Any, Dict, List, Optional
 import pytz
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
-from src.trading.position_manager import PositionManager
-from src.trading.unified_price_fetcher import get_current_price
+from src.trading.positions.position_manager import PositionManager
+from src.trading.utils.unified_price_fetcher import get_current_price
 from src.utils.date_utils import get_datetime_now, subtract_days
 
 try:

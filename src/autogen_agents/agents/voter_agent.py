@@ -20,7 +20,7 @@ from ..core.base_agent import BaseAgent
 
 # Agent Bus for event publishing (Issue #390)
 from ..orchestration.agent_bus import EventType, create_message, get_agent_bus
-from src.trading_tools.indicators import calculate_macd, calculate_rsi
+from src.trading.instruments.indicators import calculate_macd, calculate_rsi
 from src.utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)

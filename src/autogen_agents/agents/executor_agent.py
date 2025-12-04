@@ -102,9 +102,9 @@ class ExecutorAgent(BaseAgent):
         """Lazy load OrderManager if not provided."""
         if self._order_manager is None:
             try:
-                from src.trading.alpaca_trading_client import get_trading_client
-                from src.trading.order_manager import OrderManager
-                from src.trading.position_manager import PositionManager
+                from src.trading.broker.alpaca_trading_client import get_trading_client
+                from src.trading.orders.order_manager import OrderManager
+                from src.trading.positions.position_manager import PositionManager
 
                 self._broker_client = get_trading_client(paper=self.paper_trading)
                 self._position_manager = PositionManager(self._broker_client)
@@ -294,7 +294,7 @@ class ExecutorAgent(BaseAgent):
     def _get_current_price(self, symbol: str) -> Optional[float]:
         """Get current market price for a symbol."""
         try:
-            from src.trading.unified_price_fetcher import UnifiedPriceFetcher
+            from src.trading.utils.unified_price_fetcher import UnifiedPriceFetcher
 
             fetcher = UnifiedPriceFetcher()
             price = fetcher.get_current_price(symbol)

@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, Optional
 
 from config_defaults.trading_config import TradingConfig, TrailingStopConfig
 
-from src.trading.unified_price_fetcher import get_current_price
+from src.trading.utils.unified_price_fetcher import get_current_price
 from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)

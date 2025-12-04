@@ -22,8 +22,8 @@ from enum import Enum
 from typing import Optional
 
 from src.core.trading_modes import TradingMode, TradingModeManager, get_mode_manager
-from src.trading.approved_tickers import ApprovedTickersManager
-from src.trading.ticker_database import TickerMode
+from src.trading.instruments.approved_tickers import ApprovedTickersManager
+from src.trading.instruments.ticker_database import TickerMode
 
 logger = logging.getLogger(__name__)
 

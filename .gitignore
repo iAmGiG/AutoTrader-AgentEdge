@@ -219,8 +219,9 @@ Desktop.ini
 # Other
 # =====
 
-# state operations
+# state operations (but not src/trading/state/ which is code)
 state/
+!src/trading/state/
 
 # mypy
 .mypy_cache/

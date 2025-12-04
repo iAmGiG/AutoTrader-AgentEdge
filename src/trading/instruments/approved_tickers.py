@@ -15,14 +15,14 @@ Manages pre-approved ticker list for automated trading:
 import logging
 from typing import Dict, List, Optional
 
-from src.core.trading_modes import TradingMode
-from src.trading.ticker_database import (
+from .ticker_database import (
     ApprovedTicker,
     TickerDatabase,
     TickerMetadata,
     TickerMode,
     TickerType,
 )
+from src.core.trading_modes import TradingMode
 
 logger = logging.getLogger(__name__)
 

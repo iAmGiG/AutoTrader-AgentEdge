@@ -25,8 +25,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from .position_sizer import PositionSizer, PositionSizeResult
 from src.core.trading_modes import TradingMode, TradingModeManager, get_mode_manager
-from src.trading.position_sizer import PositionSizer, PositionSizeResult
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ import pandas as pd
 
 from config_defaults.trading_config import TradingConfig
 
-from src.trading_tools.indicators import calculate_macd, calculate_rsi
+from src.trading.instruments.indicators import calculate_macd, calculate_rsi
 
 logger = logging.getLogger(__name__)
 

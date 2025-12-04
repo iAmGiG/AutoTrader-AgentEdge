@@ -13,8 +13,8 @@ from core.interfaces import ExecutionManager
 from core.models import OrderResult, OrderType, TradeDecision, TradeSuggestion
 
 # Import extracted components
-from src.trading.api_error_translator import APIErrorTranslator
-from src.trading.validators.bracket_validator import BracketOrderValidator
+from .api_error_translator import APIErrorTranslator
+from .validators.bracket_validator import BracketOrderValidator
 from src.utils.market_hours import is_market_hours
 
 # Import message loader for user-facing messages
@@ -29,12 +29,12 @@ except ImportError:
 
 # Import price fetcher for current market prices
 try:
-    from src.trading.unified_price_fetcher import UnifiedPriceFetcher
+    from src.trading.utils.unified_price_fetcher import UnifiedPriceFetcher
 
     PRICE_FETCHER_AVAILABLE = True
 except ImportError:
     try:
-        from trading.unified_price_fetcher import UnifiedPriceFetcher
+        from ..utils.unified_price_fetcher import UnifiedPriceFetcher
 
         PRICE_FETCHER_AVAILABLE = True
     except ImportError:
@@ -230,7 +230,9 @@ class AlpacaExecutionManager(ExecutionManager):
         # Try to get current price from OrderManager's market data client
         if self.order_manager and hasattr(self.order_manager, "client"):
             try:
-                from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+                from src.data_sources.sources.market.alpaca_market_data import (
+                    AlpacaMarketData,
+                )
 
                 market_data = AlpacaMarketData()
 

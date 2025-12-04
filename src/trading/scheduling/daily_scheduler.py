@@ -25,7 +25,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.trading.trading_cycle import CostEfficientTradeCycle, RoutineType
+from .trading_cycle import CostEfficientTradeCycle, RoutineType
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
 try:

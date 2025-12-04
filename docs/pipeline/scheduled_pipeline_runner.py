@@ -42,7 +42,7 @@ sys.path.insert(0, str(project_root))
 
 from src.autogen_agents.executor_agent import ExecutorAgent
 from src.autogen_agents.voter_agent import VoterAgent
-from src.trading.trading_pipeline import TradingPipeline
+from src.trading.scheduling.trading_pipeline import TradingPipeline
 from src.utils.date_utils import get_datetime_now
 
 logging.basicConfig(
@@ -161,9 +161,11 @@ class ScheduledPipelineRunner:
 
             if not self.dry_run:
                 try:
-                    from src.trading.alpaca_trading_client import get_trading_client
-                    from src.trading.order_manager import OrderManager
-                    from src.trading.position_manager import PositionManager
+                    from src.trading.broker.alpaca_trading_client import (
+                        get_trading_client,
+                    )
+                    from src.trading.orders.order_manager import OrderManager
+                    from src.trading.positions.position_manager import PositionManager
 
                     client = get_trading_client(paper=self.paper_trading)
                     position_manager = PositionManager(client)
