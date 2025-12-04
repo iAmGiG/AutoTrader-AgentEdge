@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Optional
 
 from .daemon_manager import SchedulerDaemonManager
 from .message_loader import get_emoji, get_messages
-from src.utils.date_utils import get_datetime_now
+from src.utils.date_utils import add_days, get_datetime_now
 
 if TYPE_CHECKING:
     from src.trading.scheduling.daily_scheduler import DailyScheduler
@@ -252,8 +252,6 @@ class SchedulerMonitor:
         print("=" * 70)
 
         try:
-            from datetime import timedelta
-
             import pytz
 
             et = pytz.timezone("US/Eastern")
@@ -276,7 +274,7 @@ class SchedulerMonitor:
                 next_run = evening_today
                 next_task = "Evening Routine"
             else:
-                next_run = morning_today + timedelta(days=1)
+                next_run = add_days(morning_today, 1)
                 next_task = "Morning Routine (tomorrow)"
 
             time_until = next_run - now

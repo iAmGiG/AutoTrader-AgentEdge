@@ -86,7 +86,7 @@ class BacktestResults:
         """Pretty print results."""
         return f"""
 Backtest Results: {self.symbol} ({self.start_date} to {self.end_date})
-{'='*70}
+{'=' * 70}
 Total Return:    {self.total_return:>10.2f}%
 Sharpe Ratio:    {self.sharpe_ratio:>10.3f}
 Max Drawdown:    {self.max_drawdown:>10.2f}%
@@ -94,7 +94,7 @@ Win Rate:        {self.win_rate:>10.1f}%
 Volatility:      {self.volatility:>10.2f}%
 Number of Trades: {self.num_trades:>9}
 Final Value:     ${self.final_value:>10,.2f} (started with ${self.initial_capital:>10,.2f})
-{'='*70}
+{'=' * 70}
 """
 
 

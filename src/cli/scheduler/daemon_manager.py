@@ -13,6 +13,11 @@ import time
 from pathlib import Path
 from typing import Optional
 
+try:
+    import psutil
+except ImportError:
+    psutil = None  # type: ignore
+
 from .message_loader import get_emoji
 
 logger = logging.getLogger(__name__)
@@ -65,7 +70,8 @@ class SchedulerDaemonManager:
         """
         # Try psutil first (more reliable)
         try:
-            import psutil
+            if psutil is None:
+                raise ImportError("psutil not available")
 
             for proc in psutil.process_iter(["pid", "name", "cmdline"]):
                 try:
