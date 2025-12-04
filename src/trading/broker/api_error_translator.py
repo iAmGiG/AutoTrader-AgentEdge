@@ -65,7 +65,7 @@ class APIErrorTranslator:
             api_message = parsed.get("message", "")
 
             # Handle specific error codes
-            result = cls._handle_bracket_errors(code, api_message, stop, target, base_price)
+            result = cls._handle_bracket_errors(code, api_message, entry, stop, target, base_price)
             if result:
                 return result
 
@@ -112,6 +112,7 @@ class APIErrorTranslator:
         cls,
         code: Optional[int],
         api_message: str,
+        entry: Optional[float],
         stop: Optional[float],
         target: Optional[float],
         base_price: Optional[float],
@@ -120,13 +121,16 @@ class APIErrorTranslator:
         if code != 42210000:
             return None
 
+        # Build price context string for better error messages
+        entry_str = f"${entry:.2f}" if entry else "N/A"
+
         if "stop_loss" in api_message and "must be <=" in api_message:
             stop_str = f"${stop:.2f}" if stop else "N/A"
             base_str = f"${base_price}" if base_price else "unknown"
             return (
                 f"Order rejected: Stop loss price ({stop_str}) doesn't match market price",
                 f"The market is closed and price data may be stale. "
-                f"Alpaca expects stop={base_str} but we calculated {stop_str}. "
+                f"Entry: {entry_str}, Stop: {stop_str}, Alpaca expects stop={base_str}. "
                 "Try again during market hours (9:30 AM - 4:00 PM ET) for accurate pricing.",
             )
 
@@ -136,7 +140,7 @@ class APIErrorTranslator:
             return (
                 f"Order rejected: Take profit price ({target_str}) doesn't match market price",
                 f"The market is closed and price data may be stale. "
-                f"Alpaca expects target>={base_str} but we calculated {target_str}. "
+                f"Entry: {entry_str}, Target: {target_str}, Alpaca expects target>={base_str}. "
                 "Try again during market hours (9:30 AM - 4:00 PM ET) for accurate pricing.",
             )
 
@@ -160,7 +164,7 @@ class APIErrorTranslator:
         if "symbol" in msg_lower and ("invalid" in msg_lower or "not found" in msg_lower):
             return (
                 f"Order rejected: {ticker} is not a valid or tradeable symbol",
-                "Double-check the ticker symbol. " "It may be delisted or not supported by Alpaca.",
+                "Double-check the ticker symbol. It may be delisted or not supported by Alpaca.",
             )
         return None
 
