@@ -3,10 +3,13 @@
 from .cache_adapter import CacheAdapter, cache_adapter
 from .news_cache import NewsCache
 from .sqlite_cache import TradingCacheManager
+from .unified_broker_cache import UnifiedBrokerCache, unified_broker_cache
 
 __all__ = [
     "NewsCache",
     "TradingCacheManager",  # SQLite-based cache (production)
     "CacheAdapter",
     "cache_adapter",
+    "UnifiedBrokerCache",  # Database-first broker state cache (#469)
+    "unified_broker_cache",
 ]

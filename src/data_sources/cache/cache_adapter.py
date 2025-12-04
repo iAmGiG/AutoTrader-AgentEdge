@@ -55,10 +55,13 @@ class CacheAdapter:
         """
         # Combine source with timeframe to create unique cache key
         # This ensures different timeframes are cached separately
-        cache_source = f"{source}_{timeframe}" if source not in ("any", "auto") else None
-        if cache_source is None and timeframe != "1Day":
-            # For non-daily timeframes with 'any' source, include timeframe
-            cache_source = f"any_{timeframe}"
+        # Must match the logic in set_market_data() for consistency
+        if source in ("any", "auto"):
+            # No source filter for generic requests
+            cache_source = None if timeframe == "1Day" else f"any_{timeframe}"
+        else:
+            # Specific source: use {source}_{timeframe} for non-daily, just source for daily
+            cache_source = f"{source}_{timeframe}" if timeframe != "1Day" else source
 
         # First try SQLite cache
         data = self.cache.get(symbol, start_date, end_date, source=cache_source)
