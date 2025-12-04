@@ -3,11 +3,21 @@ Account management - multi-account support, account tools.
 """
 
 from .account_manager import AccountManager
-from .account_tools import get_account_info, list_accounts, switch_account
+from .account_tools import (
+    get_account_buying_power,
+    get_active_account_info,
+    get_available_accounts,
+    is_account_paper_trading,
+    refresh_account_data,
+    switch_active_account,
+)
 
 __all__ = [
     "AccountManager",
-    "get_account_info",
-    "list_accounts",
-    "switch_account",
+    "get_active_account_info",
+    "get_available_accounts",
+    "get_account_buying_power",
+    "is_account_paper_trading",
+    "refresh_account_data",
+    "switch_active_account",
 ]
