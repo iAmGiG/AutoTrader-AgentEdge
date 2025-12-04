@@ -9,20 +9,16 @@ Phase 2: Write operations (order placement, modification, cancellation)
 """
 
 import logging
-from datetime import timezone
 from typing import Any, Dict, List, Optional
 
-import pytz
-
 from src.trading.broker.market_hours import validate_market_hours
-from src.utils.date_utils import get_datetime_now
+from src.trading.broker.validators import OrderValidator, map_side, map_time_in_force
 
 try:
     from alpaca.common.exceptions import APIError
     from alpaca.trading.client import TradingClient
     from alpaca.trading.enums import (
         OrderClass,
-        OrderSide,
         OrderStatus,
         OrderType,
         QueryOrderStatus,
@@ -54,7 +50,6 @@ except ImportError:
     TakeProfitRequest = None
     StopLossRequest = None
     ReplaceOrderRequest = None
-    OrderSide = None
     OrderStatus = None
     OrderType = None
     TimeInForce = None
@@ -595,6 +590,14 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
             "max_order_size": 1000,  # Max shares per order
         }
 
+        # Initialize order validator with providers
+        self.order_validator = OrderValidator(
+            risk_limits=self.risk_limits,
+            account_provider=self.get_account_status,
+            position_provider=self.get_positions,
+            order_provider=self._get_orders_for_validation,
+        )
+
         logger.info(f"Order manager initialized for {mode} trading with safety rails")
 
     def _validate_order(
@@ -602,6 +605,13 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
     ) -> bool:
         """
         Validate order parameters before submission.
+
+        Delegates to OrderValidator for comprehensive validation including:
+        - Parameter validation (symbol, qty, side)
+        - Risk limit checks (max order size)
+        - Buying power verification (for buys)
+        - Position availability (for sells)
+        - Daily trade limit check
 
         Args:
             symbol: Stock symbol
@@ -615,97 +625,24 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
         Raises:
             ValueError: If order fails validation
         """
-        # Basic parameter validation
-        if not symbol or not symbol.strip():
-            raise ValueError("Symbol is required")
+        return self.order_validator.validate_order(symbol, qty, side, price)
 
-        if qty <= 0:
-            raise ValueError(f"Quantity must be positive, got {qty}")
-
-        if side.lower() not in ["buy", "sell"]:
-            raise ValueError(f"Side must be 'buy' or 'sell', got {side}")
-
-        # Risk limit checks
-        if qty > self.risk_limits["max_order_size"]:
-            raise ValueError(f"Order size {qty} exceeds limit {self.risk_limits['max_order_size']}")
-
-        # Check buying power for buy orders
-        if side.lower() == "buy":
-            account = self.get_account_status()
-            estimated_cost = qty * (price or 100.0)  # Conservative estimate if no price
-
-            if estimated_cost > account["buying_power"]:
-                raise ValueError(
-                    f"Estimated cost ${estimated_cost:,.2f} exceeds buying power "
-                    f"${account['buying_power']:,.2f}"
-                )
-
-        # Check if we have the position for sell orders
-        if side.lower() == "sell":
-            positions = self.get_positions()
-            position = next((p for p in positions if p["symbol"] == symbol), None)
-
-            if not position or position["qty"] < qty:
-                available_qty = position["qty"] if position else 0
-                raise ValueError(
-                    f"Cannot sell {qty} shares of {symbol}, only {available_qty} available"
-                )
-
-        # Check daily trade limit
-        self._check_daily_trade_limit()
-
-        return True
-
-    def _check_daily_trade_limit(self) -> bool:
+    def _get_orders_for_validation(self, after=None) -> List:
         """
-        Check if daily trade limit has been reached.
+        Get orders for validation (used by OrderValidator).
+
+        Args:
+            after: Optional datetime to filter orders after this time
 
         Returns:
-            bool: True if within limits, False if limit exceeded
-
-        Raises:
-            ValueError: If daily trade limit exceeded
+            List of orders from the trading client
         """
         try:
-            # Get today's orders
-            # Get ET timezone for market day calculation
-            et_tz = pytz.timezone("America/New_York")
-            now_et = get_datetime_now(et_tz)
-
-            # Market day starts at market open (usually 4:00 AM ET for pre-market)
-            market_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)
-            if now_et < market_start:
-                # Before 4 AM, consider it previous market day
-                market_start = market_start.replace(day=market_start.day - 1)
-
-            # Convert to UTC for API call
-            market_start_utc = market_start.astimezone(timezone.utc)
-
-            # Get orders from market start of today
-            # Note: Not specifying status parameter returns all orders (open, closed, filled, etc.)
-            request = GetOrdersRequest(after=market_start_utc)
-            # AlpacaOrderManager has self.client (AlpacaTradingClient), which has trading_client
-            today_orders = self.client.trading_client.get_orders(request)
-
-            order_count = len(today_orders)
-            max_trades = self.risk_limits.get("max_daily_trades", 100)  # Default 100
-
-            logger.info(f"Daily trade count: {order_count}/{max_trades}")
-
-            if order_count >= max_trades:
-                raise ValueError(
-                    f"Daily trade limit exceeded: {order_count}/{max_trades} orders placed today"
-                )
-
-            return True
-
-        except ValueError:
-            # Re-raise validation errors
-            raise
+            request = GetOrdersRequest(after=after) if after else GetOrdersRequest()
+            return self.client.trading_client.get_orders(request)
         except Exception as e:
-            # Log but don't block for other errors
-            logger.warning(f"Could not check daily trade limit: {e}")
-            return True
+            logger.warning(f"Could not fetch orders for validation: {e}")
+            return []
 
     def place_market_order(
         self, symbol: str, qty: int, side: str, time_in_force: str = "day"
@@ -736,14 +673,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 logger.info(f"📝 PAPER MARKET ORDER: {side.upper()} {qty} {symbol}")
 
             # Map string values to enums
-            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-            tif_map = {
-                "day": TimeInForce.DAY,
-                "gtc": TimeInForce.GTC,
-                "ioc": TimeInForce.IOC,
-                "fok": TimeInForce.FOK,
-            }
-            tif_enum = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
+            side_enum = map_side(side)
+            tif_enum = map_time_in_force(time_in_force)
 
             # Create order request
             order_request = MarketOrderRequest(
@@ -827,7 +758,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map side to enum
-            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+            side_enum = map_side(side)
 
             # Create order request
             order_request = LimitOrderRequest(
@@ -1021,14 +952,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map values to enums
-            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-            tif_map = {
-                "day": TimeInForce.DAY,
-                "gtc": TimeInForce.GTC,
-                "ioc": TimeInForce.IOC,
-                "fok": TimeInForce.FOK,
-            }
-            tif_enum = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
+            side_enum = map_side(side)
+            tif_enum = map_time_in_force(time_in_force)
 
             # Create order request
             order_request = StopOrderRequest(
@@ -1140,8 +1065,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map values to enums
-            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-            tif_enum = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
+            side_enum = map_side(side)
+            tif_enum = map_time_in_force(time_in_force)
 
             # Create order request
             order_request = TrailingStopOrderRequest(
@@ -1263,8 +1188,8 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 )
 
             # Map values to enums
-            side_enum = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
-            tif_enum = TimeInForce.GTC if time_in_force.lower() == "gtc" else TimeInForce.DAY
+            side_enum = map_side(side)
+            tif_enum = map_time_in_force(time_in_force)
 
             # Create take profit and stop loss requests
             take_profit = (
@@ -1425,15 +1350,7 @@ class AlpacaOrderManager(AlpacaAccountMonitor):
                 replace_request_params["stop_price"] = stop_price
 
             if time_in_force is not None:
-                tif_map = {
-                    "day": TimeInForce.DAY,
-                    "gtc": TimeInForce.GTC,
-                    "ioc": TimeInForce.IOC,
-                    "fok": TimeInForce.FOK,
-                }
-                if time_in_force.lower() not in tif_map:
-                    raise ValueError(f"Invalid time in force: {time_in_force}")
-                replace_request_params["time_in_force"] = tif_map[time_in_force.lower()]
+                replace_request_params["time_in_force"] = map_time_in_force(time_in_force)
 
             # Create replacement request
             replace_request = ReplaceOrderRequest(**replace_request_params)
