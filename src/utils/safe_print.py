@@ -33,10 +33,10 @@ def _supports_utf8() -> bool:
         if IS_WINDOWS:
             try:
                 result = subprocess.run(
-                    ["chcp"], capture_output=True, text=True, shell=True  # nosec B602
+                    ["chcp"], capture_output=True, text=True, shell=True, check=False  # nosec B602
                 )
                 return "65001" in result.stdout
-            except Exception:  # noqa: E722
+            except OSError:
                 pass
 
         return False
@@ -113,10 +113,10 @@ def safe_print(message: str, **kwargs):
         # Linux UTF-8: "✅ Task completed successfully"
     """
     # Replace all known emojis with platform-appropriate symbols
-    for symbol_name, config in EMOJI_CONFIG.items():
+    for emoji_key, config in EMOJI_CONFIG.items():
         emoji = config["emoji"]
         if emoji in message:
-            replacement = get_symbol(symbol_name)
+            replacement = get_symbol(emoji_key)
             message = message.replace(emoji, replacement)
 
     try:
