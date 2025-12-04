@@ -1552,3 +1552,17 @@ def place_limit_order(
     """
     manager = AlpacaOrderManager(mode=mode)
     return manager.place_limit_order_gtc(symbol, qty, side, limit_price)
+
+
+def get_trading_client(paper: bool = True) -> AlpacaTradingClient:
+    """
+    Factory function to get a trading client.
+
+    Args:
+        paper: True for paper trading, False for live trading
+
+    Returns:
+        AlpacaTradingClient instance configured for the specified mode
+    """
+    mode = "paper" if paper else "live"
+    return AlpacaTradingClient(mode=mode)
