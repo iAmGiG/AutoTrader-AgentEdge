@@ -394,7 +394,7 @@ def show_portfolio(
 # =============================================================================
 
 
-def _show_portfolio_tool(_ticker: Optional[str] = None) -> str:
+def _show_portfolio_tool(ticker: Optional[str] = None) -> str:  # noqa: ARG001
     """
     FunctionTool wrapper for portfolio display.
 
@@ -403,12 +403,13 @@ def _show_portfolio_tool(_ticker: Optional[str] = None) -> str:
     its instances. This wrapper exists for future agent integration.
 
     Args:
-        _ticker: Optional specific ticker to show details for (currently unused)
+        ticker: Optional specific ticker to show details for (currently unused)
 
     Returns:
         Portfolio display string or error message
     """
     # This is a placeholder - actual implementation requires injected dependencies
+    # ticker parameter is accepted but unused until dependency injection is implemented
     return "Portfolio tools require initialized account_monitor. Use CLI session."
 
 

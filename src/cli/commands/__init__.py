@@ -1,19 +1,37 @@
 """
-CLI Commands - Natural language command handlers.
+CLI Commands - Command handlers and registry.
 
-This module contains command handler classes that process user input
-and coordinate with the trading system.
+This module contains:
+- CommandRegistry: Self-registering slash command pattern (#468)
+- Slash commands: /about, /faq, /help, /toggle, /schedule, /exit
+- Natural language handlers: account, timeframe, trailing stop
 
 Modules:
+- registry: Command registration and dispatch
+- slash_commands: All / commands (auto-registered on import)
 - account_commands: Account management commands (list, switch, refresh)
 - timeframe_commands: Timeframe selection and display
 - trailing_stop_commands: Trailing stop management (future integration)
 """
 
+# Import slash commands to trigger registration
+from src.cli.commands import slash_commands  # noqa: F401
+
+# Import natural language command handlers
 from src.cli.commands.account_commands import AccountCommands, get_account_commands
-from src.cli.commands.timeframe_commands import TimeframeCommands, get_timeframe_commands
+
+# Import registry first
+from src.cli.commands.registry import CommandRegistry, command
+from src.cli.commands.timeframe_commands import (
+    TimeframeCommands,
+    get_timeframe_commands,
+)
 
 __all__ = [
+    # Registry
+    "CommandRegistry",
+    "command",
+    # Natural language handlers
     "AccountCommands",
     "get_account_commands",
     "TimeframeCommands",
