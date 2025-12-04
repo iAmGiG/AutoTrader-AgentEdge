@@ -7,7 +7,7 @@ Integrates with CLI LLM interface for user-friendly timeframe management.
 
 from typing import Dict, Optional
 
-from src.trading.timeframe_tools import _get_timeframe_manager
+from src.trading.instruments.timeframe_tools import _get_timeframe_manager
 
 
 class TimeframeCommands:

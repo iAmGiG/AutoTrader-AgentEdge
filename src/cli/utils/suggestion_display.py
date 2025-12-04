@@ -16,7 +16,7 @@ from config_defaults.message_loader import get_pl_emoji, get_signal_emoji
 
 from src.cli.commands.timeframe_commands import get_timeframe_commands
 from src.core.models import Signal
-from src.trading.timeframe_tools import get_timeframe_display_name
+from src.trading.instruments.timeframe_tools import get_timeframe_display_name
 
 
 def calc_pct(base: float, value: float) -> float:

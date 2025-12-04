@@ -17,7 +17,12 @@ from typing import Any, Dict
 
 from autogen_core.tools import FunctionTool
 
-from src.utils.date_utils import add_days, combine_date_time, get_datetime_now, parse_time_string
+from src.utils.date_utils import (
+    add_days,
+    combine_date_time,
+    get_datetime_now,
+    parse_time_string,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +39,7 @@ def _get_scheduler():
     Returns singleton or creates new instance.
     """
     try:
-        from src.trading.daily_scheduler import DailyScheduler
+        from src.trading.scheduling.daily_scheduler import DailyScheduler
 
         return DailyScheduler()
     except Exception as e:

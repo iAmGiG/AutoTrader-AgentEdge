@@ -32,7 +32,7 @@ def _get_trading_cycle():
     Returns singleton or creates new instance.
     """
     try:
-        from src.trading.trading_cycle import CostEfficientTradeCycle
+        from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
 
         return CostEfficientTradeCycle()
     except Exception as e:

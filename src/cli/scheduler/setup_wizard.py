@@ -13,7 +13,7 @@ from .daemon_manager import SchedulerDaemonManager
 from .message_loader import get_emoji
 
 if TYPE_CHECKING:
-    from src.trading.daily_scheduler import DailyScheduler
+    from src.trading.scheduling.daily_scheduler import DailyScheduler
 
 logger = logging.getLogger(__name__)
 

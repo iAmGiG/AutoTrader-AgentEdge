@@ -13,7 +13,7 @@ Issue #401: Multi-Account Portfolio Management
 import logging
 from typing import Dict, Optional
 
-from src.trading.account_manager import get_account_manager
+from src.trading.accounts.account_manager import get_account_manager
 from src.utils.safe_print import get_symbol, safe_print
 
 logger = logging.getLogger(__name__)

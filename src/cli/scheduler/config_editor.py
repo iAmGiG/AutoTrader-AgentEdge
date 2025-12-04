@@ -175,7 +175,9 @@ class SchedulerConfigEditor:
                     if scheduler:
                         print(f"{get_emoji('refresh', '🔄')} Reloading scheduler...")
                         try:
-                            from src.trading.daily_scheduler import DailyScheduler
+                            from src.trading.scheduling.daily_scheduler import (
+                                DailyScheduler,
+                            )
 
                             existing_cycle = scheduler.trading_cycle
                             scheduler = DailyScheduler(

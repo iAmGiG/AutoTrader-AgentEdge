@@ -25,7 +25,7 @@ from .scheduler import (
     get_emoji,
 )
 from .scheduler.message_loader import get_messages
-from src.trading.daily_scheduler import DailyScheduler
+from src.trading.scheduling.daily_scheduler import DailyScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -196,12 +196,11 @@ class SchedulerCLI:
             return
 
         # handler is guaranteed callable at this point
-        callable_handler = handler
         try:
-            if asyncio.iscoroutinefunction(callable_handler):
-                await callable_handler(*args)
+            if asyncio.iscoroutinefunction(handler):  # type: ignore
+                await handler(*args)  # type: ignore
             else:
-                callable_handler(*args)
+                handler(*args)  # type: ignore
         except TypeError:
             usage = cmd_def.get("usage", "")
             if usage:

@@ -15,7 +15,7 @@ from .message_loader import get_emoji, get_messages
 from src.utils.date_utils import get_datetime_now
 
 if TYPE_CHECKING:
-    from src.trading.daily_scheduler import DailyScheduler
+    from src.trading.scheduling.daily_scheduler import DailyScheduler
 
 logger = logging.getLogger(__name__)
 

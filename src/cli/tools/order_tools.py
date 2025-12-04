@@ -51,7 +51,7 @@ def _get_account_monitor():
     Returns singleton or creates new instance.
     """
     try:
-        from src.trading.trading_cycle import CostEfficientTradeCycle
+        from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
 
         cycle = CostEfficientTradeCycle()
         return cycle.account_monitor

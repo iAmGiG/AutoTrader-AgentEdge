@@ -64,8 +64,8 @@ from src.cli.utils.suggestion_display import (
 from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
 from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
-from src.trading.daily_scheduler import DailyScheduler
-from src.trading.trading_cycle import CostEfficientTradeCycle
+from src.trading.scheduling.daily_scheduler import DailyScheduler
+from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
 from src.utils.date_utils import now_iso
 
 # Import safe_print for Unicode handling
