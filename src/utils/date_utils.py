@@ -6,6 +6,9 @@ import datetime
 import os
 import re
 
+import pandas as pd
+import pytz
+
 from src.utils.config_loader import ConfigLoader
 
 config = ConfigLoader()
@@ -299,7 +302,7 @@ def resolve_anchor(df, anchor_token):
                 return pd.Timestamp(anchor_ts), warning
             return pd.Timestamp(df.index[0]), warning
 
-    except Exception as e:  # pragma: no cover - unexpected edge cases
+    except (ValueError, IndexError, AttributeError) as e:  # pragma: no cover
         return pd.Timestamp(df.index[0]), str(e)
 
     return pd.Timestamp(df.index[0]), None
@@ -499,8 +502,6 @@ def date_range_trading_days(start_date, end_date) -> list:
     Returns:
         List of trading day strings in YYYY-MM-DD format
     """
-    import pandas as pd
-
     start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
@@ -599,8 +600,6 @@ def is_valid_trading_date(date_str: str, allow_future: bool = False) -> bool:
         True if valid trading date, False otherwise
     """
     try:
-        import pytz
-
         # Parse the date
         dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
