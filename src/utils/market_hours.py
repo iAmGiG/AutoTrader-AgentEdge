@@ -74,9 +74,8 @@ def get_market_hours_for_date(
 
         # Get calendar for the date (Alpaca expects YYYY-MM-DD strings)
         date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(date)
-        calendar = client.get_calendar(
-            start=date_str, end=date_str
-        )  # pylint: disable=unexpected-keyword-arg
+        # pylint: disable=unexpected-keyword-arg
+        calendar = client.get_calendar(start=date_str, end=date_str)
 
         if not calendar:
             # Market is closed (holiday)
@@ -245,7 +244,6 @@ def get_market_status_detailed() -> Dict[str, Any]:
                 "current_time_et": now_et.strftime("%Y-%m-%d %H:%M:%S %Z"),
             }
 
-        pre_market_start = time(4, 0)
         after_hours_end = time(20, 0)
 
         if current_time < open_time:
