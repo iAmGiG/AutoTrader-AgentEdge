@@ -18,21 +18,21 @@ This package provides backward-compatible exports from the reorganized structure
 # Accounts
 from .accounts.account_manager import AccountManager, get_account_manager
 from .accounts.account_tools import (
-                                     get_account_buying_power,
-                                     get_active_account_info,
-                                     get_available_accounts,
-                                     is_account_paper_trading,
-                                     refresh_account_data,
-                                     switch_active_account,
+    get_account_buying_power,
+    get_active_account_info,
+    get_available_accounts,
+    is_account_paper_trading,
+    refresh_account_data,
+    switch_active_account,
 )
 
 # Broker layer
 from .broker.alpaca_execution_manager import AlpacaExecutionManager
 from .broker.alpaca_trading_client import (
-                                     AlpacaAccountMonitor,
-                                     AlpacaOrderManager,
-                                     AlpacaTradingClient,
-                                     get_trading_client,
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+    AlpacaTradingClient,
+    get_trading_client,
 )
 from .broker.api_error_translator import APIErrorTranslator
 
@@ -40,11 +40,11 @@ from .broker.api_error_translator import APIErrorTranslator
 from .instruments.approved_tickers import ApprovedTickersManager
 from .instruments.ticker_database import TickerDatabase, TickerMode
 from .instruments.timeframe_tools import (
-                                     TimeframeCommands,
-                                     convert_to_alpaca_timeframe,
-                                     get_current_timeframe,
-                                     get_timeframe_display_name,
-                                     parse_timeframe,
+    TimeframeManager,
+    convert_to_alpaca_timeframe,
+    get_current_timeframe,
+    get_timeframe_display_name,
+    validate_timeframe,
 )
 
 # Orders
@@ -73,7 +73,7 @@ from .state.state_reconciler import StateReconciler
 
 # Utils
 from .utils.report_generator import ReportGenerator
-from .utils.simple_signals import SimpleSignals
+from .utils.simple_signals import SimpleSignalGenerator
 from .utils.unified_price_fetcher import UnifiedPriceFetcher
 
 __all__ = [
@@ -120,14 +120,14 @@ __all__ = [
     "ApprovedTickersManager",
     "TickerDatabase",
     "TickerMode",
-    "TimeframeCommands",
-    "parse_timeframe",
+    "TimeframeManager",
+    "validate_timeframe",
     "convert_to_alpaca_timeframe",
     "get_current_timeframe",
     "get_timeframe_display_name",
     # Utils
     "UnifiedPriceFetcher",
-    "SimpleSignals",
+    "SimpleSignalGenerator",
     "ReportGenerator",
     "get_current_price",
 ]

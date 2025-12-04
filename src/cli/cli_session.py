@@ -25,9 +25,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 # Import CLI messages configuration
 from config_defaults.message_loader import CLIMessages as MSG
 
+from src.cli.commands import CommandRegistry
 from src.cli.commands.account_commands import get_account_commands
 from src.cli.commands.timeframe_commands import get_timeframe_commands
-from src.cli.scheduler_cli import SchedulerCLI
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
 from src.cli.tools.alert_tools import show_alerts
@@ -371,7 +371,9 @@ class CLISession:
 
     async def _handle_command(self, command: str) -> bool:
         """
-        Handle CLI commands.
+        Handle CLI commands via CommandRegistry.
+
+        Issue #468: Refactored to use self-registering command pattern.
 
         Args:
             command: Command string (starts with /)
@@ -379,39 +381,15 @@ class CLISession:
         Returns:
             True to continue, False to exit
         """
-        cmd = command.lower()
+        # Use CommandRegistry for slash command dispatch
+        handled, should_continue = await CommandRegistry.execute(command, self)
 
-        if cmd == "/exit" or cmd == "/quit":
-            return False
+        if handled:
+            return should_continue
 
-        elif cmd.startswith("/help"):
-            # Issue #369: Interactive help system
-            help_output = self.help_system.handle_help_command(command)
-            safe_print(help_output)
-
-        elif cmd == "/toggle":
-            # Toggle between confirm and auto modes
-            if self.autonomy_mode == "confirm":
-                self.autonomy_mode = "auto"
-                print(MSG.MODE_SWITCHED_AUTO)
-            else:
-                self.autonomy_mode = "confirm"
-                print(MSG.MODE_SWITCHED_CONFIRM)
-
-        elif cmd == "/schedule":
-            # Enter scheduler management mode
-
-            scheduler_cli = SchedulerCLI(self.scheduler)
-            await scheduler_cli.run()
-
-        elif cmd == "/tips" or cmd == "/learn":
-            # Show educational trading tips
-            self._show_trading_tips()
-
-        else:
-            print(MSG.UNKNOWN_COMMAND.format(command=command))
-            print(MSG.USE_HELP)
-
+        # Command not found in registry
+        print(MSG.UNKNOWN_COMMAND.format(command=command))
+        print(MSG.USE_HELP)
         return True
 
     def _show_trading_tips(self):
