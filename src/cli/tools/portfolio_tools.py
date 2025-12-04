@@ -394,7 +394,7 @@ def show_portfolio(
 # =============================================================================
 
 
-def _show_portfolio_tool(ticker: Optional[str] = None) -> str:
+def _show_portfolio_tool(_ticker: Optional[str] = None) -> str:
     """
     FunctionTool wrapper for portfolio display.
 
@@ -403,7 +403,7 @@ def _show_portfolio_tool(ticker: Optional[str] = None) -> str:
     its instances. This wrapper exists for future agent integration.
 
     Args:
-        ticker: Optional specific ticker to show details for
+        _ticker: Optional specific ticker to show details for (currently unused)
 
     Returns:
         Portfolio display string or error message

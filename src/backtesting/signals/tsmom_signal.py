@@ -86,12 +86,12 @@ class TSMOMSignalGenerator:
         momentum = (current_price / lookback_price) - 1
         return momentum
 
-    def generate_signal(self, symbol: str, data: pd.DataFrame) -> Dict[str, Any]:
+    def generate_signal(self, _symbol: str, data: pd.DataFrame) -> Dict[str, Any]:
         """
         Generate TSMOM trading signal.
 
         Args:
-            symbol: Ticker symbol
+            _symbol: Ticker symbol (currently unused - momentum is symbol-agnostic)
             data: DataFrame with 'close' column and datetime index
 
         Returns:
