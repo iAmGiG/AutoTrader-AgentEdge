@@ -1559,6 +1559,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             safe_print(output)
 
         else:
-            # Default: show current timeframe
-            output = tf_commands.show_current_timeframe()
+            # Default: show full list with current highlighted (Issue #470)
+            output = tf_commands.list_timeframes(verbose=True)
             safe_print(output)
