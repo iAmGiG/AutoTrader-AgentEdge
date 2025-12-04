@@ -1,7 +1,7 @@
 # Cache System Developer Guide
 
 **Audience**: Developers integrating with or extending the cache system
-**Last Updated**: November 2025 (Issue #336)
+**Last Updated**: December 2025 (Issue #469)
 
 ---
 
@@ -60,6 +60,44 @@ cache_adapter.set_market_data(
     data=df
 )
 ```
+
+### Using UnifiedBrokerCache (Issue #469)
+
+For broker state caching (account, positions, orders) with database-first architecture:
+
+```python
+from src.data_sources.cache import unified_broker_cache
+
+# Get cached account (fetches if stale, returns from DB)
+account = unified_broker_cache.get_account(
+    account_id="paper_main",
+    fetcher=lambda: alpaca_monitor.get_account_status(),
+    max_age_seconds=60
+)
+
+# Get cached positions
+positions = unified_broker_cache.get_positions(
+    account_id="paper_main", 
+    fetcher=lambda: alpaca_monitor.get_positions()
+)
+
+# Store position snapshots for historical tracking
+unified_broker_cache.store_position_snapshot("paper_main", positions)
+
+# Audit display events
+unified_broker_cache.audit_display(
+    display_type="portfolio",
+    data=positions,
+    cache_source="cached",
+    cache_age_seconds=30.5
+)
+
+# Get cache info
+info = unified_broker_cache.get_cache_info("paper_main")
+print(f"Account cache: {info['cache_entries'].get('account', {})}")
+```
+
+See [Database-First Caching Design](../design/469-database-first-caching.md) for architecture details.
 
 ---
 
