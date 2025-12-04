@@ -22,10 +22,7 @@ from src.cli.commands.account_commands import AccountCommands, get_account_comma
 
 # Import registry first
 from src.cli.commands.registry import CommandRegistry, command
-from src.cli.commands.timeframe_commands import (
-    TimeframeCommands,
-    get_timeframe_commands,
-)
+from src.cli.commands.timeframe_commands import TimeframeCommands, get_timeframe_commands
 
 __all__ = [
     # Registry
