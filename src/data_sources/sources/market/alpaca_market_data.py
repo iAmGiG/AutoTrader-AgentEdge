@@ -267,7 +267,9 @@ class AlpacaMarketData:
                                     cache_data = symbol_data.drop(
                                         columns=["symbol", "source"], errors="ignore"
                                     )
-                                    self.cache.set(symbol, cache_data, source="alpaca", timeframe=timeframe)
+                                    self.cache.set(
+                                        symbol, cache_data, source="alpaca", timeframe=timeframe
+                                    )
 
                         fetched_data.append(df)
                         logger.info(

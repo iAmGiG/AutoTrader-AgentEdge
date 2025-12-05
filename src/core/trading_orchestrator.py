@@ -253,6 +253,7 @@ class TradingOrchestrator:
                 entry_price = round(base_price, 2)
                 # Generate default stop/target for user override
                 from src.core.trading_modes import get_mode_manager
+
                 mode_params = get_mode_manager().get_parameters()
                 stop_loss = round(base_price * (1 - mode_params.stop_loss), 2)
                 take_profit = round(base_price * (1 + mode_params.take_profit), 2)
@@ -263,7 +264,9 @@ class TradingOrchestrator:
             entry_price = round(base_price * (1 - pullback_pct), 2)
             # Adjust stop loss proportionally (maintain same % distance)
             if analysis.stop_loss and analysis.entry_price:
-                stop_distance_pct = (analysis.entry_price - analysis.stop_loss) / analysis.entry_price
+                stop_distance_pct = (
+                    analysis.entry_price - analysis.stop_loss
+                ) / analysis.entry_price
             else:
                 stop_distance_pct = 0.08  # Default 8% stop
             stop_loss = round(entry_price * (1 - stop_distance_pct), 2)
@@ -272,9 +275,7 @@ class TradingOrchestrator:
                 f"⏳ Pullback entry ({analysis_timeframe} analysis): "
                 f"limit @ ${entry_price} (2.5% below current, GTC)",
             )
-            logger.info(
-                f"Timing=pullback: adjusted entry from ${base_price} to ${entry_price}"
-            )
+            logger.info(f"Timing=pullback: adjusted entry from ${base_price} to ${entry_price}")
         elif request.timing == "breakout" and base_price and base_price > 0:
             # Suggest entry 1.5% above current price for breakout timing
             breakout_pct = 0.015
@@ -292,9 +293,7 @@ class TradingOrchestrator:
                 f"🚀 Breakout entry ({analysis_timeframe} analysis): "
                 f"limit @ ${entry_price} (1.5% above current, GTC)",
             )
-            logger.info(
-                f"Timing=breakout: adjusted entry from ${base_price} to ${entry_price}"
-            )
+            logger.info(f"Timing=breakout: adjusted entry from ${base_price} to ${entry_price}")
         elif request.price:
             # User specified exact price - use it
             entry_price = request.price

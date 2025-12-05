@@ -14,9 +14,9 @@ import pandas as pd
 from config_defaults.trading_config import TradingConfig
 
 from src.autogen_agents.agents.voter_agent import VoterAgent
-from src.core.trading_modes import ModeParameters, get_mode_manager
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
+from src.core.trading_modes import ModeParameters, get_mode_manager
 from src.data_sources.database import AnalysisHistoryManager
 from src.data_sources.tools import fetch_unified_market_data
 from src.trading.instruments.timeframe_tools import (
@@ -118,7 +118,7 @@ class RealVoterStrategy(StrategyAnalyzer):
             result = self.voter.evaluate_voting(ticker, market_data, return_components=True)
             formatted = self._format_analysis_result(result, request, user_timeframe)
             return formatted
-        except ValueError as ve:
+        except ValueError:
             # Re-raise ValueError (user-friendly messages already set)
             raise
         except Exception as e:
@@ -180,7 +180,9 @@ class RealVoterStrategy(StrategyAnalyzer):
             market_data = fetch_unified_market_data(
                 ticker, start_date=start_date, end_date=end_date, timeframe=fetch_timeframe
             )
-            bars_count = len(market_data) if market_data is not None and not market_data.empty else 0
+            bars_count = (
+                len(market_data) if market_data is not None and not market_data.empty else 0
+            )
             logger.info(f"fetch_unified_market_data returned: {bars_count} bars")
         except Exception as api_error:
             logger.debug(f"API error fetching data for {ticker}: {api_error}", exc_info=True)
@@ -341,7 +343,9 @@ class RealVoterStrategy(StrategyAnalyzer):
             "signal_type": result.get("signal_type", "UNKNOWN"),
             "position_size_multiplier": result.get("position_size", 1.0),
             "timeframe": user_timeframe,
-            "current_price": result.get("current_price", 0.0),  # Issue #474: For HOLD signal overrides
+            "current_price": result.get(
+                "current_price", 0.0
+            ),  # Issue #474: For HOLD signal overrides
         }
 
     def _record_analysis(

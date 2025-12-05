@@ -135,7 +135,7 @@ def display_suggestion(
     display_price = suggestion.entry_price
     if display_price is None:
         # For HOLD signals, try to get current price from reasoning or use 0
-        display_price = getattr(suggestion, 'current_price', None) or 0.0
+        display_price = getattr(suggestion, "current_price", None) or 0.0
 
     print("\n" + MSG.SUGGESTION_SEPARATOR)
     if display_price > 0:

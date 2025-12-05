@@ -9,12 +9,11 @@ import logging
 import uuid
 from typing import Optional
 
-from src.core.interfaces import ExecutionManager
-from src.core.models import OrderResult, OrderType, TradeDecision, TradeSuggestion
-
 # Import extracted components
 from .api_error_translator import APIErrorTranslator
 from .validators.bracket_validator import BracketOrderValidator
+from src.core.interfaces import ExecutionManager
+from src.core.models import OrderResult, OrderType, TradeDecision, TradeSuggestion
 from src.utils.market_hours import is_market_hours
 
 # Import message loader for user-facing messages

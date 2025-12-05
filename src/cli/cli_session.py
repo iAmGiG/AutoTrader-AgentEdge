@@ -1056,17 +1056,18 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     print(f"   → You requested: {'BUY' if user_wants_buy else 'SELL'}")
 
                     # Get current price for trade setup
-                    current_price = getattr(decision.suggestion, 'current_price', None)
+                    current_price = getattr(decision.suggestion, "current_price", None)
                     if current_price is None or current_price <= 0:
                         # Try to get from indicators or reasoning
-                        indicators = getattr(decision.suggestion, 'indicators', {})
-                        current_price = indicators.get('current_price', 0.0)
+                        indicators = getattr(decision.suggestion, "indicators", {})
+                        current_price = indicators.get("current_price", 0.0)
 
                     if current_price and current_price > 0:
                         # Generate entry/stop/target from current price
                         # Use mode params if available, otherwise defaults
                         try:
                             from src.core.trading_modes import get_mode_manager
+
                             mode_params = get_mode_manager().get_parameters()
                             stop_pct = mode_params.stop_loss
                             target_pct = mode_params.take_profit
@@ -1108,23 +1109,30 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                                         decision.suggestion.max_loss_usd = round(max_loss, 2)
                                         potential_gain = quantity * abs(take_profit - entry_price)
                                         if max_loss > 0:
-                                            decision.suggestion.risk_reward_ratio = round(potential_gain / max_loss, 2)
+                                            decision.suggestion.risk_reward_ratio = round(
+                                                potential_gain / max_loss, 2
+                                            )
                             except Exception as e:
                                 logger.debug(f"Could not calculate quantity: {e}")
 
                         # Clear stale warning about no entry price (we just set one)
                         decision.suggestion.warnings = [
-                            w for w in decision.suggestion.warnings
-                            if "No entry price" not in w
+                            w for w in decision.suggestion.warnings if "No entry price" not in w
                         ]
 
-                        print(f"\n   📊 Generated trade plan:")
+                        print("\n   📊 Generated trade plan:")
                         print(f"      Entry:  ${entry_price:.2f}")
-                        print(f"      Stop:   ${stop_loss:.2f} ({calc_pct(entry_price, stop_loss):.1f}%)")
-                        print(f"      Target: ${take_profit:.2f} ({calc_pct(entry_price, take_profit):.1f}%)")
+                        print(
+                            f"      Stop:   ${stop_loss:.2f} ({calc_pct(entry_price, stop_loss):.1f}%)"
+                        )
+                        print(
+                            f"      Target: ${take_profit:.2f} ({calc_pct(entry_price, take_profit):.1f}%)"
+                        )
                         print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
                     else:
-                        print(f"\n{MSG.EMOJI['error']} Cannot determine current price for {decision.suggestion.ticker}")
+                        print(
+                            f"\n{MSG.EMOJI['error']} Cannot determine current price for {decision.suggestion.ticker}"
+                        )
                         print("   → Try refreshing market data or check during market hours")
                         return
 

@@ -74,9 +74,7 @@ class CacheAdapter:
                 if legacy_data is not None:
                     # Found in legacy cache - migrate to SQLite cache with timeframe
                     detected_source = source if source not in ("any", "auto") else "migrated"
-                    self.cache.set(
-                        symbol, legacy_data, source=detected_source, timeframe=timeframe
-                    )
+                    self.cache.set(symbol, legacy_data, source=detected_source, timeframe=timeframe)
                     return legacy_data
 
         return None
