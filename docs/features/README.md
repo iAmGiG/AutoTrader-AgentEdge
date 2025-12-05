@@ -18,6 +18,8 @@ This directory contains comprehensive documentation for all integrated features 
    - For users who want to "set it and forget it"
    - **Read this** to get scheduler running quickly
 
+### Advanced/Technical
+
 3. **[GTC Scheduler - Technical Details](03_gtc_scheduler_technical.md)** (Issue #287)
    - Deep dive into architecture and design
    - API efficiency (90% cost savings)
@@ -97,7 +99,7 @@ python main.py
    Evening routine: 15:50:00 ET (pending)
 ```
 
-Documentation:
+**Documentation:**
 
 - Quick Start: [02_gtc_scheduler_quickstart.md](02_gtc_scheduler_quickstart.md)
 - Technical: [03_gtc_scheduler_technical.md](03_gtc_scheduler_technical.md)
@@ -138,9 +140,9 @@ python main.py    # Just works!
 (🤖 AUTO) > show portfolio           # Account status
 ```
 
-Documentation:
+**Documentation:**
 
-- Architecture: `docs/02_architecture/06_llm_routing.md`
+- Architecture: `docs/architecture/llm_routing_architecture.md`
 - Test Plan: `docs/features/05_interactive_cli_test_plan.md` (Category 7)
 - Main README: See main README.md
 
@@ -164,7 +166,7 @@ Documentation:
 
 - Technical details in #3 (Scheduler architecture)
 - Test suite in #4 (All test cases)
-- ADRs in `docs/05_decisions/`
+- ADRs in `/architecture_decisions/`
 
 ---
 
@@ -172,7 +174,7 @@ Documentation:
 
 All features work together seamlessly:
 
-```text
+```
 Unified CLI (#339)
     ├── Position Alerts (#306)
     │   ├── Alert checking
@@ -215,7 +217,7 @@ python main.py
 - **Main README:** `/README.md` - System overview and quick start
 - **Development:** `/docs/04_development/` - Project status and structure
 - **Architecture:** `/docs/02_architecture/` - System design
-- **ADRs:** `docs/05_decisions/` - Architecture decisions
+- **ADRs:** `/architecture_decisions/` - Architecture decisions
 
 ### Issues
 
@@ -251,7 +253,7 @@ python main.py
 
 ## Version History
 
-### v1.0 - 2025-01-10
+**v1.0 - 2025-01-10**
 
 - Initial unified feature release
 - Position alerts (#306)
