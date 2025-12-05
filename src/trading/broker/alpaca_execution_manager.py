@@ -9,8 +9,8 @@ import logging
 import uuid
 from typing import Optional
 
-from core.interfaces import ExecutionManager
-from core.models import OrderResult, OrderType, TradeDecision, TradeSuggestion
+from src.core.interfaces import ExecutionManager
+from src.core.models import OrderResult, OrderType, TradeDecision, TradeSuggestion
 
 # Import extracted components
 from .api_error_translator import APIErrorTranslator

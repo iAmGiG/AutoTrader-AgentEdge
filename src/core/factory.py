@@ -106,13 +106,17 @@ class OrchestratorFactory:
         logger.info(f"  - Creating AutoGenLLMParser (model: {tool_model})...")
         input_parser = AutoGenLLMParser(model=tool_model)
 
-        # 2. Create Strategy Analyzer
+        # 2. Create Strategy Analyzer (with trading mode parameters - Issue #400)
         if use_real_voter:
-            logger.info("  - Creating RealVoterStrategy (production MACD+RSI)...")
+            logger.info(
+                f"  - Creating RealVoterStrategy (production MACD+RSI, "
+                f"stop: {mode_params.stop_loss:.0%}, target: {mode_params.take_profit:.0%})..."
+            )
             strategy_analyzer = RealVoterStrategy(
                 macd_params={"fast": 13, "slow": 34, "signal": 8},  # Validated Fibonacci parameters
                 rsi_params={"period": 14, "oversold": 30, "overbought": 70},
                 lookback_days=90,  # Increased from 60 to ensure 42+ trading days (accounting for weekends/holidays)
+                mode_params=mode_params,  # Issue #400: Pass trading mode for stop/target
             )
         else:
             logger.info("  - Creating VoterStrategy (stub)...")
