@@ -53,18 +53,13 @@ class CacheAdapter:
         Returns:
             DataFrame with OHLCV data, or None if not found
         """
-        # Combine source with timeframe to create unique cache key
-        # This ensures different timeframes are cached separately
-        # Must match the logic in set_market_data() for consistency
-        if source in ("any", "auto"):
-            # No source filter for generic requests
-            cache_source = None if timeframe == "1Day" else f"any_{timeframe}"
-        else:
-            # Specific source: use {source}_{timeframe} for non-daily, just source for daily
-            cache_source = f"{source}_{timeframe}" if timeframe != "1Day" else source
+        # Determine source filter for query
+        cache_source = source if source not in ("any", "auto") else None
 
-        # First try SQLite cache
-        data = self.cache.get(symbol, start_date, end_date, source=cache_source)
+        # Query SQLite cache with proper timeframe support
+        data = self.cache.get(
+            symbol, start_date, end_date, source=cache_source, timeframe=timeframe
+        )
         if data is not None:
             return data
 
@@ -77,9 +72,11 @@ class CacheAdapter:
 
                 legacy_data = self._check_legacy_cache(location, symbol, start_date, end_date)
                 if legacy_data is not None:
-                    # Found in legacy cache - migrate to SQLite cache
+                    # Found in legacy cache - migrate to SQLite cache with timeframe
                     detected_source = source if source not in ("any", "auto") else "migrated"
-                    self.cache.set(symbol, legacy_data, source=detected_source)
+                    self.cache.set(
+                        symbol, legacy_data, source=detected_source, timeframe=timeframe
+                    )
                     return legacy_data
 
         return None
@@ -111,12 +108,9 @@ class CacheAdapter:
         if data is None or data.empty:
             return
 
-        # Combine source with timeframe to create unique cache key
-        cache_source = f"{source}_{timeframe}" if timeframe != "1Day" else source
-
-        # TradingCacheManager.set() extracts date range from DataFrame,
-        # no need to pass start/end explicitly
-        self.cache.set(symbol, data, source=cache_source)
+        # TradingCacheManager.set() now supports timeframe directly
+        # No need to encode timeframe in source name
+        self.cache.set(symbol, data, source=source, timeframe=timeframe)
 
     def _check_legacy_cache(
         self, cache_dir: Path, symbol: str, start_date: str, end_date: str

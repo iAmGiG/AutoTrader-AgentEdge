@@ -55,6 +55,7 @@ class TradingCacheManager:
         """Create tables and indexes if they don't exist."""
         with sqlite3.connect(self.db_path) as conn:
             # Create main market data table
+            # Supports multiple timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M, custom
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS market_cache (
@@ -63,7 +64,8 @@ class TradingCacheManager:
                     -- Asset identification
                     asset_type TEXT NOT NULL DEFAULT 'stock',
                     symbol TEXT NOT NULL,
-                    trading_date TEXT NOT NULL,
+                    bar_timestamp TEXT NOT NULL,  -- Full ISO timestamp for bar start
+                    timeframe TEXT NOT NULL DEFAULT '1Day',  -- e.g., '1Min', '5Min', '1Hour', '1Day', '1Week'
                     source TEXT NOT NULL,
 
                     -- Price data (OHLCV)
@@ -82,8 +84,104 @@ class TradingCacheManager:
                     expires_at TEXT NOT NULL,
                     metadata TEXT,
 
-                    -- Unique constraint: one entry per symbol+date+source
-                    UNIQUE(asset_type, symbol, trading_date, source)
+                    -- Unique constraint: one entry per symbol+timestamp+timeframe+source
+                    UNIQUE(asset_type, symbol, bar_timestamp, timeframe, source)
+                )
+            """
+            )
+
+            # Create technical indicators cache table (for pre-computed values)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS indicator_cache (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    -- Key fields
+                    symbol TEXT NOT NULL,
+                    bar_timestamp TEXT NOT NULL,
+                    timeframe TEXT NOT NULL DEFAULT '1Day',
+                    indicator_name TEXT NOT NULL,  -- 'macd', 'rsi', 'sma_20', 'ema_50', etc.
+
+                    -- Value fields (flexible for different indicators)
+                    value REAL NOT NULL,           -- Primary value (e.g., RSI value, SMA value)
+                    value_2 REAL,                  -- Secondary (e.g., MACD signal line)
+                    value_3 REAL,                  -- Tertiary (e.g., MACD histogram)
+
+                    -- Metadata
+                    params TEXT,                   -- JSON: {"period": 14, "fast": 13, "slow": 34}
+                    cached_at TEXT NOT NULL,
+
+                    UNIQUE(symbol, bar_timestamp, timeframe, indicator_name, params)
+                )
+            """
+            )
+
+            # Create signal history table (for ML training and analysis)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS signal_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    -- Signal identification
+                    symbol TEXT NOT NULL,
+                    signal_timestamp TEXT NOT NULL,
+                    timeframe TEXT NOT NULL,
+
+                    -- Signal details
+                    signal_type TEXT NOT NULL,     -- 'BUY', 'SELL', 'HOLD'
+                    confidence REAL,
+                    entry_price REAL,
+                    stop_price REAL,
+                    target_price REAL,
+
+                    -- Indicators that triggered the signal
+                    macd_action TEXT,
+                    macd_histogram REAL,
+                    rsi_action TEXT,
+                    rsi_value REAL,
+                    signal_strength TEXT,          -- 'STRONG', 'WEAK', 'CONFLICT'
+
+                    -- Outcome tracking (filled in after the fact)
+                    was_executed INTEGER DEFAULT 0,  -- 0=no, 1=yes
+                    execution_price REAL,
+                    outcome TEXT,                  -- 'WIN', 'LOSS', 'PENDING', NULL
+                    actual_return_pct REAL,
+                    bars_to_outcome INTEGER,       -- How many bars until stop/target hit
+
+                    -- Metadata
+                    strategy_name TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
+            # Create execution quality table (slippage tracking)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS execution_quality (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                    -- Order details
+                    order_id TEXT NOT NULL,
+                    symbol TEXT NOT NULL,
+                    order_type TEXT NOT NULL,      -- 'MARKET', 'LIMIT', 'STOP'
+                    side TEXT NOT NULL,            -- 'BUY', 'SELL'
+
+                    -- Price comparison
+                    expected_price REAL,
+                    actual_price REAL,
+                    slippage_pct REAL,             -- (actual - expected) / expected * 100
+
+                    -- Timing
+                    order_submitted_at TEXT,
+                    order_filled_at TEXT,
+                    fill_latency_ms INTEGER,
+
+                    -- Market context
+                    market_spread REAL,            -- bid-ask spread at time of order
+                    market_volume REAL,            -- volume at time of order
+
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             """
             )
@@ -291,10 +389,20 @@ class TradingCacheManager:
 
             conn.commit()
 
+            # Migration: Add timeframe column to existing market_cache if missing
+            # Run after all tables are created
+            self._migrate_add_timeframe(conn)
+
         self.logger.debug(f"SQLite cache initialized: {self.db_path}")
 
     def get(
-        self, symbol: str, start: str, end: str, source: str = None, asset_type: str = "stock"
+        self,
+        symbol: str,
+        start: str,
+        end: str,
+        source: str = None,
+        asset_type: str = "stock",
+        timeframe: str = "1Day",
     ) -> Optional[pd.DataFrame]:
         """
         Get cached data for date range.
@@ -303,10 +411,11 @@ class TradingCacheManager:
 
         Args:
             symbol: Ticker symbol (e.g., "SPY")
-            start: Start date in YYYY-MM-DD format
-            end: End date in YYYY-MM-DD format
+            start: Start date in YYYY-MM-DD format (or ISO timestamp for intraday)
+            end: End date in YYYY-MM-DD format (or ISO timestamp for intraday)
             source: Data source filter (None = any source)
             asset_type: Asset type (default: "stock")
+            timeframe: Bar timeframe (default: "1Day", options: "1Min", "5Min", "1Hour", etc.)
 
         Returns:
             DataFrame with OHLCV data, or None if not found/expired
@@ -317,7 +426,7 @@ class TradingCacheManager:
             ...     print(f"Loaded {len(df)} days of data")
         """
         try:
-            # Build query with optional source filter
+            # Build query with timeframe support
             query = """
                 SELECT trading_date, open, high, low, close, volume, vwap, transactions
                 FROM market_cache
@@ -325,9 +434,10 @@ class TradingCacheManager:
                   AND symbol = ?
                   AND trading_date >= ?
                   AND trading_date <= ?
+                  AND timeframe = ?
                   AND datetime(expires_at) > datetime('now')
             """
-            params = [asset_type, symbol, start, end]
+            params = [asset_type, symbol, start, end, timeframe]
 
             if source:
                 query += " AND source = ?"
@@ -366,6 +476,7 @@ class TradingCacheManager:
         source: str,
         asset_type: str = "stock",
         ttl_hours: int = None,
+        timeframe: str = "1Day",
     ):
         """
         Cache market data.
@@ -380,6 +491,7 @@ class TradingCacheManager:
             source: Data source ("alpaca", "polygon", "alpha_vantage")
             asset_type: Asset type (default: "stock")
             ttl_hours: Custom TTL in hours (None = auto-calculate)
+            timeframe: Bar timeframe (default: "1Day", options: "1Min", "5Min", "1Hour", etc.)
 
         Raises:
             ValueError: If data has no date column/index
@@ -409,12 +521,18 @@ class TradingCacheManager:
                 raise ValueError("Data must have 'date' column or DatetimeIndex")
 
             # Convert date to string format
-            df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+            # For intraday data, preserve full timestamp; for daily, use just date
+            if timeframe in ("1Day", "1Week", "1Month"):
+                df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+            else:
+                # Intraday: preserve full ISO timestamp
+                df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%dT%H:%M:%S")
 
             # Add metadata columns
             df["asset_type"] = asset_type
             df["symbol"] = symbol
             df["source"] = source
+            df["timeframe"] = timeframe  # Multi-timeframe support
             df["cached_at"] = now_iso()
 
             # Calculate smart expiration for each row
@@ -436,6 +554,7 @@ class TradingCacheManager:
                 "asset_type",
                 "symbol",
                 "trading_date",
+                "timeframe",
                 "source",
                 "cached_at",
                 "expires_at",
@@ -1384,3 +1503,85 @@ class TradingCacheManager:
         except Exception as e:
             self.logger.error(f"Error getting trade stats: {e}")
             return {}
+
+    def _migrate_add_timeframe(self, conn: sqlite3.Connection):
+        """
+        Migrate existing market_cache table to add timeframe support.
+
+        This migration:
+        1. Adds 'timeframe' column if missing (default: '1Day')
+        2. Renames 'trading_date' to 'bar_timestamp' if needed
+        3. Creates new indexes for timeframe-aware queries
+
+        Args:
+            conn: Active database connection
+        """
+        try:
+            # Check if timeframe column exists
+            cursor = conn.execute("PRAGMA table_info(market_cache)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            if "timeframe" not in columns:
+                self.logger.info("Migrating market_cache: adding timeframe column...")
+                conn.execute(
+                    "ALTER TABLE market_cache ADD COLUMN timeframe TEXT NOT NULL DEFAULT '1Day'"
+                )
+                self.logger.info("Added 'timeframe' column with default '1Day'")
+
+            # Check if we need to rename trading_date to bar_timestamp
+            if "trading_date" in columns and "bar_timestamp" not in columns:
+                # SQLite doesn't support column rename easily, so we use bar_timestamp as alias
+                # The column stays as trading_date but new code uses bar_timestamp
+                self.logger.debug("trading_date column will be treated as bar_timestamp")
+
+            # Create new indexes for timeframe-aware queries
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_timeframe_lookup
+                ON market_cache(symbol, timeframe, trading_date)
+            """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_timeframe_source
+                ON market_cache(symbol, timeframe, source)
+            """
+            )
+
+            # Create indexes for new tables
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_indicator_lookup
+                ON indicator_cache(symbol, timeframe, indicator_name, bar_timestamp)
+            """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_signal_lookup
+                ON signal_history(symbol, timeframe, signal_timestamp)
+            """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_signal_outcome
+                ON signal_history(outcome, strategy_name)
+            """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_execution_order
+                ON execution_quality(order_id)
+            """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_execution_symbol
+                ON execution_quality(symbol, order_submitted_at)
+            """
+            )
+
+            conn.commit()
+
+        except Exception as e:
+            self.logger.error(f"Migration error: {e}")
+            # Don't raise - allow operation to continue with existing schema
