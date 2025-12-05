@@ -490,35 +490,217 @@ USD/INR currency pairs
 
 ### What Indian Brokers Offer That Alpaca Doesn't:
 
-1. ✅ **GTT Orders** - Persistent price triggers (Zerodha, Upstox)
-2. ✅ **Futures & Options** - Derivatives trading (All Indian brokers)
-3. ✅ **MTF (Margin Funding)** - Built-in leverage for swing trades (Upstox, Groww)
-4. ✅ **Commodity Trading** - Gold, silver, crude oil (Angel One, Zerodha)
-5. ✅ **Currency Trading** - Forex pairs (Angel One)
-6. ✅ **10-Year Historical Data** - Longer backtesting (Zerodha)
-7. ✅ **Multiple WebSockets** - 5 concurrent connections (Upstox)
-8. ✅ **Completely Free Tier** - No restrictions (Angel One)
+**Actually Unique (Alpaca doesn't have these):**
+1. ✅ **GTT Orders** - Persistent price triggers across sessions (Zerodha, Upstox)
+2. ✅ **Trailing Stop in GTT** - Dynamic stop-loss that persists for days/weeks (Upstox)
+3. ✅ **OCO GTT Triggers** - One-Cancels-Other price triggers (Zerodha, Upstox)
+4. ✅ **Multiple WebSocket Connections** - 5 concurrent connections, 50 instruments each (Upstox)
+5. ✅ **Sandbox Snapshot Testing** - Frozen market replay for deterministic tests (Upstox)
+6. ✅ **MTF (Margin Funding)** - Broker-funded swing trades (Upstox, Groww)
+
+**Out of Scope / Not Relevant:**
+- ❌ Futures & Options - Alpaca has options, we haven't integrated yet
+- ❌ Crypto Trading - Not priority, Alpaca has it
+- ❌ Fractional Shares - Not needed for our use case
+- ❌ 10-Year Historical Data - 5 years sufficient
+- ❌ Commodity/Currency Trading - Out of scope
+- ❌ Margin Trading - Alpaca has margin, we're on paper account
 
 ### What Alpaca Offers That Indian Brokers Don't:
 
-1. ✅ **US Market Access** - NYSE, NASDAQ stocks
-2. ✅ **Crypto Trading** - Bitcoin, Ethereum, etc.
-3. ✅ **Fractional Shares** - Buy 0.1 shares of AAPL
-4. ✅ **Commission-Free** - Zero trading fees
-5. ✅ **Paper Trading** - Built-in sandbox
-6. ✅ **Better Documentation** - More mature platform
+1. ✅ **US Market Access** - NYSE, NASDAQ stocks (we need this)
+2. ✅ **Paper Trading** - Built-in sandbox (we use this)
+3. ✅ **Extended Hours Trading** - Pre-market/after-hours (not implemented yet)
+4. ✅ **Better Documentation** - More mature platform
+5. ✅ **Bracket Orders** - Pre-defined stop/target (we use this)
+
+---
+
+## Technical Inspiration for Our System
+
+### Top 3 Features to Implement (Priority Order)
+
+#### **1. GTT-Style Persistent Price Triggers** ⭐⭐⭐
+**Inspiration from:** Zerodha, Upstox
+
+**What it is:**
+- Price triggers that stay active for days/weeks (even when system offline)
+- Stored on server, checked on each scheduler run
+- Different from GTC orders (not in order book)
+
+**Technical Implementation:**
+```python
+# Add to position tracker state
+persistent_triggers = {
+    "SPY_breakout": {
+        "symbol": "SPY",
+        "trigger_price": 620,
+        "direction": "above",
+        "action": "alert",  # or "buy", "sell"
+        "created": "2025-01-11",
+        "expires": "2025-02-10",  # 30 days
+        "status": "active"
+    }
+}
+# Check on scheduler runs (9:20 AM, 3:50 PM)
+```
+
+**Use Case:** "Alert me if SPY hits $620 anytime in next 30 days" without monitoring
+
+**Implementation Effort:** Medium (enhance position tracker + scheduler)
+
+---
+
+#### **2. Persistent Trailing Stop Loss** ⭐⭐⭐
+**Inspiration from:** Upstox GTT trailing stop (June 2025)
+
+**What it is:**
+- Trailing stop that survives across days/weeks
+- Updates on each scheduler run, persists in state
+- Locks in profits on swing trades without 24/7 monitoring
+
+**Technical Implementation:**
+```python
+# Add to position tracker state
+position_state = {
+    "SPY_position": {
+        "entry_price": 600,
+        "current_price": 630,
+        "highest_price": 630,  # Track this
+        "trailing_stop_pct": 5.0,
+        "trailing_stop_price": 598.50,  # 630 * 0.95
+        "last_updated": "2025-01-11 15:50:00"
+    }
+}
+# Update on each scheduler run
+```
+
+**Use Case:** Multi-day swing trade with automatic profit protection
+
+**Implementation Effort:** Low (add to existing scheduler + position state)
+
+---
+
+#### **3. OCO (One-Cancels-Other) Alert Triggers** ⭐⭐
+**Inspiration from:** Zerodha, Upstox
+
+**What it is:**
+- Set dual breakout/breakdown triggers
+- When one triggers, cancel the other
+- Useful for range-bound strategies
+
+**Technical Implementation:**
+```python
+# Add to position tracker
+oco_trigger = {
+    "SPY_range": {
+        "symbol": "SPY",
+        "triggers": [
+            {"price": 620, "direction": "above", "action": "alert"},
+            {"price": 580, "direction": "below", "action": "alert"}
+        ],
+        "oco": True,  # Cancel other when one triggers
+        "status": "active"
+    }
+}
+```
+
+**Use Case:** "Alert if SPY breaks above $620 OR below $580 (whichever first)"
+
+**Implementation Effort:** Low (alert logic enhancement)
+
+---
+
+#### **4. Multiple WebSocket Connections** ⭐⭐
+**Inspiration from:** Upstox (5 connections, 50 instruments each)
+
+**What it is:**
+- Separate connections for different purposes
+- Different update frequencies
+- Better separation of concerns + failover
+
+**Technical Consideration:**
+- Need to verify if Alpaca allows multiple concurrent WebSocket connections
+- Could improve multi-strategy monitoring
+- Better resource management (throttle by connection)
+
+**Implementation Effort:** Medium (verify Alpaca support + architecture)
+
+---
+
+#### **5. Extended Hours Trading** ⭐
+**Inspiration from:** Indian brokers' pre-market orders
+
+**What it is:**
+- Alpaca already supports pre-market (4:00-9:30 AM) and after-hours (4:00-8:00 PM)
+- We haven't implemented it in our system yet
+
+**Technical Implementation:**
+```python
+# Add to order execution
+order = alpaca.submit_order(
+    symbol="SPY",
+    qty=10,
+    side="buy",
+    type="limit",
+    limit_price=600,
+    extended_hours=True  # Enable extended hours
+)
+```
+
+**Use Case:** React to earnings announcements, news events outside regular hours
+
+**Implementation Effort:** Low (Alpaca already has it, just add flag)
+
+---
+
+#### **6. Sandbox Snapshot Testing** ⭐
+**Inspiration from:** Upstox sandbox mode (Jan 2025)
+
+**What it is:**
+- Save frozen market state snapshots
+- Replay specific scenarios deterministically
+- Better than live paper trading for unit tests
+
+**Technical Implementation:**
+```python
+# Save market snapshot
+snapshot = {
+    "timestamp": "2025-01-10 14:30:00",
+    "positions": broker_state.positions,
+    "prices": {"SPY": 615.50, "QQQ": 495.25, ...},
+    "market_conditions": "volatile_down_5pct"
+}
+# Replay in tests
+```
+
+**Use Case:** Test strategies against specific historical conditions (crash, rally, etc.)
+
+**Implementation Effort:** Medium (testing infrastructure)
+
+---
 
 ### Strategic Recommendation:
 
-**Current System (Alpaca):**
-- Keep for US market focus
-- Best-in-class for US equities/crypto
-- Great for our current use case
+**Keep Alpaca:**
+- ✅ Best for US market focus
+- ✅ Paper trading works great
+- ✅ Already integrated, stable
 
-**Future Expansion:**
-- Consider **Angel One** if expanding to India (FREE)
-- Or **Groww** ($6/mo) for F&O strategies
-- Implement broker abstraction layer for multi-broker support
+**Implement from Indian Brokers:**
+1. **GTT persistent triggers** (highest value)
+2. **Persistent trailing stops** (easy win)
+3. **OCO dual alerts** (nice enhancement)
+
+**Not Implementing:**
+- Futures/Options (Alpaca has it, out of scope for now)
+- Crypto (Alpaca has it, not priority)
+- Margin (Alpaca has it, paper account sufficient)
+- Commodities/Forex (out of scope)
+
+**Future Expansion (if needed):**
+- Consider **Angel One (FREE)** if expanding to India markets
+- Implement broker abstraction layer for multi-broker support (3-4 week effort)
 
 ---
 
