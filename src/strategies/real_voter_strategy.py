@@ -14,6 +14,7 @@ import pandas as pd
 from config_defaults.trading_config import TradingConfig
 
 from src.autogen_agents.agents.voter_agent import VoterAgent
+from src.core.trading_modes import ModeParameters, get_mode_manager
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.data_sources.database import AnalysisHistoryManager
@@ -43,6 +44,7 @@ class RealVoterStrategy(StrategyAnalyzer):
         macd_params: Optional[Dict[str, int]] = None,
         rsi_params: Optional[Dict[str, int]] = None,
         lookback_days: int = 60,
+        mode_params: Optional[ModeParameters] = None,
     ):
         """
         Initialize RealVoterStrategy.
@@ -51,13 +53,17 @@ class RealVoterStrategy(StrategyAnalyzer):
             macd_params: MACD parameters (default: {fast: 13, slow: 34, signal: 8})
             rsi_params: RSI parameters (default: {period: 14, oversold: 30, overbought: 70})
             lookback_days: Days of historical data to fetch (default: 60)
+            mode_params: Trading mode parameters for stop/target (Issue #400)
         """
         # Use validated production parameters by default
         self.macd_params = macd_params or {"fast": 13, "slow": 34, "signal": 8}
         self.rsi_params = rsi_params or {"period": 14, "oversold": 30, "overbought": 70}
         self.lookback_days = lookback_days
 
-        # Load trading config
+        # Use provided mode params or get from global mode manager (Issue #400)
+        self.mode_params = mode_params or get_mode_manager().get_parameters()
+
+        # Load trading config (fallback for other settings)
         self.config = TradingConfig()
 
         # Create VoterAgent
@@ -110,9 +116,9 @@ class RealVoterStrategy(StrategyAnalyzer):
             # result = self._parse_agent_response(agent_response)
 
             result = self.voter.evaluate_voting(ticker, market_data, return_components=True)
-
-            return self._format_analysis_result(result, request, user_timeframe)
-        except ValueError:
+            formatted = self._format_analysis_result(result, request, user_timeframe)
+            return formatted
+        except ValueError as ve:
             # Re-raise ValueError (user-friendly messages already set)
             raise
         except Exception as e:
@@ -164,8 +170,9 @@ class RealVoterStrategy(StrategyAnalyzer):
 
         # 2. Fetch market data
         logger.info(
-            f"Fetching market data for {ticker} ({lookback_days} days, {user_timeframe})..."
+            f"Fetching market data for {ticker} ({lookback_days} days, {user_timeframe}, fetch_tf={fetch_timeframe})..."
         )
+
         end_date = get_datetime_now().strftime("%Y-%m-%d")
         start_date = (get_datetime_now() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
 
@@ -173,6 +180,8 @@ class RealVoterStrategy(StrategyAnalyzer):
             market_data = fetch_unified_market_data(
                 ticker, start_date=start_date, end_date=end_date, timeframe=fetch_timeframe
             )
+            bars_count = len(market_data) if market_data is not None and not market_data.empty else 0
+            logger.info(f"fetch_unified_market_data returned: {bars_count} bars")
         except Exception as api_error:
             logger.debug(f"API error fetching data for {ticker}: {api_error}", exc_info=True)
             raise ValueError("Ticker not found")
@@ -275,14 +284,20 @@ class RealVoterStrategy(StrategyAnalyzer):
         """
         Calculates entry, stop loss, and take profit based on the signal.
 
+        Uses trading mode parameters (Issue #400) for stop/target percentages:
+        - Conservative: 2% stop, 5% target
+        - Moderate: 5% stop, 10% target
+        - Aggressive: 8% stop, 20% target
+
         Returns:
             Tuple of (entry_price, stop_loss, take_profit)
         """
         if signal == Signal.HOLD:
             return None, None, None
 
-        stop_loss_pct = self.config.get_risk_config("stop_loss")
-        take_profit_pct = self.config.get_risk_config("take_profit")
+        # Use trading mode parameters (Issue #400)
+        stop_loss_pct = self.mode_params.stop_loss
+        take_profit_pct = self.mode_params.take_profit
         entry_price = round(current_price, 2)
 
         if signal == Signal.BUY:
@@ -326,6 +341,7 @@ class RealVoterStrategy(StrategyAnalyzer):
             "signal_type": result.get("signal_type", "UNKNOWN"),
             "position_size_multiplier": result.get("position_size", 1.0),
             "timeframe": user_timeframe,
+            "current_price": result.get("current_price", 0.0),  # Issue #474: For HOLD signal overrides
         }
 
     def _record_analysis(

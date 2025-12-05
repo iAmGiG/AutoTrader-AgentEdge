@@ -119,17 +119,29 @@ def display_suggestion(
         override_mode: Optional override indicator ("USER_OVERRIDE_LONG", "USER_OVERRIDE_SHORT")
 
     Raises:
-        ValueError: If suggestion has invalid entry price
+        ValueError: If suggestion has invalid entry price (except for HOLD signals)
     """
-    # Validate suggestion has required fields before display
-    if suggestion.entry_price is None or suggestion.entry_price <= 0:
+    # Handle HOLD signals - they don't have entry prices and that's OK
+    is_hold_signal = suggestion.signal.value.upper() == "HOLD"
+
+    # Validate suggestion has required fields (skip for HOLD)
+    if not is_hold_signal and (suggestion.entry_price is None or suggestion.entry_price <= 0):
         raise ValueError(
             f"Invalid entry price for {suggestion.ticker}: {suggestion.entry_price}. "
             "Market data may be unavailable."
         )
 
+    # Get current price for display (use entry_price if available, or fetch current)
+    display_price = suggestion.entry_price
+    if display_price is None:
+        # For HOLD signals, try to get current price from reasoning or use 0
+        display_price = getattr(suggestion, 'current_price', None) or 0.0
+
     print("\n" + MSG.SUGGESTION_SEPARATOR)
-    print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=suggestion.entry_price))
+    if display_price > 0:
+        print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=display_price))
+    else:
+        print(f"📊 {suggestion.ticker}")
     print(MSG.SUGGESTION_SEPARATOR)
 
     # Issue #347: Respect user intent when signals disagree
@@ -165,6 +177,17 @@ def display_suggestion(
     print(MSG.ANALYSIS_HEADER.format(timeframe=timeframe_display))
     for reason in suggestion.reasoning:
         print(MSG.ANALYSIS_ITEM.format(reason=reason))
+
+    # For HOLD signals, show recommendation without entry plan
+    if is_hold_signal:
+        print("\n💡 Recommendation:")
+        print("   ⏸️  HOLD - No action recommended at this time")
+        print("   📊 Indicators do not show a clear signal")
+        if suggestion.warnings:
+            print("\n⚠️  Notes:")
+            for warning in suggestion.warnings:
+                print(f"   • {warning}")
+        return  # Skip entry plan and portfolio impact for HOLD
 
     # Determine trade direction (CLOSE if has position, SHORT if not)
     direction = get_trade_direction(suggestion.signal, has_position=bool(position))

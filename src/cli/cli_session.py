@@ -1043,6 +1043,91 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     f"\n{MSG.EMOJI['warning']} SELL will close your position in {decision.suggestion.ticker}"
                 )
 
+            # Step 2c: Handle HOLD signal with explicit user intent (Issue #474)
+            # When signals say HOLD but user explicitly wants to trade
+            elif decision.suggestion.signal.value.upper() == "HOLD":
+                user_wants_buy = any(indicator in original_input for indicator in BUY_INDICATORS)
+                user_wants_sell = any(indicator in original_input for indicator in SELL_INDICATORS)
+
+                if user_wants_buy or user_wants_sell:
+                    # User explicitly wants to trade despite HOLD signal
+                    print(f"\n{MSG.EMOJI.get('info', 'ℹ️')} SIGNALS INCONCLUSIVE")
+                    print("   → Technical indicators suggest: HOLD (no clear direction)")
+                    print(f"   → You requested: {'BUY' if user_wants_buy else 'SELL'}")
+
+                    # Get current price for trade setup
+                    current_price = getattr(decision.suggestion, 'current_price', None)
+                    if current_price is None or current_price <= 0:
+                        # Try to get from indicators or reasoning
+                        indicators = getattr(decision.suggestion, 'indicators', {})
+                        current_price = indicators.get('current_price', 0.0)
+
+                    if current_price and current_price > 0:
+                        # Generate entry/stop/target from current price
+                        # Use mode params if available, otherwise defaults
+                        try:
+                            from src.core.trading_modes import get_mode_manager
+                            mode_params = get_mode_manager().get_parameters()
+                            stop_pct = mode_params.stop_loss
+                            target_pct = mode_params.take_profit
+                            position_size_pct = mode_params.position_size
+                        except Exception:
+                            stop_pct = 0.05  # 5% default
+                            target_pct = 0.10  # 10% default
+                            position_size_pct = 0.05  # 5% of portfolio default
+
+                        entry_price = round(current_price, 2)
+
+                        if user_wants_buy:
+                            decision.suggestion.signal = Signal.BUY
+                            stop_loss = round(current_price * (1 - stop_pct), 2)
+                            take_profit = round(current_price * (1 + target_pct), 2)
+                        else:
+                            decision.suggestion.signal = Signal.SELL
+                            stop_loss = round(current_price * (1 + stop_pct), 2)
+                            take_profit = round(current_price * (1 - target_pct), 2)
+
+                        decision.suggestion.entry_price = entry_price
+                        decision.suggestion.stop_loss = stop_loss
+                        decision.suggestion.take_profit = take_profit
+
+                        # Calculate quantity if it's 0 (Issue #474)
+                        if decision.suggestion.recommended_quantity == 0:
+                            try:
+                                # Get buying power and calculate position size
+                                if self.account_monitor:
+                                    account = self.account_monitor.get_account_info()
+                                    buying_power = float(account.get("buying_power", 0))
+                                    # Use position_size % of buying power
+                                    trade_value = buying_power * position_size_pct
+                                    quantity = int(trade_value / entry_price)
+                                    if quantity > 0:
+                                        decision.suggestion.recommended_quantity = quantity
+                                        # Update portfolio impact metrics
+                                        max_loss = quantity * abs(entry_price - stop_loss)
+                                        decision.suggestion.max_loss_usd = round(max_loss, 2)
+                                        potential_gain = quantity * abs(take_profit - entry_price)
+                                        if max_loss > 0:
+                                            decision.suggestion.risk_reward_ratio = round(potential_gain / max_loss, 2)
+                            except Exception as e:
+                                logger.debug(f"Could not calculate quantity: {e}")
+
+                        # Clear stale warning about no entry price (we just set one)
+                        decision.suggestion.warnings = [
+                            w for w in decision.suggestion.warnings
+                            if "No entry price" not in w
+                        ]
+
+                        print(f"\n   📊 Generated trade plan:")
+                        print(f"      Entry:  ${entry_price:.2f}")
+                        print(f"      Stop:   ${stop_loss:.2f} ({calc_pct(entry_price, stop_loss):.1f}%)")
+                        print(f"      Target: ${take_profit:.2f} ({calc_pct(entry_price, take_profit):.1f}%)")
+                        print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
+                    else:
+                        print(f"\n{MSG.EMOJI['error']} Cannot determine current price for {decision.suggestion.ticker}")
+                        print("   → Try refreshing market data or check during market hours")
+                        return
+
             # Step 3: Display suggestion
             # Issue #347: Determine override mode based on user intent
             override_mode = None

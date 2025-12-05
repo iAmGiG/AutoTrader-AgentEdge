@@ -262,13 +262,18 @@ class VoterAgent(BaseAgent):
             elif (macd_action != "HOLD" and rsi_action == "HOLD") or (
                 rsi_action != "HOLD" and macd_action == "HOLD"
             ):
-                # Weak signal
+                # Weak signal - use indicator strength to modulate confidence
                 active_action = macd_action if macd_action != "HOLD" else rsi_action
                 active_conf = macd_conf if macd_action != "HOLD" else rsi_conf
+                active_strength = macd_strength if macd_action != "HOLD" else rsi_strength
                 active_indicator = "MACD" if macd_action != "HOLD" else "RSI"
 
                 action = active_action
-                confidence = min(0.65, active_conf + weak_boost)
+                # Confidence scales with indicator strength (0-100% range)
+                # Base: active_conf (0.6) + weak_boost (0.1) = 0.7 baseline
+                # Strength adds 0-0.10 based on how strongly indicator triggered
+                strength_bonus = min(0.10, active_strength / 100)
+                confidence = min(0.80, active_conf + weak_boost + strength_bonus)
                 position_size = 0.5
                 reasoning = f"Weak signal: Only {active_indicator} signals {active_action}"
                 signal_type = "WEAK"
