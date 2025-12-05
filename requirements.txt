@@ -1,10 +1,10 @@
 # AutoGen-TradingSystem Dependencies
 # Python 3.12+ recommended for full compatibility
 
-# Core AutoGen 0.7.x framework
-autogen-agentchat>=0.7.5
-autogen-core>=0.7.5
-autogen-ext>=0.7.5
+# Core AutoGen 0.2.x framework
+autogen-agentchat>=0.2.40
+autogen-core>=0.4.0
+autogen-ext>=0.4.0
 
 # Trading APIs
 alpaca-py>=0.43.2

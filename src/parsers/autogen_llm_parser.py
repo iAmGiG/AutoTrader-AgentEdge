@@ -68,6 +68,8 @@ class ParsedTradeRequest:
     quantity: Optional[int] = None
     price: Optional[float] = None
     asset_type: Literal["stock", "option"] = "stock"
+    # Issue #475: Entry timing context
+    timing: Optional[Literal["now", "pullback", "dip", "breakout", "limit"]] = None
 
 
 def _parse_trade_request(
@@ -77,6 +79,7 @@ def _parse_trade_request(
     quantity: Optional[int] = None,
     price: Optional[float] = None,
     asset_type: Literal["stock", "option"] = "stock",
+    timing: Optional[Literal["now", "pullback", "dip", "breakout", "limit"]] = None,
 ) -> dict:
     """
     Parse user's trade request into structured format.
@@ -91,6 +94,7 @@ def _parse_trade_request(
         quantity: Number of shares (optional)
         price: Entry price mentioned (optional)
         asset_type: "stock" (default) or "option"
+        timing: Entry timing - "pullback", "dip", "breakout", "limit", or None for immediate
 
     Returns:
         Parsed request as dictionary
@@ -102,6 +106,7 @@ def _parse_trade_request(
         "quantity": quantity,
         "price": price,
         "asset_type": asset_type,
+        "timing": timing,
     }
 
 
@@ -216,6 +221,7 @@ class AutoGenLLMParser(InputParser):
                 quantity=args.get("quantity"),
                 price=args.get("price"),
                 asset_type=AssetType(args.get("asset_type", "stock")),
+                timing=args.get("timing"),  # Issue #475: Entry timing
                 raw_input=user_input,
             )
 
@@ -293,6 +299,12 @@ If request_type is "trade", extract:
 - quantity: Number of shares if mentioned
 - price: Price if mentioned (e.g., "at 600" means price=600)
 - asset_type: "stock" (default) or "option"
+- timing: Entry timing preference (Issue #475)
+  * "pullback" or "on pullback" or "on a dip" → timing="pullback" (wait for lower price)
+  * "dip" or "on the dip" → timing="dip" (same as pullback)
+  * "breakout" or "on breakout" → timing="breakout" (wait for higher price)
+  * "limit" or "limit order" → timing="limit" (use specified price as limit)
+  * No timing mentioned → timing=null (execute immediately at market)
 
 If request_type is "status_query":
 - ticker: Empty string (unless asking about specific ticker's position)

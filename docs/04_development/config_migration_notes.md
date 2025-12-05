@@ -225,7 +225,7 @@ async def _handle_command(self, command: str):
 
 ### Scripts
 
-- `scripts/migrate_help_to_yaml.py` - **EXISTING** - Automated migration tool using AST parsing
+- `scripts/migrate_help_to_yaml.py` - **REMOVED** (Issue #435) - One-time migration completed
 
 ### Configuration
 

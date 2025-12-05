@@ -1,7 +1,7 @@
 # Trade History Database
 
-**Issue**: [#373 Extension](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/373)
-**Commit**: 776e1d0
+**Issues**: [#373 Extension](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/373), [#444 Analysis Tracking](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/444)
+**Commits**: 776e1d0 (trade_history), 782f8f2 (analysis_history)
 
 ## Overview
 
@@ -9,12 +9,15 @@ The trade history database implements a **hybrid storage approach** for trade li
 
 - **Active Trades**: Stored in JSON files (fast, simple, reliable during market hours)
 - **Completed Trades**: Archived to SQLite database (analytics, reporting, visualizations)
+- **Analysis History**: Voter component details tracked for ML training (Issue #444)
 
-This design provides optimal performance for live trading while enabling comprehensive historical analysis.
+This design provides optimal performance for live trading while enabling comprehensive historical analysis and machine learning capabilities.
 
 ## Architecture
 
 ### Database Schema
+
+#### Trade History Table
 
 ```sql
 CREATE TABLE trade_history (
@@ -70,15 +73,61 @@ CREATE TABLE trade_history (
 )
 ```
 
-### Indexes
-
-Optimized for common analytics queries:
+**Indexes**:
 
 - `idx_trade_symbol`: Symbol-based filtering
 - `idx_trade_entry_date`: Time-based filtering
 - `idx_trade_strategy`: Strategy performance analysis
 - `idx_trade_exit_reason`: Exit reason analysis
 - `idx_trade_broker`: Multi-broker tracking
+
+#### Analysis History Table (Issue #444)
+
+Tracks voter component details (MACD/RSI) for ML training and strategy analysis:
+
+```sql
+CREATE TABLE analysis_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Analysis context
+    timestamp TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    timeframe TEXT NOT NULL,
+
+    -- MACD component
+    macd_histogram REAL,
+    macd_signal TEXT,  -- BUY/SELL/HOLD from MACD alone
+
+    -- RSI component
+    rsi_value REAL,
+    rsi_signal TEXT,   -- BUY/SELL/HOLD from RSI alone
+
+    -- Consensus result
+    final_signal TEXT NOT NULL,  -- BUY/SELL/HOLD
+    confidence REAL NOT NULL,
+
+    -- Execution tracking
+    action_taken TEXT NOT NULL,  -- executed/rejected/hold_signal/pending
+    trade_id INTEGER,
+
+    FOREIGN KEY (trade_id) REFERENCES trade_history(id)
+)
+```
+
+**Indexes**:
+
+- `idx_analysis_ticker`: Fast ticker lookups
+- `idx_analysis_timestamp`: Time-based queries
+- `idx_analysis_signal`: Signal frequency analysis
+- `idx_analysis_timeframe`: Timeframe optimization studies
+
+**Key Features**:
+
+- Captures individual MACD and RSI signals (not just consensus)
+- Links analyses to executed trades via foreign key
+- Tracks rejected signals and HOLD decisions
+- Enables ML training on component-level data
+- Supports strategy optimization and pattern recognition
 
 ## API Reference
 
@@ -208,6 +257,119 @@ print(f"  Total Trades: {voter_stats['total_trades']}")
 print(f"  Win Rate: {voter_stats['win_rate_pct']:.1f}%")
 ```
 
+### AnalysisHistoryManager Methods (Issue #444)
+
+Location: `src/data_sources/database/analysis_history_manager.py`
+
+#### `record_analysis(...) -> bool`
+
+Record voter component analysis details for ML training.
+
+**Parameters**:
+
+- `ticker`: Stock symbol
+- `timeframe`: Analysis timeframe (1d, 1h, 5m, etc.)
+- `macd_histogram`: MACD histogram value
+- `macd_signal`: MACD signal (BUY/SELL/HOLD)
+- `rsi_value`: RSI value (0-100)
+- `rsi_signal`: RSI signal (BUY/SELL/HOLD)
+- `final_signal`: Consensus signal (BUY/SELL/HOLD)
+- `confidence`: Confidence percentage (0.0-1.0)
+- `action_taken`: Status (executed/rejected/hold_signal/pending)
+- `trade_id`: Optional link to executed trade
+
+**Example**:
+
+```python
+from src.data_sources.database import AnalysisHistoryManager
+
+manager = AnalysisHistoryManager()
+
+# RealVoterStrategy records automatically, but you can also record manually
+manager.record_analysis(
+    ticker="SPY",
+    timeframe="1d",
+    macd_histogram=0.506458,
+    macd_signal="BUY",
+    rsi_value=55.7,
+    rsi_signal="HOLD",
+    final_signal="BUY",
+    confidence=0.65,
+    action_taken="executed"
+)
+```
+
+#### `get_signal_statistics(ticker=None) -> Dict[str, Any]`
+
+Get signal frequency statistics for analysis.
+
+**Returns**:
+
+- `total_analyses`: Total number of analyses
+- `signal_counts`: Dict of final signal counts {BUY: X, SELL: Y, HOLD: Z}
+- `macd_counts`: Dict of MACD signal counts
+- `rsi_counts`: Dict of RSI signal counts
+- `action_counts`: Dict of action taken counts
+- `ticker`: Ticker filter (or None)
+
+**Example**:
+
+```python
+# Get overall statistics
+stats = manager.get_signal_statistics()
+print(f"Total analyses: {stats['total_analyses']}")
+print(f"MACD BUY signals: {stats['macd_counts']['BUY']}")
+print(f"RSI BUY signals: {stats['rsi_counts']['BUY']}")
+
+# Get SPY-specific statistics
+spy_stats = manager.get_signal_statistics(ticker="SPY")
+print(f"SPY MACD vs RSI agreement: {spy_stats['macd_counts']['BUY']} vs {spy_stats['rsi_counts']['BUY']}")
+```
+
+#### `get_ml_training_data(executed_only=False) -> List[Dict[str, Any]]`
+
+Export analysis data for ML training.
+
+**Parameters**:
+
+- `executed_only`: If True, only return analyses that resulted in executed trades
+
+**Returns**: List of dictionaries with all analysis features
+
+**Example**:
+
+```python
+# Get all analyses for training
+all_data = manager.get_ml_training_data(executed_only=False)
+print(f"Total dataset size: {len(all_data)}")
+
+# Get only executed trades for outcome-based training
+executed_data = manager.get_ml_training_data(executed_only=True)
+print(f"Executed trades: {len(executed_data)}")
+
+# Convert to pandas for ML
+import pandas as pd
+df = pd.DataFrame(executed_data)
+
+# Feature engineering
+df['macd_rsi_agreement'] = df['macd_signal'] == df['rsi_signal']
+df['signal_strength'] = df['confidence'] * df['macd_rsi_agreement'].astype(int)
+```
+
+#### `link_analysis_to_trade(analysis_id, trade_id) -> bool`
+
+Link an analysis record to an executed trade.
+
+**Example**:
+
+```python
+# ExecutorAgent would call this when a trade executes
+manager.link_analysis_to_trade(
+    analysis_id=123,
+    trade_id=456  # From trade_history.id
+)
+```
+
 ## Integration
 
 ### TradeCycle Auto-Archival
@@ -310,6 +472,43 @@ print("\nWin Rate by Exit Reason:")
 print(win_rate_by_exit)
 ```
 
+### Voter Component Analysis (Issue #444)
+
+```python
+from src.data_sources.database import AnalysisHistoryManager
+
+manager = AnalysisHistoryManager()
+
+# Analyze MACD vs RSI signal frequency
+stats = manager.get_signal_statistics()
+
+print("Voter Component Analysis:")
+print(f"Total Analyses: {stats['total_analyses']}")
+print(f"\nMACD Signals:")
+for signal, count in stats['macd_counts'].items():
+    print(f"  {signal}: {count} ({count/stats['total_analyses']*100:.1f}%)")
+
+print(f"\nRSI Signals:")
+for signal, count in stats['rsi_counts'].items():
+    print(f"  {signal}: {count} ({count/stats['total_analyses']*100:.1f}%)")
+
+# Find MACD/RSI disagreements for pattern analysis
+all_analyses = manager.get_ml_training_data()
+df = pd.DataFrame(all_analyses)
+
+disagreements = df[df['macd_signal'] != df['rsi_signal']]
+print(f"\nDisagreements: {len(disagreements)} ({len(disagreements)/len(df)*100:.1f}%)")
+print(f"Most common disagreement: MACD={disagreements['macd_signal'].mode()[0]}, RSI={disagreements['rsi_signal'].mode()[0]}")
+
+# Timeframe performance analysis
+for timeframe in ['1d', '1h', '5m']:
+    tf_stats = manager.get_signal_statistics()
+    tf_data = [a for a in all_analyses if a['timeframe'] == timeframe]
+    if tf_data:
+        executed = len([a for a in tf_data if a['action_taken'] == 'executed'])
+        print(f"\n{timeframe}: {len(tf_data)} analyses, {executed} executed ({executed/len(tf_data)*100:.1f}%)")
+```
+
 ## Database Location
 
 Trade history is stored in: `.cache/trading_cache.db`
@@ -348,5 +547,8 @@ With this foundation, future features can include:
 ## Related Documentation
 
 - [Issue #373](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/373): Multi-Provider Database Storage
-- [sqlite_cache.py](../src/data_sources/cache/sqlite_cache.py): Database implementation
-- [trade_lifecycle.py](../src/trading/trade_lifecycle.py): TradeCycle integration
+- [Issue #444](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/444): Track Voter Component Details
+- [sqlite_cache.py](../../src/data_sources/cache/sqlite_cache.py): Trade history database implementation
+- [analysis_history_manager.py](../../src/data_sources/database/analysis_history_manager.py): Analysis history implementation
+- [trade_lifecycle.py](../../src/trading/trade_lifecycle.py): TradeCycle integration
+- [real_voter_strategy.py](../../src/strategies/real_voter_strategy.py): Auto-recording integration

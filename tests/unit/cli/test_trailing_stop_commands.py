@@ -25,7 +25,7 @@ sys.modules["alpaca.trading.requests"] = MagicMock()
 sys.modules["alpaca.data"] = MagicMock()
 sys.modules["alpaca.data.historical"] = MagicMock()
 
-from src.cli.trailing_stop_commands import TrailingStopCommands
+from src.cli.commands.trailing_stop_commands import TrailingStopCommands
 
 
 class TestTrailingStopCommands(unittest.TestCase):

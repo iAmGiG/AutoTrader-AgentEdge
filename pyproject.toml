@@ -5,21 +5,61 @@ description = "Multi-agent AI trading platform powered by AgentEdge architecture
 authors = [{name = "iAmGiG"}]
 requires-python = ">=3.10"
 dependencies = [
-    "pandas>=2.2.0",
-    "numpy>=2.0.0",
-    "matplotlib>=3.7.0",
-    "seaborn>=0.12.0",
-    "yfinance>=0.2.50",
-    "requests>=2.31.0",
-    "python-dotenv>=1.0.0",
-    "autogen-agentchat>=0.7.0",
-    "autogen-core>=0.7.0",
-    "autogen-ext>=0.7.0",
-    "openai>=1.90.0",
-    "aiohttp>=3.9.0",
-    "beautifulsoup4>=4.12.0",
-    "feedparser>=6.0.0",
-    "polygon-api-client>=1.15.0",
+    # Core AutoGen 0.7.x framework
+    "autogen-agentchat>=0.7.5",
+    "autogen-core>=0.7.5",
+    "autogen-ext>=0.7.5",
+    # Trading APIs
+    "alpaca-py>=0.43.2",
+    # Market data sources
+    "polygon-api-client>=1.16.3",
+    # LLM and AI
+    "openai>=2.7.0",
+    "tiktoken>=0.12.0",
+    # Data processing
+    "pandas>=2.3.0",
+    "numpy>=2.3.0",
+    "scipy>=1.16.0",
+    "python-dateutil>=2.9.0",
+    "pytz>=2025.2",
+    # HTTP clients
+    "requests>=2.32.0",
+    "httpx>=0.28.1",
+    # Sentiment analysis (for research/deprecated V0-V4 agents)
+    "nltk>=3.9.0",
+    "scikit-learn>=1.7.0",
+    # Utility
+    "python-dotenv>=1.2.0",
+    "pydantic>=2.12.0",
+    "pyyaml>=6.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Linting and formatting
+    "ruff>=0.1.15",
+    "black>=24.1.1",
+    "isort>=5.13.2",
+    "pylint>=3.0.0",
+    "mypy>=1.8.0",
+    "docformatter>=1.7.5",
+    # Markdown
+    "markdownlint-cli2>=0.12.1",
+    # Security
+    "bandit[toml]>=1.7.6",
+    # Code quality metrics
+    "radon>=6.0.1",
+    "vulture>=2.10",
+    # Pre-commit hooks
+    "pre-commit>=3.6.0",
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    # Documentation
+    "interrogate>=1.5.0",
+    # Utilities
+    "ipython>=8.12.0",
 ]
 
 [tool.autopep8]

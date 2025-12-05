@@ -9,40 +9,64 @@ Unified interactive CLI with LLM-driven routing for:
 """
 
 import asyncio
+import atexit
 import json
 import logging
 import os
 import platform
 import re
 import sys
-from datetime import datetime, time, timedelta
 from typing import Optional
 
-import pytz
 import yaml
 
 # Add imports for new features
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 # Import CLI messages configuration
 from config_defaults.message_loader import CLIMessages as MSG
-from config_defaults.message_loader import (
-    get_alert_severity_emoji,
-    get_pl_emoji,
-    get_signal_emoji,
-    get_status_emoji,
-)
 
-from src.autogen_agents.trading_orchestrator import ExecutionMode
-from src.cli.account_commands import get_account_commands
-from src.cli.help_system import HelpSystem
-from src.cli.scheduler_cli import SchedulerCLI
-from src.cli.timeframe_commands import get_timeframe_commands
+from src.cli.commands import CommandRegistry
+from src.cli.commands.account_commands import get_account_commands
+from src.cli.commands.timeframe_commands import get_timeframe_commands
+
+# Issue #459: Import extracted tool functions for Phase 1E integration
+from src.cli.tools.alert_tools import show_alerts
+from src.cli.tools.execution_mode_tools import (
+    confirm_and_set_auto_mode,
+    format_mode_change_result,
+    set_execution_mode,
+    set_orchestrator,
+    show_execution_mode,
+)
+from src.cli.tools.mode_tools import set_mode, show_current_mode, show_mode_comparison
+from src.cli.tools.order_tools import (
+    cancel_all_orders,
+    cancel_order,
+    cancel_symbol_orders,
+    show_orders,
+    show_position_orders,
+)
+from src.cli.tools.portfolio_tools import show_portfolio
+from src.cli.tools.scheduler_tools import show_scheduler
+from src.cli.utils.help_system import HelpSystem
+from src.cli.utils.input_parser import (
+    BUY_INDICATORS,
+    SELL_INDICATORS,
+    detect_user_intent,
+    extract_ticker_from_query,
+)
+from src.cli.utils.suggestion_display import (
+    calc_pct,
+    display_position_context,
+    display_result,
+    display_suggestion,
+)
+from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
 from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
-from src.trading.daily_scheduler import DailyScheduler
-from src.trading.timeframe_tools import get_timeframe_display_name
-from src.trading.trading_cycle import CostEfficientTradeCycle
-from src.utils.date_utils import get_datetime_now, now_iso
+from src.trading.scheduling.daily_scheduler import DailyScheduler
+from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
+from src.utils.date_utils import now_iso
 
 # Import safe_print for Unicode handling
 from src.utils.safe_print import safe_print
@@ -69,19 +93,20 @@ def _sanitize_error_message(error: Exception) -> str:
     if "could not parse" in error_str or "parse error" in error_str:
         return "Didn't understand that. Nothing done."
 
-    # Ticker validation errors
-    if (
-        ("asset" in error_str and "not found" in error_str)
-        or "ticker" in error_str
-        or "ticker not found" in error_str
-    ):
-        return "Didn't understand that. Nothing done."
+    # Ticker validation errors - provide actionable feedback
+    if "ticker not found" in error_str:
+        return "Symbol not found. It may not be available via your broker or data provider."
+
+    if ("asset" in error_str and "not found" in error_str) or "symbol" in error_str:
+        return "Symbol not recognized. Check the ticker spelling or try a US-listed stock."
 
     # Data availability errors
     if (
         "no data" in error_str
         or "insufficient data" in error_str
         or "data unavailable" in error_str
+        or "market data may be unavailable" in error_str
+        or "invalid entry price" in error_str
     ):
         return "Not enough market data available for analysis. Try a more liquid symbol."
 
@@ -89,160 +114,26 @@ def _sanitize_error_message(error: Exception) -> str:
     if "invalid request" in error_str or "invalid format" in error_str:
         return "Didn't understand that. Nothing done."
 
-    # Generic fallback
-    return "Didn't understand that. Nothing done."
+    # Format/type errors (likely None values in display)
+    if "typeerror" in error_str or "nonetype" in error_str or "unsupported format" in error_str:
+        logger.error(f"Display format error: {error}")
+        return "Analysis failed - missing price data. Try again or check the ticker."
+
+    # Generic fallback - log the actual error for debugging
+    logger.warning(f"Unhandled error type: {type(error).__name__}: {error}")
+    return f"Something went wrong. Error: {type(error).__name__}"
 
 
-# Arrow key history navigation (#362) and advanced readline features (#399)
-# Note: Tab completion works in cmd.exe and Git Bash, but NOT in PowerShell
-# PowerShell uses PSReadLine which has its own completion system
-def _is_powershell() -> bool:
-    """Detect if running in PowerShell (where readline doesn't work)."""
-    # Check common PowerShell environment indicators
-    ps_indicators = [
-        os.environ.get("PSModulePath"),  # PowerShell sets this
-        os.environ.get("POWERSHELL_DISTRIBUTION_CHANNEL"),
-    ]
-    return any(ps_indicators)
+# Issue #436: Ticker completer moved to separate module
+from src.cli.utils.ticker_completer import (
+    READLINE_AVAILABLE,
+    get_ticker_completer,
+    is_powershell,
+    readline,
+)
 
-
-READLINE_AVAILABLE = False
-readline = None
-
-try:
-    import atexit
-    import readline
-
-    READLINE_AVAILABLE = True
-except ImportError:
-    # Windows may need pyreadline3
-    try:
-        import atexit
-
-        import pyreadline3 as readline
-
-        READLINE_AVAILABLE = True
-    except ImportError:
-        pass
-
-# Disable readline in PowerShell (it doesn't work there)
-if READLINE_AVAILABLE and _is_powershell():
-    READLINE_AVAILABLE = False
-    readline = None
-
-
-# Issue #399: Ticker completer for tab completion
-class TickerCompleter:
-    """
-    Tab completion for stock tickers.
-
-    Provides autocomplete for:
-    - Recently used tickers (persisted across sessions, auto-growing)
-    - Current position tickers
-    - Seed tickers from config (loaded from scanner_config.yaml on first run)
-
-    All tickers are file-based for dynamic management.
-    """
-
-    # Fallback seed tickers if config loading fails
-    _FALLBACK_SEED_TICKERS = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "TSLA"]
-
-    def __init__(self):
-        self.recent_tickers = []
-        self.position_tickers = []
-        self._completions = []
-        self._ticker_file = os.path.expanduser("~/.autotrader_tickers")
-        self._seed_tickers = self._load_seed_tickers_from_config()
-        self._load_recent_tickers()
-
-    def _load_seed_tickers_from_config(self) -> list:
-        """Load seed tickers from scanner_config.yaml watchlist."""
-        try:
-            config_path = os.path.join(
-                os.path.dirname(__file__), "..", "..", "config_defaults", "scanner_config.yaml"
-            )
-            config_path = os.path.normpath(config_path)
-
-            if not os.path.exists(config_path):
-                return list(self._FALLBACK_SEED_TICKERS)
-
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-
-            # Extract all tickers from default_watchlist categories
-            tickers = []
-            watchlist = config.get("default_watchlist", {})
-            for symbols in watchlist.values():
-                if isinstance(symbols, list):
-                    tickers.extend(symbols)
-
-            return tickers if tickers else list(self._FALLBACK_SEED_TICKERS)
-
-        except Exception:
-            return list(self._FALLBACK_SEED_TICKERS)
-
-    def _load_recent_tickers(self):
-        """Load recently used tickers from file, seeding if first run."""
-        try:
-            if os.path.exists(self._ticker_file):
-                with open(self._ticker_file, "r", encoding="utf-8") as f:
-                    self.recent_tickers = [line.strip().upper() for line in f if line.strip()][
-                        :100
-                    ]  # Keep up to 100 tickers
-            else:
-                # First run - seed with tickers from scanner_config.yaml
-                self.recent_tickers = list(self._seed_tickers)
-                self.save_recent_tickers()
-        except Exception:
-            self.recent_tickers = list(self._seed_tickers)
-
-    def save_recent_tickers(self):
-        """Save recently used tickers to file."""
-        try:
-            with open(self._ticker_file, "w") as f:
-                for ticker in self.recent_tickers[:100]:  # Keep up to 100
-                    f.write(f"{ticker}\n")
-        except Exception:
-            pass
-
-    def add_ticker(self, ticker: str):
-        """Add a ticker to recent list (moves to front if exists)."""
-        ticker = ticker.upper().strip()
-        if not ticker or len(ticker) > 5 or not ticker.isalpha():
-            return
-        if ticker in self.recent_tickers:
-            self.recent_tickers.remove(ticker)
-        self.recent_tickers.insert(0, ticker)
-        self.recent_tickers = self.recent_tickers[:100]
-        # Auto-save when ticker is added
-        self.save_recent_tickers()
-
-    def set_position_tickers(self, tickers: list):
-        """Update list of tickers from current positions."""
-        self.position_tickers = [t.upper() for t in tickers if t]
-
-    def get_completions(self, text: str) -> list:
-        """Get ticker completions for given text."""
-        text = text.upper()
-        # Combine recent + positions (no hardcoded list)
-        all_tickers = set(self.recent_tickers + self.position_tickers)
-        if not text:
-            # Return recent + position tickers first (most relevant)
-            return self.recent_tickers[:10]
-        return sorted([t for t in all_tickers if t.startswith(text)])
-
-    def complete(self, text: str, state: int):
-        """Readline completer function."""
-        if state == 0:
-            self._completions = self.get_completions(text)
-        try:
-            return self._completions[state]
-        except IndexError:
-            return None
-
-
-# Global ticker completer instance
-_ticker_completer = TickerCompleter() if READLINE_AVAILABLE else None
+# Global ticker completer instance (from extracted module)
+_ticker_completer = get_ticker_completer()
 
 
 class CLISession:
@@ -267,6 +158,9 @@ class CLISession:
         self.autonomy_mode = "confirm"  # or "auto"
         self.user_id = "cli_user"
 
+        # Issue #459: Set orchestrator for execution mode tools
+        set_orchestrator(orchestrator)
+
         # Initialize help system (Issue #369)
         self.help_system = HelpSystem()
 
@@ -286,7 +180,7 @@ class CLISession:
             self.scheduler = DailyScheduler(trading_cycle=self.trading_cycle)
 
             logger.info("CLISession initialized with all features (shared instances)")
-        except Exception as e:
+        except (ImportError, ValueError, AttributeError, OSError) as e:
             logger.warning(f"Some features unavailable: {e}")
             self.trading_cycle = None
             self.scheduler = None
@@ -295,33 +189,8 @@ class CLISession:
         # Load trading configuration for stop/target display
         self.trading_config = self._load_trading_config()
 
-        # Educational tips for novice users
-        self.trading_tips = {
-            "buy_vs_short": (
-                "BUY = You think the stock will go UP in value\n"
-                "   Example: Buy META at $500, sell later at $550 → $50 profit per share\n\n"
-                "SHORT = You think the stock will go DOWN in value (advanced/risky)\n"
-                "   Example: Short META at $500, buy back at $450 → $50 profit per share\n"
-                "   ⚠️  Warning: If stock goes UP while shorted, you lose money!"
-            ),
-            "position_required": (
-                "To SELL a stock, you must own it first (have an open position).\n"
-                "Think of it like selling your car - you can't sell what you don't own!"
-            ),
-            "signals": (
-                "The analysis gives a signal based on technical indicators:\n"
-                "  📈 BUY signal = indicators suggest price may go UP\n"
-                "  📉 SELL signal = indicators suggest price may go DOWN\n\n"
-                "⚠️  Remember: These are suggestions, not guarantees!"
-            ),
-            "entry_timing": (
-                "NEW: You can specify WHEN you want to enter a trade:\n"
-                "  'buy QQQ at a pullback' → Enters 2.5% below current price\n"
-                "  'buy SPY on a dip' → Same as pullback, waits for lower price\n"
-                "  'buy NVDA at a breakout' → Enters 1.5% above current (momentum)\n\n"
-                "This helps you get better entry prices instead of buying at the current price!"
-            ),
-        }
+        # Educational tips for novice users (loaded from config)
+        self.trading_tips = get_tips_dict()
 
     def _setup_history(self):
         """
@@ -349,7 +218,7 @@ class CLISession:
             try:
                 readline.read_history_file(history_file)
                 logger.debug(f"Loaded command history from {history_file}")
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 logger.warning(f"Could not load history file: {e}")
 
         # Set history length (default: 1000 commands)
@@ -380,7 +249,7 @@ class CLISession:
             # Ctrl+K: Delete to end of line
             readline.parse_and_bind('"\\C-k": kill-line')
             logger.debug("Word deletion keybindings configured")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.debug(f"Some keybindings may not be available: {e}")
 
         # Save history and recent tickers on exit
@@ -388,7 +257,7 @@ class CLISession:
             try:
                 readline.write_history_file(history_file)
                 logger.debug(f"Saved command history to {history_file}")
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 logger.warning(f"Could not save history file: {e}")
             if _ticker_completer:
                 _ticker_completer.save_recent_tickers()
@@ -414,11 +283,11 @@ class CLISession:
                 logger.warning(f"Trading config not found at {config_path}")
                 return None
 
-            with open(config_path, "r") as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
                 logger.info(f"Loaded trading config from {config_path}")
                 return config
-        except Exception as e:
+        except (OSError, ValueError, yaml.YAMLError) as e:
             logger.warning(f"Failed to load trading config: {e}")
             return None
 
@@ -464,7 +333,7 @@ class CLISession:
             except KeyboardInterrupt:
                 print(MSG.EXIT_MESSAGE)
                 break
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught  # Main REPL safety net
                 # Use ASCII error prefix on Windows
                 error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
                 sanitized_msg = _sanitize_error_message(e)
@@ -481,7 +350,7 @@ class CLISession:
         print(MSG.HELP_COMMANDS)
 
         # PowerShell notice - tab completion doesn't work there
-        if _is_powershell():
+        if is_powershell():
             print("\nNote: Tab completion is not available in PowerShell.")
             print("      For tab completion, use cmd.exe or Git Bash.")
 
@@ -497,12 +366,14 @@ class CLISession:
             tickers = [p.get("symbol") for p in positions if p.get("symbol")]
             _ticker_completer.set_position_tickers(tickers)
             logger.debug(f"Updated position tickers: {tickers}")
-        except Exception as e:
+        except (AttributeError, ValueError, OSError) as e:
             logger.debug(f"Could not update position tickers: {e}")
 
     async def _handle_command(self, command: str) -> bool:
         """
-        Handle CLI commands.
+        Handle CLI commands via CommandRegistry.
+
+        Issue #468: Refactored to use self-registering command pattern.
 
         Args:
             command: Command string (starts with /)
@@ -510,71 +381,20 @@ class CLISession:
         Returns:
             True to continue, False to exit
         """
-        cmd = command.lower()
+        # Use CommandRegistry for slash command dispatch
+        handled, should_continue = await CommandRegistry.execute(command, self)
 
-        if cmd == "/exit" or cmd == "/quit":
-            return False
+        if handled:
+            return should_continue
 
-        elif cmd.startswith("/help"):
-            # Issue #369: Interactive help system
-            help_output = self.help_system.handle_help_command(command)
-            safe_print(help_output)
-
-        elif cmd == "/toggle":
-            # Toggle between confirm and auto modes
-            if self.autonomy_mode == "confirm":
-                self.autonomy_mode = "auto"
-                print(MSG.MODE_SWITCHED_AUTO)
-            else:
-                self.autonomy_mode = "confirm"
-                print(MSG.MODE_SWITCHED_CONFIRM)
-
-        elif cmd == "/schedule":
-            # Enter scheduler management mode
-
-            scheduler_cli = SchedulerCLI(self.scheduler)
-            await scheduler_cli.run()
-
-        elif cmd == "/tips" or cmd == "/learn":
-            # Show educational trading tips
-            self._show_trading_tips()
-
-        else:
-            print(MSG.UNKNOWN_COMMAND.format(command=command))
-            print(MSG.USE_HELP)
-
+        # Command not found in registry
+        print(MSG.UNKNOWN_COMMAND.format(command=command))
+        print(MSG.USE_HELP)
         return True
 
     def _show_trading_tips(self):
-        """Display educational trading tips for beginners."""
-        safe_print("\n" + "=" * 70)
-        safe_print("📚 TRADING BASICS FOR BEGINNERS")
-        safe_print("=" * 70)
-
-        safe_print("\n1️⃣  BUY vs SHORT (Long vs Short)")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["buy_vs_short"])
-
-        safe_print("\n2️⃣  Understanding Signals")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["signals"])
-
-        safe_print("\n3️⃣  Why You Need a Position to SELL")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["position_required"])
-
-        safe_print("\n4️⃣  Entry Timing (NEW!)")
-        safe_print("-" * 70)
-        safe_print(self.trading_tips["entry_timing"])
-
-        safe_print("\n💡 QUICK TIPS:")
-        safe_print("-" * 70)
-        safe_print("• Start small: Test with small amounts until you understand")
-        safe_print("• Use CONFIRM mode: Always review before executing trades")
-        safe_print("• Ask questions: Type naturally, the system will understand")
-        safe_print("• Check analysis: Choose 'review' to see analysis without trading")
-        safe_print("• Try timing: 'buy at a pullback' for better entry prices")
-        safe_print("\n" + "=" * 70)
+        """Display educational trading tips. Issue #436: Uses config-based tips."""
+        display_trading_tips()
 
     async def _classify_intent(self, user_input: str) -> dict:
         """
@@ -701,7 +521,7 @@ class CLISession:
                 "confidence": confidence,
             }
 
-        except Exception as e:
+        except (ValueError, AttributeError, OSError, RuntimeError) as e:
             logger.error(f"Error classifying intent: {e}", exc_info=True)
             return {
                 "intent": "unknown",
@@ -777,7 +597,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     logger.warning(f"Failed to parse LLM response as JSON: {response}")
                 except asyncio.TimeoutError:
                     logger.warning("LLM call timed out, falling back to pattern matching")
-                except Exception as e:
+                except (ValueError, OSError, RuntimeError, AttributeError) as e:
                     logger.warning(f"LLM resolution failed: {e}")
 
             # Fallback: Try pattern matching for common formats
@@ -795,7 +615,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             return None, None
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError, AttributeError) as e:
             logger.error(f"Error resolving ticker with LLM: {e}")
             return None, None
 
@@ -1001,7 +821,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 # Trade request → process through orchestrator
                 await self._handle_trade_request(user_input)
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError, AttributeError) as e:
             logger.error(f"Error routing request: {e}", exc_info=True)
             error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
             sanitized_msg = _sanitize_error_message(e)
@@ -1022,7 +842,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         try:
             # Issue #347: Detect user intent EARLY so we can respect it
             original_input = user_input.lower().strip()
-            user_intent = self._detect_user_intent(original_input)
+            user_intent = detect_user_intent(original_input)
 
             # Step 1: Process request via orchestrator
             decision = await self.orchestrator.process_request(user_input, self.user_id)
@@ -1031,56 +851,16 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             position = self._check_position_for_ticker(decision.suggestion.ticker)
 
             # Step 2a: Display position context
-            self._display_position_context(
-                decision.suggestion.ticker, position, decision.suggestion.signal.value
-            )
+            display_position_context(decision.suggestion.ticker, position)
 
             # Step 2b: Check for signal vs user intent mismatch
             # If analyzer suggests SELL but no position exists, check user's explicit intent
             if decision.suggestion.signal.value.upper() == "SELL" and not position:
                 # Check if user explicitly wants to BUY/LONG (override signal)
-                explicit_buy_indicators = [
-                    "buy",
-                    "long",
-                    "go long",
-                    "going long",
-                    "bullish",
-                    "bet it goes up",
-                    "think it will rise",
-                    "upside",
-                    # Note: 'get ' with space to avoid 'target', 'forget'
-                    "get ",
-                    "acquire",
-                    "purchase",
-                    "pick up",
-                    "grab",
-                ]
-                user_wants_buy = any(
-                    indicator in original_input for indicator in explicit_buy_indicators
-                )
+                user_wants_buy = any(indicator in original_input for indicator in BUY_INDICATORS)
 
                 # Check if user explicitly wants to SELL/SHORT
-                explicit_sell_indicators = [
-                    # Trading terms
-                    "sell",
-                    "short",
-                    "shorting",
-                    "go short",
-                    "exit",
-                    # Layman terms for selling/closing
-                    "close",
-                    "get out",
-                    "dump",
-                    "liquidate",
-                    "cash out",
-                    # Explicit bearish intent
-                    "bet against",
-                    "profit from decline",
-                    "make money when it falls",
-                ]
-                user_wants_sell = any(
-                    indicator in original_input for indicator in explicit_sell_indicators
-                )
+                user_wants_sell = any(indicator in original_input for indicator in SELL_INDICATORS)
 
                 if user_wants_buy:
                     # User explicitly wants to go LONG despite SELL signal
@@ -1093,7 +873,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     )
 
                     # Show the actual technical analysis
-                    self._display_suggestion(
+                    display_suggestion(
                         decision.suggestion, position, override_mode="USER_OVERRIDE_LONG"
                     )
 
@@ -1138,10 +918,10 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         print("\n   📊 Adjusted for BUY:")
                         print(f"      Entry:  ${entry:.2f}")
                         print(
-                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
+                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
                         )
                         print(
-                            f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
+                            f"      Target: ${decision.suggestion.take_profit:.2f} ({calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
                         )
                         print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
 
@@ -1198,10 +978,10 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         print("\n   📊 Adjusted for BUY:")
                         print(f"      Entry:  ${entry:.2f}")
                         print(
-                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({self._calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
+                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
                         )
                         print(
-                            f"      Target: ${decision.suggestion.take_profit:.2f} ({self._calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
+                            f"      Target: ${decision.suggestion.take_profit:.2f} ({calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
                         )
                         print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
 
@@ -1230,7 +1010,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                         print(
                             f"\n{MSG.EMOJI['info']} Showing analysis for {decision.suggestion.ticker} (information only, no trade)"
                         )
-                        self._display_suggestion(decision.suggestion, position)
+                        display_suggestion(decision.suggestion, position)
                         print(
                             f"\n   💡 Tip: If you want to trade on this analysis, type 'buy {decision.suggestion.ticker}' or 'short {decision.suggestion.ticker}'"
                         )
@@ -1263,6 +1043,99 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                     f"\n{MSG.EMOJI['warning']} SELL will close your position in {decision.suggestion.ticker}"
                 )
 
+            # Step 2c: Handle HOLD signal with explicit user intent (Issue #474)
+            # When signals say HOLD but user explicitly wants to trade
+            elif decision.suggestion.signal.value.upper() == "HOLD":
+                user_wants_buy = any(indicator in original_input for indicator in BUY_INDICATORS)
+                user_wants_sell = any(indicator in original_input for indicator in SELL_INDICATORS)
+
+                if user_wants_buy or user_wants_sell:
+                    # User explicitly wants to trade despite HOLD signal
+                    print(f"\n{MSG.EMOJI.get('info', 'ℹ️')} SIGNALS INCONCLUSIVE")
+                    print("   → Technical indicators suggest: HOLD (no clear direction)")
+                    print(f"   → You requested: {'BUY' if user_wants_buy else 'SELL'}")
+
+                    # Get current price for trade setup
+                    current_price = getattr(decision.suggestion, "current_price", None)
+                    if current_price is None or current_price <= 0:
+                        # Try to get from indicators or reasoning
+                        indicators = getattr(decision.suggestion, "indicators", {})
+                        current_price = indicators.get("current_price", 0.0)
+
+                    if current_price and current_price > 0:
+                        # Generate entry/stop/target from current price
+                        # Use mode params if available, otherwise defaults
+                        try:
+                            from src.core.trading_modes import get_mode_manager
+
+                            mode_params = get_mode_manager().get_parameters()
+                            stop_pct = mode_params.stop_loss
+                            target_pct = mode_params.take_profit
+                            position_size_pct = mode_params.position_size
+                        except Exception:
+                            stop_pct = 0.05  # 5% default
+                            target_pct = 0.10  # 10% default
+                            position_size_pct = 0.05  # 5% of portfolio default
+
+                        entry_price = round(current_price, 2)
+
+                        if user_wants_buy:
+                            decision.suggestion.signal = Signal.BUY
+                            stop_loss = round(current_price * (1 - stop_pct), 2)
+                            take_profit = round(current_price * (1 + target_pct), 2)
+                        else:
+                            decision.suggestion.signal = Signal.SELL
+                            stop_loss = round(current_price * (1 + stop_pct), 2)
+                            take_profit = round(current_price * (1 - target_pct), 2)
+
+                        decision.suggestion.entry_price = entry_price
+                        decision.suggestion.stop_loss = stop_loss
+                        decision.suggestion.take_profit = take_profit
+
+                        # Calculate quantity if it's 0 (Issue #474)
+                        if decision.suggestion.recommended_quantity == 0:
+                            try:
+                                # Get buying power and calculate position size
+                                if self.account_monitor:
+                                    account = self.account_monitor.get_account_info()
+                                    buying_power = float(account.get("buying_power", 0))
+                                    # Use position_size % of buying power
+                                    trade_value = buying_power * position_size_pct
+                                    quantity = int(trade_value / entry_price)
+                                    if quantity > 0:
+                                        decision.suggestion.recommended_quantity = quantity
+                                        # Update portfolio impact metrics
+                                        max_loss = quantity * abs(entry_price - stop_loss)
+                                        decision.suggestion.max_loss_usd = round(max_loss, 2)
+                                        potential_gain = quantity * abs(take_profit - entry_price)
+                                        if max_loss > 0:
+                                            decision.suggestion.risk_reward_ratio = round(
+                                                potential_gain / max_loss, 2
+                                            )
+                            except Exception as e:
+                                logger.debug(f"Could not calculate quantity: {e}")
+
+                        # Clear stale warning about no entry price (we just set one)
+                        decision.suggestion.warnings = [
+                            w for w in decision.suggestion.warnings if "No entry price" not in w
+                        ]
+
+                        print("\n   📊 Generated trade plan:")
+                        print(f"      Entry:  ${entry_price:.2f}")
+                        print(
+                            f"      Stop:   ${stop_loss:.2f} ({calc_pct(entry_price, stop_loss):.1f}%)"
+                        )
+                        print(
+                            f"      Target: ${take_profit:.2f} ({calc_pct(entry_price, take_profit):.1f}%)"
+                        )
+                        print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
+                    else:
+                        print(
+                            f"\n{MSG.EMOJI['error']} Cannot determine current price for {decision.suggestion.ticker}"
+                        )
+                        print("   → Try refreshing market data or check during market hours")
+                        return
+
             # Step 3: Display suggestion
             # Issue #347: Determine override mode based on user intent
             override_mode = None
@@ -1270,7 +1143,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 override_mode = "USER_OVERRIDE_LONG"
             elif user_intent == "sell":
                 override_mode = "USER_OVERRIDE_SHORT"
-            self._display_suggestion(decision.suggestion, position, override_mode)
+            display_suggestion(decision.suggestion, position, override_mode)
 
             # Step 3a: Check if this is review-only (no execution intent)
             # Parse the original input to see if user explicitly wanted to execute
@@ -1293,7 +1166,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             # Step 4: Execute if approved
             if decision.approved:
                 result = await self.orchestrator.execute_decision(decision)
-                self._display_result(result)
+                display_result(result)
 
                 # Issue #385: Update local state with stop/target immediately after trade
                 self._update_local_state_after_trade(decision, result)
@@ -1302,7 +1175,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 # Don't show for review-only requests (nothing to cancel)
                 print(MSG.TRADE_CANCELLED)
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError, AttributeError) as e:
             # Sanitize error message for user display
             sanitized_msg = _sanitize_error_message(e)
             error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
@@ -1327,222 +1200,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
 
             positions = self.account_monitor.get_positions()
             return next((p for p in positions if p.get("symbol") == ticker), None)
-        except Exception as e:
+        except (AttributeError, ValueError, OSError) as e:
             logger.warning(f"Failed to check position for {ticker}: {e}")
             return None
-
-    def _detect_user_intent(self, user_input: str) -> Optional[str]:
-        """
-        Issue #347: Detect explicit user intent from input.
-
-        Returns:
-            "buy" if user explicitly wants to buy/go long
-            "sell" if user explicitly wants to sell/close
-            None if no explicit intent (just querying/analyzing)
-        """
-        input_lower = user_input.lower()
-
-        # Buy/long indicators
-        buy_indicators = [
-            "buy",
-            "long",
-            "go long",
-            "going long",
-            "bullish",
-            "bet it goes up",
-            "think it will rise",
-            "upside",
-            "get ",
-            "acquire",
-            "purchase",
-            "pick up",
-            "grab",
-        ]
-        if any(indicator in input_lower for indicator in buy_indicators):
-            return "buy"
-
-        # Sell/close indicators
-        sell_indicators = [
-            "sell",
-            "short",
-            "shorting",
-            "go short",
-            "exit",
-            "close",
-            "get out",
-            "dump",
-            "liquidate",
-            "cash out",
-            "bet against",
-            "profit from decline",
-        ]
-        if any(indicator in input_lower for indicator in sell_indicators):
-            return "sell"
-
-        # Review/analyze indicators (no explicit action)
-        review_indicators = [
-            "analyze",
-            "analysis",
-            "review",
-            "check",
-            "look at",
-            "what about",
-            "how is",
-            "should i",
-            "is it good",
-        ]
-        if any(indicator in input_lower for indicator in review_indicators):
-            return None  # Just querying, no explicit intent
-
-        return None  # Default: no explicit intent
-
-    def _display_position_context(self, ticker: str, position: Optional[dict], signal: str):
-        """
-        Display current position context before showing suggestion.
-
-        Args:
-            ticker: Stock symbol
-            position: Position dict if exists, None otherwise
-            signal: Signal type (BUY/SELL/HOLD)
-        """
-        print(f"\n{'=' * 60}")
-        print(f"📊 Position Context: {ticker}")
-        print(f"{'=' * 60}")
-
-        if position:
-            # Calculate metrics
-            qty = int(position.get("qty", 0))
-            avg_entry = float(position.get("avg_entry_price", 0))
-            market_value = float(position.get("market_value", 0))
-            current_price = (market_value / qty) if qty > 0 else 0.0
-            unrealized_pl = float(position.get("unrealized_pl", 0))
-            unrealized_plpc = float(position.get("unrealized_plpc", 0)) * 100
-
-            # Use fallback for entry price if needed
-            if avg_entry == 0.0:
-                cost_basis = float(position.get("cost_basis", 0))
-                avg_entry = (cost_basis / qty) if qty > 0 else 0.0
-
-            pl_emoji = get_pl_emoji(unrealized_pl)
-
-            print(f"   Current Position: {qty} shares @ ${avg_entry:.2f} (avg entry)")
-            print(f"   Current Price: ${current_price:.2f}")
-            print(f"   {pl_emoji} Unrealized P/L: ${unrealized_pl:+.2f} ({unrealized_plpc:+.2f}%)")
-            print(f"   Market Value: ${market_value:,.2f}")
-        else:
-            print(f"   ℹ️  No position in {ticker} (0 shares)")
-
-        print(f"{'=' * 60}\n")
-
-    def _display_suggestion(
-        self, suggestion, position: Optional[dict] = None, override_mode: Optional[str] = None
-    ):
-        """
-        Display trade suggestion to user.
-
-        Args:
-            suggestion: TradeSuggestion object
-            position: Optional position dict for additional context
-            override_mode: Optional override indicator ("USER_OVERRIDE_LONG", "USER_OVERRIDE_SHORT")
-        """
-        print("\n" + MSG.SUGGESTION_SEPARATOR)
-        print(MSG.SUGGESTION_HEADER.format(ticker=suggestion.ticker, price=suggestion.entry_price))
-        print(MSG.SUGGESTION_SEPARATOR)
-
-        # Issue #347: Respect user intent when signals disagree
-        # Signal display prioritizes user's explicit request
-        signal_emoji = get_signal_emoji(suggestion.signal.value)
-
-        if override_mode == "USER_OVERRIDE_LONG":
-            # User wants BUY but signals say something else
-            print("👤 ACTION: ⬆️ BUY (as requested)")
-            if suggestion.signal.value.upper() != "BUY":
-                print(f"   📊 Signals suggest: {signal_emoji} {suggestion.signal.value.upper()}")
-                print("   ℹ️  Proceeding with your requested action")
-        elif override_mode == "USER_OVERRIDE_SHORT":
-            # User wants SELL but signals say something else
-            print("👤 ACTION: ⬇️ SELL (as requested)")
-            if suggestion.signal.value.upper() != "SELL":
-                print(f"   📊 Signals suggest: {signal_emoji} {suggestion.signal.value.upper()}")
-                print("   ℹ️  Proceeding with your requested action")
-        else:
-            # No explicit user intent - show signal recommendation
-            print(
-                MSG.SIGNAL_DISPLAY.format(
-                    emoji=signal_emoji, signal=suggestion.signal.value.upper()
-                )
-            )
-
-        print(MSG.CONFIDENCE_DISPLAY.format(confidence=suggestion.confidence))
-
-        # Get current timeframe for display (Issue #365)
-
-        try:
-            timeframe = get_timeframe_commands().manager.get_current_timeframe()
-            timeframe_display = get_timeframe_display_name(timeframe)
-        except Exception:
-            timeframe_display = "1 day"  # Fallback to default
-
-        # Technical analysis
-        print(MSG.ANALYSIS_HEADER.format(timeframe=timeframe_display))
-        for reason in suggestion.reasoning:
-            print(MSG.ANALYSIS_ITEM.format(reason=reason))
-
-        # Determine trade direction (CLOSE if has position, SHORT if not)
-        direction = self._get_trade_direction(suggestion.signal, has_position=bool(position))
-
-        # Entry plan
-        print(MSG.ENTRY_PLAN_HEADER)
-        print(
-            MSG.ENTRY_PLAN.format(
-                direction=direction,
-                entry=suggestion.entry_price,
-                stop=suggestion.stop_loss,
-                stop_pct=self._calc_pct(suggestion.entry_price, suggestion.stop_loss),
-                target=suggestion.take_profit,
-                target_pct=self._calc_pct(suggestion.entry_price, suggestion.take_profit),
-                qty=suggestion.recommended_quantity,
-                tif=suggestion.time_in_force.value.upper(),
-            )
-        )
-
-        # Portfolio impact
-        print(MSG.PORTFOLIO_IMPACT_HEADER)
-        print(
-            MSG.PORTFOLIO_IMPACT.format(
-                trade_value=suggestion.recommended_quantity * suggestion.entry_price,
-                portfolio_pct=suggestion.portfolio_pct,
-                max_loss=suggestion.max_loss_usd,
-                risk_reward=suggestion.risk_reward_ratio,
-            )
-        )
-
-        # Warnings
-        if suggestion.warnings:
-            print(MSG.WARNINGS_HEADER)
-            for warning in suggestion.warnings:
-                print(MSG.WARNING_ITEM.format(warning=warning))
-
-    def _get_trade_direction(self, signal: "Signal", has_position: bool = False) -> str:
-        """
-        Format trade direction for display.
-
-        Args:
-            signal: Trading signal (BUY/SELL/HOLD)
-            has_position: Whether user currently holds a position in this ticker
-
-        Returns:
-            Formatted direction string:
-            - BUY → "BUY (LONG)"
-            - SELL with position → "SELL (CLOSE)"
-            - SELL without position → "SELL (SHORT)"
-        """
-        if signal == Signal.BUY:
-            return "BUY (LONG)"
-        elif signal == Signal.SELL:
-            return "SELL (CLOSE)" if has_position else "SELL (SHORT)"
-        else:
-            return "HOLD"
 
     def _get_confirmation(self) -> bool:
         """
@@ -1560,35 +1220,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 return False
             else:
                 print(MSG.CONFIRM_INVALID)
-
-    def _display_result(self, result):
-        """
-        Display execution result.
-
-        Args:
-            result: OrderResult object
-        """
-        print("\n" + MSG.RESULT_SEPARATOR)
-
-        if result.success:
-            print(MSG.ORDER_SUCCESS_HEADER)
-            print(
-                MSG.ORDER_SUCCESS.format(
-                    qty=result.quantity,
-                    ticker=result.ticker,
-                    entry_id=result.entry_order_id,
-                    stop_id=result.stop_order_id,
-                    target_id=result.target_order_id,
-                    message=result.message,
-                )
-            )
-        else:
-            print(MSG.ORDER_FAILED_HEADER)
-            print(MSG.ORDER_FAILED.format(message=result.message))
-            if result.error:
-                print(MSG.ORDER_ERROR.format(error=result.error))
-
-        print(MSG.RESULT_SEPARATOR)
 
     def _update_local_state_after_trade(self, decision, result):
         """
@@ -1635,12 +1266,8 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 f"stop=${suggestion.stop_loss:.2f}, target=${suggestion.take_profit:.2f}"
             )
 
-        except Exception as e:
+        except (AttributeError, ValueError, KeyError) as e:
             logger.warning(f"Failed to update local state after trade: {e}")
-
-    def _calc_pct(self, base: float, value: float) -> float:
-        """Calculate percentage change."""
-        return ((value - base) / base) * 100.0
 
     def _get_stop_loss_pct(self) -> float:
         """
@@ -1657,7 +1284,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             default_strategy = exits.get("default", "balanced")
             strategy_config = exits.get(default_strategy, {})
             return strategy_config.get("stop_loss", 0.05)
-        except Exception as e:
+        except (AttributeError, KeyError, TypeError) as e:
             logger.warning(f"Failed to get stop_loss from config: {e}")
             return 0.05
 
@@ -1676,194 +1303,33 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             default_strategy = exits.get("default", "balanced")
             strategy_config = exits.get(default_strategy, {})
             return strategy_config.get("take_profit", 0.08)
-        except Exception as e:
+        except (AttributeError, KeyError, TypeError) as e:
             logger.warning(f"Failed to get take_profit from config: {e}")
             return 0.08
 
-    async def _handle_alerts_request(self, user_input: str):
-        """
-        Handle position alerts request.
+    async def _handle_alerts_request(self, _user_input: str):
+        """Handle position alerts request. Issue #459: Uses show_alerts()."""
+        output = show_alerts()
+        print(output)
 
-        Args:
-            user_input: User's natural language input
-        """
-        print(MSG.CHECKING_ALERTS)
-
-        try:
-            if not self.trading_cycle:
-                print(MSG.ALERTS_NOT_INITIALIZED)
-                return
-
-            # Fetch current broker state
-            broker_state = self.trading_cycle.fetch_broker_state()
-
-            # Check alerts using position tracker
-            alerts = self.trading_cycle.position_tracker.check_alerts(broker_state)
-
-            if not alerts:
-                print(MSG.NO_ALERTS)
-                print(MSG.POSITIONS_MONITORED(count=len(broker_state.get("positions", []))))
-            else:
-                print(MSG.ALERTS_HEADER(count=len(alerts)))
-                for alert in alerts:
-                    severity_emoji = get_alert_severity_emoji(alert.severity)
-                    print(
-                        MSG.ALERT_ITEM(
-                            emoji=severity_emoji,
-                            ticker=alert.ticker,
-                            alert_type=alert.alert_type.value,
-                            price=alert.current_price,
-                        )
-                    )
-                    if alert.details:
-                        for key, value in alert.details.items():
-                            print(MSG.ALERT_DETAIL(key=key, value=value))
-
-            # Show alert history
-            history = self.trading_cycle.position_tracker.get_alert_history()
-            if history:
-                print(MSG.ALERT_HISTORY_HEADER(count=len(history)))
-                for alert in history[-5:]:  # Last 5
-                    print(
-                        MSG.ALERT_HISTORY_ITEM(
-                            ticker=alert.ticker,
-                            alert_type=alert.alert_type.value,
-                            time=alert.timestamp.strftime("%H:%M:%S"),
-                        )
-                    )
-
-        except Exception as e:
-            print(MSG.ERROR_CHECKING_ALERTS(error=e))
-            logger.error(f"Alerts error: {e}", exc_info=True)
-
-    async def _handle_scheduler_request(self, user_input: str):
-        """
-        Handle scheduler status/management request with detailed information.
-
-        Args:
-            user_input: User's natural language input
-        """
-        print(MSG.SCHEDULER_HEADER)
-        print(MSG.SCHEDULER_SEPARATOR)
-
-        try:
-            if not self.scheduler:
-                print(MSG.SCHEDULER_NOT_INITIALIZED)
-                return
-
-            # Show scheduler configuration with clear status
-            enabled = self.scheduler.config.get("enabled", False)
-            status_emoji = MSG.EMOJI["profit"] if enabled else MSG.EMOJI["loss"]
-            status_text = "ENABLED" if enabled else "DISABLED"
-            print(MSG.SCHEDULER_STATUS(emoji=status_emoji, status=status_text))
-
-            print(MSG.SCHEDULER_CONFIG_HEADER)
-            print(
-                MSG.SCHEDULER_CONFIG(
-                    morning=self.scheduler.config.get("morning_routine_time", "09:20"),
-                    evening=self.scheduler.config.get("evening_routine_time", "15:50"),
-                    retries=self.scheduler.config.get("max_retries", 3),
-                )
-            )
-
-            # Show what each routine does
-            print(MSG.SCHEDULER_ROUTINES_HEADER)
-            print(MSG.MORNING_ROUTINE)
-            print(MSG.EVENING_ROUTINE)
-
-            # Show recent execution history with more detail
-            recent = self.scheduler.get_execution_history(days=7)
-            if recent:
-                print(MSG.SCHEDULER_HISTORY_HEADER)
-
-                for entry in recent[:10]:
-                    status_emoji = get_status_emoji(entry.status)
-
-                    # Format timestamp
-                    if entry.actual_end_time:
-                        time_str = entry.actual_end_time.strftime("%Y-%m-%d %H:%M")
-                    else:
-                        time_str = "In Progress"
-
-                    print(
-                        MSG.SCHEDULER_HISTORY_ITEM(
-                            emoji=status_emoji,
-                            task=entry.task_name,
-                            status=entry.status.upper(),
-                            time=time_str,
-                        )
-                    )
-
-                    if entry.error_message:
-                        print(MSG.SCHEDULER_ERROR(error=entry.error_message[:80]))
-
-                    # Show retry info if applicable
-                    if hasattr(entry, "retry_count") and entry.retry_count > 0:
-                        print(MSG.SCHEDULER_RETRIES(count=entry.retry_count))
-            else:
-                print(MSG.SCHEDULER_NO_HISTORY)
-
-            # Calculate next scheduled run
-            print(MSG.SCHEDULER_NEXT_HEADER)
-            try:
-
-                et = pytz.timezone("US/Eastern")
-                now = get_datetime_now(et)
-
-                morning_time = time(9, 20)
-                evening_time = time(15, 50)
-
-                morning_today = now.replace(hour=9, minute=20, second=0, microsecond=0)
-                evening_today = now.replace(hour=15, minute=50, second=0, microsecond=0)
-
-                if now.time() < morning_time:
-                    next_run = morning_today
-                    next_task = "Morning Routine"
-                elif now.time() < evening_time:
-                    next_run = evening_today
-                    next_task = "Evening Routine"
-                else:
-                    # After evening, next is tomorrow morning
-
-                    next_run = morning_today + timedelta(days=1)
-                    next_task = "Morning Routine (tomorrow)"
-
-                time_until = next_run - now
-                hours = int(time_until.total_seconds() // 3600)
-                minutes = int((time_until.total_seconds() % 3600) // 60)
-
-                print(
-                    MSG.SCHEDULER_NEXT(
-                        task=next_task,
-                        time=next_run.strftime("%H:%M %p"),
-                        hours=hours,
-                        minutes=minutes,
-                    )
-                )
-            except Exception as calc_error:
-                print(MSG.SCHEDULER_NEXT_ERROR(error=calc_error))
-
-            # Usage instructions
-            print(MSG.SCHEDULER_COMMANDS)
-
-        except Exception as e:
-            print(MSG.ERROR_CHECKING_SCHEDULER(error=e))
-            logger.error(f"Scheduler error: {e}", exc_info=True)
+    async def _handle_scheduler_request(self, _user_input: str):
+        """Handle scheduler status request. Issue #459: Uses show_scheduler()."""
+        output = show_scheduler()
+        print(output)
 
     async def _handle_portfolio_request(self, user_input: str):
         """
         Handle portfolio/account status request.
 
-        Also handles specific position queries like "target on SPY"
+        Issue #459: Refactored to use extracted show_portfolio() from portfolio_tools.
 
         Args:
             user_input: User's natural language input
         """
-        # Check if querying specific ticker
+        # Extract specific ticker if asking about stop/target
         input_lower = user_input.lower()
         specific_ticker = None
 
-        # Extract ticker if asking about specific position or stop/target
         keywords = [
             "target on",
             "target for",
@@ -1876,884 +1342,126 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         ]
 
         if any(keyword in input_lower for keyword in keywords):
-            # Try to extract ticker from query
             words = user_input.upper().split()
-            # Common tickers to look for
             common_tickers = ["SPY", "QQQ", "TQQQ", "SQQQ", "AAPL", "MSFT", "TSLA", "NVDA", "META"]
             for word in words:
                 if word in common_tickers:
                     specific_ticker = word
                     break
 
-        print(MSG.PORTFOLIO_HEADER)
+        # Use extracted show_portfolio function from portfolio_tools
+        output = show_portfolio(
+            account_monitor=self.account_monitor,
+            trading_cycle=self.trading_cycle,
+            specific_ticker=specific_ticker,
+            stop_loss_pct=self._get_stop_loss_pct(),
+            take_profit_pct=self._get_take_profit_pct(),
+        )
+        print(output)
 
-        try:
-            if not self.account_monitor:
-                print(MSG.PORTFOLIO_NOT_INITIALIZED)
-                return
-
-            # Get account status (unless querying specific ticker)
-            if not specific_ticker:
-                account = self.account_monitor.get_account_status()
-
-                print(MSG.ACCOUNT_HEADER)
-                print(
-                    MSG.ACCOUNT_INFO(
-                        equity=float(account.get("equity", 0)),
-                        cash=float(account.get("cash", 0)),
-                        buying_power=float(account.get("buying_power", 0)),
-                        pdt=account.get("pattern_day_trader", False),
-                    )
-                )
-
-            # Get positions
-            positions = self.account_monitor.get_positions()
-
-            if specific_ticker:
-                # Show details for specific position
-                position = next((p for p in positions if p.get("symbol") == specific_ticker), None)
-                if position:
-                    qty = int(position.get("qty", 0))
-                    symbol = position.get("symbol")
-                    avg_entry = float(position.get("avg_entry_price", 0))
-
-                    # Calculate current price from market value
-                    market_value = float(position.get("market_value", 0))
-                    current_price = (market_value / qty) if qty > 0 else 0.0
-
-                    # Use cost_basis as fallback if avg_entry_price is 0
-                    if avg_entry == 0.0:
-                        cost_basis = float(position.get("cost_basis", 0))
-                        avg_entry = (cost_basis / qty) if qty > 0 else 0.0
-
-                    unrealized_pl = float(position.get("unrealized_pl", 0))
-                    unrealized_plpc = float(position.get("unrealized_plpc", 0)) * 100
-
-                    pl_emoji = get_pl_emoji(unrealized_pl)
-                    print(MSG.POSITION_DETAILS_HEADER(emoji=pl_emoji, symbol=symbol))
-                    print(
-                        MSG.POSITION_DETAILS(
-                            qty=qty,
-                            entry=avg_entry,
-                            current=current_price,
-                            pl=unrealized_pl,
-                            pl_pct=unrealized_plpc,
-                        )
-                    )
-
-                    # Show stop/target levels from trading_cycle local_state
-                    # This uses the new _extract_stop_target_from_orders() with calculated fallback
-                    if self.trading_cycle:
-                        local_pos = self.trading_cycle.local_state.get("positions", {}).get(symbol)
-                        if local_pos:
-                            stop_price = local_pos.get("stop_price")
-                            target_price = local_pos.get("target_price")
-
-                            # Get configured stop loss percentage
-                            stop_loss_pct = self._get_stop_loss_pct()
-                            take_profit_pct = self._get_take_profit_pct()
-
-                            print("\n📍 Exit Levels:")
-                            if stop_price:
-                                distance = ((current_price - stop_price) / current_price) * 100
-                                print(
-                                    f"   🔴 Stop Loss: ${stop_price:.2f} (-{stop_loss_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
-                                )
-                            else:
-                                print("   🔴 Stop Loss: Not set")
-
-                            if target_price:
-                                distance = ((target_price - current_price) / current_price) * 100
-                                print(
-                                    f"   🟢 Take Profit: ${target_price:.2f} (+{take_profit_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
-                                )
-                            else:
-                                print("   🟢 Take Profit: Not set")
-
-                            # Note about calculated stops (Alpaca API limitation)
-                            if stop_price and not target_price:
-                                print(
-                                    "\n   ℹ️  Note: Stop calculated from entry (Alpaca hides bracket order legs)"
-                                )
-                                print("      Verify stop order exists on Alpaca dashboard")
-                        else:
-                            print(MSG.NO_TARGETS(symbol=symbol))
-                else:
-                    print(MSG.NO_POSITION(ticker=specific_ticker))
-
-            elif positions:
-                print(MSG.POSITIONS_HEADER(count=len(positions)))
-                for pos in positions:
-                    qty = int(pos.get("qty", 0))
-                    symbol = pos.get("symbol", "UNKNOWN")
-                    avg_entry = float(pos.get("avg_entry_price", 0))
-
-                    # Calculate current price from market value (Alpaca doesn't provide current_price directly)
-                    market_value = float(pos.get("market_value", 0))
-                    current_price = (market_value / qty) if qty > 0 else 0.0
-
-                    # Use cost_basis as fallback if avg_entry_price is 0
-                    if avg_entry == 0.0:
-                        cost_basis = float(pos.get("cost_basis", 0))
-                        avg_entry = (cost_basis / qty) if qty > 0 else 0.0
-
-                    unrealized_pl = float(pos.get("unrealized_pl", 0))
-                    unrealized_plpc = float(pos.get("unrealized_plpc", 0)) * 100
-
-                    pl_emoji = get_pl_emoji(unrealized_pl)
-                    print(
-                        MSG.POSITION_ITEM(
-                            emoji=pl_emoji,
-                            symbol=symbol,
-                            qty=qty,
-                            entry=avg_entry,
-                            current=current_price,
-                            value=market_value,
-                            pl=unrealized_pl,
-                            pl_pct=unrealized_plpc,
-                        )
-                    )
-            else:
-                print(MSG.NO_POSITIONS)
-
-        except Exception as e:
-            print(MSG.ERROR_CHECKING_PORTFOLIO(error=e))
-            logger.error(f"Portfolio error: {e}", exc_info=True)
-
-    async def _handle_orders_request(self, user_input: str):
+    async def _handle_orders_request(self, _user_input: str):
         """
         Handle order status request - shows pending/open orders.
-        Groups orders by symbol and enriches with local state data.
-
-        Issue #371: Displays orders with visual hierarchy:
-        - Entry orders first
-        - Profit targets (PT1, PT2) by price
-        - Stop-loss orders last
-        - Visual connectors and emojis for quick scanning
-
-        Args:
-            user_input: User's natural language input
+        Issue #459: Refactored to use show_orders() from order_tools.
         """
-        print(MSG.CHECKING_ORDERS)
-
-        try:
-            if not self.account_monitor:
-                print(MSG.ORDERS_NOT_INITIALIZED)
-                return
-
-            # Get open orders from broker
-            orders = self.account_monitor.get_orders(status="open")
-
-            # Load local state to get stop/target prices
-            local_state = self._load_local_state()
-
-            if not orders and not local_state.get("positions"):
-                print(MSG.NO_ORDERS)
-                return
-
-            # Group orders by symbol
-            grouped_orders = self._group_orders_by_symbol(orders, local_state)
-
-            if not grouped_orders:
-                print(MSG.NO_ORDERS)
-                return
-
-            # Display header with total count
-            total_count = sum(
-                len(group["api_orders"]) + len(group["local_orders"])
-                for group in grouped_orders.values()
-            )
-            print(MSG.ORDERS_HEADER(count=total_count))
-
-            # Use new hierarchical formatting
-            has_local_orders = False
-            for idx, (symbol, group) in enumerate(grouped_orders.items()):
-                direction = group["direction"]
-                all_orders = group["api_orders"] + group["local_orders"]
-
-                if not all_orders:
-                    continue
-
-                # Position header with box drawing
-                if idx == 0:
-                    header_prefix = "┌─"
-                else:
-                    print()  # Blank line between positions
-                    header_prefix = "┌─"
-
-                position_header = (
-                    f"{header_prefix} ${symbol} Position ({len(all_orders)} orders) - {direction}"
-                )
-                print(position_header)
-
-                # Separate and sort orders
-                entry_orders = []
-                profit_targets = []
-                stop_loss_orders = []
-                other_orders = []
-
-                for order in all_orders:
-                    label = order.get("label", "")
-                    order_type = order.get("order_type", "").lower()
-
-                    # Categorize orders
-                    if label == "PT" or (
-                        order_type == "limit" and order.get("side") in ["sell", "buy"]
-                    ):
-                        profit_targets.append(order)
-                    elif label == "SL" or order_type == "stop":
-                        stop_loss_orders.append(order)
-                    elif order_type == "market" or (not label and not order_type):
-                        entry_orders.append(order)
-                    else:
-                        other_orders.append(order)
-
-                    # Check if local order for footer
-                    if order.get("id", "").startswith("local"):
-                        has_local_orders = True
-
-                # Sort profit targets by price (ascending for LONG, descending for SHORT)
-                if direction == "LONG":
-                    profit_targets.sort(key=lambda o: float(o.get("price", 0)))
-                else:
-                    profit_targets.sort(key=lambda o: float(o.get("price", 0)), reverse=True)
-
-                # Display entry orders
-                for i, order in enumerate(entry_orders):
-                    is_last = (
-                        i == len(entry_orders) - 1
-                        and not profit_targets
-                        and not stop_loss_orders
-                        and not other_orders
-                    )
-                    connector = "└─" if is_last else "├─"
-                    self._print_hierarchical_order(order, connector, is_entry=True)
-
-                # Display profit targets with numbering
-                for i, order in enumerate(profit_targets):
-                    is_last = (
-                        i == len(profit_targets) - 1 and not stop_loss_orders and not other_orders
-                    )
-                    connector = "└─" if is_last else "├─"
-                    pt_num = i + 1
-                    self._print_hierarchical_order(order, connector, pt_label=f"PT{pt_num}")
-
-                # Display stop-loss
-                for i, order in enumerate(stop_loss_orders):
-                    is_last = i == len(stop_loss_orders) - 1 and not other_orders
-                    connector = "└─" if is_last else "├─"
-                    self._print_hierarchical_order(order, connector, is_stop_loss=True)
-
-                # Display other orders
-                for i, order in enumerate(other_orders):
-                    is_last = i == len(other_orders) - 1
-                    connector = "└─" if is_last else "├─"
-                    self._print_hierarchical_order(order, connector)
-
-            # Footer with explanation
-            if has_local_orders:
-                print("\n" + "─" * 60)
-                print("* Orders marked with * were sent to broker and logged locally.")
-                print("  Please verify on broker portal for confirmation.")
-
-        except Exception as e:
-            print(MSG.ERROR_CHECKING_ORDERS(error=e))
-            logger.error(f"Orders error: {e}", exc_info=True)
-
-    def _load_local_state(self) -> dict:
-        """Load local state from cost_efficient_positions.json"""
-
-        state_file = "state/cost_efficient_positions.json"
-        try:
-            if os.path.exists(state_file):
-                with open(state_file, "r") as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.warning(f"Could not load local state: {e}")
-        return {"positions": {}}
-
-    def _group_orders_by_symbol(self, api_orders: list, local_state: dict) -> dict:
-        """
-        Group orders by symbol and enrich with local state data.
-
-        Returns:
-            Dict with structure: {symbol: {
-                'direction': 'LONG/SHORT',
-                'api_orders': [...],
-                'local_orders': [...]
-            }}
-        """
-        grouped = {}
-
-        # Process API orders
-        for order in api_orders:
-            symbol = order.get("symbol", "UNKNOWN")
-            side = self._extract_value(order.get("side"))
-
-            if symbol not in grouped:
-                grouped[symbol] = {
-                    "direction": "LONG" if side == "buy" else "SHORT",
-                    "api_orders": [],
-                    "local_orders": [],
-                }
-
-            # Normalize order data
-            normalized = self._normalize_order(order)
-            grouped[symbol]["api_orders"].append(normalized)
-
-        # Add local state stop/target orders (not visible in API due to "held" status)
-        positions = local_state.get("positions", {})
-        for symbol, position_data in positions.items():
-            if symbol not in grouped:
-                # Position exists but no API orders - might be entry filled, exits pending
-                grouped[symbol] = {
-                    "direction": "LONG",  # Default assumption
-                    "api_orders": [],
-                    "local_orders": [],
-                }
-
-            # Add stop order from local state if exists
-            if position_data.get("stop_price"):
-                stop_order = {
-                    "symbol": symbol,
-                    "side": "sell" if grouped[symbol]["direction"] == "LONG" else "buy",
-                    "qty": position_data.get("quantity", 0),
-                    "price": position_data["stop_price"],
-                    "order_type": "stop",
-                    "label": "SL",
-                    "id": "local-stop",
-                }
-                grouped[symbol]["local_orders"].append(stop_order)
-
-        return grouped
-
-    def _normalize_order(self, order: dict) -> dict:
-        """Normalize order data from API"""
-        side = self._extract_value(order.get("side"))
-        order_type = self._extract_value(order.get("order_type"))
-        status = self._extract_value(order.get("status"))
-
-        # Determine price based on order type
-        if order_type == "limit":
-            price = float(order.get("limit_price", 0))
-        elif order_type == "stop":
-            price = float(order.get("stop_price", 0))
-        elif order_type == "stop_limit":
-            price = float(order.get("stop_price", 0))
-        else:
-            price = None  # Market order
-
-        # Determine label (PT/SL/Entry)
-        label = None
-        if order_type == "stop":
-            label = "SL"
-        elif order_type == "limit" and side == "sell":
-            label = "PT"
-
-        return {
-            "symbol": order.get("symbol"),
-            "side": side,
-            "qty": order.get("qty", 0),
-            "price": price,
-            "order_type": order_type,
-            "status": status,
-            "time_in_force": self._extract_value(order.get("time_in_force", "")),
-            "id": order.get("id", "N/A"),
-            "label": label,
-        }
-
-    def _extract_value(self, field) -> str:
-        """Extract value from enum or return as string"""
-        if hasattr(field, "value"):
-            return field.value
-        return str(field).lower() if field else ""
-
-    def _print_hierarchical_order(
-        self,
-        order: dict,
-        connector: str,
-        is_entry: bool = False,
-        is_stop_loss: bool = False,
-        pt_label: str = None,
-    ):
-        """
-        Print a single order with hierarchical formatting.
-
-        Args:
-            order: Order data dict
-            connector: Box drawing connector (├─, └─)
-            is_entry: Whether this is an entry order
-            is_stop_loss: Whether this is a stop-loss order
-            pt_label: Label for profit target (e.g., "PT1", "PT2")
-        """
-        side = order.get("side", "?").lower()
-        qty = order.get("qty", 0)
-        price = order.get("price")
-        status = order.get("status", "").lower()
-        order_id = order.get("id", "N/A")
-
-        # Format price
-        if price:
-            price_str = f"${price:.2f}"
-        else:
-            price_str = "market"
-
-        # Emoji selection
-        if is_entry:
-            emoji = "🟢" if side == "buy" else "⚪"
-            label = ""
-        elif is_stop_loss:
-            emoji = "🛑"
-            label = "SL: "
-        elif pt_label:
-            emoji = "🎯"
-            label = f"{pt_label}: "
-        else:
-            emoji = "📌"
-            label = ""
-
-        # Format: │ [connector] [emoji] [label] [side] [qty] @ [price] [*]
-        # * indicates local order (not yet confirmed by broker)
-        is_local = order_id.startswith("local-")
-        local_marker = " *" if is_local else ""
-
-        order_line = f"│ {connector} {emoji} {label}{side} {qty} @ {price_str}{local_marker}"
-        print(order_line)
-
-    async def _handle_cancel_request(self, user_input: str):
-        """
-        Handle order cancellation request.
-        Issue #360: Add order cancellation functionality to CLI
-
-        Supports:
-        - cancel all orders
-        - cancel order <id>
-        - cancel <symbol> orders
-
-        Args:
-            user_input: User's natural language input
-        """
-        input_lower = user_input.lower()
-
-        try:
-            # Get open orders from broker
-            if not self.account_monitor:
-                print("❌ Order management not initialized")
-                return
-
-            orders = self.account_monitor.get_orders(status="open")
-
-            if not orders:
-                print("ℹ️  No open orders to cancel")
-                return
-
-            # Determine what to cancel
-            if "all" in input_lower:
-                # Cancel all orders
-                await self._cancel_all_orders(orders)
-
-            elif any(char.isdigit() for char in user_input):
-                # Extract order ID (contains digits)
-
-                id_match = re.search(r"[a-f0-9-]{8,}", user_input, re.IGNORECASE)
-                if id_match:
-                    order_id = id_match.group(0)
-                    await self._cancel_order_by_id(order_id, orders)
-                else:
-                    print("❌ Could not find order ID in input")
-
-            else:
-                # Try to extract symbol
-
-                symbol_match = re.search(r"\b([A-Z]{1,5})\b", user_input.upper())
-                if symbol_match:
-                    symbol = symbol_match.group(1)
-                    await self._cancel_orders_by_symbol(symbol, orders)
-                else:
-                    print("❌ Could not determine what to cancel")
-                    print(
-                        "ℹ️  Usage: 'cancel all orders' | 'cancel order <id>' | 'cancel <SYMBOL> orders'"
-                    )
-
-        except Exception as e:
-            print(f"❌ Error cancelling orders: {e}")
-            logger.error(f"Cancel error: {e}", exc_info=True)
-
-    async def _cancel_all_orders(self, orders: list):
-        """Cancel all open orders with confirmation."""
-        print(f"\n📋 Found {len(orders)} open order(s):")
-        for idx, order in enumerate(orders, 1):
-            symbol = order.get("symbol", "?")
-            side = order.get("side", "?").upper()
-            qty = order.get("qty", "?")
-            order_id = order.get("id", "?")
-            print(f"   {idx}. {side} {qty} {symbol} (ID: {order_id[:8]}...)")
-
-        # Confirmation
-        print(f"\n⚠️  Cancel all {len(orders)} orders? [yes/no]: ", end="")
-        confirm = input().strip().lower()
-
-        if confirm != "yes":
-            print("❌ Cancelled - no changes made")
-            return
-
-        # Cancel orders via executor
-        print("\n🔄 Cancelling orders...")
-        executor = self.orchestrator.executor
-
-        cancelled_count = 0
-        for order in orders:
-            order_id = order.get("id")
-            symbol = order.get("symbol")
-            try:
-                success = executor.cancel_order(order_id)
-                if success:
-                    print(f"✅ Cancelled {order_id[:8]}... ({symbol})")
-                    cancelled_count += 1
-                else:
-                    print(f"❌ Failed to cancel {order_id[:8]}... ({symbol})")
-            except Exception as e:
-                print(f"❌ Error cancelling {order_id[:8]}...: {e}")
-
-        print(f"\n✅ Cancelled {cancelled_count}/{len(orders)} orders successfully")
-
-    async def _cancel_order_by_id(self, order_id: str, orders: list):
-        """Cancel specific order by ID."""
-        # Find matching order (partial ID match)
-        matching = [o for o in orders if o.get("id", "").startswith(order_id)]
-
-        if not matching:
-            print(f"❌ Order '{order_id}' not found")
-            return
-
-        if len(matching) > 1:
-            print(f"❌ Ambiguous: '{order_id}' matches multiple orders")
-            return
-
-        order = matching[0]
-        full_order_id = order.get("id")
-        symbol = order.get("symbol")
-        side = order.get("side", "?").upper()
-        qty = order.get("qty", "?")
-
-        print("\n📋 Order to cancel:")
-        print(f"   {side} {qty} {symbol} (ID: {full_order_id[:8]}...)")
-        print("\nCancel this order? [yes/no]: ", end="")
-        confirm = input().strip().lower()
-
-        if confirm != "yes":
-            print("❌ Cancelled - no changes made")
-            return
-
-        # Cancel via executor
-        print("\n🔄 Cancelling order...")
-        executor = self.orchestrator.executor
-
-        try:
-            success = executor.cancel_order(full_order_id)
-            if success:
-                print(f"✅ Cancelled order {full_order_id[:8]}... ({qty} {symbol})")
-            else:
-                print(f"❌ Failed to cancel order {full_order_id[:8]}...")
-        except Exception as e:
-            print(f"❌ Error cancelling order: {e}")
-            logger.error(f"Cancel order error: {e}", exc_info=True)
-
-    async def _cancel_orders_by_symbol(self, symbol: str, orders: list):
-        """Cancel all orders for a specific symbol."""
-        # Filter orders by symbol
-        symbol_orders = [o for o in orders if o.get("symbol", "").upper() == symbol.upper()]
-
-        if not symbol_orders:
-            print(f"ℹ️  No open orders found for {symbol}")
-            return
-
-        print(f"\n📋 Found {len(symbol_orders)} {symbol} order(s):")
-        for idx, order in enumerate(symbol_orders, 1):
-            side = order.get("side", "?").upper()
-            qty = order.get("qty", "?")
-            order_id = order.get("id", "?")
-            print(f"   {idx}. {side} {qty} (ID: {order_id[:8]}...)")
-
-        # Confirmation
-        count_str = f"all {len(symbol_orders)}" if len(symbol_orders) > 1 else "this"
-        print(f"\nCancel {count_str} {symbol} order(s)? [yes/no]: ", end="")
-        confirm = input().strip().lower()
-
-        if confirm != "yes":
-            print("❌ Cancelled - no changes made")
-            return
-
-        # Cancel orders via executor
-        print("\n🔄 Cancelling orders...")
-        executor = self.orchestrator.executor
-
-        cancelled_count = 0
-        for order in symbol_orders:
-            order_id = order.get("id")
-            try:
-                success = executor.cancel_order(order_id)
-                if success:
-                    print(f"✅ Cancelled {order_id[:8]}... ({symbol})")
-                    cancelled_count += 1
-                else:
-                    print(f"❌ Failed to cancel {order_id[:8]}...")
-            except Exception as e:
-                print(f"❌ Error cancelling {order_id[:8]}...: {e}")
-
-        print(f"\n✅ Cancelled {cancelled_count}/{len(symbol_orders)} {symbol} orders successfully")
+        output = show_orders()
+        print(output)
 
     async def _handle_position_orders(self, user_input: str):
         """
-        Show detailed orders for specific position (stops, targets, entry).
-        Issue #348: Enhanced order details when asking about stops/targets
-
-        Supports queries like:
-        - "what is my stop level on META"
-        - "show orders for AAPL"
-        - "target price on SPY"
-
-        Args:
-            user_input: User's natural language input
+        Show detailed orders for specific position.
+        Issue #459: Refactored to use show_position_orders() from order_tools.
         """
         # Extract ticker from query
-        ticker = self._extract_ticker_from_query(user_input)
-
+        ticker = extract_ticker_from_query(user_input)
         if not ticker:
             print("❌ Could not identify symbol in query")
             print("ℹ️  Try: 'show orders for AAPL' or 'stop level on META'")
             return
+        output = show_position_orders(ticker)
+        print(output)
 
-        try:
-            if not self.account_monitor:
-                print(MSG.PORTFOLIO_NOT_INITIALIZED)
+    async def _handle_cancel_request(self, user_input: str):
+        """
+        Handle order cancellation requests.
+
+        Issue #360: Order cancellation functionality.
+        Issue #436: Restored and refactored to use order_tools functions.
+
+        Supports:
+        - cancel all orders
+        - cancel order <ID>
+        - cancel orders for <SYMBOL>
+        """
+        input_lower = user_input.lower()
+
+        # Cancel all orders
+        if "all" in input_lower:
+            print("⚠️  Cancelling ALL open orders...")
+            result = cancel_all_orders()
+
+            if result["status"] == "error":
+                print(f"❌ Error: {result.get('error', 'Unknown')}")
                 return
 
-            # Get all orders for this ticker (open and filled recently)
-            all_orders = self.account_monitor.get_orders(status="all")
-            ticker_orders = [o for o in all_orders if o.get("symbol", "").upper() == ticker.upper()]
+            cancelled = result.get("cancelled_count", 0)
+            failed = result.get("failed_count", 0)
 
-            # Also check local state for stop/target info
-            local_state = self._load_local_state()
-            position_data = local_state.get("positions", {}).get(ticker)
+            if cancelled == 0 and failed == 0:
+                print("ℹ️  No open orders to cancel")
+            else:
+                print(f"✅ Cancelled {cancelled} order(s)")
+                if failed > 0:
+                    print(f"⚠️  Failed to cancel {failed} order(s)")
+            return
 
-            if not ticker_orders and not position_data:
-                print(f"❌ No orders or positions found for {ticker}")
+        # Cancel by symbol
+        ticker = extract_ticker_from_query(user_input)
+        if ticker:
+            print(f"⚠️  Cancelling orders for {ticker}...")
+            result = cancel_symbol_orders(ticker)
+
+            if result["status"] == "error":
+                print(f"❌ Error: {result.get('error', 'Unknown')}")
                 return
 
-            # Display header
-            print(f"\n📋 {ticker} Orders:")
+            cancelled = result.get("cancelled_count", 0)
+            if cancelled == 0:
+                print(f"ℹ️  No open orders for {ticker}")
+            else:
+                print(f"✅ Cancelled {cancelled} order(s) for {ticker}")
+            return
 
-            # Group orders by status
-            filled_orders = [
-                o for o in ticker_orders if self._extract_value(o.get("status")) == "filled"
-            ]
-            open_orders = [
-                o
-                for o in ticker_orders
-                if self._extract_value(o.get("status"))
-                in ["new", "pending_new", "accepted", "open"]
-            ]
+        # Cancel by order ID (extract from input)
+        id_match = re.search(r"([a-f0-9-]{8,})", input_lower)
+        if id_match:
+            order_id = id_match.group(1)
+            print(f"⚠️  Cancelling order {order_id[:8]}...")
+            result = cancel_order(order_id)
 
-            # Show filled entry orders (most recent 3)
-            if filled_orders:
-                print("\n✅ ENTRY (Filled)")
-                for order in filled_orders[:3]:  # Limit to 3 most recent
-                    side = self._extract_value(order.get("side")).upper()
-                    qty = order.get("qty", 0)
-                    filled_price = order.get("filled_avg_price", 0)
-                    filled_at = order.get("filled_at", "")
+            if result["status"] == "success":
+                print(f"✅ Cancelled order {result.get('order_id', order_id)[:8]}...")
+            elif result["status"] == "not_found":
+                print(f"❌ Order not found: {order_id[:8]}...")
+            elif result["status"] == "ambiguous":
+                print(f"❌ Multiple orders match '{order_id[:8]}...'")
+                print("   Please provide more of the order ID")
+            else:
+                print(f"❌ Error: {result.get('error', 'Unknown')}")
+            return
 
-                    # Format timestamp
-                    time_str = ""
-                    if filled_at:
-                        try:
-                            dt = datetime.fromisoformat(filled_at.replace("Z", "+00:00"))
-                            time_str = dt.strftime("%Y-%m-%d %H:%M")
-                        except Exception:  # noqa: E722
-                            time_str = filled_at[:16]
-
-                    print(f"   {side} {qty} shares @ ${filled_price:.2f}")
-                    if time_str:
-                        print(f"   Filled: {time_str}")
-
-            # Calculate entry price for reference (from filled orders or position data)
-            entry_price = None
-            if filled_orders:
-                entry_price = filled_orders[0].get("filled_avg_price")
-            elif position_data:
-                entry_price = position_data.get("entry_price", 0)
-
-            # Show open stop/target orders from API
-            stop_shown = False
-            target_shown = False
-
-            if open_orders:
-                print("\n🟡 OPEN Exit Orders")
-                for order in open_orders:
-                    order_type = self._extract_value(order.get("order_type"))
-                    order_id = order.get("id", "N/A")
-                    status = self._extract_value(order.get("status"))
-
-                    if order_type == "stop":
-                        stop_price = float(order.get("stop_price", 0))
-                        pct_from_entry = ""
-                        if entry_price and stop_price:
-                            pct = ((stop_price - entry_price) / entry_price) * 100
-                            pct_from_entry = f" ({pct:+.1f}% from entry)"
-
-                        print(f"   🔴 STOP LOSS: ${stop_price:.2f}{pct_from_entry}")
-                        print(f"      Order ID: {order_id[:12]}...")
-                        print(f"      Status: {status.upper()}")
-                        stop_shown = True
-
-                    elif order_type == "limit":
-                        limit_price = float(order.get("limit_price", 0))
-                        pct_from_entry = ""
-                        if entry_price and limit_price:
-                            pct = ((limit_price - entry_price) / entry_price) * 100
-                            pct_from_entry = f" ({pct:+.1f}% from entry)"
-
-                        print(f"   🟢 TAKE PROFIT: ${limit_price:.2f}{pct_from_entry}")
-                        print(f"      Order ID: {order_id[:12]}...")
-                        print(f"      Status: {status.upper()}")
-                        target_shown = True
-
-            # Supplement with local state data (Alpaca often hides bracket legs)
-            if position_data:
-                stop_price = position_data.get("stop_price")
-                target_price = position_data.get("target_price")
-
-                if stop_price and not stop_shown:
-                    print("\n🟡 OPEN Exit Orders (from local state)")
-                    pct_from_entry = ""
-                    if entry_price and stop_price:
-                        pct = ((stop_price - entry_price) / entry_price) * 100
-                        pct_from_entry = f" ({pct:+.1f}% from entry)"
-
-                    print(f"   🔴 STOP LOSS: ${stop_price:.2f}{pct_from_entry}")
-                    print("      Status: PENDING (bracket order)")
-                    print("      * Logged locally - verify on broker dashboard")
-
-                if target_price and not target_shown:
-                    if not stop_shown and not stop_price:
-                        print("\n🟡 OPEN Exit Orders (from local state)")
-
-                    pct_from_entry = ""
-                    if entry_price and target_price:
-                        pct = ((target_price - entry_price) / entry_price) * 100
-                        pct_from_entry = f" ({pct:+.1f}% from entry)"
-
-                    print(f"   🟢 TAKE PROFIT: ${target_price:.2f}{pct_from_entry}")
-                    print("      Status: PENDING (bracket order)")
-                    print("      * Logged locally - verify on broker dashboard")
-
-            # Show current price and distance to exits
-            try:
-                positions = self.account_monitor.get_positions()
-                current_position = next(
-                    (p for p in positions if p.get("symbol") == ticker.upper()), None
-                )
-
-                if current_position:
-                    current_price = float(current_position.get("current_price", 0))
-                    unrealized_pl_pct = float(current_position.get("unrealized_plpc", 0)) * 100
-
-                    print(
-                        f"\n📊 Current: {ticker} @ ${current_price:.2f} ({unrealized_pl_pct:+.2f}%)"
-                    )
-
-                    # Calculate distance to stop/target
-                    stop_price = position_data.get("stop_price") if position_data else None
-                    target_price = position_data.get("target_price") if position_data else None
-
-                    # Try to get from open orders if not in local state
-                    for order in open_orders:
-                        order_type = self._extract_value(order.get("order_type"))
-                        if order_type == "stop" and not stop_price:
-                            stop_price = float(order.get("stop_price", 0))
-                        elif order_type == "limit" and not target_price:
-                            target_price = float(order.get("limit_price", 0))
-
-                    if stop_price:
-                        dist_to_stop = ((stop_price - current_price) / current_price) * 100
-                        print(f"   Distance to stop: {dist_to_stop:+.1f}%")
-
-                    if target_price:
-                        dist_to_target = ((target_price - current_price) / current_price) * 100
-                        print(f"   Distance to target: {dist_to_target:+.1f}%")
-
-            except Exception as e:
-                logger.debug(f"Could not fetch current price for {ticker}: {e}")
-
-        except Exception as e:
-            print(f"❌ Error fetching orders for {ticker}: {e}")
-            logger.error(f"Position orders error: {e}", exc_info=True)
-
-    def _extract_ticker_from_query(self, user_input: str) -> str:
-        """
-        Extract ticker symbol from user query.
-
-        Handles queries like:
-        - "stop level on META"
-        - "show orders for AAPL"
-        - "what's my target price on spy"
-
-        Returns:
-            Ticker symbol (uppercase) or empty string if not found
-        """
-
-        # Try regex pattern for ticker symbols (1-5 uppercase letters)
-        # Look for words that are all caps or look like tickers
-        words = user_input.upper().split()
-
-        # Common prepositions that come before tickers
-        prepositions = ["ON", "FOR", "IN", "OF", "WITH"]
-
-        for i, word in enumerate(words):
-            # Check if previous word was a preposition
-            if i > 0 and words[i - 1] in prepositions:
-                # Clean word (remove punctuation)
-                clean_word = re.sub(r"[^A-Z]", "", word)
-                if clean_word.isalpha() and 1 <= len(clean_word) <= 5:
-                    return clean_word
-
-        # Fallback: look for any word that's all caps and 1-5 letters
-        for word in words:
-            clean_word = re.sub(r"[^A-Z]", "", word)
-            if clean_word.isalpha() and 1 <= len(clean_word) <= 5:
-                # Avoid common words
-                if clean_word not in [
-                    "ON",
-                    "FOR",
-                    "IN",
-                    "OF",
-                    "WITH",
-                    "THE",
-                    "A",
-                    "AN",
-                    "MY",
-                    "IS",
-                    "ARE",
-                ]:
-                    return clean_word
-
-        return ""
+        # No valid target found
+        print("❌ Could not determine what to cancel")
+        print("ℹ️  Usage:")
+        print("   • cancel all orders")
+        print("   • cancel orders for AAPL")
+        print("   • cancel order <order-id>")
 
     async def _handle_execution_mode_request(self, user_input: str):
         """
         Handle execution mode view/change requests.
-        Issue #332: Add execution mode switching commands
-
-        Supports:
-        - show execution mode
-        - set execution mode {confirm|auto|paper|disabled}
-        - execution-mode confirm/auto/paper/disabled
-
-        Args:
-            user_input: User's natural language input
+        Issue #332/#459: Uses execution_mode_tools functions.
         """
-
         input_lower = user_input.lower()
 
         # Determine if this is a "show" or "set" request
@@ -2761,18 +1469,10 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         is_set = any(word in input_lower for word in ["set", "change", "switch"])
 
         if is_show and not is_set:
-            # Show current execution mode
-            current_mode = self.orchestrator.execution_mode
-            print(f"\n📋 Current Execution Mode: {current_mode.value.upper()}")
-            print("\nMode Descriptions:")
-            print("  • CONFIRM - Requires human approval for each trade")
-            print("  • AUTO    - Executes trades automatically (within risk limits)")
-            print("  • PAPER   - Paper trading only, no real money")
-            print("  • DISABLED - Trading completely disabled")
-            print("\nTo change mode: set execution mode {confirm|auto|paper|disabled}")
+            print(show_execution_mode())
             return
 
-        # Try to extract target mode from input
+        # Extract target mode from input
         target_mode = None
         for mode in ["confirm", "auto", "paper", "disabled"]:
             if mode in input_lower:
@@ -2780,63 +1480,29 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
                 break
 
         if not target_mode:
-            print("❌ Could not determine execution mode")
-            print("ℹ️  Usage: set execution mode {confirm|auto|paper|disabled}")
-            print("\nAvailable modes:")
-            print("  • confirm  - Human approval required")
-            print("  • auto     - Autonomous execution")
-            print("  • paper    - Paper trading only")
-            print("  • disabled - Trading disabled")
+            print(show_execution_mode())
             return
 
-        # Validate and set new mode
-        try:
-            new_mode = ExecutionMode(target_mode)
+        # Set new mode using tools
+        result = set_execution_mode(target_mode)
 
-            # Safety confirmation for AUTO mode
-            if (
-                new_mode == ExecutionMode.AUTO
-                and self.orchestrator.execution_mode != ExecutionMode.AUTO
-            ):
-                print("\n⚠️  WARNING: Switching to AUTO mode")
-                print("   This will execute trades automatically without confirmation.")
-                print("   Risk limits and position sizing will still apply.")
-                print("\nSwitch to AUTO mode? [yes/no]: ", end="")
-                confirm = input().strip().lower()
+        if result["status"] == "requires_confirmation":
+            # AUTO mode needs user confirmation
+            print(format_mode_change_result(result))
+            print("\nSwitch to AUTO mode? [yes/no]: ", end="")
+            confirm = input().strip().lower()
+            if confirm != "yes":
+                print("❌ Mode change cancelled")
+                return
+            result = confirm_and_set_auto_mode()
 
-                if confirm != "yes":
-                    print("❌ Mode change cancelled")
-                    return
-
-            # Set new mode
-            old_mode = self.orchestrator.execution_mode
-            self.orchestrator.execution_mode = new_mode
-
-            # Confirmation message
-            print(
-                f"\n✅ Execution mode changed: {old_mode.value.upper()} → {new_mode.value.upper()}"
-            )
-
-            # Mode-specific guidance
-            if new_mode == ExecutionMode.CONFIRM:
-                print("   • Trades will require your approval before execution")
-            elif new_mode == ExecutionMode.AUTO:
-                print("   • Trades will execute automatically (within risk limits)")
-                print("   • Use 'cancel all orders' to stop pending trades")
-            elif new_mode == ExecutionMode.PAPER:
-                print("   • All trades will be simulated (no real money)")
-            elif new_mode == ExecutionMode.DISABLED:
-                print("   • Trading is now disabled")
-                print("   • No trades will be executed")
-
-        except ValueError:
-            print(f"❌ Invalid execution mode: {target_mode}")
-            print("ℹ️  Valid modes: confirm, auto, paper, disabled")
+        print(format_mode_change_result(result))
 
     async def _handle_trading_mode_request(self, user_input: str):
         """
         Handle trading mode view/change requests.
         Issue #400: Trading Modes Configuration System
+        Issue #459: Refactored to use mode_tools functions.
 
         Supports:
         - show mode / show trading mode / current mode
@@ -2846,35 +1512,21 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         Args:
             user_input: User's natural language input
         """
-        from core.trading_modes import TradingMode, get_mode_manager
-
         input_lower = user_input.lower()
-        mode_manager = get_mode_manager()
 
         # Determine if this is a "show" or "set" request
         is_show = any(word in input_lower for word in ["show", "what", "current", "get", "display"])
         is_set = any(word in input_lower for word in ["set", "change", "switch", "use"])
-
-        # Check if user typed a mode name directly (e.g., just "conservative")
         mode_name_only = input_lower.strip() in ["conservative", "moderate", "aggressive"]
 
+        # Check for comparison request
+        if "compare" in input_lower or "comparison" in input_lower:
+            print(show_mode_comparison())
+            return
+
         if (is_show and not is_set) or (not is_show and not is_set and not mode_name_only):
-            # Show current trading mode
-            current = mode_manager.current_mode
-            params = mode_manager.get_parameters()
-
-            print(f"\n📊 Current Trading Mode: {current.value.upper()}")
-            print(f"\n{params.description}")
-            print("\nRisk Parameters:")
-            print(f"  • Position Size: {params.max_position_pct * 100:.1f}% of portfolio")
-            print(f"  • Stop Loss: {params.stop_loss * 100:.1f}%")
-            print(f"  • Take Profit: {params.take_profit * 100:.1f}%")
-            print(f"  • Max Positions: {params.max_positions}")
-
-            print("\nAvailable Modes:")
-            print("  • conservative - Lower risk, smaller positions")
-            print("  • moderate     - Balanced risk/reward")
-            print("  • aggressive   - Higher risk, larger positions")
+            # Show current trading mode using mode_tools
+            print(show_current_mode())
             print("\nTo change mode: set mode {conservative|moderate|aggressive}")
             return
 
@@ -2890,29 +1542,9 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             print("ℹ️  Usage: set mode {conservative|moderate|aggressive}")
             return
 
-        # Set new mode
-        try:
-            new_mode = TradingMode.from_string(target_mode_str)
-            old_mode = mode_manager.current_mode
-
-            if new_mode == old_mode:
-                print(f"ℹ️  Already in {new_mode.value.upper()} mode")
-                return
-
-            mode_manager.set_mode(new_mode)
-            new_params = mode_manager.get_parameters(new_mode)
-
-            print(f"\n✅ Trading mode changed: {old_mode.value.upper()} → {new_mode.value.upper()}")
-            print(f"\n{new_params.description}")
-            print("\nNew Risk Parameters:")
-            print(f"  • Position Size: {new_params.max_position_pct * 100:.1f}% of portfolio")
-            print(f"  • Stop Loss: {new_params.stop_loss * 100:.1f}%")
-            print(f"  • Take Profit: {new_params.take_profit * 100:.1f}%")
-            print(f"  • Max Positions: {new_params.max_positions}")
-
-        except ValueError as e:
-            print(f"❌ Invalid trading mode: {target_mode_str}")
-            print(f"ℹ️  Error: {e}")
+        # Set new mode using mode_tools
+        result = set_mode(target_mode_str)
+        print(result)
 
     async def _handle_account_request(self, user_input: str):
         """
@@ -3020,6 +1652,6 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
             safe_print(output)
 
         else:
-            # Default: show current timeframe
-            output = tf_commands.show_current_timeframe()
+            # Default: show full list with current highlighted (Issue #470)
+            output = tf_commands.list_timeframes(verbose=True)
             safe_print(output)

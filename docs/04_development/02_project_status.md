@@ -172,6 +172,16 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **In Progress**:
 
+- [x] **CLI FunctionTool Infrastructure** (#433, #455, #456) - ✅ PHASE 1 COMPLETE (Dec 2025)
+  - ✅ Tool registry with category-based organization
+  - ✅ Auto-discovery mechanism for tool modules
+  - ✅ Mode tools: 6 tools wrapping TradingModeManager
+  - ✅ Timeframe tools: 6 tools wrapping TimeframeCommands
+  - 🔜 Phase 2: Extract remaining CLI commands (account, portfolio, order, scheduler, alert)
+  - 🔜 Phase 3: Update cli_session.py to use tools
+  - Branch: `feature/cli-tools-455-456`
+  - Goal: Refactor 3000-line cli_session.py into modular, testable, agent-compatible tools
+
 - [ ] **Execution Mode Switching** (#332)
   - `/toggle` command for quick mode switching
   - `set execution-mode {confirm|auto|paper|disabled}`
@@ -1047,3 +1057,148 @@ python -m pytest tests/unit/ -v --no-cov
 ---
 
 *This document tracks project status, roadmap, and development priorities. Updated monthly or after major milestones.*
+
+---
+
+### December 2025 - Code Quality Refactoring Sprint (Dec 2, 2025)
+
+**EPIC #436 - Code Quality Refactoring** (✅ PHASE 1 COMPLETE)
+
+Massive refactoring initiative to improve code organization, testability, and maintainability.
+
+**Issues Completed**:
+
+| Issue | Description | Reduction | PR |
+|-------|-------------|-----------|-----|
+| #437 | Extract validators from alpaca_trading_client.py | New modules | #448 |
+| #438 | Split sqlite_cache.py by domain | 65% (1386→474 lines) | #448 |
+| #440 | Extract scheduler_cli.py components | 69% (984→307 lines) | #449 |
+| #441 | Extract validators from execution_manager | 20% (985→785 lines) | #450 |
+| #442 | Extract state/reporter from orchestrator | 24% (958→728 lines) | #451 |
+| #425 | In-house backtesting framework | New framework (~650 lines) | #452 |
+
+**New Modules Created**:
+
+1. **Trading Validators** (`src/trading/validators/`):
+   - `order_validator.py` - Order validation with provider injection
+   - `enum_mappers.py` - Centralized Alpaca enum mapping
+   - `error_handling.py` - API error extraction and formatting
+   - `response_parsers.py` - Account/Order/Position response parsing
+   - `bracket_validator.py` - Bracket order error detection
+
+2. **Cache Domain Separation** (`src/data_sources/cache/`):
+   - `base_cache.py` - Base SQLite cache with shared logic
+   - `ohlcv_cache.py` - Focused OHLCV market data cache
+
+3. **Scheduler CLI** (`src/cli/scheduler/`):
+   - `message_loader.py` - YAML message loading
+   - `daemon_manager.py` - Cross-platform daemon management
+   - `config_editor.py` - Interactive config editing
+   - `monitor.py` - Status/history/logs display
+   - `setup_wizard.py` - First-time setup flow
+
+4. **Trading Orchestrator** (`src/autogen_agents/`):
+   - `workflow_state_manager.py` - State persistence/recovery
+   - `workflow_reporter.py` - Report generation
+
+5. **Backtesting Framework** (`src/backtesting/`):
+   - `backtest_engine.py` - Main engine compatible with any signal generator
+   - `portfolio.py` - Position/cash tracking with commission modeling
+**Phase 1 Refactoring Complete** - All 4 files refactored:
+
+- ✅ #437 - alpaca_trading_client.py (validators extracted)
+- ✅ #438 - sqlite_cache.py (65% reduction)
+- ✅ #439 - trading_cycle.py (59% reduction, 4 components extracted)
+- 🚧 #433 - cli_session.py (FunctionTool architecture, in progress)
+
+**Issue #439 Results** (PR #454, merged Dec 2):
+
+- trading_cycle.py: 1248 → 512 lines (59% reduction)
+- Created 4 new components:
+  - `local_state_manager.py` (140 lines) - JSON state persistence
+  - `broker_state_cache.py` (278 lines) - TTL-based caching
+  - `state_reconciler.py` (475 lines) - State reconciliation logic
+  - `report_generator.py` (251 lines) - Report formatting
+- Maintained full backward compatibility via property accessors
+
+**Issue #433 Progress** (cli_session.py - 3024 lines):
+
+- Broken into 5 sequential sub-issues (#455-459)
+- ✅ #455 - Tool infrastructure (Phase 1A complete, PR #463)
+- ✅ #456 - Mode & timeframe tools (Phase 1B complete, PR #463)
+- ✅ #457 - Display tools (Phase 1C complete, PR #464)
+  - Created `portfolio_tools.py` (470 lines) - Portfolio/position display
+  - Created `account_display_tools.py` (177 lines) - Account management
+  - 6 FunctionTools registered in PORTFOLIO_TOOLS and ACCOUNT_TOOLS categories
+- ✅ #458 - Execution tools (Phase 1D complete, PR #465)
+  - Created `order_tools.py` - Order management (5 tools)
+  - Created `scheduler_tools.py` - Scheduler status (4 tools)
+  - Created `alert_tools.py` - Position alerts (4 tools)
+  - 13 FunctionTools registered in ORDER_TOOLS, SCHEDULER_TOOLS, and ALERT_TOOLS categories
+  - Refactored date_utils.py complexity issues
+- ✅ #459 - Final integration (Phase 1E complete, PR #466)
+  - Integrated portfolio_tools.show_portfolio() into _handle_portfolio_request
+  - Integrated mode_tools functions into_handle_trading_mode_request
+  - Reduced cli_session.py from 3024 to 2879 lines (-145 lines)
+  - Pre-existing C901 complexity issues tracked in #436
+
+**CLI Folder Reorganization** (Dec 2, 2025):
+
+Reorganized `src/cli/` folder into logical subdirectories for better maintainability:
+
+```text
+src/cli/
+├── commands/           # Natural language command handlers
+│   ├── account_commands.py
+│   ├── timeframe_commands.py
+│   └── trailing_stop_commands.py
+├── utils/              # CLI utility modules
+│   ├── ticker_completer.py
+│   ├── trading_tips.py
+│   ├── help_system.py
+│   └── decision_formatter.py
+├── scheduler/          # Scheduler subsystem (existing)
+├── tools/              # FunctionTool wrappers (existing)
+├── scheduler_cli.py    # Main scheduler interface
+└── cli_session.py      # Main CLI session (1916 lines, target <1500)
+```
+
+**Changes Made**:
+
+- Created `commands/` subdirectory for command handler modules
+- Created `utils/` subdirectory for utility modules
+- Moved 7 files to appropriate subdirectories
+- Updated all import paths across codebase
+- Removed unused `example_tool.py`
+- Updated test files with new import paths
+
+---
+
+- `api_error_translator.py` - User-friendly error messages
+
+**Critical Bugs Fixed**:
+
+- Fixed `self.client.trading` → `self.client.trading_client` (4 instances)
+- Removed duplicate `cancel_order()` method bypassing safety checks
+
+**Remaining from EPIC #436**:
+
+- ✅ #433 - cli_session.py FunctionTool architecture (COMPLETE - PRs #463-466)
+- #439 - trading_cycle.py extraction (deferred)
+
+---
+
+### December 2025 - Research Initiatives
+
+**Issue #425 - Backtesting Framework** (✅ COMPLETE)
+
+- In-house framework refactored from validated experiment_293
+- Validated: 0.856 Sharpe on AAPL 2024
+- CLI integration ready
+- Research paper structure (LaTeX) prepared
+
+**Issue #420 - TSMOM Research** (🔜 NEXT - Assigned to B)
+
+- TSMOMSignalGenerator implemented (12-month momentum)
+- Ready for 2016-2024 validation experiments
+- Research paper in progress

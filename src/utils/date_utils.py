@@ -6,6 +6,9 @@ import datetime
 import os
 import re
 
+import pandas as pd
+import pytz
+
 from src.utils.config_loader import ConfigLoader
 
 config = ConfigLoader()
@@ -24,8 +27,6 @@ def get_default_timezone() -> str:
 
 def localize_df(df, tz):
     """Ensure a DataFrame index is timezone-aware using the provided timezone."""
-    import pandas as pd
-
     if df.empty:
         return df
 
@@ -75,6 +76,46 @@ def get_default_date_range(days_back=5):
     return (start_date_str, end_date_str)
 
 
+def _is_iso_date_format(date_param):
+    """Check if date_param is in YYYY-MM-DD format."""
+    return (
+        isinstance(date_param, str)
+        and len(date_param) == 10
+        and date_param[4] == "-"
+        and date_param[7] == "-"
+    )
+
+
+def _process_relative_date(date_param, today):
+    """Process relative date formats like -7d, +30d, -2w, -1m, -1y."""
+    try:
+        sign = 1 if date_param.startswith("+") else -1
+        value = int(date_param[1:-1])
+        unit = date_param[-1].lower()
+
+        if unit == "d":
+            result_date = today + datetime.timedelta(days=sign * value)
+        elif unit == "w":
+            result_date = today + datetime.timedelta(weeks=sign * value)
+        elif unit == "m":
+            month = today.month + (sign * value)
+            year = today.year
+            while month <= 0:
+                month += 12
+                year -= 1
+            while month > 12:
+                month -= 12
+                year += 1
+            result_date = today.replace(year=year, month=month)
+        elif unit == "y":
+            result_date = today.replace(year=today.year + (sign * value))
+        else:
+            return None
+        return result_date.strftime("%Y-%m-%d")
+    except (ValueError, IndexError):
+        return None
+
+
 def process_date_param(date_param):
     """
     Process a date parameter that might be a relative date string.
@@ -96,68 +137,22 @@ def process_date_param(date_param):
     if date_param is None:
         return None
 
-    # If it's already a YYYY-MM-DD format, return as-is
-    if (
-        isinstance(date_param, str)
-        and len(date_param) == 10
-        and date_param[4] == "-"
-        and date_param[7] == "-"
-    ):
+    if _is_iso_date_format(date_param):
         return date_param
 
     today = datetime.datetime.now()
 
-    # Handle special string formats
-    if date_param == "today":
-        return today.strftime("%Y-%m-%d")
+    special_dates = {
+        "today": today.strftime("%Y-%m-%d"),
+        "yesterday": (today - datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
+        "ytd": datetime.datetime(today.year, 1, 1).strftime("%Y-%m-%d"),
+    }
+    if date_param in special_dates:
+        return special_dates[date_param]
 
-    if date_param == "yesterday":
-        yesterday = today - datetime.timedelta(days=1)
-        return yesterday.strftime("%Y-%m-%d")
-
-    if date_param == "ytd":  # Year to date
-        start_of_year = datetime.datetime(today.year, 1, 1)
-        return start_of_year.strftime("%Y-%m-%d")
-
-    # Handle relative formats like "-7d", "-4w", "-2m", "+30d"
     if isinstance(date_param, str) and (date_param.startswith("-") or date_param.startswith("+")):
-        try:
-            # Extract the numeric part and unit
-            sign = 1 if date_param.startswith("+") else -1
-            value = int(date_param[1:-1])
-            unit = date_param[-1].lower()
+        return _process_relative_date(date_param, today)
 
-            if unit == "d":  # Days
-                result_date = today + datetime.timedelta(days=sign * value)
-            elif unit == "w":  # Weeks
-                result_date = today + datetime.timedelta(weeks=sign * value)
-            elif unit == "m":  # Months (approximate)
-                # Create a date with months added/subtracted
-                month = today.month + (sign * value)
-                year = today.year
-
-                # Handle month/year rollover
-                while month <= 0:
-                    month += 12
-                    year -= 1
-                while month > 12:
-                    month -= 12
-                    year += 1
-
-                # Create new date with same day but adjusted month/year
-                result_date = today.replace(year=year, month=month)
-            elif unit == "y":  # Years
-                result_date = today.replace(year=today.year + (sign * value))
-            else:
-                # Unrecognized unit, return None
-                return None
-
-            return result_date.strftime("%Y-%m-%d")
-        except (ValueError, IndexError):
-            # If parsing fails, return None
-            return None
-
-    # If we get here, the format wasn't recognized
     return None
 
 
@@ -196,20 +191,31 @@ def get_processed_date_range(start_date=None, end_date=None, default_days_back=5
     return get_default_date_range(default_days_back)
 
 
+def _get_ohlcv_aggregation(columns):
+    """Build aggregation dict for OHLCV columns."""
+    agg_rules = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    return {c: agg_rules.get(c.lower(), "last") for c in columns}
+
+
+def _ensure_datetime_index(df):
+    """Ensure DataFrame has a DatetimeIndex."""
+    if isinstance(df.index, pd.DatetimeIndex):
+        return df
+
+    datetime_cols = ["timestamp", "date", "datetime", "Date", "Timestamp"]
+    for col in datetime_cols:
+        if col in df.columns:
+            return df.set_index(pd.to_datetime(df[col]))
+
+    raise ValueError("DataFrame must have a datetime index or column")
+
+
 def align_interval(df, interval):
     """Resample DataFrame to match the desired interval."""
-    import pandas as pd
-
     if df.empty:
         return df
 
-    if not isinstance(df.index, pd.DatetimeIndex):
-        for col in ["timestamp", "date", "datetime", "Date", "Timestamp"]:
-            if col in df.columns:
-                df = df.set_index(pd.to_datetime(df[col]))
-                break
-    if not isinstance(df.index, pd.DatetimeIndex):
-        raise ValueError("DataFrame must have a datetime index or column")
+    df = _ensure_datetime_index(df)
 
     freq_map = {
         "1m": "1T",
@@ -226,26 +232,22 @@ def align_interval(df, interval):
     if interval not in freq_map:
         raise ValueError(f"Unsupported interval: {interval}")
 
-    agg = {}
-    for c in df.columns:
-        lc = c.lower()
-        if lc == "open":
-            agg[c] = "first"
-        elif lc == "high":
-            agg[c] = "max"
-        elif lc == "low":
-            agg[c] = "min"
-        elif lc == "close":
-            agg[c] = "last"
-        elif lc == "volume":
-            agg[c] = "sum"
-        else:
-            agg[c] = "last"
-
+    agg = _get_ohlcv_aggregation(df.columns)
     result = df.resample(freq_map[interval]).agg(agg)
     result = result.ffill().dropna(how="all")
     result.index.name = df.index.name
     return result
+
+
+def _resolve_event_anchor(df, token):
+    """Resolve earnings/fomc anchor from DataFrame columns."""
+    for c in df.columns:
+        if token in c.lower():
+            series = pd.to_datetime(df[c]).dropna()
+            if not series.empty:
+                return series.iloc[-1], None
+            return None, f"No {token} date found"
+    return None, f"No {token} date found"
 
 
 def resolve_anchor(df, anchor_token):
@@ -267,48 +269,35 @@ def resolve_anchor(df, anchor_token):
         could not be matched.  If ``anchor_token`` is ``None`` the first index
         value is returned.
     """
-    import pandas as pd
-
-    warning = None
-
     if df.empty or not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("DataFrame must be non-empty with a DatetimeIndex")
 
-    anchor_ts = df.index[0]
-
     if not anchor_token:
-        return pd.Timestamp(anchor_ts), warning
+        return pd.Timestamp(df.index[0]), None
 
     try:
         # ISO date pattern
         if re.match(r"\d{4}-\d{2}-\d{2}", str(anchor_token)):
             ts = pd.Timestamp(anchor_token)
             idx = df.index.get_indexer([ts], method="nearest")[0]
-            anchor_ts = df.index[idx]
-        else:
-            token = str(anchor_token).lower()
-            if token == "year_open":
-                year_start = pd.Timestamp(df.index[-1].year, 1, 1, tz=df.index.tz)
-                idx = df.index.get_indexer([year_start], method="bfill")[0]
-                anchor_ts = df.index[idx]
-            elif token in {"earnings", "fomc"}:
-                col_match = None
-                for c in df.columns:
-                    if token in c.lower():
-                        col_match = c
-                        break
-                if col_match:
-                    series = pd.to_datetime(df[col_match]).dropna()
-                    if not series.empty:
-                        anchor_ts = series.iloc[-1]
-                    else:
-                        warning = f"No {token} date found"
-                else:
-                    warning = f"No {token} date found"
-    except Exception as e:  # pragma: no cover - unexpected edge cases
-        warning = str(e)
+            return pd.Timestamp(df.index[idx]), None
 
-    return pd.Timestamp(anchor_ts), warning
+        token = str(anchor_token).lower()
+        if token == "year_open":
+            year_start = pd.Timestamp(df.index[-1].year, 1, 1, tz=df.index.tz)
+            idx = df.index.get_indexer([year_start], method="bfill")[0]
+            return pd.Timestamp(df.index[idx]), None
+
+        if token in {"earnings", "fomc"}:
+            anchor_ts, warning = _resolve_event_anchor(df, token)
+            if anchor_ts is not None:
+                return pd.Timestamp(anchor_ts), warning
+            return pd.Timestamp(df.index[0]), warning
+
+    except (ValueError, IndexError, AttributeError) as e:  # pragma: no cover
+        return pd.Timestamp(df.index[0]), str(e)
+
+    return pd.Timestamp(df.index[0]), None
 
 
 # === COMMON DATETIME UTILITIES ===
@@ -357,6 +346,54 @@ def subtract_days(dt: datetime.datetime, days: int) -> datetime.datetime:
     return dt - datetime.timedelta(days=days)
 
 
+def add_days(dt: datetime.datetime, days: int) -> datetime.datetime:
+    """
+    Add days to a datetime object.
+
+    Args:
+        dt: datetime object
+        days: Number of days to add
+
+    Returns:
+        New datetime object with days added
+    """
+    return dt + datetime.timedelta(days=days)
+
+
+def combine_date_time(date_obj: datetime.date, time_obj: datetime.time) -> datetime.datetime:
+    """
+    Combine a date and time into a datetime object.
+
+    Args:
+        date_obj: date object
+        time_obj: time object
+
+    Returns:
+        Combined datetime object
+    """
+    return datetime.datetime.combine(date_obj, time_obj)
+
+
+def parse_time_string(time_str: str) -> datetime.time:
+    """
+    Parse time string to time object.
+
+    Handles both "HH:MM" and "HH:MM:SS" formats.
+
+    Args:
+        time_str: Time string in HH:MM or HH:MM:SS format
+
+    Returns:
+        time object, or None if parsing fails
+    """
+    try:
+        if len(time_str) == 5:
+            return datetime.time.fromisoformat(time_str + ":00")
+        return datetime.time.fromisoformat(time_str)
+    except ValueError:
+        return None
+
+
 def now_iso() -> str:
     """
     Get current timestamp as ISO string.
@@ -398,8 +435,6 @@ def add_business_days(date_str, days) -> str:
     Returns:
         New date in YYYY-MM-DD format
     """
-    import pandas as pd
-
     # Convert to datetime
     dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
@@ -457,8 +492,6 @@ def date_range_trading_days(start_date, end_date) -> list:
     Returns:
         List of trading day strings in YYYY-MM-DD format
     """
-    import pandas as pd
-
     start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
@@ -557,8 +590,6 @@ def is_valid_trading_date(date_str: str, allow_future: bool = False) -> bool:
         True if valid trading date, False otherwise
     """
     try:
-        import pytz
-
         # Parse the date
         dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
@@ -613,8 +644,6 @@ def get_market_open_time(date_str, timezone: str = "America/New_York") -> dateti
     Returns:
         datetime object for market open (9:30 AM ET)
     """
-    import pytz
-
     dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Set to 9:30 AM
@@ -636,8 +665,6 @@ def get_market_close_time(date_str, timezone: str = "America/New_York") -> datet
     Returns:
         datetime object for market close (4:00 PM ET)
     """
-    import pytz
-
     dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
     # Set to 4:00 PM
@@ -660,8 +687,6 @@ def calculate_days_to_expiration(expiration_dates, trade_dates):
     Returns:
         pandas Series or int: Days to expiration for each option contract
     """
-    import pandas as pd
-
     # Convert to pandas datetime if not already
     if not isinstance(expiration_dates, pd.Series):
         expiration_dates = pd.to_datetime(expiration_dates)

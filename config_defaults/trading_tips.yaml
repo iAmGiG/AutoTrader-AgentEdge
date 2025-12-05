@@ -1,0 +1,60 @@
+# Trading Tips Configuration
+# Issue #436: Extracted from cli_session.py for configurability
+#
+# These educational tips help beginners understand trading concepts.
+# Edit this file to customize the content without modifying code.
+
+header:
+  title: "TRADING BASICS FOR BEGINNERS"
+  separator_char: "="
+  separator_width: 70
+
+sections:
+  - id: buy_vs_short
+    title: "BUY vs SHORT (Long vs Short)"
+    emoji: "1️⃣"
+    content: |
+      BUY = You think the stock will go UP in value
+         Example: Buy META at $500, sell later at $550 → $50 profit per share
+
+      SHORT = You think the stock will go DOWN in value (advanced/risky)
+         Example: Short META at $500, buy back at $450 → $50 profit per share
+         ⚠️  Warning: If stock goes UP while shorted, you lose money!
+
+  - id: signals
+    title: "Understanding Signals"
+    emoji: "2️⃣"
+    content: |
+      The analysis gives a signal based on technical indicators:
+        📈 BUY signal = indicators suggest price may go UP
+        📉 SELL signal = indicators suggest price may go DOWN
+
+      ⚠️  Remember: These are suggestions, not guarantees!
+
+  - id: position_required
+    title: "Why You Need a Position to SELL"
+    emoji: "3️⃣"
+    content: |
+      To SELL a stock, you must own it first (have an open position).
+      Think of it like selling your car - you can't sell what you don't own!
+
+  - id: entry_timing
+    title: "Entry Timing (NEW!)"
+    emoji: "4️⃣"
+    content: |
+      NEW: You can specify WHEN you want to enter a trade:
+        'buy QQQ at a pullback' → Enters 2.5% below current price
+        'buy SPY on a dip' → Same as pullback, waits for lower price
+        'buy NVDA at a breakout' → Enters 1.5% above current (momentum)
+
+      This helps you get better entry prices instead of buying at the current price!
+
+quick_tips:
+  title: "QUICK TIPS"
+  emoji: "💡"
+  items:
+    - "Start small: Test with small amounts until you understand"
+    - "Use CONFIRM mode: Always review before executing trades"
+    - "Ask questions: Type naturally, the system will understand"
+    - "Check analysis: Choose 'review' to see analysis without trading"
+    - "Try timing: 'buy at a pullback' for better entry prices"

@@ -241,40 +241,59 @@ class TradingOrchestrator:
 
         # Analysis timeframe context for user display
         # Currently using daily (1D) candles for MACD+RSI analysis
-        analysis_timeframe = "1D"  # TODO: Make configurable if needed
+        # (Validated VoterAgent uses 1D - configurable in future iterations)
+        analysis_timeframe = "1D"
 
-        if request.timing in ("pullback", "dip"):
+        # Issue #474/#475: Handle HOLD signals with timing overrides
+        # If entry_price is None (HOLD signal), get current_price from indicators
+        base_price = entry_price
+        if base_price is None:
+            base_price = analysis.indicators.get("current_price", 0.0)
+            if base_price and base_price > 0:
+                entry_price = round(base_price, 2)
+                # Generate default stop/target for user override
+                from src.core.trading_modes import get_mode_manager
+
+                mode_params = get_mode_manager().get_parameters()
+                stop_loss = round(base_price * (1 - mode_params.stop_loss), 2)
+                take_profit = round(base_price * (1 + mode_params.take_profit), 2)
+
+        if request.timing in ("pullback", "dip") and base_price and base_price > 0:
             # Suggest entry 2.5% below current price for pullback/dip timing
             pullback_pct = 0.025
-            entry_price = round(analysis.entry_price * (1 - pullback_pct), 2)
+            entry_price = round(base_price * (1 - pullback_pct), 2)
             # Adjust stop loss proportionally (maintain same % distance)
-            stop_distance_pct = (analysis.entry_price - analysis.stop_loss) / analysis.entry_price
+            if analysis.stop_loss and analysis.entry_price:
+                stop_distance_pct = (
+                    analysis.entry_price - analysis.stop_loss
+                ) / analysis.entry_price
+            else:
+                stop_distance_pct = 0.08  # Default 8% stop
             stop_loss = round(entry_price * (1 - stop_distance_pct), 2)
             reasoning.insert(
                 0,
                 f"⏳ Pullback entry ({analysis_timeframe} analysis): "
                 f"limit @ ${entry_price} (2.5% below current, GTC)",
             )
-            logger.info(
-                f"Timing=pullback: adjusted entry from ${analysis.entry_price} to ${entry_price}"
-            )
-        elif request.timing == "breakout":
+            logger.info(f"Timing=pullback: adjusted entry from ${base_price} to ${entry_price}")
+        elif request.timing == "breakout" and base_price and base_price > 0:
             # Suggest entry 1.5% above current price for breakout timing
             breakout_pct = 0.015
-            entry_price = round(analysis.entry_price * (1 + breakout_pct), 2)
+            entry_price = round(base_price * (1 + breakout_pct), 2)
             # Adjust take profit proportionally
-            target_distance_pct = (
-                analysis.take_profit - analysis.entry_price
-            ) / analysis.entry_price
+            if analysis.take_profit and analysis.entry_price:
+                target_distance_pct = (
+                    analysis.take_profit - analysis.entry_price
+                ) / analysis.entry_price
+            else:
+                target_distance_pct = 0.20  # Default 20% target
             take_profit = round(entry_price * (1 + target_distance_pct), 2)
             reasoning.insert(
                 0,
                 f"🚀 Breakout entry ({analysis_timeframe} analysis): "
                 f"limit @ ${entry_price} (1.5% above current, GTC)",
             )
-            logger.info(
-                f"Timing=breakout: adjusted entry from ${analysis.entry_price} to ${entry_price}"
-            )
+            logger.info(f"Timing=breakout: adjusted entry from ${base_price} to ${entry_price}")
         elif request.price:
             # User specified exact price - use it
             entry_price = request.price
@@ -312,6 +331,8 @@ class TradingOrchestrator:
             # Metadata
             suggestion_id=suggestion_id,
             timestamp=get_datetime_now(),
+            # Issue #474: Pass indicators for HOLD signal overrides
+            indicators=analysis.indicators,
         )
 
         return suggestion

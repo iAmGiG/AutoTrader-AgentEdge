@@ -1,7 +1,7 @@
 # Cache System Developer Guide
 
 **Audience**: Developers integrating with or extending the cache system
-**Last Updated**: November 2025 (Issue #336)
+**Last Updated**: December 2025 (Issue #469, Multi-timeframe support)
 
 ---
 
@@ -15,7 +15,7 @@ from src.data_sources.cache import TradingCacheManager
 # Initialize cache
 cache = TradingCacheManager()
 
-# Store market data
+# Store market data (daily by default)
 cache.set(
     symbol="AAPL",
     data=df,  # pandas DataFrame with OHLCV data
@@ -23,7 +23,12 @@ cache.set(
     asset_type="stock"
 )
 
-# Retrieve cached data
+# Store multi-timeframe data
+cache.set("AAPL", df_minute, source="alpaca", timeframe="1Min")
+cache.set("AAPL", df_hourly, source="alpaca", timeframe="1Hour")
+cache.set("AAPL", df_weekly, source="alpaca", timeframe="1Week")
+
+# Retrieve cached data (daily by default)
 df = cache.get(
     symbol="AAPL",
     start="2025-01-01",
@@ -31,6 +36,10 @@ df = cache.get(
     source="alpaca",  # Optional: filter by source
     asset_type="stock"
 )
+
+# Retrieve specific timeframe
+df_1m = cache.get("AAPL", "2025-01-01", "2025-01-31", timeframe="1Min")
+df_1h = cache.get("AAPL", "2025-01-01", "2025-01-31", timeframe="1Hour")
 
 # Check cache statistics
 stats = cache.get_stats()
@@ -48,18 +57,66 @@ df = cache_adapter.get_market_data(
     symbol="SPY",
     start_date="2025-10-01",
     end_date="2025-10-31",
-    source="any"  # or specific: "alpaca", "polygon", etc.
+    source="any",  # or specific: "alpaca", "polygon", etc.
+    timeframe="1Day"  # Default; also supports "1Min", "5Min", "1Hour", "1Week"
 )
 
-# Set market data
+# Get minute data
+df_1m = cache_adapter.get_market_data(
+    symbol="SPY",
+    start_date="2025-10-01",
+    end_date="2025-10-31",
+    timeframe="1Min"
+)
+
+# Set market data with timeframe
 cache_adapter.set_market_data(
     symbol="SPY",
     start_date="2025-10-01",
     end_date="2025-10-31",
     source="polygon",
-    data=df
+    data=df,
+    timeframe="1Day"
 )
 ```
+
+### Using UnifiedBrokerCache (Issue #469)
+
+For broker state caching (account, positions, orders) with database-first architecture:
+
+```python
+from src.data_sources.cache import unified_broker_cache
+
+# Get cached account (fetches if stale, returns from DB)
+account = unified_broker_cache.get_account(
+    account_id="paper_main",
+    fetcher=lambda: alpaca_monitor.get_account_status(),
+    max_age_seconds=60
+)
+
+# Get cached positions
+positions = unified_broker_cache.get_positions(
+    account_id="paper_main", 
+    fetcher=lambda: alpaca_monitor.get_positions()
+)
+
+# Store position snapshots for historical tracking
+unified_broker_cache.store_position_snapshot("paper_main", positions)
+
+# Audit display events
+unified_broker_cache.audit_display(
+    display_type="portfolio",
+    data=positions,
+    cache_source="cached",
+    cache_age_seconds=30.5
+)
+
+# Get cache info
+info = unified_broker_cache.get_cache_info("paper_main")
+print(f"Account cache: {info['cache_entries'].get('account', {})}")
+```
+
+See [Database-First Caching Design](../design/469-database-first-caching.md) for architecture details.
 
 ---
 
@@ -90,7 +147,8 @@ def get(
     start: str,
     end: str,
     source: str = None,
-    asset_type: str = "stock"
+    asset_type: str = "stock",
+    timeframe: str = "1Day"
 ) -> Optional[pd.DataFrame]:
 ```
 
@@ -101,6 +159,11 @@ def get(
 - `end`: End date in YYYY-MM-DD format
 - `source`: Optional data source filter ("alpaca", "polygon", "alpha_vantage")
 - `asset_type`: Asset type ("stock", "option", "future")
+- `timeframe`: Bar timeframe (default: "1Day"). Supported values:
+  - `"1Min"`, `"5Min"`, `"15Min"`, `"30Min"` - Minute bars
+  - `"1Hour"`, `"2Hour"`, `"4Hour"` - Hourly bars
+  - `"1Day"` - Daily bars (default)
+  - `"1Week"`, `"1Month"` - Weekly/monthly bars
 
 **Returns:**
 
@@ -110,11 +173,18 @@ def get(
 **Example:**
 
 ```python
+# Get daily data (default)
 df = cache.get("AAPL", "2025-01-01", "2025-01-31", source="alpaca")
 if df is not None:
     print(f"Loaded {len(df)} days from cache")
 else:
     print("Cache miss - fetch from API")
+
+# Get minute data for intraday analysis
+df_1m = cache.get("AAPL", "2025-01-15", "2025-01-15", timeframe="1Min")
+
+# Get weekly data for longer-term trends
+df_weekly = cache.get("AAPL", "2024-01-01", "2025-01-31", timeframe="1Week")
 ```
 
 ---
@@ -128,7 +198,8 @@ def set(
     data: pd.DataFrame,
     source: str,
     asset_type: str = "stock",
-    ttl_hours: int = None
+    ttl_hours: int = None,
+    timeframe: str = "1Day"
 ) -> None:
 ```
 
@@ -139,6 +210,11 @@ def set(
 - `source`: Data source ("alpaca", "polygon", "alpha_vantage")
 - `asset_type`: Asset type ("stock", "option", "future")
 - `ttl_hours`: Optional custom TTL (overrides smart expiration)
+- `timeframe`: Bar timeframe (default: "1Day"). Supported values:
+  - `"1Min"`, `"5Min"`, `"15Min"`, `"30Min"` - Minute bars
+  - `"1Hour"`, `"2Hour"`, `"4Hour"` - Hourly bars
+  - `"1Day"` - Daily bars (default)
+  - `"1Week"`, `"1Month"` - Weekly/monthly bars
 
 **Required DataFrame Columns:**
 
@@ -151,6 +227,12 @@ def set(
 ```python
 # DataFrame must have a datetime index
 cache.set("AAPL", df, source="alpaca", asset_type="stock")
+
+# Store minute data
+cache.set("AAPL", df_1m, source="alpaca", timeframe="1Min")
+
+# Store weekly data
+cache.set("AAPL", df_weekly, source="alpaca", timeframe="1Week")
 
 # Custom TTL (48 hours)
 cache.set("AAPL", df, source="alpaca", ttl_hours=48)
@@ -481,9 +563,9 @@ SQLite serializes writes:
 # Check integrity
 sqlite3 .cache/trading_data.db "PRAGMA integrity_check;"
 
-# Rebuild from backup
+# Rebuild from backup (if backup exists)
 mv .cache/trading_data.db .cache/trading_data.db.corrupt
-python scripts/migrate_cache_to_sqlite.py
+# Restore from .cache/backup_TIMESTAMP/ if available, or delete and let cache rebuild naturally
 ```
 
 ---
@@ -551,26 +633,17 @@ python scripts/cache_manager.py clear --all --confirm
 
 ## Migration from Legacy Cache
 
-### Step 1: Run Migration Script
+> **Note**: The migration script `migrate_cache_to_sqlite.py` has been removed (Issue #435) after completing its purpose. The SQLite cache is now the standard. If you have legacy JSON cache files, simply delete them - the SQLite cache will rebuild automatically from API calls.
 
-```bash
-# Preview migration (dry run)
-python scripts/migrate_cache_to_sqlite.py --dry-run
+### Legacy Migration (Historical Reference)
 
-# Full migration (creates backup automatically)
-python scripts/migrate_cache_to_sqlite.py
+The migration script performed these operations:
 
-# Skip backup if you're confident
-python scripts/migrate_cache_to_sqlite.py --no-backup
-```
-
-**What the script does:**
-
-- Backs up all JSON files to `.cache/backup_TIMESTAMP/`
-- Converts 3 cache formats: UnifiedCacheManager, MarketDataCache, and raw JSON
-- Removes duplicates automatically
-- Creates `.cache/trading_data.db` SQLite database
-- Preserves all metadata (sources, timestamps)
+- Backed up all JSON files to `.cache/backup_TIMESTAMP/`
+- Converted 3 cache formats: UnifiedCacheManager, MarketDataCache, and raw JSON
+- Removed duplicates automatically
+- Created `.cache/trading_data.db` SQLite database
+- Preserved all metadata (sources, timestamps)
 
 ### Step 2: Update Your Code
 
@@ -684,9 +757,80 @@ Query performance (production data):
 
 ---
 
-## Additional Tables (Issue #373)
+## Multi-Timeframe Support
 
-The cache database also includes:
+The cache system supports storing and retrieving data across multiple timeframes for comprehensive technical analysis.
+
+### Supported Timeframes
+
+| Timeframe | Description | Use Case |
+|-----------|-------------|----------|
+| `1Min` | 1-minute bars | Scalping, intraday |
+| `5Min` | 5-minute bars | Fast intraday |
+| `15Min` | 15-minute bars | Intraday swing |
+| `30Min` | 30-minute bars | Intraday swing |
+| `1Hour` | 1-hour bars | Medium-term |
+| `2Hour` | 2-hour bars | Swing trading |
+| `4Hour` | 4-hour bars | Position trading |
+| `1Day` | Daily bars (default) | Position trading |
+| `1Week` | Weekly bars | Intermediate-term |
+| `1Month` | Monthly bars | Long-term |
+
+### Multi-Timeframe Analysis Example
+
+```python
+from src.data_sources.cache import TradingCacheManager
+
+cache = TradingCacheManager()
+
+# Store data for multiple timeframes
+cache.set("AAPL", df_daily, source="alpaca", timeframe="1Day")
+cache.set("AAPL", df_hourly, source="alpaca", timeframe="1Hour")
+cache.set("AAPL", df_weekly, source="alpaca", timeframe="1Week")
+
+# Multi-timeframe analysis
+daily = cache.get("AAPL", "2025-01-01", "2025-01-31", timeframe="1Day")
+hourly = cache.get("AAPL", "2025-01-01", "2025-01-31", timeframe="1Hour")
+weekly = cache.get("AAPL", "2024-01-01", "2025-01-31", timeframe="1Week")
+
+# Analyze trends across timeframes
+print(f"Daily bars: {len(daily)}")
+print(f"Hourly bars: {len(hourly)}")
+print(f"Weekly bars: {len(weekly)}")
+```
+
+### Schema: market_cache Table
+
+The `market_cache` table includes a `timeframe` column for multi-timeframe storage:
+
+```sql
+CREATE TABLE market_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_type TEXT NOT NULL DEFAULT 'stock',
+    symbol TEXT NOT NULL,
+    bar_timestamp TEXT NOT NULL,
+    timeframe TEXT NOT NULL DEFAULT '1Day',  -- Multi-timeframe support
+    source TEXT NOT NULL,
+    open REAL,
+    high REAL,
+    low REAL,
+    close REAL NOT NULL,
+    volume INTEGER,
+    vwap REAL,
+    transactions INTEGER,
+    cached_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    UNIQUE(asset_type, symbol, bar_timestamp, timeframe, source)
+);
+```
+
+**Note:** The unique constraint includes `timeframe`, allowing the same symbol/date to have different bars for different timeframes (e.g., daily close vs hourly bars).
+
+---
+
+## Additional Tables (Issue #373, Future Features)
+
+The cache database includes additional tables for analytics and future features:
 
 ### Raw Options Chain Storage
 
@@ -731,6 +875,94 @@ print(f"Win rate: {stats['win_rate_pct']:.1f}%")
 ```
 
 See [Trade History Database](../02_architecture/trade_history_database.md) for complete API reference.
+
+### Indicator Cache (Future Feature)
+
+Pre-computed technical indicators for faster analysis and multi-timeframe voting:
+
+```sql
+CREATE TABLE indicator_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    timeframe TEXT NOT NULL,           -- '1Min', '1Hour', '1Day', etc.
+    indicator_type TEXT NOT NULL,      -- 'MACD', 'RSI', 'SMA', etc.
+    bar_timestamp TEXT NOT NULL,
+    parameters TEXT,                   -- JSON: {"fast":13,"slow":34,"signal":8}
+    value_1 REAL,                      -- Primary value (e.g., MACD line)
+    value_2 REAL,                      -- Secondary value (e.g., Signal line)
+    value_3 REAL,                      -- Tertiary value (e.g., Histogram)
+    signal TEXT,                       -- 'BUY', 'SELL', 'HOLD'
+    strength REAL,                     -- 0-100 signal strength
+    computed_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    UNIQUE(symbol, timeframe, indicator_type, bar_timestamp, parameters)
+);
+```
+
+**Use cases:**
+
+- Pre-compute MACD/RSI for multiple timeframes
+- Multi-timeframe voting strategies
+- Faster CLI display with cached indicators
+- Reduce redundant calculations
+
+### Signal History (Future Feature)
+
+Track all generated signals for ML training and strategy analysis:
+
+```sql
+CREATE TABLE signal_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signal_id TEXT UNIQUE NOT NULL,    -- UUID for signal tracking
+    symbol TEXT NOT NULL,
+    timeframe TEXT NOT NULL,
+    signal_type TEXT NOT NULL,         -- 'BUY', 'SELL', 'HOLD'
+    strategy_name TEXT NOT NULL,       -- 'VoterAgent', 'MACD_RSI', etc.
+    confidence REAL,                   -- 0-1 confidence score
+    indicators_json TEXT,              -- Full indicator snapshot
+    price_at_signal REAL,
+    generated_at TEXT NOT NULL,
+    executed BOOLEAN DEFAULT FALSE,
+    execution_price REAL,
+    outcome TEXT,                      -- 'WIN', 'LOSS', 'PENDING', 'SKIPPED'
+    outcome_pnl REAL,
+    outcome_recorded_at TEXT
+);
+```
+
+**Use cases:**
+
+- Track signal accuracy over time
+- ML model training data
+- Strategy backtesting validation
+- A/B testing different parameter sets
+
+### Execution Quality (Future Feature)
+
+Track slippage and execution quality for strategy refinement:
+
+```sql
+CREATE TABLE execution_quality (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_id TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    order_type TEXT,                   -- 'MARKET', 'LIMIT', 'BRACKET'
+    expected_price REAL,
+    actual_price REAL,
+    slippage_pct REAL,
+    fill_time_ms INTEGER,
+    broker TEXT,                       -- 'alpaca_paper', 'alpaca_live'
+    market_condition TEXT,             -- 'NORMAL', 'VOLATILE', 'LOW_LIQUIDITY'
+    recorded_at TEXT NOT NULL
+);
+```
+
+**Use cases:**
+
+- Measure execution quality by order type
+- Identify high-slippage conditions
+- Optimize order routing
+- Broker performance comparison
 
 ---
 

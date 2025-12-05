@@ -1,0 +1,41 @@
+\documentclass[conference]{IEEEtran}
+
+\input{00_Header}
+
+\begin{document}
+
+\title{Evaluating Time Series Momentum in Multi-Agent Trading Systems: A Comparative Study with Technical Indicators}
+
+\author{
+\IEEEauthorblockN{AutoGen-Trader Research Team}
+\IEEEauthorblockA{
+AutoGen-Trader Project\\
+GitHub: github.com/iAmGiG/AutoGen-Trader\\
+}
+}
+
+\maketitle
+
+\begin{abstract}
+Time series momentum (TSMOM) has demonstrated consistent performance across asset classes with Sharpe ratios ranging from 0.48 to 0.79 in academic research (Moskowitz et al., 2012). However, its integration with technical indicator-based trading systems remains underexplored. This paper evaluates TSMOM as a complementary signal generator within a multi-agent trading architecture, comparing its performance against MACD-only and MACD+RSI dual voting strategies. Using a custom backtesting framework validated on 10 years of equity data (2016-2024), we test whether 12-month TSMOM signals achieve Sharpe > 0.6 with correlation < 0.5 to existing technical strategies. Our findings inform the design of triple voting consensus mechanisms and provide empirical validation of TSMOM in automated trading contexts.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Time series momentum, algorithmic trading, multi-agent systems, backtesting, technical analysis, voting strategies
+\end{IEEEkeywords}
+
+\input{01_Introduction}
+\input{02_Related_work}
+\input{03_Methodology}
+\input{04_Experimental_setup}
+\input{05_Results}
+\input{06_Discussion}
+\input{07_Conclusion}
+
+\section*{Acknowledgments}
+This research was conducted as part of the AutoGen-Trader project, an open-source multi-agent trading platform built on Microsoft AutoGen framework. We acknowledge the academic foundation provided by Moskowitz, Ooi, and Pedersen's seminal work on time series momentum.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,94 @@
+# FAQ Configuration
+# Replaces trading_tips.yaml with expandable sections
+#
+# Sections: features, how, resources
+# Edit this file to customize content without modifying code.
+
+header:
+  title: "FAQ & GUIDE"
+  separator_char: "="
+  separator_width: 60
+
+sections:
+  # ================================================================
+  # FEATURES - What the system can do
+  # ================================================================
+  - id: features
+    title: "FEATURES"
+    emoji: "~"
+    items:
+      - title: "Entry Timing"
+        content: |
+          Specify WHEN to enter trades for better prices:
+            'buy QQQ at a pullback'  - enters 2.5% below current
+            'buy SPY on a dip'       - same as pullback
+            'buy NVDA at a breakout' - enters 1.5% above current
+
+      - title: "Trading Modes"
+        content: |
+          Risk profiles that adjust position sizing:
+            'set mode conservative' - smaller positions, tighter stops
+            'set mode moderate'     - balanced approach (default)
+            'set mode aggressive'   - larger positions, wider stops
+
+      - title: "Bracket Orders"
+        content: |
+          Every trade includes automatic protection:
+            - Stop loss: limits downside risk
+            - Take profit: locks in gains
+            - GTC orders: stay active until filled
+
+  # ================================================================
+  # HOW - Trading basics for beginners
+  # ================================================================
+  - id: how
+    title: "HOW TO TRADE"
+    emoji: "?"
+    items:
+      - title: "BUY vs SHORT"
+        content: |
+          BUY = You think the stock will go UP
+            Example: Buy at $500, sell at $550 = $50 profit
+          SHORT = You think it will go DOWN (advanced/risky)
+            Warning: Unlimited loss potential if stock rises
+
+      - title: "Understanding Signals"
+        content: |
+          Analysis provides signals based on technical indicators:
+            BUY signal  = indicators suggest price may rise
+            SELL signal = indicators suggest price may fall
+          These are suggestions, not guarantees.
+
+      - title: "Position Required to Sell"
+        content: |
+          To SELL, you must own shares first (have a position).
+          Like selling a car - can't sell what you don't own.
+
+  # ================================================================
+  # RESOURCES - External links and references
+  # ================================================================
+  - id: resources
+    title: "RESOURCES"
+    emoji: "#"
+    items:
+      - title: "GEX Research"
+        content: "Options flow & gamma exposure patterns"
+        link: "github.com/your-org/gex-research"
+
+      - title: "Alpaca Docs"
+        content: "Broker API documentation"
+        link: "alpaca.markets/docs"
+
+      - title: "TradingView"
+        content: "Charts and technical analysis"
+        link: "tradingview.com"
+
+quick_ref:
+  title: "QUICK REFERENCE"
+  emoji: ">"
+  items:
+    - "buy 10 AAPL           - place a buy order"
+    - "show portfolio        - view positions"
+    - "set mode conservative - lower risk profile"
+    - "/about                - status dashboard"
+    - "/help                 - all commands"

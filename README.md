@@ -1,6 +1,6 @@
 # AutoTrader: Multi-Agent Trading System
 
-**Powered by AgentEdge - Autonomous AI agents seeking trading edge**
+## Powered by AgentEdge - Autonomous AI agents seeking trading edge
 
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
@@ -40,16 +40,20 @@ By using this software, you acknowledge that you understand these risks and agre
 
 **💡 Core Philosophy**: Pure mathematical indicators + human decision making > complex LLM sentiment analysis
 
-**🚀 Production Status** (Updated 2025-11-11):
+**🚀 Production Status** (Updated 2025-12-02):
 
 - **✅ VoterAgent** - Production-ready with validated 0.856 Sharpe ratio, 36.6% return
 - **✅ main.py Runner** - Fully functional CLI for paper trading operations
 - **✅ Alpaca Integration** - Paper trading validated and operational
 - **✅ Position Management** - Real-time tracking with broker-as-truth reconciliation
 - **✅ Trading Cycle** - Cost-efficient daily routines (90% fewer API calls)
-- **✅ Scheduler CLI** - Interactive management interface with daemon detection
+- **✅ Scheduler CLI** - Interactive management with modular components
 - **✅ YAML Configuration** - All configs migrated to readable YAML format
 - **✅ Human-in-Loop CLI** - Trade approval interface (Issue #308 - COMPLETED)
+- **✅ Backtesting Framework** - In-house engine with TSMOM signal support
+- **✅ Code Quality Refactoring** - Major modules extracted and modularized
+- **✅ CLI FunctionTool Infrastructure Phase 1A-1B** - Tool registry + mode/timeframe tools (Issues #455, #456 - COMPLETE)
+- **🚧 CLI FunctionTool Infrastructure Phase 1C-1E** - Portfolio/account/order/scheduler tools (Issues #457-459 - IN DEVELOPMENT)
 - **🚧 Multi-Agent System** - Scanner, Risk, Executor agents (planned)
 
 **Key Metrics**:
@@ -152,9 +156,9 @@ The platform implements a Microsoft AutoGen-based multi-agent architecture with 
 
 **Technical Analysis Tools**:
 
-- **Enhanced Fibonacci Regime Module**: Advanced market regime detection
-- **Multi-Indicator Suite**: MACD, RSI, EMA filters with validated parameters
-- **Statistical Validation**: Walk-forward analysis, Monte Carlo simulation
+- **MACD+RSI Voting System**: Pure-math indicators with validated parameters (13/34/8 + 14/30/70)
+- **Consensus-Based Signals**: Strong signals when both indicators agree, weak when only one signals
+- **Statistical Validation**: Comprehensive backtesting and forward testing framework
 
 **Data Management**:
 
@@ -207,7 +211,7 @@ All API credentials in `config/config.yaml` (or `config/config.json`):
 
 ### Unified Interactive CLI (✅ NEW - Priority #1)
 
-**Default: Interactive Trading Assistant**
+#### Default: Interactive Trading Assistant
 
 ```bash
 # Launch unified interactive CLI (default)
@@ -222,7 +226,7 @@ python main.py
 > /exit                    # Exit
 ```
 
-**Daemon Mode: Background Scheduler**
+#### Daemon Mode: Background Scheduler
 
 ```bash
 # Run daily scheduler in background
@@ -233,18 +237,9 @@ python main.py --daemon
 #   - Evening: 3:50 PM ET (performance review)
 ```
 
-**Legacy Commands (Deprecated)**
-
-```bash
-# Legacy one-shot commands (will be removed)
-python main.py --legacy test-voter
-python main.py --legacy check-positions
-python main.py --legacy paper-trade SPY
-```
-
 **Example Interactive Session**:
 
-```
+```text
 🚀 Launching Interactive Trading Assistant...
 
 ======================================================================
@@ -540,14 +535,14 @@ AutoTrader-AgentEdge/
 
 **System Architecture**:
 
-- [Fibonacci Integration Guide](docs/integration/fibonacci_enhanced_integration_guide.md) - Complete integration documentation
+- [AgentEdge Architecture](docs/architecture/agent_edge_architecture.md) - Multi-agent system design and AutoGen framework integration
 - [Quick Reference](docs/integration/quick_reference.md) - Essential commands and usage
-- [Regime Detection Tools](docs/fibonacci_regime/regime_detection_tools.md) - Technical analysis modules
 
 **Reference**:
 
-- [Commands](docs/reference/commands.md) - All available scripts and commands
+- [Commands](docs/reference/commands.md) - All available CLI commands and REPL interface
 - [Troubleshooting](docs/reference/troubleshooting.md) - Common issues and solutions
+- [Legacy Systems](docs/project-history.md) - Historical architecture including deprecated V0-V4 sentiment system
 
 ## Development Status
 

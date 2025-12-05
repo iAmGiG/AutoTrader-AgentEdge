@@ -174,6 +174,9 @@ class TradeSuggestion:
     suggestion_id: str = ""  # Set by session store
     timestamp: datetime = field(default_factory=get_datetime_now)
 
+    # Issue #474: Store indicators for HOLD signal overrides (current_price needed)
+    indicators: Dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass
 class TradeDecision:

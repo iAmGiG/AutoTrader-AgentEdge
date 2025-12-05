@@ -181,7 +181,7 @@ class AlpacaMarketData:
         if use_cache and not is_current_day:
             # Only use cache for historical data (not today)
             for symbol in symbols:
-                cached = self.cache.get(symbol, start, end, source="alpaca")
+                cached = self.cache.get(symbol, start, end, source="alpaca", timeframe=timeframe)
 
                 if cached is not None and not cached.empty:
                     # Ensure required columns exist
@@ -267,7 +267,9 @@ class AlpacaMarketData:
                                     cache_data = symbol_data.drop(
                                         columns=["symbol", "source"], errors="ignore"
                                     )
-                                    self.cache.set(symbol, cache_data, source="alpaca")
+                                    self.cache.set(
+                                        symbol, cache_data, source="alpaca", timeframe=timeframe
+                                    )
 
                         fetched_data.append(df)
                         logger.info(
