@@ -76,6 +76,13 @@ from .utils.report_generator import ReportGenerator
 from .utils.simple_signals import SimpleSignalGenerator
 from .utils.unified_price_fetcher import UnifiedPriceFetcher
 
+# Portfolio Override (#479)
+from .portfolio_override import (
+    PortfolioOverride,
+    PortfolioOverrideManager,
+    get_portfolio_override_manager,
+)
+
 __all__ = [
     # Broker
     "AlpacaExecutionManager",
@@ -130,4 +137,8 @@ __all__ = [
     "SimpleSignalGenerator",
     "ReportGenerator",
     "get_current_price",
+    # Portfolio Override
+    "PortfolioOverride",
+    "PortfolioOverrideManager",
+    "get_portfolio_override_manager",
 ]
