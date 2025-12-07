@@ -1,5 +1,0 @@
-Version,Strategy,Total Return (%),Buy & Hold Return (%),Outperformance (%),Total Trades,Win Rate (%),Avg Trade Return (%),Best Trade (%),Worst Trade (%),Max Drawdown (%),Volatility (%),Sharpe Ratio,Time in Market (%),Avg Hold Days,Max Unrealized P&L (%),Min Unrealized P&L (%)
-V0,Pure MACD (Fixed Sentiment),8.73,34.9,-26.16,24,20.8,0.85,0,0,0,0,0,0,0,13.47,-3.85
-V1,VADER + Google News,-3.83,34.9,-38.73,16,18.8,-0.71,0,0,0,0,0,0,0,6.61,-1.11
-V2,VXX Market Fear,5.49,34.9,-29.41,8,25.0,1.73,0,0,0,0,0,0,0,13.47,-1.11
-V3,V1+V2 Heuristic Combo,2.73,34.9,-32.16,14,21.4,0.75,0,0,0,0,0,0,0,13.47,-1.11
