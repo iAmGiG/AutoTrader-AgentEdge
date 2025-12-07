@@ -9,6 +9,7 @@ Automates daily trading execution with:
 - "Set it and forget it" automation
 
 Foundation: Built on Issue #313 (Order Management System)
+Issue #478: State persistence via SQLite (state/user.db)
 """
 
 import argparse
@@ -25,6 +26,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .scheduler_state import get_scheduler_state_manager
 from .trading_cycle import CostEfficientTradeCycle, RoutineType
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
 
@@ -138,10 +140,13 @@ class DailyScheduler:
         self.log_file = Path(log_file_path)
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
+        # Initialize state manager for SQLite persistence (#478)
+        self.state_manager = get_scheduler_state_manager()
+
         # Define scheduled tasks
         self.tasks = self._create_default_tasks()
 
-        # Load previous execution log
+        # Load previous execution log (migrates from JSON to SQLite if needed)
         self._load_execution_log()
 
         logger.info("DailyScheduler initialized with %d tasks", len(self.tasks))
@@ -256,6 +261,10 @@ class DailyScheduler:
         max_attempts = task.retry_count + 1  # Initial attempt + retries
         base_delay = task.retry_delay_seconds
 
+        # Record execution start in SQLite (#478)
+        routine_type = task.name.replace("_routine", "")
+        execution_id = self.state_manager.record_execution_start(routine_type, attempt=1)
+
         for attempt in range(1, max_attempts + 1):
             log_entry.attempt = attempt
 
@@ -283,8 +292,6 @@ class DailyScheduler:
                 # (or _2.md, _3.md for multiple runs)
                 now = get_datetime_now()
                 date_str = now.strftime("%Y-%m-%d")
-                # Extract routine type from task name (e.g., "morning_routine" -> "morning")
-                routine_type = task.name.replace("_routine", "")
                 base_path = f"reports/daily/{date_str}_{routine_type}"
 
                 # Check if file exists and find the right counter
@@ -295,6 +302,14 @@ class DailyScheduler:
                     report_path = f"{base_path}_{counter}.md"
 
                 log_entry.report_path = report_path
+
+                # Record completion in SQLite (#478)
+                self.state_manager.record_execution_complete(
+                    execution_id,
+                    status="completed",
+                    report_path=report_path,
+                    api_calls_used=log_entry.api_calls_used,
+                )
 
                 logger.info("✅ %s completed successfully", task.name)
                 break
@@ -320,6 +335,13 @@ class DailyScheduler:
                     log_entry.actual_end_time = now_iso()
                     logger.error("❌ %s failed after %d attempts", task.name, max_attempts)
 
+                    # Record failure in SQLite (#478)
+                    self.state_manager.record_execution_complete(
+                        execution_id,
+                        status="failed",
+                        error_message=log_entry.error_message,
+                    )
+
         return log_entry
 
     def should_run_task(self, task: ScheduledTask) -> bool:
@@ -332,7 +354,8 @@ class DailyScheduler:
         Returns:
             True if the task should run now
         """
-        if not self.config.get("enabled", True):
+        # Check enabled state from SQLite first, fallback to config
+        if not self.state_manager.is_enabled() and not self.config.get("enabled", True):
             return False
 
         now = get_datetime_now()
@@ -347,14 +370,11 @@ class DailyScheduler:
         if window_start > current_time or current_time > window_end:
             return False
 
-        # Check if already executed today
-        today_str = now.strftime("%Y-%m-%d")
-        for entry in reversed(self.execution_log):
-            entry_date = parse_date_string(entry.actual_start_time).strftime("%Y-%m-%d")
-            if entry.task_name == task.name and entry_date == today_str:
-                if entry.status == ScheduleStatus.COMPLETED.value:
-                    logger.debug("Task %s already completed today", task.name)
-                    return False
+        # Check if already executed today (SQLite-backed)
+        routine_type = task.name.replace("_routine", "")
+        if self.state_manager.was_routine_run_today(routine_type):
+            logger.debug("Task %s already completed today (from DB)", task.name)
+            return False
 
         return True
 
