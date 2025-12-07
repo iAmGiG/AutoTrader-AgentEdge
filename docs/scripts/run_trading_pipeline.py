@@ -5,12 +5,12 @@ Example: Run Full Trading Pipeline
 Demonstrates the complete daily trading workflow orchestration.
 
 Usage:
-    python -m docs.pipeline.run_trading_pipeline --watchlist SPY,QQQ,AAPL
-    python -m docs.pipeline.run_trading_pipeline --mode paper  # Use paper trading
-    python -m docs.pipeline.run_trading_pipeline --dry-run     # Skip actual execution
+    python -m docs.scripts.run_trading_pipeline --watchlist SPY,QQQ,AAPL
+    python -m docs.scripts.run_trading_pipeline --mode paper  # Use paper trading
+    python -m docs.scripts.run_trading_pipeline --dry-run     # Skip actual execution
 
 Or from project root:
-    python docs/pipeline/run_trading_pipeline.py --watchlist SPY,QQQ,AAPL
+    python docs/scripts/run_trading_pipeline.py --watchlist SPY,QQQ,AAPL
 """
 
 import argparse

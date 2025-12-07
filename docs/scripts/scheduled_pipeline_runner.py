@@ -12,19 +12,19 @@ Schedule Options:
 
 Usage:
     # Run morning only
-    python -m docs.pipeline.scheduled_pipeline_runner --schedule morning
+    python -m docs.scripts.scheduled_pipeline_runner --schedule morning
 
     # Run both morning and afternoon
-    python -m docs.pipeline.scheduled_pipeline_runner --schedule both
+    python -m docs.scripts.scheduled_pipeline_runner --schedule both
 
     # Custom times (ET timezone)
-    python -m docs.pipeline.scheduled_pipeline_runner --times "09:45,15:00"
+    python -m docs.scripts.scheduled_pipeline_runner --times "09:45,15:00"
 
     # Dry-run mode (no actual trades)
-    python -m docs.pipeline.scheduled_pipeline_runner --dry-run
+    python -m docs.scripts.scheduled_pipeline_runner --dry-run
 
 Or from project root:
-    python docs/pipeline/scheduled_pipeline_runner.py --schedule morning
+    python docs/scripts/scheduled_pipeline_runner.py --schedule morning
 """
 
 import argparse
