@@ -213,6 +213,77 @@ def toggle_alert(alert_id: int, enabled: bool) -> Dict[str, Any]:
 
 
 # =============================================================================
+# Alert Checking (Issue #482)
+# =============================================================================
+
+
+def check_alerts_with_prices(prices: Dict[str, float]) -> Dict[str, Any]:
+    """
+    Check alerts against current prices and trigger any that match.
+
+    Args:
+        prices: Dict mapping symbol -> current price (e.g., {"AAPL": 175.50})
+
+    Returns:
+        Dict with status and list of triggered alerts
+    """
+    try:
+        mgr = _get_alerts_manager()
+        if not mgr:
+            return {"status": "error", "message": "Alerts manager not available"}
+
+        triggered = mgr.check_alerts_batch(prices)
+
+        triggered_list = [
+            {
+                "id": a.id,
+                "symbol": a.symbol,
+                "type": a.alert_type,
+                "trigger": a.trigger_value,
+                "message": a.message,
+            }
+            for a in triggered
+        ]
+
+        return {
+            "status": "success",
+            "triggered_count": len(triggered_list),
+            "triggered_alerts": triggered_list,
+            "prices_checked": len(prices),
+        }
+
+    except Exception as e:
+        logger.error(f"Error checking alerts: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+def get_symbols_with_alerts() -> Dict[str, Any]:
+    """
+    Get list of symbols that have active alerts.
+
+    Returns:
+        Dict with status and list of symbols
+    """
+    try:
+        mgr = _get_alerts_manager()
+        if not mgr:
+            return {"status": "error", "message": "Alerts manager not available"}
+
+        alerts = mgr.get_alerts(enabled_only=True, untriggered_only=True)
+        symbols = sorted(set(a.symbol for a in alerts))
+
+        return {
+            "status": "success",
+            "count": len(symbols),
+            "symbols": symbols,
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting symbols with alerts: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+# =============================================================================
 # Display Functions
 # =============================================================================
 
@@ -232,10 +303,13 @@ def show_user_alerts(symbol: Optional[str] = None) -> str:
 
     lines = [f"Price Alerts ({len(alerts)})", "=" * 40]
     for a in alerts:
-        emoji = "+" if "above" in a["type"] or "gain" in a["type"] else "-"
+        direction = "+" if "above" in a["type"] or "gain" in a["type"] else "-"
         triggered = " [TRIGGERED]" if a.get("triggered") else ""
         msg = f" - {a['message']}" if a.get("message") else ""
-        lines.append(f"  [{a['id']}] {a['symbol']}: {a['type']} @ ${a['trigger']:.2f}{triggered}{msg}")
+        lines.append(
+            f"  [{a['id']}] {direction} {a['symbol']}: "
+            f"{a['type']} @ ${a['trigger']:.2f}{triggered}{msg}"
+        )
 
     return "\n".join(lines)
 
@@ -275,6 +349,19 @@ show_user_alerts_tool = FunctionTool(
     description="Display user-defined price alerts with formatted output.",
 )
 
+# Alert checking tools (Issue #482)
+check_alerts_tool = FunctionTool(
+    func=check_alerts_with_prices,
+    name="check_alerts_with_prices",
+    description="Check alerts against current prices and trigger any that match.",
+)
+
+get_symbols_with_alerts_tool = FunctionTool(
+    func=get_symbols_with_alerts,
+    name="get_symbols_with_alerts",
+    description="Get list of symbols that have active alerts.",
+)
+
 
 # Export list for CLI tools registry
 CLI_USER_ALERT_TOOLS = [
@@ -283,6 +370,8 @@ CLI_USER_ALERT_TOOLS = [
     delete_alert_tool,
     toggle_alert_tool,
     show_user_alerts_tool,
+    check_alerts_tool,
+    get_symbols_with_alerts_tool,
 ]
 
 __all__ = [
@@ -291,5 +380,7 @@ __all__ = [
     "delete_alert",
     "toggle_alert",
     "show_user_alerts",
+    "check_alerts_with_prices",
+    "get_symbols_with_alerts",
     "CLI_USER_ALERT_TOOLS",
 ]

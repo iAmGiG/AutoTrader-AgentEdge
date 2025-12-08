@@ -187,6 +187,7 @@ class AlertsWatchlistsManager:
         alert_type: AlertType,
         trigger_value: float,
         message: Optional[str] = None,
+        allow_duplicate: bool = False,
     ) -> Optional[Alert]:
         """
         Create a new price alert.
@@ -196,13 +197,32 @@ class AlertsWatchlistsManager:
             alert_type: Type of alert (price_above, price_below, etc.)
             trigger_value: Value that triggers the alert
             message: Optional custom message
+            allow_duplicate: If False, prevents duplicate alerts (default: False)
 
         Returns:
-            Created Alert or None on failure
+            Created Alert or None on failure/duplicate
         """
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
+
+            # Check for duplicate (Issue #482)
+            if not allow_duplicate:
+                cursor.execute(
+                    """
+                    SELECT id FROM user_alerts
+                    WHERE symbol = ? AND alert_type = ? AND trigger_value = ?
+                    AND enabled = TRUE AND triggered_at IS NULL
+                """,
+                    (symbol.upper(), alert_type.value, trigger_value),
+                )
+                existing = cursor.fetchone()
+                if existing:
+                    logger.warning(
+                        f"Duplicate alert exists: {symbol} {alert_type.value} {trigger_value}"
+                    )
+                    conn.close()
+                    return None
 
             cursor.execute(
                 """
@@ -589,6 +609,98 @@ class AlertsWatchlistsManager:
         if watchlist:
             return [item.symbol for item in watchlist.items]
         return []
+
+    # =========================================================================
+    # Batch Alert Checking (Issue #482)
+    # =========================================================================
+
+    def check_alerts_batch(
+        self, prices: Dict[str, float]
+    ) -> List[Alert]:
+        """
+        Check multiple alerts against current prices.
+
+        Args:
+            prices: Dict mapping symbol -> current price
+
+        Returns:
+            List of alerts that were triggered
+        """
+        triggered_alerts: List[Alert] = []
+
+        try:
+            alerts = self.get_alerts(enabled_only=True, untriggered_only=True)
+
+            for alert in alerts:
+                if alert.symbol not in prices:
+                    continue
+
+                current_price = prices[alert.symbol]
+                should_trigger = False
+
+                if alert.alert_type == AlertType.PRICE_ABOVE.value:
+                    should_trigger = current_price >= alert.trigger_value
+                elif alert.alert_type == AlertType.PRICE_BELOW.value:
+                    should_trigger = current_price <= alert.trigger_value
+
+                if should_trigger:
+                    self.trigger_alert(alert.id)
+                    alert.triggered_at = now_iso()
+                    triggered_alerts.append(alert)
+                    logger.info(
+                        f"Alert triggered: {alert.symbol} {alert.alert_type} "
+                        f"@ {alert.trigger_value} (current: {current_price})"
+                    )
+
+            return triggered_alerts
+        except Exception as e:
+            logger.error(f"Failed to check alerts batch: {e}")
+            return []
+
+    def get_alerts_for_symbols(self, symbols: List[str]) -> List[Alert]:
+        """
+        Get all active alerts for a list of symbols.
+
+        Args:
+            symbols: List of stock symbols
+
+        Returns:
+            List of alerts for those symbols
+        """
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            placeholders = ",".join("?" * len(symbols))
+            cursor.execute(
+                f"""
+                SELECT * FROM user_alerts
+                WHERE symbol IN ({placeholders})
+                AND enabled = TRUE AND triggered_at IS NULL
+                ORDER BY symbol, alert_type
+            """,
+                [s.upper() for s in symbols],
+            )
+
+            rows = cursor.fetchall()
+            conn.close()
+
+            return [
+                Alert(
+                    id=row["id"],
+                    symbol=row["symbol"],
+                    alert_type=row["alert_type"],
+                    trigger_value=row["trigger_value"],
+                    message=row["message"],
+                    enabled=bool(row["enabled"]),
+                    triggered_at=row["triggered_at"],
+                    created_at=row["created_at"],
+                )
+                for row in rows
+            ]
+        except Exception as e:
+            logger.error(f"Failed to get alerts for symbols: {e}")
+            return []
 
     # =========================================================================
     # Summary and Stats
