@@ -33,6 +33,10 @@ ORDER_TOOLS = "order"
 SCHEDULER_TOOLS = "scheduler"
 ALERT_TOOLS = "alert"
 EXECUTION_MODE_TOOLS = "execution_mode"
+# DB-backed tools (Issue #481)
+USER_ALERT_TOOLS = "user_alert"
+WATCHLIST_TOOLS = "watchlist"
+PORTFOLIO_OVERRIDE_TOOLS = "portfolio_override"
 
 
 class CliToolRegistry:
@@ -214,6 +218,10 @@ def _discover_and_register_tools() -> None:
         ("alert_tools", "CLI_ALERT_TOOLS", ALERT_TOOLS),
         # Phase 1E (#459): Execution mode tools
         ("execution_mode_tools", "CLI_EXECUTION_MODE_TOOLS", EXECUTION_MODE_TOOLS),
+        # DB-backed tools (Issue #481): User alerts, watchlists, portfolio overrides
+        ("user_alert_tools", "CLI_USER_ALERT_TOOLS", USER_ALERT_TOOLS),
+        ("watchlist_tools", "CLI_WATCHLIST_TOOLS", WATCHLIST_TOOLS),
+        ("portfolio_override_tools", "CLI_PORTFOLIO_OVERRIDE_TOOLS", PORTFOLIO_OVERRIDE_TOOLS),
     ]
 
     for module_name, tools_attr, category in tool_modules:
@@ -244,6 +252,10 @@ __all__ = [
     "SCHEDULER_TOOLS",
     "ALERT_TOOLS",
     "EXECUTION_MODE_TOOLS",
+    # DB-backed tool categories (Issue #481)
+    "USER_ALERT_TOOLS",
+    "WATCHLIST_TOOLS",
+    "PORTFOLIO_OVERRIDE_TOOLS",
     # AutoGen core
     "FunctionTool",
 ]

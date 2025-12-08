@@ -239,6 +239,34 @@ class SchedulerStateManager:
         """Check if scheduler is enabled."""
         return self.get_state().enabled
 
+    def set_morning_enabled(self, enabled: bool) -> bool:
+        """
+        Enable or disable the morning routine.
+
+        Args:
+            enabled: True to enable, False to disable
+
+        Returns:
+            True if successful
+        """
+        state = self.get_state()
+        state.morning_enabled = enabled
+        return self.save_state(state)
+
+    def set_evening_enabled(self, enabled: bool) -> bool:
+        """
+        Enable or disable the evening routine.
+
+        Args:
+            enabled: True to enable, False to disable
+
+        Returns:
+            True if successful
+        """
+        state = self.get_state()
+        state.evening_enabled = enabled
+        return self.save_state(state)
+
     def update_times(
         self, morning_time: Optional[str] = None, evening_time: Optional[str] = None
     ) -> bool:
@@ -336,7 +364,10 @@ class SchedulerStateManager:
             return False
 
     def get_execution_history(
-        self, days: int = 7, routine_type: Optional[str] = None
+        self,
+        days: int = 7,
+        routine_type: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> List[SchedulerExecution]:
         """
         Get execution history for the last N days.
@@ -344,6 +375,7 @@ class SchedulerStateManager:
         Args:
             days: Number of days to retrieve
             routine_type: Optional filter by routine type
+            limit: Optional max records to return
 
         Returns:
             List of SchedulerExecution records
@@ -355,26 +387,23 @@ class SchedulerStateManager:
             cutoff = get_datetime_now().replace(hour=0, minute=0, second=0, microsecond=0)
             cutoff = cutoff.isoformat()
 
-            if routine_type:
-                cursor.execute(
-                    """
-                    SELECT * FROM scheduler_history
-                    WHERE started_at >= date(?, '-' || ? || ' days')
-                    AND routine_type = ?
-                    ORDER BY started_at DESC
-                """,
-                    (cutoff, days, routine_type),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT * FROM scheduler_history
-                    WHERE started_at >= date(?, '-' || ? || ' days')
-                    ORDER BY started_at DESC
-                """,
-                    (cutoff, days),
-                )
+            query = """
+                SELECT * FROM scheduler_history
+                WHERE started_at >= date(?, '-' || ? || ' days')
+            """
+            params: List[Any] = [cutoff, days]
 
+            if routine_type:
+                query += " AND routine_type = ?"
+                params.append(routine_type)
+
+            query += " ORDER BY started_at DESC"
+
+            if limit:
+                query += " LIMIT ?"
+                params.append(limit)
+
+            cursor.execute(query, params)
             rows = cursor.fetchall()
             conn.close()
 
