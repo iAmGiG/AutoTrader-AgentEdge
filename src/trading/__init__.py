@@ -83,6 +83,16 @@ from .portfolio_override import (
     get_portfolio_override_manager,
 )
 
+# Alerts and Watchlists (#480)
+from .alerts_watchlists import (
+    Alert,
+    AlertType,
+    AlertsWatchlistsManager,
+    Watchlist,
+    WatchlistItem,
+    get_alerts_watchlists_manager,
+)
+
 __all__ = [
     # Broker
     "AlpacaExecutionManager",
@@ -141,4 +151,11 @@ __all__ = [
     "PortfolioOverride",
     "PortfolioOverrideManager",
     "get_portfolio_override_manager",
+    # Alerts and Watchlists
+    "Alert",
+    "AlertType",
+    "AlertsWatchlistsManager",
+    "Watchlist",
+    "WatchlistItem",
+    "get_alerts_watchlists_manager",
 ]
