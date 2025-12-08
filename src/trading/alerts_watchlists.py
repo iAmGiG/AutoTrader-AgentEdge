@@ -614,9 +614,7 @@ class AlertsWatchlistsManager:
     # Batch Alert Checking (Issue #482)
     # =========================================================================
 
-    def check_alerts_batch(
-        self, prices: Dict[str, float]
-    ) -> List[Alert]:
+    def check_alerts_batch(self, prices: Dict[str, float]) -> List[Alert]:
         """
         Check multiple alerts against current prices.
 

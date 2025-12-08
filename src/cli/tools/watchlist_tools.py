@@ -13,7 +13,7 @@ Uses src.trading.alerts_watchlists.AlertsWatchlistsManager for persistence.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from autogen_core.tools import FunctionTool
 
