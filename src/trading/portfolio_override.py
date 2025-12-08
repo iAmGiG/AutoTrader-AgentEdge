@@ -18,7 +18,7 @@ import os
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 try:
     import yaml
@@ -151,9 +151,7 @@ class PortfolioOverrideManager:
         except Exception as e:
             logger.error(f"Failed to load portfolio config: {e}")
 
-    def _flatten_config(
-        self, config: Dict[str, Any], prefix: str = ""
-    ) -> Dict[str, Any]:
+    def _flatten_config(self, config: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
         """Flatten nested config dict to dot-notation keys."""
         result = {}
         for key, value in config.items():
@@ -224,9 +222,7 @@ class PortfolioOverrideManager:
             if expires_at:
                 expiration = expires_at.isoformat()
             elif expires_in_hours:
-                expiration = (
-                    get_datetime_now() + timedelta(hours=expires_in_hours)
-                ).isoformat()
+                expiration = (get_datetime_now() + timedelta(hours=expires_in_hours)).isoformat()
 
             # Get old value for history
             cursor.execute(
@@ -556,8 +552,7 @@ class PortfolioOverrideManager:
                 1
                 for o in overrides
                 if o.expires_at
-                and parse_date_string(o.expires_at)
-                < get_datetime_now() + timedelta(hours=1)
+                and parse_date_string(o.expires_at) < get_datetime_now() + timedelta(hours=1)
             ),
         }
 

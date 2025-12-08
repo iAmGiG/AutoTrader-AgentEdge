@@ -17,11 +17,10 @@ import logging
 import os
 import sqlite3
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from src.utils.date_utils import get_datetime_now, now_iso
+from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -217,9 +216,7 @@ class AlertsWatchlistsManager:
             conn.commit()
             conn.close()
 
-            logger.info(
-                f"Created alert: {symbol} {alert_type.value} {trigger_value}"
-            )
+            logger.info(f"Created alert: {symbol} {alert_type.value} {trigger_value}")
             return Alert(
                 id=alert_id,
                 symbol=symbol.upper(),
@@ -534,9 +531,7 @@ class AlertsWatchlistsManager:
             cursor = conn.cursor()
 
             # Get watchlist ID
-            cursor.execute(
-                "SELECT id FROM watchlists WHERE name = ?", (watchlist_name,)
-            )
+            cursor.execute("SELECT id FROM watchlists WHERE name = ?", (watchlist_name,))
             row = cursor.fetchone()
 
             if not row:
