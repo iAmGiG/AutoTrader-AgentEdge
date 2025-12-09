@@ -1,0 +1,112 @@
+# ============================================================================
+# CLI Help Text Configuration
+# Epilog text displayed by `python main.py --help`
+# ============================================================================
+
+version: "2.0"
+title: "AUTOGEN-TRADER CLI"
+subtitle: "Production-Ready MACD+RSI Voting (0.856 Sharpe Ratio)"
+
+quick_start:
+  - command: "python main.py"
+    description: "Launch interactive trading assistant"
+  - command: "python main.py --daemon"
+    description: "Run automated scheduler (background)"
+  - command: "python main.py --list-accounts"
+    description: "List configured trading accounts (#401)"
+  - command: "python main.py --account paper"
+    description: "Use specific account (#401)"
+  - command: "python main.py --help"
+    description: "Show this help"
+
+interactive_commands:
+  trading:
+    title: "Trading (with natural language risk modes - Issue #400)"
+    commands:
+      - example: "buy AAPL 10"
+        description: "Buy 10 shares (default: moderate risk)"
+      - example: "buy SPY aggressively"
+        description: "Buy with aggressive position sizing"
+      - example: "conservative buy MSFT 5"
+        description: "Buy with conservative risk settings"
+      - example: "sell TSLA, be aggressive"
+        description: "Sell with larger position"
+      - example: "show positions"
+        description: "View open positions"
+      - example: "show portfolio"
+        description: "Portfolio summary"
+
+  risk_modes:
+    title: "Risk Modes (adjustable mid-session)"
+    commands:
+      - example: "set risk mode to conservative"
+        description: "5% max position, 2% stop loss"
+      - example: "I want to be aggressive"
+        description: "20% max position, 8% stop loss"
+      - example: "what's my current risk mode?"
+        description: "Show active mode settings"
+
+  workflows:
+    title: "Workflows"
+    commands:
+      - example: "morning-routine"
+        description: "Run morning market scan"
+      - example: "monitor"
+        description: "Monitor positions for exit signals"
+      - example: "evening-summary"
+        description: "Generate end-of-day report"
+
+  configuration:
+    title: "Configuration (Issue #358, #365)"
+    commands:
+      - example: "show config-file"
+        description: "View YAML config files"
+      - example: "show timeframe"
+        description: "Show current timeframe (1d default)"
+      - example: "set timeframe 1h"
+        description: "Change to hourly timeframe"
+      - example: "show watchlist"
+        description: "View scanner watchlist"
+
+  forward_testing:
+    title: "Forward Testing (Issue #324)"
+    commands:
+      - example: "forward-test start TEST_NAME"
+        description: "Start 30-day validation test"
+      - example: "forward-test report TEST_NAME"
+        description: "Generate test report"
+      - example: "forward-test status"
+        description: "Check test progress"
+
+  scheduler:
+    title: "Scheduler & Automation"
+    commands:
+      - example: "show scheduler"
+        description: "View scheduler status"
+      - example: "enable scheduler"
+        description: "Enable automated trading"
+      - example: "disable scheduler"
+        description: "Disable automation"
+
+  help:
+    title: "Help"
+    commands:
+      - example: "/help"
+        description: "Show all commands"
+      - example: "/help COMMAND"
+        description: "Detailed help for command"
+      - example: "/help search KEYWORD"
+        description: "Search commands"
+      - example: "/exit"
+        description: "Exit CLI"
+
+features:
+  - "VoterAgent (MACD+RSI) - 0.856 Sharpe, production-validated"
+  - "Trading Modes - Conservative/Moderate/Aggressive via natural language"
+  - "Configuration System - YAML-based strategy parameters"
+  - "Timeframe Support - Trade on 1m to 1M timeframes"
+  - "Forward Testing - 30-day validation protocol"
+  - "Daily Scheduler - Automated morning/evening routines"
+  - "Risk Management - Portfolio limits & position sizing"
+  - "Paper Trading - Test strategies without real money"
+  - "Multi-Account (#401) - Manage multiple trading accounts"
