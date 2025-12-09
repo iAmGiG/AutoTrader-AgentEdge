@@ -1,19 +1,19 @@
 """
-Scheduler Display Tools - FunctionTool wrappers for daily scheduler.
+Scheduler Tools - FunctionTool wrappers for daily scheduler.
 
 Issue #433/#458: Extract scheduler display commands from cli_session.py.
+Issue #478/#481: Add SQLite-backed scheduler state control.
 
 These tools handle:
 - Viewing scheduler status and configuration
 - Getting execution history
 - Calculating next scheduled run
-
-Note: These are read-only display tools. Scheduler control (start/stop)
-is handled by the scheduler_cli.py module.
+- Enabling/disabling scheduler (SQLite-backed state)
+- Viewing scheduler state from database
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from autogen_core.tools import FunctionTool
 
@@ -42,8 +42,19 @@ def _get_scheduler():
         return None
 
 
+def _get_state_manager():
+    """Get SchedulerStateManager instance for SQLite-backed state."""
+    try:
+        from src.trading.scheduling.scheduler_state import get_scheduler_state_manager
+
+        return get_scheduler_state_manager()
+    except Exception as e:
+        logger.error("Failed to get scheduler state manager: %s", e)
+        return None
+
+
 # =============================================================================
-# FunctionTool Wrapper Functions
+# FunctionTool Wrapper Functions - Display
 # =============================================================================
 
 
@@ -259,6 +270,205 @@ def get_routine_description(routine: str = "both") -> Dict[str, Any]:
 
 
 # =============================================================================
+# FunctionTool Wrapper Functions - Control (Issue #478/#481)
+# =============================================================================
+
+
+def enable_scheduler(enabled: bool = True) -> Dict[str, Any]:
+    """
+    Enable or disable the scheduler (SQLite-backed state).
+
+    Args:
+        enabled: True to enable, False to disable
+
+    Returns:
+        Dict with status and new state
+    """
+    try:
+        mgr = _get_state_manager()
+        if not mgr:
+            return {"status": "error", "message": "Scheduler state manager not available"}
+
+        success = mgr.set_enabled(enabled)
+        if success:
+            state = "enabled" if enabled else "disabled"
+            return {
+                "status": "success",
+                "enabled": enabled,
+                "message": f"Scheduler {state}",
+            }
+        return {"status": "error", "message": "Failed to update scheduler state"}
+
+    except Exception as e:
+        logger.error("Error enabling/disabling scheduler: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+def set_routine_enabled(routine: str, enabled: bool) -> Dict[str, Any]:
+    """
+    Enable or disable a specific routine.
+
+    Args:
+        routine: "morning" or "evening"
+        enabled: True to enable, False to disable
+
+    Returns:
+        Dict with status
+    """
+    try:
+        mgr = _get_state_manager()
+        if not mgr:
+            return {"status": "error", "message": "Scheduler state manager not available"}
+
+        routine_lower = routine.lower()
+        if routine_lower not in ("morning", "evening"):
+            return {"status": "error", "message": "Routine must be 'morning' or 'evening'"}
+
+        if routine_lower == "morning":
+            success = mgr.set_morning_enabled(enabled)
+        else:
+            success = mgr.set_evening_enabled(enabled)
+
+        if success:
+            state = "enabled" if enabled else "disabled"
+            return {
+                "status": "success",
+                "routine": routine_lower,
+                "enabled": enabled,
+                "message": f"{routine_lower.title()} routine {state}",
+            }
+        return {"status": "error", "message": f"Failed to update {routine_lower} routine"}
+
+    except Exception as e:
+        logger.error("Error setting routine enabled: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+def get_scheduler_db_state() -> Dict[str, Any]:
+    """
+    Get scheduler state from SQLite database.
+
+    Returns:
+        Dict with status and full scheduler state
+    """
+    try:
+        mgr = _get_state_manager()
+        if not mgr:
+            return {"status": "error", "message": "Scheduler state manager not available"}
+
+        state = mgr.get_state()
+
+        # Get last run times from execution history
+        last_morning = mgr.get_last_execution("morning")
+        last_evening = mgr.get_last_execution("evening")
+
+        return {
+            "status": "success",
+            "state": {
+                "enabled": state.enabled,
+                "morning_enabled": state.morning_enabled,
+                "evening_enabled": state.evening_enabled,
+                "morning_time": state.morning_time,
+                "evening_time": state.evening_time,
+                "max_retries": state.max_retries,
+                "retry_delay_seconds": state.retry_delay_seconds,
+                "timeout_seconds": state.timeout_seconds,
+                "updated_at": state.updated_at,
+            },
+            "last_runs": {
+                "morning": last_morning.started_at if last_morning else None,
+                "morning_status": last_morning.status if last_morning else None,
+                "evening": last_evening.started_at if last_evening else None,
+                "evening_status": last_evening.status if last_evening else None,
+            },
+        }
+
+    except Exception as e:
+        logger.error("Error getting scheduler DB state: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+def get_db_execution_history(
+    routine_type: Optional[str] = None,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    """
+    Get execution history from SQLite database.
+
+    Args:
+        routine_type: Optional filter ("morning" or "evening")
+        limit: Maximum entries to return
+
+    Returns:
+        Dict with status and execution history
+    """
+    try:
+        mgr = _get_state_manager()
+        if not mgr:
+            return {"status": "error", "message": "Scheduler state manager not available"}
+
+        history = mgr.get_execution_history(routine_type=routine_type, limit=limit)
+
+        history_data = [
+            {
+                "id": h.id,
+                "routine_type": h.routine_type,
+                "started_at": h.started_at,
+                "completed_at": h.completed_at,
+                "status": h.status,
+                "error_message": h.error_message,
+                "attempt": h.attempt,
+                "api_calls_used": h.api_calls_used,
+            }
+            for h in history
+        ]
+
+        return {
+            "status": "success",
+            "count": len(history_data),
+            "filter_routine": routine_type,
+            "history": history_data,
+        }
+
+    except Exception as e:
+        logger.error("Error getting DB execution history: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+def check_routine_run_today(routine_type: str) -> Dict[str, Any]:
+    """
+    Check if a routine has already run today.
+
+    Args:
+        routine_type: "morning" or "evening"
+
+    Returns:
+        Dict with status and whether routine ran today
+    """
+    try:
+        mgr = _get_state_manager()
+        if not mgr:
+            return {"status": "error", "message": "Scheduler state manager not available"}
+
+        routine_lower = routine_type.lower()
+        if routine_lower not in ("morning", "evening"):
+            return {"status": "error", "message": "Routine must be 'morning' or 'evening'"}
+
+        ran_today = mgr.was_routine_run_today(routine_lower)
+
+        return {
+            "status": "success",
+            "routine": routine_lower,
+            "ran_today": ran_today,
+            "message": f"{routine_lower.title()} routine {'has' if ran_today else 'has not'} run today",
+        }
+
+    except Exception as e:
+        logger.error("Error checking routine run: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+# =============================================================================
 # Display Functions (Issue #459)
 # =============================================================================
 
@@ -332,26 +542,76 @@ get_routine_description_tool = FunctionTool(
     description="Get description of what morning and evening routines do.",
 )
 
+# Control tools (Issue #478/#481)
+enable_scheduler_tool = FunctionTool(
+    func=enable_scheduler,
+    name="enable_scheduler",
+    description="Enable or disable the scheduler (SQLite-backed state).",
+)
+
+set_routine_enabled_tool = FunctionTool(
+    func=set_routine_enabled,
+    name="set_routine_enabled",
+    description="Enable or disable a specific routine (morning or evening).",
+)
+
+get_scheduler_db_state_tool = FunctionTool(
+    func=get_scheduler_db_state,
+    name="get_scheduler_db_state",
+    description="Get scheduler state from SQLite database.",
+)
+
+get_db_execution_history_tool = FunctionTool(
+    func=get_db_execution_history,
+    name="get_db_execution_history",
+    description="Get scheduler execution history from SQLite database.",
+)
+
+check_routine_run_today_tool = FunctionTool(
+    func=check_routine_run_today,
+    name="check_routine_run_today",
+    description="Check if a routine (morning/evening) has already run today.",
+)
+
 
 # Export list for CLI tools registry
 CLI_SCHEDULER_TOOLS = [
+    # Display tools
     show_scheduler_tool,
     get_scheduler_status_tool,
     get_execution_history_tool,
     get_next_scheduled_run_tool,
     get_routine_description_tool,
+    # Control tools (Issue #478/#481)
+    enable_scheduler_tool,
+    set_routine_enabled_tool,
+    get_scheduler_db_state_tool,
+    get_db_execution_history_tool,
+    check_routine_run_today_tool,
 ]
 
 __all__ = [
-    # Functions
+    # Display functions
     "get_scheduler_status",
     "get_execution_history",
     "get_next_scheduled_run",
     "get_routine_description",
+    "show_scheduler",
+    # Control functions
+    "enable_scheduler",
+    "set_routine_enabled",
+    "get_scheduler_db_state",
+    "get_db_execution_history",
+    "check_routine_run_today",
     # FunctionTools
     "CLI_SCHEDULER_TOOLS",
     "get_scheduler_status_tool",
     "get_execution_history_tool",
     "get_next_scheduled_run_tool",
     "get_routine_description_tool",
+    "enable_scheduler_tool",
+    "set_routine_enabled_tool",
+    "get_scheduler_db_state_tool",
+    "get_db_execution_history_tool",
+    "check_routine_run_today_tool",
 ]

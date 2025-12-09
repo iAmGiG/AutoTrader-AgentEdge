@@ -26,6 +26,16 @@ from .accounts.account_tools import (
                                      switch_active_account,
 )
 
+# Alerts and Watchlists (#480)
+from .alerts_watchlists import (
+                                     Alert,
+                                     AlertsWatchlistsManager,
+                                     AlertType,
+                                     Watchlist,
+                                     WatchlistItem,
+                                     get_alerts_watchlists_manager,
+)
+
 # Broker layer
 from .broker.alpaca_execution_manager import AlpacaExecutionManager
 from .broker.alpaca_trading_client import (
@@ -51,6 +61,13 @@ from .instruments.timeframe_tools import (
 from .orders.order_manager import OrderManager
 from .orders.partial_exit_manager import PartialExitManager
 from .orders.trailing_stop_manager import TrailingStopManager, get_current_price
+
+# Portfolio Override (#479)
+from .portfolio_override import (
+                                     PortfolioOverride,
+                                     PortfolioOverrideManager,
+                                     get_portfolio_override_manager,
+)
 
 # Positions
 from .positions.portfolio_manager import PortfolioManager
@@ -130,4 +147,15 @@ __all__ = [
     "SimpleSignalGenerator",
     "ReportGenerator",
     "get_current_price",
+    # Portfolio Override
+    "PortfolioOverride",
+    "PortfolioOverrideManager",
+    "get_portfolio_override_manager",
+    # Alerts and Watchlists
+    "Alert",
+    "AlertType",
+    "AlertsWatchlistsManager",
+    "Watchlist",
+    "WatchlistItem",
+    "get_alerts_watchlists_manager",
 ]
