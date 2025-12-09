@@ -1,5 +1,7 @@
 # AutoTrader: Multi-Agent Trading System
 
+**Copyright (C) 2024-2025 Chris R. (iAmGiG)** | Licensed under [AGPL-3.0](LICENSE) | See [NOTICE](NOTICE)
+
 ## Powered by AgentEdge - Autonomous AI agents seeking trading edge
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)

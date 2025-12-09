@@ -1,0 +1,67 @@
+AutoTrader: Multi-Agent Trading System
+Copyright (C) 2024-2025 Chris R. (iAmGiG)
+
+This product is licensed under the GNU Affero General Public License v3.0.
+See the LICENSE file for the full license text.
+
+================================================================================
+DISCLAIMER
+================================================================================
+
+THIS SOFTWARE IS PROVIDED FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY.
+
+- This software does NOT provide financial, investment, or trading advice.
+- Trading securities involves substantial risk of loss.
+- Past performance metrics cited in documentation do NOT guarantee future results.
+- The authors and contributors are NOT liable for any financial losses.
+- Use this software entirely at your own risk.
+
+By using this software, you acknowledge that you understand these risks and
+accept full responsibility for any outcomes resulting from its use.
+
+================================================================================
+THIRD-PARTY COMPONENTS
+================================================================================
+
+This software incorporates or depends on the following third-party components:
+
+Microsoft AutoGen
+  License: MIT License
+  https://github.com/microsoft/autogen
+
+Alpaca-py (Alpaca Markets SDK)
+  License: Apache License 2.0
+  https://github.com/alpacahq/alpaca-py
+
+OpenAI Python SDK
+  License: MIT License
+  https://github.com/openai/openai-python
+
+pandas
+  License: BSD 3-Clause License
+  https://github.com/pandas-dev/pandas
+
+NumPy
+  License: BSD 3-Clause License
+  https://github.com/numpy/numpy
+
+Additional dependencies are listed in pyproject.toml with their respective
+licenses. Most are MIT, BSD, or Apache 2.0 licensed.
+
+================================================================================
+TRADEMARKS
+================================================================================
+
+- "AutoTrader" and "AgentEdge" are project names, not registered trademarks.
+- "Alpaca" is a trademark of AlpacaDB, Inc.
+- "OpenAI" is a trademark of OpenAI, Inc.
+- "Microsoft" and "AutoGen" are trademarks of Microsoft Corporation.
+
+Use of these names is for identification purposes only and does not imply
+endorsement by the respective trademark holders.
+
+================================================================================
+CONTACT
+================================================================================
+
+Project Repository: https://github.com/iAmGiG/AutoTrader-AgentEdge
