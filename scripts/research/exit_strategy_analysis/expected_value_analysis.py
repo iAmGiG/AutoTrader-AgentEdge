@@ -31,13 +31,13 @@ def main():
         ev = analyze_expected_value(win_rate, tp, sl)
         status = "✅ Positive" if ev > 0 else "❌ Negative"
 
-        print(f"{name:<40} {ev*100:>6.2f}%    {status}")
+        print(f"{name:<40} {ev * 100:>6.2f}%    {status}")
 
         # Show the math
         win_component = win_rate * tp * 100
         loss_component = (1 - win_rate) * sl * 100
-        print(f"  Math: ({win_rate:.1%} × {tp:.1%}) - ({1-win_rate:.1%} × {sl:.1%})")
-        print(f"        = {win_component:.2f}% - {loss_component:.2f}% = {ev*100:.2f}%")
+        print(f"  Math: ({win_rate:.1%} × {tp:.1%}) - ({1 - win_rate:.1%} × {sl:.1%})")
+        print(f"        = {win_component:.2f}% - {loss_component:.2f}% = {ev * 100:.2f}%")
         print()
 
     print("=" * 60)
