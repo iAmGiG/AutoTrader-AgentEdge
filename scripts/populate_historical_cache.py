@@ -145,7 +145,7 @@ class MultiProviderDataFetcher:
                         all_bars.append(df)
 
                     if (i + 1) % 10 == 0:
-                        logger.info(f"Progress: {i+1}/{len(contract_symbols)} contracts")
+                        logger.info(f"Progress: {i + 1}/{len(contract_symbols)} contracts")
 
                 except Exception as e:
                     logger.warning(f"Failed to fetch bars for {contract_symbol}: {e}")
@@ -390,9 +390,9 @@ def populate_options_cache(
     logger.info(f"Providers: {providers}")
 
     for symbol in symbols:
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"Processing {symbol}")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         if "alpaca" in providers or multi_provider:
             df_alpaca = fetcher.fetch_alpaca_options_bars(symbol, start_date, end_date)
@@ -425,9 +425,9 @@ def populate_stock_cache(
     logger.info(f"Date range: {start_date} to {end_date}")
 
     for symbol in symbols:
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"Processing {symbol}")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         if "alpaca" in providers:
             df_alpaca = fetcher.fetch_alpaca_stock_bars(symbol, start_date, end_date)

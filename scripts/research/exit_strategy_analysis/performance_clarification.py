@@ -216,9 +216,9 @@ def main():
     ]
 
     for take_profit, stop_loss, name in configs:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Configuration: {name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         backtest = DetailedBacktest(take_profit=take_profit, stop_loss=stop_loss)
         results = backtest.run_detailed_backtest(prices)
@@ -247,7 +247,7 @@ def main():
             f"   Win rate × Avg win: {win_rate:.3f} × {results['avg_win_per_trade']:.2f}% = {win_rate * results['avg_win_per_trade']:.2f}%"
         )
         print(
-            f"   Loss rate × Avg loss: {1-win_rate:.3f} × {results['avg_loss_per_trade']:.2f}% = {(1-win_rate) * results['avg_loss_per_trade']:.2f}%"
+            f"   Loss rate × Avg loss: {1 - win_rate:.3f} × {results['avg_loss_per_trade']:.2f}% = {(1 - win_rate) * results['avg_loss_per_trade']:.2f}%"
         )
         print(f"   Expected value: {expected:.2f}% per trade")
 
@@ -256,7 +256,7 @@ def main():
             print("\n📈 SAMPLE TRADES (first 3):")
             for i, trade in enumerate(results["trades"][:3]):
                 print(
-                    f"   Trade {i+1}: ${trade['capital_before']:.2f} → ${trade['capital_after']:.2f}"
+                    f"   Trade {i + 1}: ${trade['capital_before']:.2f} → ${trade['capital_after']:.2f}"
                 )
                 print(
                     f"            Return: {trade['per_trade_return']:+.2f}% in {trade['days_held']} days ({trade['exit_reason']})"
