@@ -40,6 +40,10 @@ PORTFOLIO_OVERRIDE_TOOLS = "portfolio_override"
 # A Stream tools (Issues #366, #414)
 ENTRY_PLANNING_TOOLS = "entry_planning"
 TRAILING_STOP_TOOLS = "trailing_stop"
+# Voter tools (Issue #488)
+VOTER_TOOLS = "voter"
+# Backup tools (Issue #490)
+BACKUP_TOOLS = "backup"
 
 
 class CliToolRegistry:
@@ -228,6 +232,10 @@ def _discover_and_register_tools() -> None:
         # A Stream tools (Issues #366, #414): Entry planning and trailing stops
         ("entry_planning_tools", "CLI_ENTRY_PLANNING_TOOLS", ENTRY_PLANNING_TOOLS),
         ("trailing_stop_tools", "CLI_TRAILING_STOP_TOOLS", TRAILING_STOP_TOOLS),
+        # Voter tools (Issue #488): VoterAgent configuration and explanation
+        ("voter_tools", "CLI_VOTER_TOOLS", VOTER_TOOLS),
+        # Backup tools (Issue #490): Database backup/restore/export
+        ("backup_tools", "CLI_BACKUP_TOOLS", BACKUP_TOOLS),
     ]
 
     for module_name, tools_attr, category in tool_modules:
@@ -265,6 +273,10 @@ __all__ = [
     # A Stream tool categories (Issues #366, #414)
     "ENTRY_PLANNING_TOOLS",
     "TRAILING_STOP_TOOLS",
+    # Voter tools (Issue #488)
+    "VOTER_TOOLS",
+    # Backup tools (Issue #490)
+    "BACKUP_TOOLS",
     # AutoGen core
     "FunctionTool",
 ]
