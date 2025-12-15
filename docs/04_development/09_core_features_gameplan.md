@@ -2,7 +2,7 @@
 
 **Created**: 2025-12-14
 **Updated**: 2025-12-14
-**Status**: Active - C Stream: Core Complete, Infra 1/5
+**Status**: Active - C Stream: Core Complete, Infra 2/5
 
 ## Overview
 
@@ -117,7 +117,7 @@ git worktree add ../AutoGen-Trader-signals feature/core-signals-infra
 
 - [x] #364: Ranked voter configuration system (commit b4d4bec, abe3905)
 - [x] #395: Multi-timeframe voting operational (commit a875452)
-- [ ] Infrastructure: 1 of 5 complete (#483), need 2 more
+- [ ] Infrastructure: 2 of 5 complete (#483, #405), need 1 more
 
 ## Timeline Estimate
 
@@ -192,3 +192,13 @@ git checkout feature/core-signals-infra
 - Commit: `cbc84de`
 
 **Next**: Continue with infrastructure (#402, #405, #407, #370)
+
+**#405 Tiered Watchlist System** - COMPLETE
+
+- Implementation already existed, fixed CONFIG_DIR path bug
+- Tiered watchlist: positions (Tier 0), pending orders (Tier 1), strategy (Tier 2), discovery (Tier 3)
+- Trading modes: conservative->balanced, moderate->momentum, aggressive->wheel_strategy
+- All tests passing
+- Commit: `54b2266`
+
+**Next**: Need 1 more infrastructure issue (#402 or #407 or #370)
