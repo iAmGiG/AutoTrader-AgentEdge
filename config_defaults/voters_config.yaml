@@ -1,0 +1,121 @@
+# Ranked Voter Configuration
+# Issue #364: Implement Ranked Voter System for Technical Indicators
+#
+# Users can configure their preferred technical indicators in rank order.
+# Top N indicators are "active voters" that determine trading decisions.
+# Lower-ranked indicators provide review/confirmation signals only.
+
+# Number of active voters (top N in ranking are used for decisions)
+active_voters: 2
+
+# Available indicator types and their default parameters
+# These define what indicators can be used in rankings
+indicators:
+  MACD:
+    description: "Moving Average Convergence Divergence"
+    default_params:
+      fast: 13          # Fibonacci optimized
+      slow: 34          # Fibonacci optimized
+      signal: 8         # Fibonacci optimized
+      threshold: 0.1    # Histogram threshold for signal
+    required_periods: 42
+    validated: true     # Production validated (0.856 Sharpe)
+
+  RSI:
+    description: "Relative Strength Index"
+    default_params:
+      period: 14
+      oversold: 30
+      overbought: 70
+    required_periods: 24
+    validated: true     # Production validated (0.856 Sharpe)
+
+  # Future indicators (not yet implemented)
+  # BollingerBands:
+  #   description: "Bollinger Bands volatility indicator"
+  #   default_params:
+  #     period: 20
+  #     std_dev: 2.0
+  #   required_periods: 20
+  #   validated: false
+
+  # Stochastic:
+  #   description: "Stochastic Oscillator momentum indicator"
+  #   default_params:
+  #     k_period: 14
+  #     d_period: 3
+  #     oversold: 20
+  #     overbought: 80
+  #   required_periods: 17
+  #   validated: false
+
+# Default ranking (ordered by preference)
+# Rank 1 and 2 are active voters, others are review-only
+default_ranking:
+  - name: MACD
+    rank: 1
+    params: {}          # Use defaults
+    role: active        # Active voter (participates in decisions)
+
+  - name: RSI
+    rank: 2
+    params: {}          # Use defaults
+    role: active        # Active voter (participates in decisions)
+
+  # Example of adding more voters in review-only mode:
+  # - name: BollingerBands
+  #   rank: 3
+  #   params:
+  #     period: 20
+  #     std_dev: 2.0
+  #   role: review       # Review only (shown but doesn't vote)
+
+# Voting logic configuration
+voting:
+  # How to combine active voter signals
+  consensus_mode: unanimous   # Options: unanimous, majority, weighted
+
+  # Confidence adjustments
+  consensus_boost: 0.15       # Boost when all voters agree
+  weak_signal_boost: 0.10     # Boost for single-voter signals
+  conflict_penalty: 0.20      # Confidence reduction for conflicts
+
+  # Position sizing based on signal strength
+  strong_signal_size: 1.0     # Full position on consensus
+  weak_signal_size: 0.5       # Half position on single voter
+  conflict_size: 0.0          # No position on conflict
+
+  # Minimum data requirements
+  min_data_points: 42         # Minimum bars for reliable signals
+
+# Presets for different trading styles
+presets:
+  default:
+    description: "Validated MACD+RSI voting (0.856 Sharpe)"
+    active_voters: 2
+    ranking:
+      - {name: MACD, rank: 1, role: active}
+      - {name: RSI, rank: 2, role: active}
+
+  macd_primary:
+    description: "MACD-focused with RSI confirmation"
+    active_voters: 1
+    ranking:
+      - {name: MACD, rank: 1, role: active}
+      - {name: RSI, rank: 2, role: review}
+
+  rsi_primary:
+    description: "RSI-focused with MACD confirmation"
+    active_voters: 1
+    ranking:
+      - {name: RSI, rank: 1, role: active}
+      - {name: MACD, rank: 2, role: review}
+
+  # Future presets when more indicators are available:
+  # momentum_trio:
+  #   description: "Three momentum indicators for strong confirmation"
+  #   active_voters: 2
+  #   ranking:
+  #     - {name: MACD, rank: 1, role: active}
+  #     - {name: RSI, rank: 2, role: active}
+  #     - {name: Stochastic, rank: 3, role: review}

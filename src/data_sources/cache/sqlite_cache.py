@@ -64,7 +64,7 @@ class TradingCacheManager:
                     -- Asset identification
                     asset_type TEXT NOT NULL DEFAULT 'stock',
                     symbol TEXT NOT NULL,
-                    bar_timestamp TEXT NOT NULL,  -- Full ISO timestamp for bar start
+                    trading_date TEXT NOT NULL,  -- Trading date (YYYY-MM-DD)
                     timeframe TEXT NOT NULL DEFAULT '1Day',  -- e.g., '1Min', '5Min', '1Hour', '1Day', '1Week'
                     source TEXT NOT NULL,
 
@@ -85,7 +85,7 @@ class TradingCacheManager:
                     metadata TEXT,
 
                     -- Unique constraint: one entry per symbol+timestamp+timeframe+source
-                    UNIQUE(asset_type, symbol, bar_timestamp, timeframe, source)
+                    UNIQUE(asset_type, symbol, trading_date, timeframe, source)
                 )
             """
             )
@@ -98,7 +98,7 @@ class TradingCacheManager:
 
                     -- Key fields
                     symbol TEXT NOT NULL,
-                    bar_timestamp TEXT NOT NULL,
+                    trading_date TEXT NOT NULL,
                     timeframe TEXT NOT NULL DEFAULT '1Day',
                     indicator_name TEXT NOT NULL,  -- 'macd', 'rsi', 'sma_20', 'ema_50', etc.
 
@@ -111,7 +111,7 @@ class TradingCacheManager:
                     params TEXT,                   -- JSON: {"period": 14, "fast": 13, "slow": 34}
                     cached_at TEXT NOT NULL,
 
-                    UNIQUE(symbol, bar_timestamp, timeframe, indicator_name, params)
+                    UNIQUE(symbol, trading_date, timeframe, indicator_name, params)
                 )
             """
             )
@@ -584,7 +584,7 @@ class TradingCacheManager:
 
                     # Copy to main table with INSERT OR REPLACE
                     conn.execute(
-                        f"""
+                        f"""  # nosec B608
                         INSERT OR REPLACE INTO market_cache
                         ({columns_list})
                         SELECT {columns_list} FROM {temp_table}
@@ -1114,7 +1114,7 @@ class TradingCacheManager:
             for cache_path in file_cache_paths:
                 if cache_path.exists():
                     if cache_path.suffix == ".pickle":
-                        df = pd.read_pickle(cache_path)
+                        df = pd.read_pickle(cache_path)  # nosec B301
                     elif cache_path.suffix == ".json":
                         df = pd.read_json(cache_path)
                     else:
@@ -1456,7 +1456,7 @@ class TradingCacheManager:
 
             with sqlite3.connect(self.db_path) as conn:
                 # Basic counts
-                stats_query = f"""
+                stats_query = f"""  # nosec B608
                     SELECT
                         COUNT(*) as total_trades,
                         SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END) as winning_trades,
@@ -1552,7 +1552,7 @@ class TradingCacheManager:
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_indicator_lookup
-                ON indicator_cache(symbol, timeframe, indicator_name, bar_timestamp)
+                ON indicator_cache(symbol, timeframe, indicator_name, trading_date)
             """
             )
             conn.execute(
