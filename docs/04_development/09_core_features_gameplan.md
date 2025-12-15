@@ -216,3 +216,27 @@ git checkout feature/core-signals-infra
 
 **C Stream Complete: Core 2/2 + Infra 3/5**
 Success criteria achieved (need 3/5 infra)!
+
+### December 15, 2025 - CLI Integration Analysis
+
+#### New Features CLI Integration Status
+
+Comprehensive analysis of how features #364, #395, #407, #483, #405 integrate with CLI session:
+
+| Feature | Implemented | Tested | CLI Exposed | Config Loaded | Status |
+|---------|:---:|:---:|:---:|:---:|---------|
+| #364 Ranked Voting | ✅ | ✅ | ❌ | ✅ | Available via Python API only |
+| #395 Multi-Timeframe | ✅ | ✅ | ❌ | ✅ | Singleton available, no CLI cmd |
+| #407 Custom Timeframe | ✅ | ✅ | ⚠️ | ⚠️ | Programmatic only, needs async CLI |
+| #405 Tiered Watchlist | ✅ | ✅ | ✅ | ✅ | Working (path bug fixed) |
+| #483 DB Backup | ✅ | ✅ | ❌ | N/A | Manual Python/CLI needed |
+
+**Key Finding**: All features work as Python modules but lack CLI command exposure. RealVoterStrategy still uses `evaluate_voting()` instead of new `evaluate_ranked_voting()`.
+
+**Phase 1 Issues Created**:
+
+- #488 [CLI] Add /voter command group for ranked voting management
+- #489 [CLI] Enhance /timeframe commands for multi-timeframe voting presets
+- #490 [CLI] Add /backup command group for database management
+
+**See**: [CLI_INTEGRATION_STATUS.md](./CLI_INTEGRATION_STATUS.md) for detailed analysis and Phase 1-3 recommendations.
