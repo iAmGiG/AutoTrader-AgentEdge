@@ -2,7 +2,7 @@
 
 **Created**: 2025-12-14
 **Updated**: 2025-12-14
-**Status**: Active - C Stream: Core Complete, Infra 2/5
+**Status**: Active - C Stream: COMPLETE (Core 2/2 + Infra 3/5)
 
 ## Overview
 
@@ -202,3 +202,17 @@ git checkout feature/core-signals-infra
 - Commit: `54b2266`
 
 **Next**: Need 1 more infrastructure issue (#402 or #407 or #370)
+
+**#407 CustomTimeframeBuilder** - COMPLETE
+
+- Created `src/trading/instruments/custom_timeframe.py`
+  - `TimeframeParser` for notation parsing (65m, 1.5h, 2d, 2w, etc.)
+  - `CustomTimeframeBuilder` with aggregation logic
+  - Support for: custom minutes, fractional hours, multi-day, multi-week
+  - Trading hours handling (9:30-16:00, session boundaries)
+  - Singleton pattern and convenience functions
+- Exported from `src/trading/instruments/__init__.py`
+- Commit: `b74d57f`
+
+**C Stream Complete: Core 2/2 + Infra 3/5**
+Success criteria achieved (need 3/5 infra)!
