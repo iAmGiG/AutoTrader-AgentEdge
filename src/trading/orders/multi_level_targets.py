@@ -350,9 +350,7 @@ class MultiLevelTargetManager:
                         f"{target.quantity} @ ${target.target_price}"
                     )
                 else:
-                    results["errors"].append(
-                        f"Target {target.target_number}: {result['error']}"
-                    )
+                    results["errors"].append(f"Target {target.target_number}: {result['error']}")
 
             except Exception as e:
                 results["errors"].append(f"Target {target.target_number}: {str(e)}")
