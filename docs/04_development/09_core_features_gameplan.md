@@ -1,7 +1,8 @@
 # Core Features Gameplan
 
 **Created**: 2025-12-14
-**Status**: Active - Parallel Development
+**Updated**: 2025-12-14
+**Status**: Active - A Stream 2/3 Complete
 
 ## Overview
 
@@ -108,8 +109,8 @@ git worktree add ../AutoGen-Trader-signals feature/core-signals-infra
 
 ### A Stream Complete When:
 
-- [ ] #366: OHLCV entry planner functional with ATR stops
-- [ ] #372: Multi-level targets with order splitting
+- [x] #366: OHLCV entry planner functional with ATR stops (commit 3bf530c)
+- [x] #372: Multi-level targets with order splitting (commit a3dbeac)
 - [ ] #414: Autonomous trailing stops with voter integration
 
 ### C Stream Complete When:
@@ -151,3 +152,24 @@ git checkout feature/core-execution
 # C Chat
 git checkout feature/core-signals-infra
 ```
+
+## Progress Log
+
+### December 14, 2025 - A Stream Progress
+
+**#366 OHLCV-Based Intraday Entry Plan** - COMPLETE
+
+- Created `src/trading/instruments/entry_planning.py`
+- Functions: `calculate_atr()`, `find_support_resistance()`, `calculate_volume_confirmation()`, `calculate_entry_plan()`
+- Integrated into `real_voter_strategy.py` with fallback to percentage-based stops
+- Commit: `3bf530c`
+
+**#372 Multi-Level Price Targets** - COMPLETE
+
+- Created `src/trading/orders/multi_level_targets.py`
+- Classes: `MultiLevelTargetManager`, `DistributionStrategy`, `PriceTarget`, `MultiLevelState`
+- Supports equal/progressive/inverse distribution, ATR-based targets
+- Integration with existing PartialExitManager and TrailingStopManager
+- Commit: `a3dbeac`
+
+**Next**: #414 KILLER Trailing Stop Automation
