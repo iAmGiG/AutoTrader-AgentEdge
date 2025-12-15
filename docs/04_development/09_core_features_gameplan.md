@@ -1,7 +1,8 @@
 # Core Features Gameplan
 
 **Created**: 2025-12-14
-**Status**: Active - Parallel Development
+**Updated**: 2025-12-14
+**Status**: Active - C Stream 2/2 Core Complete
 
 ## Overview
 
@@ -114,8 +115,8 @@ git worktree add ../AutoGen-Trader-signals feature/core-signals-infra
 
 ### C Stream Complete When:
 
-- [ ] #364: Ranked voter configuration system
-- [ ] #395: Multi-timeframe voting operational
+- [x] #364: Ranked voter configuration system (commit b4d4bec, abe3905)
+- [x] #395: Multi-timeframe voting operational (commit a875452)
 - [ ] Infrastructure: At least 3 of 5 infra issues closed
 
 ## Timeline Estimate
@@ -151,3 +152,33 @@ git checkout feature/core-execution
 # C Chat
 git checkout feature/core-signals-infra
 ```
+
+## Progress Log
+
+### December 14, 2025 - C Stream Progress
+
+**#364 Ranked Voter System** - COMPLETE
+
+- Created `src/trading/instruments/indicator_registry.py`
+  - `BaseIndicator` ABC for pluggable indicators
+  - `MACDIndicator` and `RSIIndicator` implementations
+  - `IndicatorRegistry` with singleton pattern
+- Created `src/core/ranked_voter_config.py`
+  - `RankedVoterManager` with YAML + SQLite persistence
+  - `VoterConfig` and `VotingConfig` dataclasses
+  - Presets: default, macd_primary, rsi_primary
+- Created `config_defaults/voters_config.yaml`
+- Updated `src/autogen_agents/agents/voter_agent.py` with `evaluate_ranked_voting()`
+- Commits: `b4d4bec`, `abe3905`
+
+**#395 Multi-Timeframe Ranked Voting** - COMPLETE
+
+- Created `src/autogen_agents/agents/multi_timeframe_voter.py`
+  - `MultiTimeframeVoter` class with weighted consensus voting
+  - `TimeframeResult` and `MultiTimeframeResult` dataclasses
+  - 4 presets: trend_following, intraday, position, scalping
+  - Async support for parallel data fetching
+- Updated `config_defaults/voters_config.yaml` with multi_timeframe section
+- Commit: `a875452`
+
+**Next**: Infrastructure issues (#402, #405, #407, #483, #370) in any order
