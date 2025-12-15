@@ -119,3 +119,76 @@ presets:
   #     - {name: MACD, rank: 1, role: active}
   #     - {name: RSI, rank: 2, role: active}
   #     - {name: Stochastic, rank: 3, role: review}
+
+# =============================================================================
+# Multi-Timeframe Voting Configuration (Issue #395)
+# =============================================================================
+# Run ranked voting across multiple timeframes with weighted consensus.
+# Classic TA principle: "Trade with the trend, time with the pullback"
+
+multi_timeframe:
+  # Enable/disable multi-timeframe analysis
+  enabled: true
+
+  # Default preset to use
+  default_preset: trend_following
+
+  # Presets for different trading styles
+  presets:
+    trend_following:
+      description: "Trend direction with entry timing (default)"
+      timeframes:
+        1d: 0.5     # Trend direction (highest weight)
+        4h: 0.3     # Intermediate momentum
+        1h: 0.2     # Entry timing
+      min_data_days:
+        1d: 60
+        4h: 10
+        1h: 3
+
+    intraday:
+      description: "Intraday swing trading with precise entries"
+      timeframes:
+        4h: 0.4     # Swing trend
+        1h: 0.35    # Setup confirmation
+        15m: 0.25   # Precise entry
+      min_data_days:
+        4h: 10
+        1h: 3
+        15m: 1
+
+    position:
+      description: "Long-term position trading"
+      timeframes:
+        1w: 0.5     # Long-term trend
+        1d: 0.35    # Daily momentum
+        4h: 0.15    # Entry refinement
+      min_data_days:
+        1w: 180
+        1d: 60
+        4h: 10
+
+    scalping:
+      description: "Fast scalping with micro trends"
+      timeframes:
+        1h: 0.4     # Short-term trend
+        15m: 0.35   # Setup
+        5m: 0.25    # Entry
+      min_data_days:
+        1h: 3
+        15m: 1
+        5m: 1
+
+  # Consensus settings for multi-timeframe
+  consensus:
+    # Require unanimous agreement for STRONG signals
+    require_unanimous_for_strong: true
+
+    # Minimum alignment ratio for MODERATE signals (e.g., 0.66 = 2/3)
+    min_alignment_for_moderate: 0.66
+
+    # Confidence reduction for non-unanimous signals
+    non_unanimous_penalty: 0.2
+
+    # Action on conflict (when timeframes disagree)
+    conflict_action: HOLD
