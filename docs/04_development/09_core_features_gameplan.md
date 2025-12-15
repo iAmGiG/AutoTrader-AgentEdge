@@ -2,7 +2,7 @@
 
 **Created**: 2025-12-14
 **Updated**: 2025-12-14
-**Status**: Active - C Stream 2/2 Core Complete
+**Status**: Active - C Stream: Core Complete, Infra 1/5
 
 ## Overview
 
@@ -117,7 +117,7 @@ git worktree add ../AutoGen-Trader-signals feature/core-signals-infra
 
 - [x] #364: Ranked voter configuration system (commit b4d4bec, abe3905)
 - [x] #395: Multi-timeframe voting operational (commit a875452)
-- [ ] Infrastructure: At least 3 of 5 infra issues closed
+- [ ] Infrastructure: 1 of 5 complete (#483), need 2 more
 
 ## Timeline Estimate
 
@@ -181,4 +181,14 @@ git checkout feature/core-signals-infra
 - Updated `config_defaults/voters_config.yaml` with multi_timeframe section
 - Commit: `a875452`
 
-**Next**: Infrastructure issues (#402, #405, #407, #483, #370) in any order
+**#483 DB Backup/Migration Utilities** - COMPLETE
+
+- Created `src/utils/db_backup.py` (~750 lines)
+  - `DBBackupManager` class for backup/restore operations
+  - Export tables to JSON with metadata
+  - Import from JSON with append/replace modes
+  - `DBMigrator` for schema version management
+  - Cleanup utilities for old data and backups
+- Commit: `cbc84de`
+
+**Next**: Continue with infrastructure (#402, #405, #407, #370)
