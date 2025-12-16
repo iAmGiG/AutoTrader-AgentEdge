@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.utils.date_utils import get_datetime_now, now_iso, timestamp_compact
+from src.utils.date_utils import format_for_filename, get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class DBBackupManager:
 
     def _generate_backup_filename(self, db_name: str) -> str:
         """Generate timestamped backup filename."""
-        timestamp = timestamp_compact()
+        timestamp = format_for_filename()
         return f"{db_name}_{timestamp}.db"
 
     def backup_database(self, db_name: str = "user") -> BackupResult:
@@ -320,7 +320,7 @@ class DBBackupManager:
 
             # Generate output path if not provided
             if output_path is None:
-                timestamp = timestamp_compact()
+                timestamp = format_for_filename()
                 output_path = str(self.export_dir / f"{table_name}_{timestamp}.json")
 
             # Write JSON

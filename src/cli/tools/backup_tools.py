@@ -19,7 +19,7 @@ from typing import Any, Dict, List
 
 from autogen_core.tools import FunctionTool
 
-from src.utils.date_utils import get_datetime_now, timestamp_compact
+from src.utils.date_utils import format_for_filename, get_datetime_now
 
 # Default paths
 STATE_DB = "state/user.db"
@@ -79,7 +79,7 @@ def backup_database(db_path: str = STATE_DB) -> str:
 
     # Generate backup filename
     db_name = Path(db_path).stem
-    timestamp = timestamp_compact()
+    timestamp = format_for_filename()
     backup_path = backup_dir / f"{db_name}_{timestamp}.db"
 
     try:
