@@ -35,11 +35,43 @@ logger = logging.getLogger(__name__)
 class TimeframeSpec:
     """Parsed timeframe specification."""
 
-    original: str  # Original input (e.g., "65m", "1.5h", "2d")
+    original: str  # Original input (e.g., "65m", "1.5h", "2d", "30s")
     type: str  # "native", "custom_minute", "fractional_hour", "multi_day", "multi_week"
-    value: int  # Numeric value (minutes, days, weeks depending on type)
+    value: float  # Numeric value (minutes, days, weeks depending on type)
     minutes: int  # Total minutes for aggregation
     is_native: bool  # True if API supports directly
+    warnings: list = None  # List of warning messages (displayed with * indicator)
+    effective: str = None  # What timeframe is actually used (if different from original)
+
+    def __post_init__(self):
+        """Initialize defaults after creation."""
+        if self.warnings is None:
+            self.warnings = []
+        if self.effective is None:
+            self.effective = self.original
+
+    def has_warnings(self) -> bool:
+        """Check if there are any warnings."""
+        return len(self.warnings) > 0
+
+    def get_display_label(self) -> str:
+        """
+        Get display label with * indicator if warnings exist.
+
+        Returns:
+            str: Timeframe label, e.g., "65m*" if custom, "1m*" if converted from seconds
+        """
+        label = self.effective
+        # Add * for custom (non-native) timeframes
+        if not self.is_native or self.has_warnings():
+            return f"{label}*"
+        return label
+
+    def get_warning_summary(self) -> str:
+        """Get formatted warning messages."""
+        if not self.warnings:
+            return ""
+        return " | ".join(self.warnings)
 
 
 class TimeframeParser:
@@ -72,82 +104,141 @@ class TimeframeParser:
     }
 
     @staticmethod
+    def _parse_seconds(timeframe_str: str) -> Optional[TimeframeSpec]:
+        """Parse seconds notation (e.g., '30s') - converts to 1m with warning."""
+        match = re.match(r"^(\d+)s$", timeframe_str)
+        if not match:
+            return None
+        seconds = int(match.group(1))
+        logger.warning(
+            f"Sub-minute timeframe '{timeframe_str}' not supported by API. Defaulting to 1m."
+        )
+        return TimeframeSpec(
+            original=timeframe_str,
+            type="native",
+            value=1,
+            minutes=1,
+            is_native=True,
+            warnings=[f"Sub-minute ({seconds}s) not available, using 1m"],
+            effective="1m",
+        )
+
+    @staticmethod
+    def _parse_native(timeframe_str: str) -> Optional[TimeframeSpec]:
+        """Parse native API-supported timeframes."""
+        native_lower = {tf.lower(): tf for tf in TimeframeParser.NATIVE_TIMEFRAMES}
+        if timeframe_str not in native_lower:
+            return None
+        original_tf = native_lower[timeframe_str]
+        minutes = TimeframeParser._to_minutes_native(original_tf)
+        return TimeframeSpec(
+            original=timeframe_str,
+            type="native",
+            value=int(re.match(r"^(\d+)", original_tf).group(1)),
+            minutes=minutes,
+            is_native=True,
+        )
+
+    @staticmethod
+    def _parse_custom_minute(timeframe_str: str) -> Optional[TimeframeSpec]:
+        """Parse custom minute intervals (e.g., '65m', '89m')."""
+        match = re.match(r"^(\d+)m$", timeframe_str)
+        if not match:
+            return None
+        minutes = int(match.group(1))
+        if not (1 <= minutes <= 1440):
+            return None
+        return TimeframeSpec(
+            original=timeframe_str,
+            type="custom_minute",
+            value=minutes,
+            minutes=minutes,
+            is_native=False,
+        )
+
+    @staticmethod
+    def _parse_fractional_hour(timeframe_str: str) -> Optional[TimeframeSpec]:
+        """Parse fractional hours (e.g., '1.5h', '2.5h')."""
+        match = re.match(r"^(\d+(?:\.\d+)?)h$", timeframe_str)
+        if not match:
+            return None
+        hours = float(match.group(1))
+        minutes = int(hours * 60)
+        if not (60 <= minutes <= 1440):
+            return None
+        return TimeframeSpec(
+            original=timeframe_str,
+            type="fractional_hour",
+            value=hours,
+            minutes=minutes,
+            is_native=False,
+        )
+
+    @staticmethod
+    def _parse_multi_day(timeframe_str: str) -> Optional[TimeframeSpec]:
+        """Parse multi-day bars (e.g., '2d', '3d')."""
+        match = re.match(r"^(\d+)d$", timeframe_str)
+        if not match:
+            return None
+        days = int(match.group(1))
+        if not (1 <= days <= 365):
+            return None
+        return TimeframeSpec(
+            original=timeframe_str,
+            type="multi_day",
+            value=days,
+            minutes=days * 1440,
+            is_native=False,
+        )
+
+    @staticmethod
+    def _parse_multi_week(timeframe_str: str) -> Optional[TimeframeSpec]:
+        """Parse multi-week bars (e.g., '2w', '4w')."""
+        match = re.match(r"^(\d+)w$", timeframe_str)
+        if not match:
+            return None
+        weeks = int(match.group(1))
+        if not (1 <= weeks <= 52):
+            return None
+        return TimeframeSpec(
+            original=timeframe_str,
+            type="multi_week",
+            value=weeks,
+            minutes=weeks * 10080,
+            is_native=False,
+        )
+
+    @staticmethod
     def parse(timeframe_str: str) -> Optional[TimeframeSpec]:
         """
         Parse timeframe notation into TimeframeSpec.
 
+        Handles TradingView-style notation: 1m, 5m, 1h, 1d, 1w
+        Also handles custom timeframes: 65m, 1.5h, 2d, 2w
+        Sub-minute (seconds) notation is converted to 1m with warning.
+
         Args:
-            timeframe_str: Timeframe notation (e.g., "65m", "1.5h", "2d", "13m")
+            timeframe_str: Timeframe notation (e.g., "65m", "1.5h", "2d", "30s")
 
         Returns:
             TimeframeSpec or None if invalid
         """
-        timeframe_str = timeframe_str.strip()
+        timeframe_str = timeframe_str.strip().lower()
 
-        # Check if native (directly supported)
-        if timeframe_str in TimeframeParser.NATIVE_TIMEFRAMES:
-            # Get minutes equivalent
-            minutes = TimeframeParser._to_minutes_native(timeframe_str)
-            return TimeframeSpec(
-                original=timeframe_str,
-                type="native",
-                value=int(timeframe_str[:-1]),  # Extract number
-                minutes=minutes,
-                is_native=True,
-            )
+        # Try each parser in order of priority
+        parsers = [
+            TimeframeParser._parse_seconds,
+            TimeframeParser._parse_native,
+            TimeframeParser._parse_custom_minute,
+            TimeframeParser._parse_fractional_hour,
+            TimeframeParser._parse_multi_day,
+            TimeframeParser._parse_multi_week,
+        ]
 
-        # Try to parse custom minute interval (e.g., "65m", "89m")
-        match = re.match(r"^(\d+)m$", timeframe_str)
-        if match:
-            minutes = int(match.group(1))
-            if 1 <= minutes <= 1440:  # Up to 24 hours
-                return TimeframeSpec(
-                    original=timeframe_str,
-                    type="custom_minute",
-                    value=minutes,
-                    minutes=minutes,
-                    is_native=False,
-                )
-
-        # Try to parse fractional hours (e.g., "1.5h", "2.5h")
-        match = re.match(r"^(\d+(?:\.\d+)?)h$", timeframe_str)
-        if match:
-            hours = float(match.group(1))
-            minutes = int(hours * 60)
-            if 60 <= minutes <= 1440:
-                return TimeframeSpec(
-                    original=timeframe_str,
-                    type="fractional_hour",
-                    value=hours,
-                    minutes=minutes,
-                    is_native=False,
-                )
-
-        # Try to parse multi-day bars (e.g., "2d", "3d")
-        match = re.match(r"^(\d+)d$", timeframe_str)
-        if match:
-            days = int(match.group(1))
-            if 1 <= days <= 365:
-                return TimeframeSpec(
-                    original=timeframe_str,
-                    type="multi_day",
-                    value=days,
-                    minutes=days * 1440,  # Store as minutes for reference
-                    is_native=False,
-                )
-
-        # Try to parse multi-week bars (e.g., "2w", "4w")
-        match = re.match(r"^(\d+)w$", timeframe_str)
-        if match:
-            weeks = int(match.group(1))
-            if 1 <= weeks <= 52:
-                return TimeframeSpec(
-                    original=timeframe_str,
-                    type="multi_week",
-                    value=weeks,
-                    minutes=weeks * 10080,  # 7 * 1440 minutes per week
-                    is_native=False,
-                )
+        for parser in parsers:
+            result = parser(timeframe_str)
+            if result is not None:
+                return result
 
         logger.warning(f"Invalid timeframe notation: {timeframe_str}")
         return None
@@ -400,17 +491,85 @@ class CustomTimeframeBuilder:
         return self.parser.parse(timeframe) is not None
 
     def get_timeframe_info(self, timeframe: str) -> Optional[Dict]:
-        """Get information about a timeframe."""
+        """Get information about a timeframe with warnings."""
         spec = self.parser.parse(timeframe)
         if not spec:
             return None
 
         return {
             "original": spec.original,
+            "effective": spec.effective,
+            "display": spec.get_display_label(),
             "type": spec.type,
             "is_native": spec.is_native,
             "value": spec.value,
             "minutes": spec.minutes,
+            "has_warnings": spec.has_warnings(),
+            "warnings": spec.warnings,
+        }
+
+    def check_data_sufficiency(
+        self,
+        symbol: str,
+        timeframe: str,
+        available_days: int,
+    ) -> Dict:
+        """
+        Check if there's sufficient data for the requested timeframe.
+
+        Args:
+            symbol: Stock symbol
+            timeframe: Target timeframe
+            available_days: Number of days of data available for the symbol
+
+        Returns:
+            Dict with sufficiency status and warnings
+        """
+        spec = self.parser.parse(timeframe)
+        if not spec:
+            return {"sufficient": False, "warnings": ["Invalid timeframe"]}
+
+        warnings = list(spec.warnings)  # Copy existing warnings
+        sufficient = True
+
+        # Calculate minimum required days based on timeframe type
+        min_required_days = 1  # Default
+
+        if spec.type == "multi_week":
+            # For weekly bars, need at least 2x the bar size in weeks
+            min_required_days = spec.value * 14  # 2 weeks * 7 days
+        elif spec.type == "multi_day":
+            # For multi-day bars, need at least 3x the bar size
+            min_required_days = spec.value * 3
+        elif spec.type in ("custom_minute", "fractional_hour"):
+            # For intraday custom timeframes, need at least 3 trading days
+            min_required_days = 3
+        elif spec.type == "native":
+            # Native timeframes need less data
+            if "w" in spec.effective.lower():
+                min_required_days = 14
+            elif "d" in spec.effective.lower():
+                min_required_days = 5
+            else:
+                min_required_days = 1
+
+        if available_days < min_required_days:
+            sufficient = False
+            warnings.append(
+                f"Insufficient history: {available_days}d available, "
+                f"{min_required_days}d recommended for {timeframe}"
+            )
+
+        # Mark new/limited symbols
+        if available_days < 30:
+            warnings.append(f"Limited data: Only {available_days}d of history for {symbol}")
+
+        return {
+            "sufficient": sufficient,
+            "available_days": available_days,
+            "min_required_days": min_required_days,
+            "warnings": warnings,
+            "display_label": f"{spec.effective}*" if warnings else spec.effective,
         }
 
 
@@ -451,15 +610,53 @@ if __name__ == "__main__":
 
     builder = get_custom_timeframe_builder()
 
-    # Test parser
-    test_frames = ["65m", "1.5h", "2d", "2w", "89m", "13m", "invalid"]
-    print("=" * 60)
-    print("Timeframe Parser Test")
-    print("=" * 60)
+    # Test parser including seconds and warning system
+    test_frames = [
+        "65m",  # Custom minute (non-native)
+        "1.5h",  # Fractional hour
+        "2d",  # Multi-day
+        "2w",  # Multi-week
+        "89m",  # Fibonacci custom
+        "13m",  # Native Fibonacci
+        "30s",  # Seconds (should convert to 1m with warning)
+        "5s",  # Seconds (should convert to 1m with warning)
+        "1m",  # Native minute
+        "4h",  # Native hour
+        "invalid",  # Invalid
+    ]
+
+    print("=" * 70)
+    print("Timeframe Parser Test (with Warning System)")
+    print("=" * 70)
+    print(f"{'Input':<10} {'Display':<12} {'Type':<18} {'Native':<8} {'Warnings'}")
+    print("-" * 70)
 
     for tf in test_frames:
         spec = builder.parser.parse(tf)
         if spec:
-            print(f"  {tf:10} -> {spec.type:20} (native={spec.is_native})")
+            display = spec.get_display_label()
+            warnings = spec.get_warning_summary() or "-"
+            print(f"  {tf:<10} {display:<12} {spec.type:<18} {str(spec.is_native):<8} {warnings}")
         else:
-            print(f"  {tf:10} -> INVALID")
+            print(f"  {tf:<10} {'INVALID':<12}")
+
+    print()
+    print("=" * 70)
+    print("Data Sufficiency Check Test")
+    print("=" * 70)
+
+    # Test data sufficiency for different scenarios
+    test_cases = [
+        ("AAPL", "1d", 365),  # Plenty of data
+        ("NVDA", "2w", 30),  # Limited data for weekly
+        ("NEWIPO", "4h", 5),  # New symbol, very limited
+        ("SPY", "65m", 100),  # Good data for custom minute
+    ]
+
+    for symbol, tf, days in test_cases:
+        result = builder.check_data_sufficiency(symbol, tf, days)
+        status = "OK" if result["sufficient"] else "WARN"
+        print(f"  {symbol:8} @ {tf:6} ({days:3}d): [{status:4}] {result['display_label']}")
+        if result["warnings"]:
+            for warn in result["warnings"]:
+                print(f"           * {warn}")
