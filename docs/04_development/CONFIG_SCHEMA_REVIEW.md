@@ -581,8 +581,87 @@ print(f'✅ Database schema working')
 
 ---
 
+## Profile vs Preset Architecture (NEW - #492)
+
+### Key Distinction
+
+| Concept | Location | Mutability | Purpose |
+|---------|----------|------------|---------|
+| **Preset** | `config_defaults/*.yaml` | Read-only | Factory defaults, reset source |
+| **Profile** | `state/user.db` | User-modifiable | Custom configurations |
+
+### Workflow
+
+1. **System starts** → Load default preset from YAML
+2. **User modifies** → Create profile in DB (based on preset)
+3. **User resets** → Deactivate profile, return to preset
+
+### New DB Tables (Phase 2)
+
+```sql
+-- voter_profiles: Custom voter configurations
+CREATE TABLE voter_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_name TEXT NOT NULL UNIQUE,
+    base_preset TEXT NOT NULL,
+    ranking_json TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE
+);
+
+-- watchlist_profiles: Custom symbol lists
+CREATE TABLE watchlist_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_name TEXT NOT NULL UNIQUE,
+    symbols_json TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE
+);
+```
+
+See: [PROFILE_PRESET_ARCHITECTURE.md](./PROFILE_PRESET_ARCHITECTURE.md)
+
+---
+
+## Timeframe Warning System (NEW - #493)
+
+### Warning Indicators (* System)
+
+| Input | Display | Warning |
+|-------|---------|---------|
+| `30s` | `1m*` | Sub-minute not available, using 1m |
+| `65m` | `65m*` | Custom timeframe (aggregated from 1m) |
+| `2w` | `2w*` | Multi-week (aggregated from 1w) |
+| `NEWIPO @ 1d` | `1d*` | Limited data: Only 10d of history |
+
+### API Methods
+
+```python
+from src.trading.instruments.custom_timeframe import get_custom_timeframe_builder
+
+builder = get_custom_timeframe_builder()
+
+# Get info with warnings
+info = builder.get_timeframe_info("30s")
+# info["display"] = "1m*"
+# info["warnings"] = ["Sub-minute (30s) not available, using 1m"]
+
+# Check data sufficiency
+result = builder.check_data_sufficiency("NEWIPO", "2w", available_days=10)
+# result["sufficient"] = False
+# result["display_label"] = "2w*"
+```
+
+### Alpaca API Timeframe Limits
+
+- **Minimum**: 1 minute (no sub-minute bars)
+- **Maximum**: 1 month
+- **Extended hours**: Included by default (no server-side filter)
+- **Free tier**: ~9 hour delay on historical data
+
+---
+
 ## See Also
 
 - [CLI_INTEGRATION_STATUS.md](./CLI_INTEGRATION_STATUS.md) - Detailed CLI integration guide
+- [PROFILE_PRESET_ARCHITECTURE.md](./PROFILE_PRESET_ARCHITECTURE.md) - Profile system design
 - [09_core_features_gameplan.md](./09_core_features_gameplan.md) - Feature roadmap
-- GitHub Issues: #488, #489, #490
+- GitHub Issues: #488, #489, #490, #492, #493
