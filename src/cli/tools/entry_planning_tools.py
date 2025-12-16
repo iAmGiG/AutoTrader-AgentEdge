@@ -1,0 +1,346 @@
+"""
+Entry Planning CLI Tools - FunctionTool wrappers for entry planning.
+
+Issue #366: OHLCV-Based Intraday Entry Plan
+Related: CLI integration for A Stream features
+
+This module wraps the entry_planning module functions as FunctionTool
+instances for integration with the AutoGen agent architecture.
+
+Original Implementation: src/trading/instruments/entry_planning.py
+Pattern: Pure function wrappers → FunctionTool → Registry
+"""
+
+from autogen_core.tools import FunctionTool
+
+from src.trading.instruments.entry_planning import (
+    calculate_atr,
+    calculate_entry_plan,
+    calculate_volume_confirmation,
+    find_support_resistance,
+)
+
+# ============================================================================
+# Pure Function Wrappers
+# ============================================================================
+
+
+def get_entry_plan(
+    symbol: str,
+    direction: str,
+    lookback_days: int = 60,
+    atr_multiplier: float = 2.0,
+    risk_reward_ratio: float = 2.0,
+) -> str:
+    """
+    Generate an entry plan for a symbol with ATR-based stops.
+
+    Calculates optimal entry price, stop loss, and take profit
+    using recent OHLCV data, ATR volatility, and support/resistance levels.
+
+    Args:
+        symbol: Stock ticker (e.g., 'AAPL', 'MSFT')
+        direction: Trade direction - 'BUY' or 'SELL'
+        lookback_days: Days of historical data to analyze (default 60)
+        atr_multiplier: ATR multiplier for stop distance (default 2.0)
+        risk_reward_ratio: Target/risk ratio (default 2.0)
+
+    Returns:
+        Formatted string with entry plan details
+
+    Example:
+        >>> get_entry_plan('AAPL', 'BUY')
+        '📊 Entry Plan for AAPL (BUY)
+        Entry: $185.50  Stop: $181.20  Target: $194.10
+        ATR: $2.15  Quality: STRONG'
+    """
+    try:
+        # Fetch market data
+        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+
+        ohlcv = fetch_historical(symbol, lookback_days)
+
+        if ohlcv is None or len(ohlcv) < 20:
+            return f"❌ Insufficient data for {symbol}. Need at least 20 days."
+
+        # Get current price from last close
+        current_price = float(ohlcv["Close"].iloc[-1])
+
+        # Generate entry plan
+        plan = calculate_entry_plan(
+            ohlcv=ohlcv,
+            current_price=current_price,
+            signal_direction=direction.upper(),
+            atr_multiplier=atr_multiplier,
+            risk_reward_ratio=risk_reward_ratio,
+        )
+
+        if plan["entry_price"] is None:
+            return f"❌ Could not generate entry plan: {plan.get('plan_quality', 'Unknown error')}"
+
+        # Format output
+        output = f"📊 Entry Plan for {symbol} ({direction.upper()})\n"
+        output += "=" * 50 + "\n"
+        output += f"  Entry:  ${plan['entry_price']:.2f}\n"
+        output += f"  Stop:   ${plan['stop_loss']:.2f}\n"
+        output += f"  Target: ${plan['take_profit']:.2f}\n"
+        output += "-" * 50 + "\n"
+        output += f"  ATR (14): ${plan['atr_value']:.2f}\n"
+        output += f"  Support: ${plan['support']:.2f}\n"
+        output += f"  Resistance: ${plan['resistance']:.2f}\n"
+        output += f"  Volume Confirmation: {'Yes' if plan['volume_confirmation'] else 'No'}\n"
+        output += f"  Plan Quality: {plan['plan_quality']}\n"
+
+        # Calculate risk/reward details
+        risk = abs(plan["entry_price"] - plan["stop_loss"])
+        reward = abs(plan["take_profit"] - plan["entry_price"])
+        risk_pct = (risk / plan["entry_price"]) * 100
+        reward_pct = (reward / plan["entry_price"]) * 100
+
+        output += "-" * 50 + "\n"
+        output += f"  Risk: ${risk:.2f} ({risk_pct:.1f}%)\n"
+        output += f"  Reward: ${reward:.2f} ({reward_pct:.1f}%)\n"
+        output += f"  R:R Ratio: 1:{reward/risk:.1f}\n"
+
+        return output
+
+    except Exception as e:
+        return f"❌ Error generating entry plan: {str(e)}"
+
+
+def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
+    """
+    Show support and resistance levels for a symbol.
+
+    Uses recent price data to identify key levels where price
+    has historically found support (lows) or resistance (highs).
+
+    Args:
+        symbol: Stock ticker
+        lookback_days: Days of data to analyze (default 60)
+
+    Returns:
+        Formatted string with S/R levels
+
+    Example:
+        >>> get_support_resistance('AAPL')
+        '📈 Support/Resistance for AAPL
+        Support: $178.50
+        Resistance: $192.30
+        Range: $13.80'
+    """
+    try:
+        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+
+        ohlcv = fetch_historical(symbol, lookback_days)
+
+        if ohlcv is None or len(ohlcv) < 20:
+            return f"❌ Insufficient data for {symbol}. Need at least 20 days."
+
+        levels = find_support_resistance(ohlcv["High"], ohlcv["Low"], lookback=20)
+
+        current_price = float(ohlcv["Close"].iloc[-1])
+
+        output = f"📈 Support/Resistance for {symbol}\n"
+        output += "=" * 40 + "\n"
+        output += f"  Current Price: ${current_price:.2f}\n"
+        output += "-" * 40 + "\n"
+        output += f"  Support:    ${levels['support']:.2f}"
+
+        dist_to_support = ((current_price - levels["support"]) / current_price) * 100
+        output += f" ({dist_to_support:+.1f}% from current)\n"
+
+        output += f"  Resistance: ${levels['resistance']:.2f}"
+        dist_to_resistance = ((levels["resistance"] - current_price) / current_price) * 100
+        output += f" (+{dist_to_resistance:.1f}% from current)\n"
+
+        output += f"  Range:      ${levels['range']:.2f}\n"
+
+        return output
+
+    except Exception as e:
+        return f"❌ Error getting S/R levels: {str(e)}"
+
+
+def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
+    """
+    Analyze volume patterns for entry confirmation.
+
+    Compares current volume to average to determine if
+    there's sufficient conviction for a trade entry.
+
+    Args:
+        symbol: Stock ticker
+        lookback_days: Days of data to analyze
+
+    Returns:
+        Formatted string with volume analysis
+
+    Example:
+        >>> get_volume_analysis('AAPL')
+        '📊 Volume Analysis for AAPL
+        Current: 85.2M
+        Average: 62.1M
+        Ratio: 1.37x (Above Average)'
+    """
+    try:
+        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+
+        ohlcv = fetch_historical(symbol, lookback_days)
+
+        if ohlcv is None or len(ohlcv) < 20:
+            return f"❌ Insufficient data for {symbol}."
+
+        vol_data = calculate_volume_confirmation(ohlcv["Volume"], lookback=20)
+
+        output = f"📊 Volume Analysis for {symbol}\n"
+        output += "=" * 40 + "\n"
+        output += f"  Current Volume: {vol_data['current_volume']:,.0f}\n"
+        output += f"  20-Day Average: {vol_data['avg_volume']:,.0f}\n"
+        output += f"  Volume Ratio:   {vol_data['volume_ratio']:.2f}x\n"
+        output += "-" * 40 + "\n"
+
+        if vol_data["high_volume"]:
+            output += "  Status: 🟢 HIGH VOLUME (>1.5x average)\n"
+            output += "  → Strong conviction, good for entry\n"
+        elif vol_data["above_average"]:
+            output += "  Status: 🟡 ABOVE AVERAGE\n"
+            output += "  → Adequate volume for entry\n"
+        else:
+            output += "  Status: 🔴 BELOW AVERAGE\n"
+            output += "  → Low conviction, consider waiting\n"
+
+        return output
+
+    except Exception as e:
+        return f"❌ Error analyzing volume: {str(e)}"
+
+
+def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
+    """
+    Get Average True Range (ATR) for volatility assessment.
+
+    ATR measures price volatility and is used for:
+    - Stop loss placement
+    - Position sizing
+    - Entry/exit timing
+
+    Args:
+        symbol: Stock ticker
+        period: ATR calculation period (default 14)
+        lookback_days: Days of data to fetch
+
+    Returns:
+        Formatted string with ATR analysis
+
+    Example:
+        >>> get_atr('AAPL')
+        '📉 ATR Analysis for AAPL
+        Current ATR (14): $2.15
+        As % of price: 1.16%
+        → Low volatility environment'
+    """
+    try:
+        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+
+        ohlcv = fetch_historical(symbol, lookback_days)
+
+        if ohlcv is None or len(ohlcv) < period + 1:
+            return f"❌ Insufficient data for {symbol}."
+
+        atr_series = calculate_atr(ohlcv["High"], ohlcv["Low"], ohlcv["Close"], period=period)
+        current_atr = float(atr_series.iloc[-1])
+        current_price = float(ohlcv["Close"].iloc[-1])
+        atr_pct = (current_atr / current_price) * 100
+
+        output = f"📉 ATR Analysis for {symbol}\n"
+        output += "=" * 40 + "\n"
+        output += f"  Current Price: ${current_price:.2f}\n"
+        output += f"  ATR ({period}):     ${current_atr:.2f}\n"
+        output += f"  ATR as % price: {atr_pct:.2f}%\n"
+        output += "-" * 40 + "\n"
+
+        # Interpret volatility level
+        if atr_pct < 1.5:
+            output += "  Volatility: 🟢 LOW\n"
+            output += "  → Tighter stops appropriate\n"
+        elif atr_pct < 3.0:
+            output += "  Volatility: 🟡 MODERATE\n"
+            output += "  → Standard stop distances\n"
+        else:
+            output += "  Volatility: 🔴 HIGH\n"
+            output += "  → Wider stops needed, smaller position\n"
+
+        # Suggest stop distances
+        output += "-" * 40 + "\n"
+        output += "  Suggested Stop Distances:\n"
+        output += f"    1.5x ATR: ${current_atr * 1.5:.2f} ({atr_pct * 1.5:.1f}%)\n"
+        output += f"    2.0x ATR: ${current_atr * 2.0:.2f} ({atr_pct * 2.0:.1f}%)\n"
+        output += f"    2.5x ATR: ${current_atr * 2.5:.2f} ({atr_pct * 2.5:.1f}%)\n"
+
+        return output
+
+    except Exception as e:
+        return f"❌ Error calculating ATR: {str(e)}"
+
+
+# ============================================================================
+# FunctionTool Definitions
+# ============================================================================
+
+get_entry_plan_tool = FunctionTool(
+    get_entry_plan,
+    description=(
+        "Generate an entry plan for a stock with ATR-based stops, "
+        "support/resistance levels, and volume confirmation. "
+        "Returns entry price, stop loss, take profit, and plan quality."
+    ),
+)
+
+get_support_resistance_tool = FunctionTool(
+    get_support_resistance,
+    description=(
+        "Show support and resistance levels for a stock based on recent "
+        "price action. Useful for identifying entry zones and stop placement."
+    ),
+)
+
+get_volume_analysis_tool = FunctionTool(
+    get_volume_analysis,
+    description=(
+        "Analyze volume patterns to determine if there's sufficient "
+        "conviction for a trade entry. Compares current vs average volume."
+    ),
+)
+
+get_atr_tool = FunctionTool(
+    get_atr,
+    description=(
+        "Get Average True Range (ATR) for a stock to assess volatility "
+        "and determine appropriate stop loss distances."
+    ),
+)
+
+
+# ============================================================================
+# Tool Collection for Registry
+# ============================================================================
+
+CLI_ENTRY_PLANNING_TOOLS = [
+    get_entry_plan_tool,
+    get_support_resistance_tool,
+    get_volume_analysis_tool,
+    get_atr_tool,
+]
+
+__all__ = [
+    "get_entry_plan",
+    "get_support_resistance",
+    "get_volume_analysis",
+    "get_atr",
+    "get_entry_plan_tool",
+    "get_support_resistance_tool",
+    "get_volume_analysis_tool",
+    "get_atr_tool",
+    "CLI_ENTRY_PLANNING_TOOLS",
+]
