@@ -251,3 +251,8 @@ PROJECT_STATUS.md
 
 # Runtime/Generated data
 data/
+
+# Research cache databases
+scripts/research/**/*cache*.db
+scripts/research/**/*.db
+scripts/research/gex/
