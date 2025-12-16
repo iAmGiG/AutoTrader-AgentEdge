@@ -20,6 +20,7 @@ from typing import Any, Dict, List
 from autogen_core.tools import FunctionTool
 
 from src.utils.date_utils import format_for_filename, get_datetime_now
+from src.utils.safe_print import get_symbol
 
 # Default paths
 STATE_DB = "state/user.db"
@@ -66,12 +67,12 @@ def backup_database(db_path: str = STATE_DB) -> str:
     if manager:
         result = manager.backup_database(db_path)
         if result.success:
-            return f"✅ Backup created: {result.backup_path}"
-        return f"❌ Backup failed: {result.error}"
+            return f"{get_symbol('SUCCESS')} Backup created: {result.backup_path}"
+        return f"{get_symbol('ERROR')} Backup failed: {result.error}"
 
     # Stub implementation - manual file copy
     if not os.path.exists(db_path):
-        return f"❌ Database not found: {db_path}"
+        return f"{get_symbol('ERROR')} Database not found: {db_path}"
 
     # Create backup directory
     backup_dir = Path(BACKUP_DIR)
@@ -86,9 +87,9 @@ def backup_database(db_path: str = STATE_DB) -> str:
         import shutil
 
         shutil.copy2(db_path, backup_path)
-        return f"✅ Backup created: {backup_path}"
+        return f"{get_symbol('SUCCESS')} Backup created: {backup_path}"
     except Exception as e:
-        return f"❌ Backup failed: {e}"
+        return f"{get_symbol('ERROR')} Backup failed: {e}"
 
 
 def list_backups() -> str:
@@ -110,19 +111,17 @@ def list_backups() -> str:
     backup_dir = Path(BACKUP_DIR)
 
     if not backup_dir.exists():
-        return (
-            "📂 No backups directory found.\n\nRun '/backup database' to create your first backup."
-        )
+        return f"{get_symbol('MAILBOX')} No backups directory found.\n\nRun '/backup database' to create your first backup."
 
     backups = list(backup_dir.glob("*.db"))
 
     if not backups:
-        return "📂 No backups found.\n\nRun '/backup database' to create your first backup."
+        return f"{get_symbol('MAILBOX')} No backups found.\n\nRun '/backup database' to create your first backup."
 
     # Sort by modification time (newest first)
     backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 
-    output = "📂 Available Backups\n"
+    output = f"{get_symbol('MAILBOX')} Available Backups\n"
     output += "=" * 60 + "\n\n"
 
     for backup in backups:
@@ -161,15 +160,15 @@ def restore_backup(backup_name: str, target_db: str = STATE_DB) -> str:
     backup_path = Path(BACKUP_DIR) / backup_name
 
     if not backup_path.exists():
-        return f"❌ Backup not found: {backup_name}\n\nRun '/backup list' to see available backups."
+        return f"{get_symbol('ERROR')} Backup not found: {backup_name}\n\nRun '/backup list' to see available backups."
 
     manager = _get_backup_manager()
 
     if manager:
         result = manager.restore_database(str(backup_path), target_db)
         if result.success:
-            return f"✅ Database restored from: {backup_path}"
-        return f"❌ Restore failed: {result.error}"
+            return f"{get_symbol('SUCCESS')} Database restored from: {backup_path}"
+        return f"{get_symbol('ERROR')} Restore failed: {result.error}"
 
     # Stub implementation - manual file copy
     try:
@@ -181,9 +180,9 @@ def restore_backup(backup_name: str, target_db: str = STATE_DB) -> str:
             shutil.copy2(target_db, pre_restore)
 
         shutil.copy2(backup_path, target_db)
-        return f"✅ Database restored from: {backup_path}\n   (Previous DB saved to: {target_db}.pre_restore)"
+        return f"{get_symbol('SUCCESS')} Database restored from: {backup_path}\n   (Previous DB saved to: {target_db}.pre_restore)"
     except Exception as e:
-        return f"❌ Restore failed: {e}"
+        return f"{get_symbol('ERROR')} Restore failed: {e}"
 
 
 def export_table(
@@ -218,15 +217,15 @@ def export_table(
 
         result = manager.export_table(db_path, table_name, output_path)
         if result.success:
-            return f"✅ Exported {result.row_count} rows to: {output_path}"
-        return f"❌ Export failed: {result.error}"
+            return f"{get_symbol('SUCCESS')} Exported {result.row_count} rows to: {output_path}"
+        return f"{get_symbol('ERROR')} Export failed: {result.error}"
 
     # Stub implementation using sqlite3
     import json
     import sqlite3
 
     if not os.path.exists(db_path):
-        return f"❌ Database not found: {db_path}"
+        return f"{get_symbol('ERROR')} Database not found: {db_path}"
 
     try:
         conn = sqlite3.connect(db_path)
@@ -245,7 +244,7 @@ def export_table(
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
             conn.close()
-            return f"❌ Table not found: {table_name}\n\nAvailable tables: {', '.join(tables)}"
+            return f"{get_symbol('ERROR')} Table not found: {table_name}\n\nAvailable tables: {', '.join(tables)}"
 
         # Export data
         # Table name is validated above via sqlite_master query
@@ -265,9 +264,9 @@ def export_table(
         with open(output_path, "w") as f:
             json.dump(rows, f, indent=2, default=str)
 
-        return f"✅ Exported {len(rows)} rows to: {output_path}"
+        return f"{get_symbol('SUCCESS')} Exported {len(rows)} rows to: {output_path}"
     except Exception as e:
-        return f"❌ Export failed: {e}"
+        return f"{get_symbol('ERROR')} Export failed: {e}"
 
 
 def show_backup_info() -> str:
@@ -287,7 +286,7 @@ def show_backup_info() -> str:
         Cache DB: .cache/trading_data.db (15.1 MB)
         Backups: 5 files (23.4 MB total)'
     """
-    output = "📊 Backup System Info\n"
+    output = f"{get_symbol('INFO')} Backup System Info\n"
     output += "=" * 50 + "\n\n"
 
     # Check databases
@@ -344,14 +343,14 @@ def cleanup_old_backups(days: int = 30) -> str:
     if manager:
         result = manager.cleanup_old_backups(days=days)
         if result.success:
-            return f"✅ Cleanup complete: Removed {result.files_removed} backup(s) older than {days} days"
-        return f"❌ Cleanup failed: {result.error}"
+            return f"{get_symbol('SUCCESS')} Cleanup complete: Removed {result.files_removed} backup(s) older than {days} days"
+        return f"{get_symbol('ERROR')} Cleanup failed: {result.error}"
 
     # Stub implementation
     backup_dir = Path(BACKUP_DIR)
 
     if not backup_dir.exists():
-        return "📂 No backups directory found."
+        return f"{get_symbol('MAILBOX')} No backups directory found."
 
     cutoff = get_datetime_now().timestamp() - (days * 24 * 60 * 60)
     removed = 0
@@ -365,9 +364,9 @@ def cleanup_old_backups(days: int = 30) -> str:
                 pass
 
     if removed == 0:
-        return f"✅ No backups older than {days} days to remove."
+        return f"{get_symbol('SUCCESS')} No backups older than {days} days to remove."
 
-    return f"✅ Cleanup complete: Removed {removed} backup(s) older than {days} days"
+    return f"{get_symbol('SUCCESS')} Cleanup complete: Removed {removed} backup(s) older than {days} days"
 
 
 def get_backup_params() -> Dict[str, Any]:
