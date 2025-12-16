@@ -138,24 +138,29 @@ python main.py
 
 ## Known Issues
 
-### Unicode Display in Windows PowerShell
+### ~~Unicode Display in Windows PowerShell~~ - FIXED
 
-- **Impact**: Emoji characters in tool outputs can't be displayed
-- **Severity**: Low (cosmetic only)
-- **Workaround**: Tools function correctly, only display is affected
-- **Future Fix**: Consider removing emoji from Windows environments or using UTF-8 encoding
+- **Impact**: ~~Emoji characters in tool outputs can't be displayed~~ RESOLVED
+- **Severity**: ~~Low (cosmetic only)~~ N/A
+- **Fix Applied**: Commit fd16d42 - Implemented `safe_print` symbols
+- **Solution**: All backup tools now use `get_symbol()` from `safe_print.py`
+  - Emoji → Windows-safe symbols
+  - Works on both cp1252 (Windows) and UTF-8 (Linux/Mac) terminals
+- **Status**: Tools display correctly across all platforms
 
 ---
 
 ## Conclusion
 
 ✅ **All newly merged CLI features are functional**
-✅ **Tool registration system working correctly**  
+✅ **Tool registration system working correctly**
 ✅ **Import errors resolved**
+✅ **Windows compatibility implemented**
 ✅ **Ready for integration testing**
 
 **Next Steps**:
 
-1. Consider emoji removal for Windows compatibility
+1. ~~Consider emoji removal for Windows compatibility~~ ✅ DONE (fd16d42)
 2. Add integration tests for CLI tool execution
 3. Document new CLI commands in user guide
+4. Apply safe_print pattern to other tool modules (voter_tools, etc.)
