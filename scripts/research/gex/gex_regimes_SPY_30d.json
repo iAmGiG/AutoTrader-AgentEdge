@@ -1,0 +1,40 @@
+{
+  "metadata": {
+    "symbol": "SPY",
+    "period_days": 30,
+    "exported_at": "2025-12-15T19:04:34.442406",
+    "methodology": "Naive GEX (estimated OI)"
+  },
+  "statistics": {
+    "symbol": "SPY",
+    "period_days": 30,
+    "samples": 1,
+    "regime_distribution": {
+      "POSITIVE_GAMMA": {
+        "count": 1,
+        "pct": 100.0
+      }
+    },
+    "tsmom_favorable_pct": 100.0,
+    "avg_gex_by_regime": {
+      "POSITIVE_GAMMA": 46.16919008598426
+    },
+    "transition_count": 0,
+    "avg_persistence_samples": 1
+  },
+  "transitions": [],
+  "snapshots": [
+    {
+      "timestamp": "2025-12-15T19:04:34.432407",
+      "symbol": "SPY",
+      "total_gex": 46.16919008598426,
+      "call_gex": 46.16919008598426,
+      "put_gex": 0.0,
+      "regime": "POSITIVE_GAMMA",
+      "signal": "STRONG_BUY",
+      "tsmom_favorable": true,
+      "zero_gamma_price": null,
+      "contracts_analyzed": 64
+    }
+  ]
+}

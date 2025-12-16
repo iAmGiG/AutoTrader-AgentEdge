@@ -255,4 +255,6 @@ data/
 # Research cache databases
 scripts/research/**/*cache*.db
 scripts/research/**/*.db
-scripts/research/gex/
+scripts/research/gex/*.db
+scripts/research/gex/.cache/
+scripts/research/gex/data/
