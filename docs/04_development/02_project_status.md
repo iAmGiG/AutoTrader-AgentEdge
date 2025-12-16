@@ -1,6 +1,6 @@
 # Project Status & Development Roadmap
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 **Version**: v1.0 - Production VoterAgent Ready
 **Framework**: Microsoft AutoGen 0.7.x
 
@@ -1202,3 +1202,49 @@ src/cli/
 - TSMOMSignalGenerator implemented (12-month momentum)
 - Ready for 2016-2024 validation experiments
 - Research paper in progress
+
+---
+
+### December 2025 - Core Execution Features (Dec 14, 2025)
+
+**A Chat Stream - Execution Pipeline** (branch: `feature/core-execution`)
+
+**Issue #366 - OHLCV-Based Intraday Entry Plan** (COMPLETE)
+
+- Created `src/trading/instruments/entry_planning.py`
+- ATR-based stop-loss and take-profit calculation
+- Support/resistance detection using recent price extremes
+- Volume confirmation for entry quality scoring
+- Integrated into `real_voter_strategy.py` with fallback to percentage-based stops
+- Commit: `3bf530c`
+
+**Files Added**:
+
+- `src/trading/instruments/entry_planning.py` (~200 lines)
+
+**Files Modified**:
+
+- `src/trading/instruments/__init__.py` (exports)
+- `src/strategies/real_voter_strategy.py` (integration)
+
+---
+
+**Issue #372 - Multi-Level Price Targets** (COMPLETE)
+
+- Created `src/trading/orders/multi_level_targets.py`
+- `MultiLevelTargetManager` class for 1-5 price target management
+- `DistributionStrategy` enum: equal, progressive, inverse, custom
+- ATR-based target calculation using OHLCV data
+- Order splitting capability for existing positions
+- Integration with `PartialExitManager` and `TrailingStopManager`
+- Commit: `a3dbeac`
+
+**Files Added**:
+
+- `src/trading/orders/multi_level_targets.py` (~450 lines)
+
+**Files Modified**:
+
+- `src/trading/orders/__init__.py` (exports)
+
+**Next**: #414 KILLER Advanced Trailing Stop Automation

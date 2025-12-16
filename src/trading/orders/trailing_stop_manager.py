@@ -33,7 +33,8 @@ class StopState:
     """
     Track stop state for a position.
 
-    Issue #414: Extended with ATR tracking for volatility-aware stops.
+    Issue #414: Extended with ATR tracking for volatility-aware stops,
+    voter signal integration, and support/resistance awareness.
     """
 
     symbol: str
@@ -47,6 +48,13 @@ class StopState:
     # Issue #414: ATR tracking for volatility-aware stops
     current_atr: Optional[float] = None
     in_profit_zone: bool = False
+    # Issue #414: Voter signal integration (KILLER FEATURE)
+    voter_signal: Optional[str] = None  # "BUY", "SELL", "HOLD"
+    voter_confidence: float = 0.0
+    voter_tightening_active: bool = False
+    # Issue #414: Support/Resistance awareness
+    support_level: Optional[float] = None
+    resistance_level: Optional[float] = None
 
 
 class TrailingStopManager:
@@ -361,6 +369,14 @@ class TrailingStopManager:
                 current_price, new_stop, state.current_atr
             )
 
+        # Issue #414: Apply voter-influenced tightening (KILLER FEATURE)
+        if new_stop is not None and state.voter_tightening_active:
+            new_stop = self._apply_voter_tightening(new_stop, state)
+
+        # Issue #414: Avoid S/R levels
+        if new_stop is not None:
+            new_stop = self._avoid_sr_levels(new_stop, state)
+
         # Safety: Never move stop down
         if new_stop is not None and self.trailing_config.never_move_stop_down:
             if new_stop <= current_stop:
@@ -525,6 +541,11 @@ class TrailingStopManager:
         total_positions = len(self.stop_states)
         total_adjustments = sum(s.adjustments_count for s in self.stop_states.values())
         positions_in_profit = sum(1 for s in self.stop_states.values() if s.in_profit_zone)
+        # Issue #414: Track voter tightening and S/R awareness status
+        positions_with_tightening = sum(
+            1 for s in self.stop_states.values() if s.voter_tightening_active
+        )
+        positions_with_sr = sum(1 for s in self.stop_states.values() if s.support_level is not None)
 
         return {
             "enabled": self.trailing_config.enabled,
@@ -532,6 +553,9 @@ class TrailingStopManager:
             "positions_tracked": total_positions,
             "positions_in_profit_zone": positions_in_profit,
             "total_adjustments": total_adjustments,
+            # Issue #414: Voter and S/R status
+            "positions_with_voter_tightening": positions_with_tightening,
+            "positions_with_sr_levels": positions_with_sr,
             "config": {
                 "breakeven_trigger": self.trailing_config.progressive_breakeven_pct,
                 "lock_25_trigger": self.trailing_config.progressive_lock_25_pct,
@@ -543,8 +567,198 @@ class TrailingStopManager:
                 "volatility_aware": self.trailing_config.volatility_aware,
                 "atr_multiplier": self.trailing_config.atr_multiplier,
                 "profit_zone_start": self.trailing_config.profit_zone_start_pct,
+                # Issue #414: Voter signal integration
+                "voter_influenced": self.trailing_config.voter_influenced,
+                "voter_tighten_multiplier": self.trailing_config.voter_tighten_multiplier,
+                "voter_min_confidence": self.trailing_config.voter_min_confidence,
+                # Issue #414: S/R awareness
+                "sr_awareness_enabled": self.trailing_config.sr_awareness_enabled,
+                "sr_buffer_pct": self.trailing_config.sr_buffer_pct,
             },
         }
+
+    # === Issue #414: Voter Signal Integration (KILLER FEATURE) ===
+
+    def update_voter_signal(self, symbol: str, signal: str, confidence: float) -> Dict[str, Any]:
+        """
+        Update voter signal for a position - triggers stop tightening on SELL.
+
+        Issue #414: When voters signal SELL, don't force exit - instead,
+        aggressively tighten stops to protect profits.
+
+        Args:
+            symbol: Ticker symbol
+            signal: Voter signal ("BUY", "SELL", "HOLD")
+            confidence: Confidence level (0.0 - 1.0)
+
+        Returns:
+            Dict with update status and any stop adjustments made
+        """
+        if symbol not in self.stop_states:
+            return {"status": "error", "message": f"{symbol} not registered"}
+
+        if not self.trailing_config.voter_influenced:
+            return {"status": "disabled", "message": "Voter influence disabled"}
+
+        state = self.stop_states[symbol]
+        old_signal = state.voter_signal
+
+        # Update voter signal
+        state.voter_signal = signal
+        state.voter_confidence = confidence
+
+        # Check if we should activate tightening
+        if (
+            signal == "SELL"
+            and confidence >= self.trailing_config.voter_min_confidence
+            and state.in_profit_zone
+        ):
+            state.voter_tightening_active = True
+            logger.info(
+                "%s: Voter signaling SELL (%.0f%% conf) - activating stop tightening",
+                symbol,
+                confidence * 100,
+            )
+            return {
+                "status": "tightening_activated",
+                "signal": signal,
+                "confidence": confidence,
+                "message": "Stop tightening activated due to SELL signal",
+            }
+        elif signal != "SELL" and state.voter_tightening_active:
+            state.voter_tightening_active = False
+            logger.info(
+                "%s: Voter signal changed to %s - deactivating stop tightening",
+                symbol,
+                signal,
+            )
+
+        return {
+            "status": "updated",
+            "old_signal": old_signal,
+            "new_signal": signal,
+            "confidence": confidence,
+            "tightening_active": state.voter_tightening_active,
+        }
+
+    def _apply_voter_tightening(self, stop_price: float, state: StopState) -> float:
+        """
+        Apply voter-influenced stop tightening.
+
+        Issue #414: When voters signal SELL, tighten the trailing distance.
+
+        Args:
+            stop_price: Base stop price
+            state: Current stop state
+
+        Returns:
+            Tightened stop price (higher = tighter protection)
+        """
+        if not state.voter_tightening_active:
+            return stop_price
+
+        if not self.trailing_config.voter_influenced:
+            return stop_price
+
+        # Calculate tighter stop (move it up closer to current price)
+        # The tighten_multiplier reduces the distance from price to stop
+        current_distance = state.highest_price_seen - stop_price
+        tightened_distance = current_distance * self.trailing_config.voter_tighten_multiplier
+        tightened_stop = state.highest_price_seen - tightened_distance
+
+        # Only tighten, never loosen
+        new_stop = max(stop_price, tightened_stop)
+
+        if new_stop > stop_price:
+            logger.info(
+                "%s: Voter tightening applied: $%.2f -> $%.2f (%.1f%% tighter)",
+                state.symbol,
+                stop_price,
+                new_stop,
+                (1 - self.trailing_config.voter_tighten_multiplier) * 100,
+            )
+
+        return new_stop
+
+    # === Issue #414: Support/Resistance Awareness ===
+
+    def set_support_resistance(
+        self, symbol: str, support: Optional[float], resistance: Optional[float]
+    ) -> Dict[str, Any]:
+        """
+        Set support/resistance levels for a position.
+
+        Issue #414: Avoid placing stops exactly at S/R levels (obvious
+        liquidation targets for market makers).
+
+        Args:
+            symbol: Ticker symbol
+            support: Support price level
+            resistance: Resistance price level
+
+        Returns:
+            Dict with update status
+        """
+        if symbol not in self.stop_states:
+            return {"status": "error", "message": f"{symbol} not registered"}
+
+        state = self.stop_states[symbol]
+        state.support_level = support
+        state.resistance_level = resistance
+
+        logger.info(
+            "%s: S/R levels set - Support: $%.2f, Resistance: $%.2f",
+            symbol,
+            support or 0,
+            resistance or 0,
+        )
+
+        return {
+            "status": "updated",
+            "support": support,
+            "resistance": resistance,
+        }
+
+    def _avoid_sr_levels(self, stop_price: float, state: StopState) -> float:
+        """
+        Adjust stop price to avoid support/resistance levels.
+
+        Issue #414: Don't place stops exactly at S/R levels where
+        market makers target liquidity.
+
+        Args:
+            stop_price: Proposed stop price
+            state: Current stop state
+
+        Returns:
+            Adjusted stop price avoiding S/R levels
+        """
+        if not self.trailing_config.sr_awareness_enabled:
+            return stop_price
+
+        if state.support_level is None:
+            return stop_price
+
+        support = state.support_level
+        buffer_pct = self.trailing_config.sr_buffer_pct
+
+        # Calculate buffer zone around support
+        support_upper = support * (1 + buffer_pct)
+        support_lower = support * (1 - buffer_pct)
+
+        # If stop is too close to support, move it below the support zone
+        if support_lower <= stop_price <= support_upper:
+            adjusted_stop = support_lower - 0.01  # Place just below buffer
+            logger.info(
+                "%s: Stop $%.2f too close to support $%.2f, adjusting to $%.2f",
+                state.symbol,
+                stop_price,
+                support,
+                adjusted_stop,
+            )
+            return round(adjusted_stop, 2)
+
+        return stop_price
 
     @classmethod
     def from_mode_manager(
@@ -582,6 +796,13 @@ class TrailingStopManager:
             volatility_aware=config_dict.get("volatility_aware", False),
             atr_multiplier=config_dict.get("atr_multiplier", 1.5),
             profit_zone_start_pct=config_dict.get("profit_zone_start_pct", 0.02),
+            # Issue #414: Voter signal integration
+            voter_influenced=config_dict.get("voter_influenced", True),
+            voter_tighten_multiplier=config_dict.get("voter_tighten_multiplier", 0.6),
+            voter_min_confidence=config_dict.get("voter_min_confidence", 0.60),
+            # Issue #414: S/R awareness
+            sr_awareness_enabled=config_dict.get("sr_awareness_enabled", True),
+            sr_buffer_pct=config_dict.get("sr_buffer_pct", 0.005),
         )
 
         return cls(

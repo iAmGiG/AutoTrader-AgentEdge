@@ -42,6 +42,13 @@ modes:
       volatility_aware: true    # Adjust trail distance based on ATR
       atr_multiplier: 2.0       # Wider stops for conservative mode
       profit_zone_start_pct: 0.015  # 1.5% = enter profit zone earlier
+      # Issue #414: Voter signal integration (KILLER FEATURE)
+      voter_influenced: true    # Tighten stops when voters signal SELL
+      voter_tighten_multiplier: 0.5   # More aggressive tightening (50% = 50% tighter)
+      voter_min_confidence: 0.65      # Higher confidence threshold to trigger
+      # Issue #414: Support/Resistance awareness
+      sr_awareness_enabled: true      # Avoid placing stops at S/R levels
+      sr_buffer_pct: 0.007            # Wider buffer (0.7%) for conservative
 
     # Risk metrics
     risk_per_trade: 0.01        # 1% account risk per trade
@@ -84,6 +91,13 @@ modes:
       volatility_aware: true    # Adjust trail distance based on ATR
       atr_multiplier: 1.5       # Standard ATR multiplier
       profit_zone_start_pct: 0.02   # 2% = standard profit zone threshold
+      # Issue #414: Voter signal integration (KILLER FEATURE)
+      voter_influenced: true    # Tighten stops when voters signal SELL
+      voter_tighten_multiplier: 0.6   # Standard tightening (60% = 40% tighter)
+      voter_min_confidence: 0.60      # Standard confidence threshold
+      # Issue #414: Support/Resistance awareness
+      sr_awareness_enabled: true      # Avoid placing stops at S/R levels
+      sr_buffer_pct: 0.005            # Standard buffer (0.5%)
 
     # Risk metrics
     risk_per_trade: 0.02        # 2% account risk per trade
@@ -126,6 +140,13 @@ modes:
       volatility_aware: true    # Adjust trail distance based on ATR
       atr_multiplier: 1.0       # Tighter stops for aggressive mode
       profit_zone_start_pct: 0.025  # 2.5% = slightly higher threshold
+      # Issue #414: Voter signal integration (KILLER FEATURE)
+      voter_influenced: true    # Tighten stops when voters signal SELL
+      voter_tighten_multiplier: 0.7   # Less aggressive tightening (70% = 30% tighter)
+      voter_min_confidence: 0.55      # Lower confidence threshold (more tolerant)
+      # Issue #414: Support/Resistance awareness
+      sr_awareness_enabled: true      # Avoid placing stops at S/R levels
+      sr_buffer_pct: 0.003            # Smaller buffer (0.3%) for aggressive
 
     # Risk metrics
     risk_per_trade: 0.03        # 3% account risk per trade
