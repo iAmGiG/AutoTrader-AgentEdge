@@ -24,6 +24,7 @@ import pandas as pd
 
 from src.trading.instruments.data_fetch import fetch_market_data
 from src.trading.instruments.timeframe_tools import convert_to_alpaca_timeframe
+from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,7 @@ class MultiTimeframeVoter:
             DataFrame with OHLCV data or None
         """
         if end_date is None:
-            end_date = datetime.now()
+            end_date = get_datetime_now()
 
         min_days = self.min_data_days.get(timeframe, 60)
         start_date = end_date - timedelta(days=min_days)

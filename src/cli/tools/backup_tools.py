@@ -19,6 +19,8 @@ from typing import Any, Dict, List
 
 from autogen_core.tools import FunctionTool
 
+from src.utils.date_utils import get_datetime_now, timestamp_compact
+
 # Default paths
 STATE_DB = "state/user.db"
 CACHE_DB = ".cache/trading_data.db"
@@ -77,7 +79,7 @@ def backup_database(db_path: str = STATE_DB) -> str:
 
     # Generate backup filename
     db_name = Path(db_path).stem
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = timestamp_compact()
     backup_path = backup_dir / f"{db_name}_{timestamp}.db"
 
     try:
@@ -211,7 +213,7 @@ def export_table(
 
     if manager:
         if not output_path:
-            timestamp = datetime.now().strftime("%Y%m%d")
+            timestamp = get_datetime_now().strftime("%Y%m%d")
             output_path = f"exports/{table_name}_{timestamp}.json"
 
         result = manager.export_table(db_path, table_name, output_path)
@@ -255,7 +257,7 @@ def export_table(
         if not output_path:
             exports_dir = Path("exports")
             exports_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d")
+            timestamp = get_datetime_now().strftime("%Y%m%d")
             output_path = str(exports_dir / f"{table_name}_{timestamp}.json")
 
         # Write JSON
@@ -351,7 +353,7 @@ def cleanup_old_backups(days: int = 30) -> str:
     if not backup_dir.exists():
         return "📂 No backups directory found."
 
-    cutoff = datetime.now().timestamp() - (days * 24 * 60 * 60)
+    cutoff = get_datetime_now().timestamp() - (days * 24 * 60 * 60)
     removed = 0
 
     for backup in backup_dir.glob("*.db"):

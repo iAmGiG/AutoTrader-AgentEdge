@@ -20,6 +20,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from src.utils.date_utils import get_datetime_now, now_iso, timestamp_compact
+
 logger = logging.getLogger(__name__)
 
 # Database paths relative to project root
@@ -108,7 +110,7 @@ class DBBackupManager:
 
     def _generate_backup_filename(self, db_name: str) -> str:
         """Generate timestamped backup filename."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = timestamp_compact()
         return f"{db_name}_{timestamp}.db"
 
     def backup_database(self, db_name: str = "user") -> BackupResult:
@@ -121,7 +123,7 @@ class DBBackupManager:
         Returns:
             BackupResult with backup details
         """
-        timestamp = datetime.now().isoformat()
+        timestamp = now_iso()
 
         try:
             source_path = self._get_db_path(db_name)
@@ -207,7 +209,7 @@ class DBBackupManager:
         Returns:
             BackupResult with restore details
         """
-        timestamp = datetime.now().isoformat()
+        timestamp = now_iso()
 
         try:
             backup_file = Path(backup_path)
@@ -312,13 +314,13 @@ class DBBackupManager:
                 )
 
             # Export data
-            cursor.execute(f"SELECT * FROM {table_name}")  # noqa: S608
+            cursor.execute(f"SELECT * FROM {table_name}")  # noqa: S608  # nosec B608
             rows = [dict(row) for row in cursor.fetchall()]
             conn.close()
 
             # Generate output path if not provided
             if output_path is None:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                timestamp = timestamp_compact()
                 output_path = str(self.export_dir / f"{table_name}_{timestamp}.json")
 
             # Write JSON
@@ -330,7 +332,7 @@ class DBBackupManager:
                     {
                         "table": table_name,
                         "database": db_name,
-                        "exported_at": datetime.now().isoformat(),
+                        "exported_at": now_iso(),
                         "row_count": len(rows),
                         "data": rows,
                     },
@@ -420,7 +422,7 @@ class DBBackupManager:
 
             # Clear table if replace mode
             if mode == "replace":
-                cursor.execute(f"DELETE FROM {table_name}")  # noqa: S608
+                cursor.execute(f"DELETE FROM {table_name}")  # noqa: S608  # nosec B608
 
             # Get column names from first row
             columns = list(rows[0].keys())
@@ -433,7 +435,7 @@ class DBBackupManager:
                 values = [row.get(col) for col in columns]
                 try:
                     cursor.execute(
-                        f"INSERT INTO {table_name} ({col_names}) VALUES ({placeholders})",  # noqa: S608
+                        f"INSERT INTO {table_name} ({col_names}) VALUES ({placeholders})",  # noqa: S608  # nosec B608
                         values,
                     )
                     inserted += 1
@@ -491,7 +493,7 @@ class DBBackupManager:
             tables = []
 
             for (table_name,) in cursor.fetchall():
-                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")  # noqa: S608
+                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")  # noqa: S608  # nosec B608
                 count = cursor.fetchone()[0]
                 tables.append({"name": table_name, "row_count": count})
 
@@ -520,7 +522,7 @@ class DBBackupManager:
             Dict mapping table names to deleted row counts
         """
         results = {}
-        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+        cutoff_date = (get_datetime_now() - timedelta(days=days)).isoformat()
 
         try:
             db_path = self._get_db_path(db_name)
@@ -553,7 +555,7 @@ class DBBackupManager:
 
                 if timestamp_col:
                     cursor.execute(
-                        f"DELETE FROM {table_name} WHERE {timestamp_col} < ?",  # noqa: S608
+                        f"DELETE FROM {table_name} WHERE {timestamp_col} < ?",  # noqa: S608  # nosec B608
                         (cutoff_date,),
                     )
                     results[table_name] = cursor.rowcount
@@ -579,7 +581,7 @@ class DBBackupManager:
         Returns:
             Number of backups deleted
         """
-        cutoff_date = datetime.now() - timedelta(days=keep_days)
+        cutoff_date = get_datetime_now() - timedelta(days=keep_days)
         deleted = 0
 
         backups = sorted(
@@ -692,7 +694,7 @@ class DBMigrator:
 
                 cursor.execute(
                     "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
-                    (version, datetime.now().isoformat()),
+                    (version, now_iso()),
                 )
                 applied.append(version)
 
