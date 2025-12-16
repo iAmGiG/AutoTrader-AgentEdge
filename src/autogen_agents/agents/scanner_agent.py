@@ -37,7 +37,7 @@ from src.utils.date_utils import get_datetime_now, now_iso, subtract_days, today
 logger = logging.getLogger(__name__)
 
 # Config paths
-CONFIG_DIR = Path(__file__).parent.parent.parent / "config_defaults"
+CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config_defaults"
 SCANNER_CONFIG_PATH = CONFIG_DIR / "scanner_config.yaml"
 TRADING_MODES_PATH = CONFIG_DIR / "trading_modes.yaml"
 WATCHLISTS_DIR = CONFIG_DIR / "watchlists"
