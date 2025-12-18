@@ -186,16 +186,25 @@ Date Range:    2020-01-02 to 2025-12-16
 
 ## Files & Code
 
-### Pipeline Scripts
+### Production Scripts (After Consolidation ✓)
 
 - `dask_gex_calculator.py` - Main production pipeline
-- `parallel_finish_gex.py` - Multi-worker completion
 - `tsmom_vs_gex_analysis.py` - Momentum analysis
 - `cross_asset_correlation.py` - Correlation study
+- `backfill_underlying_prices.py` - Data maintenance utility
 - `gex_pipeline_config.yaml` - Configuration
+
+### Archived Scripts (For Reference)
+
+See `archived/` directory for previous implementations:
+
+- `gex_calculator.py` - Original single-symbol calculator
+- `parallel_gex_calculator.py` - Multiprocessing variant
+- `migrate_gex_database.py` - Database migration utility
 
 ### Documentation
 
+- `README.md` - Quick start and usage guide
 - `data_inventory.md` - Data coverage
 - `gex_pipeline_architecture.md` - Technical design
 - `gex_regime_validation.md` - Initial validation

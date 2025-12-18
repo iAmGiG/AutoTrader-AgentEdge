@@ -147,10 +147,18 @@ validation:
 | File | Purpose |
 |------|---------|
 | `dask_gex_calculator.py` | Main pipeline with logging |
-| `parallel_gex_calculator.py` | Multiprocessing version |
-| `simple_batch_gex.py` | Simple sequential version |
 | `gex_pipeline_config.yaml` | Configuration |
-| `gex_calculator.py` | Original single-symbol calculator |
+| `tsmom_vs_gex_analysis.py` | Momentum analysis script |
+| `cross_asset_correlation.py` | Cross-asset regime analysis |
+| `backfill_underlying_prices.py` | Maintenance utility |
+
+### Archived Scripts
+
+Previous implementations are available in `archived/`:
+
+- `gex_calculator.py` - Original single-symbol calculator
+- `parallel_gex_calculator.py` - Multiprocessing variant
+- `migrate_gex_database.py` - One-time database migration utility
 
 ## Usage
 
