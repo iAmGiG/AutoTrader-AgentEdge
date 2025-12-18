@@ -57,7 +57,7 @@ def load_gex_data(symbol: str = "SPY") -> pd.DataFrame:
     conn = sqlite3.connect(DB_PATH)
     query = """
         SELECT trading_date, regime, underlying_price, total_gex,
-               call_gex, put_gex, asset_class
+               net_call_gex, net_put_gex, asset_class
         FROM options_daily_summary
         WHERE symbol = ?
         AND underlying_price IS NOT NULL
@@ -117,7 +117,7 @@ def generate_technical_signals(df: pd.DataFrame) -> pd.Series:
     macd = calculate_macd(prices)
     rsi = calculate_rsi(prices)
 
-    signals = pd.Series(0, index=df.index)
+    signals = pd.Series(0.0, index=df.index)
 
     for i in range(34, len(df)):  # Start after slow EMA period
         macd_signal = 0
@@ -156,7 +156,7 @@ def generate_gex_signals(df: pd.DataFrame) -> pd.Series:
     - NEGATIVE gamma: Dealers hedge same direction as market = amplifying = bearish
     - NEUTRAL: No strong dealer positioning = hold
     """
-    signals = pd.Series(0, index=df.index)
+    signals = pd.Series(0.0, index=df.index)
 
     regime_map = {"POSITIVE": 1, "NEGATIVE": -1, "NEUTRAL": 0, "UNKNOWN": 0}
 
@@ -189,7 +189,7 @@ def generate_hybrid_signals(df: pd.DataFrame) -> pd.Series:
     tech_signals = generate_technical_signals(df)
     # Note: GEX regime is used directly from df["regime"], not from gex_signals
 
-    signals = pd.Series(0, index=df.index)
+    signals = pd.Series(0.0, index=df.index)
 
     for i in range(len(df)):
         tech = tech_signals.iloc[i]
@@ -322,12 +322,12 @@ def run_walk_forward_comparison(symbol: str = "SPY") -> Dict[str, Any]:
     df_train = df[df.index <= train_end]
     df_test = df[df.index > train_end]
 
-    print(
-        f"Train period: {df_train.index[0].date()} to {df_train.index[-1].date()} ({len(df_train)} days)"
-    )
-    print(
-        f"Test period: {df_test.index[0].date()} to {df_test.index[-1].date()} ({len(df_test)} days)"
-    )
+    train_start = df_train.index[0].date()
+    train_stop = df_train.index[-1].date()
+    test_start = df_test.index[0].date()
+    test_stop = df_test.index[-1].date()
+    print(f"Train period: {train_start} to {train_stop} ({len(df_train)} days)")
+    print(f"Test period: {test_start} to {test_stop} ({len(df_test)} days)")
     print()
 
     if len(df_test) < 20:
@@ -360,9 +360,9 @@ def run_walk_forward_comparison(symbol: str = "SPY") -> Dict[str, Any]:
 
     results = [tech_result, gex_result, hybrid_result]
 
-    print(
-        f"{'Strategy':<25} {'Return':>10} {'Sharpe':>10} {'MaxDD':>10} {'WinRate':>10} {'Trades':>8}"
-    )
+    header = f"{'Strategy':<25} {'Return':>10} {'Sharpe':>10} "
+    header += f"{'MaxDD':>10} {'WinRate':>10} {'Trades':>8}"
+    print(header)
     print("-" * 75)
 
     for r in results:
@@ -426,7 +426,7 @@ def main():
         results = run_walk_forward_comparison(args.symbol)
 
         if args.output:
-            with open(args.output, "w") as f:
+            with open(args.output, "w", encoding="utf-8") as f:
                 json.dump(results, f, indent=2, default=str)
             print(f"\nResults saved to: {args.output}")
 
