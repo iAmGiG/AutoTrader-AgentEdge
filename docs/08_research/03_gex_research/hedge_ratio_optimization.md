@@ -83,11 +83,18 @@
    - Variance Reduction: 57.7%
    - Optimal Ratio: 0.22
 
-### Implications
+### Testing Recommendations
 
-1. **Regime-Aware Allocation**: Adjust hedge ratios based on GEX regime
-2. **Transition Risk**: Monitor correlation stability during regime shifts
-3. **Dynamic vs Static**: Compare regime-based vs fixed allocation performance
+**Worth Testing**:
+
+1. Volatility-based hedge ratios - VXX/UVXY provide 50%+ variance reduction vs equity hedges
+2. Dynamic regime-based allocations - Sharpe improves 10% (5.0 vs 4.5) with regime switching
+3. Correlation stability for bonds/commodities - QQQ correlations remain stable across regimes
+
+**Can Skip**:
+
+1. Treasury bonds as primary hedges - TLT/IEF show only 6-7% variance reduction despite negative correlation
+2. Static allocations during regime transitions - pre/post transition returns highly variable (9.6% → 38.7%), dynamic adjustment needed
 
 ---
 

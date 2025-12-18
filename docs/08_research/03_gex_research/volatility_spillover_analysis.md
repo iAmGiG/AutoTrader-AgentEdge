@@ -72,11 +72,16 @@ Correlation of Asset A's GEX (t-1) with Asset B's GEX (t):
 1. **UVXY as Leading Indicator**:
    - UVXY GEX leads SPY regime by 1 day(s) (r=0.157, p=0.0000)
 
-### Implications
+### Testing Recommendations
 
-1. **Risk Management**: Monitor volatility GEX for early warning of equity regime shifts
-2. **Trading Strategy**: Use UVXY/VXX regime changes as filter for equity positions
-3. **Paper 3 Direction**: Focus on volatility→equity spillover channel for cross-asset analysis
+**Worth Testing**:
+
+1. Cross-asset volatility spillover effects - UVXY leads equity regimes with statistical significance
+2. Volatility-equity regime transitions - use as early warning signal
+
+**Can Skip**:
+
+1. Rolling correlation stability analysis - correlation is variable across all periods, not stable enough for regime-dependent strategies
 
 ---
 

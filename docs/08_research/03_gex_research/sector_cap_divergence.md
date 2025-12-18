@@ -69,11 +69,17 @@ Can one segment's regime change predict another's?
 2. **Tech vs Industrials**:
    - Correlation: 0.702
 
-### Implications
+### Testing Recommendations
 
-1. **Regime Diversity**: Monitor divergence ratio for regime transition warnings
-2. **Small Cap Sensitivity**: IWM may provide early warning for broader market
-3. **Paper 3 Direction**: Include cap-weighted analysis in cross-asset framework
+**Worth Testing**:
+
+1. Cap-weighted correlations across market regimes - equity indices show high concordance (0.55-0.84)
+2. IWM divergence patterns - small cap behavior during regime transitions
+
+**Can Skip**:
+
+1. Cap-based lead-lag relationships - all indices move simultaneously with zero-day lag, no predictive timing value
+2. Within-equity regime prediction - cap segments don't provide early warning for each other
 
 ---
 
