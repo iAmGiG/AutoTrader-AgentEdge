@@ -19,7 +19,6 @@ Usage:
 """
 
 import argparse
-import json
 import sqlite3
 import sys
 from dataclasses import dataclass
@@ -28,12 +27,35 @@ from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
+import yaml
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+# Use simple ISO timestamp without date_utils dependency to avoid config requirement
+from datetime import datetime as dt
+
+
+def now_iso() -> str:
+    """Get current timestamp as ISO string."""
+    return dt.now().isoformat()
+
+
+def convert_to_native_types(obj: Any) -> Any:
+    """Convert numpy types to native Python types for YAML serialization."""
+    if isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert_to_native_types(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_native_types(item) for item in obj]
+    return obj
+
 
 DB_PATH = Path(".cache/gex_research.db")
+RESULTS_DB_PATH = Path(".cache/backtest_results.db")
 
 
 @dataclass
@@ -395,40 +417,128 @@ def run_walk_forward_comparison(symbol: str = "SPY") -> Dict[str, Any]:
     else:
         print("\n-> GEX does not improve upon technicals in this period")
 
-    return {
-        "symbol": symbol,
-        "train_period": f"{df_train.index[0].date()} to {df_train.index[-1].date()}",
-        "test_period": f"{df_test.index[0].date()} to {df_test.index[-1].date()}",
-        "results": {
-            r.name: {
-                "total_return": r.total_return,
-                "sharpe_ratio": r.sharpe_ratio,
-                "max_drawdown": r.max_drawdown,
-                "win_rate": r.win_rate,
-                "num_trades": r.num_trades,
-            }
-            for r in results
-        },
-        "winner": best.name,
-        "gex_improvement": hybrid_improvement,
-    }
+    return convert_to_native_types(
+        {
+            "symbol": symbol,
+            "train_period": f"{df_train.index[0].date()} to {df_train.index[-1].date()}",
+            "test_period": f"{df_test.index[0].date()} to {df_test.index[-1].date()}",
+            "results": {
+                r.name: {
+                    "total_return": r.total_return,
+                    "sharpe_ratio": r.sharpe_ratio,
+                    "max_drawdown": r.max_drawdown,
+                    "win_rate": r.win_rate,
+                    "num_trades": r.num_trades,
+                }
+                for r in results
+            },
+            "winner": best.name,
+            "gex_improvement": hybrid_improvement,
+        }
+    )
+
+
+def save_results_to_db(results: Dict[str, Any]) -> None:
+    """Save backtest results to SQLite database."""
+    conn = sqlite3.connect(RESULTS_DB_PATH)
+    cursor = conn.cursor()
+
+    # Create table if not exists
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gex_vs_technicals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_timestamp TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            train_period TEXT,
+            test_period TEXT,
+            tech_return REAL,
+            tech_sharpe REAL,
+            tech_max_dd REAL,
+            tech_win_rate REAL,
+            tech_trades INTEGER,
+            gex_return REAL,
+            gex_sharpe REAL,
+            gex_max_dd REAL,
+            gex_win_rate REAL,
+            gex_trades INTEGER,
+            hybrid_return REAL,
+            hybrid_sharpe REAL,
+            hybrid_max_dd REAL,
+            hybrid_win_rate REAL,
+            hybrid_trades INTEGER,
+            winner TEXT,
+            gex_improvement REAL
+        )
+    """
+    )
+
+    # Extract strategy results
+    tech = results["results"].get("TECHNICALS (MACD+RSI)", {})
+    gex = results["results"].get("GEX-ONLY", {})
+    hybrid = results["results"].get("HYBRID (GEX+Technicals)", {})
+
+    cursor.execute(
+        """
+        INSERT INTO gex_vs_technicals (
+            run_timestamp, symbol, train_period, test_period,
+            tech_return, tech_sharpe, tech_max_dd, tech_win_rate, tech_trades,
+            gex_return, gex_sharpe, gex_max_dd, gex_win_rate, gex_trades,
+            hybrid_return, hybrid_sharpe, hybrid_max_dd, hybrid_win_rate, hybrid_trades,
+            winner, gex_improvement
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            now_iso(),
+            results["symbol"],
+            results.get("train_period"),
+            results.get("test_period"),
+            tech.get("total_return"),
+            tech.get("sharpe_ratio"),
+            tech.get("max_drawdown"),
+            tech.get("win_rate"),
+            tech.get("num_trades"),
+            gex.get("total_return"),
+            gex.get("sharpe_ratio"),
+            gex.get("max_drawdown"),
+            gex.get("win_rate"),
+            gex.get("num_trades"),
+            hybrid.get("total_return"),
+            hybrid.get("sharpe_ratio"),
+            hybrid.get("max_drawdown"),
+            hybrid.get("win_rate"),
+            hybrid.get("num_trades"),
+            results.get("winner"),
+            results.get("gex_improvement"),
+        ),
+    )
+
+    conn.commit()
+    conn.close()
 
 
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="GEX vs Technicals comparison")
     parser.add_argument("--symbol", default="SPY", help="Symbol to test")
-    parser.add_argument("--output", "-o", help="Output JSON file")
+    parser.add_argument("--output", "-o", help="Output YAML file")
+    parser.add_argument("--no-db", action="store_true", help="Skip saving to database")
 
     args = parser.parse_args()
 
     try:
         results = run_walk_forward_comparison(args.symbol)
 
+        # Save to database by default
+        if not args.no_db:
+            save_results_to_db(results)
+            print(f"\nResults saved to: {RESULTS_DB_PATH}")
+
+        # Save YAML if output specified
         if args.output:
             with open(args.output, "w", encoding="utf-8") as f:
-                json.dump(results, f, indent=2, default=str)
-            print(f"\nResults saved to: {args.output}")
+                yaml.dump(results, f, default_flow_style=False, sort_keys=False)
+            print(f"Results saved to: {args.output}")
 
         return 0
 

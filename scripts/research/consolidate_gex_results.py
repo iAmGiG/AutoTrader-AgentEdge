@@ -1,36 +1,113 @@
 """
 Consolidate GEX vs Technicals Results (#394)
 
-Reads JSON results from results/gex_research/ and generates a markdown report.
+Reads YAML results from results/gex_research/ or backtest_results.db
+and generates a markdown report.
 """
 
-import json
+import argparse
+import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+
+def now_iso() -> str:
+    """Get current timestamp as ISO string."""
+    return datetime.now().isoformat()
+
+
 RESULTS_DIR = Path("results/gex_research")
+RESULTS_DB = Path(".cache/backtest_results.db")
 OUTPUT_FILE = Path("docs/08_research/03_gex_research/gex_vs_technicals_results.md")
 
 
-def load_all_results():
-    """Load all JSON result files."""
+def load_results_from_yaml():
+    """Load all YAML result files."""
     results = []
-    for json_file in sorted(RESULTS_DIR.glob("*.json")):
-        with open(json_file, encoding="utf-8") as f:
-            data = json.load(f)
-            data["_source"] = json_file.stem
+    for yaml_file in sorted(RESULTS_DIR.glob("*.yaml")):
+        with open(yaml_file, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            data["_source"] = yaml_file.stem
             results.append(data)
+    return results
+
+
+def load_results_from_db():
+    """Load results from SQLite database."""
+    if not RESULTS_DB.exists():
+        return []
+
+    conn = sqlite3.connect(RESULTS_DB)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.execute(
+        """
+        SELECT * FROM gex_vs_technicals
+        ORDER BY symbol, run_timestamp DESC
+        """
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Convert to dict format matching YAML structure
+    # Only keep latest run per symbol
+    seen_symbols = set()
+    results = []
+    for row in rows:
+        if row["symbol"] in seen_symbols:
+            continue
+        seen_symbols.add(row["symbol"])
+
+        results.append(
+            {
+                "symbol": row["symbol"],
+                "train_period": row["train_period"],
+                "test_period": row["test_period"],
+                "results": {
+                    "TECHNICALS (MACD+RSI)": {
+                        "total_return": row["tech_return"],
+                        "sharpe_ratio": row["tech_sharpe"],
+                        "max_drawdown": row["tech_max_dd"],
+                        "win_rate": row["tech_win_rate"],
+                        "num_trades": row["tech_trades"],
+                    },
+                    "GEX-ONLY": {
+                        "total_return": row["gex_return"],
+                        "sharpe_ratio": row["gex_sharpe"],
+                        "max_drawdown": row["gex_max_dd"],
+                        "win_rate": row["gex_win_rate"],
+                        "num_trades": row["gex_trades"],
+                    },
+                    "HYBRID (GEX+Technicals)": {
+                        "total_return": row["hybrid_return"],
+                        "sharpe_ratio": row["hybrid_sharpe"],
+                        "max_drawdown": row["hybrid_max_dd"],
+                        "win_rate": row["hybrid_win_rate"],
+                        "num_trades": row["hybrid_trades"],
+                    },
+                },
+                "winner": row["winner"],
+                "gex_improvement": row["gex_improvement"],
+                "_source": f"db:{row['run_timestamp']}",
+            }
+        )
     return results
 
 
 def generate_report(results: list) -> str:
     """Generate markdown report from results."""
+    timestamp = now_iso()[:19].replace("T", " ")
     lines = [
         "# GEX vs Technicals Walk-Forward Comparison",
         "",
         "**Issue**: #394",
         "**Purpose**: Compare GEX-based trading signals against technical indicators",
-        f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"**Generated**: {timestamp}",
         "",
         "## Executive Summary",
         "",
@@ -75,8 +152,8 @@ def generate_report(results: list) -> str:
         tech = r["results"].get("TECHNICALS (MACD+RSI)", {})
         gex = r["results"].get("GEX-ONLY", {})
 
-        tech_sharpe = tech.get("sharpe_ratio", 0)
-        gex_sharpe = gex.get("sharpe_ratio", 0)
+        tech_sharpe = tech.get("sharpe_ratio", 0) or 0
+        gex_sharpe = gex.get("sharpe_ratio", 0) or 0
         improvement = gex_sharpe - tech_sharpe
 
         winner = r.get("winner", "Unknown")
@@ -93,8 +170,8 @@ def generate_report(results: list) -> str:
 
     # Calculate averages
     avg_improvement = sum(
-        r["results"].get("GEX-ONLY", {}).get("sharpe_ratio", 0)
-        - r["results"].get("TECHNICALS (MACD+RSI)", {}).get("sharpe_ratio", 0)
+        (r["results"].get("GEX-ONLY", {}).get("sharpe_ratio", 0) or 0)
+        - (r["results"].get("TECHNICALS (MACD+RSI)", {}).get("sharpe_ratio", 0) or 0)
         for r in results
     ) / len(results)
 
@@ -121,11 +198,11 @@ def generate_report(results: list) -> str:
         lines.append("|----------|--------|--------|-------|---------|--------|")
 
         for strat_name, strat in r["results"].items():
-            ret = strat.get("total_return", 0)
-            sharpe = strat.get("sharpe_ratio", 0)
-            maxdd = strat.get("max_drawdown", 0)
-            winrate = strat.get("win_rate", 0)
-            trades = strat.get("num_trades", 0)
+            ret = strat.get("total_return", 0) or 0
+            sharpe = strat.get("sharpe_ratio", 0) or 0
+            maxdd = strat.get("max_drawdown", 0) or 0
+            winrate = strat.get("win_rate", 0) or 0
+            trades = strat.get("num_trades", 0) or 0
 
             short_name = strat_name.split()[0]
             lines.append(
@@ -153,7 +230,7 @@ def generate_report(results: list) -> str:
             "",
             "---",
             "",
-            "Generated by consolidate_gex_results.py from JSON results in results/gex_research/",
+            "Generated by consolidate_gex_results.py",
         ]
     )
 
@@ -162,16 +239,31 @@ def generate_report(results: list) -> str:
 
 def main():
     """Main entry point."""
-    if not RESULTS_DIR.exists():
-        print(f"Error: Results directory not found: {RESULTS_DIR}")
-        return 1
+    parser = argparse.ArgumentParser(description="Consolidate GEX vs technicals results")
+    parser.add_argument(
+        "--source",
+        choices=["yaml", "db", "auto"],
+        default="auto",
+        help="Data source: yaml files, database, or auto-detect",
+    )
+    args = parser.parse_args()
 
-    results = load_all_results()
+    # Load results
+    results = []
+    if args.source == "db":
+        results = load_results_from_db()
+    elif args.source == "yaml":
+        results = load_results_from_yaml()
+    else:  # auto
+        results = load_results_from_db()
+        if not results:
+            results = load_results_from_yaml()
+
     if not results:
-        print(f"No JSON files found in {RESULTS_DIR}")
+        print("No results found in database or YAML files")
         return 1
 
-    print(f"Loaded {len(results)} result files")
+    print(f"Loaded {len(results)} results")
 
     report = generate_report(results)
 
@@ -187,14 +279,12 @@ def main():
     print("=" * 60)
     for r in results:
         symbol = r["symbol"]
-        tech = r["results"].get("TECHNICALS (MACD+RSI)", {}).get("sharpe_ratio", 0)
-        gex = r["results"].get("GEX-ONLY", {}).get("sharpe_ratio", 0)
+        tech = r["results"].get("TECHNICALS (MACD+RSI)", {}).get("sharpe_ratio", 0) or 0
+        gex = r["results"].get("GEX-ONLY", {}).get("sharpe_ratio", 0) or 0
         print(f"{symbol}: Tech={tech:.3f}, GEX={gex:.3f}, diff={gex-tech:+.3f}")
 
     return 0
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(main())
