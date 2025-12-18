@@ -1,0 +1,30 @@
+{
+  "symbol": "SOXL",
+  "train_period": "2020-01-02 to 2023-12-29",
+  "test_period": "2024-01-02 to 2025-12-16",
+  "results": {
+    "TECHNICALS (MACD+RSI)": {
+      "total_return": 136.34170000000006,
+      "sharpe_ratio": 0.9485277281386486,
+      "max_drawdown": -50.95519855271813,
+      "win_rate": 63.1578947368421,
+      "num_trades": 38
+    },
+    "GEX-ONLY": {
+      "total_return": 161.30859999999993,
+      "sharpe_ratio": 0.9853047527428862,
+      "max_drawdown": -73.94469998961985,
+      "win_rate": 48.275862068965516,
+      "num_trades": 117
+    },
+    "HYBRID (GEX+Technicals)": {
+      "total_return": -11.880399999999991,
+      "sharpe_ratio": 0.40139479406759276,
+      "max_drawdown": -85.30722256933201,
+      "win_rate": 0.0,
+      "num_trades": 3
+    }
+  },
+  "winner": "GEX-ONLY",
+  "gex_improvement": -0.5471329340710558
+}

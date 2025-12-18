@@ -1,0 +1,30 @@
+{
+  "symbol": "SQQQ",
+  "train_period": "2020-01-02 to 2023-12-29",
+  "test_period": "2024-01-02 to 2025-12-16",
+  "results": {
+    "TECHNICALS (MACD+RSI)": {
+      "total_return": 257.9196,
+      "sharpe_ratio": 0.6894753128089179,
+      "max_drawdown": -54.87717523223432,
+      "win_rate": 63.63636363636363,
+      "num_trades": 23
+    },
+    "GEX-ONLY": {
+      "total_return": 40.722599999999986,
+      "sharpe_ratio": 0.5310983966940305,
+      "max_drawdown": -72.78440000000003,
+      "win_rate": 26.47058823529412,
+      "num_trades": 137
+    },
+    "HYBRID (GEX+Technicals)": {
+      "total_return": 608.4986,
+      "sharpe_ratio": 0.8904053679755314,
+      "max_drawdown": -73.71676709719472,
+      "win_rate": 100.0,
+      "num_trades": 4
+    }
+  },
+  "winner": "HYBRID (GEX+Technicals)",
+  "gex_improvement": 0.20093005516661344
+}

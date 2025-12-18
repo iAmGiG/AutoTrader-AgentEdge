@@ -1,0 +1,30 @@
+{
+  "symbol": "TQQQ",
+  "train_period": "2020-01-02 to 2023-12-29",
+  "test_period": "2024-01-02 to 2025-12-16",
+  "results": {
+    "TECHNICALS (MACD+RSI)": {
+      "total_return": -38.39380000000003,
+      "sharpe_ratio": -0.10681589847868854,
+      "max_drawdown": -59.02697341572186,
+      "win_rate": 52.94117647058824,
+      "num_trades": 35
+    },
+    "GEX-ONLY": {
+      "total_return": 68.68410000000004,
+      "sharpe_ratio": 0.9118332925984688,
+      "max_drawdown": -26.999916719708285,
+      "win_rate": 54.90196078431373,
+      "num_trades": 103
+    },
+    "HYBRID (GEX+Technicals)": {
+      "total_return": -17.458600000000004,
+      "sharpe_ratio": 0.23567902415130126,
+      "max_drawdown": -59.08525290307296,
+      "win_rate": 100.0,
+      "num_trades": 5
+    }
+  },
+  "winner": "GEX-ONLY",
+  "gex_improvement": 0.3424949226299898
+}

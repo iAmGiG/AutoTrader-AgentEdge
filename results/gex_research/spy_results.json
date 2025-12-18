@@ -1,0 +1,30 @@
+{
+  "symbol": "SPY",
+  "train_period": "2021-12-07 to 2023-12-29",
+  "test_period": "2024-01-02 to 2025-12-15",
+  "results": {
+    "TECHNICALS (MACD+RSI)": {
+      "total_return": 16.295800000000035,
+      "sharpe_ratio": 0.7449298355073947,
+      "max_drawdown": -10.976198015207348,
+      "win_rate": 52.63157894736842,
+      "num_trades": 38
+    },
+    "GEX-ONLY": {
+      "total_return": 39.838699999999974,
+      "sharpe_ratio": 1.4591477926491851,
+      "max_drawdown": -15.087355355648723,
+      "win_rate": 62.5,
+      "num_trades": 33
+    },
+    "HYBRID (GEX+Technicals)": {
+      "total_return": 19.000300000000024,
+      "sharpe_ratio": 0.721641751260956,
+      "max_drawdown": -17.513604564014766,
+      "win_rate": 80.0,
+      "num_trades": 11
+    }
+  },
+  "winner": "GEX-ONLY",
+  "gex_improvement": -0.02328808424643869
+}
