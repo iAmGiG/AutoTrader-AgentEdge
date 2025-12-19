@@ -32,13 +32,8 @@ import yaml
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Use simple ISO timestamp without date_utils dependency to avoid config requirement
-from datetime import datetime as dt
-
-
-def now_iso() -> str:
-    """Get current timestamp as ISO string."""
-    return dt.now().isoformat()
+# Use centralized date utilities
+from src.utils.date_utils import now_iso
 
 
 def convert_to_native_types(obj: Any) -> Any:

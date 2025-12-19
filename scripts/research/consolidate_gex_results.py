@@ -8,7 +8,6 @@ and generates a markdown report.
 import argparse
 import sqlite3
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -16,11 +15,8 @@ import yaml
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-
-def now_iso() -> str:
-    """Get current timestamp as ISO string."""
-    return datetime.now().isoformat()
-
+# Use centralized date utilities
+from src.utils.date_utils import now_iso
 
 RESULTS_DIR = Path("results/gex_research")
 RESULTS_DB = Path(".cache/backtest_results.db")

@@ -20,7 +20,6 @@ Features:
 import argparse
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -33,6 +32,9 @@ from src.backtesting.enhanced_metrics import (
     calculate_enhanced_metrics,
     generate_comparison_table,
 )
+
+# Use centralized date utilities
+from src.utils.date_utils import get_datetime_now
 
 
 def load_json_results(file_path: str) -> Dict[str, Any]:
@@ -214,7 +216,7 @@ def generate_markdown_report(
     lines = [
         "# Backtest Results Report",
         "",
-        f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"**Generated**: {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
     ]
 
     if "experiment" in data:

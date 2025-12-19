@@ -22,14 +22,20 @@ Usage:
 import argparse
 import logging
 import sqlite3
-from datetime import datetime
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import pandas as pd
 import yaml
+
+from src.utils.date_utils import get_datetime_now, now_iso, now_timestamp
 
 # =============================================================================
 # CONFIGURATION
@@ -116,7 +122,7 @@ def setup_logging(config: Dict) -> logging.Logger:
     log_dir = Path(config["logging"]["log_dir"])
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    log_file = log_dir / f"gex_pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_file = log_dir / f"gex_pipeline_{now_timestamp()}.log"
 
     logger = logging.getLogger("gex_pipeline")
     logger.setLevel(getattr(logging, config["logging"]["level"]))
@@ -432,7 +438,7 @@ def calculate_gex_vectorized(
 
     # Metadata
     result["calculation_method"] = "dask_vectorized"
-    result["calculation_timestamp"] = datetime.now().isoformat()
+    result["calculation_timestamp"] = now_iso()
     result["asset_class"] = ASSET_CLASS_MAP.get(symbol, "equity")
 
     # Reset index
@@ -571,7 +577,7 @@ def generate_report(db_path: Path, config: Dict, logger: logging.Logger) -> str:
     # Generate markdown report
     report = []
     report.append("# GEX Calculation Pipeline Report")
-    report.append(f"\nGenerated: {datetime.now().isoformat()}")
+    report.append(f"\nGenerated: {now_iso()}")
     report.append("")
     report.append("## Summary")
     report.append("")
@@ -601,7 +607,7 @@ def generate_report(db_path: Path, config: Dict, logger: logging.Logger) -> str:
     if config["output"]["generate_reports"]:
         report_dir = Path(config["output"]["report_dir"])
         report_dir.mkdir(parents=True, exist_ok=True)
-        report_file = report_dir / f"gex_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        report_file = report_dir / f"gex_report_{now_timestamp()}.md"
         report_file.write_text(report_text)
         logger.info(f"Report saved: {report_file}")
 
@@ -656,7 +662,7 @@ def run_pipeline(config: Dict, symbols: Optional[List[str]] = None, dry_run: boo
     logger.info("=" * 70)
 
     # Process symbols
-    start_time = datetime.now()
+    start_time = get_datetime_now()
     results = []
     checkpoint_freq = config["output"]["checkpoint_frequency"]
 
@@ -667,7 +673,7 @@ def run_pipeline(config: Dict, symbols: Optional[List[str]] = None, dry_run: boo
 
             # Checkpoint logging
             if i % checkpoint_freq == 0:
-                elapsed = datetime.now() - start_time
+                elapsed = get_datetime_now() - start_time
                 total_new = sum(r[1] for r in results)
                 logger.info(
                     f"Checkpoint: {i}/{len(symbols_info)} symbols, {total_new:,} new days, {elapsed}"
@@ -678,7 +684,7 @@ def run_pipeline(config: Dict, symbols: Optional[List[str]] = None, dry_run: boo
             results.append((symbol, 0, 0))
 
     # Summary
-    elapsed = datetime.now() - start_time
+    elapsed = get_datetime_now() - start_time
     total_new = sum(r[1] for r in results)
     total_skipped = sum(r[2] for r in results)
 

@@ -10,11 +10,15 @@ import json
 import sqlite3
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
 import requests
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.utils.date_utils import get_datetime_from_timestamp, parse_date_string
 
 # Rate limiting
 ALPHA_VANTAGE_RATE_LIMIT = 75  # requests per minute (freemium)
@@ -99,8 +103,8 @@ class PriceBackfiller:
         self._rate_limit()
 
         # Convert dates to timestamps
-        start_ts = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
-        end_ts = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp())
+        start_ts = int(parse_date_string(start_date).timestamp())
+        end_ts = int(parse_date_string(end_date).timestamp())
 
         url = "https://finnhub.io/api/v1/stock/candle"
         params = {
@@ -122,7 +126,7 @@ class PriceBackfiller:
 
             prices = {}
             for i, timestamp in enumerate(data["t"]):
-                date_str = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+                date_str = get_datetime_from_timestamp(timestamp).strftime("%Y-%m-%d")
                 prices[date_str] = float(data["c"][i])  # close price
 
             return prices
