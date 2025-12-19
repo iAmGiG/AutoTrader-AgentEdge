@@ -44,6 +44,8 @@ TRAILING_STOP_TOOLS = "trailing_stop"
 VOTER_TOOLS = "voter"
 # Backup tools (Issue #490)
 BACKUP_TOOLS = "backup"
+# GTT tools (Issue #340)
+GTT_TOOLS = "gtt"
 
 
 class CliToolRegistry:
@@ -236,6 +238,8 @@ def _discover_and_register_tools() -> None:
         ("voter_tools", "CLI_VOTER_TOOLS", VOTER_TOOLS),
         # Backup tools (Issue #490): Database backup/restore/export
         ("backup_tools", "CLI_BACKUP_TOOLS", BACKUP_TOOLS),
+        # GTT tools (Issue #340): Good-Till-Triggered persistent triggers
+        ("gtt_tools", "CLI_GTT_TOOLS", GTT_TOOLS),
     ]
 
     for module_name, tools_attr, category in tool_modules:
@@ -277,6 +281,8 @@ __all__ = [
     "VOTER_TOOLS",
     # Backup tools (Issue #490)
     "BACKUP_TOOLS",
+    # GTT tools (Issue #340)
+    "GTT_TOOLS",
     # AutoGen core
     "FunctionTool",
 ]

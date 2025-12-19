@@ -22,10 +22,15 @@ from typing import Any, Dict, List
 
 import yaml
 
+logger = logging.getLogger(__name__)
+
 from config_defaults.trading_config import TradingConfig
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
-from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import (
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+)
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.state.broker_state_cache import BrokerStateCache
@@ -39,7 +44,14 @@ from src.trading.state.state_reconciler import (
 from src.trading.utils.report_generator import ReportGenerator, RoutineType
 from src.utils.date_utils import get_datetime_now
 
-logger = logging.getLogger(__name__)
+# GTT (Good-Till-Triggered) integration - Issue #340
+try:
+    from src.trading.gtt.action_executor import get_action_executor
+    from src.trading.gtt.trigger_evaluator import get_trigger_evaluator
+
+    GTT_AVAILABLE = True
+except ImportError:
+    GTT_AVAILABLE = False
 
 # Re-export dataclasses for backward compatibility
 __all__ = [
@@ -303,6 +315,86 @@ class CostEfficientTradeCycle:
         return results
 
     # -------------------------------------------------------------------------
+    # GTT (Good-Till-Triggered) Integration - Issue #340
+    # -------------------------------------------------------------------------
+
+    def check_gtt_triggers(self, broker_state: Dict[str, Any]) -> List[Any]:
+        """
+        Check GTT triggers against current prices.
+
+        Args:
+            broker_state: Current broker state with positions/prices
+
+        Returns:
+            List of ActionResult for triggers that fired
+        """
+        if not GTT_AVAILABLE:
+            return []
+
+        try:
+            # Get current prices from broker state
+            prices = {}
+            for symbol, pos in broker_state.get("positions", {}).items():
+                if "current_price" in pos:
+                    prices[symbol] = pos["current_price"]
+                elif "market_value" in pos and "quantity" in pos:
+                    # Calculate from market value
+                    qty = pos["quantity"]
+                    if qty > 0:
+                        prices[symbol] = pos["market_value"] / qty
+
+            if not prices:
+                logger.debug("No prices available for GTT check")
+                return []
+
+            # Evaluate triggers
+            evaluator = get_trigger_evaluator()
+            triggered = evaluator.evaluate_triggers_batch(prices)
+
+            if not triggered:
+                logger.debug("No GTT triggers fired")
+                return []
+
+            # Execute actions for triggered GTTs
+            executor = get_action_executor()
+            results = executor.execute_triggers_batch(triggered, prices)
+
+            # Log summary
+            success_count = sum(1 for r in results if r.success)
+            logger.info(f"GTT: {len(triggered)} triggers fired, {success_count} actions executed")
+
+            return results
+
+        except Exception as e:
+            logger.error(f"GTT check failed: {e}")
+            return []
+
+    def _format_gtt_results_for_report(self, gtt_results: List[Any]) -> List[str]:
+        """Format GTT results for inclusion in routine report."""
+        if not gtt_results:
+            return []
+
+        lines = [
+            "",
+            "## GTT Triggers Fired",
+            "",
+        ]
+
+        for result in gtt_results:
+            status = "+" if result.success else "x"
+            lines.append(f"[{status}] Trigger {result.trigger_id}: {result.message}")
+
+            details = result.details or {}
+            if details.get("symbol"):
+                lines.append(f"    Symbol: {details['symbol']}")
+            if details.get("current_price"):
+                lines.append(f"    Price: ${details['current_price']:.2f}")
+            if details.get("oco_disabled"):
+                lines.append(f"    OCO: Disabled {details['oco_disabled']} partner(s)")
+
+        return lines
+
+    # -------------------------------------------------------------------------
     # Trading routines
     # -------------------------------------------------------------------------
 
@@ -322,6 +414,9 @@ class CostEfficientTradeCycle:
 
             # Step 3: Check for position alerts (no API calls)
             alerts = self.check_position_alerts(broker_state)
+
+            # Step 3.5: Check GTT triggers (no API calls) - Issue #340
+            gtt_results = self.check_gtt_triggers(broker_state)
 
             # Step 4: Calculate stop adjustments needed (no API calls)
             adjustments = self.calculate_stop_adjustments(broker_state)
@@ -344,6 +439,11 @@ class CostEfficientTradeCycle:
                 alerts,
                 modification_results,
             )
+
+            # Append GTT results to report if any
+            if gtt_results:
+                gtt_lines = self._format_gtt_results_for_report(gtt_results)
+                report += "\n" + "\n".join(gtt_lines)
 
             # Save report to file
             report_file = self._get_report_file_path("morning")
@@ -374,11 +474,19 @@ class CostEfficientTradeCycle:
             # Check for position alerts
             alerts = self.check_position_alerts(broker_state)
 
+            # Check GTT triggers - Issue #340
+            gtt_results = self.check_gtt_triggers(broker_state)
+
             self.local_state_manager.save()
 
             report = self.generate_routine_report(
                 RoutineType.EVENING, broker_state, discrepancies, [], alerts
             )
+
+            # Append GTT results to report if any
+            if gtt_results:
+                gtt_lines = self._format_gtt_results_for_report(gtt_results)
+                report += "\n" + "\n".join(gtt_lines)
 
             # Save report to file
             report_file = self._get_report_file_path("evening")
