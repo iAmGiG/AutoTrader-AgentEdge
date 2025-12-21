@@ -1241,5 +1241,189 @@ function toggleFullscreen() {
     }
 }
 
+// --- DATA MODE FUNCTIONS ---
+
+// Store original demo timeline for switching back
+const demoTimeline = [...timeline];
+
+async function setDataMode(mode) {
+    // Update button states
+    document.getElementById('mode-demo').classList.toggle('active', mode === 'demo');
+    document.getElementById('mode-real').classList.toggle('active', mode === 'real');
+
+    // Show/hide symbol selectors
+    const selectors = document.getElementById('symbol-selectors');
+    selectors.style.display = mode === 'real' ? 'block' : 'none';
+
+    if (mode === 'demo') {
+        // Restore demo timeline
+        DataLoader.dataMode = 'demo';
+        timeline.length = 0;
+        timeline.push(...demoTimeline);
+
+        // Reset to demo state
+        updateHeaderSymbol('SPY');
+        updatePriceRange(222, 605);
+        resetToDefaults();
+        createSparkline();
+        createTimelineMarkers();
+    } else {
+        // Switch to real data mode
+        DataLoader.dataMode = 'real';
+
+        // Load index if not already loaded
+        if (!DataLoader.index) {
+            await DataLoader.loadIndex();
+            if (!DataLoader.index) {
+                alert('Could not load data. Make sure to run export_data.py first.');
+                setDataMode('demo');
+                return;
+            }
+        }
+
+        // Populate asset class dropdown
+        populateAssetClasses();
+
+        // Auto-select equity and SPY if available
+        const assetSelect = document.getElementById('asset-class-select');
+        if (DataLoader.index.asset_classes['equity']) {
+            assetSelect.value = 'equity';
+            onAssetClassChange();
+            const symbolSelect = document.getElementById('symbol-select');
+            if (DataLoader.index.asset_classes['equity'].includes('SPY')) {
+                symbolSelect.value = 'SPY';
+                await onSymbolChange();
+            }
+        }
+    }
+}
+
+function populateAssetClasses() {
+    const select = document.getElementById('asset-class-select');
+    select.innerHTML = '';
+
+    const classes = DataLoader.getAssetClasses();
+    classes.forEach(cls => {
+        const option = document.createElement('option');
+        option.value = cls;
+        option.textContent = cls.charAt(0).toUpperCase() + cls.slice(1);
+        select.appendChild(option);
+    });
+}
+
+function onAssetClassChange() {
+    const assetClass = document.getElementById('asset-class-select').value;
+    const symbolSelect = document.getElementById('symbol-select');
+
+    symbolSelect.innerHTML = '<option value="">Select symbol...</option>';
+
+    const symbols = DataLoader.getSymbolsForClass(assetClass);
+    symbols.forEach(sym => {
+        const option = document.createElement('option');
+        option.value = sym;
+        option.textContent = sym;
+        symbolSelect.appendChild(option);
+    });
+
+    // Clear data info
+    document.getElementById('data-info').innerHTML = '';
+}
+
+async function onSymbolChange() {
+    const symbol = document.getElementById('symbol-select').value;
+    if (!symbol) return;
+
+    // Show loading state
+    document.getElementById('data-info').innerHTML = 'Loading...';
+
+    // Load symbol data
+    const data = await DataLoader.loadSymbol(symbol);
+    if (!data) {
+        document.getElementById('data-info').innerHTML = '<span style="color:var(--accent-red)">Failed to load data</span>';
+        return;
+    }
+
+    // Transform to timeline format
+    const newTimeline = DataLoader.transformToTimeline(data);
+
+    // Update global timeline
+    timeline.length = 0;
+    timeline.push(...newTimeline);
+
+    // Update UI
+    const info = DataLoader.getSymbolInfo(symbol);
+    document.getElementById('data-info').innerHTML =
+        `<strong>${data.count}</strong> days (${info.date_range.start} to ${info.date_range.end})`;
+
+    // Update header to show current symbol
+    updateHeaderSymbol(symbol);
+
+    // Update price range in sparkline header
+    const prices = newTimeline.map(p => p.price).filter(p => p);
+    if (prices.length > 0) {
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        updatePriceRange(minPrice, maxPrice);
+    }
+
+    // Rebuild visualizer with new data
+    if (state.simulating) toggleSimulation();
+    state.currentIndex = -1;
+
+    // Clear and rebuild timeline markers
+    const markersContainer = document.getElementById('timeline-markers');
+    markersContainer.innerHTML = '';
+    createTimelineMarkers();
+
+    // Rebuild sparkline
+    createSparkline();
+
+    // Reset to first point
+    if (timeline.length > 0) {
+        goToIndex(0);
+    }
+}
+
+function updateHeaderSymbol(symbol) {
+    const priceLabel = document.querySelector('.metric-card .metric-label');
+    if (priceLabel && priceLabel.textContent.includes('Price')) {
+        priceLabel.textContent = `${symbol} Price`;
+    }
+
+    // Update sparkline title
+    const sparkTitle = document.querySelector('.price-chart-title');
+    if (sparkTitle) {
+        const years = timeline.length > 0
+            ? `${getYear(timeline[0].date)}-${getYear(timeline[timeline.length - 1].date)}`
+            : '----';
+        sparkTitle.textContent = `${symbol} ${years}`;
+    }
+}
+
+function updatePriceRange(min, max) {
+    const rangeEl = document.getElementById('price-range');
+    if (rangeEl) {
+        rangeEl.textContent = `$${Math.round(min)} - $${Math.round(max)}`;
+    }
+
+    // Update price slider range
+    const priceSlider = document.getElementById('inp-price');
+    if (priceSlider) {
+        priceSlider.min = Math.floor(min * 0.8);
+        priceSlider.max = Math.ceil(max * 1.1);
+    }
+}
+
 // Initialize on load
-init();
+async function initApp() {
+    init();
+
+    // Pre-load data index (non-blocking)
+    DataLoader.loadIndex().then(() => {
+        if (DataLoader.index) {
+            console.log(`GEX Data: ${DataLoader.index.symbols.length} symbols available`);
+        }
+    });
+}
+
+initApp();

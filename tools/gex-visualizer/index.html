@@ -59,6 +59,28 @@
 <div class="dashboard" id="dashboard">
     <div class="sidebar" id="sidebar">
         <div class="sidebar-resize" id="sidebar-resize"></div>
+
+        <div class="section-title">Data Source</div>
+        <div class="data-source-controls">
+            <div class="data-mode-toggle">
+                <button class="mode-btn active" id="mode-demo" onclick="setDataMode('demo')">Demo</button>
+                <button class="mode-btn" id="mode-real" onclick="setDataMode('real')">Real Data</button>
+            </div>
+            <div class="symbol-selectors" id="symbol-selectors" style="display:none;">
+                <div class="selector-row">
+                    <select id="asset-class-select" onchange="onAssetClassChange()">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="selector-row">
+                    <select id="symbol-select" onchange="onSymbolChange()">
+                        <option value="">Select symbol...</option>
+                    </select>
+                </div>
+                <div class="data-info" id="data-info"></div>
+            </div>
+        </div>
+
         <div class="section-title">Simulation</div>
 
         <div class="sim-controls">
@@ -356,6 +378,7 @@
     </div>
 </div>
 
+<script src="data-loader.js"></script>
 <script src="main.js"></script>
 
 </body>

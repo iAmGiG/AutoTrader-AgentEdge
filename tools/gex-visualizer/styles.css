@@ -258,6 +258,78 @@ h1 {
     background: var(--grid-line);
 }
 
+/* Data Source Controls */
+.data-source-controls {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid var(--grid-line);
+    margin-bottom: 10px;
+}
+
+.data-mode-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--grid-line);
+    background: var(--panel-bg);
+    color: var(--text-dim);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+
+.mode-btn:hover {
+    background: var(--card-bg);
+    color: var(--text-main);
+}
+
+.mode-btn.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: white;
+}
+
+.symbol-selectors {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.selector-row select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--grid-line);
+    background: var(--panel-bg);
+    color: var(--text-main);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.selector-row select:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+}
+
+.data-info {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    padding: 4px 0;
+}
+
+.data-info strong {
+    color: var(--accent-cyan);
+}
+
 /* Simulation Controls */
 .sim-controls {
     background: var(--card-bg);
