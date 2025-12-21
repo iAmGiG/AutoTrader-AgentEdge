@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 from config_defaults.trading_config import TradingConfig
 
 from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
-from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import (
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+)
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.state.broker_state_cache import BrokerStateCache
@@ -44,6 +47,10 @@ from src.utils.date_utils import get_datetime_now
 # GTT (Good-Till-Triggered) integration - Issue #340
 try:
     from src.trading.gtt.action_executor import get_action_executor
+    from src.trading.gtt.trailing_stop_bridge import (
+        restore_trailing_stops_from_gtt,
+        sync_all_trailing_stops,
+    )
     from src.trading.gtt.trigger_evaluator import get_trigger_evaluator
 
     GTT_AVAILABLE = True
@@ -119,6 +126,17 @@ class CostEfficientTradeCycle:
             order_manager=None,  # We handle broker calls separately via batch_modify_orders()
             config=self.config,
         )
+
+        # Restore multi-day trailing stops from GTT persistence (Phase 3, Issue #340)
+        if GTT_AVAILABLE:
+            try:
+                restore_result = restore_trailing_stops_from_gtt(self.trailing_stop_manager)
+                if restore_result["restored"] > 0:
+                    logger.info(
+                        f"Restored {restore_result['restored']} trailing stops from GTT persistence"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to restore trailing stops from GTT: {e}")
 
         # Initialize extracted components
         self.local_state_manager = LocalStateManager(
@@ -423,6 +441,15 @@ class CostEfficientTradeCycle:
             if adjustments:
                 modification_results = self.batch_modify_orders(adjustments)
 
+            # Step 5.5: Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
+            if GTT_AVAILABLE:
+                try:
+                    sync_result = sync_all_trailing_stops(self.trailing_stop_manager)
+                    if sync_result["synced"] > 0:
+                        logger.info(f"Synced {sync_result['synced']} trailing stops to GTT")
+                except Exception as e:
+                    logger.warning(f"Failed to sync trailing stops to GTT: {e}")
+
             # Step 6: Save updated local state
             self.local_state_manager.state["discrepancies"] = [asdict(d) for d in discrepancies]
             self.local_state_manager.save()
@@ -473,6 +500,15 @@ class CostEfficientTradeCycle:
 
             # Check GTT triggers - Issue #340
             gtt_results = self.check_gtt_triggers(broker_state)
+
+            # Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
+            if GTT_AVAILABLE:
+                try:
+                    sync_result = sync_all_trailing_stops(self.trailing_stop_manager)
+                    if sync_result["synced"] > 0:
+                        logger.info(f"Synced {sync_result['synced']} trailing stops to GTT")
+                except Exception as e:
+                    logger.warning(f"Failed to sync trailing stops to GTT: {e}")
 
             self.local_state_manager.save()
 

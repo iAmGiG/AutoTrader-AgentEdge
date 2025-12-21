@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>GEX Regime Trace Comparator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <div class="logo">
+            <div class="logo-icon">&#915;</div>
+            <div>
+                <h1>GEX REGIME COMPARATOR <span class="badge">RESEARCH</span></h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-center">
+        <div class="metric-card">
+            <div class="metric-label">SPY Price</div>
+            <div class="metric-value" style="color: var(--accent-cyan);">$<span id="header-price">400</span></div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">S&#178; Factor</div>
+            <div class="metric-value" style="color: var(--accent-orange);" id="header-s2">1.0x</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Total GEX</div>
+            <div class="metric-value" style="color: var(--accent-red);" id="header-gex">$0B</div>
+        </div>
+    </div>
+
+    <div class="header-right">
+        <div class="year-badge inactive" id="year-badge">----</div>
+    </div>
+</header>
+
+<div class="vol-warning inactive" id="vol-warning">
+    <div class="vol-stat">
+        <div class="vol-pulse"></div>
+        <span id="vol-status">GAMMA STATUS: NEUTRAL</span>
+    </div>
+    <div class="vol-stat">
+        <span class="vol-stat-label">Vol Effect:</span>
+        <span class="vol-stat-value" id="vol-amp">1.0x</span>
+    </div>
+    <div class="vol-stat">
+        <span class="vol-stat-label">Outlook:</span>
+        <span class="vol-stat-value" id="vol-prob">-</span>
+    </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-resize" id="sidebar-resize"></div>
+        <div class="section-title">Simulation</div>
+
+        <div class="sim-controls">
+            <!-- Media Controls Row -->
+            <div class="media-controls">
+                <button class="media-btn" id="btn-start" onclick="jumpToStart()" title="Start (Home)">&#9198;</button>
+                <button class="media-btn" id="btn-prev" onclick="stepBackward()" title="Prev Year (&#8595;)">&#171;</button>
+                <button class="media-btn" id="btn-step-back" onclick="stepBack()" title="Step Back (&#8592;)">&#9664;</button>
+                <button class="media-btn play-btn" id="btn-play" onclick="toggleSimulation()" title="Play/Pause (Space)">&#9654;</button>
+                <button class="media-btn" id="btn-step-fwd" onclick="stepForward()" title="Step Fwd (&#8594;)">&#9654;</button>
+                <button class="media-btn" id="btn-next" onclick="stepToNext()" title="Next Year (&#8593;)">&#187;</button>
+                <button class="media-btn" id="btn-end" onclick="jumpToEnd()" title="End (End)">&#9197;</button>
+            </div>
+
+            <!-- Speed Control Row -->
+            <div class="speed-control">
+                <button class="speed-btn" id="speed-1" onclick="setSpeed(1)">0.5x</button>
+                <button class="speed-btn active" id="speed-2" onclick="setSpeed(2)">1x</button>
+                <button class="speed-btn" id="speed-4" onclick="setSpeed(4)">2x</button>
+                <div class="shortcuts-help">
+                    <div class="shortcuts-btn">?</div>
+                    <div class="shortcuts-popup">
+                        <div class="shortcuts-title">Sim Controls</div>
+                        <div class="shortcut-row"><span class="shortcut-key">Space</span><span class="shortcut-action">Play/Pause</span></div>
+                        <div class="shortcut-row"><span class="shortcut-key">&#8592; &#8594;</span><span class="shortcut-action">Step</span></div>
+                        <div class="shortcut-row"><span class="shortcut-key">&#8593; &#8595;</span><span class="shortcut-action">Jump Year</span></div>
+                        <div class="shortcut-row"><span class="shortcut-key">Home/End</span><span class="shortcut-action">Start/End</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Scrubber -->
+            <div class="timeline-scrubber">
+                <div class="timeline-track" id="timeline-track">
+                    <div class="timeline-progress" id="timeline-progress"></div>
+                    <div class="timeline-handle" id="timeline-handle" style="left: 0%;"></div>
+                </div>
+                <div class="timeline-markers" id="timeline-markers"></div>
+            </div>
+
+            <!-- Current Event Display -->
+            <div class="current-event">
+                <div class="event-date" id="event-date">Select a point</div>
+                <div class="event-label" id="event-label">Use controls or drag timeline</div>
+                <div class="event-index" id="event-index">--</div>
+                <div class="event-note">EOD Regime Snapshots</div>
+            </div>
+        </div>
+
+        <div class="section-title">Price History</div>
+
+        <div class="price-chart-card">
+            <div class="price-chart-header">
+                <span class="price-chart-title">SPY 2020-2025</span>
+                <span class="price-chart-range" id="price-range">$222 - $605</span>
+            </div>
+            <div class="price-sparkline" id="price-sparkline">
+                <svg viewBox="0 0 200 60" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="sparkline-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#ffc107;stop-opacity:0.4"/>
+                            <stop offset="100%" style="stop-color:#ffc107;stop-opacity:0"/>
+                        </linearGradient>
+                    </defs>
+                    <path id="sparkline-area" class="sparkline-area"/>
+                    <path id="sparkline-path" class="sparkline-path"/>
+                    <line id="sparkline-hover-line" class="sparkline-hover-line" x1="0" y1="0" x2="0" y2="60"/>
+                    <circle id="sparkline-hover-dot" class="sparkline-hover-dot" r="3" cx="0" cy="0"/>
+                    <line id="sparkline-current-line" class="sparkline-current-line" x1="0" y1="0" x2="0" y2="60"/>
+                    <circle id="sparkline-marker" class="sparkline-marker" r="4" cx="0" cy="0"/>
+                </svg>
+                <div class="sparkline-tooltip" id="sparkline-tooltip">
+                    <div class="tooltip-date" id="tooltip-date">--</div>
+                    <div class="tooltip-price" id="tooltip-price">--</div>
+                    <div class="tooltip-label" id="tooltip-label">--</div>
+                </div>
+            </div>
+            <div class="price-labels">
+                <span>Mar 2020</span>
+                <span id="current-price-label">--</span>
+                <span>Dec 2025</span>
+            </div>
+        </div>
+
+        <div class="section-title">Parameters</div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Spot Price (SPY)</span>
+                <span class="control-value" id="lbl-price">$400</span>
+            </div>
+            <input type="range" id="inp-price" min="280" max="620" value="400">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Open Interest</span>
+                <span class="control-value" id="lbl-oi">5.0M</span>
+            </div>
+            <input type="range" id="inp-oi" min="3" max="12" step="0.1" value="5">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Dealer Positioning</span>
+                <span class="control-value" id="lbl-tilt">-0.15</span>
+            </div>
+            <input type="range" id="inp-tilt" min="-0.5" max="0.5" step="0.01" value="-0.15">
+        </div>
+
+        <div class="section-title">Zero Gamma Level</div>
+
+        <div class="zero-gamma-card">
+            <div class="zero-gamma-value" id="zero-gamma-price">$405</div>
+            <div class="zero-gamma-label">Gamma Flip Point</div>
+            <div class="gamma-flip-indicator">
+                <span class="flip-zone flip-below">&#9650; Below: Long &#947;</span>
+                <span class="flip-zone flip-above">&#9660; Above: Short &#947;</span>
+            </div>
+        </div>
+
+        <div class="section-title">Regime Persistence</div>
+
+        <div class="persistence-card">
+            <div class="persistence-meter" id="persistence-meter"></div>
+            <div class="persistence-stats">
+                <span>Avg Duration: <strong id="persist-days">~8 days</strong></span>
+                <span id="persist-current">Day 1</span>
+            </div>
+        </div>
+
+        <div class="section-title">Lead-Lag Signal</div>
+
+        <div class="lead-lag-card">
+            <div class="lead-lag-visual">
+                <span class="lead-lag-symbol uvxy-badge">UVXY</span>
+                <span class="lead-arrow">&#8594;</span>
+                <span class="lead-lag-symbol spy-badge">SPY</span>
+            </div>
+            <div class="lead-lag-stats">
+                1-day lead | 0.456 correlation
+            </div>
+        </div>
+
+        <div class="section-title">Research Metrics</div>
+
+        <div class="perf-card">
+            <div class="perf-row">
+                <span class="perf-label">GEX vs Technicals</span>
+                <span class="perf-badge">5/6 WINS</span>
+            </div>
+            <div class="perf-row">
+                <span class="perf-label">Sharpe Improvement</span>
+                <span class="perf-value perf-positive">+52%</span>
+            </div>
+            <div class="perf-row">
+                <span class="perf-label">SPY Sharpe Gain</span>
+                <span class="perf-value perf-positive">+0.714</span>
+            </div>
+        </div>
+
+        <div class="section-title">Legend</div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-dot dot-red"></div>Short Gamma</div>
+            <div class="legend-item"><div class="legend-dot dot-cyan"></div>Long Gamma</div>
+            <div class="legend-item"><div class="legend-dot dot-yellow"></div>Spot Price</div>
+            <div class="legend-item"><div class="legend-dot dot-purple"></div>Zero Gamma</div>
+        </div>
+
+        <div class="section-title">Terminology</div>
+
+        <div class="glossary">
+            <div class="glossary-item">
+                <span class="glossary-term">GEX</span>
+                <span class="glossary-def">Gamma Exposure - net gamma dealers hold from hedging options</span>
+            </div>
+            <div class="glossary-item">
+                <span class="glossary-term">S&#178;</span>
+                <span class="glossary-def">Spot price squared - scaling factor in absolute GEX (S&#178; = Price &#215; Price)</span>
+            </div>
+            <div class="glossary-item">
+                <span class="glossary-term">&#947; (Gamma)</span>
+                <span class="glossary-def">Rate of change of delta; how much hedge must adjust per $1 move</span>
+            </div>
+            <div class="glossary-item">
+                <span class="glossary-term">0&#947;</span>
+                <span class="glossary-def">Zero gamma level - price where dealer exposure flips from long to short</span>
+            </div>
+            <div class="glossary-item">
+                <span class="glossary-term">OI</span>
+                <span class="glossary-def">Open Interest - total outstanding option contracts</span>
+            </div>
+            <div class="glossary-item">
+                <span class="glossary-term">Tilt</span>
+                <span class="glossary-def">Dealer positioning bias; negative = dealers short gamma (amplifies moves)</span>
+            </div>
+            <div class="glossary-item">
+                <span class="glossary-term">UVXY</span>
+                <span class="glossary-def">ProShares Ultra VIX ETF - volatility proxy that leads SPY by ~1 day</span>
+            </div>
+        </div>
+
+        <div class="insight-box">
+            <div class="insight-title">&#128161; RESEARCH INSIGHT</div>
+            <div class="insight-text" id="insight-box">
+                Run simulation to see how absolute GEX diverges from normalized ratios during 2020-2025 market inflation.
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-panel">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">PRACTITIONER VIEW</div>
+                <div class="panel-subtitle">Normalized Ratio (Price-Independent)</div>
+            </div>
+            <div class="panel-status">
+                <div class="status-label">Signal Status</div>
+                <div class="status-value" id="status-norm">NEUTRAL</div>
+            </div>
+        </div>
+        <div class="viz-container">
+            <div class="y-axis" id="y-axis-norm"></div>
+            <div class="svg-wrapper">
+                <div class="svg-container" id="viz-norm"></div>
+                <div class="x-axis" id="x-axis-norm">
+                    <span class="x-label">-50</span>
+                    <span class="x-label">-25</span>
+                    <span class="x-axis-center">0 (&#947;)</span>
+                    <span class="x-label">+25</span>
+                    <span class="x-label">+50</span>
+                </div>
+            </div>
+        </div>
+        <div class="data-overlay">
+            <div class="data-row"><span>Scale Factor:</span> <span class="data-val" style="color:var(--accent-cyan)">1.0x (Fixed)</span></div>
+            <div class="data-row"><span>Max Gamma:</span> <span class="data-val" id="val-norm-max">0.00</span></div>
+        </div>
+    </div>
+
+    <div class="chart-panel" style="border-right:none;">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title" style="color:var(--accent-red);">PAPER 2 VIEW (ABSOLUTE)</div>
+                <div class="panel-subtitle">Dollar GEX (S&#178; Scaled)</div>
+            </div>
+            <div class="panel-status">
+                <div class="status-label">Regime Detector</div>
+                <div class="status-value" id="status-abs">NO REGIME</div>
+            </div>
+        </div>
+        <div class="viz-container">
+            <div class="y-axis" id="y-axis-abs"></div>
+            <div class="svg-wrapper">
+                <div class="svg-container" id="viz-abs"></div>
+                <div class="x-axis" id="x-axis-abs">
+                    <span class="x-label" id="x-abs-min">-$50B</span>
+                    <span class="x-label" id="x-abs-q1">-$25B</span>
+                    <span class="x-axis-center">0 (&#947;)</span>
+                    <span class="x-label" id="x-abs-q3">+$25B</span>
+                    <span class="x-label" id="x-abs-max">+$50B</span>
+                </div>
+            </div>
+        </div>
+        <div class="data-overlay">
+            <div class="data-row"><span>S&#178; Scale:</span> <span class="data-val" id="val-scale-factor" style="color:var(--accent-red)">1.0x</span></div>
+            <div class="data-row"><span>Total GEX:</span> <span class="data-val" id="val-abs-total">$0.0B</span></div>
+        </div>
+    </div>
+
+    <!-- Chart Controls Help - Dashboard Level -->
+    <div class="chart-help">
+        <button class="chart-btn" id="btn-reset-view" onclick="resetView()" title="Reset View (R)">&#8634;</button>
+        <button class="chart-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen (F)">&#9974;</button>
+        <div class="shortcuts-help">
+            <div class="shortcuts-btn">?</div>
+            <div class="shortcuts-popup">
+                <div class="shortcuts-title">Chart Controls</div>
+                <div class="shortcut-row"><span class="shortcut-key">Scroll</span><span class="shortcut-action">Adjust spot price</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">Drag</span><span class="shortcut-action">Drag up/down for price</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">Shift+Scroll</span><span class="shortcut-action">Larger steps</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">Y-Axis Drag/Scroll</span><span class="shortcut-action">Zoom prices</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">X-Axis Drag/Scroll</span><span class="shortcut-action">Zoom magnitude</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">Axis DblClick</span><span class="shortcut-action">Reset zoom</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">Click Sparkline</span><span class="shortcut-action">Jump to date</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">R</span><span class="shortcut-action">Reset view</span></div>
+                <div class="shortcut-row"><span class="shortcut-key">F</span><span class="shortcut-action">Fullscreen</span></div>
+                <div class="scroll-toggle">
+                    <span class="scroll-toggle-label">Invert Scroll</span>
+                    <div class="toggle-switch" id="invert-toggle" onclick="toggleInvertScroll()"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="main.js"></script>
+
+</body>
+</html>

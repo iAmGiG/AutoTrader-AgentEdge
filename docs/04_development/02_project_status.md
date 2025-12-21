@@ -40,6 +40,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | **TradingPipeline** | ✅ Complete | Full 5-phase daily workflow orchestrator (#323) |
 | **Agent Factory & Bus** | ✅ Complete | Agent Bus infrastructure (#390) for pub-sub messaging |
 | **TrailingStopManager** | ✅ Complete | Progressive stop logic (#321) |
+| **GTT Triggers** | ✅ Complete | Persistent price triggers, multi-day trailing stops (#340) |
 | **Trading Modes** | ✅ Complete | Natural language risk modes (#400) |
 | **Human-in-Loop CLI** | ✅ Complete | Interactive trade approval interface with multiple execution modes |
 
@@ -104,6 +105,14 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - 2% breakeven, 4% lock 25%, 6% trail 50% profit
   - Integrated into trade_lifecycle.py and trading_cycle.py
   - Rate-limited to prevent API abuse
+
+- [x] **GTT Persistent Triggers** (#340) - ✅ COMPLETE (Dec 2025)
+  - Persistent price triggers checked twice daily (scheduler)
+  - Conditions: price above/below, pct gain/loss, trailing stop, time window, volume
+  - Actions: alerts, order placement/cancellation via AlpacaOrderManager
+  - OCO groups for dual breakout/breakdown scenarios
+  - Multi-day trailing stop persistence via TrailingStopManager bridge
+  - 📁 Files: `src/trading/gtt/` (manager, evaluator, executor, bridge)
 
 **Low Priority**:
 

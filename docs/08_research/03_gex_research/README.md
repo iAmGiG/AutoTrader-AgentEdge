@@ -19,6 +19,24 @@ Specifically:
 2. Do GEX + Technicals (hybrid) beat either alone?
 3. Which market conditions favor GEX vs technicals?
 
+## Interactive Visualizer
+
+### [GEX Regime Trace Comparator](../../../tools/gex-visualizer/index.html)
+
+Interactive visualization tool demonstrating GEX methodology differences. See [gex_visualizer_guide.md](gex_visualizer_guide.md) for full documentation.
+
+**Features**:
+
+- Dual view: Normalized vs Absolute (S² scaled) GEX
+- 21 historical snapshots (2020-2025)
+- Media controls with keyboard shortcuts
+- Price history sparkline
+- Terminology glossary
+
+**Location**: `tools/gex-visualizer/index.html`
+
+---
+
 ## Key Documents
 
 ### 1. [gex_vs_technicals_results.md](gex_vs_technicals_results.md)
