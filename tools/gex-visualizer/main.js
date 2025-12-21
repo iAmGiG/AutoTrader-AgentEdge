@@ -558,7 +558,7 @@ function createPersistenceMeter() {
 function createYAxisLabels(containerId) {
     const container = document.getElementById(containerId);
     const labels = [650, 560, 470, 380, 290];
-    labels.forEach((price, idx) => {
+    labels.forEach((price) => {
         const label = document.createElement('div');
         label.className = 'y-label';
         label.dataset.basePrice = price;
@@ -632,7 +632,7 @@ function createSvg(id, container) {
     svg.appendChild(centerLine);
 
     // Create bars for each strike
-    strikes.forEach((strike, i) => {
+    strikes.forEach((_, i) => {
         const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         rect.setAttribute("class", "bar");
         rect.setAttribute("x", "50%");
@@ -707,7 +707,7 @@ function render() {
     const centerYPercent = 100 - (centerIndex / strikes.length) * 100;
 
     // Calculate GEX for each strike
-    strikes.forEach((strike, i) => {
+    strikes.forEach((_, i) => {
         const dist = Math.abs(i - centerIndex);
 
         // Gamma peaks at ATM (Gaussian distribution)
@@ -894,7 +894,7 @@ function updatePersistence() {
     }
 }
 
-function updateStatus(absTotal, normMax) {
+function updateStatus(absTotal, _normMax) {
     const statNorm = document.getElementById('status-norm');
     const statAbs = document.getElementById('status-abs');
     const isNegative = state.tilt < 0;
