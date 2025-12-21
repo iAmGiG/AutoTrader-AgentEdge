@@ -330,6 +330,50 @@ h1 {
     color: var(--accent-cyan);
 }
 
+/* Real Data Metrics Panel */
+.real-data-metrics {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--grid-line);
+}
+
+.rdm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 0.7rem;
+}
+
+.rdm-label {
+    color: var(--text-dim);
+}
+
+.rdm-value {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.rdm-value.quality-good {
+    color: var(--accent-green);
+}
+
+.rdm-value.quality-fair {
+    color: var(--warning-yellow);
+}
+
+.rdm-value.quality-poor {
+    color: var(--accent-red);
+}
+
+.rdm-value.gamma-positive {
+    color: var(--accent-cyan);
+}
+
+.rdm-value.gamma-negative {
+    color: var(--accent-red);
+}
+
 /* Simulation Controls */
 .sim-controls {
     background: var(--card-bg);

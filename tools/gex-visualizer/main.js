@@ -1023,7 +1023,59 @@ function goToIndex(idx) {
 
     updateTimeline();
     updateEventDisplay();
+    updateRealDataMetrics(point);
     render();
+}
+
+// Update real data metrics panel (only shown in real data mode)
+function updateRealDataMetrics(point) {
+    const metricsPanel = document.getElementById('real-data-metrics');
+    if (!metricsPanel) return;
+
+    // Only show in real data mode with _raw data
+    if (DataLoader.dataMode !== 'real' || !point._raw) {
+        metricsPanel.style.display = 'none';
+        return;
+    }
+
+    metricsPanel.style.display = 'block';
+    const raw = point._raw;
+
+    // Quality score (0-1 scale)
+    const qualityEl = document.getElementById('rdm-quality');
+    if (raw.quality !== null && raw.quality !== undefined) {
+        const pct = Math.round(raw.quality * 100);
+        qualityEl.textContent = pct + '%';
+        qualityEl.className = 'rdm-value ' +
+            (pct >= 80 ? 'quality-good' : pct >= 50 ? 'quality-fair' : 'quality-poor');
+    } else {
+        qualityEl.textContent = '-';
+        qualityEl.className = 'rdm-value';
+    }
+
+    // Contract count
+    const contractsEl = document.getElementById('rdm-contracts');
+    if (raw.contracts) {
+        contractsEl.textContent = raw.contracts.toLocaleString();
+    } else {
+        contractsEl.textContent = '-';
+    }
+
+    // Call/Put gamma balance
+    const gammaEl = document.getElementById('rdm-gamma-balance');
+    if (raw.call_gex !== null && raw.put_gex !== null) {
+        const callGex = raw.call_gex || 0;
+        const putGex = raw.put_gex || 0;
+        const ratio = callGex !== 0 || putGex !== 0
+            ? (callGex / (Math.abs(callGex) + Math.abs(putGex)) * 100).toFixed(0)
+            : 50;
+        const isPositive = callGex > Math.abs(putGex);
+        gammaEl.textContent = ratio + '% / ' + (100 - ratio) + '%';
+        gammaEl.className = 'rdm-value ' + (isPositive ? 'gamma-positive' : 'gamma-negative');
+    } else {
+        gammaEl.textContent = '-';
+        gammaEl.className = 'rdm-value';
+    }
 }
 
 // Sync all slider controls to current state values
