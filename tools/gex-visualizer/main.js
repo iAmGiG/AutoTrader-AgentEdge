@@ -2,11 +2,56 @@
 // Extracted from index.html for modularization
 
 // --- CONFIGURATION ---
-const strikeStart = 280;
-const strikeEnd = 650;
-const strikeStep = 10;
-const strikes = [];
+// Strike range - will be recalculated based on symbol price range
+let strikeStart = 280;
+let strikeEnd = 650;
+let strikeStep = 10;
+let strikes = [];
 for(let s = strikeStart; s <= strikeEnd; s += strikeStep) strikes.push(s);
+
+// Recalculate strikes based on price range
+function updateStrikeRange(minPrice, maxPrice) {
+    // Add 20% padding on each side
+    const padding = (maxPrice - minPrice) * 0.2;
+    strikeStart = Math.floor((minPrice - padding) / 10) * 10;
+    strikeEnd = Math.ceil((maxPrice + padding) / 10) * 10;
+
+    // Adjust step size based on price range
+    const range = strikeEnd - strikeStart;
+    if (range > 500) strikeStep = 20;
+    else if (range > 200) strikeStep = 10;
+    else if (range > 100) strikeStep = 5;
+    else strikeStep = 2;
+
+    // Rebuild strikes array
+    strikes.length = 0;
+    for(let s = strikeStart; s <= strikeEnd; s += strikeStep) {
+        strikes.push(s);
+    }
+
+    // Update Y-axis base labels
+    updateYAxisBaseLabels();
+}
+
+// Update Y-axis label base prices for new range
+function updateYAxisBaseLabels() {
+    const range = strikeEnd - strikeStart;
+    const step = range / 4;
+    const labels = [
+        Math.round(strikeEnd),
+        Math.round(strikeEnd - step),
+        Math.round(strikeEnd - step * 2),
+        Math.round(strikeEnd - step * 3),
+        Math.round(strikeStart)
+    ];
+
+    document.querySelectorAll('.y-axis .y-label').forEach((label, idx) => {
+        if (labels[idx] !== undefined) {
+            label.dataset.basePrice = labels[idx];
+            label.innerText = '$' + labels[idx];
+        }
+    });
+}
 
 // SPY Historical Timeline - Monthly EOD Regime Snapshots (2020-2025)
 // Values represent end-of-day regime characteristics for each period
@@ -1261,11 +1306,19 @@ async function setDataMode(mode) {
         timeline.length = 0;
         timeline.push(...demoTimeline);
 
+        // Reset strike range to SPY defaults
+        updateStrikeRange(222, 605);
+        rebuildCharts();
+
         // Reset to demo state
         updateHeaderSymbol('SPY');
         updatePriceRange(222, 605);
         resetToDefaults();
         createSparkline();
+
+        // Clear and rebuild timeline markers
+        const markersContainer = document.getElementById('timeline-markers');
+        markersContainer.innerHTML = '';
         createTimelineMarkers();
     } else {
         // Switch to real data mode
@@ -1358,12 +1411,18 @@ async function onSymbolChange() {
     // Update header to show current symbol
     updateHeaderSymbol(symbol);
 
-    // Update price range in sparkline header
+    // Update price range in sparkline header and chart scaling
     const prices = newTimeline.map(p => p.price).filter(p => p);
     if (prices.length > 0) {
         const minPrice = Math.min(...prices);
         const maxPrice = Math.max(...prices);
         updatePriceRange(minPrice, maxPrice);
+
+        // Update strike range for new symbol's price range
+        updateStrikeRange(minPrice, maxPrice);
+
+        // Rebuild SVG charts with new strike range
+        rebuildCharts();
     }
 
     // Rebuild visualizer with new data
@@ -1382,6 +1441,20 @@ async function onSymbolChange() {
     if (timeline.length > 0) {
         goToIndex(0);
     }
+}
+
+// Rebuild chart SVGs with current strike range
+function rebuildCharts() {
+    // Clear existing SVGs
+    const vizNorm = document.getElementById('viz-norm');
+    const vizAbs = document.getElementById('viz-abs');
+
+    vizNorm.innerHTML = '';
+    vizAbs.innerHTML = '';
+
+    // Recreate SVGs with new strike count
+    createSvg('svg-norm', vizNorm);
+    createSvg('svg-abs', vizAbs);
 }
 
 function updateHeaderSymbol(symbol) {

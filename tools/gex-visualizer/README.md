@@ -62,7 +62,15 @@ Open `index.html` in a browser - no server required.
 
 1. Access to `.cache/gex_research.db` (premium API data - not included in repo)
 2. Run `python export_data.py` to generate JSON files
-3. Click "Real Data" button in visualizer
+3. **Serve via HTTP** (browsers block fetch on file:// URLs):
+
+   ```bash
+   cd tools/gex-visualizer
+   python -m http.server 8080
+   # Open http://localhost:8080
+   ```
+
+4. Click "Real Data" button in visualizer
 
 > ⚠️ **Note**: The `data/` folder is gitignored. Real data exports contain proprietary historical options data and should remain LOCAL ONLY.
 
