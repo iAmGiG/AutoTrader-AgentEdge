@@ -467,7 +467,7 @@ function setupScrubber() {
             // Scroll up = zoom in (smaller scale factor shows more detail)
             // Scroll down = zoom out (larger scale factor compresses view)
             const scaleDelta = e.deltaY > 0 ? 0.1 : -0.1;
-            state.yAxisScale = Math.max(0.5, Math.min(2.0, state.yAxisScale + scaleDelta));
+            state.yAxisScale = Math.max(0.2, Math.min(3.0, state.yAxisScale + scaleDelta));
 
             updateYAxisLabels();
             render();
@@ -533,7 +533,7 @@ function setupScrubber() {
             const deltaY = state.dragStartY - clientY;
             // Drag up = zoom in, drag down = zoom out
             const scaleDelta = deltaY * 0.005;
-            state.yAxisScale = Math.max(0.5, Math.min(2.0, state.dragStartScale + scaleDelta));
+            state.yAxisScale = Math.max(0.2, Math.min(3.0, state.dragStartScale + scaleDelta));
             updateYAxisLabels();
             render();
         }
