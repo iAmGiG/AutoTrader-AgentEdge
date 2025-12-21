@@ -173,17 +173,62 @@ Where:
 - ELEVATED: 12B < Total GEX ≤ 20B
 - REGIME DETECTED: Total GEX > 20B
 
+## Data Modes
+
+### Demo Mode (Default)
+
+Built-in simulated SPY timeline (2020-2025) with 21 representative snapshots. Works out of the box for research demonstrations and public sharing.
+
+### Real Data Mode (Local Only)
+
+Loads actual historical GEX data from exported JSON files. Supports 34 symbols across 5 asset classes.
+
+**Setup Requirements**:
+
+1. Access to `.cache/gex_research.db` (premium API data - not included in repo)
+2. Run `python tools/gex-visualizer/export_data.py` to generate JSON files
+3. **Serve via HTTP** (browsers block fetch on file:// URLs):
+
+   ```bash
+   cd tools/gex-visualizer
+   python -m http.server 8080
+   # Open http://localhost:8080
+   ```
+
+4. Click "Real Data" button in the visualizer
+
+**Multi-Asset Support**:
+
+| Asset Class  | Symbols                         |
+| ------------ | ------------------------------- |
+| Equity       | SPY, QQQ, IWM, DIA, TQQQ, SQQQ  |
+| Volatility   | UVXY, VXX, VIXY                 |
+| Bonds        | TLT, HYG, LQD                   |
+| Commodities  | GLD, SLV, USO                   |
+| Sectors      | XLF, XLE, XLK, XLV              |
+
+**Dynamic Chart Scaling**: When loading symbols with different price ranges (e.g., IWM ~$200 vs SPY ~$600), the chart automatically adjusts:
+
+- Strike range calculated from min/max prices with 20% padding
+- Strike step size adapts to price range (2, 5, 10, or 20 points)
+- Y-axis zoom expanded to 0.2x-3.0x for full overview
+
+> ⚠️ **Note**: The `data/` folder is gitignored. Real data exports contain proprietary historical options data and must remain LOCAL ONLY.
+
 ## File Structure
 
 ```text
 tools/gex-visualizer/
-├── index.html    # HTML structure (~360 lines)
-├── styles.css    # All CSS styles (~1200 lines)
-├── main.js       # JavaScript logic (~1230 lines)
-└── README.md     # Quick reference
+├── index.html       # HTML structure (~380 lines)
+├── styles.css       # All CSS styles (~1300 lines)
+├── main.js          # JavaScript logic (~1450 lines)
+├── data-loader.js   # Real data loading module
+├── export_data.py   # SQLite → JSON export script
+├── data/            # (gitignored) Exported JSON files
+└── README.md        # Quick reference
 ```
 
-**Note**: The visualizer is modular but still standalone - open `index.html` directly in a browser (no build step required).
+**Note**: The visualizer is modular but still standalone - open `index.html` directly in a browser (no build step required). For Real Data mode, serve via HTTP.
 
 ## Related Research
 
