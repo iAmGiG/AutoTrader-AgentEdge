@@ -18,18 +18,18 @@ Components:
 """
 
 from src.trading.gtt.gtt_manager import (
-    ActionType,
-    ConditionType,
-    GTTManager,
-    GTTTrigger,
-    get_gtt_manager,
+                                         ActionType,
+                                         ConditionType,
+                                         GTTManager,
+                                         GTTTrigger,
+                                         get_gtt_manager,
 )
 from src.trading.gtt.trailing_stop_bridge import (
-    cleanup_orphaned_trailing_stops,
-    get_trailing_stop_status,
-    restore_trailing_stops_from_gtt,
-    sync_all_trailing_stops,
-    sync_trailing_stop_to_gtt,
+                                         cleanup_orphaned_trailing_stops,
+                                         get_trailing_stop_status,
+                                         restore_trailing_stops_from_gtt,
+                                         sync_all_trailing_stops,
+                                         sync_trailing_stop_to_gtt,
 )
 
 __all__ = [
