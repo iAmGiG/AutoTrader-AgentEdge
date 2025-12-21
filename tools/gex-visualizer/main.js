@@ -1049,9 +1049,9 @@ function stepToNext() {
         goToIndex(0);
         return;
     }
-    const currentYear = timeline[state.currentIndex].year;
+    const currentYear = getYear(timeline[state.currentIndex].date);
     for (let i = state.currentIndex + 1; i < timeline.length; i++) {
-        if (timeline[i].year !== currentYear) {
+        if (getYear(timeline[i].date) !== currentYear) {
             goToIndex(i);
             return;
         }
@@ -1066,9 +1066,9 @@ function stepBackward() {
         goToIndex(0);
         return;
     }
-    const currentYear = timeline[state.currentIndex].year;
+    const currentYear = getYear(timeline[state.currentIndex].date);
     for (let i = state.currentIndex - 1; i >= 0; i--) {
-        if (timeline[i].year !== currentYear) {
+        if (getYear(timeline[i].date) !== currentYear) {
             goToIndex(i);
             return;
         }
