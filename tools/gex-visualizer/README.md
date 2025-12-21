@@ -54,13 +54,28 @@ Open `index.html` in a browser - no server required.
 | Tilt | Dealer positioning bias (negative = short gamma) |
 | UVXY | ProShares Ultra VIX ETF - volatility proxy |
 
+## Data Modes
+
+**Demo Mode** (default): Uses built-in simulated SPY timeline (2020-2025) with 21 representative snapshots. Works out of the box for research demonstrations.
+
+**Real Data Mode** (local only): Loads actual historical GEX data from exported JSON files. Requires:
+
+1. Access to `.cache/gex_research.db` (premium API data - not included in repo)
+2. Run `python export_data.py` to generate JSON files
+3. Click "Real Data" button in visualizer
+
+> ⚠️ **Note**: The `data/` folder is gitignored. Real data exports contain proprietary historical options data and should remain LOCAL ONLY.
+
 ## File Structure
 
 ```text
-├── index.html    # HTML structure
-├── styles.css    # CSS styles
-├── main.js       # JavaScript logic
-└── README.md     # This file
+├── index.html       # HTML structure
+├── styles.css       # CSS styles
+├── main.js          # JavaScript logic
+├── data-loader.js   # Real data loading module
+├── export_data.py   # SQLite → JSON export script
+├── data/            # (gitignored) Exported JSON files
+└── README.md        # This file
 ```
 
 No build step required - open `index.html` directly in browser.

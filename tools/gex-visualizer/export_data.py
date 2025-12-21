@@ -2,6 +2,13 @@
 """
 Export GEX research data from SQLite to JSON for the visualizer.
 
+NOTE: This exports data from .cache/gex_research.db which contains historical
+options data collected via premium API. The exported JSON files are gitignored
+and should remain LOCAL ONLY - do not commit to public repositories.
+
+For public/demo usage, the visualizer includes a built-in demo timeline with
+simulated SPY data from 2020-2025.
+
 Usage:
     python export_data.py              # Export all symbols
     python export_data.py SPY QQQ      # Export specific symbols
