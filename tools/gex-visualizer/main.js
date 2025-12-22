@@ -13,21 +13,48 @@ for(let s = strikeStart; s <= strikeEnd; s += strikeStep) strikes.push(s);
 function updateStrikeRange(minPrice, maxPrice) {
     // Add 20% padding on each side
     const padding = (maxPrice - minPrice) * 0.2;
-    strikeStart = Math.floor((minPrice - padding) / 10) * 10;
-    strikeEnd = Math.ceil((maxPrice + padding) / 10) * 10;
+    const paddedMin = Math.max(0, minPrice - padding);
+    const paddedMax = maxPrice + padding;
 
-    // Adjust step size based on price range
+    // Determine rounding unit based on price magnitude
+    // Low prices (<$50): round to $1, Medium (<$200): round to $5, High: round to $10
+    let roundUnit;
+    if (paddedMax < 50) roundUnit = 1;
+    else if (paddedMax < 200) roundUnit = 5;
+    else roundUnit = 10;
+
+    strikeStart = Math.floor(paddedMin / roundUnit) * roundUnit;
+    strikeEnd = Math.ceil(paddedMax / roundUnit) * roundUnit;
+
+    // Ensure minimum range
+    if (strikeEnd - strikeStart < 10) {
+        strikeEnd = strikeStart + Math.max(20, Math.ceil(paddedMax * 0.3));
+    }
+
+    // Adjust step size based on price range and magnitude
     const range = strikeEnd - strikeStart;
     if (range > 500) strikeStep = 20;
     else if (range > 200) strikeStep = 10;
     else if (range > 100) strikeStep = 5;
-    else strikeStep = 2;
+    else if (range > 50) strikeStep = 2;
+    else strikeStep = 1;
 
     // Rebuild strikes array
     strikes.length = 0;
     for(let s = strikeStart; s <= strikeEnd; s += strikeStep) {
         strikes.push(s);
     }
+
+    // Ensure we have a reasonable number of strikes
+    if (strikes.length < 10) {
+        strikeStep = Math.max(1, Math.floor(range / 20));
+        strikes.length = 0;
+        for(let s = strikeStart; s <= strikeEnd; s += strikeStep) {
+            strikes.push(s);
+        }
+    }
+
+    console.log(`Strike range: $${strikeStart}-$${strikeEnd}, step: $${strikeStep}, count: ${strikes.length}`);
 
     // Update Y-axis base labels
     updateYAxisBaseLabels();
