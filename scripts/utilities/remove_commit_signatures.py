@@ -24,8 +24,10 @@ def main():
     filtered_lines = []
 
     for line in lines:
-        # Skip lines with Claude Code signature
+        # Skip lines with Claude Code signature (various formats)
         if "Generated with [Claude Code]" in line:
+            continue
+        if "Generated with Claude Code" in line:
             continue
         if "Co-Authored-By: Claude" in line:
             continue
