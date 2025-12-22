@@ -76,16 +76,44 @@ Open `index.html` in a browser - no server required.
 
 ```text
 ├── index.html       # HTML structure
-├── styles.css       # CSS styles
-├── main.js          # JavaScript logic
+├── styles.css       # Main CSS (imports component files)
+├── css/             # Component-based stylesheets
+│   ├── base.css     # Variables, reset, animations
+│   ├── header.css   # Header, metrics, volatility warning
+│   ├── sidebar.css  # Sidebar layout, data controls
+│   ├── controls.css # Media controls, timeline, sliders
+│   ├── charts.css   # Chart panels, axes, SVG elements
+│   ├── cards.css    # Info cards (persistence, gamma)
+│   ├── sparkline.css# Price sparkline and tooltips
+│   └── helpers.css  # Keyboard help, toggles
+├── main.js          # Orchestration and initialization
+├── state.js         # State object, strike range, timeline
+├── ui.js            # DOM updates, status indicators
+├── chart.js         # SVG creation, bar rendering
+├── simulation.js    # Playback controls, sparkline
+├── events.js        # Keyboard, mouse, drag handlers
 ├── data-loader.js   # Real data loading module
-├── run.py           # Local dev server (auto-opens browser)
+├── run.py           # Dev server (FastAPI or stdlib fallback)
+├── server.py        # FastAPI server for production
 ├── export_data.py   # SQLite → JSON export script
 ├── data/            # (gitignored) Exported JSON files
 └── README.md        # This file
 ```
 
 No build step required - open `index.html` directly in browser.
+
+## Development Server
+
+```bash
+# Basic (no dependencies)
+python run.py
+
+# With FastAPI (recommended for development)
+pip install fastapi uvicorn
+python run.py
+```
+
+The server auto-detects FastAPI availability and falls back to stdlib if not installed.
 
 ## Research Background
 
