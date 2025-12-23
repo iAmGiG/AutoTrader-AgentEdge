@@ -1,22 +1,35 @@
 # CLI Integration Status - New Features (#364, #395, #407, #483, #405)
 
-**Last Updated**: 2025-12-15
+**Last Updated**: 2025-12-22
 **Scope**: Analysis of how new trading features integrate with CLI session
-**Status**: Features implemented and tested, CLI integration partially complete
+**Status**: CLI commands added, pipeline wiring in progress
 
 ---
 
 ## Executive Summary
 
-All major features have been **implemented and unit-tested**, but **CLI integration is incomplete**. The features exist in the codebase but are not yet exposed through CLI commands or configuration pipelines. Here's what works and what doesn't:
+CLI slash commands have been added for most features. **Next step is wiring commands to the trading pipeline** so they affect actual trade decisions.
 
-| Feature | Implemented | Tested | CLI Exposed | Config Loaded | Notes |
+| Feature | Implemented | Tested | CLI Exposed | Pipeline Wired | Notes |
 |---------|:---:|:---:|:---:|:---:|---------|
-| **#364 Ranked Voting** | ✅ | ✅ | ❌ | ✅ (voters_config.yaml) | Available via Python API only |
-| **#395 Multi-Timeframe Voting** | ✅ | ✅ | ❌ | ✅ (voters_config.yaml) | Singleton available, no CLI command |
-| **#407 Custom Timeframe Builder** | ✅ | ✅ | ⚠️ | ⚠️ (basic validation only) | Can be used programmatically |
-| **#405 Tiered Watchlist** | ✅ | ✅ | ✅ | ✅ | Works via ScannerAgent (fixed path bug) |
-| **#483 DB Backup/Migration** | ✅ | ✅ | ❌ | N/A | No CLI commands yet |
+| **#364 Ranked Voting** | ✅ | ✅ | ✅ /voter | ❌ #504 | Command works, needs pipeline wire |
+| **#395 Multi-Timeframe Voting** | ✅ | ✅ | ✅ /timeframe | ❌ #505 | Command works, needs pipeline wire |
+| **#407 Custom Timeframe Builder** | ✅ | ✅ | ✅ /tf validate | ✅ | Validation works |
+| **#405 Tiered Watchlist** | ✅ | ✅ | ⚠️ | ✅ | Needs /watchlist command #507 |
+| **#483 DB Backup/Migration** | ✅ | ✅ | ✅ /backup | ✅ | Fully working |
+| **#340 GTT Orders** | ✅ | ✅ | ⚠️ | ✅ | Needs /gtt command #506 |
+| **Partial Exits** | ✅ | ✅ | ❌ | ✅ | Needs /partial command #508 |
+
+## Recent Updates (2025-12-22)
+
+- ✅ Added `/timeframe` command (#489) - presets, single, validate
+- ✅ Added `/backup` command (#490) - list, create, restore, export
+- ✅ Added `/voter` command (#488) - presets, promote, demote
+- 🔜 #504 Wire ranked voting to RealVoterStrategy
+- 🔜 #505 Wire multi-TF voter to pipeline
+- 🔜 #506 Add /gtt slash command
+- 🔜 #507 Add /watchlist slash command
+- 🔜 #508 Add /partial slash command
 
 ---
 
