@@ -1,0 +1,105 @@
+run_timestamp: '2025-12-22T21:16:09.179207'
+issue: '#495'
+description: Walk-Forward Validation with Multiple Testing Corrections
+methodology:
+  in_sample: 2016-01-01 to 2020-12-31
+  out_of_sample: 2021-01-01 to 2024-12-31
+  validation_criteria:
+    min_oos_sharpe: 0.3
+    max_degradation_pct: 50
+  multiple_testing: Benjamini-Hochberg FDR correction
+results:
+- strategy_name: MACD_RSI_QQQ
+  in_sample_sharpe: 1.3531279970479935
+  out_of_sample_sharpe: 0.4675998893000197
+  in_sample_return: 25.490482896372214
+  out_of_sample_return: 23.19768161868855
+  in_sample_trades: 8
+  out_of_sample_trades: 34
+  degradation_pct: 65.44304084165404
+  passes_validation: false
+  p_value: 1.1457501614131615e-13
+  adjusted_p_value: 2.291500322826323e-13
+- strategy_name: MACD_RSI_IWM
+  in_sample_sharpe: 1.7512827859326756
+  out_of_sample_sharpe: 0.11837434789580768
+  in_sample_return: 47.52265967779887
+  out_of_sample_return: 2.6248953972405795
+  in_sample_trades: 6
+  out_of_sample_trades: 35
+  degradation_pct: 93.24070624991809
+  passes_validation: false
+  p_value: 0.060226128138282764
+  adjusted_p_value: 0.060226128138282764
+- strategy_name: TSMOM_QQQ
+  in_sample_sharpe: 0
+  out_of_sample_sharpe: 0.47696242144471723
+  in_sample_return: 0.0
+  out_of_sample_return: 24.523662921672656
+  in_sample_trades: 0
+  out_of_sample_trades: 6
+  degradation_pct: -100.0
+  passes_validation: true
+  p_value: 3.68594044175552e-14
+  adjusted_p_value: 1.474376176702208e-13
+- strategy_name: TSMOM_IWM
+  in_sample_sharpe: 0
+  out_of_sample_sharpe: 0.18482267812089856
+  in_sample_return: 0.0
+  out_of_sample_return: 5.966029342505135
+  in_sample_trades: 0
+  out_of_sample_trades: 16
+  degradation_pct: -100.0
+  passes_validation: false
+  p_value: 0.0033465756881225772
+  adjusted_p_value: 0.00446210091749677
+summary:
+  total_tested: 4
+  passed: 1
+  pass_rate: 25.0
+causal_mechanisms:
+  gamma_pinning:
+    who: Market makers (dealers)
+    whom: Options sellers via delta hedging
+    what: Price gravitates toward max gamma strike as dealers hedge
+    evidence:
+    - 'Academic: Ni, Pearson, Poteshman (2005) - Stock price clustering'
+    - 'Market microstructure: dealer hedging creates supply/demand imbalance'
+    - 'Empirical: OpEx days show higher pinning probability at max OI strikes'
+    confidence: high
+  negative_gamma_volatility:
+    who: Market makers (short gamma exposure)
+    whom: All market participants
+    what: Negative gamma amplifies moves as dealers hedge in same direction
+    evidence:
+    - Dealer hedging feedback loop well documented
+    - Visible in VIX regime correlation with gamma exposure
+    - 'Academic: Barbon & Buraschi (2021) on dealer gamma hedging'
+    confidence: high
+  momentum_effect:
+    who: Trend-following institutions and CTAs
+    whom: All market participants
+    what: Time-series momentum persists due to slow information diffusion
+    evidence:
+    - 'Academic: Moskowitz, Ooi, Pedersen (2012) - TSMOM paper'
+    - 'Behavioral: underreaction to news and slow capital allocation'
+    - 'Empirical: 12-month momentum profitable across asset classes'
+    confidence: high
+  macd_crossover:
+    who: Technical traders and algorithmic systems
+    whom: Other technical traders
+    what: MACD crossovers create self-fulfilling prophecy through correlated action
+    evidence:
+    - Widely used indicator across retail and institutional trading
+    - Observable volume spikes on crossover signals
+    - 'Note: Edge may be arbitraged away in liquid markets'
+    confidence: medium
+  rsi_mean_reversion:
+    who: Mean-reversion traders
+    whom: Momentum traders (counterparty)
+    what: Extreme RSI levels indicate overextension, profit-taking follows
+    evidence:
+    - Bounded nature of price moves in absence of fundamental change
+    - 'Empirical: extreme RSI (>80, <20) shows reversion tendency'
+    - 'Caution: Can fail in strong trends'
+    confidence: medium
