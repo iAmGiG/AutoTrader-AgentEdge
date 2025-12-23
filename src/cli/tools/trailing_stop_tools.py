@@ -41,7 +41,7 @@ def show_trailing_stop_config() -> str:
     """
     config = TrailingStopConfig()
 
-    output = "⚙️ Trailing Stop Configuration\n"
+    output = f"{get_symbol('GEAR')} Trailing Stop Configuration\n"
     output += "=" * 50 + "\n"
 
     # Basic settings
@@ -67,7 +67,7 @@ def show_trailing_stop_config() -> str:
     output += "-" * 50 + "\n"
 
     # Volatility settings
-    output += "🌊 Volatility Settings\n"
+    output += f"{get_symbol('WAVE')} Volatility Settings\n"
     output += f"  Volatility Aware: {'Yes' if config.volatility_aware else 'No'}\n"
     if config.volatility_aware:
         output += f"  ATR Multiplier: {config.atr_multiplier}x\n"
@@ -75,7 +75,7 @@ def show_trailing_stop_config() -> str:
     output += "-" * 50 + "\n"
 
     # Safety settings
-    output += "🛡️ Safety Settings\n"
+    output += f"{get_symbol('SHIELD')} Safety Settings\n"
     output += f"  Never Move Down: {'Yes' if config.never_move_stop_down else 'No'}\n"
     output += f"  Min Update Interval: {config.min_update_interval_seconds}s\n"
 
@@ -191,7 +191,7 @@ def compare_climb_rates() -> str:
     output += "-" * 60 + "\n"
     output += "\n"
     output += f"  {get_symbol('TURTLE')} Slow: Conservative, lets winners run\n"
-    output += "  ⚖️ Medium: Balanced default setting\n"
+    output += f"  {get_symbol('SCALES')} Medium: Balanced default setting\n"
     output += f"  {get_symbol('ROCKET')} Fast: Aggressive profit protection\n"
 
     return output
@@ -231,7 +231,7 @@ def calculate_stop_example(
     profit_pct = ((current_price - entry_price) / entry_price) * 100
     gain = current_price - entry_price
 
-    output = "📐 Stop Calculation Example\n"
+    output = f"{get_symbol('RULER')} Stop Calculation Example\n"
     output += "=" * 50 + "\n"
     output += f"  Entry Price:   ${entry_price:.2f}\n"
     output += f"  Current Price: ${current_price:.2f} ({profit_pct:+.1f}%)\n"
