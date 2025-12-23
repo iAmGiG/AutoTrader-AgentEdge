@@ -1294,3 +1294,34 @@ src/cli/
 - `src/trading/orders/__init__.py` (exports)
 
 **Next**: #414 KILLER Advanced Trailing Stop Automation
+
+---
+
+### December 2025 - Code Grooming & Large File Refactoring (Dec 23, 2025)
+
+**Large File Refactoring Issues Created**:
+
+Identified files exceeding 500 lines that need refactoring for maintainability:
+
+| Issue | File | Lines | Proposed Split |
+|-------|------|-------|----------------|
+| #509 | cli_session.py | 1657 | handlers/, intent parsing |
+| #510 | sqlite_cache.py | 1587 | market/options/trade cache modules |
+| #511 | alpaca_trading_client.py | 1568 | base/account/orders/modifications |
+| #512 | scanner_agent.py | 968 | config/scanner/analysis/results |
+| #513 | date_utils.py | 844 | core/trading_calendar/formatting |
+| #514 | google_search_api.py | 914 | cache/client/search modules |
+
+**Other Large Files (700+ lines) for future consideration**:
+
+- trailing_stop_manager.py (812) - Single class, focused
+- alpaca_execution_manager.py (784) - Has validators
+- db_backup.py (780) - Single class, utility
+- alerts_watchlists.py (738) - Could split
+- trading_orchestrator.py (723) - Could split
+- gtt_manager.py (712) - 4 classes
+- voter_tools.py (709) - FunctionTool pattern, ok
+
+**Priority Order**: #509 → #510 → #511 (highest LOC first)
+
+**Branch**: `feature/testing`
