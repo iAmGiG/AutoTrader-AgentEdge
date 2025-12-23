@@ -1299,18 +1299,39 @@ src/cli/
 
 ### December 2025 - Code Grooming & Large File Refactoring (Dec 23, 2025)
 
-**Large File Refactoring Issues Created**:
+**Large File Refactoring - COMPLETED**:
 
-Identified files exceeding 500 lines that need refactoring for maintainability:
+| Issue | File | Before | After | Reduction | Status |
+|-------|------|--------|-------|-----------|--------|
+| #509 | cli_session.py | 1657 | 1018 | **38%** | ✅ CLOSED |
+| #510 | sqlite_cache.py | 1587 | 947 | **40%** | ✅ CLOSED |
+| #511 | alpaca_trading_client.py | 1568 | 1075 | **31%** | ✅ CLOSED |
+| #512 | scanner_agent.py | 969 | 813 | **16%** | ✅ CLOSED |
+| #513 | date_utils.py | 844 | - | - | OPEN |
+| #514 | google_search_api.py | 914 | - | - | OPEN |
 
-| Issue | File | Lines | Proposed Split |
-|-------|------|-------|----------------|
-| #509 | cli_session.py | 1657 | handlers/, intent parsing |
-| #510 | sqlite_cache.py | 1587 | market/options/trade cache modules |
-| #511 | alpaca_trading_client.py | 1568 | base/account/orders/modifications |
-| #512 | scanner_agent.py | 968 | config/scanner/analysis/results |
-| #513 | date_utils.py | 844 | core/trading_calendar/formatting |
-| #514 | google_search_api.py | 914 | cache/client/search modules |
+**New Modules Created**:
+
+1. **#509 - IntentClassifier** (`src/cli/utils/intent_classifier.py`)
+   - Extracted `classify_intent()` and `resolve_ticker_with_llm()` methods
+   - LLM-based intent classification with pattern matching fallback
+
+2. **#510 - Cache Mixins** (`src/cache/`)
+   - `options_cache.py` - `OptionsCacheMixin` (329 lines)
+   - `trade_cache.py` - `TradeCacheMixin` (263 lines)
+
+3. **#511 - Advanced Orders** (`src/trading/broker/advanced_orders.py`)
+   - `AdvancedOrdersMixin` with trailing stop, bracket, modify methods
+
+4. **#512 - Scanner Config** (`src/autogen_agents/agents/scanner_config.py`)
+   - Config loaders, dataclasses (TierLimits, ScanConfig, ScanResult)
+
+**Commits**:
+
+- `4b40777` - refactor(#509): extract IntentClassifier from cli_session.py
+- `094c920` - refactor(#510): extract options and trade cache mixins
+- `76182fa` - refactor(#511): extract advanced orders mixin
+- `7d54640` - refactor(#512): extract scanner configuration
 
 **Other Large Files (700+ lines) for future consideration**:
 
@@ -1321,7 +1342,5 @@ Identified files exceeding 500 lines that need refactoring for maintainability:
 - trading_orchestrator.py (723) - Could split
 - gtt_manager.py (712) - 4 classes
 - voter_tools.py (709) - FunctionTool pattern, ok
-
-**Priority Order**: #509 → #510 → #511 (highest LOC first)
 
 **Branch**: `feature/testing`
