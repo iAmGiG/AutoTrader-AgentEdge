@@ -241,15 +241,15 @@ def cmd_backup(session, args: str = None):
         /backup status          Show backup system status
     """
     from src.cli.tools.backup_tools import (
-        create_backup,
-        export_backup,
-        get_backup_status,
+        backup_database,
+        export_table,
         list_backups,
         restore_backup,
+        show_backup_info,
     )
 
     if not args:
-        safe_print(get_backup_status())
+        safe_print(show_backup_info())
         return
 
     parts = args.strip().split(maxsplit=1)
@@ -258,8 +258,8 @@ def cmd_backup(session, args: str = None):
 
     if subcommand == "list":
         safe_print(list_backups())
-    elif subcommand == "create":
-        safe_print(create_backup())
+    elif subcommand in ("create", "database"):
+        safe_print(backup_database())
     elif subcommand == "restore":
         if not subarg:
             safe_print("Usage: /backup restore <name>")
@@ -270,9 +270,9 @@ def cmd_backup(session, args: str = None):
         if not subarg:
             safe_print("Usage: /backup export <table_name>")
         else:
-            safe_print(export_backup(subarg))
+            safe_print(export_table(subarg))
     elif subcommand == "status":
-        safe_print(get_backup_status())
+        safe_print(show_backup_info())
     else:
         safe_print(f"Unknown subcommand: {subcommand}")
         safe_print("Use /backup for help")
