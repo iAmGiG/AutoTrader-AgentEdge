@@ -725,3 +725,107 @@ exit:
     All positions remain active - exiting the CLI doesn''t close trades.
 
     Use ''sell'' or ''cancel'' to close positions before exiting.'
+
+# Slash Commands (Issue #488, #489, #490)
+/voter:
+  category: Configuration
+  description: Manage ranked voting system (Issue #488)
+  usage: /voter {list|info|presets|preset|promote|demote|role} [args]
+  examples:
+  - /voter list
+  - /voter list verbose
+  - /voter info
+  - /voter presets
+  - /voter preset default
+  - /voter preset macd_primary
+  - /voter promote MACD
+  - /voter demote RSI
+  - /voter role MACD active
+  - /voter role RSI review
+  aliases:
+  - voter
+  tags:
+  - configuration
+  - voting
+  - analysis
+  - slash-command
+  related:
+  - set voter-system
+  - show config
+  - /timeframe
+  details: "Manage the ranked voting system for trading signals.\n\nSubcommands:\n\
+    \  list [verbose]     - List current voter rankings and weights\n\
+    \  info               - Show voting system information\n\
+    \  presets            - List available voter presets\n\
+    \  preset NAME        - Apply a voter preset (default, macd_primary, rsi_primary)\n\
+    \  promote VOTER      - Increase voter priority (MACD or RSI)\n\
+    \  demote VOTER       - Decrease voter priority (MACD or RSI)\n\
+    \  role VOTER ROLE    - Set voter role (active or review)\n\n\
+    The ranked voting system allows fine-tuning of indicator weights\n\
+    and priorities for signal generation."
+
+/timeframe:
+  category: Configuration
+  description: Quick timeframe management (Issue #489)
+  usage: /timeframe {list|set|current|presets|preset} [args]
+  examples:
+  - /timeframe list
+  - /timeframe current
+  - /timeframe set 1h
+  - /timeframe set 4h
+  - /timeframe presets
+  - /timeframe preset scalping
+  - /timeframe preset swing
+  aliases:
+  - tf
+  tags:
+  - configuration
+  - timeframe
+  - analysis
+  - slash-command
+  related:
+  - change timeframe
+  - show timeframe
+  - list timeframes
+  - /voter
+  details: "Quick access to timeframe management via slash command.\n\nSubcommands:\n\
+    \  list               - List all available timeframes\n\
+    \  current            - Show current active timeframe\n\
+    \  set TIMEFRAME      - Set active timeframe (1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M)\n\
+    \  presets            - List available timeframe presets\n\
+    \  preset NAME        - Apply a timeframe preset (scalping, day, swing, position)\n\n\
+    Timeframes:\n\
+    \  Scalping:    1m, 5m (high frequency)\n\
+    \  Day Trading: 15m, 30m (intraday)\n\
+    \  Swing:       1h, 2h, 4h (multi-day)\n\
+    \  Position:    1d (validated default)\n\
+    \  Long-term:   1w, 1M (institutional)"
+
+/backup:
+  category: System
+  description: Create configuration backup (Issue #490)
+  usage: /backup [name]
+  examples:
+  - /backup
+  - /backup pre_changes
+  - /backup before_live_trading
+  aliases:
+  - backup
+  tags:
+  - system
+  - configuration
+  - backup
+  - slash-command
+  related:
+  - show config
+  - show config-file
+  details: "Create a timestamped backup of current configuration files.\n\nUsage:\n\
+    \  /backup              - Create backup with auto-generated timestamp name\n\
+    \  /backup NAME         - Create backup with custom name prefix\n\n\
+    Backs up:\n\
+    \  - trading_config.yaml\n\
+    \  - scanner_config.yaml\n\
+    \  - trading_modes.yaml\n\
+    \  - accounts_config.yaml\n\n\
+    Backups are stored in config_defaults/backups/ directory.\n\
+    Use before making significant configuration changes."
