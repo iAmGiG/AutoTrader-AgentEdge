@@ -16,6 +16,8 @@ from autogen_core.tools import FunctionTool
 
 from config_defaults.trading_config import TradingConfig
 
+from src.utils.safe_print import get_symbol
+
 # ============================================================================
 # Pure Function Wrappers
 # ============================================================================
@@ -42,7 +44,7 @@ def show_voter_config() -> str:
     macd = config.get_macd_config()
     rsi = config.get_rsi_config()
 
-    output = "📊 VoterAgent Configuration\n"
+    output = f"{get_symbol('INFO')} VoterAgent Configuration\n"
     output += "=" * 50 + "\n"
 
     # MACD settings
@@ -141,7 +143,7 @@ def explain_macd_params() -> str:
         Slow (34): Long-term EMA
         Signal (8): Signal line smoothing'
     """
-    output = "📈 MACD Parameters Explained\n"
+    output = f"{get_symbol('CHART')} MACD Parameters Explained\n"
     output += "=" * 50 + "\n\n"
 
     output += "Current: 13/34/8 (Fibonacci Sequence)\n"
@@ -279,7 +281,7 @@ def compare_with_traditional() -> str:
         | Param    | Fibonacci | Traditional |
         | Fast     |    13     |     12      |'
     """
-    output = "📊 MACD Parameter Comparison\n"
+    output = f"{get_symbol('INFO')} MACD Parameter Comparison\n"
     output += "=" * 50 + "\n\n"
 
     output += f"{'Parameter':<15} {'Fibonacci':>12} {'Traditional':>12}\n"
@@ -360,7 +362,7 @@ def show_signal_interpretation(signal_type: str = "STRONG") -> str:
     }
 
     if signal_type not in interpretations:
-        return f"❌ Unknown signal type: {signal_type}. Valid: STRONG, WEAK, CONFLICT, NEUTRAL"
+        return f"{get_symbol('ERROR')} Unknown signal type: {signal_type}. Valid: STRONG, WEAK, CONFLICT, NEUTRAL"
 
     info = interpretations[signal_type]
 

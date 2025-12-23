@@ -15,6 +15,8 @@ from autogen_core.tools import FunctionTool
 
 from config_defaults.trading_config import ClimbRate, TrailingStopConfig
 
+from src.utils.safe_print import get_symbol
+
 # ============================================================================
 # Pure Function Wrappers
 # ============================================================================
@@ -48,7 +50,7 @@ def show_trailing_stop_config() -> str:
     output += "-" * 50 + "\n"
 
     # Issue #414: Advanced features
-    output += "📈 Climb Rate Settings\n"
+    output += f"{get_symbol('CHART')} Climb Rate Settings\n"
     output += f"  Climb Rate: {config.climb_rate}\n"
 
     # Get gain lock percentages
@@ -57,7 +59,7 @@ def show_trailing_stop_config() -> str:
     output += "-" * 50 + "\n"
 
     # Progressive thresholds
-    output += "📊 Profit Zone Thresholds\n"
+    output += f"{get_symbol('INFO')} Profit Zone Thresholds\n"
     output += f"  Profit Zone Start: {config.profit_zone_start_pct*100:.1f}%\n"
     output += f"  Breakeven Trigger: {config.progressive_breakeven_pct*100:.1f}%\n"
     output += f"  Lock 25% Trigger:  {config.progressive_lock_25_pct*100:.1f}%\n"
@@ -95,34 +97,34 @@ def explain_climb_rate(rate: str = "medium") -> str:
 
     Example:
         >>> explain_climb_rate('fast')
-        '🚀 Fast Climb Rate
+        f"'{get_symbol('ROCKET')} Fast Climb Rate
         Aggressively locks gains: 33% → 60% → 80%
         Best for: Momentum trades, volatile stocks'
     """
     rate = rate.lower()
 
     if rate not in ("slow", "medium", "fast"):
-        return f"❌ Invalid climb rate: {rate}. Valid: slow, medium, fast"
+        return f"{get_symbol('ERROR')} Invalid climb rate: {rate}. Valid: slow, medium, fast"
 
     gain_locks = ClimbRate.get_gain_locks(rate)
 
     descriptions = {
         "slow": {
-            "emoji": "🐢",
+            "emoji": get_symbol("TURTLE"),
             "title": "Slow (Conservative)",
             "style": "Conservative trailing - gives positions room to breathe",
             "best_for": "Swing trades, low volatility stocks, trending markets",
             "risk": "May give back more gains on reversals",
         },
         "medium": {
-            "emoji": "⚖️",
+            "emoji": get_symbol("SCALES"),
             "title": "Medium (Balanced)",
             "style": "Balanced approach - standard trailing behavior",
             "best_for": "Most trades, general use, mixed market conditions",
             "risk": "Good balance of gain protection vs room to run",
         },
         "fast": {
-            "emoji": "🚀",
+            "emoji": get_symbol("ROCKET"),
             "title": "Fast (Aggressive)",
             "style": "Aggressive trailing - quickly locks in gains",
             "best_for": "Day trades, momentum plays, volatile stocks",
@@ -163,7 +165,7 @@ def compare_climb_rates() -> str:
         Profit Zone | Slow  | Medium | Fast
         +4% profit  |  20%  |  25%   | 33%'
     """
-    output = "📊 Climb Rate Comparison\n"
+    output = f"{get_symbol('INFO')} Climb Rate Comparison\n"
     output += "=" * 60 + "\n\n"
 
     # Get all climb rates
@@ -188,9 +190,9 @@ def compare_climb_rates() -> str:
 
     output += "-" * 60 + "\n"
     output += "\n"
-    output += "  🐢 Slow: Conservative, lets winners run\n"
+    output += f"  {get_symbol('TURTLE')} Slow: Conservative, lets winners run\n"
     output += "  ⚖️ Medium: Balanced default setting\n"
-    output += "  🚀 Fast: Aggressive profit protection\n"
+    output += f"  {get_symbol('ROCKET')} Fast: Aggressive profit protection\n"
 
     return output
 
@@ -224,7 +226,7 @@ def calculate_stop_example(
         New Stop: $104.50 (locking 75% of gains)'
     """
     if entry_price <= 0:
-        return "❌ Entry price must be positive"
+        return f"{get_symbol('ERROR')} Entry price must be positive"
 
     profit_pct = ((current_price - entry_price) / entry_price) * 100
     gain = current_price - entry_price
@@ -268,7 +270,7 @@ def calculate_stop_example(
     if new_stop > initial_stop:
         improvement = new_stop - initial_stop
         output += "-" * 50 + "\n"
-        output += f"  ✅ Stop improved by ${improvement:.2f}\n"
+        output += f"  {get_symbol('SUCCESS')} Stop improved by ${improvement:.2f}\n"
         output += f"  Risk reduced from ${entry_price - initial_stop:.2f} to ${entry_price - new_stop:.2f}\n"
 
     return output
