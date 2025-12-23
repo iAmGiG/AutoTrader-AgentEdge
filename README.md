@@ -4,7 +4,7 @@
 
 ## Powered by AgentEdge - Autonomous AI agents seeking trading edge
 
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
 [![Alpaca](https://img.shields.io/badge/Broker-Alpaca-yellow.svg)](https://github.com/alpacahq/alpaca-py)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -81,8 +81,8 @@ Location: `src/autogen_agents/voter_agent.py`
 ## Installation
 
 ```bash
-# Python 3.10+ required
-conda create -n AutoTrader python=3.10
+# Python 3.12+ required
+conda create -n AutoTrader python=3.12
 conda activate AutoTrader
 pip install -e .
 ```
