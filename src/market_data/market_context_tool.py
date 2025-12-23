@@ -4,18 +4,13 @@ Fetches SPY/QQQ market context data to enhance sentiment analysis
 """
 
 import logging
-import os
-import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 from autogen_core.tools import FunctionTool
 
-from ...cache.sqlite_cache import TradingCacheManager
-
-# Add path for agent_utils
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
-from utils.agent_utils import load_agent_config
+from src.cache.sqlite_cache import TradingCacheManager
+from src.utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
 
