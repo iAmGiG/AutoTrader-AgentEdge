@@ -19,29 +19,30 @@
 - **Not Financial Advice**: This system does not provide financial, investment, or trading advice
 - **Use at Your Own Risk**: Trading involves substantial risk of loss
 - **No Warranties**: Provided "as-is" without guarantees of accuracy or profitability
-- **Past Performance**: Historical results (36.6% return, 0.856 Sharpe) do not guarantee future performance
+- **Past Performance**: Walk-forward validated results do not guarantee future performance
 
 ---
 
 ## Overview
 
-**AutoTrader** is a production-ready trading platform featuring a multi-agent AI architecture powered by Microsoft AutoGen. The system combines validated MACD+RSI strategies with human oversight for paper/live trading via Alpaca Markets.
+**AutoTrader** is a research-driven trading platform featuring a multi-agent AI architecture powered by Microsoft AutoGen. The system implements walk-forward validated strategies with rigorous statistical testing and human oversight for paper/live trading via Alpaca Markets.
 
-**Core Philosophy**: Pure mathematical indicators + human decision making > complex LLM sentiment analysis
+**Core Philosophy**: Validated momentum + regime filtering + human decision making > curve-fit technical indicators
 
-### Backtested Performance
+### Walk-Forward Validated Performance
 
-Results from [validation experiments](reports/active/voting_strategy/):
+Results from [research validation](docs/08_research/04_strategy_research/methodology_validation_summary.md):
 
-| Metric | Single Stock (AAPL 2024) | Multi-Stock Average (2024-2025) |
-|--------|--------------------------|--------------------------------|
-| Sharpe Ratio | 0.856 | 0.77 |
-| Total Return | 12.6% | 36.6% (20 months) |
-| Win Rate | 51.4% | - |
-| Max Drawdown | -10.1% | -23.4% avg |
-| Strategy | MACD(13/34/8) + RSI(14/30/70) voting | Same |
+| Strategy         | Out-of-Sample Sharpe | Period    | Validation Status              |
+|------------------|----------------------|-----------|--------------------------------|
+| TSMOM-12M (QQQ)  | 1.097                | 2023-2024 | ✅ Passed                      |
+| TSMOM-12M (UVXY) | 1.082                | 2023-2024 | ✅ Passed                      |
+| TSMOM-12M (TQQQ) | 0.819                | 2023-2024 | ✅ Passed                      |
+| MACD+RSI (QQQ)   | 0.468                | 2023-2024 | ❌ Failed (65% degradation)    |
 
-Note: Past performance does not guarantee future results.
+**Methodology**: Walk-forward split (2020-2022 train / 2023-2024 test), Benjamini-Hochberg FDR correction applied.
+
+**Note**: Past performance does not guarantee future results. All strategies validated using out-of-sample testing to minimize overfitting risk.
 
 ### Production Status
 
