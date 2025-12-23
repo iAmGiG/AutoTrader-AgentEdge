@@ -1,0 +1,36 @@
+name: weekly_kama_crossover
+description: Weekly KAMA MA Crossover - Trend Filter for Low-Frequency Trading
+issue: '#467'
+validated: true
+validation_date: '2025-12-22T20:18:35.267452'
+parameters:
+  timeframe: 1w
+  kama_lookback: 10
+  kama_fast: 2
+  kama_slow: 30
+  fold_periods: 5
+  fold_index: 2
+performance:
+  avg_sharpe: 0.523
+  trending_sharpe: 0.909
+  choppy_sharpe: -1.84
+  trades_per_year: 0.7812006319115323
+recommended_for:
+- QQQ
+- IWM
+- TQQQ
+- SOXL
+not_recommended_for:
+- SPY
+integration:
+  use_as: trend_filter
+  combine_with: daily_macd_rsi
+  check_frequency: weekly
+  signal_interpretation:
+    bullish: KAMA slope > 0 AND Fold MA slope > 0 AND price > both
+    bearish: KAMA slope < 0 AND Fold MA slope < 0 AND price < both
+    neutral: Mixed signals - defer to daily indicators
+hybrid_strategy:
+  enabled: true
+  logic: Use weekly KAMA as trend filter, only trade daily signals when weekly confirms
+  expected_improvement: Reduce false signals in choppy markets
