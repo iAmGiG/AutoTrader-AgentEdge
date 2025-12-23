@@ -159,6 +159,64 @@ def cmd_mode(session, args: str = None):
 
 
 # =============================================================================
+# VOTER - Ranked voting management (#488)
+# =============================================================================
+
+
+def _voter_handle_subcommand(vc, subcommand: str, subarg: str | None) -> str:
+    """Handle voter subcommands. Returns output string."""
+    if subcommand in ("list", "ls"):
+        return vc.list_voters(verbose=bool(subarg))
+    if subcommand == "info":
+        return vc.show_info()
+    if subcommand == "presets":
+        return vc.list_presets()
+    if subcommand == "preset":
+        if not subarg:
+            return f"Usage: /voter preset <name>\n{vc.list_presets()}"
+        return vc.apply_preset(subarg)
+    if subcommand == "promote":
+        return vc.promote_voter(subarg) if subarg else "Usage: /voter promote <name>"
+    if subcommand == "demote":
+        return vc.demote_voter(subarg) if subarg else "Usage: /voter demote <name>"
+    if subcommand in ("role", "set-role"):
+        if not subarg or " " not in subarg:
+            return "Usage: /voter role <name> <active|review>"
+        name, role = subarg.split(maxsplit=1)
+        return vc.set_voter_role(name, role)
+    return f"Unknown subcommand: {subcommand}\nUse /voter for help"
+
+
+@command("/voter", help_text="Ranked voter management", has_args=True)
+def cmd_voter(session, args: str = None):
+    """
+    Manage ranked voters for trading decisions.
+
+    Usage:
+        /voter              Show voter rankings
+        /voter list         Show active/review voters
+        /voter info         Show voting configuration
+        /voter presets      List available presets
+        /voter preset NAME  Apply a preset (default, macd_primary, rsi_primary)
+        /voter promote NAME Promote voter one rank
+        /voter demote NAME  Demote voter one rank
+    """
+    from src.cli.commands.voter_commands import get_voter_commands
+
+    vc = get_voter_commands()
+
+    if not args:
+        safe_print(vc.list_voters())
+        return
+
+    parts = args.strip().split(maxsplit=1)
+    subcommand = parts[0].lower()
+    subarg = parts[1] if len(parts) > 1 else None
+
+    safe_print(_voter_handle_subcommand(vc, subcommand, subarg))
+
+
+# =============================================================================
 # Ensure commands are registered on import
 # =============================================================================
 

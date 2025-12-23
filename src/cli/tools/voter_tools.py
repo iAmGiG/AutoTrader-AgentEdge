@@ -6,17 +6,21 @@ Issue #488: /voter command group for visibility and configuration.
 This module wraps VoterAgent functionality as FunctionTool instances
 for integration with the AutoGen agent architecture.
 
+Includes:
+- Configuration display (show_voter_config, explain_* functions)
+- Ranked voting management (list_voters, apply_preset, promote/demote)
+
 Original Implementation: src/autogen_agents/agents/voter_agent.py
 Pattern: Pure function wrappers → FunctionTool → Registry
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 
 from autogen_core.tools import FunctionTool
 
 from config_defaults.trading_config import TradingConfig
 
-from src.utils.safe_print import get_symbol
+from src.cli.commands.voter_commands import get_voter_commands
 
 # ============================================================================
 # Pure Function Wrappers
@@ -44,7 +48,7 @@ def show_voter_config() -> str:
     macd = config.get_macd_config()
     rsi = config.get_rsi_config()
 
-    output = f"{get_symbol('INFO')} VoterAgent Configuration\n"
+    output = "📊 VoterAgent Configuration\n"
     output += "=" * 50 + "\n"
 
     # MACD settings
@@ -96,7 +100,7 @@ def explain_voting_logic() -> str:
         WEAK: One signals → Half position (0.5)
         HOLD: Conflict/Neutral → No position'
     """
-    output = f"{get_symbol('INFO')} MACD+RSI Voting Logic\n"
+    output = "🗳️ MACD+RSI Voting Logic\n"
     output += "=" * 50 + "\n\n"
 
     output += "How It Works:\n"
@@ -143,7 +147,7 @@ def explain_macd_params() -> str:
         Slow (34): Long-term EMA
         Signal (8): Signal line smoothing'
     """
-    output = f"{get_symbol('CHART')} MACD Parameters Explained\n"
+    output = "📈 MACD Parameters Explained\n"
     output += "=" * 50 + "\n\n"
 
     output += "Current: 13/34/8 (Fibonacci Sequence)\n"
@@ -190,7 +194,7 @@ def explain_rsi_params() -> str:
         Oversold (30): Buy signal threshold
         Overbought (70): Sell signal threshold'
     """
-    output = f"{get_symbol('INFO')} RSI Parameters Explained\n"
+    output = "📉 RSI Parameters Explained\n"
     output += "=" * 50 + "\n\n"
 
     output += "Current: 14 period, 30/70 thresholds\n"
@@ -281,7 +285,7 @@ def compare_with_traditional() -> str:
         | Param    | Fibonacci | Traditional |
         | Fast     |    13     |     12      |'
     """
-    output = f"{get_symbol('INFO')} MACD Parameter Comparison\n"
+    output = "📊 MACD Parameter Comparison\n"
     output += "=" * 50 + "\n\n"
 
     output += f"{'Parameter':<15} {'Fibonacci':>12} {'Traditional':>12}\n"
@@ -362,7 +366,7 @@ def show_signal_interpretation(signal_type: str = "STRONG") -> str:
     }
 
     if signal_type not in interpretations:
-        return f"{get_symbol('ERROR')} Unknown signal type: {signal_type}. Valid: STRONG, WEAK, CONFLICT, NEUTRAL"
+        return f"❌ Unknown signal type: {signal_type}. Valid: STRONG, WEAK, CONFLICT, NEUTRAL"
 
     info = interpretations[signal_type]
 
@@ -376,6 +380,154 @@ def show_signal_interpretation(signal_type: str = "STRONG") -> str:
     output += f"  Risk: {info['risk_note']}\n"
 
     return output
+
+
+# ============================================================================
+# Ranked Voting Management Functions (Issue #488)
+# ============================================================================
+
+
+def list_voters(verbose: bool = False) -> str:
+    """
+    List all voters with their rankings and roles.
+
+    Shows active voters (participate in decisions) and review voters
+    (shown for reference but don't vote).
+
+    Args:
+        verbose: Show detailed parameters for each voter
+
+    Returns:
+        Formatted list of voters with rankings
+
+    Example:
+        >>> list_voters()
+        'Active Voters:
+           #1 MACD
+           #2 RSI
+         Review Voters:
+           (none)'
+    """
+    return get_voter_commands().list_voters(verbose=verbose)
+
+
+def show_voting_info() -> str:
+    """
+    Show current voting configuration settings.
+
+    Displays consensus mode, confidence adjustments, and position sizing
+    rules for the ranked voting system.
+
+    Returns:
+        Formatted voting configuration
+
+    Example:
+        >>> show_voting_info()
+        'Voting Configuration
+         Mode: unanimous
+         Active Voters: 2'
+    """
+    return get_voter_commands().show_info()
+
+
+def list_voter_presets() -> str:
+    """
+    List available voter presets.
+
+    Shows all configured presets with descriptions. Presets define
+    different voter ranking configurations for various trading styles.
+
+    Returns:
+        Formatted list of presets
+
+    Example:
+        >>> list_voter_presets()
+        'Available Presets:
+           default: Validated MACD+RSI voting
+           macd_primary: MACD-focused with RSI confirmation'
+    """
+    return get_voter_commands().list_presets()
+
+
+def apply_voter_preset(preset_name: Literal["default", "macd_primary", "rsi_primary"]) -> str:
+    """
+    Apply a voter preset configuration.
+
+    Changes the voter ranking to match the specified preset.
+    Changes persist to the database across sessions.
+
+    Args:
+        preset_name: Name of preset to apply
+
+    Returns:
+        Status message
+
+    Example:
+        >>> apply_voter_preset('macd_primary')
+        '✅ Applied preset macd_primary'
+    """
+    return get_voter_commands().apply_preset(preset_name)
+
+
+def promote_voter(name: Literal["MACD", "RSI"]) -> str:
+    """
+    Promote a voter one rank higher.
+
+    Moves the specified voter up in the ranking. If the voter
+    is already at rank 1, no change is made.
+
+    Args:
+        name: Voter name (MACD or RSI)
+
+    Returns:
+        Status message
+
+    Example:
+        >>> promote_voter('RSI')
+        '✅ Promoted RSI to rank #1'
+    """
+    return get_voter_commands().promote_voter(name)
+
+
+def demote_voter(name: Literal["MACD", "RSI"]) -> str:
+    """
+    Demote a voter one rank lower.
+
+    Moves the specified voter down in the ranking. If the voter
+    is already at the bottom rank, no change is made.
+
+    Args:
+        name: Voter name (MACD or RSI)
+
+    Returns:
+        Status message
+
+    Example:
+        >>> demote_voter('MACD')
+        '✅ Demoted MACD to rank #2'
+    """
+    return get_voter_commands().demote_voter(name)
+
+
+def set_voter_role(name: Literal["MACD", "RSI"], role: Literal["active", "review"]) -> str:
+    """
+    Change a voter's role (active or review).
+
+    Active voters participate in trading decisions.
+    Review voters are shown for reference but don't vote.
+
+    Args:
+        name: Voter name (MACD or RSI)
+        role: New role (active or review)
+
+    Returns:
+        Status message
+
+    Example:
+        >>> set_voter_role('RSI', 'review')
+        '✅ Set RSI to review role'
+    """
+    return get_voter_commands().set_voter_role(name, role)
 
 
 # ============================================================================
@@ -438,12 +590,70 @@ show_signal_interpretation_tool = FunctionTool(
     ),
 )
 
+# Ranked Voting Management Tools (Issue #488)
+list_voters_tool = FunctionTool(
+    list_voters,
+    description=(
+        "List all voters with their rankings and roles. Shows active voters "
+        "(participate in decisions) and review voters (shown but don't vote)."
+    ),
+)
+
+show_voting_info_tool = FunctionTool(
+    show_voting_info,
+    description=(
+        "Show current voting configuration including consensus mode, "
+        "confidence adjustments, and position sizing rules."
+    ),
+)
+
+list_voter_presets_tool = FunctionTool(
+    list_voter_presets,
+    description=(
+        "List available voter presets with descriptions. Presets define "
+        "different voter ranking configurations for various trading styles."
+    ),
+)
+
+apply_voter_preset_tool = FunctionTool(
+    apply_voter_preset,
+    description=(
+        "Apply a voter preset configuration. Available presets: default, "
+        "macd_primary, rsi_primary. Changes persist across sessions."
+    ),
+)
+
+promote_voter_tool = FunctionTool(
+    promote_voter,
+    description=(
+        "Promote a voter one rank higher in the ranking. "
+        "Higher-ranked voters have more influence on decisions."
+    ),
+)
+
+demote_voter_tool = FunctionTool(
+    demote_voter,
+    description=(
+        "Demote a voter one rank lower in the ranking. "
+        "Lower-ranked voters have less influence on decisions."
+    ),
+)
+
+set_voter_role_tool = FunctionTool(
+    set_voter_role,
+    description=(
+        "Change a voter's role to 'active' (participates in decisions) "
+        "or 'review' (shown for reference but doesn't vote)."
+    ),
+)
+
 
 # ============================================================================
 # Tool Collection for Registry
 # ============================================================================
 
 CLI_VOTER_TOOLS = [
+    # Configuration display
     show_voter_config_tool,
     explain_voting_logic_tool,
     explain_macd_params_tool,
@@ -451,10 +661,18 @@ CLI_VOTER_TOOLS = [
     get_voter_parameters_tool,
     compare_with_traditional_tool,
     show_signal_interpretation_tool,
+    # Ranked voting management (Issue #488)
+    list_voters_tool,
+    show_voting_info_tool,
+    list_voter_presets_tool,
+    apply_voter_preset_tool,
+    promote_voter_tool,
+    demote_voter_tool,
+    set_voter_role_tool,
 ]
 
 __all__ = [
-    # Functions
+    # Configuration display functions
     "show_voter_config",
     "explain_voting_logic",
     "explain_macd_params",
@@ -462,7 +680,15 @@ __all__ = [
     "get_voter_parameters",
     "compare_with_traditional",
     "show_signal_interpretation",
-    # Tools
+    # Ranked voting management functions (Issue #488)
+    "list_voters",
+    "show_voting_info",
+    "list_voter_presets",
+    "apply_voter_preset",
+    "promote_voter",
+    "demote_voter",
+    "set_voter_role",
+    # Configuration display tools
     "show_voter_config_tool",
     "explain_voting_logic_tool",
     "explain_macd_params_tool",
@@ -470,6 +696,14 @@ __all__ = [
     "get_voter_parameters_tool",
     "compare_with_traditional_tool",
     "show_signal_interpretation_tool",
+    # Ranked voting management tools (Issue #488)
+    "list_voters_tool",
+    "show_voting_info_tool",
+    "list_voter_presets_tool",
+    "apply_voter_preset_tool",
+    "promote_voter_tool",
+    "demote_voter_tool",
+    "set_voter_role_tool",
     # Collection
     "CLI_VOTER_TOOLS",
 ]
