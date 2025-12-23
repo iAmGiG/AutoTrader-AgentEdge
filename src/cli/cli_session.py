@@ -23,11 +23,12 @@ import yaml
 # Add imports for new features
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 # Import CLI messages configuration
-from config_defaults.message_loader import CLIMessages as MSG
+from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 
 from src.cli.commands import CommandRegistry
 from src.cli.commands.account_commands import get_account_commands
 from src.cli.commands.timeframe_commands import get_timeframe_commands
+from src.cli.handlers import TradeHandler
 
 # Issue #459: Import extracted tool functions for Phase 1E integration
 from src.cli.tools.alert_tools import show_alerts
@@ -49,24 +50,11 @@ from src.cli.tools.order_tools import (
 from src.cli.tools.portfolio_tools import show_portfolio
 from src.cli.tools.scheduler_tools import show_scheduler
 from src.cli.utils.help_system import HelpSystem
-from src.cli.utils.input_parser import (
-    BUY_INDICATORS,
-    SELL_INDICATORS,
-    detect_user_intent,
-    extract_ticker_from_query,
-)
-from src.cli.utils.suggestion_display import (
-    calc_pct,
-    display_position_context,
-    display_result,
-    display_suggestion,
-)
+from src.cli.utils.input_parser import extract_ticker_from_query
 from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
-from src.core.models import Signal
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.scheduling.daily_scheduler import DailyScheduler
 from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
-from src.utils.date_utils import now_iso
 
 # Import safe_print for Unicode handling
 from src.utils.safe_print import safe_print
@@ -191,6 +179,15 @@ class CLISession:
 
         # Educational tips for novice users (loaded from config)
         self.trading_tips = get_tips_dict()
+
+        # Issue #509: Initialize TradeHandler for modular trade processing
+        self.trade_handler = TradeHandler(
+            orchestrator=orchestrator,
+            account_monitor=self.account_monitor,
+            trading_cycle=self.trading_cycle,
+            autonomy_mode=self.autonomy_mode,
+            user_id=self.user_id,
+        )
 
     def _setup_history(self):
         """
@@ -396,7 +393,7 @@ class CLISession:
         """Display educational trading tips. Issue #436: Uses config-based tips."""
         display_trading_tips()
 
-    async def _classify_intent(self, user_input: str) -> dict:
+    async def _classify_intent(self, user_input: str) -> dict:  # noqa: C901
         """
         Use LLM to classify user intent and resolve company names to tickers dynamically.
 
@@ -531,7 +528,7 @@ class CLISession:
                 "confidence": 0.0,
             }
 
-    async def _resolve_ticker_with_llm(self, user_input: str) -> tuple:
+    async def _resolve_ticker_with_llm(self, user_input: str) -> tuple:  # noqa: C901
         """
         Use LLM (gpt-4o-mini) to extract company name and resolve to ticker.
 
@@ -831,443 +828,16 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         """
         Process user trade request via orchestrator.
 
+        Issue #509: Delegates to TradeHandler for modular processing.
         Issue #347: Respects user intent - when user says "buy", we show "BUY (as requested)"
         and treat signals as context, not override.
 
         Args:
             user_input: User's natural language input
         """
-        print(MSG.ANALYZING_TRADE)
-
-        try:
-            # Issue #347: Detect user intent EARLY so we can respect it
-            original_input = user_input.lower().strip()
-            user_intent = detect_user_intent(original_input)
-
-            # Step 1: Process request via orchestrator
-            decision = await self.orchestrator.process_request(user_input, self.user_id)
-
-            # Step 2: Check position context before suggestion
-            position = self._check_position_for_ticker(decision.suggestion.ticker)
-
-            # Step 2a: Display position context
-            display_position_context(decision.suggestion.ticker, position)
-
-            # Step 2b: Check for signal vs user intent mismatch
-            # If analyzer suggests SELL but no position exists, check user's explicit intent
-            if decision.suggestion.signal.value.upper() == "SELL" and not position:
-                # Check if user explicitly wants to BUY/LONG (override signal)
-                user_wants_buy = any(indicator in original_input for indicator in BUY_INDICATORS)
-
-                # Check if user explicitly wants to SELL/SHORT
-                user_wants_sell = any(indicator in original_input for indicator in SELL_INDICATORS)
-
-                if user_wants_buy:
-                    # User explicitly wants to go LONG despite SELL signal
-                    # Human-in-loop: respect their intent but show them the conflict
-                    print(f"\n{MSG.EMOJI.get('warning', '⚠️')} SIGNAL CONFLICT DETECTED")
-                    print("   → You requested: LONG (BUY) position")
-                    print("   → Technical analysis suggests: SHORT (SELL)")
-                    print(
-                        f"\n📊 Technical Indicators (based on {decision.suggestion.reasoning[0] if decision.suggestion.reasoning else 'MACD+RSI'}):"
-                    )
-
-                    # Show the actual technical analysis
-                    display_suggestion(
-                        decision.suggestion, position, override_mode="USER_OVERRIDE_LONG"
-                    )
-
-                    print("\n💡 Human-in-Loop Decision:")
-                    print("   → The system recommends SELL, but you want to go LONG")
-                    print("   → This could be based on news, fundamentals, or your own analysis")
-                    print("   → Remember: Technical indicators are backward-looking")
-
-                    proceed = (
-                        input(
-                            f"\n   Do you still want to BUY {decision.suggestion.ticker}? [yes/no]: "
-                        )
-                        .strip()
-                        .lower()
-                    )
-
-                    if proceed in ["yes", "y", "1"]:
-                        # User confirms override
-                        # Don't reprocess! That causes infinite loop. Instead, flip the signal and continue.
-                        print(
-                            f"\n{MSG.EMOJI['info']} ✅ User override confirmed - placing BUY order"
-                        )
-                        print("   → Overriding SELL signal from technical analysis")
-
-                        # Flip the signal to BUY (user override)
-                        decision.suggestion.signal = Signal.BUY
-
-                        # Invert stop/target for BUY (were calculated for SELL)
-                        # For BUY: stop < entry, target > entry
-                        # For SELL: stop > entry, target < entry
-                        entry = decision.suggestion.entry_price
-                        old_stop = decision.suggestion.stop_loss
-                        old_target = decision.suggestion.take_profit
-
-                        # Calculate BUY stop/target (inverse of SELL)
-                        stop_distance = abs(old_stop - entry)
-                        target_distance = abs(old_target - entry)
-
-                        decision.suggestion.stop_loss = round(entry - stop_distance, 2)
-                        decision.suggestion.take_profit = round(entry + target_distance, 2)
-
-                        print("\n   📊 Adjusted for BUY:")
-                        print(f"      Entry:  ${entry:.2f}")
-                        print(
-                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
-                        )
-                        print(
-                            f"      Target: ${decision.suggestion.take_profit:.2f} ({calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
-                        )
-                        print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
-
-                        # Continue to display and confirmation (no return, fall through)
-                    else:
-                        print(
-                            f"\n{MSG.EMOJI['info']} Order cancelled. You can review alternatives:"
-                        )
-                        print(
-                            f"   • Type 'review {decision.suggestion.ticker}' for detailed analysis"
-                        )
-                        print(
-                            f"   • Type 'short {decision.suggestion.ticker}' to follow the SELL signal"
-                        )
-                        return
-
-                elif not user_wants_sell:
-                    # User didn't explicitly ask to sell - they likely asked for analysis
-                    # Examples: "pltr", "review pltr", "analyze pltr at market price", "is pltr good?"
-                    # Ask for clarification using simple language
-                    print(
-                        f"\n{MSG.EMOJI.get('question', '❓')} The analysis suggests {decision.suggestion.ticker} might go DOWN, but you don't own any shares yet."
-                    )
-                    print("\n   What would you like to do?")
-                    print("   1. BUY shares (bet the stock will go UP)")
-                    print("   2. SHORT shares (bet the stock will go DOWN - advanced strategy)")
-                    print("   3. Just see the analysis (don't trade)")
-
-                    clarification = (
-                        input("\n   Your choice [1/2/3 or buy/short/review]: ").strip().lower()
-                    )
-
-                    # Accept various formats: numbers, keywords, or full words
-                    if clarification in ["1", "buy", "b", "long", "l", "up", "bullish"]:
-                        # User wants to buy - flip signal in place (don't reprocess!)
-                        print(
-                            f"\n{MSG.EMOJI['info']} Got it! Preparing BUY order for {decision.suggestion.ticker}..."
-                        )
-
-                        # Flip the signal to BUY
-                        decision.suggestion.signal = Signal.BUY
-
-                        # Invert stop/target for BUY (were calculated for SELL)
-                        entry = decision.suggestion.entry_price
-                        old_stop = decision.suggestion.stop_loss
-                        old_target = decision.suggestion.take_profit
-
-                        stop_distance = abs(old_stop - entry)
-                        target_distance = abs(old_target - entry)
-
-                        decision.suggestion.stop_loss = round(entry - stop_distance, 2)
-                        decision.suggestion.take_profit = round(entry + target_distance, 2)
-
-                        print("\n   📊 Adjusted for BUY:")
-                        print(f"      Entry:  ${entry:.2f}")
-                        print(
-                            f"      Stop:   ${decision.suggestion.stop_loss:.2f} ({calc_pct(entry, decision.suggestion.stop_loss):.1f}%)"
-                        )
-                        print(
-                            f"      Target: ${decision.suggestion.take_profit:.2f} ({calc_pct(entry, decision.suggestion.take_profit):.1f}%)"
-                        )
-                        print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
-
-                        # Continue to display and confirmation (no return, fall through)
-                    elif clarification in ["2", "short", "s", "down", "bearish", "sell"]:
-                        # User explicitly wants to short - explain limitation
-                        print(
-                            f"\n{MSG.EMOJI['warning']} SHORT SELLING is not currently supported by this system."
-                        )
-                        print("   ℹ️  Short selling = betting a stock will go down (advanced/risky)")
-                        print(
-                            "   → This system only supports buying stocks (betting they'll go up)"
-                        )
-                        print("   → Suggestion cancelled")
-                        return
-                    elif clarification in [
-                        "3",
-                        "review",
-                        "r",
-                        "analysis",
-                        "just show",
-                        "view",
-                        "look",
-                    ]:
-                        # Just show the analysis, don't execute
-                        print(
-                            f"\n{MSG.EMOJI['info']} Showing analysis for {decision.suggestion.ticker} (information only, no trade)"
-                        )
-                        display_suggestion(decision.suggestion, position)
-                        print(
-                            f"\n   💡 Tip: If you want to trade on this analysis, type 'buy {decision.suggestion.ticker}' or 'short {decision.suggestion.ticker}'"
-                        )
-                        return
-                    else:
-                        # Unclear response or cancel
-                        print(f"\n{MSG.EMOJI['info']} No problem! Cancelled.")
-                        print(
-                            f"   💡 Tip: You can be specific next time, e.g., 'buy {decision.suggestion.ticker}' or 'analyze {decision.suggestion.ticker}'"
-                        )
-                        return
-                else:
-                    # User explicitly asked to sell/close - block it since no position exists
-                    print(
-                        f"\n{MSG.EMOJI['error']} Cannot SELL or CLOSE position in {decision.suggestion.ticker}"
-                    )
-                    print(
-                        f"   → You don't currently own any shares of {decision.suggestion.ticker}"
-                    )
-                    print("   → To sell a stock, you must buy it first")
-                    print(
-                        f"\n   💡 Did you mean to SHORT {decision.suggestion.ticker}? (bet it will go down)"
-                    )
-                    print("      Short selling is not currently supported by this system.")
-                    return  # Exit early
-
-            elif decision.suggestion.signal.value.upper() == "SELL" and position:
-                # Position exists - show brief warning reminder
-                print(
-                    f"\n{MSG.EMOJI['warning']} SELL will close your position in {decision.suggestion.ticker}"
-                )
-
-            # Step 2c: Handle HOLD signal with explicit user intent (Issue #474)
-            # When signals say HOLD but user explicitly wants to trade
-            elif decision.suggestion.signal.value.upper() == "HOLD":
-                user_wants_buy = any(indicator in original_input for indicator in BUY_INDICATORS)
-                user_wants_sell = any(indicator in original_input for indicator in SELL_INDICATORS)
-
-                if user_wants_buy or user_wants_sell:
-                    # User explicitly wants to trade despite HOLD signal
-                    print(f"\n{MSG.EMOJI.get('info', 'ℹ️')} SIGNALS INCONCLUSIVE")
-                    print("   → Technical indicators suggest: HOLD (no clear direction)")
-                    print(f"   → You requested: {'BUY' if user_wants_buy else 'SELL'}")
-
-                    # Get current price for trade setup
-                    current_price = getattr(decision.suggestion, "current_price", None)
-                    if current_price is None or current_price <= 0:
-                        # Try to get from indicators or reasoning
-                        indicators = getattr(decision.suggestion, "indicators", {})
-                        current_price = indicators.get("current_price", 0.0)
-
-                    if current_price and current_price > 0:
-                        # Generate entry/stop/target from current price
-                        # Use mode params if available, otherwise defaults
-                        try:
-                            from src.core.trading_modes import get_mode_manager
-
-                            mode_params = get_mode_manager().get_parameters()
-                            stop_pct = mode_params.stop_loss
-                            target_pct = mode_params.take_profit
-                            position_size_pct = mode_params.position_size
-                        except Exception:
-                            stop_pct = 0.05  # 5% default
-                            target_pct = 0.10  # 10% default
-                            position_size_pct = 0.05  # 5% of portfolio default
-
-                        entry_price = round(current_price, 2)
-
-                        if user_wants_buy:
-                            decision.suggestion.signal = Signal.BUY
-                            stop_loss = round(current_price * (1 - stop_pct), 2)
-                            take_profit = round(current_price * (1 + target_pct), 2)
-                        else:
-                            decision.suggestion.signal = Signal.SELL
-                            stop_loss = round(current_price * (1 + stop_pct), 2)
-                            take_profit = round(current_price * (1 - target_pct), 2)
-
-                        decision.suggestion.entry_price = entry_price
-                        decision.suggestion.stop_loss = stop_loss
-                        decision.suggestion.take_profit = take_profit
-
-                        # Calculate quantity if it's 0 (Issue #474)
-                        if decision.suggestion.recommended_quantity == 0:
-                            try:
-                                # Get buying power and calculate position size
-                                if self.account_monitor:
-                                    account = self.account_monitor.get_account_info()
-                                    buying_power = float(account.get("buying_power", 0))
-                                    # Use position_size % of buying power
-                                    trade_value = buying_power * position_size_pct
-                                    quantity = int(trade_value / entry_price)
-                                    if quantity > 0:
-                                        decision.suggestion.recommended_quantity = quantity
-                                        # Update portfolio impact metrics
-                                        max_loss = quantity * abs(entry_price - stop_loss)
-                                        decision.suggestion.max_loss_usd = round(max_loss, 2)
-                                        potential_gain = quantity * abs(take_profit - entry_price)
-                                        if max_loss > 0:
-                                            decision.suggestion.risk_reward_ratio = round(
-                                                potential_gain / max_loss, 2
-                                            )
-                            except Exception as e:
-                                logger.debug(f"Could not calculate quantity: {e}")
-
-                        # Clear stale warning about no entry price (we just set one)
-                        decision.suggestion.warnings = [
-                            w for w in decision.suggestion.warnings if "No entry price" not in w
-                        ]
-
-                        print("\n   📊 Generated trade plan:")
-                        print(f"      Entry:  ${entry_price:.2f}")
-                        print(
-                            f"      Stop:   ${stop_loss:.2f} ({calc_pct(entry_price, stop_loss):.1f}%)"
-                        )
-                        print(
-                            f"      Target: ${take_profit:.2f} ({calc_pct(entry_price, take_profit):.1f}%)"
-                        )
-                        print(f"      Quantity: {decision.suggestion.recommended_quantity} shares")
-                    else:
-                        print(
-                            f"\n{MSG.EMOJI['error']} Cannot determine current price for {decision.suggestion.ticker}"
-                        )
-                        print("   → Try refreshing market data or check during market hours")
-                        return
-
-            # Step 3: Display suggestion
-            # Issue #347: Determine override mode based on user intent
-            override_mode = None
-            if user_intent == "buy":
-                override_mode = "USER_OVERRIDE_LONG"
-            elif user_intent == "sell":
-                override_mode = "USER_OVERRIDE_SHORT"
-            display_suggestion(decision.suggestion, position, override_mode)
-
-            # Step 3a: Check if this is review-only (no execution intent)
-            # Parse the original input to see if user explicitly wanted to execute
-            parsed_request = await self.orchestrator.parser.parse(user_input, self.user_id)
-            is_review_only = parsed_request.action == "review"
-
-            # Step 3b: Get user confirmation (if confirm mode AND user wants to execute)
-            if is_review_only:
-                # Review-only: Just show analysis, don't prompt for execution
-                print("\n📊 Analysis complete. No trade execution requested.")
-                decision.approved = False
-            elif self.autonomy_mode == "confirm":
-                approved = self._get_confirmation()
-                decision.approved = approved
-            else:
-                # Auto mode - execute immediately
-                decision.approved = True
-                print(MSG.AUTO_EXECUTING)
-
-            # Step 4: Execute if approved
-            if decision.approved:
-                result = await self.orchestrator.execute_decision(decision)
-                display_result(result)
-
-                # Issue #385: Update local state with stop/target immediately after trade
-                self._update_local_state_after_trade(decision, result)
-            elif not is_review_only:
-                # Only show "cancelled" if user was asked to confirm but declined
-                # Don't show for review-only requests (nothing to cancel)
-                print(MSG.TRADE_CANCELLED)
-
-        except (ValueError, OSError, RuntimeError, AttributeError) as e:
-            # Sanitize error message for user display
-            sanitized_msg = _sanitize_error_message(e)
-            error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
-            print(f"\n{error_prefix} {sanitized_msg}")
-
-            # Log full error details for debugging
-            logger.debug(f"Request processing error: {e}", exc_info=True)
-
-    def _check_position_for_ticker(self, ticker: str) -> Optional[dict]:
-        """
-        Check if user currently holds a position in the ticker.
-
-        Args:
-            ticker: Stock symbol to check
-
-        Returns:
-            Position dict if found, None otherwise
-        """
-        try:
-            if not self.account_monitor:
-                return None
-
-            positions = self.account_monitor.get_positions()
-            return next((p for p in positions if p.get("symbol") == ticker), None)
-        except (AttributeError, ValueError, OSError) as e:
-            logger.warning(f"Failed to check position for {ticker}: {e}")
-            return None
-
-    def _get_confirmation(self) -> bool:
-        """
-        Get user confirmation.
-
-        Returns:
-            True if user approves, False otherwise
-        """
-        while True:
-            response = input(MSG.CONFIRM_PROMPT).strip().lower()
-
-            if response in ["yes", "y"]:
-                return True
-            elif response in ["no", "n"]:
-                return False
-            else:
-                print(MSG.CONFIRM_INVALID)
-
-    def _update_local_state_after_trade(self, decision, result):
-        """
-        Update local state (cost_efficient_positions.json) after successful trade.
-
-        This ensures stop/target prices are immediately visible in CLI order displays,
-        rather than waiting for the next reconciliation routine.
-
-        Issue #385: Bracket Order Stop-Loss Not Logged to Local State on Placement
-
-        Args:
-            decision: TradeDecision with suggestion containing stop/target prices
-            result: OrderResult from execution
-        """
-        if not result.success:
-            return
-
-        if not self.trading_cycle:
-            logger.warning("No trading_cycle available - cannot update local state")
-            return
-
-        try:
-
-            suggestion = decision.suggestion
-            symbol = suggestion.ticker
-            quantity = result.quantity or suggestion.recommended_quantity
-
-            # Add or update position in local state
-            self.trading_cycle.local_state["positions"][symbol] = {
-                "entry_price": suggestion.entry_price,
-                "quantity": quantity,
-                "entry_time": now_iso(),
-                "source": "CLI_TRADE",
-                "stop_price": suggestion.stop_loss,
-                "target_price": suggestion.take_profit,
-                "order_id": result.entry_order_id,
-            }
-
-            # Save state immediately
-            self.trading_cycle.save_local_state()
-
-            logger.info(
-                f"Updated local state for {symbol}: "
-                f"stop=${suggestion.stop_loss:.2f}, target=${suggestion.take_profit:.2f}"
-            )
-
-        except (AttributeError, ValueError, KeyError) as e:
-            logger.warning(f"Failed to update local state after trade: {e}")
+        # Sync autonomy mode in case it changed
+        self.trade_handler.set_autonomy_mode(self.autonomy_mode)
+        await self.trade_handler.handle_trade_request(user_input)
 
     def _get_stop_loss_pct(self) -> float:
         """
@@ -1381,7 +951,7 @@ Scope: Only resolve to real, tradable companies. Return found=false for ambiguou
         output = show_position_orders(ticker)
         print(output)
 
-    async def _handle_cancel_request(self, user_input: str):
+    async def _handle_cancel_request(self, user_input: str):  # noqa: C901
         """
         Handle order cancellation requests.
 
