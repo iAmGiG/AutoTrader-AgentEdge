@@ -10,7 +10,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ...cache import cache_adapter
+from src.cache import cache_adapter
 
 # Primary data source: Alpaca
 try:
