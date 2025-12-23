@@ -181,15 +181,19 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **In Progress**:
 
-- [x] **CLI FunctionTool Infrastructure** (#433, #455, #456) - ✅ PHASE 1 COMPLETE (Dec 2025)
-  - ✅ Tool registry with category-based organization
-  - ✅ Auto-discovery mechanism for tool modules
-  - ✅ Mode tools: 6 tools wrapping TradingModeManager
-  - ✅ Timeframe tools: 6 tools wrapping TimeframeCommands
-  - 🔜 Phase 2: Extract remaining CLI commands (account, portfolio, order, scheduler, alert)
-  - 🔜 Phase 3: Update cli_session.py to use tools
-  - Branch: `feature/cli-tools-455-456`
-  - Goal: Refactor 3000-line cli_session.py into modular, testable, agent-compatible tools
+- [x] **CLI FunctionTool Infrastructure** (#433, #455, #456, #457, #458) - ✅ PHASE 2 COMPLETE (Dec 2025)
+  - ✅ Tool registry with 17 modular tool files (7287 lines total)
+  - ✅ cli_session.py reduced from 2800+ to 1657 lines
+  - ✅ Extracted: mode, timeframe, account, portfolio, order, scheduler, alert, execution_mode
+  - ✅ Additional: voter, backup, gtt, watchlist, trailing_stop, entry_planning, user_alert
+  - 🔜 Phase 3: CLI command integration for new tool groups
+  - 📁 Files: `src/cli/tools/*.py` (17 tool modules)
+
+- [ ] **CLI Command Group Integration** (#488, #489, #490) - 🚧 IN PROGRESS
+  - [ ] #488: `/voter` commands for ranked voting management
+  - [ ] #489: `/timeframe` multi-tf presets (trend_following, intraday, position)
+  - [ ] #490: `/backup` commands for database management
+  - Target: Dec 2025
 
 - [ ] **Execution Mode Switching** (#332)
   - `/toggle` command for quick mode switching
@@ -201,7 +205,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Move hardcoded values to config files
   - Cleaner parameter management
   - Easier testing and deployment
-  - Target: Dec 2025
+  - Target: Q1 2026
 
 ### Phase 3B: Signal Enhancement 🔜 PLANNED (Q1 2026)
 
