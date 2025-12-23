@@ -24,6 +24,8 @@ from autogen_core.tools import FunctionTool
 from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 from config_defaults.message_loader import get_pl_emoji
 
+from src.utils.safe_print import get_symbol
+
 logger = logging.getLogger(__name__)
 
 
@@ -295,29 +297,31 @@ def format_position_details(
     )
 
     # Add exit levels if available
-    lines.append("\n📍 Exit Levels:")
+    lines.append(f"\n{get_symbol('TARGET')} Exit Levels:")
 
     if position.stop_price:
         distance = ((position.current_price - position.stop_price) / position.current_price) * 100
         lines.append(
-            f"   🔴 Stop Loss: ${position.stop_price:.2f} "
+            f"   {get_symbol('RED')} Stop Loss: ${position.stop_price:.2f} "
             f"(-{stop_loss_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
         )
     else:
-        lines.append("   🔴 Stop Loss: Not set")
+        lines.append(f"   {get_symbol('RED')} Stop Loss: Not set")
 
     if position.target_price:
         distance = ((position.target_price - position.current_price) / position.current_price) * 100
         lines.append(
-            f"   🟢 Take Profit: ${position.target_price:.2f} "
+            f"   {get_symbol('GREEN')} Take Profit: ${position.target_price:.2f} "
             f"(+{take_profit_pct * 100:.0f}% from entry, {distance:+.1f}% away)"
         )
     else:
-        lines.append("   🟢 Take Profit: Not set")
+        lines.append(f"   {get_symbol('GREEN')} Take Profit: Not set")
 
     # Add note about Alpaca limitations
     if position.stop_price and not position.target_price:
-        lines.append("\n   ℹ️  Note: Stop calculated from entry (Alpaca hides bracket order legs)")
+        lines.append(
+            f"\n   {get_symbol('INFO')} Note: Stop calculated from entry (Alpaca hides bracket order legs)"
+        )
         lines.append("      Verify stop order exists on Alpaca dashboard")
 
     return "\n".join(lines)

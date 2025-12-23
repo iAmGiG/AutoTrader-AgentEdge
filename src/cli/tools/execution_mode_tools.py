@@ -19,6 +19,8 @@ from typing import Any, Dict
 
 from autogen_core.tools import FunctionTool
 
+from src.utils.safe_print import get_symbol
+
 logger = logging.getLogger(__name__)
 
 # Category constant for execution mode tools
@@ -76,7 +78,7 @@ def show_execution_mode() -> str:
         current_mode = orchestrator.execution_mode
 
         lines = [
-            f"\n📋 Current Execution Mode: {current_mode.value.upper()}",
+            f"\n{get_symbol('INFO')} Current Execution Mode: {current_mode.value.upper()}",
             "",
             "Mode Descriptions:",
             "  • CONFIRM  - Requires human approval for each trade",
@@ -89,10 +91,10 @@ def show_execution_mode() -> str:
         return "\n".join(lines)
 
     except RuntimeError:
-        return "❌ Execution mode tools not initialized"
+        return f"{get_symbol('ERROR')} Execution mode tools not initialized"
     except Exception as e:
         logger.error(f"Error showing execution mode: {e}")
-        return f"❌ Error: {e}"
+        return f"{get_symbol('ERROR')} Error: {e}"
 
 
 def set_execution_mode(mode: str) -> Dict[str, Any]:
@@ -234,14 +236,14 @@ def format_mode_change_result(result: Dict[str, Any]) -> str:
         Formatted display string
     """
     if result["status"] == "error":
-        lines = [f"❌ {result.get('error', 'Unknown error')}"]
+        lines = [f"{get_symbol('ERROR')} {result.get('error', 'Unknown error')}"]
         if "valid_modes" in result:
-            lines.append("ℹ️  Valid modes: " + ", ".join(result["valid_modes"]))
+            lines.append(f"{get_symbol('INFO')} Valid modes: " + ", ".join(result["valid_modes"]))
         return "\n".join(lines)
 
     if result["status"] == "requires_confirmation":
         return (
-            "\n⚠️  WARNING: Switching to AUTO mode\n"
+            f"\n{get_symbol('WARNING')} WARNING: Switching to AUTO mode\n"
             "   This will execute trades automatically without confirmation.\n"
             "   Risk limits and position sizing will still apply."
         )
@@ -249,7 +251,7 @@ def format_mode_change_result(result: Dict[str, Any]) -> str:
     # Success
     old_mode = result.get("old_mode", "unknown").upper()
     new_mode = result.get("new_mode", "unknown").upper()
-    lines = [f"\n✅ Execution mode changed: {old_mode} → {new_mode}"]
+    lines = [f"\n{get_symbol('SUCCESS')} Execution mode changed: {old_mode} -> {new_mode}"]
 
     # Mode-specific guidance
     if new_mode == "CONFIRM":

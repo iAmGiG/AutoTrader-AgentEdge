@@ -22,6 +22,7 @@ from src.core.trading_modes import (
     get_mode_parameters,
     set_trading_mode,
 )
+from src.utils.safe_print import get_symbol
 
 # ============================================================================
 # Pure Function Wrappers
@@ -48,18 +49,18 @@ def list_trading_modes() -> str:
     all_modes = manager.get_all_modes()
     current = get_current_mode()
 
-    output = "📊 Available Trading Modes:\n"
+    output = f"{get_symbol('INFO')} Available Trading Modes:\n"
     output += "=" * 50 + "\n"
 
     for mode_name, params in all_modes.items():
-        marker = "✓" if params.mode == current else " "
+        marker = "*" if params.mode == current else " "
         output += f"  [{marker}] {mode_name:15s} - {params.description}\n"
         output += f"      Position Size: {params.max_position_pct:.1%}, "
         output += f"Stop: {params.stop_loss:.1%}, "
         output += f"Target: {params.take_profit:.1%}\n"
 
     output += "\n" + "-" * 50 + "\n"
-    output += f"📍 Current: {current.value}\n"
+    output += f"{get_symbol('TARGET')} Current: {current.value}\n"
 
     return output
 
@@ -87,9 +88,9 @@ def set_mode(mode: str) -> str:
         trading_mode = TradingMode.from_string(mode)
         old_mode = get_current_mode()
         set_trading_mode(trading_mode)
-        return f"✅ Trading mode changed from {old_mode.value} to {trading_mode.value}"
+        return f"{get_symbol('SUCCESS')} Trading mode changed from {old_mode.value} to {trading_mode.value}"
     except ValueError as e:
-        return f"❌ {str(e)}"
+        return f"{get_symbol('ERROR')} {str(e)}"
 
 
 def show_current_mode() -> str:
@@ -107,7 +108,7 @@ def show_current_mode() -> str:
     current = get_current_mode()
     params = manager.get_parameters()
 
-    output = f"📍 Current Trading Mode: {current.value}\n"
+    output = f"{get_symbol('TARGET')} Current Trading Mode: {current.value}\n"
     output += "=" * 50 + "\n"
     output += f"{params.description}\n\n"
 
@@ -151,7 +152,7 @@ def show_mode_comparison() -> str:
     all_modes = manager.get_all_modes()
     current = get_current_mode()
 
-    output = "📊 Trading Mode Comparison:\n"
+    output = f"{get_symbol('INFO')} Trading Mode Comparison:\n"
     output += "=" * 80 + "\n\n"
 
     output += (
@@ -160,7 +161,7 @@ def show_mode_comparison() -> str:
     output += "-" * 80 + "\n"
 
     for mode_name, params in all_modes.items():
-        status = "📍 Current" if params.mode == current else ""
+        status = f"{get_symbol('TARGET')} Current" if params.mode == current else ""
         output += f"{mode_name:<15} "
         output += f"{params.max_position_pct:>8.1%}  "
         output += f"{params.stop_loss:>6.1%}  "
@@ -235,9 +236,9 @@ def validate_mode(mode: str) -> str:
     try:
         trading_mode = TradingMode.from_string(mode)
         params = get_mode_parameters(trading_mode)
-        return f"✅ Valid mode: {trading_mode.value} - {params.description}"
+        return f"{get_symbol('SUCCESS')} Valid mode: {trading_mode.value} - {params.description}"
     except ValueError as e:
-        return f"❌ {str(e)}"
+        return f"{get_symbol('ERROR')} {str(e)}"
 
 
 # ============================================================================

@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional
 
 from autogen_core.tools import FunctionTool
 
+from src.utils.safe_print import get_symbol
+
 logger = logging.getLogger(__name__)
 
 
@@ -460,11 +462,11 @@ def show_orders() -> str:
     """Display all open orders with hierarchical formatting."""
     result = list_orders(status="open", include_local_state=True)
     if result["status"] == "error":
-        return f"❌ Error: {result.get('error', 'Unknown')}"
+        return f"{get_symbol('ERROR')} Error: {result.get('error', 'Unknown')}"
     if result["count"] == 0:
-        return "ℹ️  No open orders"
+        return f"{get_symbol('INFO')} No open orders"
 
-    lines = [f"📋 Open Orders ({result['count']} total)", ""]
+    lines = [f"{get_symbol('INFO')} Open Orders ({result['count']} total)", ""]
     by_symbol = result.get("by_symbol", {})
     local_state = result.get("local_state", {})
     has_local = False
@@ -496,18 +498,18 @@ def show_orders() -> str:
             conn = "└─" if i == len(limits) - 1 and not stops and not others else "├─"
             local_mark = " *" if str(order.get("id", "")).startswith("local") else ""
             lines.append(
-                f"│ {conn} 🎯 PT: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}"
+                f"│ {conn} {get_symbol('TARGET')} PT: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}"
             )
         for i, order in enumerate(stops):
             conn = "└─" if i == len(stops) - 1 and not others else "├─"
             local_mark = " *" if str(order.get("id", "")).startswith("local") else ""
             lines.append(
-                f"│ {conn} 🛑 SL: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}"
+                f"│ {conn} {get_symbol('STOP')} SL: {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}{local_mark}"
             )
         for i, order in enumerate(others):
             conn = "└─" if i == len(others) - 1 else "├─"
             lines.append(
-                f"│ {conn} 📌 {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}"
+                f"│ {conn} {get_symbol('INFO')} {order['side']} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}"
             )
         lines.append("")
     if has_local:
@@ -515,28 +517,32 @@ def show_orders() -> str:
     return "\n".join(lines)
 
 
-def show_position_orders(ticker: str) -> str:
+def show_position_orders(ticker: str) -> str:  # noqa: C901
     """Display detailed orders for a specific position."""
     result = get_position_orders(ticker)
     if result["status"] == "error":
-        return f"❌ Error: {result.get('error', 'Unknown')}"
+        return f"{get_symbol('ERROR')} Error: {result.get('error', 'Unknown')}"
     if result["status"] == "no_orders":
-        return f"ℹ️  No orders found for {result['ticker']}"
-    lines = [f"📋 {result['ticker']} Orders", ""]
+        return f"{get_symbol('INFO')} No orders found for {result['ticker']}"
+    lines = [f"{get_symbol('INFO')} {result['ticker']} Orders", ""]
     entry_orders = result.get("entry_orders", [])
     if entry_orders:
-        lines.append("✅ ENTRY (Filled)")
+        lines.append(f"{get_symbol('SUCCESS')} ENTRY (Filled)")
         for order in entry_orders[:3]:
             lines.append(
                 f"   {order.get('side', '?').upper()} {order.get('qty', 0)} @ ${order.get('price', 0):.2f}"
             )
     open_orders = result.get("open_orders", [])
     if open_orders:
-        lines.extend(["", "🟡 OPEN Exit Orders"])
+        lines.extend(["", f"{get_symbol('YELLOW')} OPEN Exit Orders"])
         for order in open_orders:
             otype = order.get("type", "unknown")
             price = order.get("price", 0)
-            emoji = "🔴" if otype == "stop" else "🟢" if otype == "limit" else "📌"
+            emoji = (
+                get_symbol("RED")
+                if otype == "stop"
+                else get_symbol("GREEN") if otype == "limit" else get_symbol("INFO")
+            )
             label = (
                 "STOP LOSS"
                 if otype == "stop"
@@ -546,15 +552,18 @@ def show_position_orders(ticker: str) -> str:
     local_state = result.get("local_state", {})
     if local_state.get("stop_price") or local_state.get("target_price"):
         if not open_orders:
-            lines.extend(["", "🟡 Exit Orders (from local state)"])
+            lines.extend(["", f"{get_symbol('YELLOW')} Exit Orders (from local state)"])
         if local_state.get("stop_price"):
             lines.extend(
-                [f"   🔴 STOP LOSS: ${local_state['stop_price']:.2f}", "      * Verify on broker"]
+                [
+                    f"   {get_symbol('RED')} STOP LOSS: ${local_state['stop_price']:.2f}",
+                    "      * Verify on broker",
+                ]
             )
         if local_state.get("target_price"):
             lines.extend(
                 [
-                    f"   🟢 TAKE PROFIT: ${local_state['target_price']:.2f}",
+                    f"   {get_symbol('GREEN')} TAKE PROFIT: ${local_state['target_price']:.2f}",
                     "      * Verify on broker",
                 ]
             )

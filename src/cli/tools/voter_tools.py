@@ -96,7 +96,7 @@ def explain_voting_logic() -> str:
         WEAK: One signals → Half position (0.5)
         HOLD: Conflict/Neutral → No position'
     """
-    output = "🗳️ MACD+RSI Voting Logic\n"
+    output = f"{get_symbol('INFO')} MACD+RSI Voting Logic\n"
     output += "=" * 50 + "\n\n"
 
     output += "How It Works:\n"
@@ -190,7 +190,7 @@ def explain_rsi_params() -> str:
         Oversold (30): Buy signal threshold
         Overbought (70): Sell signal threshold'
     """
-    output = "📉 RSI Parameters Explained\n"
+    output = f"{get_symbol('INFO')} RSI Parameters Explained\n"
     output += "=" * 50 + "\n\n"
 
     output += "Current: 14 period, 30/70 thresholds\n"

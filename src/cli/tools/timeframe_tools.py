@@ -16,6 +16,7 @@ from typing import Dict, Optional
 from autogen_core.tools import FunctionTool
 
 from src.cli.commands.timeframe_commands import get_timeframe_commands
+from src.utils.safe_print import get_symbol
 
 # Get singleton instance for all tool functions
 _tf_commands = get_timeframe_commands()
@@ -200,14 +201,18 @@ def list_multi_timeframe_presets() -> str:
         trend_following: 1d (50%), 4h (30%), 1h (20%)
         intraday: 1h (50%), 15m (30%), 5m (20%)'
     """
-    output = "📊 Multi-Timeframe Presets\n"
+    output = f"{get_symbol('INFO')} Multi-Timeframe Presets\n"
     output += "=" * 60 + "\n\n"
 
     current_preset = _current_mode.get("preset")
     current_mode = _current_mode.get("mode", "single")
 
     for name, config in MULTI_TF_PRESETS.items():
-        marker = "📍" if name == current_preset and current_mode == "multi" else "  "
+        marker = (
+            f"{get_symbol('TARGET')}"
+            if name == current_preset and current_mode == "multi"
+            else "  "
+        )
         output += f"{marker} {name}\n"
         output += f"   {config['description']}\n"
 
@@ -220,9 +225,9 @@ def list_multi_timeframe_presets() -> str:
 
     output += "-" * 60 + "\n"
     if current_mode == "multi":
-        output += f"📍 Current: Multi-timeframe ({current_preset})\n"
+        output += f"{get_symbol('TARGET')} Current: Multi-timeframe ({current_preset})\n"
     else:
-        output += "📍 Current: Single timeframe mode\n"
+        output += f"{get_symbol('TARGET')} Current: Single timeframe mode\n"
 
     return output
 
@@ -249,7 +254,7 @@ def set_multi_timeframe_preset(preset: str) -> str:
 
     if preset not in MULTI_TF_PRESETS:
         valid = ", ".join(MULTI_TF_PRESETS.keys())
-        return f"❌ Invalid preset: {preset}. Valid: {valid}"
+        return f"{get_symbol('ERROR')} Invalid preset: {preset}. Valid: {valid}"
 
     config = MULTI_TF_PRESETS[preset]
     _current_mode["mode"] = "multi"
@@ -259,7 +264,7 @@ def set_multi_timeframe_preset(preset: str) -> str:
         [f"{tf} ({int(weight*100)}%)" for tf, weight in config["timeframes"].items()]
     )
 
-    output = f"✅ Switched to multi-timeframe: {preset}\n"
+    output = f"{get_symbol('SUCCESS')} Switched to multi-timeframe: {preset}\n"
     output += f"   {config['description']}\n"
     output += f"   Timeframes: {tf_str}\n"
     output += "-" * 50 + "\n"
@@ -289,14 +294,15 @@ def set_single_timeframe(timeframe: str) -> str:
     # First validate and set the timeframe
     result = _tf_commands.set_timeframe(timeframe)
 
-    if "❌" in result:
+    # Check if result indicates an error (by looking for common error patterns)
+    if "Invalid" in result or "Error" in result or get_symbol("ERROR") in result:
         return result
 
     # Switch mode
     _current_mode["mode"] = "single"
     _current_mode["preset"] = None
 
-    return f"✅ Switched to single timeframe mode: {timeframe}\n" + result
+    return f"{get_symbol('SUCCESS')} Switched to single timeframe mode: {timeframe}\n" + result
 
 
 def show_timeframe_mode() -> str:
@@ -316,7 +322,7 @@ def show_timeframe_mode() -> str:
     """
     mode = _current_mode.get("mode", "single")
 
-    output = "📍 Timeframe Mode\n"
+    output = f"{get_symbol('TARGET')} Timeframe Mode\n"
     output += "=" * 50 + "\n"
 
     if mode == "multi":
@@ -406,11 +412,11 @@ def validate_custom_timeframe(timeframe: str) -> str:
     minutes = _parse_timeframe_to_minutes(timeframe)
 
     if minutes is None:
-        return f"❌ Invalid timeframe: {timeframe}\n\nValid formats: 15m, 1h, 1.5h, 2d, 1w"
+        return f"{get_symbol('ERROR')} Invalid timeframe: {timeframe}\n\nValid formats: 15m, 1h, 1.5h, 2d, 1w"
 
     base_tf = _get_base_timeframe(minutes)
 
-    output = f"✅ Valid custom timeframe: {timeframe}\n"
+    output = f"{get_symbol('SUCCESS')} Valid custom timeframe: {timeframe}\n"
     output += "=" * 50 + "\n"
     output += f"  Total Minutes: {minutes}\n"
     output += f"  Base Timeframe: {base_tf} (for aggregation)\n"

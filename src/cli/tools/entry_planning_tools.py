@@ -19,6 +19,7 @@ from src.trading.instruments.entry_planning import (
     calculate_volume_confirmation,
     find_support_resistance,
 )
+from src.utils.safe_print import get_symbol
 
 # ============================================================================
 # Pure Function Wrappers
@@ -61,7 +62,7 @@ def get_entry_plan(
         ohlcv = fetch_historical(symbol, lookback_days)
 
         if ohlcv is None or len(ohlcv) < 20:
-            return f"❌ Insufficient data for {symbol}. Need at least 20 days."
+            return f"{get_symbol('ERROR')} Insufficient data for {symbol}. Need at least 20 days."
 
         # Get current price from last close
         current_price = float(ohlcv["Close"].iloc[-1])
@@ -76,10 +77,10 @@ def get_entry_plan(
         )
 
         if plan["entry_price"] is None:
-            return f"❌ Could not generate entry plan: {plan.get('plan_quality', 'Unknown error')}"
+            return f"{get_symbol('ERROR')} Could not generate entry plan: {plan.get('plan_quality', 'Unknown error')}"
 
         # Format output
-        output = f"📊 Entry Plan for {symbol} ({direction.upper()})\n"
+        output = f"{get_symbol('INFO')} Entry Plan for {symbol} ({direction.upper()})\n"
         output += "=" * 50 + "\n"
         output += f"  Entry:  ${plan['entry_price']:.2f}\n"
         output += f"  Stop:   ${plan['stop_loss']:.2f}\n"
@@ -105,7 +106,7 @@ def get_entry_plan(
         return output
 
     except Exception as e:
-        return f"❌ Error generating entry plan: {str(e)}"
+        return f"{get_symbol('ERROR')} Error generating entry plan: {str(e)}"
 
 
 def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
@@ -135,13 +136,13 @@ def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
         ohlcv = fetch_historical(symbol, lookback_days)
 
         if ohlcv is None or len(ohlcv) < 20:
-            return f"❌ Insufficient data for {symbol}. Need at least 20 days."
+            return f"{get_symbol('ERROR')} Insufficient data for {symbol}. Need at least 20 days."
 
         levels = find_support_resistance(ohlcv["High"], ohlcv["Low"], lookback=20)
 
         current_price = float(ohlcv["Close"].iloc[-1])
 
-        output = f"📈 Support/Resistance for {symbol}\n"
+        output = f"{get_symbol('CHART')} Support/Resistance for {symbol}\n"
         output += "=" * 40 + "\n"
         output += f"  Current Price: ${current_price:.2f}\n"
         output += "-" * 40 + "\n"
@@ -159,7 +160,7 @@ def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
         return output
 
     except Exception as e:
-        return f"❌ Error getting S/R levels: {str(e)}"
+        return f"{get_symbol('ERROR')} Error getting S/R levels: {str(e)}"
 
 
 def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
@@ -189,11 +190,11 @@ def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
         ohlcv = fetch_historical(symbol, lookback_days)
 
         if ohlcv is None or len(ohlcv) < 20:
-            return f"❌ Insufficient data for {symbol}."
+            return f"{get_symbol('ERROR')} Insufficient data for {symbol}."
 
         vol_data = calculate_volume_confirmation(ohlcv["Volume"], lookback=20)
 
-        output = f"📊 Volume Analysis for {symbol}\n"
+        output = f"{get_symbol('INFO')} Volume Analysis for {symbol}\n"
         output += "=" * 40 + "\n"
         output += f"  Current Volume: {vol_data['current_volume']:,.0f}\n"
         output += f"  20-Day Average: {vol_data['avg_volume']:,.0f}\n"
@@ -201,19 +202,19 @@ def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
         output += "-" * 40 + "\n"
 
         if vol_data["high_volume"]:
-            output += "  Status: 🟢 HIGH VOLUME (>1.5x average)\n"
-            output += "  → Strong conviction, good for entry\n"
+            output += f"  Status: {get_symbol('GREEN')} HIGH VOLUME (>1.5x average)\n"
+            output += "  -> Strong conviction, good for entry\n"
         elif vol_data["above_average"]:
-            output += "  Status: 🟡 ABOVE AVERAGE\n"
-            output += "  → Adequate volume for entry\n"
+            output += f"  Status: {get_symbol('YELLOW')} ABOVE AVERAGE\n"
+            output += "  -> Adequate volume for entry\n"
         else:
-            output += "  Status: 🔴 BELOW AVERAGE\n"
-            output += "  → Low conviction, consider waiting\n"
+            output += f"  Status: {get_symbol('RED')} BELOW AVERAGE\n"
+            output += "  -> Low conviction, consider waiting\n"
 
         return output
 
     except Exception as e:
-        return f"❌ Error analyzing volume: {str(e)}"
+        return f"{get_symbol('ERROR')} Error analyzing volume: {str(e)}"
 
 
 def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
@@ -246,14 +247,14 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
         ohlcv = fetch_historical(symbol, lookback_days)
 
         if ohlcv is None or len(ohlcv) < period + 1:
-            return f"❌ Insufficient data for {symbol}."
+            return f"{get_symbol('ERROR')} Insufficient data for {symbol}."
 
         atr_series = calculate_atr(ohlcv["High"], ohlcv["Low"], ohlcv["Close"], period=period)
         current_atr = float(atr_series.iloc[-1])
         current_price = float(ohlcv["Close"].iloc[-1])
         atr_pct = (current_atr / current_price) * 100
 
-        output = f"📉 ATR Analysis for {symbol}\n"
+        output = f"{get_symbol('INFO')} ATR Analysis for {symbol}\n"
         output += "=" * 40 + "\n"
         output += f"  Current Price: ${current_price:.2f}\n"
         output += f"  ATR ({period}):     ${current_atr:.2f}\n"
@@ -262,14 +263,14 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
 
         # Interpret volatility level
         if atr_pct < 1.5:
-            output += "  Volatility: 🟢 LOW\n"
-            output += "  → Tighter stops appropriate\n"
+            output += f"  Volatility: {get_symbol('GREEN')} LOW\n"
+            output += "  -> Tighter stops appropriate\n"
         elif atr_pct < 3.0:
-            output += "  Volatility: 🟡 MODERATE\n"
-            output += "  → Standard stop distances\n"
+            output += f"  Volatility: {get_symbol('YELLOW')} MODERATE\n"
+            output += "  -> Standard stop distances\n"
         else:
-            output += "  Volatility: 🔴 HIGH\n"
-            output += "  → Wider stops needed, smaller position\n"
+            output += f"  Volatility: {get_symbol('RED')} HIGH\n"
+            output += "  -> Wider stops needed, smaller position\n"
 
         # Suggest stop distances
         output += "-" * 40 + "\n"
@@ -281,7 +282,7 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
         return output
 
     except Exception as e:
-        return f"❌ Error calculating ATR: {str(e)}"
+        return f"{get_symbol('ERROR')} Error calculating ATR: {str(e)}"
 
 
 # ============================================================================
