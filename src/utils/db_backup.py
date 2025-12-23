@@ -20,8 +20,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.utils.date_utils import format_for_filename, get_datetime_now, now_iso
-
 logger = logging.getLogger(__name__)
 
 # Database paths relative to project root
@@ -110,7 +108,7 @@ class DBBackupManager:
 
     def _generate_backup_filename(self, db_name: str) -> str:
         """Generate timestamped backup filename."""
-        timestamp = format_for_filename()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return f"{db_name}_{timestamp}.db"
 
     def backup_database(self, db_name: str = "user") -> BackupResult:
@@ -123,7 +121,7 @@ class DBBackupManager:
         Returns:
             BackupResult with backup details
         """
-        timestamp = now_iso()
+        timestamp = datetime.now().isoformat()
 
         try:
             source_path = self._get_db_path(db_name)
@@ -209,7 +207,7 @@ class DBBackupManager:
         Returns:
             BackupResult with restore details
         """
-        timestamp = now_iso()
+        timestamp = datetime.now().isoformat()
 
         try:
             backup_file = Path(backup_path)
@@ -320,7 +318,7 @@ class DBBackupManager:
 
             # Generate output path if not provided
             if output_path is None:
-                timestamp = format_for_filename()
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_path = str(self.export_dir / f"{table_name}_{timestamp}.json")
 
             # Write JSON
@@ -332,7 +330,7 @@ class DBBackupManager:
                     {
                         "table": table_name,
                         "database": db_name,
-                        "exported_at": now_iso(),
+                        "exported_at": datetime.now().isoformat(),
                         "row_count": len(rows),
                         "data": rows,
                     },
@@ -522,7 +520,7 @@ class DBBackupManager:
             Dict mapping table names to deleted row counts
         """
         results = {}
-        cutoff_date = (get_datetime_now() - timedelta(days=days)).isoformat()
+        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
 
         try:
             db_path = self._get_db_path(db_name)
@@ -544,7 +542,7 @@ class DBBackupManager:
 
             for table_name in tables:
                 # Look for timestamp column
-                cursor.execute(f"PRAGMA table_info({table_name})")  # noqa: S608
+                cursor.execute(f"PRAGMA table_info({table_name})")  # noqa: S608  # nosec B608
                 columns = [row[1] for row in cursor.fetchall()]
 
                 timestamp_col = None
@@ -581,7 +579,7 @@ class DBBackupManager:
         Returns:
             Number of backups deleted
         """
-        cutoff_date = get_datetime_now() - timedelta(days=keep_days)
+        cutoff_date = datetime.now() - timedelta(days=keep_days)
         deleted = 0
 
         backups = sorted(
@@ -694,7 +692,7 @@ class DBMigrator:
 
                 cursor.execute(
                     "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
-                    (version, now_iso()),
+                    (version, datetime.now().isoformat()),
                 )
                 applied.append(version)
 
