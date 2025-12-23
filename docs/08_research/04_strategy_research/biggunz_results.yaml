@@ -1,0 +1,72 @@
+run_timestamp: '2025-12-22T20:24:54.891722'
+issue: '#461'
+description: BIGGUNZ (RSI7+Stoch+MACD 12/26/9) vs VoterAgent (RSI14+MACD 13/34/8)
+symbol_results:
+  QQQ:
+    biggunz:
+      total_return: 82.90132504602447
+      sharpe: 0.7491244613073456
+      trades: 42
+      win_rate: 47.61904761904761
+    voter_agent:
+      total_return: 43.375874198788026
+      sharpe: 0.5039303316375492
+      trades: 56
+      win_rate: 41.07142857142857
+    biggunz_wins: true
+  SPY:
+    biggunz:
+      total_return: 36.709094683025725
+      sharpe: 0.7872556210018304
+      trades: 28
+      win_rate: 60.71428571428571
+    voter_agent:
+      total_return: 13.082485601958524
+      sharpe: 0.34602799163886394
+      trades: 39
+      win_rate: 46.15384615384615
+    biggunz_wins: true
+  IWM:
+    biggunz:
+      total_return: 39.54952742174683
+      sharpe: 0.4151200755128505
+      trades: 43
+      win_rate: 45.23809523809524
+    voter_agent:
+      total_return: 59.34639251663047
+      sharpe: 0.5607219603956592
+      trades: 51
+      win_rate: 40.0
+    biggunz_wins: false
+  TQQQ:
+    biggunz:
+      total_return: 20.926751049560025
+      sharpe: 0.29514251721526913
+      trades: 45
+      win_rate: 47.72727272727273
+    voter_agent:
+      total_return: 138.1112386319008
+      sharpe: 0.5534538993272416
+      trades: 54
+      win_rate: 45.28301886792453
+    biggunz_wins: false
+  SOXL:
+    biggunz:
+      total_return: 21.690695011142253
+      sharpe: 0.39072051015372267
+      trades: 47
+      win_rate: 40.42553191489361
+    voter_agent:
+      total_return: 43.19724399830691
+      sharpe: 0.43846521743426153
+      trades: 54
+      win_rate: 33.33333333333333
+    biggunz_wins: false
+summary:
+  avg_biggunz_sharpe: 0.5274726370382037
+  avg_voter_sharpe: 0.4805198800867151
+  biggunz_win_rate: 40.0
+conclusion:
+  macd_12_26_9_better: true
+  stochastic_adds_value: false
+  recommendation: Consider 12/26/9 params

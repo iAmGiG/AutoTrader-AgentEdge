@@ -14,11 +14,12 @@ import pandas as pd
 from config_defaults.trading_config import TradingConfig
 
 from src.autogen_agents.agents.voter_agent import VoterAgent
+from src.autogen_agents.tools import fetch_unified_market_data
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.core.trading_modes import ModeParameters, get_mode_manager
-from src.data_sources.database import AnalysisHistoryManager
-from src.data_sources.tools import fetch_unified_market_data
+from src.database import AnalysisHistoryManager
+from src.trading.instruments.entry_planning import calculate_entry_plan
 from src.trading.instruments.timeframe_tools import (
     convert_to_alpaca_timeframe,
     get_current_timeframe,
@@ -116,7 +117,7 @@ class RealVoterStrategy(StrategyAnalyzer):
             # result = self._parse_agent_response(agent_response)
 
             result = self.voter.evaluate_voting(ticker, market_data, return_components=True)
-            formatted = self._format_analysis_result(result, request, user_timeframe)
+            formatted = self._format_analysis_result(result, request, user_timeframe, market_data)
             return formatted
         except ValueError:
             # Re-raise ValueError (user-friendly messages already set)
@@ -126,7 +127,7 @@ class RealVoterStrategy(StrategyAnalyzer):
             logger.error(f"Unexpected error analyzing {ticker}: {e}", exc_info=True)
             raise ValueError("Error processing request")
 
-    def _fetch_and_prepare_data(self, ticker: str) -> tuple[str, Any]:
+    def _fetch_and_prepare_data(self, ticker: str) -> tuple[str, Any]:  # noqa: C901
         """
         Fetches and validates market data for the given ticker.
 
@@ -250,7 +251,11 @@ class RealVoterStrategy(StrategyAnalyzer):
         return resampled
 
     def _format_analysis_result(
-        self, result: Dict[str, Any], request: TradeRequest, user_timeframe: str
+        self,
+        result: Dict[str, Any],
+        request: TradeRequest,
+        user_timeframe: str,
+        market_data: pd.DataFrame,
     ) -> AnalysisResult:
         """Converts the agent's raw result into a structured AnalysisResult."""
         signal_map = {"BUY": Signal.BUY, "SELL": Signal.SELL, "HOLD": Signal.HOLD}
@@ -258,7 +263,9 @@ class RealVoterStrategy(StrategyAnalyzer):
         current_price = result.get("current_price", request.price or 0.0)
 
         # Calculate entry/stop/target prices
-        entry_price, stop_loss, take_profit = self._calculate_price_levels(signal, current_price)
+        entry_price, stop_loss, take_profit = self._calculate_price_levels(
+            signal, current_price, market_data, result["action"]
+        )
 
         # Build reasoning list
         reasoning = self._build_reasoning_list(result, user_timeframe)
@@ -281,15 +288,24 @@ class RealVoterStrategy(StrategyAnalyzer):
         )
 
     def _calculate_price_levels(
-        self, signal: Signal, current_price: float
+        self,
+        signal: Signal,
+        current_price: float,
+        market_data: Optional[pd.DataFrame] = None,
+        signal_direction: Optional[str] = None,
     ) -> tuple[Optional[float], Optional[float], Optional[float]]:
         """
         Calculates entry, stop loss, and take profit based on the signal.
 
-        Uses trading mode parameters (Issue #400) for stop/target percentages:
-        - Conservative: 2% stop, 5% target
-        - Moderate: 5% stop, 10% target
-        - Aggressive: 8% stop, 20% target
+        Uses OHLCV-based entry planning (Issue #366) when market data is available,
+        with ATR-based stops and support/resistance awareness. Falls back to
+        trading mode percentages (Issue #400) if OHLCV data unavailable.
+
+        Args:
+            signal: Signal enum (BUY/SELL/HOLD)
+            current_price: Current market price
+            market_data: Optional OHLCV DataFrame for ATR-based calculations
+            signal_direction: Optional signal direction string ("BUY"/"SELL")
 
         Returns:
             Tuple of (entry_price, stop_loss, take_profit)
@@ -297,7 +313,34 @@ class RealVoterStrategy(StrategyAnalyzer):
         if signal == Signal.HOLD:
             return None, None, None
 
-        # Use trading mode parameters (Issue #400)
+        # Try OHLCV-based entry planning (Issue #366)
+        if market_data is not None and not market_data.empty and signal_direction:
+            try:
+                # Ensure required columns exist
+                required_cols = {"High", "Low", "Close", "Volume"}
+                if required_cols.issubset(set(market_data.columns)):
+                    entry_plan = calculate_entry_plan(
+                        ohlcv=market_data,
+                        current_price=current_price,
+                        signal_direction=signal_direction,
+                        atr_multiplier=2.0,
+                        risk_reward_ratio=2.0,
+                    )
+
+                    if entry_plan.get("plan_quality") != "INSUFFICIENT_DATA":
+                        logger.debug(
+                            f"OHLCV Entry Plan: {entry_plan['plan_quality']} - "
+                            f"ATR: {entry_plan['atr_value']}, S/R: {entry_plan['support']}/{entry_plan['resistance']}"
+                        )
+                        return (
+                            entry_plan["entry_price"],
+                            entry_plan["stop_loss"],
+                            entry_plan["take_profit"],
+                        )
+            except Exception as e:
+                logger.debug(f"OHLCV entry planning failed, using fallback: {e}")
+
+        # Fallback: Use trading mode parameters (Issue #400)
         stop_loss_pct = self.mode_params.stop_loss
         take_profit_pct = self.mode_params.take_profit
         entry_price = round(current_price, 2)

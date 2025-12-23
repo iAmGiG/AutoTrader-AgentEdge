@@ -1,6 +1,6 @@
 # Project Status & Development Roadmap
 
-**Last Updated**: November 2025
+**Last Updated**: December 2025
 **Version**: v1.0 - Production VoterAgent Ready
 **Framework**: Microsoft AutoGen 0.7.x
 
@@ -40,6 +40,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 | **TradingPipeline** | ✅ Complete | Full 5-phase daily workflow orchestrator (#323) |
 | **Agent Factory & Bus** | ✅ Complete | Agent Bus infrastructure (#390) for pub-sub messaging |
 | **TrailingStopManager** | ✅ Complete | Progressive stop logic (#321) |
+| **GTT Triggers** | ✅ Complete | Persistent price triggers, multi-day trailing stops (#340) |
 | **Trading Modes** | ✅ Complete | Natural language risk modes (#400) |
 | **Human-in-Loop CLI** | ✅ Complete | Interactive trade approval interface with multiple execution modes |
 
@@ -104,6 +105,14 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - 2% breakeven, 4% lock 25%, 6% trail 50% profit
   - Integrated into trade_lifecycle.py and trading_cycle.py
   - Rate-limited to prevent API abuse
+
+- [x] **GTT Persistent Triggers** (#340) - ✅ COMPLETE (Dec 2025)
+  - Persistent price triggers checked twice daily (scheduler)
+  - Conditions: price above/below, pct gain/loss, trailing stop, time window, volume
+  - Actions: alerts, order placement/cancellation via AlpacaOrderManager
+  - OCO groups for dual breakout/breakdown scenarios
+  - Multi-day trailing stop persistence via TrailingStopManager bridge
+  - 📁 Files: `src/trading/gtt/` (manager, evaluator, executor, bridge)
 
 **Low Priority**:
 
@@ -172,15 +181,20 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **In Progress**:
 
-- [x] **CLI FunctionTool Infrastructure** (#433, #455, #456) - ✅ PHASE 1 COMPLETE (Dec 2025)
-  - ✅ Tool registry with category-based organization
-  - ✅ Auto-discovery mechanism for tool modules
-  - ✅ Mode tools: 6 tools wrapping TradingModeManager
-  - ✅ Timeframe tools: 6 tools wrapping TimeframeCommands
-  - 🔜 Phase 2: Extract remaining CLI commands (account, portfolio, order, scheduler, alert)
-  - 🔜 Phase 3: Update cli_session.py to use tools
-  - Branch: `feature/cli-tools-455-456`
-  - Goal: Refactor 3000-line cli_session.py into modular, testable, agent-compatible tools
+- [x] **CLI FunctionTool Infrastructure** (#433, #455, #456, #457, #458) - ✅ PHASE 2 COMPLETE (Dec 2025)
+  - ✅ Tool registry with 17 modular tool files (7287 lines total)
+  - ✅ cli_session.py reduced from 2800+ to 1657 lines
+  - ✅ Extracted: mode, timeframe, account, portfolio, order, scheduler, alert, execution_mode
+  - ✅ Additional: voter, backup, gtt, watchlist, trailing_stop, entry_planning, user_alert
+  - 🔜 Phase 3: CLI command integration for new tool groups
+  - 📁 Files: `src/cli/tools/*.py` (17 tool modules)
+
+- [x] **CLI Command Group Integration** (#488, #489, #490) - ✅ COMPLETE (Dec 2025)
+  - [x] #488: `/voter` commands for ranked voting management ✅
+  - [x] #489: `/timeframe` multi-tf presets (trend_following, intraday, position) ✅
+  - [x] #490: `/backup` commands for database management ✅
+  - All integrated in `src/cli/commands/slash_commands.py`
+  - Merged to feature/testing
 
 - [ ] **Execution Mode Switching** (#332)
   - `/toggle` command for quick mode switching
@@ -192,7 +206,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Move hardcoded values to config files
   - Cleaner parameter management
   - Easier testing and deployment
-  - Target: Dec 2025
+  - Target: Q1 2026
 
 ### Phase 3B: Signal Enhancement 🔜 PLANNED (Q1 2026)
 
@@ -1202,3 +1216,131 @@ src/cli/
 - TSMOMSignalGenerator implemented (12-month momentum)
 - Ready for 2016-2024 validation experiments
 - Research paper in progress
+
+**Issue #501 - Big Data GEX Calculation Pipeline** (✅ COMPLETE - Dec 18, 2025)
+
+- Vectorized pandas operations: 100-1000x speedup vs row-by-row
+- SQLite WAL optimization: 5-10x faster bulk inserts
+- Processed 50.88M options records -> 17,835 daily GEX metrics
+- Execution time: ~10 minutes total, ~1,700 records/second
+- Database: 34 symbols x 5+ years of daily GEX regimes
+- Production-ready with multiprocessing parallelization
+
+**Issue #421 - TSMOM vs GEX Analysis** (✅ COMPLETE - Dec 18, 2025)
+
+- Analyzed 34 symbols across 5 asset classes
+- TSMOM Sharpe in positive gamma: 1.282 average
+- Key insight: 70% signal overlap, complementary indicators
+- Best performers: TNA (3.78), FAS (3.48), LABU (3.08)
+- Recommendation: Use GEX for position sizing, not signal filtering
+
+**Issue #496 - Cross-Asset Regime Correlation** (✅ COMPLETE - Dec 18, 2025)
+
+- Equity: 81.9% positive gamma (stable)
+- Volatility: 32.8% positive gamma (inverted)
+- Bonds: 85.2% positive gamma (hedging utility)
+- UVXY leads SPY by 1 day (0.456 correlation)
+- Strategic implications: Cross-asset rotation signals
+
+**Documentation Delivered**:
+
+- gex_pipeline_architecture.md (technical design, big data techniques)
+- tsmom_vs_gex_analysis.md (comparative signal analysis)
+- cross_asset_correlation.md (asset class regime relationships)
+- COMPLETION_SUMMARY.md (project milestones and findings)
+
+---
+
+### December 2025 - Core Execution Features (Dec 14, 2025)
+
+**A Chat Stream - Execution Pipeline** (branch: `feature/core-execution`)
+
+**Issue #366 - OHLCV-Based Intraday Entry Plan** (COMPLETE)
+
+- Created `src/trading/instruments/entry_planning.py`
+- ATR-based stop-loss and take-profit calculation
+- Support/resistance detection using recent price extremes
+- Volume confirmation for entry quality scoring
+- Integrated into `real_voter_strategy.py` with fallback to percentage-based stops
+- Commit: `3bf530c`
+
+**Files Added**:
+
+- `src/trading/instruments/entry_planning.py` (~200 lines)
+
+**Files Modified**:
+
+- `src/trading/instruments/__init__.py` (exports)
+- `src/strategies/real_voter_strategy.py` (integration)
+
+---
+
+**Issue #372 - Multi-Level Price Targets** (COMPLETE)
+
+- Created `src/trading/orders/multi_level_targets.py`
+- `MultiLevelTargetManager` class for 1-5 price target management
+- `DistributionStrategy` enum: equal, progressive, inverse, custom
+- ATR-based target calculation using OHLCV data
+- Order splitting capability for existing positions
+- Integration with `PartialExitManager` and `TrailingStopManager`
+- Commit: `a3dbeac`
+
+**Files Added**:
+
+- `src/trading/orders/multi_level_targets.py` (~450 lines)
+
+**Files Modified**:
+
+- `src/trading/orders/__init__.py` (exports)
+
+**Next**: #414 KILLER Advanced Trailing Stop Automation
+
+---
+
+### December 2025 - Code Grooming & Large File Refactoring (Dec 23, 2025)
+
+**Large File Refactoring - COMPLETED**:
+
+| Issue | File | Before | After | Reduction | Status |
+|-------|------|--------|-------|-----------|--------|
+| #509 | cli_session.py | 1657 | 1018 | **38%** | ✅ CLOSED |
+| #510 | sqlite_cache.py | 1587 | 947 | **40%** | ✅ CLOSED |
+| #511 | alpaca_trading_client.py | 1568 | 1075 | **31%** | ✅ CLOSED |
+| #512 | scanner_agent.py | 969 | 813 | **16%** | ✅ CLOSED |
+| #513 | date_utils.py | 844 | - | - | OPEN |
+| #514 | google_search_api.py | 914 | - | - | OPEN |
+
+**New Modules Created**:
+
+1. **#509 - IntentClassifier** (`src/cli/utils/intent_classifier.py`)
+   - Extracted `classify_intent()` and `resolve_ticker_with_llm()` methods
+   - LLM-based intent classification with pattern matching fallback
+
+2. **#510 - Cache Mixins** (`src/cache/`)
+   - `options_cache.py` - `OptionsCacheMixin` (329 lines)
+   - `trade_cache.py` - `TradeCacheMixin` (263 lines)
+
+3. **#511 - Advanced Orders** (`src/trading/broker/advanced_orders.py`)
+   - `AdvancedOrdersMixin` with trailing stop, bracket, modify methods
+
+4. **#512 - Scanner Config** (`src/autogen_agents/agents/scanner_config.py`)
+   - Config loaders, dataclasses (TierLimits, ScanConfig, ScanResult)
+
+**Commits**:
+
+- `4b40777` - refactor(#509): extract IntentClassifier from cli_session.py
+- `094c920` - refactor(#510): extract options and trade cache mixins
+- `76182fa` - refactor(#511): extract advanced orders mixin
+- `7d54640` - refactor(#512): extract scanner configuration
+
+**Other Large Files (700+ lines) for future consideration**:
+
+- trailing_stop_manager.py (812) - Single class, focused
+- alpaca_execution_manager.py (784) - Has validators
+- db_backup.py (780) - Single class, utility
+- alerts_watchlists.py (738) - Could split
+- trading_orchestrator.py (723) - Could split
+- gtt_manager.py (712) - 4 classes
+- voter_tools.py (709) - FunctionTool pattern, ok
+
+**Branch**: `feature/testing`

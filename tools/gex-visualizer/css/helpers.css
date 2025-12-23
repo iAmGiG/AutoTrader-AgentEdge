@@ -1,0 +1,215 @@
+/* GEX Visualizer - Helper Styles */
+/* Keyboard shortcuts, toggles, chart controls */
+
+/* Keyboard Shortcuts Help */
+.shortcuts-help {
+    position: relative;
+    display: inline-flex;
+}
+
+.shortcuts-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-cyan);
+    background: var(--bg-dark);
+    color: var(--accent-cyan);
+    font-size: 0.7rem;
+    font-weight: bold;
+    cursor: help;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.shortcuts-btn:hover {
+    background: var(--accent-cyan);
+    color: var(--bg-dark);
+    transform: scale(1.1);
+}
+
+/* Sidebar popup - fixed positioning to escape stacking context */
+.sidebar .shortcuts-popup {
+    position: fixed;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    background: var(--bg-dark);
+    border: 2px solid var(--accent-cyan);
+    border-radius: 6px;
+    padding: 10px 12px;
+    width: 180px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0,229,255,0.5), 0 0 40px rgba(0,229,255,0.2);
+}
+
+.sidebar .shortcuts-help:hover .shortcuts-popup {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Non-sidebar popup */
+.shortcuts-popup {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-dark);
+    border: 2px solid var(--accent-cyan);
+    border-radius: 6px;
+    padding: 10px 12px;
+    width: 180px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+    z-index: 1000;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 20px rgba(0,229,255,0.3);
+}
+
+.shortcuts-help:hover .shortcuts-popup {
+    opacity: 1;
+    visibility: visible;
+}
+
+.shortcuts-popup::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--accent-cyan);
+}
+
+.shortcuts-title {
+    font-size: 0.65rem;
+    color: var(--accent-cyan);
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 0.6rem;
+}
+
+.shortcut-key {
+    background: var(--grid-line);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    color: var(--text-main);
+}
+
+.shortcut-action {
+    color: var(--text-dim);
+}
+
+/* Dashboard-level chart controls help */
+.chart-help {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 200;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chart-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--card-bg);
+    border: 1px solid var(--grid-line);
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.chart-btn:hover {
+    background: var(--panel-bg);
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+}
+
+.chart-help .shortcuts-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.chart-help .shortcuts-popup {
+    bottom: 100%;
+    right: 0;
+    left: auto;
+    transform: none;
+    margin-bottom: 10px;
+    width: 240px;
+}
+
+.chart-help .shortcuts-popup::after {
+    left: auto;
+    right: 12px;
+    transform: none;
+}
+
+/* Scroll Invert Toggle */
+.scroll-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    margin-top: 6px;
+    border-top: 1px solid var(--grid-line);
+}
+
+.scroll-toggle-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+}
+
+.toggle-switch {
+    position: relative;
+    width: 32px;
+    height: 16px;
+    background: var(--grid-line);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.toggle-switch.active {
+    background: var(--accent-cyan);
+}
+
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.toggle-switch.active::after {
+    transform: translateX(16px);
+}

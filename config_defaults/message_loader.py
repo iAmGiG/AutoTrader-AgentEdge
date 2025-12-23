@@ -8,6 +8,8 @@ from typing import Any, Dict
 
 import yaml
 
+from src.utils.safe_print import EMOJI_CONFIG, get_symbol
+
 
 class MessageLoader:
     """Loads and provides access to CLI messages from YAML config."""
@@ -83,16 +85,47 @@ class MessageLoader:
 
         return value if isinstance(value, str) else str(value)
 
+    # Mapping from YAML emoji names to safe_print symbol names
+    _EMOJI_TO_SYMBOL = {
+        "success": "SUCCESS",
+        "error": "ERROR",
+        "warning": "WARNING",
+        "info": "INFO",
+        "critical": "EXPLOSION",
+        "loading": "CYCLE",
+        "chart": "CHART",
+        "target": "TARGET",
+        "alerts": "BELL",
+        "config": "GEAR",
+        "retry": "CYCLE",
+        "profit": "GREEN",
+        "loss": "RED",
+        "neutral": "YELLOW",
+        "robot": "ROBOT",
+        "save": "SAVE",
+        "lightning": "LIGHTNING",
+        "stop": "STOP",
+    }
+
     def emoji(self, name: str) -> str:
         """
-        Get emoji by name.
+        Get platform-appropriate emoji/symbol by name.
+
+        Uses safe_print's cross-platform symbol detection to return
+        emojis on UTF-8 terminals and ASCII fallbacks on Windows.
 
         Args:
             name: Emoji name (e.g., 'success', 'error', 'buy')
 
         Returns:
-            Emoji character
+            Platform-appropriate symbol
         """
+        # Try to map to safe_print symbol
+        symbol_name = self._EMOJI_TO_SYMBOL.get(name)
+        if symbol_name and symbol_name in EMOJI_CONFIG:
+            return get_symbol(symbol_name)
+
+        # Fall back to raw emoji from YAML
         return self._messages.get("emojis", {}).get(name, "•")
 
     def reload(self):

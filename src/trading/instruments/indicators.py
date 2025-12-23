@@ -145,6 +145,92 @@ def calculate_voting_consensus(macd_data: Dict, rsi_data: Dict) -> Dict[str, pd.
     }
 
 
+def calculate_kama(
+    prices: pd.Series,
+    lookback: int = 10,
+    fast_period: int = 2,
+    slow_period: int = 30,
+    timeframe: str = "1w",
+) -> Dict[str, pd.Series]:
+    """
+    Calculate Kaufman Adaptive Moving Average (KAMA).
+
+    KAMA adapts its smoothing based on market efficiency - trending markets
+    get a fast MA, choppy markets get a slow MA. This makes it ideal for
+    weekly timeframes where noise filtering is critical.
+
+    Args:
+        prices: Price series (Close prices)
+        lookback: Efficiency ratio calculation period (default 10)
+        fast_period: Fast smoothing constant (default 2)
+        slow_period: Slow smoothing constant (default 30)
+        timeframe: Analysis timeframe (default "1w" for weekly)
+
+    Returns:
+        Dictionary containing:
+        - 'kama': KAMA values
+        - 'efficiency_ratio': Market efficiency (0-1, higher = trending)
+        - 'smoothing': Current smoothing constant being applied
+        - 'slope': KAMA slope (positive = bullish)
+    """
+    # Calculate efficiency ratio: direction / volatility
+    direction = (prices - prices.shift(lookback)).abs()
+    volatility = prices.diff().abs().rolling(window=lookback).sum()
+
+    # Avoid division by zero
+    efficiency_ratio = direction / volatility.replace(0, np.nan)
+    efficiency_ratio = efficiency_ratio.fillna(0)
+
+    # Calculate smoothing constants
+    fast_sc = 2 / (fast_period + 1)
+    slow_sc = 2 / (slow_period + 1)
+
+    # Scaled smoothing constant: adapts based on efficiency
+    scaled_sc = efficiency_ratio * (fast_sc - slow_sc) + slow_sc
+    smoothing = scaled_sc**2  # Squared for additional smoothing
+
+    # Calculate KAMA iteratively
+    kama = pd.Series(index=prices.index, dtype=float)
+    kama.iloc[lookback - 1] = prices.iloc[lookback - 1]  # Initialize
+
+    for i in range(lookback, len(prices)):
+        kama.iloc[i] = kama.iloc[i - 1] + smoothing.iloc[i] * (prices.iloc[i] - kama.iloc[i - 1])
+
+    # Calculate slope (change over 6 periods for weekly)
+    slope_period = 6 if timeframe == "1w" else 3
+    slope = kama.diff(slope_period)
+
+    return {
+        "kama": kama,
+        "efficiency_ratio": efficiency_ratio,
+        "smoothing": smoothing,
+        "slope": slope,
+    }
+
+
+def calculate_fold_ma(prices: pd.Series, periods: int = 5, fold_index: int = 2) -> pd.Series:
+    """
+    Calculate fold-based moving average (nth value from sorted window).
+
+    This is a robust MA that uses the median-like approach: sort the window
+    and pick the nth value. Less sensitive to outliers than SMA.
+
+    Args:
+        prices: Price series
+        periods: Window size (default 5)
+        fold_index: Which sorted value to use, 0-indexed (default 2 = 3rd lowest)
+
+    Returns:
+        Fold MA series
+    """
+
+    def fold_func(window):
+        sorted_vals = sorted(window)
+        return sorted_vals[min(fold_index, len(sorted_vals) - 1)]
+
+    return prices.rolling(window=periods).apply(fold_func, raw=True)
+
+
 def get_current_signals(prices: pd.Series) -> Dict:
     """
     Get current trading signals for most recent data point.

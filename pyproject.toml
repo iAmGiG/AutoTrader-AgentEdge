@@ -3,7 +3,7 @@ name = "AutoTrader-AgentEdge"
 version = "1.0.0"
 description = "Multi-agent AI trading platform powered by AgentEdge architecture"
 authors = [{name = "iAmGiG"}]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     # Core AutoGen 0.7.x framework
     "autogen-agentchat>=0.7.5",
@@ -17,9 +17,9 @@ dependencies = [
     "openai>=2.7.0",
     "tiktoken>=0.12.0",
     # Data processing
-    "pandas>=2.3.0",
-    "numpy>=2.3.0",
-    "scipy>=1.16.0",
+    "pandas>=2.2.0",
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
     "python-dateutil>=2.9.0",
     "pytz>=2025.2",
     # HTTP clients
@@ -76,7 +76,7 @@ sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 [tool.black]
 # Black configuration
 line-length = 100
-target-version = ['py310']
+target-version = ['py312']
 exclude = '''
 /(
     \.git
@@ -90,7 +90,7 @@ exclude = '''
 [tool.ruff]
 # Ruff configuration
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 exclude = [".git", "__pycache__", ".venv", ".cache", "reports"]
 
 [tool.ruff.lint]
@@ -145,7 +145,7 @@ markers = [
 
 [tool.mypy]
 # MyPy static type checking
-python_version = "3.10"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true

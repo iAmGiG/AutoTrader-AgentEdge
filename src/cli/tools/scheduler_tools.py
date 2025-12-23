@@ -18,6 +18,7 @@ from typing import Any, Dict, Optional
 from autogen_core.tools import FunctionTool
 
 from src.utils.date_utils import add_days, combine_date_time, get_datetime_now, parse_time_string
+from src.utils.safe_print import get_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -477,12 +478,16 @@ def show_scheduler() -> str:
     """Display scheduler status with formatted output."""
     status = get_scheduler_status()
     if status["status"] == "not_initialized":
-        return "❌ Scheduler not initialized"
+        return f"{get_symbol('ERROR')} Scheduler not initialized"
     if status["status"] == "error":
-        return f"❌ Error: {status.get('error', 'Unknown')}"
+        return f"{get_symbol('ERROR')} Error: {status.get('error', 'Unknown')}"
 
-    lines = ["⏰ Daily Scheduler Status", "=" * 40]
-    enabled = "✅ Enabled" if status.get("enabled") else "❌ Disabled"
+    lines = [f"{get_symbol('CYCLE')} Daily Scheduler Status", "=" * 40]
+    enabled = (
+        f"{get_symbol('SUCCESS')} Enabled"
+        if status.get("enabled")
+        else f"{get_symbol('ERROR')} Disabled"
+    )
     lines.append(f"Status: {enabled}")
     lines.append(f"Morning Routine: {status.get('morning_time', '09:20')} ET")
     lines.append(f"Evening Routine: {status.get('evening_time', '15:50')} ET")
@@ -490,15 +495,17 @@ def show_scheduler() -> str:
 
     next_run = get_next_scheduled_run()
     if next_run["status"] == "success":
-        lines.extend(["", "📅 Next Scheduled Run"])
+        lines.extend(["", f"{get_symbol('TARGET')} Next Scheduled Run"])
         lines.append(f"   {next_run['next_routine'].title()}: {next_run['next_time_display']} ET")
         lines.append(f"   Time until: {next_run['time_until']}")
 
     history = get_execution_history(limit=3)
     if history.get("history"):
-        lines.extend(["", "📊 Recent Executions"])
+        lines.extend(["", f"{get_symbol('INFO')} Recent Executions"])
         for entry in history["history"][:3]:
-            status_emoji = "✅" if entry["status"] == "completed" else "❌"
+            status_emoji = (
+                get_symbol("SUCCESS") if entry["status"] == "completed" else get_symbol("ERROR")
+            )
             lines.append(f"   {status_emoji} {entry['task_name']}")
 
     return "\n".join(lines)

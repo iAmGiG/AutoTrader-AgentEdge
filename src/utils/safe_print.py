@@ -71,6 +71,14 @@ EMOJI_CONFIG: Dict[str, Dict[str, str]] = {
     "SLEEP": {"emoji": "💤", "windows": "[IDLE]", "ascii": "[z]"},
     "SAVE": {"emoji": "💾", "windows": "[SAVE]", "ascii": "[S]"},
     "ROBOT": {"emoji": "🤖", "windows": "[BOT]", "ascii": "[AI]"},
+    # Trailing stop / trading symbols
+    "WAVE": {"emoji": "🌊", "windows": "[VOL]", "ascii": "[~]"},
+    "SHIELD": {"emoji": "🛡️", "windows": "[SAFE]", "ascii": "[#]"},
+    "RULER": {"emoji": "📐", "windows": "[CALC]", "ascii": "[=]"},
+    "TURTLE": {"emoji": "🐢", "windows": "[SLOW]", "ascii": "[-]"},
+    "SCALES": {"emoji": "⚖️", "windows": "[BAL]", "ascii": "[=]"},
+    "FOLDER": {"emoji": "📂", "windows": "[DIR]", "ascii": "[/]"},
+    "LIGHTNING": {"emoji": "⚡", "windows": "[FAST]", "ascii": "[!]"},
 }
 
 

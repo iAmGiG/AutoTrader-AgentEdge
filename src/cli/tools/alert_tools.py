@@ -17,6 +17,8 @@ from typing import Any, Dict, List
 
 from autogen_core.tools import FunctionTool
 
+from src.utils.safe_print import get_symbol
+
 logger = logging.getLogger(__name__)
 
 
@@ -295,18 +297,20 @@ def show_alerts() -> str:
     """Display current position alerts with formatted output."""
     result = check_alerts()
     if result["status"] == "not_initialized":
-        return "❌ Alert system not initialized"
+        return f"{get_symbol('ERROR')} Alert system not initialized"
     if result["status"] == "error":
-        return f"❌ Error: {result.get('error', 'Unknown')}"
+        return f"{get_symbol('ERROR')} Error: {result.get('error', 'Unknown')}"
     if result["status"] == "no_alerts":
-        return (
-            f"✅ No active alerts\n📊 Monitoring {result.get('positions_monitored', 0)} position(s)"
-        )
+        return f"{get_symbol('SUCCESS')} No active alerts\n{get_symbol('INFO')} Monitoring {result.get('positions_monitored', 0)} position(s)"
 
-    lines = [f"🚨 Position Alerts ({result['alert_count']})", ""]
+    lines = [f"{get_symbol('BELL')} Position Alerts ({result['alert_count']})", ""]
     for alert in result.get("alerts", []):
         severity = alert.get("severity", "INFO")
-        emoji = "🔴" if severity == "CRITICAL" else "🟡" if severity == "WARNING" else "ℹ️"
+        emoji = (
+            get_symbol("RED")
+            if severity == "CRITICAL"
+            else get_symbol("YELLOW") if severity == "WARNING" else get_symbol("INFO")
+        )
         lines.append(
             f"{emoji} {alert.get('ticker', '?')}: {alert.get('alert_type', 'unknown')} @ ${alert.get('current_price', 0):.2f}"
         )

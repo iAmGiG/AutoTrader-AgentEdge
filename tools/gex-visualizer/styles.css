@@ -1,0 +1,11 @@
+/* GEX Regime Trace Comparator - Main Stylesheet */
+/* Imports component-based CSS files for modular organization */
+
+@import url('css/base.css');
+@import url('css/header.css');
+@import url('css/sidebar.css');
+@import url('css/controls.css');
+@import url('css/charts.css');
+@import url('css/cards.css');
+@import url('css/sparkline.css');
+@import url('css/helpers.css');

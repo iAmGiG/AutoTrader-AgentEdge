@@ -229,7 +229,7 @@ class AlpacaExecutionManager(ExecutionManager):
         # Try to get current price from OrderManager's market data client
         if self.order_manager and hasattr(self.order_manager, "client"):
             try:
-                from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+                from src.market_data.alpaca_market_data import AlpacaMarketData
 
                 market_data = AlpacaMarketData()
 

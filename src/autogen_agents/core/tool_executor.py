@@ -12,7 +12,7 @@ import pandas as pd
 from autogen_core._cancellation_token import CancellationToken
 from autogen_core.models import FunctionExecutionResult
 
-from src.data_sources.tools import fetch_unified_market_data
+from src.autogen_agents.tools import fetch_unified_market_data
 
 # Fallback map for tool execution (build dynamically to handle conditional imports)
 TOOL_FUNCTION_MAP = {

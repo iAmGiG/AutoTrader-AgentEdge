@@ -153,6 +153,20 @@ class TrailingStopConfig:
     # Profit zone start: when to enter "profit protection" mode
     profit_zone_start_pct: float = 0.02  # 2% = in profit zone
 
+    # === Issue #414: Voter Signal Integration (KILLER FEATURE) ===
+    # Tighten stops when voters signal SELL
+    voter_influenced: bool = True
+    # How much to tighten trail distance on sell signal (0.6 = 40% tighter)
+    voter_tighten_multiplier: float = 0.6
+    # Minimum confidence for voter signal to trigger tightening
+    voter_min_confidence: float = 0.60
+
+    # === Issue #414: Support/Resistance Awareness ===
+    # Avoid placing stops exactly at S/R levels (obvious liquidation targets)
+    sr_awareness_enabled: bool = True
+    # Buffer around S/R levels as percentage (0.5% buffer)
+    sr_buffer_pct: float = 0.005
+
     def get_gain_lock_percentages(self) -> tuple:
         """Get gain lock percentages based on climb rate."""
         return ClimbRate.get_gain_locks(self.climb_rate)
@@ -367,6 +381,13 @@ class TradingConfig:
             atr_multiplier=trailing_config.get("atr_multiplier", 1.5),
             atr_period=trailing_config.get("atr_period", 14),
             profit_zone_start_pct=trailing_config.get("profit_zone_start_pct", 0.02),
+            # Issue #414: Voter signal integration
+            voter_influenced=trailing_config.get("voter_influenced", True),
+            voter_tighten_multiplier=trailing_config.get("voter_tighten_multiplier", 0.6),
+            voter_min_confidence=trailing_config.get("voter_min_confidence", 0.60),
+            # Issue #414: S/R awareness
+            sr_awareness_enabled=trailing_config.get("sr_awareness_enabled", True),
+            sr_buffer_pct=trailing_config.get("sr_buffer_pct", 0.005),
         )
 
     def validate_config(self) -> bool:

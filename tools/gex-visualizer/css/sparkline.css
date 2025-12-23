@@ -1,0 +1,113 @@
+/* GEX Visualizer - Sparkline Styles */
+/* Price history sparkline and tooltips */
+
+.price-chart-card {
+    background: var(--card-bg);
+    border: 1px solid var(--grid-line);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.price-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.price-chart-title {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.price-chart-range {
+    font-size: 0.6rem;
+    color: var(--accent-cyan);
+}
+
+.price-sparkline {
+    position: relative;
+    height: 60px;
+    background: var(--bg-dark);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.price-sparkline svg {
+    width: 100%;
+    height: 100%;
+}
+
+.sparkline-path {
+    fill: none;
+    stroke: var(--warning-yellow);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.sparkline-area {
+    fill: url(#sparkline-gradient);
+    opacity: 0.3;
+}
+
+.sparkline-marker {
+    fill: var(--accent-cyan);
+    stroke: var(--bg-dark);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 4px var(--accent-cyan));
+}
+
+.sparkline-current-line {
+    stroke: var(--accent-cyan);
+    stroke-width: 1;
+    stroke-dasharray: 3,2;
+    opacity: 0.6;
+}
+
+.sparkline-hover-line {
+    stroke: var(--text-dim);
+    stroke-width: 1;
+    stroke-dasharray: 2,2;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.sparkline-hover-dot {
+    fill: var(--warning-yellow);
+    stroke: var(--bg-dark);
+    stroke-width: 2;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.sparkline-tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.9);
+    border: 1px solid var(--accent-cyan);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.6rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    white-space: nowrap;
+}
+
+.sparkline-tooltip.visible { opacity: 1; }
+
+.tooltip-date { color: var(--accent-cyan); font-weight: bold; }
+.tooltip-price { color: var(--warning-yellow); }
+.tooltip-label { color: var(--text-dim); font-size: 0.55rem; }
+
+.price-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+}

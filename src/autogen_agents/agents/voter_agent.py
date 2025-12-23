@@ -20,6 +20,8 @@ from ..core.base_agent import BaseAgent
 
 # Agent Bus for event publishing (Issue #390)
 from ..orchestration.agent_bus import EventType, create_message, get_agent_bus
+from src.core.ranked_voter_config import get_ranked_voter_manager
+from src.trading.instruments.indicator_registry import get_indicator_registry
 from src.trading.instruments.indicators import calculate_macd, calculate_rsi
 from src.utils.agent_utils import load_agent_config
 
@@ -514,6 +516,182 @@ Always return results in JSON format with action, confidence, and reasoning."""
         }
 
         logger.info(f"VoterAgent reset to defaults: {self.current_config}")
+
+    def evaluate_ranked_voting(
+        self, symbol: str, price_data: pd.DataFrame, return_components: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Evaluate voting using the indicator registry and ranked voter config.
+
+        Issue #364: Ranked Voter System for Technical Indicators
+
+        This method uses the pluggable indicator registry instead of hardcoded
+        MACD/RSI calls. Active voters from RankedVoterManager participate in
+        decisions, while review-only voters are shown but don't affect the outcome.
+
+        Args:
+            symbol: Stock symbol being evaluated
+            price_data: DataFrame with price data (must have 'close' or 'Close' column)
+            return_components: If True, return individual indicator signals
+
+        Returns:
+            Trading decision with confidence, reasoning, and all voter signals
+        """
+        try:
+            # Get ranked voter manager
+            voter_manager = get_ranked_voter_manager()
+            voting_config = voter_manager.get_voting_config()
+
+            # Validate data sufficiency
+            if len(price_data) < voting_config.min_data_points:
+                return {
+                    "symbol": symbol,
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "position_size": 0.0,
+                    "reasoning": f"Insufficient data ({len(price_data)} < {voting_config.min_data_points})",
+                    "voters": [],
+                }
+
+            # Extract price series
+            prices = price_data["Close"] if "Close" in price_data.columns else price_data["close"]
+
+            # Get indicator registry and create indicators from ranking
+            registry = get_indicator_registry()
+            registry.clear()  # Clear any previous indicators
+
+            # Create indicators from ranked config
+            ranking = voter_manager.get_ranking()
+            for voter_cfg in ranking:
+                indicator_config = voter_manager.get_indicator_config(voter_cfg.name)
+                if indicator_config:
+                    # Merge default params with custom params
+                    params = indicator_config.get("default_params", {}).copy()
+                    params.update(voter_cfg.params)
+                    registry.create_indicator(
+                        voter_cfg.name, f"{voter_cfg.name}_rank{voter_cfg.rank}", params
+                    )
+
+            # Get all signals
+            all_signals = registry.get_all_signals(prices)
+
+            # Separate active and review signals
+            active_voters = voter_manager.get_active_voters()
+            active_names = {f"{v.name}_rank{v.rank}" for v in active_voters}
+
+            active_signals = {k: v for k, v in all_signals.items() if k in active_names}
+            review_signals = {k: v for k, v in all_signals.items() if k not in active_names}
+
+            # Voting logic for active voters
+            buy_votes = sum(1 for s in active_signals.values() if s.action == "BUY")
+            sell_votes = sum(1 for s in active_signals.values() if s.action == "SELL")
+            hold_votes = sum(1 for s in active_signals.values() if s.action == "HOLD")
+            total_active = len(active_signals)
+
+            # Determine consensus
+            if total_active == 0:
+                action = "HOLD"
+                confidence = 0.0
+                position_size = 0.0
+                reasoning = "No active voters configured"
+                signal_type = "ERROR"
+            elif buy_votes == total_active:
+                action = "BUY"
+                avg_conf = sum(s.confidence for s in active_signals.values()) / total_active
+                confidence = min(0.85, avg_conf + voting_config.consensus_boost)
+                position_size = voting_config.strong_signal_size
+                reasoning = f"Strong consensus: All {total_active} active voters signal BUY"
+                signal_type = "STRONG"
+            elif sell_votes == total_active:
+                action = "SELL"
+                avg_conf = sum(s.confidence for s in active_signals.values()) / total_active
+                confidence = min(0.85, avg_conf + voting_config.consensus_boost)
+                position_size = voting_config.strong_signal_size
+                reasoning = f"Strong consensus: All {total_active} active voters signal SELL"
+                signal_type = "STRONG"
+            elif buy_votes > 0 and sell_votes == 0:
+                action = "BUY"
+                buy_sigs = [s for s in active_signals.values() if s.action == "BUY"]
+                avg_conf = sum(s.confidence for s in buy_sigs) / len(buy_sigs)
+                confidence = min(0.80, avg_conf + voting_config.weak_signal_boost)
+                position_size = voting_config.weak_signal_size
+                reasoning = f"Weak signal: {buy_votes}/{total_active} voters signal BUY"
+                signal_type = "WEAK"
+            elif sell_votes > 0 and buy_votes == 0:
+                action = "SELL"
+                sell_sigs = [s for s in active_signals.values() if s.action == "SELL"]
+                avg_conf = sum(s.confidence for s in sell_sigs) / len(sell_sigs)
+                confidence = min(0.80, avg_conf + voting_config.weak_signal_boost)
+                position_size = voting_config.weak_signal_size
+                reasoning = f"Weak signal: {sell_votes}/{total_active} voters signal SELL"
+                signal_type = "WEAK"
+            elif buy_votes > 0 and sell_votes > 0:
+                action = "HOLD"
+                confidence = 0.2 - voting_config.conflict_penalty
+                position_size = voting_config.conflict_size
+                reasoning = f"Conflicting signals: {buy_votes} BUY, {sell_votes} SELL"
+                signal_type = "CONFLICT"
+            else:
+                action = "HOLD"
+                confidence = 0.2
+                position_size = 0.0
+                reasoning = "All voters neutral"
+                signal_type = "NEUTRAL"
+
+            result = {
+                "symbol": symbol,
+                "action": action,
+                "confidence": max(0.0, confidence),
+                "position_size": position_size,
+                "reasoning": reasoning,
+                "signal_type": signal_type,
+                "timeframe": self.timeframe,
+                "current_price": float(prices.iloc[-1]),
+                "ranked_voting": True,
+                "active_voter_count": total_active,
+                "vote_breakdown": {"buy": buy_votes, "sell": sell_votes, "hold": hold_votes},
+            }
+
+            # Publish voting complete event via bus
+            if self._publish_events and action != "HOLD":
+                self._publish_voting_result(symbol, result)
+
+            # Add voter details if requested
+            if return_components:
+                result["active_voters"] = [
+                    {
+                        "name": name,
+                        "action": sig.action,
+                        "confidence": sig.confidence,
+                        "strength": sig.strength,
+                        "value": sig.value,
+                    }
+                    for name, sig in active_signals.items()
+                ]
+                result["review_voters"] = [
+                    {
+                        "name": name,
+                        "action": sig.action,
+                        "confidence": sig.confidence,
+                        "strength": sig.strength,
+                        "value": sig.value,
+                    }
+                    for name, sig in review_signals.items()
+                ]
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error in evaluate_ranked_voting for {symbol}: {e}")
+            return {
+                "symbol": symbol,
+                "action": "HOLD",
+                "confidence": 0.0,
+                "position_size": 0.0,
+                "reasoning": f"Analysis error: {str(e)}",
+                "error": str(e),
+                "ranked_voting": True,
+            }
 
 
 def create_voter_agent(name: str = "voter_agent", **kwargs) -> VoterAgent:
