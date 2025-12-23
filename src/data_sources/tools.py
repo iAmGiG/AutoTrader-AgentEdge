@@ -1,6 +1,8 @@
 """
 Clean Tools Configuration for RH2MAS
-Active tools: Google Search (news), Polygon.io (primary market data), Alpha Vantage (fallback)
+Active tools: Polygon.io (primary market data), Alpha Vantage (fallback)
+
+Note: News/sentiment tools removed - deprecated V0-V4 sentiment analysis.
 """
 
 # Standard library imports
@@ -18,13 +20,6 @@ from .sources.market.market_context_tool import market_context_tool
 # Project imports - only tools actually used
 from .sources.market.unified_market_tool import fetch_unified_market_data
 from .sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
-from .sources.news.google_search_simple import (
-    _news_governor,
-    google_search_smart_tool,
-    set_news_governor,
-)
-from .sources.news.hierarchical_news_tool import fetch_hierarchical_news
-from src.data_sources.processors.news_governor import create_balanced_governor
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.agent_utils import load_agent_config
@@ -82,7 +77,7 @@ unified_market_tool = FunctionTool(
 unified_market_tool.agent_types = [TECH_AGENT]
 
 ##################################
-# VXX Volatility Tool for V2 Sentiment
+# VXX Volatility Tool
 ##################################
 
 vxx_volatility_tool = FunctionTool(
@@ -90,57 +85,32 @@ vxx_volatility_tool = FunctionTool(
     name="fetch_vxx_volatility_data",
     description=_get_tool_description(
         "vxx_volatility_data",
-        "Fetch VXX volatility data for market fear-based sentiment analysis. Returns VXX-based sentiment scores for V2 Market Fear sentiment agent.",
+        "Fetch VXX volatility data for market volatility analysis. Returns VXX-based volatility metrics.",
     ),
 )
-vxx_volatility_tool.agent_types = [SENTIMENT_AGENT]
-
-##################################
-# Hierarchical News Tool for V4 Sentiment
-##################################
-
-hierarchical_news_tool = FunctionTool(
-    func=fetch_hierarchical_news,
-    name="fetch_hierarchical_news",
-    description=_get_tool_description(
-        "hierarchical_news",
-        "Fetch hierarchical adaptive news mix for V4 sentiment analysis. Provides balanced company-specific, sector ETF, and broad market news for intelligent sentiment reasoning.",
-    ),
-)
-hierarchical_news_tool.agent_types = [SENTIMENT_AGENT]
+vxx_volatility_tool.agent_types = [TECH_AGENT]
 
 ##################################
 # Tool Collections by Agent Type
 ##################################
 
-# SENTIMENT_AGENT tools - Multiple approaches for V0-V4 framework
-# V1: Google Search + smart sampling, V2: VXX volatility, V4: Hierarchical news
-_sentiment_tools_raw = [
-    google_search_smart_tool,  # V1: Google Custom Search API with smart sampling
-    vxx_volatility_tool,  # V2: VXX volatility data for market fear sentiment
-    hierarchical_news_tool,  # V4: Hierarchical adaptive news (Direct + Sector + Market)
-    market_context_tool,  # V4: SPY/QQQ market context for enhanced sentiment
-]
-SENTIMENT_TOOLS = [tool for tool in _sentiment_tools_raw if tool is not None]
-
 # TECH_AGENT tools - Unified market data with cache adapter routing
 _tech_tools_raw = [
-    # Primary: Unified tool with cache adapter (routes Polygon -> Alpha Vantage)
     unified_market_tool,
-    # Note: Individual polygon/alpha_vantage tools removed - redundant with unified tool
+    vxx_volatility_tool,
+    market_context_tool,
 ]
 TECH_TOOLS = [tool for tool in _tech_tools_raw if tool is not None]
 
+# SENTIMENT_TOOLS - Deprecated (V0-V4 sentiment removed)
+SENTIMENT_TOOLS = []
+
 # STRATEGY_AGENT tools - Strategy aggregates outputs from other agents
-_strategy_tools_raw = [
-    # Strategy agent aggregates results from other agents
-    # No direct data access tools needed
-]
-STRATEGY_TOOLS = [tool for tool in _strategy_tools_raw if tool is not None]
+STRATEGY_TOOLS = []
 
 # All tools combined (filter out None values from conditional imports)
 ALL_TOOLS = list(
-    set(tool for tool in (SENTIMENT_TOOLS + TECH_TOOLS + STRATEGY_TOOLS) if tool is not None)
+    {tool for tool in (SENTIMENT_TOOLS + TECH_TOOLS + STRATEGY_TOOLS) if tool is not None}
 )
 
 # Tool dispatcher dictionary for efficient lookup by name
@@ -166,40 +136,7 @@ def get_tools_for_agent(agent_type):
     elif agent_type == TECH_AGENT:
         return TECH_TOOLS
     elif agent_type == STRATEGY_AGENT:
-        return STRATEGY_TOOLS  # Strategy agent aggregates, no direct tools needed
+        return STRATEGY_TOOLS
     else:
         # Return all tools if agent type is unknown
         return ALL_TOOLS
-
-
-##################################
-# NewsGovernor Integration
-##################################
-
-
-def enable_smart_news_sampling(governor=None):
-    """
-    Enable smart news sampling across all sentiment agents.
-
-    Args:
-        governor: NewsGovernor instance, or None for balanced default
-    """
-    if governor is None:
-        governor = create_balanced_governor()
-
-    set_news_governor(governor)
-
-    return governor
-
-
-def disable_smart_news_sampling():
-    """Disable smart news sampling (revert to direct API calls)."""
-    set_news_governor(None)
-
-
-def get_news_quota_status():
-    """Get current news quota status if NewsGovernor is enabled."""
-    if _news_governor is not None:
-        return _news_governor.get_quota_status()
-    else:
-        return {"status": "disabled", "message": "NewsGovernor not enabled"}
