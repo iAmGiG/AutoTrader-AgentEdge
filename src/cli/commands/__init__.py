@@ -4,7 +4,7 @@ CLI Commands - Command handlers and registry.
 This module contains:
 - CommandRegistry: Self-registering slash command pattern (#468)
 - Slash commands: /about, /faq, /help, /toggle, /schedule, /exit
-- Natural language handlers: account, timeframe, trailing stop
+- Natural language handlers: account, timeframe, trailing stop, voter
 
 Modules:
 - registry: Command registration and dispatch
@@ -12,6 +12,7 @@ Modules:
 - account_commands: Account management commands (list, switch, refresh)
 - timeframe_commands: Timeframe selection and display
 - trailing_stop_commands: Trailing stop management (future integration)
+- voter_commands: Voter ranking management (#488)
 """
 
 # Import slash commands to trigger registration
@@ -22,7 +23,11 @@ from src.cli.commands.account_commands import AccountCommands, get_account_comma
 
 # Import registry first
 from src.cli.commands.registry import CommandRegistry, command
-from src.cli.commands.timeframe_commands import TimeframeCommands, get_timeframe_commands
+from src.cli.commands.timeframe_commands import (
+    TimeframeCommands,
+    get_timeframe_commands,
+)
+from src.cli.commands.voter_commands import VoterCommands, get_voter_commands
 
 __all__ = [
     # Registry
@@ -33,4 +38,6 @@ __all__ = [
     "get_account_commands",
     "TimeframeCommands",
     "get_timeframe_commands",
+    "VoterCommands",
+    "get_voter_commands",
 ]
