@@ -189,12 +189,12 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - 🔜 Phase 3: CLI command integration for new tool groups
   - 📁 Files: `src/cli/tools/*.py` (17 tool modules)
 
-- [ ] **CLI Command Group Integration** (#488, #489, #490) - 🚧 IN PROGRESS
-  - [x] #488: `/voter` commands for ranked voting management ✅ COMPLETE
-  - [ ] #489: `/timeframe` multi-tf presets (trend_following, intraday, position)
-  - [ ] #490: `/backup` commands for database management
-  - Target: Dec 2025
-  - Branch: `feature/cli-voter-488` (ready for merge)
+- [x] **CLI Command Group Integration** (#488, #489, #490) - ✅ COMPLETE (Dec 2025)
+  - [x] #488: `/voter` commands for ranked voting management ✅
+  - [x] #489: `/timeframe` multi-tf presets (trend_following, intraday, position) ✅
+  - [x] #490: `/backup` commands for database management ✅
+  - All integrated in `src/cli/commands/slash_commands.py`
+  - Merged to feature/testing
 
 - [ ] **Execution Mode Switching** (#332)
   - `/toggle` command for quick mode switching
