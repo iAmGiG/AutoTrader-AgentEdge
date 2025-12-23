@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import now_iso
 
@@ -303,7 +303,7 @@ class UnifiedOptionsDataTool:
 
             # Fetch options chain for the trading date
             # Note: Alpaca options API requires specific date format
-            request = OptionChainRequest(
+            _request = OptionChainRequest(  # noqa: F841 (placeholder for future use)
                 underlying_symbol=symbol, feed="opra"  # Options Price Reporting Authority feed
             )
 

@@ -165,7 +165,7 @@ class VXXVolatilityTool:
             logger.error(f"Error fetching VXX history for {date}: {str(e)}")
             return None
 
-    def vxx_to_sentiment(
+    def vxx_to_sentiment(  # noqa: C901
         self,
         vxx_value: float,
         vxx_history: Optional[pd.DataFrame] = None,

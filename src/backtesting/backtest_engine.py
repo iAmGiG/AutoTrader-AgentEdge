@@ -21,7 +21,7 @@ import pandas as pd
 
 from src.backtesting.portfolio import Portfolio
 from src.backtesting.results import BacktestResults
-from src.data_sources.cache.sqlite_cache import TradingCacheManager
+from src.cache.sqlite_cache import TradingCacheManager
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))

@@ -584,11 +584,11 @@ class TradingCacheManager:
 
                     # Copy to main table with INSERT OR REPLACE
                     conn.execute(
-                        f"""  # nosec B608
+                        f"""
                         INSERT OR REPLACE INTO market_cache
                         ({columns_list})
                         SELECT {columns_list} FROM {temp_table}
-                    """
+                    """  # nosec B608
                     )
 
                     # Drop temp table
@@ -1456,7 +1456,7 @@ class TradingCacheManager:
 
             with sqlite3.connect(self.db_path) as conn:
                 # Basic counts
-                stats_query = f"""  # nosec B608
+                stats_query = f"""
                     SELECT
                         COUNT(*) as total_trades,
                         SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END) as winning_trades,
@@ -1470,7 +1470,7 @@ class TradingCacheManager:
                         AVG(holding_period_hours) as avg_holding_hours
                     FROM trade_history
                     WHERE {where_sql}
-                """
+                """  # nosec B608
                 row = conn.execute(stats_query, params).fetchone()
 
             total_trades = row[0] or 0

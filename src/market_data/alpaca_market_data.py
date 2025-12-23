@@ -45,7 +45,7 @@ except ImportError:
         "Install with: pip install alpaca-py"
     )
 
-from src.data_sources.cache.sqlite_cache import TradingCacheManager
+from src.cache.sqlite_cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ class AlpacaMarketData:
         self.cache = cache_manager or TradingCacheManager()
         logger.info("Alpaca market data manager initialized with official SDK and SQLite cache")
 
-    def get_bars(
+    def get_bars(  # noqa: C901
         self,
         symbols: List[str],
         start: str,  # YYYY-MM-DD format

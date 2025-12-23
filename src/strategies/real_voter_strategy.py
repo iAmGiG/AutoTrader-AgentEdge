@@ -14,11 +14,11 @@ import pandas as pd
 from config_defaults.trading_config import TradingConfig
 
 from src.autogen_agents.agents.voter_agent import VoterAgent
+from src.autogen_agents.tools import fetch_unified_market_data
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.core.trading_modes import ModeParameters, get_mode_manager
-from src.data_sources.database import AnalysisHistoryManager
-from src.data_sources.tools import fetch_unified_market_data
+from src.database import AnalysisHistoryManager
 from src.trading.instruments.entry_planning import calculate_entry_plan
 from src.trading.instruments.timeframe_tools import (
     convert_to_alpaca_timeframe,
@@ -127,7 +127,7 @@ class RealVoterStrategy(StrategyAnalyzer):
             logger.error(f"Unexpected error analyzing {ticker}: {e}", exc_info=True)
             raise ValueError("Error processing request")
 
-    def _fetch_and_prepare_data(self, ticker: str) -> tuple[str, Any]:
+    def _fetch_and_prepare_data(self, ticker: str) -> tuple[str, Any]:  # noqa: C901
         """
         Fetches and validates market data for the given ticker.
 

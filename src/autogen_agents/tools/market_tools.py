@@ -15,11 +15,11 @@ import sys
 # Third-party imports
 from autogen_core.tools import FunctionTool
 
-from .sources.market.market_context_tool import market_context_tool
+from src.market_data.market_context_tool import market_context_tool
 
 # Project imports - only tools actually used
-from .sources.market.unified_market_tool import fetch_unified_market_data
-from .sources.market.vxx_volatility_tool import fetch_vxx_volatility_data
+from src.market_data.unified_market_tool import fetch_unified_market_data
+from src.market_data.vxx_volatility_tool import fetch_vxx_volatility_data
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.agent_utils import load_agent_config

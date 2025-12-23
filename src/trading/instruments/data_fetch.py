@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+from src.market_data.unified_market_tool import fetch_unified_market_data
 
 
 def fetch_market_data(

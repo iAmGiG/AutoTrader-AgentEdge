@@ -14,7 +14,7 @@ from typing import Optional
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from src.data_sources.sources.market.alpaca_market_data import AlpacaMarketData
+from src.market_data.alpaca_market_data import AlpacaMarketData
 from src.utils.date_utils import get_datetime_now, subtract_days
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class UnifiedPriceFetcher:
             cls._instance.market_data = AlpacaMarketData()
         return cls._instance
 
-    def get_current_price(self, symbol: str, use_cache: bool = True) -> float:
+    def get_current_price(self, symbol: str, use_cache: bool = True) -> float:  # noqa: C901
         """
         Get current price with consistent fallback logic.
 

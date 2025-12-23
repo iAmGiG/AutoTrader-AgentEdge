@@ -57,7 +57,7 @@ def get_entry_plan(
     """
     try:
         # Fetch market data
-        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+        from src.market_data.unified_market_tool import fetch_historical
 
         ohlcv = fetch_historical(symbol, lookback_days)
 
@@ -131,7 +131,7 @@ def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
         Range: $13.80'
     """
     try:
-        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+        from src.market_data.unified_market_tool import fetch_historical
 
         ohlcv = fetch_historical(symbol, lookback_days)
 
@@ -185,7 +185,7 @@ def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
         Ratio: 1.37x (Above Average)'
     """
     try:
-        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+        from src.market_data.unified_market_tool import fetch_historical
 
         ohlcv = fetch_historical(symbol, lookback_days)
 
@@ -242,7 +242,7 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
         → Low volatility environment'
     """
     try:
-        from src.data_sources.sources.market.unified_market_tool import fetch_historical
+        from src.market_data.unified_market_tool import fetch_historical
 
         ohlcv = fetch_historical(symbol, lookback_days)
 

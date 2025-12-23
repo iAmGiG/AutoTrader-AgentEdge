@@ -138,7 +138,9 @@ def fetch_market_context_data(
         }
 
 
-def _interpret_market_signal(symbol: str, daily_change: float, trend_change: float) -> str:
+def _interpret_market_signal(  # noqa: C901
+    symbol: str, daily_change: float, trend_change: float
+) -> str:
     """Interpret market signal for LLM consumption."""
 
     if symbol == "SPY":

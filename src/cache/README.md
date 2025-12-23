@@ -20,7 +20,7 @@ SQLite-based market data caching for the AutoGen Trading System.
 ## Quick Start
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 cache = TradingCacheManager()
 

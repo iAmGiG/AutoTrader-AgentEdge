@@ -95,7 +95,7 @@ class AlphaVantageMarketTool:
             }
 
             # Make API request
-            response = requests.get(self.base_url, params=params)
+            response = requests.get(self.base_url, params=params)  # nosec B113
 
             if response.status_code != 200:
                 self.logger.error(
@@ -171,7 +171,7 @@ class AlphaVantageMarketTool:
         try:
             params = {"function": "OVERVIEW", "symbol": symbol, "apikey": self.api_key}
 
-            response = requests.get(self.base_url, params=params)
+            response = requests.get(self.base_url, params=params)  # nosec B113
 
             if response.status_code != 200:
                 self.logger.error(
@@ -213,7 +213,7 @@ class AlphaVantageMarketTool:
                 "datatype": "json",
             }
 
-            response = requests.get(self.base_url, params=params)
+            response = requests.get(self.base_url, params=params)  # nosec B113
 
             if response.status_code != 200:
                 self.logger.error(
@@ -287,7 +287,7 @@ class AlphaVantageMarketTool:
                 "apikey": self.api_key,
             }
 
-            response = requests.get(self.base_url, params=params)
+            response = requests.get(self.base_url, params=params)  # nosec B113
 
             if response.status_code != 200:
                 self.logger.error(

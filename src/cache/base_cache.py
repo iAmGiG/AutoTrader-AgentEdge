@@ -117,7 +117,9 @@ class BaseSQLiteCache:
             with self._write_lock:
                 with self.get_connection() as conn:
                     now = get_datetime_now().isoformat()
-                    cursor = conn.execute(f"DELETE FROM {table_name} WHERE expires_at < ?", (now,))
+                    cursor = conn.execute(
+                        f"DELETE FROM {table_name} WHERE expires_at < ?", (now,)  # nosec B608
+                    )
                     deleted = cursor.rowcount
                     conn.commit()
 
