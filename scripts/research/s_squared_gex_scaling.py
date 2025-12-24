@@ -159,7 +159,8 @@ def generate_trading_signals(gex_df: pd.DataFrame, use_s_squared: bool) -> pd.Se
 
     # Normalize net gamma to z-scores for comparability
     net_gamma = gex_df[net_gamma_col]
-    z_scores = (net_gamma - net_gamma.rolling(20).mean()) / net_gamma.rolling(20).std()
+    rolling_std = net_gamma.rolling(20).std()
+    z_scores = (net_gamma - net_gamma.rolling(20).mean()) / (rolling_std + 1e-9)
 
     signals = pd.Series(0.0, index=gex_df.index)
 

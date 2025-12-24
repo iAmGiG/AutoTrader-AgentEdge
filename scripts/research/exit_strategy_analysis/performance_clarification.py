@@ -33,7 +33,7 @@ class TechnicalIndicators:
         delta = prices.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
+        rs = gain / (loss + 1e-9)  # Epsilon to prevent div-by-zero in strong uptrends
         rsi = 100 - (100 / (1 + rs))
         return rsi
 
@@ -145,7 +145,7 @@ class DetailedBacktest:
         daily_returns = pd.Series(portfolio_value[1:]) / pd.Series(portfolio_value[:-1]) - 1
         sharpe_ratio = (
             np.sqrt(252) * daily_returns.mean() / daily_returns.std()
-            if len(daily_returns) > 1
+            if len(daily_returns) > 1 and daily_returns.std() > 0
             else 0
         )
 
