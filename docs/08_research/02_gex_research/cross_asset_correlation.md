@@ -1,5 +1,10 @@
 # Cross-Asset GEX Regime Correlation Analysis
 
+> **⚠️ PROBLEMATIC - LEAD-LAG BUG**
+>
+> Lead-lag analysis was calculating autocorrelation instead of cross-correlation for negative lags.
+> Fix applied, rerun required - see #523
+
 ## Executive Summary
 
 **Research Questions:**

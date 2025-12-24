@@ -182,6 +182,7 @@ def calculate_hedge_effectiveness(
         hedge_ret = returns[hedge]
         common = equity_ret.notna() & hedge_ret.notna()
 
+        # Require sufficient overlapping data points for statistical significance
         if common.sum() < 30:
             continue
 
@@ -305,6 +306,7 @@ def compare_dynamic_vs_static(
     returns: pd.DataFrame,
     regime_returns: Dict[str, pd.DataFrame],
     symbols: List[str],
+    cost_bps: float = 10.0,  # Basis points per trade
 ) -> Dict:
     """Compare dynamic (regime-based) vs static allocation."""
     # Static: optimize on full period
@@ -324,12 +326,40 @@ def compare_dynamic_vs_static(
     static_w = np.array([static_weights[s] for s in available])
     static_port = (returns[available] * static_w).sum(axis=1)
 
+    # Calculate dynamic portfolio with turnover costs
+    # Reconstruct the regime series for the full period
+    regime_series = pd.Series(index=returns.index, dtype="object")
+    for regime, ret_df in regime_returns.items():
+        regime_series.loc[ret_df.index] = regime
+
+    # Sort by date
+    regime_series = regime_series.sort_index()
+
+    # Calculate turnover
+    # Count how many times regime changes
+    regime_changes = (regime_series != regime_series.shift(1)).sum()
+
+    # Estimate average turnover per switch (L1 norm of weight difference)
+    # Simplified: assumes switching between POSITIVE and NEGATIVE mostly
+    w_pos = np.array([dynamic_weights.get("POSITIVE", {}).get(s, 0) for s in available])
+    w_neg = np.array([dynamic_weights.get("NEGATIVE", {}).get(s, 0) for s in available])
+    turnover_per_switch = np.sum(np.abs(w_pos - w_neg))
+
+    total_turnover = regime_changes * turnover_per_switch
+    total_cost = total_turnover * (cost_bps / 10000)
+
+    # Adjust return for cost (annualized approximation)
+    years = len(returns) / 252
+    annual_cost_drag = total_cost / years if years > 0 else 0
+
     return {
         "static_weights": static_weights,
         "static_sharpe": round(static_sharpe, 4) if static_sharpe else None,
         "static_annual_return": round(static_port.mean() * 252, 4),
         "static_annual_vol": round(static_port.std() * np.sqrt(252), 4),
         "dynamic_weights": dynamic_weights,
+        "dynamic_cost_drag": round(annual_cost_drag, 4),
+        "regime_switches": int(regime_changes),
     }
 
 
@@ -455,6 +485,12 @@ def _report_dynamic_vs_static_section(comparison: Dict) -> List[str]:
         report.append(
             "  Top holdings: " + ", ".join([f"{a} ({w:.0%})" for a, w in top_assets if w > 0.05])
         )
+
+    if comparison.get("dynamic_cost_drag"):
+        report.append("")
+        report.append("**Dynamic Strategy Costs**:")
+        report.append(f"- Regime Switches: {comparison['regime_switches']}")
+        report.append(f"- Est. Cost Drag: {comparison['dynamic_cost_drag']:.2%} per year")
     report.append("")
 
     return report
@@ -607,7 +643,7 @@ if __name__ == "__main__":
             regime_allocations[regime] = {"weights": weights, "sharpe": sharpe, "classes": classes}
             top = sorted(weights.items(), key=lambda x: -x[1])[:3]
             print(
-                f"  {regime}: Sharpe={sharpe:.3f}, Top: {', '.join([f'{a}({w:.0%})' for a,w in top])}"
+                f"  {regime}: Sharpe={sharpe:.3f}, Top: {', '.join([f'{a}({w:.0%})' for a, w in top])}"
             )
 
     # 2. Hedge effectiveness (use QQQ since SPY data starts late)

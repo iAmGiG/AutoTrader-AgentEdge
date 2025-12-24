@@ -207,6 +207,7 @@ def _report_lead_lag_section(lead_lag_results: list) -> list:
     report.append("## Lead-Lag Analysis")
     report.append("")
     report.append("Does one segment's GEX predict another's?")
+    report.append("> **Note**: P-values may be optimistic due to regime autocorrelation.")
     report.append("")
     report.append("| Leader | Follower | Best Lag | Correlation | P-Value | Significant |")
     report.append("|--------|----------|----------|-------------|---------|-------------|")

@@ -191,6 +191,9 @@ def backtest_gex_signals(
 
     signals = generate_trading_signals(merged, use_s_squared)
 
+    # Shift signals to avoid lookahead bias (Signal t-1 -> Trade t)
+    signals = signals.shift(1).fillna(0)
+
     # Simple backtest
     position = 0
     cash = 10000
@@ -414,7 +417,7 @@ def run_s_squared_analysis():
         total = len(backtest_results)
 
         print(f"\nSymbols tested: {total}")
-        print(f"S² formula wins: {s_squared_wins}/{total} ({s_squared_wins/total*100:.0f}%)")
+        print(f"S² formula wins: {s_squared_wins}/{total} ({s_squared_wins / total * 100:.0f}%)")
 
         avg_improvement = np.mean([r["improvement"] for r in backtest_results])
         print(f"Average Sharpe improvement: {avg_improvement:+.3f}")

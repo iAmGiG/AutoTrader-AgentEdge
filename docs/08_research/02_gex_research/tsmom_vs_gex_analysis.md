@@ -1,5 +1,11 @@
 # TSMOM vs GEX Comparative Analysis
 
+> **⚠️ PROBLEMATIC - REGIME LOOK-AHEAD BIAS**
+>
+> Results used current-day regime (EOD calc) to filter same-day returns.
+> Fix: `gex_df[["regime"]].shift(1)` - use T-1 regime for T trading.
+> Rerun required - see #523
+
 ## Executive Summary
 
 **Key Findings:**

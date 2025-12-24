@@ -4,6 +4,11 @@
 **Purpose**: Compare GEX-based trading signals against technical indicators
 **Generated**: 2025-12-18 15:56:47
 
+> **⚠️ PROBLEMATIC - LOOK-AHEAD BIAS**
+>
+> Results below have look-ahead bias (signal at close(t) executed at close(t)).
+> Fix applied, rerun required - see #523
+
 ## Executive Summary
 
 Walk-forward backtest comparing three strategies:

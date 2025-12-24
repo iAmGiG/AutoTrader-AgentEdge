@@ -364,8 +364,11 @@ def calculate_gex_vectorized(
         )
     )
 
-    # Zero gamma level (weighted average of near-neutral strikes)
-    def calc_zero_gamma(group):
+    # Zero Gamma Level Approximation
+    # NOTE: This calculates the OI-weighted average of ATM strikes, which tracks price.
+    # It is NOT the true "Flip Gamma" level where total gamma crosses zero.
+    # True flip level requires root finding on the full gamma curve.
+    def calc_atm_weighted_strike(group):
         if len(group) == 0 or group["open_interest"].sum() == 0:
             return np.nan
         return np.average(group["strike"], weights=group["open_interest"])
@@ -373,7 +376,7 @@ def calculate_gex_vectorized(
     zero_gamma = (
         df[df["near_neutral"]]
         .groupby("trading_date")
-        .apply(calc_zero_gamma)
+        .apply(calc_atm_weighted_strike)
         .rename("zero_gamma_level")
     )
 

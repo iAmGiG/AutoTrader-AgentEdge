@@ -67,7 +67,7 @@ def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
     delta = prices.diff()
     gain = delta.where(delta > 0, 0).rolling(period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
-    rs = gain / loss
+    rs = gain / (loss + 1e-9)
     return 100 - (100 / (1 + rs))
 
 

@@ -111,7 +111,10 @@ def calculate_tsmom_signals(prices: pd.Series, lookback: int = 12) -> pd.DataFra
 def calculate_comparison_metrics(tsmom_df: pd.DataFrame, gex_df: pd.DataFrame) -> Dict:
     """Calculate TSMOM vs GEX comparison metrics."""
     # Merge on date
-    merged = tsmom_df.join(gex_df[["regime"]], how="inner")
+    # CRITICAL: Shift regime by 1 to avoid lookahead bias.
+    # We must use T-1 regime to decide T trading.
+    gex_shifted = gex_df[["regime"]].shift(1)
+    merged = tsmom_df.join(gex_shifted, how="inner")
 
     if len(merged) < 30:
         return None
@@ -207,7 +210,7 @@ def generate_report(results: List[Dict]) -> str:
     report.append(f"- Avg TSMOM Sharpe (Positive GEX): {avg_sharpe_pos:.3f}")
     report.append(f"- Avg TSMOM Sharpe (Negative GEX): {avg_sharpe_neg:.3f}")
     report.append(
-        f"- Sharpe improvement in positive gamma: {((avg_sharpe_pos/avg_sharpe_neg - 1) * 100 if avg_sharpe_neg != 0 else 0):.1f}%"
+        f"- Sharpe improvement in positive gamma: {((avg_sharpe_pos / avg_sharpe_neg - 1) * 100 if avg_sharpe_neg != 0 else 0):.1f}%"
     )
     report.append("")
 
@@ -318,7 +321,7 @@ def main():
 
         if avg_sharpe_pos > avg_sharpe_neg:
             print(
-                f"\n→ TSMOM performs {((avg_sharpe_pos/avg_sharpe_neg - 1) * 100 if avg_sharpe_neg != 0 else 0):.1f}% better in positive gamma regimes"
+                f"\n→ TSMOM performs {((avg_sharpe_pos / avg_sharpe_neg - 1) * 100 if avg_sharpe_neg != 0 else 0):.1f}% better in positive gamma regimes"
             )
 
     finally:

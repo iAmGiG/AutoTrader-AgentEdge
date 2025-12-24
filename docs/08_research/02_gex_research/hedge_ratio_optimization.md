@@ -4,6 +4,13 @@
 **Purpose**: Determine optimal hedge ratios across GEX regimes
 **Application**: gex-llm-patterns Paper 3 (cross-asset flows)
 
+> **⚠️ PROBLEMATIC - METHODOLOGY ISSUES**
+>
+> 1. Covariance matrix may be ill-conditioned when correlations approach ±1.0
+> 2. Dynamic vs static comparison ignored turnover costs (now fixed: 10bps/trade)
+>
+> Rerun required - see #523
+
 ## Executive Summary
 
 ## Optimal Allocations by Regime

@@ -71,7 +71,8 @@ def calculate_stochastic(df: pd.DataFrame, period: int, smooth: int = 3) -> pd.S
     """Calculate stochastic oscillator."""
     low_min = df["low"].rolling(period).min()
     high_max = df["high"].rolling(period).max()
-    raw_k = 100 * (df["close"] - low_min) / (high_max - low_min)
+    denom = high_max - low_min
+    raw_k = 100 * (df["close"] - low_min) / (denom + 1e-9)
     return raw_k.rolling(smooth).mean()
 
 
@@ -152,7 +153,7 @@ def generate_voter_signals(df: pd.DataFrame) -> pd.Series:
         delta = prices.diff()
         gain = delta.where(delta > 0, 0).rolling(period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
-        rs = gain / loss
+        rs = gain / (loss + 1e-9)
         return 100 - (100 / (1 + rs))
 
     def calculate_macd(prices: pd.Series) -> Dict:

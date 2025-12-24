@@ -108,7 +108,7 @@ def calculate_tsmom_signal(
 
     # Signal: direction * inverse vol scaling
     target_vol = 0.40
-    vol_scalar = np.minimum(target_vol / annualized_vol, 2.0)  # Cap at 2x
+    vol_scalar = np.minimum(target_vol / (annualized_vol + 1e-9), 2.0)  # Cap at 2x
 
     signal = np.sign(past_return) * vol_scalar
 
@@ -125,6 +125,9 @@ def backtest_tsmom(
     """
     prices = df["close"]
     signals = calculate_tsmom_signal(prices, lookback)
+
+    # Shift signals to avoid lookahead bias (Signal t-1 -> Trade t)
+    signals = signals.shift(1).fillna(0)
 
     position = 0.0
     cash = initial_capital
@@ -404,7 +407,7 @@ def run_tsmom_analysis():
         lookback_results = [r for r in all_results if r.lookback == lookback]
         if lookback_results:
             avg_sharpe = np.mean([r.out_of_sample_sharpe for r in lookback_results])
-            print(f"\nLookback {lookback} days (~{lookback//21} months):")
+            print(f"\nLookback {lookback} days (~{lookback // 21} months):")
             print(f"  Avg OOS Sharpe: {avg_sharpe:.3f}")
             print(
                 f"  Passing (Sharpe > 0.3): {sum(1 for r in lookback_results if r.out_of_sample_sharpe > 0.3)}/{len(lookback_results)}"

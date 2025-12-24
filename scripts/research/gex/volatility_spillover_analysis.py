@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import stats
+from statsmodels.tsa.stattools import grangercausalitytests
 
 DB_PATH = Path(".cache/gex_research.db")
 
@@ -59,59 +60,49 @@ def granger_causality_test(
     """
     Test if cause_symbol GEX Granger-causes effect_symbol regime changes.
 
-    Uses simple F-test approach:
-    - H0: Lagged cause doesn't improve prediction of effect
-    - H1: Lagged cause improves prediction
+    Uses statsmodels to perform a proper Granger causality test.
+    - H0: The lagged values of the cause variable do not explain the variation in the effect variable.
     """
     # Get aligned data
     cause_data = df[df["symbol"] == cause_symbol].set_index("trading_date")
     effect_data = df[df["symbol"] == effect_symbol].set_index("trading_date")
 
     common_dates = cause_data.index.intersection(effect_data.index)
-    if len(common_dates) < 50:
+    if len(common_dates) < 30 + max_lag:
         return None
 
-    cause_gex = cause_data.loc[common_dates, "total_gex"]
-    effect_regime = effect_data.loc[common_dates, "regime_numeric"]
-
-    results = {"cause": cause_symbol, "effect": effect_symbol, "lags": {}}
-
-    for lag in range(1, max_lag + 1):
-        # Lag the cause variable
-        cause_lagged = cause_gex.shift(lag)
-
-        # Drop NaN
-        valid = ~(cause_lagged.isna() | effect_regime.isna())
-        y = effect_regime[valid].values
-        x = cause_lagged[valid].values
-
-        if len(y) < 30:
-            continue
-
-        # Simple linear regression F-test
-        correlation, p_value = stats.pearsonr(x, y)
-
-        # Also calculate predictive accuracy
-        # Does sign of lagged GEX predict regime?
-        cause_sign = np.sign(x)
-        effect_sign = np.sign(y)
-        agreement = (cause_sign == effect_sign).mean()
-
-        results["lags"][lag] = {
-            "correlation": round(correlation, 4),
-            "p_value": round(p_value, 6),
-            "significant": p_value < 0.05,
-            "sign_agreement": round(agreement, 4),
+    # Prepare data for the test (needs to be a 2D array)
+    test_data = pd.DataFrame(
+        {
+            "effect": effect_data.loc[common_dates, "regime_numeric"],
+            "cause": cause_data.loc[common_dates, "total_gex"],
         }
+    ).dropna()
 
-    # Find best lag
-    if results["lags"]:
-        best_lag = max(
-            results["lags"].keys(), key=lambda lag: abs(results["lags"][lag]["correlation"])
-        )
-        results["best_lag"] = best_lag
-        results["best_correlation"] = results["lags"][best_lag]["correlation"]
-        results["best_p_value"] = results["lags"][best_lag]["p_value"]
+    if len(test_data) < 30 + max_lag:
+        return None
+
+    # Run the test
+    gc_results = grangercausalitytests(
+        test_data[["effect", "cause"]], maxlag=max_lag, verbose=False
+    )
+
+    # Extract the p-values from the F-test
+    p_values = [gc_results[lag][0]["ssr_ftest"][1] for lag in range(1, max_lag + 1)]
+    f_values = [gc_results[lag][0]["ssr_ftest"][0] for lag in range(1, max_lag + 1)]
+
+    # Find the lag with the minimum p-value
+    best_lag = np.argmin(p_values) + 1
+    min_p_value = p_values[best_lag - 1]
+
+    results = {
+        "cause": cause_symbol,
+        "effect": effect_symbol,
+        "best_lag": best_lag,
+        "best_p_value": min_p_value,
+        "best_f_value": f_values[best_lag - 1],
+        "significant": min_p_value < 0.05,
+    }
 
     return results
 
@@ -262,16 +253,17 @@ def _report_granger_section(granger_results: list) -> list:
     report.append("## Granger Causality Tests")
     report.append("")
     report.append("Does Asset A's GEX predict Asset B's regime changes?")
+    report.append("(H0: No Granger causality)")
     report.append("")
-    report.append("| Cause | Effect | Best Lag | Correlation | P-Value | Significant |")
-    report.append("|-------|--------|----------|-------------|---------|-------------|")
+    report.append("| Cause | Effect | Best Lag | F-Statistic | P-Value | Significant (p<0.05) |")
+    report.append("|-------|--------|----------|-------------|---------|----------------------|")
 
     for r in granger_results:
-        if r and "best_lag" in r:
-            sig = "Yes" if r.get("best_p_value", 1) < 0.05 else "No"
+        if r:
+            sig = "Yes" if r["significant"] else "No"
             report.append(
                 f"| {r['cause']} | {r['effect']} | {r['best_lag']} days | "
-                f"{r['best_correlation']:.3f} | {r['best_p_value']:.4f} | {sig} |"
+                f"{r['best_f_value']:.3f} | {r['best_p_value']:.4f} | {sig} |"
             )
     report.append("")
     return report
@@ -379,14 +371,14 @@ def generate_spillover_report(
     # Executive Summary
     report.append("## Executive Summary")
     report.append("")
-    significant_granger = [r for r in granger_results if r and r.get("best_p_value", 1) < 0.05]
+    significant_granger = [r for r in granger_results if r and r["significant"]]
     if significant_granger:
         report.append("### Statistically Significant Lead-Lag Relationships")
         report.append("")
         for r in significant_granger:
             report.append(
                 f"- **{r['cause']} → {r['effect']}**: "
-                f"lag={r['best_lag']} days, r={r['best_correlation']:.3f}, p={r['best_p_value']:.4f}"
+                f"lag={r['best_lag']} days, p={r['best_p_value']:.4f}"
             )
         report.append("")
     else:
@@ -408,13 +400,12 @@ def generate_spillover_report(
     report.append("")
 
     uvxy_granger = next((r for r in granger_results if r and r.get("cause") == "UVXY"), None)
-    if uvxy_granger:
+    if uvxy_granger and uvxy_granger["significant"]:
         report.append("1. **UVXY as Leading Indicator**:")
-        if uvxy_granger.get("best_p_value", 1) < 0.05:
-            report.append(
-                f"   - UVXY GEX leads SPY regime by {uvxy_granger['best_lag']} day(s) "
-                f"(r={uvxy_granger['best_correlation']:.3f}, p={uvxy_granger['best_p_value']:.4f})"
-            )
+        report.append(
+            f"   - UVXY GEX Granger-causes SPY regime changes with a lag of {uvxy_granger['best_lag']} day(s) "
+            f"(p={uvxy_granger['best_p_value']:.4f})."
+        )
         report.append("")
 
     report.append("### Implications")
@@ -474,10 +465,10 @@ def main():
                 result = granger_causality_test(df, cause, effect, max_lag=5)
                 if result:
                     granger_results.append(result)
-                    sig = "*" if result.get("best_p_value", 1) < 0.05 else ""
+                    sig = "*" if result["significant"] else ""
                     print(
                         f"  {cause} -> {effect}: lag={result.get('best_lag', '?')}, "
-                        f"r={result.get('best_correlation', 0):.3f}{sig}"
+                        f"p={result.get('best_p_value', 1):.4f}{sig}"
                     )
 
         # 2. Rolling Correlations
@@ -523,7 +514,7 @@ def main():
         print("SUMMARY")
         print("=" * 70)
 
-        significant = [r for r in granger_results if r and r.get("best_p_value", 1) < 0.05]
+        significant = [r for r in granger_results if r and r["significant"]]
         print(f"Significant Granger relationships: {len(significant)}/{len(granger_results)}")
 
         leading = [a for a, i in leading_indicators.items() if i["is_leading_indicator"]]

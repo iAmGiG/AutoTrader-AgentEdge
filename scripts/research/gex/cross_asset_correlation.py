@@ -116,12 +116,10 @@ def calculate_lead_lag_correlation(
     # Calculate correlations at different lags
     correlations = {}
     for lag in range(-max_lag, max_lag + 1):
-        if lag < 0:
-            # Lead asset leads
-            shifted = lead_data.shift(-lag)
-        else:
-            # Lag asset leads
-            shifted = lag_data.shift(lag)
+        # Always shift the lag_asset relative to lead_asset
+        # lag > 0: lag_asset(t-k) vs lead_asset(t) -> Lag leads Lead
+        # lag < 0: lag_asset(t+k) vs lead_asset(t) -> Lead leads Lag
+        shifted = lag_data.shift(lag)
 
         valid = ~(lead_data.isna() | shifted.isna())
         if valid.sum() > 30:

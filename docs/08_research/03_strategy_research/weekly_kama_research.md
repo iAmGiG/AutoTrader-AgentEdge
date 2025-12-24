@@ -4,6 +4,11 @@
 **Status**: Complete
 **Date**: 2025-12-22
 
+> **⚠️ PROBLEMATIC - LOOK-AHEAD BIAS**
+>
+> Results below have look-ahead bias (signal at close(t) executed at close(t)).
+> Fix applied, rerun required - see #523
+
 ## Executive Summary
 
 Weekly KAMA (Kaufman Adaptive Moving Average) crossover strategy achieves the target of **<10 trades/year** (avg 0.8) while outperforming weekly MACD+RSI on **80% of tested symbols**. However, the strategy struggles significantly in bear/choppy markets, recommending a **hybrid approach** as the optimal integration.

@@ -4,6 +4,11 @@
 **Purpose**: Identify cross-asset GEX regime leading indicators
 **Application**: gex-llm-patterns Paper 3 (cross-asset flows)
 
+> **⚠️ PROBLEMATIC - METHODOLOGY FIX**
+>
+> Previous results used Pearson correlation instead of proper Granger causality F-test.
+> Fix applied (statsmodels.grangercausalitytests), rerun required - see #523
+
 ## Executive Summary
 
 ### Statistically Significant Lead-Lag Relationships

@@ -134,6 +134,8 @@ def fetch_from_gex_db(symbol: str, start: str, end: str) -> pd.DataFrame:
     weekly = df.resample("W").agg({"close": "last"}).dropna()
 
     # Estimate OHLC from close (simplified)
+    # WARNING: This creates synthetic High/Low/Open data.
+    # Do NOT use this for strategies relying on true High/Low (e.g. ATR, Stochastic).
     weekly["open"] = weekly["close"].shift(1).fillna(weekly["close"])
     weekly["high"] = weekly["close"] * 1.02  # Estimate
     weekly["low"] = weekly["close"] * 0.98
@@ -308,6 +310,9 @@ def backtest_strategy(
 
     prices = df["close"]
     signals = df[signal_col]
+
+    # Shift signals to avoid lookahead bias (Signal t-1 -> Trade t)
+    signals = signals.shift(1).fillna(0)
 
     for i in range(len(df)):
         price = prices.iloc[i]
@@ -601,7 +606,7 @@ def run_full_analysis(symbols: Optional[List[str]] = None) -> Dict[str, Any]:
     all_trades_per_year = []
 
     for symbol in symbols:
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print(f"Processing: {symbol}")
         print("=" * 50)
 

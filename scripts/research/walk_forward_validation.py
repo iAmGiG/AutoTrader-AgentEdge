@@ -365,10 +365,10 @@ def apply_multiple_testing_corrections(
     results: List[ValidationResult], n_observations: int = 252
 ) -> List[ValidationResult]:
     """
-    Apply multiple testing corrections to validation results.
+    Apply Benjamini-Hochberg multiple testing correction to validation results.
 
-    Estimates p-values from OOS Sharpe ratios and applies both
-    Bonferroni and BH corrections.
+    Estimates p-values from OOS Sharpe ratios and applies the BH correction
+    to control the False Discovery Rate.
     """
     # Estimate p-values
     p_values = [
@@ -376,7 +376,6 @@ def apply_multiple_testing_corrections(
     ]
 
     # Apply corrections
-    bonf_adjusted, bonf_sig = bonferroni_correction(p_values)
     bh_adjusted, bh_sig = benjamini_hochberg_correction(p_values)
 
     # Update results with BH-adjusted p-values (less conservative)
@@ -493,7 +492,7 @@ def macd_rsi_strategy(df: pd.DataFrame) -> pd.Series:
     delta = prices.diff()
     gain = delta.where(delta > 0, 0).rolling(14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    rs = gain / loss
+    rs = gain / (loss + 1e-9)
     rsi = 100 - (100 / (1 + rs))
 
     signals = pd.Series(0.0, index=df.index)

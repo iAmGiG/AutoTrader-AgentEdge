@@ -4,6 +4,20 @@ Research completed: 2025-12-22
 
 Issues: #495, #498, #502
 
+---
+
+> **⚠️ PROBLEMATIC RESULTS - LOOK-AHEAD BIAS DETECTED**
+>
+> All backtesting results below are **optimistically biased**. A look-ahead bias was discovered where signals calculated at close(t) were executed at the same close(t). This is unrealistic - real execution requires t+1.
+>
+> **Fix applied**: `signals = signals.shift(1).fillna(0)`
+>
+> **Experiments must be rerun** - see issue #523
+>
+> Results below are preserved for reference but should NOT be used for production decisions.
+
+---
+
 ## Overview
 
 This document summarizes research into backtesting methodology validation, including walk-forward testing, multiple testing corrections, and formula comparisons.
@@ -49,6 +63,7 @@ Documented WHO-WHOM-WHAT for validated patterns:
 ### Methodology
 
 Time-Series Momentum based on Moskowitz, Ooi, Pedersen (2012):
+
 - Lookback periods: 63, 126, 252 days
 - Volatility scaling: target 40% annualized vol
 

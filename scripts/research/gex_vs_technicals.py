@@ -119,7 +119,7 @@ def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
     delta = prices.diff()
     gain = delta.where(delta > 0, 0).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
+    rs = gain / (loss + 1e-9)  # Avoid division by zero
     return 100 - (100 / (1 + rs))
 
 
@@ -134,32 +134,32 @@ def generate_technical_signals(df: pd.DataFrame) -> pd.Series:
     macd = calculate_macd(prices)
     rsi = calculate_rsi(prices)
 
+    # Vectorized MACD signals (Crossovers)
+    hist = macd["histogram"]
+    prev_hist = hist.shift(1)
+    macd_signal = pd.Series(0, index=df.index)
+    macd_signal[(hist > 0) & (prev_hist <= 0)] = 1  # Bullish crossover
+    macd_signal[(hist < 0) & (prev_hist >= 0)] = -1  # Bearish crossover
+
+    # Vectorized RSI signals
+    rsi_signal = pd.Series(0, index=df.index)
+    rsi_signal[rsi < 30] = 1  # Oversold
+    rsi_signal[rsi > 70] = -1  # Overbought
+
+    # Voting Logic
     signals = pd.Series(0.0, index=df.index)
 
-    for i in range(34, len(df)):  # Start after slow EMA period
-        macd_signal = 0
-        rsi_signal = 0
+    # Masks for voting conditions
+    agree = (macd_signal == rsi_signal) & (macd_signal != 0)
+    only_macd = (macd_signal != 0) & (rsi_signal == 0)
+    only_rsi = (rsi_signal != 0) & (macd_signal == 0)
 
-        # MACD signal: histogram direction
-        if macd["histogram"].iloc[i] > 0 and macd["histogram"].iloc[i - 1] <= 0:
-            macd_signal = 1  # Bullish crossover
-        elif macd["histogram"].iloc[i] < 0 and macd["histogram"].iloc[i - 1] >= 0:
-            macd_signal = -1  # Bearish crossover
+    signals[agree] = macd_signal[agree]
+    signals[only_macd] = macd_signal[only_macd] * 0.5
+    signals[only_rsi] = rsi_signal[only_rsi] * 0.5
 
-        # RSI signal: overbought/oversold
-        rsi_val = rsi.iloc[i]
-        if rsi_val < 30:
-            rsi_signal = 1  # Oversold = buy
-        elif rsi_val > 70:
-            rsi_signal = -1  # Overbought = sell
-
-        # Voting: both agree = strong signal, one signals = weak, disagree = hold
-        if macd_signal == rsi_signal and macd_signal != 0:
-            signals.iloc[i] = macd_signal  # Strong agreement
-        elif macd_signal != 0 and rsi_signal == 0:
-            signals.iloc[i] = macd_signal * 0.5  # Weak MACD signal
-        elif rsi_signal != 0 and macd_signal == 0:
-            signals.iloc[i] = rsi_signal * 0.5  # Weak RSI signal
+    # Zero out warmup period to match original logic
+    signals.iloc[:34] = 0.0
 
     return signals
 
@@ -173,23 +173,23 @@ def generate_gex_signals(df: pd.DataFrame) -> pd.Series:
     - NEGATIVE gamma: Dealers hedge same direction as market = amplifying = bearish
     - NEUTRAL: No strong dealer positioning = hold
     """
-    signals = pd.Series(0.0, index=df.index)
-
     regime_map = {"POSITIVE": 1, "NEGATIVE": -1, "NEUTRAL": 0, "UNKNOWN": 0}
 
-    for i in range(1, len(df)):
-        current_regime = df["regime"].iloc[i]
-        prev_regime = df["regime"].iloc[i - 1]
+    # Map regimes to numeric values
+    mapped_regime = df["regime"].map(regime_map).fillna(0)
 
-        # Signal on regime transitions
-        if current_regime != prev_regime:
-            if current_regime == "POSITIVE":
-                signals.iloc[i] = 1  # Enter long
-            elif current_regime == "NEGATIVE":
-                signals.iloc[i] = -1  # Exit or short
-        else:
-            # Maintain position based on current regime
-            signals.iloc[i] = regime_map.get(current_regime, 0) * 0.5
+    # Base signal: Steady state is 50% of regime value
+    signals = mapped_regime * 0.5
+
+    # Handle Transitions: Full signal on entry
+    prev_regime = df["regime"].shift(1)
+    transition = df["regime"] != prev_regime
+
+    signals[transition & (df["regime"] == "POSITIVE")] = 1.0
+    signals[transition & (df["regime"] == "NEGATIVE")] = -1.0
+
+    # Clean up first row (shift artifact)
+    signals.iloc[0] = 0.0
 
     return signals
 
@@ -205,30 +205,22 @@ def generate_hybrid_signals(df: pd.DataFrame) -> pd.Series:
     """
     tech_signals = generate_technical_signals(df)
     # Note: GEX regime is used directly from df["regime"], not from gex_signals
+    regime = df["regime"]
 
-    signals = pd.Series(0.0, index=df.index)
+    signals = tech_signals.copy()
 
-    for i in range(len(df)):
-        tech = tech_signals.iloc[i]
-        regime = df["regime"].iloc[i]
+    # POSITIVE regime: Amplify bullish, dampen bearish
+    pos_mask = regime == "POSITIVE"
+    signals[pos_mask & (tech_signals > 0)] *= 1.5
+    signals[pos_mask & (tech_signals <= 0)] *= 0.5
 
-        if regime == "POSITIVE":
-            # Amplify bullish technicals, dampen bearish
-            if tech > 0:
-                signals.iloc[i] = tech * 1.5  # Boost bullish
-            else:
-                signals.iloc[i] = tech * 0.5  # Reduce bearish
-        elif regime == "NEGATIVE":
-            # Dampen all signals during negative gamma
-            signals.iloc[i] = tech * 0.3
-        else:
-            # Neutral regime - use technicals as-is
-            signals.iloc[i] = tech
+    # NEGATIVE regime: Dampen all signals
+    neg_mask = regime == "NEGATIVE"
+    signals[neg_mask] *= 0.3
 
-        # Clip to [-1, 1]
-        signals.iloc[i] = np.clip(signals.iloc[i], -1, 1)
+    # NEUTRAL regime: Unchanged (already copied)
 
-    return signals
+    return signals.clip(-1, 1)
 
 
 def backtest_strategy(
@@ -243,6 +235,9 @@ def backtest_strategy(
     portfolio_values = []
 
     prices = df["underlying_price"]
+
+    # Shift signals to avoid lookahead bias (Signal t-1 -> Trade t)
+    signals = signals.shift(1).fillna(0)
 
     for i in range(len(df)):
         price = prices.iloc[i]
