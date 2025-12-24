@@ -829,3 +829,95 @@ exit:
     \  - accounts_config.yaml\n\n\
     Backups are stored in config_defaults/backups/ directory.\n\
     Use before making significant configuration changes."
+
+# Slash Commands (Issue #506, #507, #508)
+/gtt:
+  category: Configuration
+  description: GTT order management (Issue #506)
+  usage: /gtt {list|summary|status|delete|enable|disable} [args]
+  examples:
+  - /gtt
+  - /gtt list
+  - /gtt summary
+  - /gtt status <id>
+  - /gtt delete <id>
+  - /gtt enable <id>
+  - /gtt disable <id>
+  aliases:
+  - gtt
+  tags:
+  - configuration
+  - orders
+  - gtt
+  - slash-command
+  related:
+  - show orders
+  - cancel
+  details: "Manage Good-Till-Triggered persistent order triggers.\n\nSubcommands:\n\
+    \  list              - Show all GTT triggers\n\
+    \  summary           - Show GTT summary with counts\n\
+    \  status <id>       - Show trigger details\n\
+    \  delete <id>       - Delete a trigger\n\
+    \  enable <id>       - Enable a disabled trigger\n\
+    \  disable <id>      - Disable a trigger\n\n\
+    GTT triggers persist across sessions and execute when conditions are met."
+
+/watchlist:
+  category: Configuration
+  description: Watchlist management (Issue #507)
+  usage: /watchlist {list|add|remove|tier} [args]
+  examples:
+  - /watchlist
+  - /watchlist list
+  - /watchlist add AAPL
+  - /watchlist remove MSFT
+  - /watchlist tier discovery
+  aliases:
+  - wl
+  tags:
+  - configuration
+  - watchlist
+  - scanner
+  - slash-command
+  related:
+  - show watchlist
+  - morning-routine
+  details: "Manage tiered watchlists for trading opportunities.\n\nSubcommands:\n\
+    \  list              - Show all watchlists\n\
+    \  add <symbol>      - Add symbol to discovery tier\n\
+    \  remove <symbol>   - Remove symbol from watchlist\n\
+    \  tier <name>       - Show specific tier details\n\n\
+    Tiers: positions, pending_orders, strategy, discovery\n\
+    Discovery tier is where new trading ideas are tracked."
+
+/partial:
+  category: Trading
+  description: Partial exit management (Issue #508)
+  usage: /partial {list|summary|active|levels} [symbol]
+  examples:
+  - /partial
+  - /partial list
+  - /partial summary
+  - /partial AAPL
+  - /partial levels AAPL
+  - /partial active
+  aliases:
+  - pe
+  tags:
+  - trading
+  - exits
+  - partial
+  - slash-command
+  related:
+  - show positions
+  - sell
+  - show portfolio
+  details: "Manage multi-target partial position exits.\n\nSubcommands:\n\
+    \  list              - Show all partial exit plans\n\
+    \  summary           - Summary of active targets\n\
+    \  active            - List only active targets\n\
+    \  levels <symbol>   - Show exit target levels for position\n\
+    \  <symbol>          - Show plan for specific symbol\n\n\
+    Partial exits split positions across multiple targets:\n\
+    - Target 1: Profit-taking at fixed level (limit order)\n\
+    - Target 2: Trailing stop for remaining position"

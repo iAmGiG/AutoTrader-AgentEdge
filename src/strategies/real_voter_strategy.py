@@ -17,6 +17,7 @@ from src.autogen_agents.agents.voter_agent import VoterAgent
 from src.autogen_agents.tools import fetch_unified_market_data
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
+from src.core.ranked_voter_config import RankedVoterManager
 from src.core.trading_modes import ModeParameters, get_mode_manager
 from src.database import AnalysisHistoryManager
 from src.trading.instruments.entry_planning import calculate_entry_plan
@@ -116,7 +117,27 @@ class RealVoterStrategy(StrategyAnalyzer):
             # agent_response = user_proxy.initiate_chat(self.voter, message=prompt, market_data=market_data)
             # result = self._parse_agent_response(agent_response)
 
-            result = self.voter.evaluate_voting(ticker, market_data, return_components=True)
+            # Issue #504: Check if ranked voting is enabled
+            ranked_voter = RankedVoterManager()
+            active_voters = ranked_voter.get_active_voters()
+            use_ranked = len(active_voters) > 1  # Use ranked if multiple active voters
+
+            if use_ranked:
+                logger.info(
+                    f"Using ranked voting for {ticker} with {len(active_voters)} active voters"
+                )
+                result = self.voter.evaluate_ranked_voting(
+                    ticker, market_data, return_components=True
+                )
+            else:
+                logger.info(f"Using standard voting for {ticker}")
+                result = self.voter.evaluate_voting(ticker, market_data, return_components=True)
+
+            # Issue #505: Add voting mode indicator to result
+            if isinstance(result, dict):
+                result["voting_mode"] = "ranked" if use_ranked else "standard"
+                result["active_voters"] = [v.name for v in active_voters]
+
             formatted = self._format_analysis_result(result, request, user_timeframe, market_data)
             return formatted
         except ValueError:

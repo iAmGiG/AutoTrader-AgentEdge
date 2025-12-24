@@ -337,6 +337,205 @@ def cmd_voter(session, args: str = None):
 
 
 # =============================================================================
+# GTT - Good-Till-Triggered order management (#506)
+# =============================================================================
+
+
+def _gtt_try_trigger_action(action_func, trigger_id_str: str, action_name: str) -> str:
+    """Execute GTT trigger action. Returns result string."""
+    try:
+        trigger_id = int(trigger_id_str)
+        result = action_func(trigger_id)
+        return f"[OK] {result.get('message', f'Trigger {action_name}')}"
+    except ValueError:
+        return f"[ERROR] Invalid trigger ID: {trigger_id_str}"
+
+
+def _gtt_handle_subcommand(subcommand: str, subarg: str | None) -> str:
+    """Handle GTT subcommands. Returns output string."""
+    from src.cli.tools.gtt_tools import (
+        delete_gtt_trigger,
+        disable_gtt_trigger,
+        enable_gtt_trigger,
+        show_gtt_summary,
+        show_gtt_triggers,
+    )
+
+    if subcommand in ("list", "ls"):
+        return show_gtt_triggers()
+    if subcommand == "summary":
+        return show_gtt_summary()
+    if subcommand == "status":
+        return (
+            f"Usage: /gtt status <id>\n{show_gtt_summary()}"
+            if not subarg
+            else show_gtt_triggers(symbol=subarg)
+        )
+    if subcommand == "delete":
+        return (
+            "Usage: /gtt delete <trigger_id>"
+            if not subarg
+            else _gtt_try_trigger_action(delete_gtt_trigger, subarg, "deleted")
+        )
+    if subcommand == "enable":
+        return (
+            "Usage: /gtt enable <trigger_id>"
+            if not subarg
+            else _gtt_try_trigger_action(enable_gtt_trigger, subarg, "enabled")
+        )
+    if subcommand == "disable":
+        return (
+            "Usage: /gtt disable <trigger_id>"
+            if not subarg
+            else _gtt_try_trigger_action(disable_gtt_trigger, subarg, "disabled")
+        )
+    return f"Unknown subcommand: {subcommand}\nUse /gtt for help"
+
+
+@command("/gtt", help_text="GTT order management", has_args=True)
+def cmd_gtt(session, args: str = None):
+    """
+    Manage Good-Till-Triggered persistent orders.
+
+    Usage:
+        /gtt                # Show active GTT triggers
+        /gtt list           # List all triggers
+        /gtt summary        # Show GTT summary
+        /gtt status <id>    # Show trigger details
+        /gtt delete <id>    # Delete a trigger
+        /gtt enable <id>    # Enable trigger
+        /gtt disable <id>   # Disable trigger
+    """
+    from src.cli.tools.gtt_tools import show_gtt_triggers
+
+    if not args:
+        safe_print(show_gtt_triggers())
+        return
+
+    parts = args.strip().split(maxsplit=1)
+    subcommand = parts[0].lower()
+    subarg = parts[1] if len(parts) > 1 else None
+
+    safe_print(_gtt_handle_subcommand(subcommand, subarg))
+
+
+# =============================================================================
+# WATCHLIST - Tiered watchlist management (#507)
+# =============================================================================
+
+
+def _watchlist_handle_subcommand(subcommand: str, subarg: str | None) -> str:
+    """Handle watchlist subcommands. Returns output string."""
+    from src.cli.tools.watchlist_tools import (
+        add_symbol_to_watchlist,
+        list_watchlists,
+        remove_symbol_from_watchlist,
+        show_watchlist_contents,
+    )
+
+    if subcommand == "list":
+        return list_watchlists()
+    if subcommand == "add":
+        if not subarg:
+            return "Usage: /watchlist add <symbol>"
+        result = add_symbol_to_watchlist(subarg.upper())
+        if isinstance(result, dict):
+            return f"[OK] Added {subarg} to watchlist"
+        return str(result)
+    if subcommand == "remove":
+        if not subarg:
+            return "Usage: /watchlist remove <symbol>"
+        result = remove_symbol_from_watchlist(subarg.upper())
+        if isinstance(result, dict):
+            return f"[OK] Removed {subarg} from watchlist"
+        return str(result)
+    if subcommand == "tier":
+        if not subarg:
+            return "Usage: /watchlist tier <name>\nValid tiers: positions, pending_orders, strategy, discovery"
+        return show_watchlist_contents(subarg.lower())
+    return f"Unknown subcommand: {subcommand}\nUse /watchlist for help"
+
+
+@command("/watchlist", aliases=["/wl"], help_text="Watchlist management", has_args=True)
+def cmd_watchlist(session, args: str = None):
+    """
+    Manage tiered watchlists for trading.
+
+    Usage:
+        /watchlist              # Show all watchlists
+        /watchlist list         # List all watchlists
+        /watchlist add <sym>    # Add symbol to discovery tier
+        /watchlist remove <sym> # Remove symbol from watchlist
+        /watchlist tier <name>  # Show specific tier details
+    """
+    from src.cli.tools.watchlist_tools import list_watchlists
+
+    if not args:
+        safe_print(list_watchlists())
+        return
+
+    parts = args.strip().split(maxsplit=1)
+    subcommand = parts[0].lower()
+    subarg = parts[1] if len(parts) > 1 else None
+
+    safe_print(_watchlist_handle_subcommand(subcommand, subarg))
+
+
+# =============================================================================
+# PARTIAL - Partial exit management (#508)
+# =============================================================================
+
+
+@command("/partial", aliases=["/pe"], help_text="Partial exit management", has_args=True)
+def cmd_partial(session, args: str = None):
+    """
+    Manage partial exit strategies for positions.
+
+    Usage:
+        /partial              # Show all partial exit plans
+        /partial list         # List all plans
+        /partial summary      # Summary of active targets
+        /partial <symbol>     # Show plan for specific symbol
+        /partial levels <sym> # Show exit target levels
+        /partial active       # Show only active targets
+    """
+    from src.cli.tools.partial_exit_tools import (
+        get_exit_summary,
+        list_active_exits,
+        show_all_partial_exits,
+        show_exit_targets,
+        show_partial_exit_plan,
+    )
+
+    if not args:
+        safe_print(show_all_partial_exits())
+        return
+
+    parts = args.strip().split(maxsplit=1)
+    subcommand = parts[0].lower()
+    subarg = parts[1] if len(parts) > 1 else None
+
+    if subcommand in ("list", "ls"):
+        safe_print(show_all_partial_exits())
+    elif subcommand == "summary":
+        safe_print(get_exit_summary())
+    elif subcommand == "active":
+        safe_print(list_active_exits())
+    elif subcommand == "levels":
+        if not subarg:
+            safe_print("Usage: /partial levels <symbol>")
+        else:
+            safe_print(show_exit_targets(subarg.upper()))
+    else:
+        # Assume first arg is symbol
+        symbol = subcommand.upper()
+        if subcommand in ("symbols", "help"):
+            safe_print(show_all_partial_exits())
+        else:
+            safe_print(show_partial_exit_plan(symbol))
+
+
+# =============================================================================
 # Ensure commands are registered on import
 # =============================================================================
 
