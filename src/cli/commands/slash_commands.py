@@ -351,6 +351,46 @@ def _gtt_try_trigger_action(action_func, trigger_id_str: str, action_name: str) 
         return f"[ERROR] Invalid trigger ID: {trigger_id_str}"
 
 
+def _gtt_create_trigger(args_str: str) -> str:
+    """Parse and create a GTT trigger. Format: SYMBOL CONDITION VALUE [notes]"""
+    from src.cli.tools.gtt_tools import create_gtt_trigger
+
+    if not args_str:
+        return (
+            "Usage: /gtt create <symbol> <condition> <value> [notes]\n\n"
+            "Conditions: above, below, gain, loss, trailing\n"
+            "Examples:\n"
+            "  /gtt create AAPL above 200      # Alert when AAPL hits $200\n"
+            "  /gtt create SPY below 450       # Alert when SPY drops to $450\n"
+            "  /gtt create TSLA gain 0.10      # Alert on 10% gain\n"
+            "  /gtt create NVDA trailing 0.05  # Trailing stop 5%"
+        )
+
+    parts = args_str.split(maxsplit=3)
+    if len(parts) < 3:
+        return "Usage: /gtt create <symbol> <condition> <value> [notes]"
+
+    symbol = parts[0].upper()
+    condition = parts[1].lower()
+    try:
+        value = float(parts[2])
+    except ValueError:
+        return f"[ERROR] Invalid value: {parts[2]} (must be a number)"
+
+    notes = parts[3] if len(parts) > 3 else None
+
+    result = create_gtt_trigger(
+        symbol=symbol,
+        condition=condition,
+        value=value,
+        notes=notes,
+    )
+
+    if result.get("status") == "success":
+        return f"[OK] {result.get('message', 'GTT trigger created')}"
+    return f"[ERROR] {result.get('message', 'Failed to create trigger')}"
+
+
 def _gtt_handle_subcommand(subcommand: str, subarg: str | None) -> str:
     """Handle GTT subcommands. Returns output string."""
     from src.cli.tools.gtt_tools import (
@@ -371,7 +411,9 @@ def _gtt_handle_subcommand(subcommand: str, subarg: str | None) -> str:
             if not subarg
             else show_gtt_triggers(symbol=subarg)
         )
-    if subcommand == "delete":
+    if subcommand == "create":
+        return _gtt_create_trigger(subarg)
+    if subcommand in ("delete", "cancel"):
         return (
             "Usage: /gtt delete <trigger_id>"
             if not subarg
@@ -398,13 +440,15 @@ def cmd_gtt(session, args: str = None):
     Manage Good-Till-Triggered persistent orders.
 
     Usage:
-        /gtt                # Show active GTT triggers
-        /gtt list           # List all triggers
-        /gtt summary        # Show GTT summary
-        /gtt status <id>    # Show trigger details
-        /gtt delete <id>    # Delete a trigger
-        /gtt enable <id>    # Enable trigger
-        /gtt disable <id>   # Disable trigger
+        /gtt                              # Show active GTT triggers
+        /gtt list                         # List all triggers
+        /gtt create SYM COND VAL [notes]  # Create trigger (above/below/gain/loss/trailing)
+        /gtt summary                      # Show GTT summary
+        /gtt status <id>                  # Show trigger details
+        /gtt delete <id>                  # Delete a trigger
+        /gtt cancel <id>                  # Cancel a trigger (alias for delete)
+        /gtt enable <id>                  # Enable trigger
+        /gtt disable <id>                 # Disable trigger
     """
     from src.cli.tools.gtt_tools import show_gtt_triggers
 
@@ -423,55 +467,116 @@ def cmd_gtt(session, args: str = None):
 # WATCHLIST - Tiered watchlist management (#507)
 # =============================================================================
 
+# Default watchlist name for simple add/remove operations
+_WL_DEFAULT = "default"
+
+
+def _watchlist_add(subarg: str | None) -> str:
+    """Handle /watchlist add subcommand."""
+    from src.cli.tools.watchlist_tools import add_to_watchlist, create_watchlist
+
+    if not subarg:
+        return "Usage: /watchlist add <symbol> [watchlist_name]"
+    parts = subarg.split()
+    symbol = parts[0].upper()
+    wl_name = parts[1] if len(parts) > 1 else _WL_DEFAULT
+    if wl_name == _WL_DEFAULT:
+        create_watchlist(name=_WL_DEFAULT, description="Default watchlist", is_default=True)
+    result = add_to_watchlist(watchlist_name=wl_name, symbol=symbol)
+    if result.get("status") == "success":
+        return f"[OK] Added {symbol} to '{wl_name}'"
+    return f"[ERROR] {result.get('message', 'Failed to add symbol')}"
+
+
+def _watchlist_remove(subarg: str | None) -> str:
+    """Handle /watchlist remove subcommand."""
+    from src.cli.tools.watchlist_tools import remove_from_watchlist
+
+    if not subarg:
+        return "Usage: /watchlist remove <symbol> [watchlist_name]"
+    parts = subarg.split()
+    symbol = parts[0].upper()
+    wl_name = parts[1] if len(parts) > 1 else _WL_DEFAULT
+    result = remove_from_watchlist(watchlist_name=wl_name, symbol=symbol)
+    if result.get("status") == "success":
+        return f"[OK] Removed {symbol} from '{wl_name}'"
+    return f"[ERROR] {result.get('message', 'Failed to remove symbol')}"
+
+
+def _watchlist_create(subarg: str | None) -> str:
+    """Handle /watchlist create subcommand."""
+    from src.cli.tools.watchlist_tools import create_watchlist
+
+    if not subarg:
+        return "Usage: /watchlist create <name> [description]"
+    parts = subarg.split(maxsplit=1)
+    wl_name = parts[0]
+    desc = parts[1] if len(parts) > 1 else None
+    result = create_watchlist(name=wl_name, description=desc)
+    if result.get("status") == "success":
+        return f"[OK] Created watchlist '{wl_name}'"
+    return f"[ERROR] {result.get('message', 'Failed to create watchlist')}"
+
+
+def _watchlist_limits() -> str:
+    """Handle /watchlist limits subcommand."""
+    from src.cli.tools.watchlist_tools import list_watchlists
+
+    result = list_watchlists()
+    if result.get("status") != "success":
+        return "[ERROR] Failed to get watchlist limits"
+    watchlists = result.get("watchlists", [])
+    output = "Watchlist Limits & Statistics\n"
+    output += "=" * 40 + "\n"
+    output += f"Total Watchlists: {len(watchlists)}\n"
+    output += "Max Watchlists: Unlimited\n"
+    output += "Max Symbols/Watchlist: Unlimited\n"
+    output += "-" * 40 + "\n"
+    for wl in watchlists:
+        default = " [DEFAULT]" if wl.get("is_default") else ""
+        output += f"  {wl['name']}: {wl.get('symbol_count', 0)} symbols{default}\n"
+    return output
+
 
 def _watchlist_handle_subcommand(subcommand: str, subarg: str | None) -> str:
     """Handle watchlist subcommands. Returns output string."""
-    from src.cli.tools.watchlist_tools import (
-        add_symbol_to_watchlist,
-        list_watchlists,
-        remove_symbol_from_watchlist,
-        show_watchlist_contents,
-    )
+    from src.cli.tools.watchlist_tools import show_watchlist, show_watchlists
 
     if subcommand == "list":
-        return list_watchlists()
+        return show_watchlists()
     if subcommand == "add":
-        if not subarg:
-            return "Usage: /watchlist add <symbol>"
-        result = add_symbol_to_watchlist(subarg.upper())
-        if isinstance(result, dict):
-            return f"[OK] Added {subarg} to watchlist"
-        return str(result)
+        return _watchlist_add(subarg)
     if subcommand == "remove":
+        return _watchlist_remove(subarg)
+    if subcommand in ("show", "view", "tier"):
         if not subarg:
-            return "Usage: /watchlist remove <symbol>"
-        result = remove_symbol_from_watchlist(subarg.upper())
-        if isinstance(result, dict):
-            return f"[OK] Removed {subarg} from watchlist"
-        return str(result)
-    if subcommand == "tier":
-        if not subarg:
-            return "Usage: /watchlist tier <name>\nValid tiers: positions, pending_orders, strategy, discovery"
-        return show_watchlist_contents(subarg.lower())
+            return "Usage: /watchlist show <name>\nUse '/watchlist list' to see all watchlists"
+        return show_watchlist(subarg)
+    if subcommand == "create":
+        return _watchlist_create(subarg)
+    if subcommand == "limits":
+        return _watchlist_limits()
     return f"Unknown subcommand: {subcommand}\nUse /watchlist for help"
 
 
 @command("/watchlist", aliases=["/wl"], help_text="Watchlist management", has_args=True)
 def cmd_watchlist(session, args: str = None):
     """
-    Manage tiered watchlists for trading.
+    Manage watchlists for trading.
 
     Usage:
-        /watchlist              # Show all watchlists
-        /watchlist list         # List all watchlists
-        /watchlist add <sym>    # Add symbol to discovery tier
-        /watchlist remove <sym> # Remove symbol from watchlist
-        /watchlist tier <name>  # Show specific tier details
+        /watchlist                      # Show all watchlists
+        /watchlist list                 # List all watchlists
+        /watchlist add <sym> [name]     # Add symbol to watchlist (default: 'default')
+        /watchlist remove <sym> [name]  # Remove symbol from watchlist
+        /watchlist show <name>          # Show specific watchlist details
+        /watchlist create <name> [desc] # Create a new watchlist
+        /watchlist limits               # Show watchlist statistics
     """
-    from src.cli.tools.watchlist_tools import list_watchlists
+    from src.cli.tools.watchlist_tools import show_watchlists
 
     if not args:
-        safe_print(list_watchlists())
+        safe_print(show_watchlists())
         return
 
     parts = args.strip().split(maxsplit=1)
@@ -486,18 +591,49 @@ def cmd_watchlist(session, args: str = None):
 # =============================================================================
 
 
+def _partial_handle_modify(subarg: str | None) -> str:
+    """Handle /partial modify subcommand. Format: SYMBOL TARGET_NUM PRICE"""
+    from src.cli.tools.partial_exit_tools import modify_exit_target
+
+    if not subarg:
+        return (
+            "Usage: /partial modify <symbol> <target_num> <new_price>\n\n"
+            "Examples:\n"
+            "  /partial modify AAPL 1 205.50    # Change target 1 to $205.50\n"
+            "  /partial modify TSLA 2 310.00    # Change target 2 to $310.00"
+        )
+
+    parts = subarg.split()
+    if len(parts) < 3:
+        return "Usage: /partial modify <symbol> <target_num> <new_price>"
+
+    symbol = parts[0].upper()
+    try:
+        target_num = int(parts[1])
+    except ValueError:
+        return f"[ERROR] Invalid target number: {parts[1]} (must be an integer)"
+
+    try:
+        new_price = float(parts[2])
+    except ValueError:
+        return f"[ERROR] Invalid price: {parts[2]} (must be a number)"
+
+    return modify_exit_target(symbol, target_num, new_price)
+
+
 @command("/partial", aliases=["/pe"], help_text="Partial exit management", has_args=True)
 def cmd_partial(session, args: str = None):
     """
     Manage partial exit strategies for positions.
 
     Usage:
-        /partial              # Show all partial exit plans
-        /partial list         # List all plans
-        /partial summary      # Summary of active targets
-        /partial <symbol>     # Show plan for specific symbol
-        /partial levels <sym> # Show exit target levels
-        /partial active       # Show only active targets
+        /partial                           # Show all partial exit plans
+        /partial list                      # List all plans
+        /partial summary                   # Summary of active targets
+        /partial <symbol>                  # Show plan for specific symbol
+        /partial levels <sym>              # Show exit target levels
+        /partial active                    # Show only active targets
+        /partial modify <sym> <n> <price>  # Modify target n exit price
     """
     from src.cli.tools.partial_exit_tools import (
         get_exit_summary,
@@ -526,6 +662,8 @@ def cmd_partial(session, args: str = None):
             safe_print("Usage: /partial levels <symbol>")
         else:
             safe_print(show_exit_targets(subarg.upper()))
+    elif subcommand == "modify":
+        safe_print(_partial_handle_modify(subarg))
     else:
         # Assume first arg is symbol
         symbol = subcommand.upper()

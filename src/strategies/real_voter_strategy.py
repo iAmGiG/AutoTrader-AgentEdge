@@ -13,8 +13,10 @@ import pandas as pd
 
 from config_defaults.trading_config import TradingConfig
 
+from src.autogen_agents.agents.multi_timeframe_voter import MultiTimeframeVoter
 from src.autogen_agents.agents.voter_agent import VoterAgent
 from src.autogen_agents.tools import fetch_unified_market_data
+from src.cli.tools.timeframe_tools import get_multi_timeframe_params
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
 from src.core.ranked_voter_config import RankedVoterManager
@@ -117,26 +119,57 @@ class RealVoterStrategy(StrategyAnalyzer):
             # agent_response = user_proxy.initiate_chat(self.voter, message=prompt, market_data=market_data)
             # result = self._parse_agent_response(agent_response)
 
+            # Issue #505: Check if multi-timeframe mode is active
+            tf_params = get_multi_timeframe_params()
+            use_multi_tf = tf_params.get("mode") == "multi"
+
             # Issue #504: Check if ranked voting is enabled
             ranked_voter = RankedVoterManager()
             active_voters = ranked_voter.get_active_voters()
             use_ranked = len(active_voters) > 1  # Use ranked if multiple active voters
 
-            if use_ranked:
+            if use_multi_tf:
+                # Issue #505: Use MultiTimeframeVoter for multi-TF analysis
+                preset = tf_params.get("preset", "trend_following")
+                logger.info(f"Using multi-timeframe voting for {ticker} (preset: {preset})")
+                mtf_voter = MultiTimeframeVoter(preset=preset)
+                mtf_result = mtf_voter.evaluate_multi_timeframe(ticker)
+
+                # Convert MultiTimeframeResult to dict format expected by downstream
+                result = {
+                    "symbol": mtf_result.symbol,
+                    "action": mtf_result.action,
+                    "confidence": mtf_result.confidence,
+                    "signal_type": mtf_result.signal_type,
+                    "reasoning": mtf_result.reasoning,
+                    "current_price": (
+                        market_data["Close"].iloc[-1] if "Close" in market_data.columns else 0
+                    ),
+                    "position_size": 1.0 if mtf_result.signal_type == "STRONG" else 0.5,
+                    "voting_mode": "multi_timeframe",
+                    "multi_tf_preset": preset,
+                    "timeframes_aligned": mtf_result.timeframes_aligned,
+                    "timeframes_total": mtf_result.timeframes_total,
+                    "consensus_strength": mtf_result.consensus_strength,
+                }
+            elif use_ranked:
                 logger.info(
                     f"Using ranked voting for {ticker} with {len(active_voters)} active voters"
                 )
                 result = self.voter.evaluate_ranked_voting(
                     ticker, market_data, return_components=True
                 )
+                # Add voting mode indicator
+                if isinstance(result, dict):
+                    result["voting_mode"] = "ranked"
+                    result["active_voters"] = [v.name for v in active_voters]
             else:
                 logger.info(f"Using standard voting for {ticker}")
                 result = self.voter.evaluate_voting(ticker, market_data, return_components=True)
-
-            # Issue #505: Add voting mode indicator to result
-            if isinstance(result, dict):
-                result["voting_mode"] = "ranked" if use_ranked else "standard"
-                result["active_voters"] = [v.name for v in active_voters]
+                # Add voting mode indicator
+                if isinstance(result, dict):
+                    result["voting_mode"] = "standard"
+                    result["active_voters"] = [v.name for v in active_voters]
 
             formatted = self._format_analysis_result(result, request, user_timeframe, market_data)
             return formatted

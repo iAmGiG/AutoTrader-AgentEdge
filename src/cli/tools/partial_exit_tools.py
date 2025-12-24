@@ -307,6 +307,74 @@ def get_exit_summary() -> str:
         return f"[ERROR] Failed to generate summary: {e}"
 
 
+def modify_exit_target(symbol: str, target_number: int, new_price: float) -> str:
+    """
+    Modify the exit price of a partial exit target.
+
+    Updates the exit price for a specific target on a position.
+    Only works for limit order targets that haven't been filled yet.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "AAPL")
+        target_number: Target number to modify (1, 2, etc.)
+        new_price: New exit price
+
+    Returns:
+        Success or error message
+
+    Example:
+        >>> modify_exit_target("AAPL", 1, 205.50)
+        '[OK] Modified AAPL target 1: new exit price $205.50'
+    """
+    manager = _get_partial_exit_manager()
+    if not manager:
+        return "[ERROR] Could not access PartialExitManager"
+
+    try:
+        symbol = symbol.upper()
+
+        if not hasattr(manager, "positions") or symbol not in manager.positions:
+            return f"[ERROR] No partial exit plan found for {symbol}"
+
+        state = manager.positions[symbol]
+
+        # Find the target
+        target = None
+        for t in state.targets:
+            if t.target_number == target_number:
+                target = t
+                break
+
+        if not target:
+            return f"[ERROR] Target {target_number} not found for {symbol}"
+
+        if target.filled:
+            return f"[ERROR] Target {target_number} for {symbol} has already been filled"
+
+        if target.exit_type != "limit":
+            return (
+                f"[ERROR] Target {target_number} is a {target.exit_type} order, not a limit order"
+            )
+
+        old_price = target.exit_price
+        target.exit_price = new_price
+
+        # Update timestamp
+        from src.utils.date_utils import now_iso
+
+        state.last_updated = now_iso()
+
+        return (
+            f"[OK] Modified {symbol} target {target_number}\n"
+            f"  Previous price: ${old_price:.2f}\n"
+            f"  New price: ${new_price:.2f}"
+        )
+
+    except Exception as e:
+        logger.error(f"Error modifying exit target: {e}")
+        return f"[ERROR] Failed to modify target: {e}"
+
+
 # =============================================================================
 # FunctionTool Definitions
 # =============================================================================
@@ -336,6 +404,11 @@ get_exit_summary_tool = FunctionTool(
     description=("Get summary statistics of all partial exit positions."),
 )
 
+modify_exit_target_tool = FunctionTool(
+    modify_exit_target,
+    description=("Modify the exit price of a partial exit target."),
+)
+
 
 # =============================================================================
 # Tool Collection for Registry
@@ -347,6 +420,7 @@ CLI_PARTIAL_EXIT_TOOLS = [
     show_exit_targets_tool,
     list_active_exits_tool,
     get_exit_summary_tool,
+    modify_exit_target_tool,
 ]
 
 __all__ = [
@@ -356,12 +430,14 @@ __all__ = [
     "show_exit_targets",
     "list_active_exits",
     "get_exit_summary",
+    "modify_exit_target",
     # Tools
     "show_all_partial_exits_tool",
     "show_partial_exit_plan_tool",
     "show_exit_targets_tool",
     "list_active_exits_tool",
     "get_exit_summary_tool",
+    "modify_exit_target_tool",
     # Collection
     "CLI_PARTIAL_EXIT_TOOLS",
 ]
