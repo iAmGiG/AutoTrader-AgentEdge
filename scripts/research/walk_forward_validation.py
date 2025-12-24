@@ -554,6 +554,38 @@ def gex_regime_strategy(df: pd.DataFrame, symbol: str) -> pd.Series:
     return signals
 
 
+def _test_strategy_batch(
+    strategy_fn: Callable[[pd.DataFrame], pd.Series],
+    strategy_prefix: str,
+    symbols: List[str],
+    description: str,
+) -> List[ValidationResult]:
+    """Helper to run validation on a batch of symbols for a specific strategy."""
+    print("\n" + "-" * 50)
+    print(f"Testing: {description}")
+    print("-" * 50)
+
+    results = []
+    for symbol in symbols:
+        try:
+            result = validate_strategy(
+                strategy_fn=strategy_fn,
+                symbol=symbol,
+                strategy_name=f"{strategy_prefix}_{symbol}",
+            )
+            results.append(result)
+            status = "PASS" if result.passes_validation else "FAIL"
+            print(f"\n{symbol}:")
+            print(
+                f"  IS Sharpe: {result.in_sample_sharpe:.3f}, OOS Sharpe: {result.out_of_sample_sharpe:.3f}"
+            )
+            print(f"  Degradation: {result.degradation_pct:.1f}%")
+            print(f"  Status: {status}")
+        except Exception as e:
+            print(f"\n{symbol}: ERROR - {e}")
+    return results
+
+
 # =============================================================================
 # MAIN VALIDATION RUN
 # =============================================================================
@@ -589,50 +621,18 @@ def run_walk_forward_validation():
     all_results = []
 
     # Test MACD+RSI strategy
-    print("\n" + "-" * 50)
-    print("Testing: MACD+RSI Voting Strategy (VoterAgent Baseline)")
-    print("-" * 50)
-
-    for symbol in symbols:
-        try:
-            result = validate_strategy(
-                strategy_fn=macd_rsi_strategy,
-                symbol=symbol,
-                strategy_name=f"MACD_RSI_{symbol}",
-            )
-            all_results.append(result)
-            status = "PASS" if result.passes_validation else "FAIL"
-            print(f"\n{symbol}:")
-            print(
-                f"  IS Sharpe: {result.in_sample_sharpe:.3f}, OOS Sharpe: {result.out_of_sample_sharpe:.3f}"
-            )
-            print(f"  Degradation: {result.degradation_pct:.1f}%")
-            print(f"  Status: {status}")
-        except Exception as e:
-            print(f"\n{symbol}: ERROR - {e}")
+    all_results.extend(
+        _test_strategy_batch(
+            macd_rsi_strategy, "MACD_RSI", symbols, "MACD+RSI Voting Strategy (VoterAgent Baseline)"
+        )
+    )
 
     # Test TSMOM strategy
-    print("\n" + "-" * 50)
-    print("Testing: Time-Series Momentum (12-month)")
-    print("-" * 50)
-
-    for symbol in symbols:
-        try:
-            result = validate_strategy(
-                strategy_fn=tsmom_strategy,
-                symbol=symbol,
-                strategy_name=f"TSMOM_{symbol}",
-            )
-            all_results.append(result)
-            status = "PASS" if result.passes_validation else "FAIL"
-            print(f"\n{symbol}:")
-            print(
-                f"  IS Sharpe: {result.in_sample_sharpe:.3f}, OOS Sharpe: {result.out_of_sample_sharpe:.3f}"
-            )
-            print(f"  Degradation: {result.degradation_pct:.1f}%")
-            print(f"  Status: {status}")
-        except Exception as e:
-            print(f"\n{symbol}: ERROR - {e}")
+    all_results.extend(
+        _test_strategy_batch(
+            tsmom_strategy, "TSMOM", symbols, "Time-Series Momentum (12-month)"
+        )
+    )
 
     # Apply multiple testing corrections
     print("\n" + "=" * 70)

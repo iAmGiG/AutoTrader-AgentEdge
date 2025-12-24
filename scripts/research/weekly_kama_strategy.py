@@ -17,14 +17,17 @@ Usage:
 """
 
 import argparse
+import json
 import sqlite3
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+import requests
 import yaml
 
 # Add project root to path
@@ -105,8 +108,8 @@ def fetch_weekly_data(
         except (ValueError, sqlite3.Error) as e:
             print(f"  GEX DB: {e}")
 
-    # Fall back to yfinance with delay
-    return fetch_from_yfinance(symbol, start, end)
+    # Fall back to Alpha Vantage (adjusted prices)
+    return fetch_from_alpha_vantage(symbol, start, end)
 
 
 def fetch_from_gex_db(symbol: str, start: str, end: str) -> pd.DataFrame:
@@ -146,34 +149,62 @@ def fetch_from_gex_db(symbol: str, start: str, end: str) -> pd.DataFrame:
     return weekly[["open", "high", "low", "close", "volume", "returns"]]
 
 
-def fetch_from_yfinance(symbol: str, start: str, end: str) -> pd.DataFrame:
-    """Fetch weekly data from yfinance with rate limiting."""
-    import time
+def fetch_from_alpha_vantage(symbol: str, start: str, end: str) -> pd.DataFrame:
+    """Fetch weekly data from Alpha Vantage TIME_SERIES_WEEKLY_ADJUSTED."""
+    # Load API key from config
+    config_path = Path("config/config.json")
+    if not config_path.exists():
+        raise FileNotFoundError("config/config.json not found - Alpha Vantage API key required")
 
-    import yfinance as yf
+    with open(config_path) as f:
+        config = json.load(f)
 
-    # Add delay to avoid rate limiting
-    time.sleep(2)
+    api_key = config.get("ALPHA_VANTAGE_KEY")
+    if not api_key:
+        raise ValueError("ALPHA_VANTAGE_KEY not found in config/config.json")
 
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(start=start, end=end, interval="1wk")
+    # Rate limit: Alpha Vantage free tier = 5 calls/min
+    time.sleep(12)
 
-    if df.empty:
-        raise ValueError(f"No data returned for {symbol}")
+    url = "https://www.alphavantage.co/query"
+    params = {
+        "function": "TIME_SERIES_WEEKLY_ADJUSTED",
+        "symbol": symbol,
+        "outputsize": "full",
+        "apikey": api_key,
+    }
 
-    # Standardize column names
-    df = df.rename(
-        columns={
-            "Open": "open",
-            "High": "high",
-            "Low": "low",
-            "Close": "close",
-            "Volume": "volume",
-        }
-    )
+    response = requests.get(url, params=params, timeout=30)
+    response.raise_for_status()
+    data = response.json()
 
+    if "Weekly Adjusted Time Series" not in data:
+        if "Note" in data:
+            raise ValueError(f"Alpha Vantage rate limit: {data['Note']}")
+        raise ValueError(f"No weekly data for {symbol}: {data.get('Error Message', 'Unknown error')}")
+
+    # Parse weekly data
+    rows = []
+    for date_str, daily_data in data["Weekly Adjusted Time Series"].items():
+        if start <= date_str <= end:
+            rows.append({
+                "date": date_str,
+                "open": float(daily_data["1. open"]),
+                "high": float(daily_data["2. high"]),
+                "low": float(daily_data["3. low"]),
+                "close": float(daily_data["5. adjusted close"]),  # Use adjusted close
+                "volume": int(daily_data["6. volume"]),
+            })
+
+    if not rows:
+        raise ValueError(f"No data in range {start} to {end} for {symbol}")
+
+    df = pd.DataFrame(rows)
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date").sort_index()
     df["returns"] = df["close"].pct_change()
-    print(f"  Using yfinance ({len(df)} weekly bars)")
+
+    print(f"  Using Alpha Vantage ({len(df)} weekly bars)")
 
     return df[["open", "high", "low", "close", "volume", "returns"]]
 

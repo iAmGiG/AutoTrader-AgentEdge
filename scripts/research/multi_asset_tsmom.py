@@ -18,7 +18,7 @@ import datetime
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -270,6 +270,72 @@ def analyze_regime_performance(
     return regime_sharpes
 
 
+def _analyze_single_symbol(
+    symbol: str,
+    asset_class: str,
+    regime_periods: Dict[str, tuple],
+) -> List[TSMOMResult]:
+    """Analyze TSMOM for a single symbol across all lookback periods."""
+    print(f"\n{symbol}:")
+    results = []
+
+    try:
+        df = fetch_price_data(symbol)
+
+        if df.empty:
+            print("  No data available")
+            return []
+
+        print(f"  Data range: {df.index[0].date()} to {df.index[-1].date()} ({len(df)} days)")
+
+        # Split into train/test (adjusted for 2020+ data)
+        train_df = df[(df.index >= "2020-01-01") & (df.index <= "2022-12-31")]
+        test_df = df[(df.index >= "2023-01-01") & (df.index <= "2024-12-31")]
+
+        if len(train_df) < 250:
+            print(f"  Insufficient training data ({len(train_df)} days)")
+            return []
+
+        if len(test_df) < 100:
+            print(f"  Insufficient test data ({len(test_df)} days)")
+            return []
+
+        # Test each lookback period
+        for lookback in LOOKBACK_PERIODS:
+            train_metrics = backtest_tsmom(train_df, lookback)
+            test_metrics = backtest_tsmom(test_df, lookback)
+            regime_perf = analyze_regime_performance(df, lookback, regime_periods)
+
+            result = TSMOMResult(
+                symbol=symbol,
+                asset_class=asset_class,
+                lookback=lookback,
+                in_sample_sharpe=train_metrics["sharpe_ratio"],
+                out_of_sample_sharpe=test_metrics["sharpe_ratio"],
+                in_sample_return=train_metrics["total_return"],
+                out_of_sample_return=test_metrics["total_return"],
+                in_sample_trades=train_metrics["trades"],
+                out_of_sample_trades=test_metrics["trades"],
+                max_drawdown=test_metrics["max_drawdown"],
+                win_rate=test_metrics["win_rate"],
+                avg_holding_days=test_metrics["avg_holding_days"],
+                regime_performance=regime_perf,
+            )
+            results.append(result)
+
+            # Report 12-month (252) results
+            if lookback == 252:
+                print(
+                    f"  TSMOM-12M: IS Sharpe={train_metrics['sharpe_ratio']:.3f}, "
+                    f"OOS Sharpe={test_metrics['sharpe_ratio']:.3f}"
+                )
+
+    except Exception as e:
+        print(f"  ERROR: {e}")
+
+    return results
+
+
 def run_tsmom_analysis():
     """Run comprehensive TSMOM analysis across asset classes."""
     print("=" * 70)
@@ -312,65 +378,9 @@ def run_tsmom_analysis():
         class_results = []
 
         for symbol in symbols:
-            print(f"\n{symbol}:")
-
-            try:
-                df = fetch_price_data(symbol)
-
-                if df.empty:
-                    print("  No data available")
-                    continue
-
-                print(
-                    f"  Data range: {df.index[0].date()} to {df.index[-1].date()} ({len(df)} days)"
-                )
-
-                # Split into train/test (adjusted for 2020+ data)
-                train_df = df[(df.index >= "2020-01-01") & (df.index <= "2022-12-31")]
-                test_df = df[(df.index >= "2023-01-01") & (df.index <= "2024-12-31")]
-
-                if len(train_df) < 250:
-                    print(f"  Insufficient training data ({len(train_df)} days)")
-                    continue
-
-                if len(test_df) < 100:
-                    print(f"  Insufficient test data ({len(test_df)} days)")
-                    continue
-
-                # Test each lookback period
-                for lookback in LOOKBACK_PERIODS:
-                    train_metrics = backtest_tsmom(train_df, lookback)
-                    test_metrics = backtest_tsmom(test_df, lookback)
-                    regime_perf = analyze_regime_performance(df, lookback, regime_periods)
-
-                    result = TSMOMResult(
-                        symbol=symbol,
-                        asset_class=asset_class,
-                        lookback=lookback,
-                        in_sample_sharpe=train_metrics["sharpe_ratio"],
-                        out_of_sample_sharpe=test_metrics["sharpe_ratio"],
-                        in_sample_return=train_metrics["total_return"],
-                        out_of_sample_return=test_metrics["total_return"],
-                        in_sample_trades=train_metrics["trades"],
-                        out_of_sample_trades=test_metrics["trades"],
-                        max_drawdown=test_metrics["max_drawdown"],
-                        win_rate=test_metrics["win_rate"],
-                        avg_holding_days=test_metrics["avg_holding_days"],
-                        regime_performance=regime_perf,
-                    )
-
-                    class_results.append(result)
-                    all_results.append(result)
-
-                    # Report 12-month (252) results
-                    if lookback == 252:
-                        print(
-                            f"  TSMOM-12M: IS Sharpe={train_metrics['sharpe_ratio']:.3f}, "
-                            f"OOS Sharpe={test_metrics['sharpe_ratio']:.3f}"
-                        )
-
-            except Exception as e:
-                print(f"  ERROR: {e}")
+            symbol_results = _analyze_single_symbol(symbol, asset_class, regime_periods)
+            class_results.extend(symbol_results)
+            all_results.extend(symbol_results)
 
         # Aggregate asset class results
         if class_results:
