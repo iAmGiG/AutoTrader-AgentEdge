@@ -1333,6 +1333,18 @@ src/cli/
 - `76182fa` - refactor(#511): extract advanced orders mixin
 - `7d54640` - refactor(#512): extract scanner configuration
 
+**#521 - DRY Improvements & Code Quality Cleanup** (✅ CLOSED):
+
+| Task               | Module Created                 | Description                                                    |
+|--------------------|--------------------------------|----------------------------------------------------------------|
+| Error sanitization | `src/cli/utils/error_utils.py` | Shared `sanitize_error_message()` function                     |
+| Platform UI utils  | `src/cli/utils/ui_utils.py`    | `get_error_prefix()`, `get_mode_indicator()`, `clear_screen()` |
+| Magic constant     | `RealVoterStrategy`            | `MIN_REQUIRED_CANDLES = 42` with MACD derivation comment       |
+
+- Removed 4 instances of `platform.system() == "Windows"` checks
+- Fixed bug: Windows `cls` requires `shell=True` (shell built-in)
+- Commits: `361d849`, `3134cdb`
+
 **Other Large Files (700+ lines) for future consideration**:
 
 - trailing_stop_manager.py (812) - Single class, focused
