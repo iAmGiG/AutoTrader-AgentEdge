@@ -1,20 +1,17 @@
 # Methodology Validation Summary
 
 Research completed: 2025-12-22
+**Revalidated**: 2025-12-23 (look-ahead bias fixed, experiments rerun)
 
-Issues: #495, #498, #502
+Issues: #495, #498, #502, #523
 
 ---
 
-> **⚠️ PROBLEMATIC RESULTS - LOOK-AHEAD BIAS DETECTED**
+> **✅ VALIDATED - METHODOLOGY FIXES APPLIED**
 >
-> All backtesting results below are **optimistically biased**. A look-ahead bias was discovered where signals calculated at close(t) were executed at the same close(t). This is unrealistic - real execution requires t+1.
->
-> **Fix applied**: `signals = signals.shift(1).fillna(0)`
->
-> **Experiments must be rerun** - see issue #523
->
-> Results below are preserved for reference but should NOT be used for production decisions.
+> Look-ahead bias fixed: `signals = signals.shift(1).fillna(0)`
+> All experiments rerun with corrected methodology on 2025-12-23.
+> Results below reflect proper t+1 execution timing.
 
 ---
 

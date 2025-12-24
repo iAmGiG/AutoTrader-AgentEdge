@@ -1,4 +1,4 @@
-run_timestamp: '2025-12-22T21:18:32.570673'
+run_timestamp: '2025-12-23T23:26:08.468326'
 issue: '#498'
 description: Multi-Asset TSMOM Analysis
 methodology:
@@ -14,15 +14,15 @@ methodology:
 asset_class_results:
   equity_index:
     symbols_tested: 3
-    avg_oos_sharpe_12m: 0.8466217707757782
+    avg_oos_sharpe_12m: 0.8690766902630647
     best_performer: QQQ
   leveraged_equity:
     symbols_tested: 4
-    avg_oos_sharpe_12m: -0.248861947140976
+    avg_oos_sharpe_12m: -0.28785971965028584
     best_performer: TQQQ
   volatility:
     symbols_tested: 1
-    avg_oos_sharpe_12m: 1.0815168766342846
+    avg_oos_sharpe_12m: 1.1352868572537238
     best_performer: UVXY
 conclusions:
   best_asset_class: volatility
@@ -36,322 +36,322 @@ detailed_results:
 - symbol: SPY
   asset_class: equity_index
   lookback: 63
-  in_sample_sharpe: -1.261024369955981
-  out_of_sample_sharpe: 1.3691593855242183
-  in_sample_return: -32.43110646395897
-  out_of_sample_return: 54.12810098633661
-  max_drawdown: -16.764861166402024
+  in_sample_sharpe: -2.0039515120675837
+  out_of_sample_sharpe: 1.3173176519010406
+  in_sample_return: -44.549845839212466
+  out_of_sample_return: 51.54488142815513
+  max_drawdown: -17.887712966934977
   win_rate: 100.0
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
-    bear_2022: -2.033409241838068
-    recovery_2023_2024: 1.3691593855242183
+    bear_2022: -2.9740680979648078
+    recovery_2023_2024: 1.3173176519010406
 - symbol: SPY
   asset_class: equity_index
   lookback: 126
-  in_sample_sharpe: -0.009571181102514308
-  out_of_sample_sharpe: 1.5415982800955783
-  in_sample_return: -3.6260735876279067
-  out_of_sample_return: 51.01795327290149
-  max_drawdown: -19.47596523866046
+  in_sample_sharpe: 0.6111236733760762
+  out_of_sample_sharpe: 1.4026109134264233
+  in_sample_return: 7.55466084986685
+  out_of_sample_return: 45.43376845851828
+  max_drawdown: -21.197394204349944
   win_rate: 50.0
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
-    bear_2022: 0.6772698311590134
-    recovery_2023_2024: 1.5415982800955783
+    bear_2022: 1.5317106954133084
+    recovery_2023_2024: 1.4026109134264233
 - symbol: QQQ
   asset_class: equity_index
   lookback: 63
-  in_sample_sharpe: 0.857243113918862
-  out_of_sample_sharpe: 0.5154352300387771
-  in_sample_return: 88.43789193140644
-  out_of_sample_return: 19.389172983558385
-  max_drawdown: -30.706043259405625
-  win_rate: 68.18181818181817
+  in_sample_sharpe: 0.36554925405313254
+  out_of_sample_sharpe: 0.38956374149017914
+  in_sample_return: 19.039718075361982
+  out_of_sample_return: 12.301648118001793
+  max_drawdown: -32.84549894650305
+  win_rate: 63.63636363636363
   regime_performance:
-    covid_crash_recovery: 1.581213182363379
-    bull_2021: 1.6054641372355472
-    bear_2022: -0.6872129159616859
-    recovery_2023_2024: 0.5154352300387771
+    covid_crash_recovery: 1.1620585965693735
+    bull_2021: 0.7134610105684316
+    bear_2022: -1.15476909229105
+    recovery_2023_2024: 0.38956374149017914
 - symbol: QQQ
   asset_class: equity_index
   lookback: 126
-  in_sample_sharpe: 0.5852136411849604
-  out_of_sample_sharpe: 1.6209016635136966
-  in_sample_return: 40.577654409915745
-  out_of_sample_return: 79.85933616979041
-  max_drawdown: -20.448785751537354
+  in_sample_sharpe: 0.7027810942185654
+  out_of_sample_sharpe: 1.6495721733440338
+  in_sample_return: 55.338142089779026
+  out_of_sample_return: 81.39835878276612
+  max_drawdown: -20.347404398043114
   win_rate: 66.66666666666666
   regime_performance:
-    covid_crash_recovery: 1.458762825261376
-    bull_2021: 1.5786853793269928
-    bear_2022: 1.0515698331065055
-    recovery_2023_2024: 1.6209016635136966
+    covid_crash_recovery: 1.6081209281620399
+    bull_2021: 1.573080699312695
+    bear_2022: 1.2987667437728372
+    recovery_2023_2024: 1.6495721733440338
 - symbol: QQQ
   asset_class: equity_index
   lookback: 252
-  in_sample_sharpe: 0.29943772211176567
-  out_of_sample_sharpe: 1.0965617293947014
-  in_sample_return: 8.496066568633214
-  out_of_sample_return: 28.566897331685542
-  max_drawdown: -21.52743447338074
+  in_sample_sharpe: 0.4510384005189501
+  out_of_sample_sharpe: 1.1110101980470368
+  in_sample_return: 19.758884177717373
+  out_of_sample_return: 28.934100514770105
+  max_drawdown: -21.871545184194783
   win_rate: 66.66666666666666
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
     bear_2022: null
-    recovery_2023_2024: 1.0965617293947014
+    recovery_2023_2024: 1.1110101980470368
 - symbol: IWM
   asset_class: equity_index
   lookback: 63
-  in_sample_sharpe: 0.03655193124263399
-  out_of_sample_sharpe: -0.36918336947197344
-  in_sample_return: -13.983545520857351
-  out_of_sample_return: -26.776712076921978
-  max_drawdown: -32.29735469578726
-  win_rate: 62.7906976744186
+  in_sample_sharpe: -0.48912526947160445
+  out_of_sample_sharpe: -0.2011903969754431
+  in_sample_return: -48.8175116791327
+  out_of_sample_return: -19.222031650380814
+  max_drawdown: -28.839631300095192
+  win_rate: 58.139534883720934
   regime_performance:
-    covid_crash_recovery: 2.4845663798190083
-    bull_2021: -0.8553784951617879
-    bear_2022: -2.2089897589318013
-    recovery_2023_2024: -0.36918336947197344
+    covid_crash_recovery: 2.5085648844502453
+    bull_2021: -2.8463391358150294
+    bear_2022: -2.166454413524256
+    recovery_2023_2024: -0.2011903969754431
 - symbol: IWM
   asset_class: equity_index
   lookback: 126
-  in_sample_sharpe: 0.6364735318935945
-  out_of_sample_sharpe: -0.39179608939726285
-  in_sample_return: 49.22686797474238
-  out_of_sample_return: -24.910893188027146
-  max_drawdown: -43.019034163162495
-  win_rate: 59.523809523809526
+  in_sample_sharpe: 0.7910437306967386
+  out_of_sample_sharpe: -0.30705932739008174
+  in_sample_return: 71.49615783601404
+  out_of_sample_return: -21.489734439105142
+  max_drawdown: -38.75313428099899
+  win_rate: 52.38095238095239
   regime_performance:
-    covid_crash_recovery: 3.066699748836059
-    bull_2021: -2.0887638912630067
-    bear_2022: 0.16101955336361654
-    recovery_2023_2024: -0.39179608939726285
+    covid_crash_recovery: 3.166193015564218
+    bull_2021: -2.8945924003461103
+    bear_2022: 1.621839997539036
+    recovery_2023_2024: -0.30705932739008174
 - symbol: IWM
   asset_class: equity_index
   lookback: 252
-  in_sample_sharpe: 0.2523610208638872
-  out_of_sample_sharpe: 0.596681812156855
-  in_sample_return: 4.493319382872942
-  out_of_sample_return: 13.546281338384015
-  max_drawdown: -16.666023772154926
-  win_rate: 50.0
+  in_sample_sharpe: 0.20362956794276635
+  out_of_sample_sharpe: 0.6271431824790925
+  in_sample_return: 0.9301667236983302
+  out_of_sample_return: 14.18819388069045
+  max_drawdown: -16.20455087058644
+  win_rate: 77.77777777777779
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
     bear_2022: null
-    recovery_2023_2024: 0.596681812156855
+    recovery_2023_2024: 0.6271431824790925
 - symbol: TQQQ
   asset_class: leveraged_equity
   lookback: 63
-  in_sample_sharpe: -0.12705564139618045
-  out_of_sample_sharpe: 0.09687592027467787
-  in_sample_return: -41.315626079494805
-  out_of_sample_return: -7.888950372022391
-  max_drawdown: -49.067645131550286
+  in_sample_sharpe: -0.24944874645266693
+  out_of_sample_sharpe: -0.13294891318262214
+  in_sample_return: -50.359092877087086
+  out_of_sample_return: -21.366105117598565
+  max_drawdown: -57.02690260976353
+  win_rate: 65.78947368421053
+  regime_performance:
+    covid_crash_recovery: -0.4173351801783383
+    bull_2021: 0.26893962577809477
+    bear_2022: 0.3959155740299075
+    recovery_2023_2024: -0.13294891318262214
+- symbol: TQQQ
+  asset_class: leveraged_equity
+  lookback: 126
+  in_sample_sharpe: -0.2539882296911016
+  out_of_sample_sharpe: 0.8373974859202746
+  in_sample_return: -50.250178571897195
+  out_of_sample_return: 44.38780293942746
+  max_drawdown: -40.96771412399795
+  win_rate: 62.06896551724138
+  regime_performance:
+    covid_crash_recovery: 2.1391669568559726
+    bull_2021: 1.6531864041113589
+    bear_2022: 3.0639611457244844
+    recovery_2023_2024: 0.8373974859202746
+- symbol: TQQQ
+  asset_class: leveraged_equity
+  lookback: 252
+  in_sample_sharpe: 0.6379367374446347
+  out_of_sample_sharpe: 0.7970286535324889
+  in_sample_return: 38.77978768736191
+  out_of_sample_return: 25.155799732372397
+  max_drawdown: -31.68935654654949
   win_rate: 60.0
   regime_performance:
-    covid_crash_recovery: -0.140266571175179
-    bull_2021: 0.570705969271138
-    bear_2022: -0.9808733696076746
-    recovery_2023_2024: 0.09687592027467787
-- symbol: TQQQ
-  asset_class: leveraged_equity
-  lookback: 126
-  in_sample_sharpe: -0.1955675007139457
-  out_of_sample_sharpe: 0.869890587185679
-  in_sample_return: -42.046301221895455
-  out_of_sample_return: 47.48530726543342
-  max_drawdown: -39.817685695865464
-  win_rate: 56.666666666666664
-  regime_performance:
-    covid_crash_recovery: 2.1707484334885865
-    bull_2021: 1.5747951374532787
-    bear_2022: 2.846666136357303
-    recovery_2023_2024: 0.869890587185679
-- symbol: TQQQ
-  asset_class: leveraged_equity
-  lookback: 252
-  in_sample_sharpe: 0.6172921628480231
-  out_of_sample_sharpe: 0.8186303827680494
-  in_sample_return: 37.36499160206404
-  out_of_sample_return: 26.30780261015045
-  max_drawdown: -31.107106731534458
-  win_rate: 61.111111111111114
-  regime_performance:
     covid_crash_recovery: null
     bull_2021: null
     bear_2022: null
-    recovery_2023_2024: 0.8186303827680494
+    recovery_2023_2024: 0.7970286535324889
 - symbol: SOXL
   asset_class: leveraged_equity
   lookback: 63
-  in_sample_sharpe: 0.3247635340134207
-  out_of_sample_sharpe: 0.1314310495913885
-  in_sample_return: 7.316764523728379
-  out_of_sample_return: -6.034956807587586
-  max_drawdown: -46.09902406999511
-  win_rate: 51.724137931034484
+  in_sample_sharpe: 0.08662377239700944
+  out_of_sample_sharpe: 0.6387581034581314
+  in_sample_return: -19.038678025382488
+  out_of_sample_return: 34.69307306279421
+  max_drawdown: -40.3407515387755
+  win_rate: 43.333333333333336
   regime_performance:
-    covid_crash_recovery: 2.12475250956733
-    bull_2021: 1.2338422724520894
-    bear_2022: 0.20935513027673683
-    recovery_2023_2024: 0.1314310495913885
+    covid_crash_recovery: 1.9274814172103376
+    bull_2021: 0.19257880181929404
+    bear_2022: 0.2432030842674193
+    recovery_2023_2024: 0.6387581034581314
 - symbol: SOXL
   asset_class: leveraged_equity
   lookback: 126
-  in_sample_sharpe: -0.2998800386944954
-  out_of_sample_sharpe: 0.44610478975322965
-  in_sample_return: -41.51308277673936
-  out_of_sample_return: 14.588964394895285
-  max_drawdown: -38.03176424347488
-  win_rate: 50.0
+  in_sample_sharpe: -0.23482923661632876
+  out_of_sample_sharpe: 0.8218146572332595
+  in_sample_return: -37.99865580218645
+  out_of_sample_return: 43.785773387840855
+  max_drawdown: -38.69956333540706
+  win_rate: 52.0
   regime_performance:
-    covid_crash_recovery: 2.6632780877263476
-    bull_2021: 0.25362765852673386
-    bear_2022: 2.138033210612558
-    recovery_2023_2024: 0.44610478975322965
+    covid_crash_recovery: 2.658405105796102
+    bull_2021: -0.07094698967378746
+    bear_2022: 2.1376101654541797
+    recovery_2023_2024: 0.8218146572332595
 - symbol: SOXL
   asset_class: leveraged_equity
   lookback: 252
-  in_sample_sharpe: -0.5280532123479259
-  out_of_sample_sharpe: 0.10867053361798905
-  in_sample_return: -48.49061151075741
-  out_of_sample_return: -4.114381113675955
-  max_drawdown: -34.606873554496346
-  win_rate: 37.5
+  in_sample_sharpe: -0.24718318744503084
+  out_of_sample_sharpe: -0.014339018480565442
+  in_sample_return: -39.761486172016994
+  out_of_sample_return: -9.178904996709061
+  max_drawdown: -40.25828494324792
+  win_rate: 60.0
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
     bear_2022: null
-    recovery_2023_2024: 0.10867053361798905
+    recovery_2023_2024: -0.014339018480565442
 - symbol: SOXS
   asset_class: leveraged_equity
   lookback: 63
-  in_sample_sharpe: -0.1596532686836415
-  out_of_sample_sharpe: -0.7587097068701393
-  in_sample_return: -1176.1029240350806
-  out_of_sample_return: -118.75386029382537
-  max_drawdown: -121.1564792171564
+  in_sample_sharpe: -0.1434990266018796
+  out_of_sample_sharpe: -0.6399069363913436
+  in_sample_return: -1251.118967320935
+  out_of_sample_return: -142.52649338098269
+  max_drawdown: -147.58594709479775
   win_rate: 35.714285714285715
   regime_performance:
-    covid_crash_recovery: -1.4440830618653306
-    bull_2021: 1.742317260295036
-    bear_2022: -1.4776531119218708
-    recovery_2023_2024: -0.7587097068701393
+    covid_crash_recovery: -1.4930149784364364
+    bull_2021: 1.4835408803532233
+    bear_2022: -1.047750333911552
+    recovery_2023_2024: -0.6399069363913436
 - symbol: SOXS
   asset_class: leveraged_equity
   lookback: 126
-  in_sample_sharpe: -0.8820554473274493
-  out_of_sample_sharpe: -0.727706549300502
-  in_sample_return: 1022.5506073396281
-  out_of_sample_return: -126.32148102339534
-  max_drawdown: -125.01942549067697
-  win_rate: 42.857142857142854
+  in_sample_sharpe: -0.8547488573054184
+  out_of_sample_sharpe: -0.8222606140168245
+  in_sample_return: 877.3546796724485
+  out_of_sample_return: -647.5912702985676
+  max_drawdown: -591.2831500830839
+  win_rate: 30.0
   regime_performance:
-    covid_crash_recovery: -2.6962776097745564
-    bull_2021: 2.210022137400279
-    bear_2022: 1.1138698672944252
-    recovery_2023_2024: -0.727706549300502
+    covid_crash_recovery: -2.6950484767845793
+    bull_2021: 2.400051617166414
+    bear_2022: 1.068083793348449
+    recovery_2023_2024: -0.8222606140168245
 - symbol: SOXS
   asset_class: leveraged_equity
   lookback: 252
-  in_sample_sharpe: -0.6652716057411849
-  out_of_sample_sharpe: -1.0558002967051134
-  in_sample_return: -176.6402517488433
-  out_of_sample_return: -504.93310534307574
-  max_drawdown: -472.24676780596815
-  win_rate: 28.57142857142857
+  in_sample_sharpe: -0.6725924056304702
+  out_of_sample_sharpe: -1.0165416289413791
+  in_sample_return: -191.5377966450692
+  out_of_sample_return: -421.82765857638805
+  max_drawdown: -395.17726649211824
+  win_rate: 33.33333333333333
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
     bear_2022: null
-    recovery_2023_2024: -1.0558002967051134
+    recovery_2023_2024: -1.0165416289413791
 - symbol: SQQQ
   asset_class: leveraged_equity
   lookback: 63
-  in_sample_sharpe: -0.8163125913294006
-  out_of_sample_sharpe: -0.6951830550572815
-  in_sample_return: 132.13988984196322
-  out_of_sample_return: -309.304151938341
-  max_drawdown: -227.77418470412601
-  win_rate: 31.57894736842105
-  regime_performance:
-    covid_crash_recovery: -1.3873126869209849
-    bull_2021: 2.3606423949386506
-    bear_2022: -2.5773740625899717
-    recovery_2023_2024: -0.6951830550572815
-- symbol: SQQQ
-  asset_class: leveraged_equity
-  lookback: 126
-  in_sample_sharpe: -0.6776601231623124
-  out_of_sample_sharpe: -0.5833457712408847
-  in_sample_return: -226.94329436863669
-  out_of_sample_return: -474.1085379495435
-  max_drawdown: -285.79292035061974
+  in_sample_sharpe: -0.8201138295543122
+  out_of_sample_sharpe: -0.6379094139917546
+  in_sample_return: 182.18641773632845
+  out_of_sample_return: -378.7013711447246
+  max_drawdown: -260.1541803104697
   win_rate: 37.5
   regime_performance:
-    covid_crash_recovery: -2.4190153320774797
-    bull_2021: 1.6742061204773988
-    bear_2022: -2.068043677430132
-    recovery_2023_2024: -0.5833457712408847
+    covid_crash_recovery: -1.4425730937123828
+    bull_2021: 1.84518219060864
+    bear_2022: -2.56098061691371
+    recovery_2023_2024: -0.6379094139917546
+- symbol: SQQQ
+  asset_class: leveraged_equity
+  lookback: 126
+  in_sample_sharpe: -0.5790876982763558
+  out_of_sample_sharpe: -0.61634740700676
+  in_sample_return: -305.939069008404
+  out_of_sample_return: -466.7994584025471
+  max_drawdown: -286.74505807892524
+  win_rate: 45.83333333333333
+  regime_performance:
+    covid_crash_recovery: -2.3355130934427515
+    bull_2021: 1.8732257076200607
+    bear_2022: -0.7833112206678463
+    recovery_2023_2024: -0.61634740700676
 - symbol: SQQQ
   asset_class: leveraged_equity
   lookback: 252
-  in_sample_sharpe: -0.673032165205436
-  out_of_sample_sharpe: -0.8669484082448291
-  in_sample_return: -294.9506284446134
-  out_of_sample_return: -374.2437841973395
-  max_drawdown: -285.79292035061974
-  win_rate: 50.0
+  in_sample_sharpe: -0.7410799162261412
+  out_of_sample_sharpe: -0.9175868847116877
+  in_sample_return: -253.64855343641736
+  out_of_sample_return: -360.4863830361768
+  max_drawdown: -286.7450580789252
+  win_rate: 47.05882352941176
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
     bear_2022: null
-    recovery_2023_2024: -0.8669484082448291
+    recovery_2023_2024: -0.9175868847116877
 - symbol: UVXY
   asset_class: volatility
   lookback: 63
-  in_sample_sharpe: -0.9854245347367162
-  out_of_sample_sharpe: -1.2600488318234937
-  in_sample_return: -110.88859442884795
-  out_of_sample_return: -12.383509677047623
-  max_drawdown: -260.40389040266257
-  win_rate: 43.58974358974359
+  in_sample_sharpe: -0.8753019421250421
+  out_of_sample_sharpe: -1.1923487996029625
+  in_sample_return: -119.94417375676308
+  out_of_sample_return: 6.034600040859296
+  max_drawdown: -264.55552246959314
+  win_rate: 38.46153846153847
   regime_performance:
-    covid_crash_recovery: 0.8249063836012962
-    bull_2021: -1.3396127908375932
-    bear_2022: -0.5558881676844587
-    recovery_2023_2024: -1.2600488318234937
+    covid_crash_recovery: 1.2316037611058621
+    bull_2021: -1.440717817920492
+    bear_2022: -0.6664380585014616
+    recovery_2023_2024: -1.1923487996029625
 - symbol: UVXY
   asset_class: volatility
   lookback: 126
-  in_sample_sharpe: -0.9566029146463928
-  out_of_sample_sharpe: -0.8225786585891486
-  in_sample_return: -113.5664290878545
-  out_of_sample_return: -233.50758019099214
-  max_drawdown: -275.91276960964206
-  win_rate: 27.27272727272727
+  in_sample_sharpe: -0.7876843769478051
+  out_of_sample_sharpe: -0.7768740420325199
+  in_sample_return: -131.06978437968823
+  out_of_sample_return: -229.0973147927695
+  max_drawdown: -304.81912542640885
+  win_rate: 31.818181818181817
   regime_performance:
-    covid_crash_recovery: -0.7118584306369207
-    bull_2021: -2.1220436014034814
-    bear_2022: -0.48734096569705987
-    recovery_2023_2024: -0.8225786585891486
+    covid_crash_recovery: 0.36958584128504446
+    bull_2021: -1.610415066858792
+    bear_2022: 0.31176207736440475
+    recovery_2023_2024: -0.7768740420325199
 - symbol: UVXY
   asset_class: volatility
   lookback: 252
-  in_sample_sharpe: -0.6000268648104714
-  out_of_sample_sharpe: 1.0815168766342846
-  in_sample_return: -144.19291350320293
-  out_of_sample_return: 243.4927381215955
-  max_drawdown: -30.9279038563659
-  win_rate: 43.75
+  in_sample_sharpe: -0.5917944833110758
+  out_of_sample_sharpe: 1.1352868572537238
+  in_sample_return: -177.93693506105052
+  out_of_sample_return: 289.42667896088324
+  max_drawdown: -32.79496987107212
+  win_rate: 31.25
   regime_performance:
     covid_crash_recovery: null
     bull_2021: null
     bear_2022: null
-    recovery_2023_2024: 1.0815168766342846
+    recovery_2023_2024: 1.1352868572537238

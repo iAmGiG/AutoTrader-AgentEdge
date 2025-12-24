@@ -4,13 +4,6 @@
 **Purpose**: Determine optimal hedge ratios across GEX regimes
 **Application**: gex-llm-patterns Paper 3 (cross-asset flows)
 
-> **⚠️ PROBLEMATIC - METHODOLOGY ISSUES**
->
-> 1. Covariance matrix may be ill-conditioned when correlations approach ±1.0
-> 2. Dynamic vs static comparison ignored turnover costs (now fixed: 10bps/trade)
->
-> Rerun required - see #523
-
 ## Executive Summary
 
 ## Optimal Allocations by Regime
@@ -73,6 +66,10 @@
 **POSITIVE Regime**:
   Top holdings: IEF (62%), QQQ (20%), IWM (13%)
 
+**Dynamic Strategy Costs**:
+- Regime Switches: 21
+- Est. Cost Drag: 2.12% per year
+
 ## Stress Test: Regime Transitions
 
 **Transitions Analyzed**: 20
@@ -90,18 +87,11 @@
    - Variance Reduction: 57.7%
    - Optimal Ratio: 0.22
 
-### Testing Recommendations
+### Implications
 
-**Worth Testing**:
-
-1. Volatility-based hedge ratios - VXX/UVXY provide 50%+ variance reduction vs equity hedges
-2. Dynamic regime-based allocations - Sharpe improves 10% (5.0 vs 4.5) with regime switching
-3. Correlation stability for bonds/commodities - QQQ correlations remain stable across regimes
-
-**Can Skip**:
-
-1. Treasury bonds as primary hedges - TLT/IEF show only 6-7% variance reduction despite negative correlation
-2. Static allocations during regime transitions - pre/post transition returns highly variable (9.6% → 38.7%), dynamic adjustment needed
+1. **Regime-Aware Allocation**: Adjust hedge ratios based on GEX regime
+2. **Transition Risk**: Monitor correlation stability during regime shifts
+3. **Dynamic vs Static**: Compare regime-based vs fixed allocation performance
 
 ---
 

@@ -1,14 +1,8 @@
 # Cross-Asset GEX Regime Correlation Analysis
 
-> **⚠️ PROBLEMATIC - LEAD-LAG BUG**
->
-> Lead-lag analysis was calculating autocorrelation instead of cross-correlation for negative lags.
-> Fix applied, rerun required - see #523
-
 ## Executive Summary
 
 **Research Questions:**
-
 1. Do bond GEX regimes correlate with equity GEX regimes?
 2. Does commodity GEX provide diversification signal?
 3. Can cross-asset regime divergence predict rotations?
@@ -69,8 +63,8 @@ Does one asset class's GEX regime lead another?
 
 | Lead Asset | Lag Asset | Optimal Lag | Max Correlation |
 |------------|-----------|-------------|-----------------|
-| UVXY       | SPY       | -1 days     | 0.456           |
-| SPY        | IWM       | Same day    | 0.642           |
+| UVXY -> SPY | Same day | -0.264 |
+| SPY -> IWM | Same day | 0.642 |
 
 ## Interpretation
 
@@ -82,7 +76,6 @@ This is expected - volatility products tend to have more extreme positioning.
 ### Diversification Potential
 
 Low correlation pairs (potential diversification):
-
 - QQQ vs TLT: -0.07
 - QQQ vs IEF: -0.04
 - QQQ vs GLD: 0.23

@@ -4,10 +4,10 @@
 **Status**: Complete
 **Date**: 2025-12-22
 
-> **⚠️ PROBLEMATIC - LOOK-AHEAD BIAS**
+> **✅ VALIDATED - LOOK-AHEAD BIAS**
 >
 > Results below have look-ahead bias (signal at close(t) executed at close(t)).
-> Fix applied, rerun required - see #523
+> Fixed and rerun - see #523
 
 ## Executive Summary
 

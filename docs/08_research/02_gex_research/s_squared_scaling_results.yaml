@@ -1,4 +1,4 @@
-run_timestamp: '2025-12-22T21:34:54.704119'
+run_timestamp: '2025-12-23T23:26:12.732396'
 issue: '#502'
 description: S-Squared GEX Scaling Impact Analysis
 formulas:
@@ -9,109 +9,109 @@ symbol_results:
     category: high_price
     avg_price: 455.90053475935827
     current_formula:
-      total_return: 36.15651093835144
-      sharpe_ratio: 0.4781595727678062
-      max_drawdown: -15.718752776978768
+      total_return: 43.38730459298358
+      sharpe_ratio: 0.551922511531434
+      max_drawdown: -18.68461939712358
       days_tested: 1466.0
     s_squared_formula:
-      total_return: 35.98807251529599
-      sharpe_ratio: 0.4653002338957173
-      max_drawdown: -15.718752776978759
+      total_return: 40.2849348741983
+      sharpe_ratio: 0.5108245339177978
+      max_drawdown: -19.20009566534394
       days_tested: 1466.0
     s_squared_better: false
   QQQ:
     category: high_price
     avg_price: 376.84940268456376
     current_formula:
-      total_return: 62.40826026707569
-      sharpe_ratio: 0.630597119977315
-      max_drawdown: -22.931384785967033
+      total_return: 62.50393078620454
+      sharpe_ratio: 0.6271901171450056
+      max_drawdown: -18.99096851780851
       days_tested: 1460.0
     s_squared_formula:
-      total_return: 73.12949160644224
-      sharpe_ratio: 0.7131419230638215
-      max_drawdown: -22.006567281197974
+      total_return: 74.93815547670242
+      sharpe_ratio: 0.7076895096073073
+      max_drawdown: -17.253287843454597
       days_tested: 1460.0
     s_squared_better: true
   IWM:
     category: medium_price
     avg_price: 195.8837415426252
     current_formula:
-      total_return: 57.25032476370112
-      sharpe_ratio: 0.5356886542268336
-      max_drawdown: -22.110555942730922
+      total_return: 51.99072657376491
+      sharpe_ratio: 0.509460833235276
+      max_drawdown: -23.369887793073353
       days_tested: 1448.0
     s_squared_formula:
-      total_return: 53.250615798369694
-      sharpe_ratio: 0.5039595149741071
-      max_drawdown: -22.11055594273091
+      total_return: 78.40916454114173
+      sharpe_ratio: 0.6500259937807342
+      max_drawdown: -23.369887793073353
       days_tested: 1448.0
-    s_squared_better: false
+    s_squared_better: true
   SQQQ:
     category: low_price
     avg_price: 22.964795986622075
     current_formula:
-      total_return: -77.65101245270873
-      sharpe_ratio: 0.2763214850142911
-      max_drawdown: -94.74484922612577
+      total_return: -42.07345958371312
+      sharpe_ratio: 0.3496635720423399
+      max_drawdown: -89.9893254125113
       days_tested: 1465.0
     s_squared_formula:
-      total_return: -70.45112644226637
-      sharpe_ratio: 0.318987958214677
-      max_drawdown: -96.0933020494512
+      total_return: -44.86142382120828
+      sharpe_ratio: 0.36720634892908083
+      max_drawdown: -92.8564799285953
       days_tested: 1465.0
     s_squared_better: true
   UVXY:
     category: low_price
     avg_price: 18.101790495314592
     current_formula:
-      total_return: -53.08284329316958
-      sharpe_ratio: 0.325693658936846
-      max_drawdown: -98.44083055534624
+      total_return: 239.70142705175795
+      sharpe_ratio: 0.5109222569886537
+      max_drawdown: -95.24345554663158
       days_tested: 1464.0
     s_squared_formula:
-      total_return: -90.7412364740446
-      sharpe_ratio: 0.1914921613045802
-      max_drawdown: -99.64336141081152
+      total_return: -73.67162354761294
+      sharpe_ratio: 0.290733064383011
+      max_drawdown: -98.97757088579075
       days_tested: 1464.0
     s_squared_better: false
   TQQQ:
     category: leveraged
     avg_price: 75.92593854375419
     current_formula:
-      total_return: 448.03867649640125
-      sharpe_ratio: 0.8615317939960724
-      max_drawdown: -64.89325168925795
+      total_return: 913.3992392658946
+      sharpe_ratio: 1.0722366505242535
+      max_drawdown: -61.854778764129115
       days_tested: 1467.0
     s_squared_formula:
-      total_return: 379.5114767602246
-      sharpe_ratio: 0.8190643880199948
-      max_drawdown: -54.5587054391792
+      total_return: 426.04452595910976
+      sharpe_ratio: 0.8520864284323728
+      max_drawdown: -46.273205867697754
       days_tested: 1467.0
     s_squared_better: false
   SOXL:
     category: leveraged
     avg_price: 80.09483633934536
     current_formula:
-      total_return: 108.12320788179728
-      sharpe_ratio: 0.5437205751315373
-      max_drawdown: -87.00713453726655
+      total_return: -47.25441428185737
+      sharpe_ratio: 0.21434271331782342
+      max_drawdown: -91.90210849420146
       days_tested: 1467.0
     s_squared_formula:
-      total_return: -17.71531292564612
-      sharpe_ratio: 0.3075124768789932
-      max_drawdown: -91.63240235182201
+      total_return: 2.1288430298252567
+      sharpe_ratio: 0.36165373205796325
+      max_drawdown: -88.41328353053451
       days_tested: 1467.0
-    s_squared_better: false
+    s_squared_better: true
 cross_asset_analysis:
   avg_cv_current: 0.5319895130845137
   avg_cv_s_squared: 0.7353409735161404
   s_squared_more_stable: false
 summary:
   symbols_tested: 7
-  s_squared_wins: 2
-  s_squared_win_rate: 28.57142857142857
-  avg_sharpe_improvement: -0.04746488624268722
+  s_squared_wins: 4
+  s_squared_win_rate: 57.14285714285714
+  avg_sharpe_improvement: -0.013645577668074144
 conclusion:
   s_squared_recommended: false
   cross_asset_comparability_improved: false

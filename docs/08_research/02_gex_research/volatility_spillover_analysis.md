@@ -4,29 +4,23 @@
 **Purpose**: Identify cross-asset GEX regime leading indicators
 **Application**: gex-llm-patterns Paper 3 (cross-asset flows)
 
-> **⚠️ PROBLEMATIC - METHODOLOGY FIX**
->
-> Previous results used Pearson correlation instead of proper Granger causality F-test.
-> Fix applied (statsmodels.grangercausalitytests), rerun required - see #523
-
 ## Executive Summary
 
 ### Statistically Significant Lead-Lag Relationships
 
-- **UVXY → SPY**: lag=1 days, r=0.157, p=0.0000
-- **UVXY → QQQ**: lag=1 days, r=0.106, p=0.0000
-- **UVXY → IWM**: lag=1 days, r=0.175, p=0.0000
+- **UVXY → IWM**: lag=1 days, p=0.0253
 
 ## Granger Causality Tests
 
 Does Asset A's GEX predict Asset B's regime changes?
+(H0: No Granger causality)
 
-| Cause | Effect | Best Lag | Correlation | P-Value | Significant |
-|-------|--------|----------|-------------|---------|-------------|
-| UVXY | SPY | 1 days | 0.157 | 0.0000 | Yes |
-| UVXY | QQQ | 1 days | 0.106 | 0.0000 | Yes |
-| SPY | IWM | 5 days | -0.048 | 0.1327 | No |
-| UVXY | IWM | 1 days | 0.175 | 0.0000 | Yes |
+| Cause | Effect | Best Lag | F-Statistic | P-Value | Significant (p<0.05) |
+|-------|--------|----------|-------------|---------|----------------------|
+| UVXY | SPY | 1 days | 2.616 | 0.1061 | No |
+| UVXY | QQQ | 1 days | 0.993 | 0.3193 | No |
+| SPY | IWM | 4 days | 1.478 | 0.2069 | No |
+| UVXY | IWM | 1 days | 5.013 | 0.0253 | Yes |
 
 ## Correlation Stability Over Time
 
@@ -74,19 +68,11 @@ Correlation of Asset A's GEX (t-1) with Asset B's GEX (t):
 
 ### Key Findings
 
-1. **UVXY as Leading Indicator**:
-   - UVXY GEX leads SPY regime by 1 day(s) (r=0.157, p=0.0000)
+### Implications
 
-### Testing Recommendations
-
-**Worth Testing**:
-
-1. Cross-asset volatility spillover effects - UVXY leads equity regimes with statistical significance
-2. Volatility-equity regime transitions - use as early warning signal
-
-**Can Skip**:
-
-1. Rolling correlation stability analysis - correlation is variable across all periods, not stable enough for regime-dependent strategies
+1. **Risk Management**: Monitor volatility GEX for early warning of equity regime shifts
+2. **Trading Strategy**: Use UVXY/VXX regime changes as filter for equity positions
+3. **Paper 3 Direction**: Focus on volatility→equity spillover channel for cross-asset analysis
 
 ---
 

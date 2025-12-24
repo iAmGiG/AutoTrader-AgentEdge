@@ -1,174 +1,232 @@
-run_timestamp: '2025-12-22T20:18:34.920935'
+run_timestamp: '2025-12-23T23:27:34.576895'
 issue: '#467'
 description: Weekly KAMA vs Daily MACD+RSI Voting
 timeframe: 2016-2024 (weekly bars)
 symbol_results:
-  QQQ:
-    kama:
-      sharpe_ratio: 0.8959151822105555
-      total_return: 112.26317103584344
-      max_drawdown: -30.400335474731534
-      win_rate: 75.0
-      trades_per_year: 0.6666666666666666
-      avg_holding_days: 320.6
-    macd_weekly:
-      sharpe_ratio: 0.6614791748647239
-      total_return: 87.60800464872962
-      max_drawdown: -33.72463450265226
-    regime_performance:
-      bull_2020_2021:
-        sharpe: 1.7594220121610031
-        return: 72.6927866227875
-        max_dd: -8.43067441591027
-        trades: 1
-      bear_2022:
-        sharpe: -2.2288793846692427
-        return: -25.06305771681936
-        max_dd: -25.06305771681936
-        trades: 4
-      bull_2023_2025:
-        sharpe: 1.1788177531046338
-        return: 64.10233400552512
-        max_dd: -10.469872889180316
-        trades: 5
-    kama_outperforms: true
-  IWM:
-    kama:
-      sharpe_ratio: 0.49385610144735675
-      total_return: 53.67406576733094
-      max_drawdown: -33.16701229011906
-      win_rate: 40.0
-      trades_per_year: 0.8333333333333334
-      avg_holding_days: 260.1666666666667
-    macd_weekly:
-      sharpe_ratio: 0.4623328590913081
-      total_return: 54.477469450101815
-      max_drawdown: -31.8298814482133
-    regime_performance:
-      bull_2020_2021:
-        sharpe: 1.2766301707188643
-        return: 61.377789309807994
-        max_dd: -10.887492387847617
-        trades: 1
-      bear_2022:
-        sharpe: -2.0364182403623716
-        return: -20.409411817978864
-        max_dd: -20.41804947870014
-        trades: 3
-      bull_2023_2025:
-        sharpe: 0.3510273976709039
-        return: 14.397605666661603
-        max_dd: -15.90727261486945
-        trades: 7
-    kama_outperforms: true
   SPY:
     kama:
-      sharpe_ratio: 0.6417950205465919
-      total_return: 28.72763271566462
-      max_drawdown: -17.21340941585091
+      sharpe_ratio: 0.7016814973110422
+      total_return: 31.36889277602935
+      max_drawdown: -13.866790221573144
       win_rate: 66.66666666666666
       trades_per_year: 0.7393364928909953
-      avg_holding_days: 250.25
+      avg_holding_days: 248.5
     macd_weekly:
-      sharpe_ratio: 0.9212623969410817
-      total_return: 60.97903112680484
-      max_drawdown: -16.536239651201853
+      sharpe_ratio: 0.8699998123549212
+      total_return: 56.00128775462421
+      max_drawdown: -16.517475065354592
     regime_performance:
       bear_2022:
-        sharpe: -1.9513151310312433
-        return: -17.115011679071486
-        max_dd: -17.115011679071486
+        sharpe: -1.6404390199904897
+        return: -13.503489150374119
+        max_dd: -13.76423261323583
         trades: 3
       bull_2023_2025:
-        sharpe: 1.2644444445361969
-        return: 47.029909659133374
-        max_dd: -7.397495723798951
+        sharpe: 1.1492093496172089
+        return: 41.54151674759403
+        max_dd: -7.927281128633588
         trades: 5
     kama_outperforms: false
-  TQQQ:
+  QQQ:
     kama:
-      sharpe_ratio: 0.22773124249885104
-      total_return: -27.07062579272184
-      max_drawdown: -79.49395547727988
-      win_rate: 50.0
-      trades_per_year: 1.0
-      avg_holding_days: 226.33333333333334
+      sharpe_ratio: 0.869956466664966
+      total_return: 107.41717989014717
+      max_drawdown: -29.444809743130257
+      win_rate: 75.0
+      trades_per_year: 0.6666666666666666
+      avg_holding_days: 319.2
     macd_weekly:
-      sharpe_ratio: 0.1308866361672163
-      total_return: -56.44113055624024
-      max_drawdown: -87.94738067395765
+      sharpe_ratio: 0.5215168715844279
+      total_return: 60.954890056522274
+      max_drawdown: -37.22361441404622
     regime_performance:
       bull_2020_2021:
-        sharpe: 0.7729833278546172
-        return: 68.31831717319449
-        max_dd: -52.061569162276555
-        trades: 3
+        sharpe: 1.782052257822288
+        return: 73.88699780534779
+        max_dd: -8.432993043135326
+        trades: 1
       bear_2022:
-        sharpe: -1.6635413174493903
-        return: -67.25453527866036
-        max_dd: -67.25453527866036
+        sharpe: -2.010460503978287
+        return: -22.22953840207415
+        max_dd: -22.25870213330672
         trades: 4
       bull_2023_2025:
-        sharpe: 0.4996349135022805
-        return: 34.00477357607233
-        max_dd: -57.40066059016794
-        trades: 6
-    kama_outperforms: true
-  SOXL:
-    kama:
-      sharpe_ratio: 0.35409224518659066
-      total_return: -72.35693552871025
-      max_drawdown: -96.95335431988956
-      win_rate: 50.0
-      trades_per_year: 0.6666666666666666
-      avg_holding_days: 207.2
-    macd_weekly:
-      sharpe_ratio: 0.25805652262169254
-      total_return: -81.20083901415836
-      max_drawdown: -97.14612876328988
-    regime_performance:
-      bull_2020_2021:
-        sharpe: 0.24306680816668477
-        return: -78.99036675316864
-        max_dd: -94.57807466125182
-        trades: 3
-      bear_2022:
-        sharpe: -1.318715656145092
-        return: -41.34686075577122
-        max_dd: -41.34686075577122
-        trades: 2
-      bull_2023_2025:
-        sharpe: 0.731911167448989
-        return: 122.37598918347219
-        max_dd: -58.26282134091202
+        sharpe: 1.1266203073795755
+        return: 60.31428739952431
+        max_dd: -10.755359924549177
         trades: 5
     kama_outperforms: true
+  AAPL:
+    kama:
+      sharpe_ratio: 0.8864775910036015
+      total_return: 410.15470974502125
+      max_drawdown: -28.661582758639547
+      win_rate: 75.0
+      trades_per_year: 0.7984644913627639
+      avg_holding_days: 277.3333333333333
+    macd_weekly:
+      sharpe_ratio: 0.9995363714190981
+      total_return: 839.3708478282999
+      max_drawdown: -33.85841840811223
+    regime_performance:
+      bull_2020_2021:
+        sharpe: 0.889134308953469
+        return: 53.609963728121855
+        max_dd: -28.04745722291779
+        trades: 5
+      bear_2022:
+        sharpe: -1.7938722304544643
+        return: -17.66967315381053
+        max_dd: -18.712954517528523
+        trades: 2
+      bull_2023_2025:
+        sharpe: 0.6952089155743136
+        return: 36.06374590206331
+        max_dd: -16.520149874222
+        trades: 7
+    kama_outperforms: false
+  MSFT:
+    kama:
+      sharpe_ratio: 1.1977276638391774
+      total_return: 604.0773556391327
+      max_drawdown: -24.90752186428661
+      win_rate: 71.42857142857143
+      trades_per_year: 0.6986564299424184
+      avg_holding_days: 390.0
+    macd_weekly:
+      sharpe_ratio: 1.0482432251923908
+      total_return: 653.8698609442064
+      max_drawdown: -34.46913212083791
+    regime_performance:
+      bull_2020_2021:
+        sharpe: 1.258430706278766
+        return: 74.67137567373531
+        max_dd: -24.569497414214705
+        trades: 3
+      bear_2022:
+        sharpe: -1.1956833724324112
+        return: -10.690996021917563
+        max_dd: -10.690996021917563
+        trades: 2
+      bull_2023_2025:
+        sharpe: 1.1226536255214425
+        return: 71.62333492223064
+        max_dd: -15.161806769673408
+        trades: 6
+    kama_outperforms: true
+  NVDA:
+    kama:
+      sharpe_ratio: 1.4964894399039794
+      total_return: 12272.476668950554
+      max_drawdown: -40.497620614954045
+      win_rate: 75.0
+      trades_per_year: 0.7984644913627639
+      avg_holding_days: 304.55555555555554
+    macd_weekly:
+      sharpe_ratio: 1.2166318436633774
+      total_return: 6794.696667291038
+      max_drawdown: -58.991938073588315
+    regime_performance:
+      bull_2020_2021:
+        sharpe: 1.8872124301703839
+        return: 311.4266000031134
+        max_dd: -28.708769649726158
+        trades: 3
+      bear_2022:
+        sharpe: -1.587402705462108
+        return: -13.338259538389083
+        max_dd: -13.338259538389083
+        trades: 1
+      bull_2023_2025:
+        sharpe: 1.7412013484133282
+        return: 512.6719400439082
+        max_dd: -21.61555274888693
+        trades: 7
+    kama_outperforms: true
+  GOOGL:
+    kama:
+      sharpe_ratio: 0.8168481655345184
+      total_return: 328.55612860020574
+      max_drawdown: -28.451650253896283
+      win_rate: 55.55555555555556
+      trades_per_year: 0.8982725527831094
+      avg_holding_days: 240.6
+    macd_weekly:
+      sharpe_ratio: 1.0128785529370632
+      total_return: 762.4456235928583
+      max_drawdown: -29.50033286751485
+    regime_performance:
+      bull_2020_2021:
+        sharpe: 1.0272147768350879
+        return: 57.422013634621074
+        max_dd: -28.26458380772765
+        trades: 3
+      bear_2022:
+        sharpe: 0
+        return: 0.0
+        max_dd: 0.0
+        trades: 0
+      bull_2023_2025:
+        sharpe: 1.246929419927318
+        return: 131.3118296286976
+        max_dd: -27.108766155520374
+        trades: 5
+    kama_outperforms: false
+  AMZN:
+    kama:
+      sharpe_ratio: 0.710926644231412
+      total_return: 255.80116549399304
+      max_drawdown: -41.28414002617403
+      win_rate: 72.72727272727273
+      trades_per_year: 1.0978886756238002
+      avg_holding_days: 213.25
+    macd_weekly:
+      sharpe_ratio: 0.763817706138647
+      total_return: 485.24311311074274
+      max_drawdown: -54.24718176167196
+    regime_performance:
+      bull_2020_2021:
+        sharpe: 0.9573393180906554
+        return: 58.67049842455443
+        max_dd: -15.66126030699466
+        trades: 3
+      bear_2022:
+        sharpe: -0.8863565978314955
+        return: -16.035179380006976
+        max_dd: -24.254615116684082
+        trades: 2
+      bull_2023_2025:
+        sharpe: 0.8933367569140169
+        return: 61.86927962546941
+        max_dd: -18.183835034113233
+        trades: 9
+    kama_outperforms: false
 summary:
-  avg_kama_sharpe: 0.5226779583779891
-  avg_macd_sharpe: 0.4868035179372045
-  kama_win_rate: 80.0
-  avg_trades_per_year: 0.7812006319115323
-  symbols_tested: 5
+  avg_kama_sharpe: 0.9543010669269567
+  avg_macd_sharpe: 0.9189463404699892
+  kama_win_rate: 42.857142857142854
+  avg_trades_per_year: 0.8139642572332166
+  symbols_tested: 7
 regime_analysis:
-  bull_2020_2021:
-    sharpe: 1.0130255797252923
-    return: 30.849631588155333
-    max_dd: -41.48945265682157
   bear_2022:
-    sharpe: -1.839773945931468
-    return: -34.237775449660255
-    max_dd: -34.23950298180451
+    sharpe: -1.302030632878465
+    return: -13.352447949510346
+    max_dd: -14.717108563008827
   bull_2023_2025:
-    sharpe: 0.8051671352526008
-    return: 56.382122418172926
-    max_dd: -29.887624631785734
-avg_trades_per_year: 0.7812006319115323
+    sharpe: 1.1393085319067435
+    return: 130.77084775278394
+    max_dd: -16.753250233656956
+  bull_2020_2021:
+    sharpe: 1.3002306330251083
+    return: 104.94790821158232
+    max_dd: -22.280760240786048
+avg_trades_per_year: 0.8139642572332166
 voter_profile:
   name: weekly_kama_crossover
   description: Weekly KAMA MA Crossover - Trend Filter for Low-Frequency Trading
   issue: '#467'
   validated: true
-  validation_date: '2025-12-22T20:18:35.267452'
+  validation_date: '2025-12-23T23:28:37.514089'
   parameters:
     timeframe: 1w
     kama_lookback: 10
@@ -177,17 +235,19 @@ voter_profile:
     fold_periods: 5
     fold_index: 2
   performance:
-    avg_sharpe: 0.523
-    trending_sharpe: 0.909
-    choppy_sharpe: -1.84
-    trades_per_year: 0.7812006319115323
+    avg_sharpe: 0.954
+    trending_sharpe: 1.22
+    choppy_sharpe: -1.302
+    trades_per_year: 0.8139642572332166
   recommended_for:
   - QQQ
-  - IWM
-  - TQQQ
-  - SOXL
+  - MSFT
+  - NVDA
   not_recommended_for:
   - SPY
+  - AAPL
+  - GOOGL
+  - AMZN
   integration:
     use_as: trend_filter
     combine_with: daily_macd_rsi
