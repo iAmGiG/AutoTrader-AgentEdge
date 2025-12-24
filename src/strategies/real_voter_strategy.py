@@ -40,6 +40,9 @@ class RealVoterStrategy(StrategyAnalyzer):
     - Confidence-based position sizing
     """
 
+    # Minimum candles required for MACD calculation: 34 (slow) + 8 (signal)
+    MIN_REQUIRED_CANDLES = 42
+
     def __init__(
         self,
         macd_params: Optional[Dict[str, int]] = None,
@@ -201,8 +204,10 @@ class RealVoterStrategy(StrategyAnalyzer):
             logger.info(f"Resampling daily data to {user_timeframe}...")
             market_data = self._resample_timeframe(market_data, user_timeframe)
 
-        if len(market_data) < 42:
-            logger.info(f"Insufficient data for {ticker}: {len(market_data)} points (need 42+)")
+        if len(market_data) < self.MIN_REQUIRED_CANDLES:
+            logger.info(
+                f"Insufficient data for {ticker}: {len(market_data)} points (need {self.MIN_REQUIRED_CANDLES}+)"
+            )
             raise ValueError("Data unavailable")
 
         logger.info(f"✅ Loaded {len(market_data)} data points for {ticker}")

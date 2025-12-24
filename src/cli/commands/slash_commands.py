@@ -10,6 +10,7 @@ when this module is imported.
 import logging
 
 from src.cli.commands.registry import command
+from src.cli.utils.ui_utils import clear_screen
 from src.utils.safe_print import safe_print
 
 logger = logging.getLogger(__name__)
@@ -124,15 +125,7 @@ def cmd_about(session):
 @command("/clear", aliases=["/home", "/cls"], help_text="Clear screen, show home")
 def cmd_clear(session):
     """Clear screen and show welcome/home page."""
-    import os
-    import platform
-
-    # Clear screen (cross-platform)
-    if platform.system() == "Windows":
-        os.system("cls")
-    else:
-        os.system("clear")
-
+    clear_screen()
     # Show welcome page
     session._print_welcome()
 

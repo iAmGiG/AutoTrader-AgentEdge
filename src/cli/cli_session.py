@@ -11,7 +11,6 @@ Unified interactive CLI with LLM-driven routing for:
 import atexit
 import logging
 import os
-import platform
 import re
 import sys
 from typing import Optional
@@ -47,10 +46,12 @@ from src.cli.tools.order_tools import (
 )
 from src.cli.tools.portfolio_tools import show_portfolio
 from src.cli.tools.scheduler_tools import show_scheduler
+from src.cli.utils.error_utils import sanitize_error_message
 from src.cli.utils.help_system import HelpSystem
 from src.cli.utils.input_parser import extract_ticker_from_query
 from src.cli.utils.intent_classifier import IntentClassifier
 from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
+from src.cli.utils.ui_utils import get_error_prefix, get_mode_indicator
 from src.core.trading_orchestrator import TradingOrchestrator
 from src.trading.scheduling.daily_scheduler import DailyScheduler
 from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
@@ -59,56 +60,6 @@ from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
 from src.utils.safe_print import safe_print
 
 logger = logging.getLogger(__name__)
-
-
-def _sanitize_error_message(error: Exception) -> str:
-    """
-    Sanitize error messages to remove API keys and sensitive details.
-
-    Returns simple user-friendly messages based on error type.
-    Full details are logged separately for debugging.
-    """
-    error_str = str(error).lower()
-
-    # API key patterns to sanitize
-    if "api" in error_str and (
-        "key" in error_str or "401" in error_str or "authentication" in error_str
-    ):
-        return "Configuration error. Nothing done."
-
-    # Parse errors
-    if "could not parse" in error_str or "parse error" in error_str:
-        return "Didn't understand that. Nothing done."
-
-    # Ticker validation errors - provide actionable feedback
-    if "ticker not found" in error_str:
-        return "Symbol not found. It may not be available via your broker or data provider."
-
-    if ("asset" in error_str and "not found" in error_str) or "symbol" in error_str:
-        return "Symbol not recognized. Check the ticker spelling or try a US-listed stock."
-
-    # Data availability errors
-    if (
-        "no data" in error_str
-        or "insufficient data" in error_str
-        or "data unavailable" in error_str
-        or "market data may be unavailable" in error_str
-        or "invalid entry price" in error_str
-    ):
-        return "Not enough market data available for analysis. Try a more liquid symbol."
-
-    # Invalid request errors
-    if "invalid request" in error_str or "invalid format" in error_str:
-        return "Didn't understand that. Nothing done."
-
-    # Format/type errors (likely None values in display)
-    if "typeerror" in error_str or "nonetype" in error_str or "unsupported format" in error_str:
-        logger.error(f"Display format error: {error}")
-        return "Analysis failed - missing price data. Try again or check the ticker."
-
-    # Generic fallback - log the actual error for debugging
-    logger.warning(f"Unhandled error type: {type(error).__name__}: {error}")
-    return f"Something went wrong. Error: {type(error).__name__}"
 
 
 # Issue #436: Ticker completer moved to separate module
@@ -309,15 +260,7 @@ class CLISession:
         while True:
             try:
                 # Get user input with mode indicator
-                # Use ASCII on Windows to avoid encoding issues
-                if platform.system() == "Windows":
-                    mode_indicator = "AUTO" if self.autonomy_mode == "auto" else "CONFIRM"
-                else:
-                    mode_indicator = (
-                        f"{MSG.EMOJI['auto_mode']} AUTO"
-                        if self.autonomy_mode == "auto"
-                        else f"{MSG.EMOJI['confirm_mode']} CONFIRM"
-                    )
+                mode_indicator = get_mode_indicator(self.autonomy_mode)
                 user_input = input(f"\n({mode_indicator}) > ").strip()
 
                 if not user_input:
@@ -336,9 +279,9 @@ class CLISession:
                 print(MSG.EXIT_MESSAGE)
                 break
             except Exception as e:  # pylint: disable=broad-exception-caught  # Main REPL safety net
-                # Use ASCII error prefix on Windows
-                error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
-                sanitized_msg = _sanitize_error_message(e)
+                # Use platform-appropriate error prefix
+                error_prefix = get_error_prefix()
+                sanitized_msg = sanitize_error_message(e)
                 print(f"\n{error_prefix} {sanitized_msg}")
                 logger.error(f"CLI error: {e}", exc_info=True)
                 # Don't show traceback to user - it's logged
@@ -610,8 +553,8 @@ class CLISession:
 
         except (ValueError, OSError, RuntimeError, AttributeError) as e:
             logger.error(f"Error routing request: {e}", exc_info=True)
-            error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
-            sanitized_msg = _sanitize_error_message(e)
+            error_prefix = get_error_prefix()
+            sanitized_msg = sanitize_error_message(e)
             print(f"\n{error_prefix} {sanitized_msg}")
 
     async def _handle_trade_request(self, user_input: str):

@@ -6,18 +6,23 @@ Handles trade request processing, signal conflict resolution, and trade executio
 """
 
 import logging
-import platform
 from typing import TYPE_CHECKING, Optional
 
 from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 
-from src.cli.utils.input_parser import BUY_INDICATORS, SELL_INDICATORS, detect_user_intent
+from src.cli.utils.error_utils import sanitize_error_message
+from src.cli.utils.input_parser import (
+    BUY_INDICATORS,
+    SELL_INDICATORS,
+    detect_user_intent,
+)
 from src.cli.utils.suggestion_display import (
     calc_pct,
     display_position_context,
     display_result,
     display_suggestion,
 )
+from src.cli.utils.ui_utils import get_error_prefix
 from src.core.models import Signal
 from src.utils.date_utils import now_iso
 
@@ -26,49 +31,6 @@ if TYPE_CHECKING:
     from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
 
 logger = logging.getLogger(__name__)
-
-
-def _sanitize_error_message(error: Exception) -> str:
-    """
-    Sanitize error messages to remove API keys and sensitive details.
-
-    Returns simple user-friendly messages based on error type.
-    Full details are logged separately for debugging.
-    """
-    error_str = str(error).lower()
-
-    if "api" in error_str and (
-        "key" in error_str or "401" in error_str or "authentication" in error_str
-    ):
-        return "Configuration error. Nothing done."
-
-    if "could not parse" in error_str or "parse error" in error_str:
-        return "Didn't understand that. Nothing done."
-
-    if "ticker not found" in error_str:
-        return "Symbol not found. It may not be available via your broker or data provider."
-
-    if ("asset" in error_str and "not found" in error_str) or "symbol" in error_str:
-        return "Symbol not recognized. Check the ticker spelling or try a US-listed stock."
-
-    if (
-        "no data" in error_str
-        or "insufficient data" in error_str
-        or "data unavailable" in error_str
-        or "market data may be unavailable" in error_str
-        or "invalid entry price" in error_str
-    ):
-        return "Not enough market data available for analysis. Try a more liquid symbol."
-
-    if "invalid request" in error_str or "invalid format" in error_str:
-        return "Didn't understand that. Nothing done."
-
-    if "typeerror" in error_str or "nonetype" in error_str or "unsupported format" in error_str:
-        logger.error(f"Display format error: {error}")
-        return "Analysis failed - missing price data. Try again or check the ticker."
-
-    logger.warning(f"Unhandled error type: {type(error).__name__}: {error}")
-    return f"Something went wrong. Error: {type(error).__name__}"
 
 
 class TradeHandler:
@@ -167,8 +129,8 @@ class TradeHandler:
                 print(MSG.TRADE_CANCELLED)
 
         except (ValueError, OSError, RuntimeError, AttributeError) as e:
-            sanitized_msg = _sanitize_error_message(e)
-            error_prefix = "[ERROR]" if platform.system() == "Windows" else MSG.EMOJI["error"]
+            sanitized_msg = sanitize_error_message(e)
+            error_prefix = get_error_prefix()
             print(f"\n{error_prefix} {sanitized_msg}")
             logger.debug(f"Request processing error: {e}", exc_info=True)
 
