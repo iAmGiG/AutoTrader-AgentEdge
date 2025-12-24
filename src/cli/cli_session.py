@@ -50,6 +50,14 @@ from src.cli.utils.error_utils import sanitize_error_message
 from src.cli.utils.help_system import HelpSystem
 from src.cli.utils.input_parser import extract_ticker_from_query
 from src.cli.utils.intent_classifier import IntentClassifier
+
+# Issue #436: Ticker completer moved to separate module
+from src.cli.utils.ticker_completer import (
+    READLINE_AVAILABLE,
+    get_ticker_completer,
+    is_powershell,
+    readline,
+)
 from src.cli.utils.trading_tips import display_trading_tips, get_tips_dict
 from src.cli.utils.ui_utils import get_error_prefix, get_mode_indicator
 from src.core.trading_orchestrator import TradingOrchestrator
@@ -60,15 +68,6 @@ from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
 from src.utils.safe_print import safe_print
 
 logger = logging.getLogger(__name__)
-
-
-# Issue #436: Ticker completer moved to separate module
-from src.cli.utils.ticker_completer import (
-    READLINE_AVAILABLE,
-    get_ticker_completer,
-    is_powershell,
-    readline,
-)
 
 # Global ticker completer instance (from extracted module)
 _ticker_completer = get_ticker_completer()

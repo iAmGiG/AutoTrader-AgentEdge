@@ -43,7 +43,11 @@ def clear_screen() -> None:
     """
     Clear terminal screen using platform-appropriate command.
 
-    Uses 'cls' on Windows, 'clear' on Unix-like systems.
+    Uses 'cls' on Windows (shell built-in), 'clear' on Unix-like systems.
     """
-    command = "cls" if IS_WINDOWS else "clear"
-    subprocess.run(command, shell=False, check=False)
+    if IS_WINDOWS:
+        # cls is a shell built-in on Windows, requires shell=True
+        subprocess.run("cls", shell=True, check=False)  # nosec B602
+    else:
+        # clear is an executable on Unix
+        subprocess.run("clear", shell=False, check=False)
