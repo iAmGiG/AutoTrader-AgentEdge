@@ -312,7 +312,9 @@ def main():
     args = parser.parse_args()
 
     if not args.file and not args.dir:
-        default_path = Path("docs/08_research/99_archived/experiment_293_validation/experiment_293_results.json")
+        default_path = Path(
+            "docs/08_research/99_archived/experiment_293_validation/experiment_293_results.json"
+        )
         if default_path.exists():
             args.file = str(default_path)
         else:
