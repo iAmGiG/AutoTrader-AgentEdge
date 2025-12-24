@@ -69,7 +69,7 @@ DEFAULT_CONFIG = {
     },
     "output": {
         "generate_reports": True,
-        "report_dir": "docs/08_research/03_gex_research/reports",
+        "report_dir": "docs/08_research/02_gex_research/reports",
         "checkpoint_frequency": 5,
     },
 }

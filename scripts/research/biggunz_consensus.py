@@ -291,7 +291,7 @@ def main():
     results = run_comparison()
 
     # Save results
-    output = Path("docs/08_research/04_strategy_research/biggunz_results.yaml")
+    output = Path("docs/08_research/03_strategy_research/biggunz_results.yaml")
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w") as f:
         yaml.dump(results, f, default_flow_style=False, sort_keys=False)

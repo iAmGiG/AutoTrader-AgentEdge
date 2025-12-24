@@ -41,7 +41,7 @@ validation:
 output:
   # Generate reports
   generate_reports: true
-  report_dir: "docs/08_research/03_gex_research/reports"
+  report_dir: "docs/08_research/02_gex_research/reports"
   # Checkpoint frequency (save progress every N symbols)
   checkpoint_frequency: 5
 

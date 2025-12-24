@@ -321,7 +321,7 @@ def main():
         report = generate_report(corr_matrix, asset_metrics, lead_lag_results)
 
         # Save report
-        report_path = Path("docs/08_research/03_gex_research/cross_asset_correlation.md")
+        report_path = Path("docs/08_research/02_gex_research/cross_asset_correlation.md")
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(report)
         print(f"\n[OK] Report saved: {report_path}")

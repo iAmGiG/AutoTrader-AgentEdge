@@ -202,7 +202,7 @@ python scripts/research/gex/dask_gex_calculator.py --config my_config.yaml
 
 ### Reports
 
-Generated in `docs/08_research/03_gex_research/reports/`:
+Generated in `docs/08_research/02_gex_research/reports/`:
 
 - Regime distribution by asset class
 - Symbol-level breakdown

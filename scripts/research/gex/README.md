@@ -27,11 +27,11 @@ python dask_gex_calculator.py --config custom_config.yaml
 ```bash
 # TSMOM vs GEX momentum comparison (Issue #421)
 python tsmom_vs_gex_analysis.py
-# Output: docs/08_research/03_gex_research/tsmom_vs_gex_analysis.md
+# Output: docs/08_research/02_gex_research/tsmom_vs_gex_analysis.md
 
 # Cross-asset regime correlation (Issue #496)
 python cross_asset_correlation.py
-# Output: docs/08_research/03_gex_research/cross_asset_correlation.md
+# Output: docs/08_research/02_gex_research/cross_asset_correlation.md
 ```
 
 ### Maintain Data
@@ -121,7 +121,7 @@ This pipeline demonstrates key big data optimization patterns:
 
 ## Architecture
 
-See `docs/08_research/03_gex_research/gex_pipeline_architecture.md` for detailed technical documentation of the pipeline design.
+See `docs/08_research/02_gex_research/gex_pipeline_architecture.md` for detailed technical documentation of the pipeline design.
 
 ---
 

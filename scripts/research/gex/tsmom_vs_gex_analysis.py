@@ -8,7 +8,7 @@ Compare Time-Series Momentum signals with GEX regime indicators to:
 
 References:
 - TSMOM: Moskowitz et al. (2012) Time-Series Momentum
-- GEX validation: docs/08_research/03_gex_research/gex_regime_validation.md
+- GEX validation: docs/08_research/02_gex_research/gex_regime_validation.md
 """
 
 import sqlite3
@@ -301,7 +301,7 @@ def main():
         report = generate_report(results)
 
         # Save report
-        report_path = Path("docs/08_research/03_gex_research/tsmom_vs_gex_analysis.md")
+        report_path = Path("docs/08_research/02_gex_research/tsmom_vs_gex_analysis.md")
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(report)
         print(f"\n[OK] Report saved: {report_path}")

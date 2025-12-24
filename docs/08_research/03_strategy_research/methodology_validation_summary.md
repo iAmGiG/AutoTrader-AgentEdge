@@ -96,9 +96,9 @@ Time-Series Momentum based on Moskowitz, Ooi, Pedersen (2012):
 - `scripts/research/walk_forward_validation.py`
 - `scripts/research/multi_asset_tsmom.py`
 - `scripts/research/s_squared_gex_scaling.py`
-- `docs/08_research/04_strategy_research/walk_forward_results.yaml`
-- `docs/08_research/04_strategy_research/tsmom_multi_asset_results.yaml`
-- `docs/08_research/03_gex_research/s_squared_scaling_results.yaml`
+- `docs/08_research/03_strategy_research/walk_forward_results.yaml`
+- `docs/08_research/03_strategy_research/tsmom_multi_asset_results.yaml`
+- `docs/08_research/02_gex_research/s_squared_scaling_results.yaml`
 
 ## Branch
 

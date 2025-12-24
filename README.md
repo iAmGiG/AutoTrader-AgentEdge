@@ -31,7 +31,7 @@
 
 ### Walk-Forward Validated Performance
 
-Results from [research validation](docs/08_research/04_strategy_research/methodology_validation_summary.md):
+Results from [research validation](docs/08_research/03_strategy_research/methodology_validation_summary.md):
 
 | Strategy         | Out-of-Sample Sharpe | Period    | Validation Status              |
 |------------------|----------------------|-----------|--------------------------------|

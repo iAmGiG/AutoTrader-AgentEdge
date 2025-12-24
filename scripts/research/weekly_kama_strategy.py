@@ -735,7 +735,7 @@ def run_full_analysis(symbols: Optional[List[str]] = None) -> Dict[str, Any]:
 def save_results(results: Dict[str, Any], output_path: Optional[str] = None) -> None:
     """Save results to YAML file."""
     if output_path is None:
-        output_path = "docs/08_research/04_strategy_research/weekly_kama_results.yaml"
+        output_path = "docs/08_research/03_strategy_research/weekly_kama_results.yaml"
 
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)

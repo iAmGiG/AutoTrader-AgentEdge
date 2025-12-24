@@ -467,7 +467,7 @@ def run_tsmom_analysis():
     results["detailed_results"] = [convert_result(r) for r in all_results]
 
     # Save results
-    output = Path("docs/08_research/04_strategy_research/tsmom_multi_asset_results.yaml")
+    output = Path("docs/08_research/03_strategy_research/tsmom_multi_asset_results.yaml")
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w") as f:
         yaml.dump(results, f, default_flow_style=False, sort_keys=False)

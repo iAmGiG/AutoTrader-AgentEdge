@@ -325,7 +325,7 @@ CREATE TABLE gex_vs_technicals (
 
 ### Results Storage
 
-**YAML Files**: `results/gex_research/*.yaml`
+**YAML Files**: `docs/08_research/02_gex_research/results/*.yaml`
 
 - Human-readable results
 - Easy to version control

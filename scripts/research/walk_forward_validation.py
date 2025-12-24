@@ -699,7 +699,7 @@ def run_walk_forward_validation():
         "causal_mechanisms": {k: convert_to_native(v) for k, v in KNOWN_CAUSAL_MECHANISMS.items()},
     }
 
-    output = Path("docs/08_research/04_strategy_research/walk_forward_results.yaml")
+    output = Path("docs/08_research/03_strategy_research/walk_forward_results.yaml")
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w") as f:
         yaml.dump(results_dict, f, default_flow_style=False, sort_keys=False)

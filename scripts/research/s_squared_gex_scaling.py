@@ -456,7 +456,7 @@ def run_s_squared_analysis():
         }
 
     # Save results
-    output = Path("docs/08_research/03_gex_research/s_squared_scaling_results.yaml")
+    output = Path("docs/08_research/02_gex_research/s_squared_scaling_results.yaml")
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w", encoding="utf-8") as f:
         yaml.dump(results, f, default_flow_style=False, sort_keys=False)

@@ -135,6 +135,6 @@ Issues #297-#301 (Fibonacci regime detection) were closed after analysis showed 
 
 **Files**:
 
-- Raw results: `reports/active/voting_strategy/experiment_293_validation/`
-- Extended analysis: `reports/active/voting_strategy/extended_period_analysis/`
+- Raw results: `docs/08_research/99_archived/experiment_293_validation/`
+- Extended analysis: `docs/08_research/99_archived/extended_period_analysis/`
 - Test scripts: `tests/experiment_293_macd_vs_voting.py`

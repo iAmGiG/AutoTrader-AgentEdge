@@ -5,8 +5,8 @@ Consolidated reporting tool for backtest results.
 Generates text/markdown reports from JSON backtest results.
 
 Usage:
-    python scripts/analysis/generate_results_summary.py --file results/experiments/experiment_293_results.json
-    python scripts/analysis/generate_results_summary.py --dir results/experiments/ --advanced
+    python scripts/analysis/generate_results_summary.py --file docs/08_research/99_archived/experiment_293_validation/experiment_293_results.json
+    python scripts/analysis/generate_results_summary.py --dir docs/08_research/99_archived/experiment_293_validation/ --advanced
     python scripts/analysis/generate_results_summary.py --symbol AAPL --period 2024
 
 Features:
@@ -253,8 +253,8 @@ def _create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/analysis/generate_results_summary.py --file results/experiments/experiment_293_results.json
-  python scripts/analysis/generate_results_summary.py --dir results/experiments/ --advanced
+  python scripts/analysis/generate_results_summary.py --file docs/08_research/99_archived/experiment_293_validation/experiment_293_results.json
+  python scripts/analysis/generate_results_summary.py --dir docs/08_research/99_archived/experiment_293_validation/ --advanced
   python scripts/analysis/generate_results_summary.py --file results.json --format markdown --output report.md
         """,
     )
@@ -312,7 +312,7 @@ def main():
     args = parser.parse_args()
 
     if not args.file and not args.dir:
-        default_path = Path("results/experiments/experiment_293_results.json")
+        default_path = Path("docs/08_research/99_archived/experiment_293_validation/experiment_293_results.json")
         if default_path.exists():
             args.file = str(default_path)
         else:

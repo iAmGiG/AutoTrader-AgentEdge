@@ -119,4 +119,4 @@ The server auto-detects FastAPI availability and falls back to stdlib if not ins
 
 Based on GEX research analyzing 50.88M+ options records (2020-2025). Demonstrates how the S² scaling factor in absolute GEX methodology causes regime over-detection as SPY price increases from ~$300 (2020) to ~$600 (2025).
 
-See `docs/08_research/03_gex_research/` for full methodology documentation.
+See `docs/08_research/02_gex_research/` for full methodology documentation.
