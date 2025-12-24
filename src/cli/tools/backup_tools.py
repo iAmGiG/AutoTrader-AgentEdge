@@ -22,9 +22,10 @@ from autogen_core.tools import FunctionTool
 from src.utils.date_utils import format_for_filename, get_datetime_now
 from src.utils.safe_print import get_symbol
 
-# Default paths
-STATE_DB = "state/user.db"
-CACHE_DB = ".cache/trading_data.db"
+# Default database names (for DBBackupManager)
+# DBBackupManager maps these to actual paths: user -> state/user.db, cache -> .cache/trading_data.db
+STATE_DB = "user"  # Maps to state/user.db
+CACHE_DB = "cache"  # Maps to .cache/trading_data.db
 BACKUP_DIR = "backups"
 
 
@@ -289,14 +290,21 @@ def show_backup_info() -> str:
     output = f"{get_symbol('INFO')} Backup System Info\n"
     output += "=" * 50 + "\n\n"
 
+    # Map database names to paths for display
+    db_path_map = {
+        STATE_DB: "state/user.db",
+        CACHE_DB: ".cache/trading_data.db",
+    }
+
     # Check databases
     output += "Databases:\n"
-    for db_name, db_path in [("State DB", STATE_DB), ("Cache DB", CACHE_DB)]:
+    for db_label, db_name in [("State DB", STATE_DB), ("Cache DB", CACHE_DB)]:
+        db_path = db_path_map.get(db_name, db_name)
         if os.path.exists(db_path):
             size_mb = os.path.getsize(db_path) / (1024 * 1024)
-            output += f"  {db_name}: {db_path} ({size_mb:.1f} MB)\n"
+            output += f"  {db_label}: {db_path} ({size_mb:.1f} MB)\n"
         else:
-            output += f"  {db_name}: {db_path} (not found)\n"
+            output += f"  {db_label}: {db_path} (not found)\n"
 
     output += "\n"
 
@@ -397,12 +405,16 @@ def get_backup_params() -> Dict[str, Any]:
                 }
             )
 
+    # Map database names to paths
+    state_db_path = "state/user.db"
+    cache_db_path = ".cache/trading_data.db"
+
     return {
-        "state_db": STATE_DB,
-        "cache_db": CACHE_DB,
+        "state_db": state_db_path,
+        "cache_db": cache_db_path,
         "backup_dir": BACKUP_DIR,
-        "state_db_exists": os.path.exists(STATE_DB),
-        "cache_db_exists": os.path.exists(CACHE_DB),
+        "state_db_exists": os.path.exists(state_db_path),
+        "cache_db_exists": os.path.exists(cache_db_path),
         "backup_count": len(backups),
         "backups": sorted(backups, key=lambda x: x["modified"], reverse=True),
     }

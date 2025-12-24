@@ -194,7 +194,7 @@ def cmd_timeframe(session, args: str = None):  # noqa: C901
     subcommand = parts[0].lower()
     subarg = parts[1] if len(parts) > 1 else None
 
-    if subcommand in ("mode", "info"):
+    if subcommand in ("mode", "info", "current"):
         safe_print(show_timeframe_mode())
     elif subcommand == "list":
         safe_print(list_timeframes())
