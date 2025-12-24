@@ -181,20 +181,24 @@ def fetch_from_alpha_vantage(symbol: str, start: str, end: str) -> pd.DataFrame:
     if "Weekly Adjusted Time Series" not in data:
         if "Note" in data:
             raise ValueError(f"Alpha Vantage rate limit: {data['Note']}")
-        raise ValueError(f"No weekly data for {symbol}: {data.get('Error Message', 'Unknown error')}")
+        raise ValueError(
+            f"No weekly data for {symbol}: {data.get('Error Message', 'Unknown error')}"
+        )
 
     # Parse weekly data
     rows = []
     for date_str, daily_data in data["Weekly Adjusted Time Series"].items():
         if start <= date_str <= end:
-            rows.append({
-                "date": date_str,
-                "open": float(daily_data["1. open"]),
-                "high": float(daily_data["2. high"]),
-                "low": float(daily_data["3. low"]),
-                "close": float(daily_data["5. adjusted close"]),  # Use adjusted close
-                "volume": int(daily_data["6. volume"]),
-            })
+            rows.append(
+                {
+                    "date": date_str,
+                    "open": float(daily_data["1. open"]),
+                    "high": float(daily_data["2. high"]),
+                    "low": float(daily_data["3. low"]),
+                    "close": float(daily_data["5. adjusted close"]),  # Use adjusted close
+                    "volume": int(daily_data["6. volume"]),
+                }
+            )
 
     if not rows:
         raise ValueError(f"No data in range {start} to {end} for {symbol}")

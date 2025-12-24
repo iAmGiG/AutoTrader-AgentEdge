@@ -629,9 +629,7 @@ def run_walk_forward_validation():
 
     # Test TSMOM strategy
     all_results.extend(
-        _test_strategy_batch(
-            tsmom_strategy, "TSMOM", symbols, "Time-Series Momentum (12-month)"
-        )
+        _test_strategy_batch(tsmom_strategy, "TSMOM", symbols, "Time-Series Momentum (12-month)")
     )
 
     # Apply multiple testing corrections
