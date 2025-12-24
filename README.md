@@ -29,18 +29,25 @@
 
 **Core Philosophy**: Validated momentum + regime filtering + human decision making > curve-fit technical indicators
 
-### Walk-Forward Validated Performance
+### Key Research Findings (Dec 2025)
 
-Results from [research validation](docs/08_research/03_strategy_research/methodology_validation_summary.md):
+Recent walk-forward validation experiments have yielded several key insights:
+
+- **GEX is a Powerful Regime Filter**: Standalone strategies like TSMOM see a dramatic performance improvement when filtered by the GEX (Gamma Exposure) regime. For example, TSMOM's Sharpe ratio improves from -0.456 to **1.282** when only trading during positive gamma periods.
+- **New Validated Strategies**: Weekly KAMA has been validated as a robust, low-frequency trend filter, outperforming a weekly MACD baseline.
+- **S² Scaling for GEX**: The academic S² scaling for GEX provides more stable, comparable values across assets and is recommended for adoption.
+
+### Validated Strategy Performance
+
+Out-of-sample (OOS) results from the [walk-forward validation framework](docs/08_research/03_strategy_research/walk_forward_results.yaml):
 
 | Strategy         | Out-of-Sample Sharpe | Period    | Validation Status              |
 |------------------|----------------------|-----------|--------------------------------|
-| TSMOM-12M (QQQ)  | 1.097                | 2023-2024 | ✅ Passed                      |
-| TSMOM-12M (UVXY) | 1.082                | 2023-2024 | ✅ Passed                      |
-| TSMOM-12M (TQQQ) | 0.819                | 2023-2024 | ✅ Passed                      |
-| MACD+RSI (QQQ)   | 0.468                | 2023-2024 | ❌ Failed (65% degradation)    |
+| TSMOM-12M (Avg)  | 0.85+                | 2023-2024 | ✅ Passed                      |
+| Weekly KAMA (Avg)| ~0.75                | 2016-2024 | ✅ Passed                      |
+| MACD+RSI (QQQ)   | 0.468                | 2021-2024 | ❌ Failed (65% degradation)    |
 
-**Methodology**: Walk-forward split (2020-2022 train / 2023-2024 test), Benjamini-Hochberg FDR correction applied.
+**Methodology**: Walk-forward split with out-of-sample testing. Benjamini-Hochberg FDR correction applied to control for p-hacking.
 
 **Note**: Past performance does not guarantee future results. All strategies validated using out-of-sample testing to minimize overfitting risk.
 

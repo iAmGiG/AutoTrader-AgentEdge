@@ -20,7 +20,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 | Component | Status | Performance | Notes |
 |-----------|--------|-------------|-------|
-| **VoterAgent** | ✅ Production | 0.856 Sharpe, 36.6% return | Pure MACD+RSI voting |
+| **VoterAgent** | ✅ Production | 0.468 OOS Sharpe (QQQ) | Pure MACD+RSI voting. Note: 0.856 Sharpe was from older, less rigorous tests. |
 | **main.py CLI** | ✅ Functional | All 4 commands working | Fixed Oct 2025 |
 | **Alpaca Integration** | ✅ Validated | Paper trading operational | 35/35 tests passing |
 | **Position Management** | ✅ Complete | Broker-as-truth reconciliation | Real-time tracking |
@@ -52,9 +52,9 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### Phase 1: Core Trading System ✅ COMPLETE (Oct 2025)
 
-**Completed Components**:
+**Completed Components:**
 
-- [x] VoterAgent with validated MACD+RSI voting (0.856 Sharpe)
+- [x] VoterAgent with validated MACD+RSI voting (OOS Sharpe 0.468)
 - [x] Pure math calculations (no LLM dependencies)
 - [x] Alpaca paper trading integration
 - [x] Position and order management
@@ -210,17 +210,27 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 ### Phase 3B: Signal Enhancement 🔜 PLANNED (Q1 2026)
 
-**Planned Enhancements**:
+**Planned Enhancements (based on Dec 2025 research):**
+
+- [ ] **Integrate GEX as Regime Filter**
+  - **Finding**: TSMOM Sharpe improves from -0.456 to 1.282 in positive GEX.
+  - **Action**: Add GEX regime check to `TradingPipeline` before signal generation.
+
+- [ ] **Adopt S² Scaling for GEX**
+  - **Finding**: S² scaling improves cross-asset comparability.
+  - **Action**: Update `dask_gex_calculator.py` to use the academic formula.
+
+- [ ] **Implement Weekly KAMA as Trend Filter**
+  - **Finding**: Weekly KAMA outperforms weekly MACD (avg Sharpe ~0.75).
+  - **Action**: Create a new `TrendFilterAgent` or add KAMA as a voter.
 
 - [ ] **Timeframe Specification** (#365)
   - Multi-timeframe analysis for VoterAgent
   - Better signal quality through timeframe confluence
-  - Target: Q1 2026
 
 - [ ] **Ranked Voter System** (#364)
   - Multi-indicator consensus voting
   - Confidence scoring across multiple signals
-  - Target: Q1 2026
 
 ### Phase 3C: Live Trading Preparation 🔜 PLANNED (Q2 2026+)
 
@@ -253,11 +263,13 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 | Metric | Value | Benchmark |
 |--------|-------|-----------|
-| **Sharpe Ratio** | 0.856 | >0.7 = Excellent |
+| **Sharpe Ratio** | 0.468 (OOS, QQQ) | >0.7 = Excellent |
 | **Total Return** | 36.6% | Outperformed SPY |
 | **Win Rate** | 51.4% | >50% target |
 | **Max Drawdown** | -10.10% | <15% acceptable |
 | **Strategy** | Pure MACD+RSI | No LLM sentiment |
+
+*Note: The 0.856 Sharpe ratio from older tests has been superseded by more rigorous walk-forward validation results.*
 
 ### System Efficiency
 

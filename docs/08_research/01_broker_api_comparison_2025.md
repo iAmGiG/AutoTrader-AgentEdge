@@ -715,6 +715,7 @@ order = alpaca.submit_order(
     side="buy",
     type="limit",
     limit_price=600,
+    time_in_force="day", # Required for extended hours
     extended_hours=True  # Enable extended hours
 )
 ```
