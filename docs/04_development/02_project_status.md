@@ -782,6 +782,7 @@ Status: Implementation complete, merged, and tested
 - Per-mode configuration in trading_modes.yaml
 - Integration with TrailingStopManager for Target 2 dynamic stops
 - Comprehensive test coverage (21 tests, 90% coverage)
+- Research: Partial Exit Strategies
 
 **Configuration by Trading Mode**:
 

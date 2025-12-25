@@ -44,6 +44,29 @@ This directory contains guides for developers working on AutoGen-Trader.
    - Import consolidation history
    - **Reference this** for code quality improvements
 
+### Additional Guides
+
+- **[Backtesting Framework](07_backtesting_framework.md)** - Validation and backtesting tools
+- **[Refactor Impact Assessment](08_refactor_impact_assessment.md)** - Change impact analysis
+- **[Core Features Gameplan](09_core_features_gameplan.md)** - Feature implementation plans
+- **[Database-First Caching](10_database_first_caching.md)** - SQLite caching architecture
+- **[Config Migration Notes](11_config_migration_notes.md)** - Configuration system changes
+- **[GEX Quick Reference](12_gex_quick_reference.md)** - Gamma exposure analysis guide
+- **[GEX Voter Integration](13_gex_voter_integration_guide.md)** - GEX + VoterAgent integration
+- **[LLM Consolidation](14_llm_consolidation_analysis.md)** - LLM usage analysis
+
+### CLI Integration
+
+- **[CLI Integration Phase 1](15_cli_integration_status_phase1.md)** - ApprovedTickers, PositionSizer, PortfolioManager
+- **[CLI Integration Phase 2](16_cli_integration_status_phase2.md)** - Ranked Voting, Multi-TF, GTT, Watchlist commands
+
+### Feature Implementation
+
+- **[Config Schema Review](17_config_schema_review.md)** - Configuration architecture
+- **[GTT Implementation](18_gtt_implementation.md)** - Good-Till-Triggered orders
+- **[Partial Exit Strategies](19_partial_exit_strategies.md)** - Research for #417, scaling out
+- **[Profile Preset Architecture](20_profile_preset_architecture.md)** - User profile system
+
 ---
 
 ## Related Documentation

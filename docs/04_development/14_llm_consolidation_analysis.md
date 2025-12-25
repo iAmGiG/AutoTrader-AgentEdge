@@ -37,6 +37,7 @@ class OpenAIService(LLMService):
 ```
 
 **Used by**:
+
 - `src/parsers/llm_parser.py` → `LLMParser.parse()` for NL input
 - `src/core/factory.py` → `OrchestratorFactory.create()`
 
@@ -64,6 +65,7 @@ class BaseAgent(AssistantAgent, ABC):
 ```
 
 **Used by**:
+
 - All AutoGen agents (VoterAgent, ScannerAgent, RiskAgent, etc.)
 
 ---
@@ -81,6 +83,7 @@ class BaseAgent(AssistantAgent, ABC):
 | Message formatting | Manual | `UserMessage`, `SystemMessage` classes |
 
 **Key Insight**: AutoGen's client does **everything** OpenAIService does, plus more:
+
 - Automatic message formatting
 - Tool result handling
 - Multi-turn conversations
@@ -94,32 +97,38 @@ class BaseAgent(AssistantAgent, ABC):
 ### Option A: Remove custom service, use AutoGen client everywhere ✅ RECOMMENDED
 
 **Changes**:
+
 1. Update `LLMParser` to use `OpenAIChatCompletionClient` directly
 2. Remove/deprecate `src/services/llm/` folder
 3. Share config loading with `base_agent.py`
 
 **Pros**:
+
 - Single LLM integration path
 - Reduced code complexity
 - Unified configuration
 - Leverages AutoGen's robust implementation
 
 **Cons**:
+
 - Migration effort (1-2 hours)
 - May break end-to-end tests (need updating)
 
 ### Option B: Keep abstraction but use AutoGen under the hood
 
 **Changes**:
+
 1. Keep `LLMService` interface
 2. Implement `AutoGenLLMService` using `OpenAIChatCompletionClient`
 3. Deprecate `OpenAIService`
 
 **Pros**:
+
 - Maintains abstraction for future provider swaps
 - Less disruptive to existing code
 
 **Cons**:
+
 - Still has redundant abstraction layer
 - More complex than necessary
 - AutoGen already provides provider abstraction
@@ -127,16 +136,19 @@ class BaseAgent(AssistantAgent, ABC):
 ### Option C: Remove NL parsing entirely
 
 **Changes**:
+
 1. Remove `LLMParser` completely
 2. Remove `src/services/llm/` folder
 3. CLI uses pattern matching only
 
 **Pros**:
+
 - Simplest solution
 - No LLM costs for parsing
 - Current CLI works fine without it
 
 **Cons**:
+
 - Loses "buy 50 SPY" natural language support
 - Less user-friendly CLI
 - Removes planned feature
@@ -242,6 +254,7 @@ After verification period, remove `src/services/llm/` folder entirely.
 ## Appendix: Tool Format Comparison
 
 ### OpenAI SDK Format (current)
+
 ```python
 tools = [{
     "name": "parse_trade_request",
@@ -251,6 +264,7 @@ tools = [{
 ```
 
 ### AutoGen Format
+
 ```python
 from autogen_core.tools import FunctionTool
 
