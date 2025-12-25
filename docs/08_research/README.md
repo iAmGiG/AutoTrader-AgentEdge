@@ -34,14 +34,14 @@ Hypotheses tested and found **not actionable**. Saves the main project from purs
 
 | Hypothesis | Issue | Status | Evidence |
 | ------------ | ------- | -------- | ---------- |
-| GEX regime filtering improves TSMOM | #516 | 🛑 STOP | Median improvement -2.9% (makes it worse) |
+| GEX overnight swing filter (Close→Close+1) | #516 | 🛑 STOP | Median improvement -2.9% (makes it worse) |
 | MACD parameters can be optimized for robustness | #518 | 🛑 STOP | Best OOS Sharpe -0.223 ("least unprofitable") |
 | Academic TSMOM (12-mo return) is tradeable | #519 | 🛑 STOP | 19% pass rate, -0.259 avg net Sharpe |
-| Inverse GEX regime weighting (full in negative gamma) | #516 | 🛑 STOP | Hybrid strategy underperforms pure TSMOM |
+| GEX + TSMOM hybrid (overnight hold) | #516 | 🛑 STOP | Hybrid underperforms pure strategies |
 
-**Key Insight**: Most parameter optimization shows IS→OOS decay (overfitting). The data does not support GEX as a signal filter for momentum strategies.
+**Key Insight**: Most parameter optimization shows IS→OOS decay (overfitting). GEX as overnight/swing filter does not work.
 
-**Conclusion**: These hypotheses have been thoroughly tested. Further work on GEX+momentum combinations or TSMOM parameter tuning is **not recommended**.
+**Important Caveat**: The intraday GEX use case (Open→Close, practitioner approach) was **never tested** - see #530.
 
 ---
 
@@ -103,10 +103,10 @@ All research scripts now follow these standards:
 
 ### Stop Working On
 
-- GEX as a momentum signal filter
+- GEX as overnight/swing filter (Close→Close+1)
 - Academic TSMOM (12-month lookback)
 - MACD parameter optimization for Sharpe
-- Inverse regime weighting strategies
+- GEX + momentum hybrid strategies (overnight holds)
 
 ### Continue Working On
 
@@ -114,6 +114,10 @@ All research scripts now follow these standards:
 - Path-dependent wick simulation (#528)
 - MACD+RSI in positive gamma re-validation (#421)
 - Portfolio-level correlation analysis
+
+### Untested (Optional Future Research)
+
+- Intraday GEX (Open→Close) - practitioner use case (#530)
 
 ### Already Complete
 
