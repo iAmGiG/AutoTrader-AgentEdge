@@ -1,13 +1,16 @@
 """
-TSMOM vs GEX Comparative Analysis (#421)
+Technical Momentum vs GEX Comparative Analysis (#421)
 
-Compare Time-Series Momentum signals with GEX regime indicators to:
+Compare MACD+RSI technical momentum signals with GEX regime indicators to:
 1. Measure signal overlap and divergence
 2. Identify complementary value
-3. Test if GEX regime improves TSMOM performance
+3. Test if GEX regime improves technical momentum performance
+
+NOTE: This uses MACD+RSI voting (short-term technical momentum),
+NOT academic TSMOM (12-month return per Moskowitz 2012).
+For true TSMOM analysis, see tsmom_gex_hybrid.py (#516).
 
 References:
-- TSMOM: Moskowitz et al. (2012) Time-Series Momentum
 - GEX validation: docs/08_research/02_gex_research/gex_regime_validation.md
 """
 
@@ -67,13 +70,13 @@ def get_price_data(conn: sqlite3.Connection, symbol: str) -> pd.DataFrame:
     return df
 
 
-def calculate_tsmom_signals(prices: pd.Series, lookback: int = 12) -> pd.DataFrame:
+def calculate_tsmom_signals(prices: pd.Series) -> pd.DataFrame:
     """
-    Calculate TSMOM signals using MACD+RSI voting.
+    Calculate Technical Momentum signals using MACD+RSI voting.
+    Note: This uses MACD+RSI as a proxy for momentum, distinct from academic TSMOM (12-mo return).
 
     Args:
         prices: Price series
-        lookback: Lookback period for momentum (months, but we use daily proxy)
 
     Returns:
         DataFrame with TSMOM signals and returns
@@ -86,13 +89,13 @@ def calculate_tsmom_signals(prices: pd.Series, lookback: int = 12) -> pd.DataFra
     rsi_data = calculate_rsi(prices)
 
     # TSMOM signal: MACD bullish AND RSI bullish
-    tsmom_signal = macd_data["bullish"] & rsi_data["bullish"]
+    tsmom_signal = (macd_data["bullish"] & rsi_data["bullish"]).astype(float)
 
     # Calculate daily returns
     returns = prices.pct_change()
 
     # Strategy return: signal * next day return
-    strategy_return = tsmom_signal.shift(1) * returns
+    strategy_return = tsmom_signal.shift(1).fillna(0) * returns
 
     df = pd.DataFrame(
         {
@@ -119,9 +122,10 @@ def calculate_comparison_metrics(tsmom_df: pd.DataFrame, gex_df: pd.DataFrame) -
     if len(merged) < 30:
         return None
 
-    # Binary regime flags
+    # Regime flags (including NEUTRAL for completeness)
     merged["gex_positive"] = merged["regime"] == "POSITIVE_GAMMA"
     merged["gex_negative"] = merged["regime"] == "NEGATIVE_GAMMA"
+    merged["gex_neutral"] = merged["regime"] == "NEUTRAL"
 
     # Signal overlap
     tsmom_bullish = merged["tsmom_signal"].sum()
@@ -132,38 +136,57 @@ def calculate_comparison_metrics(tsmom_df: pd.DataFrame, gex_df: pd.DataFrame) -
     # Performance by GEX regime
     positive_gex_mask = merged["gex_positive"]
     negative_gex_mask = merged["gex_negative"]
+    neutral_gex_mask = merged["gex_neutral"]
 
-    # TSMOM returns in positive gamma
+    # Technical momentum returns by regime
     pos_returns = merged.loc[positive_gex_mask, "strategy_return"].dropna()
     neg_returns = merged.loc[negative_gex_mask, "strategy_return"].dropna()
+    neu_returns = merged.loc[neutral_gex_mask, "strategy_return"].dropna()
 
-    # Annualized metrics
+    # Annualized metrics (with epsilon protection)
+    eps = 1e-9
     tsmom_return_pos = pos_returns.mean() * 252 if len(pos_returns) > 0 else 0
     tsmom_return_neg = neg_returns.mean() * 252 if len(neg_returns) > 0 else 0
+    tsmom_return_neu = neu_returns.mean() * 252 if len(neu_returns) > 0 else 0
 
     tsmom_sharpe_pos = (
-        (pos_returns.mean() / pos_returns.std()) * np.sqrt(252) if len(pos_returns) > 1 else 0
+        (pos_returns.mean() / (pos_returns.std() + eps)) * np.sqrt(252)
+        if len(pos_returns) > 1 and pos_returns.std() > eps
+        else 0
     )
     tsmom_sharpe_neg = (
-        (neg_returns.mean() / neg_returns.std()) * np.sqrt(252) if len(neg_returns) > 1 else 0
+        (neg_returns.mean() / (neg_returns.std() + eps)) * np.sqrt(252)
+        if len(neg_returns) > 1 and neg_returns.std() > eps
+        else 0
+    )
+    tsmom_sharpe_neu = (
+        (neu_returns.mean() / (neu_returns.std() + eps)) * np.sqrt(252)
+        if len(neu_returns) > 1 and neu_returns.std() > eps
+        else 0
     )
 
     # Win rates
     win_rate_pos = (pos_returns > 0).mean() if len(pos_returns) > 0 else 0
     win_rate_neg = (neg_returns > 0).mean() if len(neg_returns) > 0 else 0
+    win_rate_neu = (neu_returns > 0).mean() if len(neu_returns) > 0 else 0
 
     return {
         "total_days": len(merged),
         "tsmom_bullish_days": int(tsmom_bullish),
         "gex_positive_days": int(gex_positive),
+        "gex_negative_days": int(merged["gex_negative"].sum()),
+        "gex_neutral_days": int(merged["gex_neutral"].sum()),
         "overlap_days": int(overlap),
         "divergence_days": int(divergence),
         "tsmom_return_positive_gex": round(tsmom_return_pos * 100, 2),
         "tsmom_return_negative_gex": round(tsmom_return_neg * 100, 2),
+        "tsmom_return_neutral_gex": round(tsmom_return_neu * 100, 2),
         "tsmom_sharpe_positive_gex": round(tsmom_sharpe_pos, 3),
         "tsmom_sharpe_negative_gex": round(tsmom_sharpe_neg, 3),
+        "tsmom_sharpe_neutral_gex": round(tsmom_sharpe_neu, 3),
         "tsmom_win_rate_positive_gex": round(win_rate_pos * 100, 1),
         "tsmom_win_rate_negative_gex": round(win_rate_neg * 100, 1),
+        "tsmom_win_rate_neutral_gex": round(win_rate_neu * 100, 1),
     }
 
 

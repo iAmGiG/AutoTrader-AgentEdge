@@ -13,9 +13,9 @@ Strategy Logic (INVERSE of naive approach):
 - NEUTRAL: 50% position
 - POSITIVE_GAMMA: 25% position or exit (dealers dampen moves)
 
-METHODOLOGY NOTE: The backtest does not model transaction costs or slippage,
-which will inflate performance metrics. The frequent rebalancing between
-regime weights (1.0, 0.5, 0.25) would incur significant costs in reality.
+METHODOLOGY:
+- Transaction costs are modeled (default 5bps per trade).
+- Costs are applied proportionally to portfolio turnover (rebalancing).
 """
 
 import sqlite3

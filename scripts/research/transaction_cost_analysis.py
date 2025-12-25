@@ -278,16 +278,16 @@ def analyze_symbol(
         symbol=symbol,
         strategy=strategy_name,
         period=f"{prices.index.min().date()} to {prices.index.max().date()}",
-        gross_sharpe=round(gross_sharpe, 3),
-        net_sharpe=round(net_sharpe, 3),
-        gross_return_pct=round(gross_total_return, 2),
-        net_return_pct=round(net_total_return, 2),
+        gross_sharpe=float(round(gross_sharpe, 3)),
+        net_sharpe=float(round(net_sharpe, 3)),
+        gross_return_pct=float(round(gross_total_return, 2)),
+        net_return_pct=float(round(net_total_return, 2)),
         total_trades=trade_count,
-        turnover_annual=round(turnover_annual, 1),
+        turnover_annual=float(round(turnover_annual, 1)),
         cost_bps=cost_bps,
-        total_cost_pct=round(total_cost_pct, 2),
-        cost_drag_pct=round(cost_drag, 1),
-        breakeven_bps=breakeven,
+        total_cost_pct=float(round(total_cost_pct, 2)),
+        cost_drag_pct=float(round(cost_drag, 1)),
+        breakeven_bps=float(breakeven),
     )
 
 
@@ -397,22 +397,15 @@ def main():  # noqa: C901
         for strategy_name in strategies:
             strat_results = [r for r in all_results if r.strategy == strategy_name]
             if strat_results:
+                summary = {
+                    "avg_gross_sharpe": np.mean([r.gross_sharpe for r in strat_results]),
+                    "avg_net_sharpe": np.mean([r.net_sharpe for r in strat_results]),
+                    "avg_cost_drag_pct": np.mean([r.cost_drag_pct for r in strat_results]),
+                    "avg_turnover_annual": np.mean([r.turnover_annual for r in strat_results]),
+                    "pass_rate_pct": np.mean([r.net_sharpe > 0.3 for r in strat_results]) * 100,
+                }
                 output_data["summary_by_strategy"][strategy_name] = {
-                    "avg_gross_sharpe": float(
-                        round(np.mean([r.gross_sharpe for r in strat_results]), 3)
-                    ),
-                    "avg_net_sharpe": float(
-                        round(np.mean([r.net_sharpe for r in strat_results]), 3)
-                    ),
-                    "avg_cost_drag_pct": float(
-                        round(np.mean([r.cost_drag_pct for r in strat_results]), 1)
-                    ),
-                    "avg_turnover_annual": float(
-                        round(np.mean([r.turnover_annual for r in strat_results]), 0)
-                    ),
-                    "pass_rate_pct": float(
-                        round(np.mean([r.net_sharpe > 0.3 for r in strat_results]) * 100, 0)
-                    ),
+                    k: float(round(v, 3)) for k, v in summary.items()
                 }
 
         for r in all_results:
