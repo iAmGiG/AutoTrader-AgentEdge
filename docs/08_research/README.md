@@ -7,7 +7,7 @@ This companion repository tests practitioner hypotheses and documents what works
 ## Contents
 
 | Path | Description |
-|------|-------------|
+| ------ | ------------- |
 | [01_broker_api_comparison_2025.md](01_broker_api_comparison_2025.md) | Broker API feature comparison and evaluation |
 | [02_gex_research/](02_gex_research/) | Gamma Exposure (GEX) research and experiments |
 | [03_strategy_research/](03_strategy_research/) | Trading strategy validation and backtests |
@@ -18,7 +18,7 @@ This companion repository tests practitioner hypotheses and documents what works
 ## Research Status Legend
 
 | Status | Meaning | Action |
-|--------|---------|--------|
+| -------- | --------- | -------- |
 | 🛑 **STOP** | Hypothesis invalidated, research concluded | Do not pursue further |
 | ✅ **DONE** | Findings validated and integrated | No further work needed |
 | 🔄 **CONTINUE** | Promising results, worth pursuing | Allocate resources |
@@ -33,7 +33,7 @@ This companion repository tests practitioner hypotheses and documents what works
 Hypotheses tested and found **not actionable**. Saves the main project from pursuing dead ends.
 
 | Hypothesis | Issue | Status | Evidence |
-|------------|-------|--------|----------|
+| ------------ | ------- | -------- | ---------- |
 | GEX regime filtering improves TSMOM | #516 | 🛑 STOP | Median improvement -2.9% (makes it worse) |
 | MACD parameters can be optimized for robustness | #518 | 🛑 STOP | Best OOS Sharpe -0.223 ("least unprofitable") |
 | Academic TSMOM (12-mo return) is tradeable | #519 | 🛑 STOP | 19% pass rate, -0.259 avg net Sharpe |
@@ -50,7 +50,7 @@ Hypotheses tested and found **not actionable**. Saves the main project from purs
 Findings that show **promise**. Some integrated into production, others warrant further investigation.
 
 | Finding | Issue | Status | Action |
-|---------|-------|--------|--------|
+| --------- | ------- | -------- | -------- |
 | MACD+RSI voting more robust than TSMOM | #519 | ✅ DONE | Integrated in VoterAgent (0.856 Sharpe) |
 | VoterAgent validated | Exp 293 | ✅ DONE | Production ready, no changes needed |
 | Weekly KAMA outperforms weekly MACD | #467 | 🔄 CONTINUE | Consider TrendFilterAgent implementation |
@@ -66,7 +66,7 @@ Findings that show **promise**. Some integrated into production, others warrant 
 Issues that **must be addressed** before production deployment.
 
 | Gap | Impact | Status | Resolution |
-|-----|--------|--------|------------|
+| ----- | -------- | -------- | ------------ |
 | Wick Risk | Vectorized backtests overestimate Sharpe | ⚠️ GAP | Path-dependent simulation (#528) |
 | Strategy Definitions | Multiple TSMOM/MACD definitions across scripts | ⚠️ GAP | Canonical implementations needed |
 | Portfolio Correlation | Symbols analyzed in isolation | ⚠️ GAP | Portfolio-level simulation |
@@ -79,7 +79,7 @@ Issues that **must be addressed** before production deployment.
 ### Research Contradiction (Resolved)
 
 | Script | Momentum Definition | GEX Finding |
-|--------|---------------------|-------------|
+| -------- | --------------------- | ------------- |
 | `tsmom_vs_gex_analysis.py` (#421) | MACD+RSI (short-term) | Better in POSITIVE_GAMMA |
 | `tsmom_gex_hybrid.py` (#516) | 12-month return (academic) | Tested NEGATIVE_GAMMA (failed) |
 
@@ -110,7 +110,7 @@ All research scripts now follow these standards:
 
 ### Continue Working On
 
-- Weekly KAMA trend filter (#467)
+- Weekly KAMA TrendFilterAgent (#529, research in #467)
 - Path-dependent wick simulation (#528)
 - MACD+RSI in positive gamma re-validation (#421)
 - Portfolio-level correlation analysis
