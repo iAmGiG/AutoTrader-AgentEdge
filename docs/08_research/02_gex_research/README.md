@@ -27,6 +27,98 @@
 
 ---
 
+## Methodology Post-Mortem (Dec 2025)
+
+### Why the Early Tests Were Unrealistic
+
+The "5/6 wins" results should be treated as a guide for **what not to do**:
+
+#### 1. Look-Ahead Bias (Fatal Flaw)
+
+The early tests had "limited look-ahead protection" - using `Close(t)` to execute at `Close(t)`. In reality, you cannot buy at the closing price using a signal calculated from that same closing price.
+
+- **Early tests**: Signal from `Close(t)` → Execute at `Close(t)` ❌
+- **Later tests (#516)**: Signal from `Close(t)` → Execute at `Close(t+1)` via `shift(1)` ✅
+- **Result**: When proper execution lag was applied, the edge disappeared
+
+#### 2. Transaction Cost Underestimation
+
+| Strategy | Trades/Year | Cost Impact |
+| -------- | ----------- | ----------- |
+| Technicals (MACD+RSI) | 23-38 | Moderate |
+| GEX-Only | 33-137 | **High** - spread/slippage destroys small edge |
+
+A strategy with a small edge and high turnover is often unprofitable in practice.
+
+#### 3. Sample Size (n=6)
+
+Testing on 6 symbols is statistically anecdotal. The "100% win rate" claims are highly suspect even without the look-ahead bias.
+
+### Mathematical Research Gaps
+
+#### 1. Stationarity & Normalization
+
+**The Gap**: Raw GEX values (`Total Gamma * Open Interest`) are not stationary. As markets rise, spot prices and OI grow. A "High GEX" in 2020 might be "Low GEX" in 2025 due to market inflation.
+
+**What Was Tried**: S² scaling (#502) - failed.
+
+**Missing Math**: Rolling Z-Scores or Percentile Ranks over trailing window (e.g., 252 days). This would define "High Gamma" relative to recent past, not absolute numbers.
+
+```python
+# What should have been tested
+gex_zscore = (gex - gex.rolling(252).mean()) / gex.rolling(252).std()
+signal = gex_zscore > 1.5  # High relative to recent history
+```
+
+#### 2. Scalar Reduction of a Curve
+
+**The Gap**: "Total GEX" reduces the entire options chain (thousands of strikes) to a single number.
+
+**What's Lost**: Gamma distribution matters. Concentrated gamma near spot behaves differently than widely spread gamma, even with identical "Total GEX" sums.
+
+**Missing Math**: Gamma Kurtosis or Skew analysis could provide better signals.
+
+#### 3. Binary Regime Classification
+
+**The Gap**: Strategy treats regimes as binary (Positive vs Negative).
+
+**Reality**: Dealer hedging impact is continuous. "Slightly negative" gamma is very different from "deeply negative."
+
+**Missing Math**: Model as continuous variable or probability function, not binary switch.
+
+### If Future Research Were Attempted
+
+These tests would need to be done **before** revisiting GEX strategies:
+
+#### 1. Execution Timing Sensitivity
+
+Since `Close(t)` → `Close(t+1)` failed, test intraday execution:
+
+- Calculate GEX from yesterday's close
+- Execute at today's **Open** or first-hour VWAP
+- Dealer hedging flows happen throughout the day, not just at close
+
+#### 2. Dynamic Thresholding
+
+Instead of `GEX > 0 = Bullish`, test:
+
+```python
+gex_signal = gex > gex.rolling(20).mean()  # Relative, not absolute
+```
+
+This adapts to changing structural levels of open interest.
+
+#### 3. Distance to Gamma Flip
+
+Use distance between current price and Zero Gamma Level as signal:
+
+- Far above flip level → high stability
+- Approaching flip level → volatility expansion
+
+This is more nuanced than binary positive/negative classification.
+
+---
+
 ## Overview
 
 This directory contains comprehensive research on using **Gamma Exposure (GEX)** signals for trading compared to traditional technical analysis (MACD + RSI).
