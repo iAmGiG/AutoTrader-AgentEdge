@@ -227,9 +227,9 @@ The project's GEX research contains contradictory findings that must be resolved
 
 **#518 MACD Parameter Stability Results:**
 
-- Most MACD configs show in-sample → out-of-sample decay (overfitting)
-- Only SQQQ (inverse QQQ) shows stable performance
-- Fast+none: OOS Sharpe 0.152 but only 12% pass rate
+- **Conclusion**: Most MACD parameter sets are not robust and show significant in-sample to out-of-sample decay, indicating overfitting.
+- **"Least Unprofitable" Parameters**: `fast+none` had OOS Sharpe of **-0.223** (not "best" - just least bad). None of the tested MACD variations were robustly profitable out-of-sample.
+- **Exception**: SQQQ (inverse QQQ ETF) showed stable results, suggesting MACD may identify downtrends, but not enough to be profitable across diverse assets.
 
 **#519 Transaction Cost Analysis Results:**
 
