@@ -14,6 +14,7 @@ See [../README.md](../README.md) for consolidated research status (STOP/DONE/CON
 | MACD Parameter Optimization | #518 | 🛑 STOP | No robust edge, IS→OOS decay |
 | Academic TSMOM (12-mo) | #519 | 🛑 STOP | 19% pass rate, -0.259 avg net Sharpe |
 | Weekly KAMA | #467 | 🔄 CONTINUE | Avg Sharpe ~0.75, outperforms weekly MACD |
+| Ready-Aim-Fire (RAF) | #460 | 🔄 CONTINUE | 0.553 Sharpe, 80% win rate, beats VoterAgent |
 | MACD+RSI Voting | #519 | ✅ DONE | 44% pass rate, integrated in VoterAgent |
 
 ---
@@ -22,8 +23,8 @@ See [../README.md](../README.md) for consolidated research status (STOP/DONE/CON
 
 | Document | Issue | Description | Status |
 | -------- | ----- | ----------- | ------ |
-| [biggunz_research.md](biggunz_research.md) | #461 | BIGGUNZ Triple-Consensus Signal | Completed |
-| [raf_research.md](raf_research.md) | #460 | Ready-Aim-Fire Multi-Stochastic | Completed |
+| [biggunz_research.md](biggunz_research.md) | #461 | BIGGUNZ Triple-Consensus Signal | ✅ DONE |
+| [raf_research.md](raf_research.md) | #460 | Ready-Aim-Fire Multi-Stochastic | 🔄 CONTINUE |
 | [weekly_kama_research.md](weekly_kama_research.md) | #467 | Weekly KAMA MA Crossover | 🔄 CONTINUE |
 | [methodology_validation_summary.md](methodology_validation_summary.md) | #523, #495 | Methodology fixes and validation | ✅ DONE |
 
@@ -39,16 +40,17 @@ Experimental results are stored as YAML files in the [results/](results/) folder
 | [tsmom_multi_asset_results.yaml](results/tsmom_multi_asset_results.yaml) | #498 | 🛑 STOP | Multi-asset TSMOM - poor after costs |
 | [walk_forward_results.yaml](results/walk_forward_results.yaml) | #523 | ✅ DONE | Walk-forward validation methodology |
 | [weekly_kama_results.yaml](results/weekly_kama_results.yaml) | #467 | 🔄 CONTINUE | Weekly KAMA - promising results |
-| [biggunz_results.yaml](results/biggunz_results.yaml) | #461 | Archived | BIGGUNZ signal results |
-| [raf_results.yaml](results/raf_results.yaml) | #460 | Archived | RAF signal results |
+| [biggunz_results.yaml](results/biggunz_results.yaml) | #461 | ✅ DONE | BIGGUNZ - marginal gain, RAF is better |
+| [raf_results.yaml](results/raf_results.yaml) | #460 | 🔄 CONTINUE | RAF - best practitioner strategy (0.553 Sharpe) |
 
 ## Key Findings (Dec 2025)
 
 ### What Works (DONE/CONTINUE)
 
 1. **MACD+RSI Voting** (#519): 44% pass rate vs 19% for TSMOM - ✅ Integrated in VoterAgent
-2. **Weekly KAMA** (#467): Outperforms weekly MACD (avg Sharpe ~0.75) - 🔄 Consider TrendFilterAgent
-3. **Methodology Standards**: Look-ahead prevention, turnover-proportional costs - ✅ Applied
+2. **Ready-Aim-Fire (RAF)** (#460): 0.553 Sharpe, 80% win rate - 🔄 Best practitioner strategy, consider as 3rd voter
+3. **Weekly KAMA** (#467): Outperforms weekly MACD (avg Sharpe ~0.75) - 🔄 Consider TrendFilterAgent
+4. **Methodology Standards**: Look-ahead prevention, turnover-proportional costs - ✅ Applied
 
 ### What Doesn't Work (STOP)
 

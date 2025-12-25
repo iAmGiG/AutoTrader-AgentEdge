@@ -67,11 +67,12 @@ Findings that show **promise**. Some integrated into production, others warrant 
 | --------- | ------- | -------- | -------- |
 | MACD+RSI voting more robust than TSMOM | #519 | ✅ DONE | Integrated in VoterAgent (0.856 Sharpe) |
 | VoterAgent validated | Exp 293 | ✅ DONE | Production ready, no changes needed |
+| Ready-Aim-Fire (RAF) outperforms VoterAgent | #460 | 🔄 CONTINUE | 0.553 Sharpe, 80% win rate - consider as 3rd voter |
 | Weekly KAMA outperforms weekly MACD | #467 | 🔄 CONTINUE | Consider TrendFilterAgent implementation |
 | Path-dependent simulation reveals wick risk | #528 | 🔄 CONTINUE | Apply framework to all strategies |
 | MACD+RSI in positive gamma (short-term) | #531 | 🔄 CONTINUE | Re-validate with corrected methodology |
 
-**Conclusion**: VoterAgent work is complete. Focus new resources on KAMA exploration and wick risk simulation.
+**Conclusion**: VoterAgent work is complete. RAF is the best practitioner strategy tested - consider integration as 3rd voter.
 
 ---
 
@@ -124,6 +125,7 @@ All research scripts now follow these standards:
 
 ### Continue Working On
 
+- **Ready-Aim-Fire (RAF) integration** (#460) - best practitioner strategy, 0.553 Sharpe
 - Weekly KAMA TrendFilterAgent (#529, research in #467)
 - Path-dependent wick simulation (#528)
 - MACD+RSI in positive gamma re-validation (#531)

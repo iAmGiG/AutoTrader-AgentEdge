@@ -1,7 +1,7 @@
 # BIGGUNZ Triple-Consensus Research
 
 **Issue**: #461
-**Status**: Complete
+**Status**: ✅ DONE - Validated but superseded by RAF (#460)
 **Date**: 2025-12-22
 
 ## Executive Summary
@@ -72,7 +72,9 @@ If expanding to pure index trading (SPY, QQQ only), consider:
 
 ## Conclusion
 
-BIGGUNZ validates that our VoterAgent approach is sound. The marginal Sharpe improvement (+0.046) doesn't justify the added complexity of Stochastic. Our Fibonacci MACD parameters (13/34/8) remain the recommended default, especially for portfolios including leveraged ETFs.
+BIGGUNZ validates that our VoterAgent approach is sound, but the marginal Sharpe improvement (+0.046) doesn't justify the added complexity.
+
+**Update (Dec 2025)**: If looking for a stochastic-based improvement, **Ready-Aim-Fire (RAF)** (#460) is superior to BIGGUNZ, offering higher Sharpe (0.553) and better win rate (80%).
 
 ---
 

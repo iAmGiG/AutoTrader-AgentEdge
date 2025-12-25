@@ -1,7 +1,7 @@
 # Ready-Aim-Fire Multi-Stochastic Research
 
 **Issue**: #460
-**Status**: Complete
+**Status**: 🔄 CONTINUE - Best practitioner strategy, consider VoterAgent integration
 **Date**: 2025-12-22
 
 ## Executive Summary
@@ -88,6 +88,16 @@ class EnhancedVoterAgent:
 | KAMA Weekly | 0.523 | 80% | Low (2 indicators) |
 
 **Conclusion**: RAF provides the best risk-adjusted returns among practitioner strategies tested.
+
+## Timeframe Robustness Analysis (Dec 2025)
+
+**Observation**: While practitioners often use RAF for intraday scalping (1m/5m charts), our testing confirms it is highly effective as a **Daily Swing Strategy**.
+
+**Why it works on Daily:**
+
+1. **Fractal Nature**: The logic (Fast Stoch crossing up while Slow Stoch is bullish) represents "buying the dip in a trend." This mechanical edge exists on all timeframes.
+2. **Noise Filtering**: The TEMA(28) trend filter prevents counter-trend trades, which is critical for overnight holding.
+3. **Volatility Handling**: The strategy performed exceptionally well on TQQQ (0.713 Sharpe), suggesting the multi-stochastic approach handles leveraged volatility better than standard MACD.
 
 ---
 
