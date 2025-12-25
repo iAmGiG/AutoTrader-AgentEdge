@@ -31,25 +31,24 @@
 
 ### Key Research Findings (Dec 2025)
 
-Recent walk-forward validation experiments have yielded several key insights:
+Recent rigorous validation experiments with corrected methodology:
 
-- **GEX is a Powerful Regime Filter**: Standalone strategies like TSMOM see a dramatic performance improvement when filtered by the GEX (Gamma Exposure) regime. For example, TSMOM's Sharpe ratio improves from -0.456 to **1.282** when only trading during positive gamma periods.
-- **New Validated Strategies**: Weekly KAMA has been validated as a robust, low-frequency trend filter, outperforming a weekly MACD baseline.
-- **S² Scaling for GEX**: The academic S² scaling for GEX provides more stable, comparable values across assets and is recommended for adoption.
+- **GEX Regime Filtering**: Research contradiction identified - MACD+RSI and academic TSMOM behave differently in GEX regimes. Phase 3B on hold pending resolution. See [project status](docs/04_development/02_project_status.md).
+- **Transaction Cost Robustness**: MACD+RSI shows 44% pass rate vs TSMOM's 19% despite 10x higher turnover (#519)
+- **MACD Parameter Stability**: No robustly profitable MACD configs found out-of-sample. Best OOS Sharpe: -0.223 (#518)
+- **Simulation Fidelity Gap**: Path-dependent backtesting engine created to address "wick risk" (#528)
 
-### Validated Strategy Performance
+### Strategy Validation Results
 
-Out-of-sample (OOS) results from the [walk-forward validation framework](docs/08_research/03_strategy_research/walk_forward_results.yaml):
+| Issue | Strategy | Finding | Status |
+|-------|----------|---------|--------|
+| #516 | TSMOM+GEX Hybrid | Median improvement: **-2.9%** (worse than baseline) | CLOSED |
+| #518 | MACD Stability | OOS Sharpe: -0.223 (least unprofitable) | CLOSED |
+| #519 | Transaction Costs | MACD+RSI: 44% pass rate, TSMOM: 19% | CLOSED |
 
-| Strategy         | Out-of-Sample Sharpe | Period    | Validation Status              |
-|------------------|----------------------|-----------|--------------------------------|
-| TSMOM-12M (Avg)  | 0.85+                | 2023-2024 | ✅ Passed                      |
-| Weekly KAMA (Avg)| ~0.75                | 2016-2024 | ✅ Passed                      |
-| MACD+RSI (QQQ)   | 0.468                | 2021-2024 | ❌ Failed (65% degradation)    |
+**Methodology**: Walk-forward validation, turnover-proportional transaction costs, look-ahead bias protection, median reporting for outlier robustness.
 
-**Methodology**: Walk-forward split with out-of-sample testing. Benjamini-Hochberg FDR correction applied to control for p-hacking.
-
-**Note**: Past performance does not guarantee future results. All strategies validated using out-of-sample testing to minimize overfitting risk.
+**Note**: Past performance does not guarantee future results. Research is ongoing with focus on simulation fidelity improvements.
 
 ### Production Status
 

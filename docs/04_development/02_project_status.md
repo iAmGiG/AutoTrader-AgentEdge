@@ -219,23 +219,23 @@ The project's GEX research contains contradictory findings that must be resolved
 | `tsmom_vs_gex_analysis.py` (#421) | MACD+RSI performs best in positive gamma | POSITIVE_GAMMA |
 | `tsmom_gex_hybrid.py` (#516) | Built on premise that TSMOM works best in negative gamma | NEGATIVE_GAMMA |
 
-**#516 Experiment Results (Dec 24, 2025):**
+**#516 TSMOM+GEX Hybrid** ✅ CLOSED (Hypothesis Invalidated)
 
 - Median improvement: **-2.9%** (hybrid performs WORSE than pure TSMOM)
 - The "inverse regime weighting" hypothesis is NOT validated
-- Transaction costs: 5 bps per rebalance, turnover-proportional
+- Script: `scripts/research/tsmom_gex_hybrid.py`
 
-**#518 MACD Parameter Stability Results:**
+**#518 MACD Parameter Stability** ✅ CLOSED (No Robust Edge)
 
-- **Conclusion**: Most MACD parameter sets are not robust and show significant in-sample to out-of-sample decay, indicating overfitting.
-- **"Least Unprofitable" Parameters**: `fast+none` had OOS Sharpe of **-0.223** (not "best" - just least bad). None of the tested MACD variations were robustly profitable out-of-sample.
-- **Exception**: SQQQ (inverse QQQ ETF) showed stable results, suggesting MACD may identify downtrends, but not enough to be profitable across diverse assets.
+- "Least Unprofitable" Parameters: `fast+none` with OOS Sharpe **-0.223**
+- Most MACD configs show IS→OOS decay (overfitting)
+- Script: `scripts/research/macd_parameter_stability.py`
 
-**#519 Transaction Cost Analysis Results:**
+**#519 Transaction Cost Analysis** ✅ CLOSED (MACD+RSI More Robust)
 
 - TSMOM: Avg Net Sharpe -0.259, 19% pass rate, 4 trades/yr
 - MACD+RSI: Avg Net Sharpe 0.173, **44% pass rate**, 39 trades/yr
-- MACD+RSI is more robust despite 10x higher turnover
+- Script: `scripts/research/transaction_cost_analysis.py`
 
 **Recommended Actions Before Proceeding:**
 
