@@ -871,7 +871,7 @@ exit:
 /watchlist:
   category: Configuration
   description: Watchlist management (Issue #507)
-  usage: /watchlist {list|add|remove|show|create|limits} [args]
+  usage: /watchlist {list|add|remove|show|create|limits|scanner} [args]
   examples:
   - /watchlist
   - /watchlist list
@@ -881,6 +881,7 @@ exit:
   - /watchlist show tech
   - /watchlist create growth High growth stocks
   - /watchlist limits
+  - /watchlist scanner
   aliases:
   - wl
   tags:
@@ -897,8 +898,10 @@ exit:
     \  remove <sym> [name] - Remove symbol from watchlist\n\
     \  show <name>       - Show specific watchlist details\n\
     \  create <name> [desc] - Create a new watchlist\n\
-    \  limits            - Show watchlist statistics\n\n\
-    Use named watchlists to organize trading ideas by category."
+    \  limits            - Show watchlist statistics\n\
+    \  scanner           - Show ScannerAgent tier status\n\n\
+    User watchlists are for personal tracking.\n\
+    Scanner tiers are for automated scan prioritization."
 
 /partial:
   category: Trading

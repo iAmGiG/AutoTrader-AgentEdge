@@ -538,6 +538,47 @@ def _watchlist_limits() -> str:
     return output
 
 
+def _watchlist_scanner() -> str:
+    """Show ScannerAgent's tiered watchlist status (read-only)."""
+    try:
+        from src.autogen_agents.agents.scanner_config import (
+            TieredWatchlistConfig,
+            load_discovery_tickers,
+        )
+
+        config = TieredWatchlistConfig.from_config()
+        limits = config.tier_limits
+
+        output = "Scanner Tiered Watchlist\n"
+        output += "=" * 50 + "\n"
+        output += f"Status: {'Enabled' if config.enabled else 'Disabled'}\n"
+        output += f"Max Symbols Per Scan: {config.max_symbols_per_scan}\n"
+        output += "-" * 50 + "\n"
+        output += "Tier Limits:\n"
+        output += f"  [0] Positions:      {limits.positions} (from broker)\n"
+        output += f"  [1] Pending Orders: {limits.pending_orders} (from broker)\n"
+        output += f"  [2] Strategy:       {limits.strategy} (from config)\n"
+        output += f"  [3] Discovery:      {limits.discovery} (user-added)\n"
+        output += "-" * 50 + "\n"
+
+        # Show discovery tickers
+        discovery = load_discovery_tickers()
+        output += f"Discovery Tickers ({len(discovery)}):\n"
+        if discovery:
+            output += f"  {', '.join(discovery[:10])}"
+            if len(discovery) > 10:
+                output += f"... (+{len(discovery) - 10} more)"
+            output += "\n"
+        else:
+            output += "  (none)\n"
+
+        output += "\nNote: Positions and pending orders are fetched from broker at scan time."
+        return output
+
+    except Exception as e:
+        return f"[ERROR] Failed to load scanner config: {e}"
+
+
 def _watchlist_handle_subcommand(subcommand: str, subarg: str | None) -> str:
     """Handle watchlist subcommands. Returns output string."""
     from src.cli.tools.watchlist_tools import show_watchlist, show_watchlists
@@ -548,7 +589,7 @@ def _watchlist_handle_subcommand(subcommand: str, subarg: str | None) -> str:
         return _watchlist_add(subarg)
     if subcommand == "remove":
         return _watchlist_remove(subarg)
-    if subcommand in ("show", "view", "tier"):
+    if subcommand in ("show", "view"):
         if not subarg:
             return "Usage: /watchlist show <name>\nUse '/watchlist list' to see all watchlists"
         return show_watchlist(subarg)
@@ -556,6 +597,8 @@ def _watchlist_handle_subcommand(subcommand: str, subarg: str | None) -> str:
         return _watchlist_create(subarg)
     if subcommand == "limits":
         return _watchlist_limits()
+    if subcommand in ("scanner", "tiers", "scan"):
+        return _watchlist_scanner()
     return f"Unknown subcommand: {subcommand}\nUse /watchlist for help"
 
 
@@ -572,6 +615,7 @@ def cmd_watchlist(session, args: str = None):
         /watchlist show <name>          # Show specific watchlist details
         /watchlist create <name> [desc] # Create a new watchlist
         /watchlist limits               # Show watchlist statistics
+        /watchlist scanner              # Show ScannerAgent tier status
     """
     from src.cli.tools.watchlist_tools import show_watchlists
 
