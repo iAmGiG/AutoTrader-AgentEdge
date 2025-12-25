@@ -196,6 +196,14 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - All integrated in `src/cli/commands/slash_commands.py`
   - Merged to feature/testing
 
+- [x] **CLI Pipeline Integration** (#504, #505, #506, #507, #508) - ✅ COMPLETE (Dec 2025)
+  - [x] #504: Connect ranked voting to RealVoterStrategy pipeline ✅
+  - [x] #505: Wire MultiTimeframeVoter to trading pipeline ✅
+  - [x] #506: `/gtt` command with create/cancel/enable/disable subcommands ✅
+  - [x] #507: `/watchlist` command with add/remove/create/limits subcommands ✅
+  - [x] #508: `/partial` command with modify subcommand for exit targets ✅
+  - Branch: `cli/integration`
+
 - [ ] **Execution Mode Switching** (#332)
   - `/toggle` command for quick mode switching
   - `set execution-mode {confirm|auto|paper|disabled}`
@@ -208,19 +216,19 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Easier testing and deployment
   - Target: Q1 2026
 
-### Phase 3B: Signal Enhancement 🔜 PLANNED (Q1 2026)
+### Phase 3B: Signal Enhancement ✅ PIPELINE INTEGRATION COMPLETE (Dec 2025)
 
-**Planned Enhancements**:
+**Completed**:
 
-- [ ] **Timeframe Specification** (#365)
-  - Multi-timeframe analysis for VoterAgent
-  - Better signal quality through timeframe confluence
-  - Target: Q1 2026
+- [x] **Timeframe Specification** (#365) - ✅ WIRED TO PIPELINE (#505)
+  - Multi-timeframe analysis via MultiTimeframeVoter
+  - Presets: trend_following, intraday, position, scalping
+  - RealVoterStrategy routes to multi-TF when mode active
 
-- [ ] **Ranked Voter System** (#364)
-  - Multi-indicator consensus voting
-  - Confidence scoring across multiple signals
-  - Target: Q1 2026
+- [x] **Ranked Voter System** (#364) - ✅ WIRED TO PIPELINE (#504)
+  - Multi-indicator consensus voting via RankedVoterManager
+  - RealVoterStrategy uses evaluate_ranked_voting() when >1 voter active
+  - Voting mode tracked in analysis results
 
 ### Phase 3C: Live Trading Preparation 🔜 PLANNED (Q2 2026+)
 

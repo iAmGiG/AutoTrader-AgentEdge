@@ -834,13 +834,16 @@ exit:
 /gtt:
   category: Configuration
   description: GTT order management (Issue #506)
-  usage: /gtt {list|summary|status|delete|enable|disable} [args]
+  usage: /gtt {list|create|summary|status|delete|cancel|enable|disable} [args]
   examples:
   - /gtt
   - /gtt list
+  - /gtt create AAPL above 200
+  - /gtt create SPY below 450 breakout watch
   - /gtt summary
   - /gtt status <id>
   - /gtt delete <id>
+  - /gtt cancel <id>
   - /gtt enable <id>
   - /gtt disable <id>
   aliases:
@@ -854,24 +857,30 @@ exit:
   - show orders
   - cancel
   details: "Manage Good-Till-Triggered persistent order triggers.\n\nSubcommands:\n\
+    \  create SYM COND VAL [notes] - Create trigger\n\
     \  list              - Show all GTT triggers\n\
     \  summary           - Show GTT summary with counts\n\
     \  status <id>       - Show trigger details\n\
     \  delete <id>       - Delete a trigger\n\
+    \  cancel <id>       - Alias for delete\n\
     \  enable <id>       - Enable a disabled trigger\n\
     \  disable <id>      - Disable a trigger\n\n\
+    Conditions: above, below, gain, loss, trailing\n\
     GTT triggers persist across sessions and execute when conditions are met."
 
 /watchlist:
   category: Configuration
   description: Watchlist management (Issue #507)
-  usage: /watchlist {list|add|remove|tier} [args]
+  usage: /watchlist {list|add|remove|show|create|limits} [args]
   examples:
   - /watchlist
   - /watchlist list
   - /watchlist add AAPL
-  - /watchlist remove MSFT
-  - /watchlist tier discovery
+  - /watchlist add MSFT tech
+  - /watchlist remove NVDA
+  - /watchlist show tech
+  - /watchlist create growth High growth stocks
+  - /watchlist limits
   aliases:
   - wl
   tags:
@@ -882,18 +891,19 @@ exit:
   related:
   - show watchlist
   - morning-routine
-  details: "Manage tiered watchlists for trading opportunities.\n\nSubcommands:\n\
+  details: "Manage watchlists for trading opportunities.\n\nSubcommands:\n\
     \  list              - Show all watchlists\n\
-    \  add <symbol>      - Add symbol to discovery tier\n\
-    \  remove <symbol>   - Remove symbol from watchlist\n\
-    \  tier <name>       - Show specific tier details\n\n\
-    Tiers: positions, pending_orders, strategy, discovery\n\
-    Discovery tier is where new trading ideas are tracked."
+    \  add <sym> [name]  - Add symbol (default: 'default')\n\
+    \  remove <sym> [name] - Remove symbol from watchlist\n\
+    \  show <name>       - Show specific watchlist details\n\
+    \  create <name> [desc] - Create a new watchlist\n\
+    \  limits            - Show watchlist statistics\n\n\
+    Use named watchlists to organize trading ideas by category."
 
 /partial:
   category: Trading
   description: Partial exit management (Issue #508)
-  usage: /partial {list|summary|active|levels} [symbol]
+  usage: /partial {list|summary|active|levels|modify} [args]
   examples:
   - /partial
   - /partial list
@@ -901,6 +911,7 @@ exit:
   - /partial AAPL
   - /partial levels AAPL
   - /partial active
+  - /partial modify AAPL 1 210.50
   aliases:
   - pe
   tags:
@@ -917,6 +928,7 @@ exit:
     \  summary           - Summary of active targets\n\
     \  active            - List only active targets\n\
     \  levels <symbol>   - Show exit target levels for position\n\
+    \  modify <sym> <n> <price> - Modify target n exit price\n\
     \  <symbol>          - Show plan for specific symbol\n\n\
     Partial exits split positions across multiple targets:\n\
     - Target 1: Profit-taking at fixed level (limit order)\n\
