@@ -19,7 +19,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### ✅ Production Ready (Phase 1 Complete)
 
 | Component | Status | Performance | Notes |
-|-----------|--------|-------------|-------|
+| ----------- | -------- | ------------- | ------- |
 | **VoterAgent** | ✅ Production | 0.468 OOS Sharpe (QQQ) | Pure MACD+RSI voting. Note: 0.856 Sharpe was from older, less rigorous tests. |
 | **main.py CLI** | ✅ Functional | All 4 commands working | Fixed Oct 2025 |
 | **Alpaca Integration** | ✅ Validated | Paper trading operational | 35/35 tests passing |
@@ -32,7 +32,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### 🚧 Phase 2 Agents in Development (Nov 2025)
 
 | Component | Status | Notes |
-|-----------|--------|-------|
+| ----------- | -------- | ------- |
 | **ScannerAgent** | 🚧 Implementation | Multi-ticker MACD+RSI scanning (#386) |
 | **RiskAgent** | 🚧 Implementation | Position sizing, circuit breaker (#387) |
 | **ExecutorAgent** | ✅ Complete | Trade execution, simulation mode (#388) |
@@ -126,7 +126,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 ### Phase 2B: Multi-Account & Security 🚧 IN PROGRESS (Nov 2025)
 
 | Component | Status | Notes |
-|-----------|--------|-------|
+| ----------- | -------- | ------- |
 | **Multi-Account Manager** | ✅ Complete | Account selection, API-first discovery (#401) |
 | **Security Architecture** | 📋 Planned | Credential management, OS keyring (#402) |
 
@@ -215,7 +215,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 The project's GEX research contains contradictory findings that must be resolved before proceeding:
 
 | Analysis Script | Finding | Optimal GEX Regime |
-|-----------------|---------|-------------------|
+| ----------------- | --------- | ------------------- |
 | `tsmom_vs_gex_analysis.py` (#421) | MACD+RSI performs best in positive gamma | POSITIVE_GAMMA |
 | `tsmom_gex_hybrid.py` (#516) | Built on premise that TSMOM works best in negative gamma | NEGATIVE_GAMMA |
 
@@ -272,7 +272,7 @@ The project's GEX research contains contradictory findings that must be resolved
 The following simulation fidelity issues must be addressed before production deployment:
 
 | Gap | Issue | Impact | Resolution |
-|-----|-------|--------|------------|
+| ----- | ------- | -------- | ------------ |
 | **Wick Risk** | Vectorized backtests assume close-to-close holds | Overestimated Sharpe/Win rates (ignores intraday stop-outs) | Path-dependent simulation (#525) |
 | **Data Granularity** | Some scripts estimate High/Low (close*1.01) | Cannot accurately simulate bracket orders in volatility regimes | Use actual OHLC data |
 | **Portfolio Correlation** | Symbols analyzed in isolation | Diversification fails in negative gamma (correlations -> 1.0) | Portfolio-level simulation |
@@ -311,7 +311,7 @@ This engine checks SL/TP triggers intraday rather than assuming positions are he
 ### VoterAgent Performance (Validated 2024-2025)
 
 | Metric | Value | Benchmark |
-|--------|-------|-----------|
+| -------- | ------- | ----------- |
 | **Sharpe Ratio** | 0.468 (OOS, QQQ) | >0.7 = Excellent |
 | **Total Return** | 36.6% | Outperformed SPY |
 | **Win Rate** | 51.4% | >50% target |
@@ -323,7 +323,7 @@ This engine checks SL/TP triggers intraday rather than assuming positions are he
 ### System Efficiency
 
 | Metric | Value | Improvement |
-|--------|-------|-------------|
+| -------- | ------- | ------------- |
 | **API Calls/Day** | 10-15 | 90% fewer vs reactive |
 | **Cache Hit Rate** | 85%+ | 90%+ faster access |
 | **Response Time** | <500ms | Real-time decisions |
@@ -1145,7 +1145,7 @@ Massive refactoring initiative to improve code organization, testability, and ma
 **Issues Completed**:
 
 | Issue | Description | Reduction | PR |
-|-------|-------------|-----------|-----|
+| ------- | ------------- | ----------- | ----- |
 | #437 | Extract validators from alpaca_trading_client.py | New modules | #448 |
 | #438 | Split sqlite_cache.py by domain | 65% (1386→474 lines) | #448 |
 | #440 | Extract scheduler_cli.py components | 69% (984→307 lines) | #449 |
@@ -1364,7 +1364,7 @@ src/cli/
 **Large File Refactoring - COMPLETED**:
 
 | Issue | File | Before | After | Reduction | Status |
-|-------|------|--------|-------|-----------|--------|
+| ------- | ------ | -------- | ------- | ----------- | -------- |
 | #509 | cli_session.py | 1657 | 1018 | **38%** | ✅ CLOSED |
 | #510 | sqlite_cache.py | 1587 | 947 | **40%** | ✅ CLOSED |
 | #511 | alpaca_trading_client.py | 1568 | 1075 | **31%** | ✅ CLOSED |
@@ -1398,7 +1398,7 @@ src/cli/
 **#521 - DRY Improvements & Code Quality Cleanup** (✅ CLOSED):
 
 | Task               | Module Created                 | Description                                                    |
-|--------------------|--------------------------------|----------------------------------------------------------------|
+| ------------------ | ------------------------------ | -------------------------------------------------------------- |
 | Error sanitization | `src/cli/utils/error_utils.py` | Shared `sanitize_error_message()` function                     |
 | Platform UI utils  | `src/cli/utils/ui_utils.py`    | `get_error_prefix()`, `get_mode_indicator()`, `clear_screen()` |
 | Magic constant     | `RealVoterStrategy`            | `MIN_REQUIRED_CANDLES = 42` with MACD derivation comment       |
