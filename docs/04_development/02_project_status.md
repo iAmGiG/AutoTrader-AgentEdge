@@ -267,6 +267,20 @@ The project's GEX research contains contradictory findings that must be resolved
   - Multi-indicator consensus voting
   - Confidence scoring across multiple signals
 
+#### Critical Research Gaps (Dec 2025)
+
+The following simulation fidelity issues must be addressed before production deployment:
+
+| Gap | Issue | Impact | Resolution |
+|-----|-------|--------|------------|
+| **Wick Risk** | Vectorized backtests assume close-to-close holds | Overestimated Sharpe/Win rates (ignores intraday stop-outs) | Path-dependent simulation (#525) |
+| **Data Granularity** | Some scripts estimate High/Low (close*1.01) | Cannot accurately simulate bracket orders in volatility regimes | Use actual OHLC data |
+| **Portfolio Correlation** | Symbols analyzed in isolation | Diversification fails in negative gamma (correlations -> 1.0) | Portfolio-level simulation |
+| **Strategy Definitions** | Multiple TSMOM/MACD definitions across scripts | Incoherent research narrative | Canonical implementations |
+
+**#525 Path-Dependent Simulation**: Created `scripts/research/path_dependent_simulation.py` to address wick risk.
+This engine checks SL/TP triggers intraday rather than assuming positions are held until close.
+
 ### Phase 3C: Live Trading Preparation 🔜 PLANNED (Q2 2026+)
 
 **Future Enhancements**:
