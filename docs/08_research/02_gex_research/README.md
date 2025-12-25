@@ -27,6 +27,42 @@
 
 ---
 
+## Important Caveat: Practitioner Use Case Not Tested
+
+> **⚠️ FAIRNESS NOTE**: The tests that invalidated GEX (#516-#519) tested **swing trading** (Close→Close+1 overnight holds). Practitioners who use GEX for a living typically use it for **day trading** (Open→Close intraday). These are fundamentally different use cases.
+
+### What Practitioners Actually Claim
+
+| Aspect | Practitioner Approach | What We Tested |
+| ------ | --------------------- | -------------- |
+| **Timeframe** | Intraday (Open→Close) | Swing (Close→Close+1) |
+| **Holding Period** | Minutes to hours | Overnight |
+| **Signal Use** | S/R levels, volatility forecast | Binary regime filter |
+| **GEX Application** | "Fade the open" / "follow momentum" | Static position sizing |
+| **Primary Edge** | Volatility prediction | Directional prediction |
+
+### What Our Research Actually Proved
+
+| Use Case | Status | Notes |
+| -------- | ------ | ----- |
+| GEX as overnight swing filter | 🛑 STOP | Tested and invalidated (#516) |
+| GEX + TSMOM hybrid (daily bars) | 🛑 STOP | Median -2.9% worse than pure TSMOM |
+| GEX for intraday mean reversion | ❓ **UNTESTED** | Practitioners' primary use case |
+| Gamma walls as S/R levels | ❓ **UNTESTED** | Common practitioner technique |
+| GEX for volatility sizing | ❓ **UNTESTED** | Straddle sizing, not direction |
+
+### Why This Matters
+
+Practitioners argue that dealer hedging flows happen **during the trading day** as price moves toward gamma concentrations. The mechanism doesn't support overnight holding because:
+
+1. **Dealer rebalancing is intraday** - They delta-hedge throughout the session
+2. **Gamma walls are dynamic** - They shift with price and OI changes
+3. **The edge is in volatility, not direction** - High gamma = low vol, low gamma = high vol
+
+**Conclusion**: Our "GEX doesn't work" finding applies specifically to swing/position trading. The intraday practitioner use case remains **neither validated nor invalidated** by this research.
+
+---
+
 ## Methodology Post-Mortem (Dec 2025)
 
 ### Why the Early Tests Were Unrealistic
