@@ -15,42 +15,66 @@ This companion repository tests practitioner hypotheses and documents what works
 
 ---
 
+## Research Status Legend
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| 🛑 **STOP** | Hypothesis invalidated, research concluded | Do not pursue further |
+| ✅ **DONE** | Findings validated and integrated | No further work needed |
+| 🔄 **CONTINUE** | Promising results, worth pursuing | Allocate resources |
+| ⚠️ **GAP** | Critical issue blocking production | Must address before launch |
+
+---
+
 ## Research Summary (Dec 2025)
 
-### Scope Narrowing
+### Scope Narrowing — 🛑 STOP
 
-Hypotheses tested and found **not actionable** - saves the main project from pursuing dead ends.
+Hypotheses tested and found **not actionable**. Saves the main project from pursuing dead ends.
 
-| Hypothesis | Issue | Result | Evidence |
+| Hypothesis | Issue | Status | Evidence |
 |------------|-------|--------|----------|
-| GEX regime filtering improves TSMOM | #516 | **Invalidated** | Median improvement -2.9% (makes it worse) |
-| MACD parameters can be optimized for robustness | #518 | **No robust edge** | Best OOS Sharpe -0.223 ("least unprofitable") |
-| Academic TSMOM (12-mo return) is tradeable | #519 | **Poor after costs** | 19% pass rate, -0.259 avg net Sharpe |
-| Inverse GEX regime weighting (full in negative gamma) | #516 | **Invalidated** | Hybrid strategy underperforms pure TSMOM |
+| GEX regime filtering improves TSMOM | #516 | 🛑 STOP | Median improvement -2.9% (makes it worse) |
+| MACD parameters can be optimized for robustness | #518 | 🛑 STOP | Best OOS Sharpe -0.223 ("least unprofitable") |
+| Academic TSMOM (12-mo return) is tradeable | #519 | 🛑 STOP | 19% pass rate, -0.259 avg net Sharpe |
+| Inverse GEX regime weighting (full in negative gamma) | #516 | 🛑 STOP | Hybrid strategy underperforms pure TSMOM |
 
 **Key Insight**: Most parameter optimization shows IS→OOS decay (overfitting). The data does not support GEX as a signal filter for momentum strategies.
 
-### High Value Leads
+**Conclusion**: These hypotheses have been thoroughly tested. Further work on GEX+momentum combinations or TSMOM parameter tuning is **not recommended**.
 
-Hypotheses that show **promise** and warrant further investigation.
+---
 
-| Finding | Issue | Result | Next Step |
-|---------|-------|--------|-----------|
-| MACD+RSI voting more robust than TSMOM | #519 | **44% pass rate** (vs 19% for TSMOM) | Already in VoterAgent |
-| Weekly KAMA outperforms weekly MACD | #467 | **~0.75 avg Sharpe** | Consider TrendFilterAgent |
-| Path-dependent simulation reveals wick risk | #528 | **Framework created** | Apply to all strategies |
-| VoterAgent validated | Exp 293 | **0.856 Sharpe** | Production ready |
+### High Value Leads — ✅ DONE / 🔄 CONTINUE
 
-### Critical Research Gaps
+Findings that show **promise**. Some integrated into production, others warrant further investigation.
 
-Issues that must be addressed before production deployment.
+| Finding | Issue | Status | Action |
+|---------|-------|--------|--------|
+| MACD+RSI voting more robust than TSMOM | #519 | ✅ DONE | Integrated in VoterAgent (0.856 Sharpe) |
+| VoterAgent validated | Exp 293 | ✅ DONE | Production ready, no changes needed |
+| Weekly KAMA outperforms weekly MACD | #467 | 🔄 CONTINUE | Consider TrendFilterAgent implementation |
+| Path-dependent simulation reveals wick risk | #528 | 🔄 CONTINUE | Apply framework to all strategies |
+| MACD+RSI in positive gamma (short-term) | #421 | 🔄 CONTINUE | Re-validate with corrected methodology |
 
-| Gap | Impact | Resolution |
-|-----|--------|------------|
-| **Wick Risk** | Vectorized backtests overestimate Sharpe | Path-dependent simulation (#528) |
-| **Strategy Definitions** | Multiple TSMOM/MACD definitions across scripts | Canonical implementations needed |
-| **Portfolio Correlation** | Symbols analyzed in isolation | Portfolio-level simulation |
-| **Data Granularity** | Some scripts estimate High/Low | Use actual OHLC data |
+**Conclusion**: VoterAgent work is complete. Focus new resources on KAMA exploration and wick risk simulation.
+
+---
+
+### Critical Research Gaps — ⚠️ GAP
+
+Issues that **must be addressed** before production deployment.
+
+| Gap | Impact | Status | Resolution |
+|-----|--------|--------|------------|
+| Wick Risk | Vectorized backtests overestimate Sharpe | ⚠️ GAP | Path-dependent simulation (#528) |
+| Strategy Definitions | Multiple TSMOM/MACD definitions across scripts | ⚠️ GAP | Canonical implementations needed |
+| Portfolio Correlation | Symbols analyzed in isolation | ⚠️ GAP | Portfolio-level simulation |
+| Data Granularity | Some scripts estimate High/Low | ⚠️ GAP | Use actual OHLC data |
+
+**Conclusion**: These gaps affect result reliability. Address before trusting backtest numbers for production sizing.
+
+---
 
 ### Research Contradiction (Resolved)
 
@@ -72,6 +96,30 @@ All research scripts now follow these standards:
 3. **Div-by-zero protection**: EPSILON = 1e-9
 4. **Reporting**: Median alongside mean for outlier-robust metrics
 5. **YAML serialization**: Explicit `float()`, `int()` casts to avoid numpy types
+
+---
+
+## Quick Reference: What to Work On
+
+### Stop Working On
+
+- GEX as a momentum signal filter
+- Academic TSMOM (12-month lookback)
+- MACD parameter optimization for Sharpe
+- Inverse regime weighting strategies
+
+### Continue Working On
+
+- Weekly KAMA trend filter (#467)
+- Path-dependent wick simulation (#528)
+- MACD+RSI in positive gamma re-validation (#421)
+- Portfolio-level correlation analysis
+
+### Already Complete
+
+- VoterAgent validation (Exp 293)
+- MACD+RSI voting integration (#519)
+- Methodology corrections (look-ahead, costs)
 
 ---
 
