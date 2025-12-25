@@ -69,7 +69,7 @@ Findings that show **promise**. Some integrated into production, others warrant 
 | VoterAgent validated | Exp 293 | ✅ DONE | Production ready, no changes needed |
 | Weekly KAMA outperforms weekly MACD | #467 | 🔄 CONTINUE | Consider TrendFilterAgent implementation |
 | Path-dependent simulation reveals wick risk | #528 | 🔄 CONTINUE | Apply framework to all strategies |
-| MACD+RSI in positive gamma (short-term) | #421 | 🔄 CONTINUE | Re-validate with corrected methodology |
+| MACD+RSI in positive gamma (short-term) | #531 | 🔄 CONTINUE | Re-validate with corrected methodology |
 
 **Conclusion**: VoterAgent work is complete. Focus new resources on KAMA exploration and wick risk simulation.
 
@@ -126,7 +126,7 @@ All research scripts now follow these standards:
 
 - Weekly KAMA TrendFilterAgent (#529, research in #467)
 - Path-dependent wick simulation (#528)
-- MACD+RSI in positive gamma re-validation (#421)
+- MACD+RSI in positive gamma re-validation (#531)
 - Portfolio-level correlation analysis
 
 ### Untested (Optional Future Research)
