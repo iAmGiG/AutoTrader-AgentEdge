@@ -2,8 +2,30 @@
 
 **Research Track**: Paper 3 - Options Flow Analysis
 **Issue**: #394
-**Status**: ✅ Initial Testing Complete
+**Status**: 🛑 STOP - Hypothesis Invalidated (Dec 2025)
 **Date Range**: 2024-2025 (out-of-sample testing)
+
+---
+
+## Research Status Update (Dec 2025)
+
+> **⚠️ IMPORTANT**: Later research (#516, #518, #519) invalidated the GEX-as-filter hypothesis.
+> See [../README.md](../README.md) for the consolidated research summary.
+
+| Finding | Status | Evidence |
+| ------- | ------ | -------- |
+| GEX regime filtering improves TSMOM | 🛑 STOP | #516: Median improvement -2.9% (worse) |
+| GEX-only strategy viable | 🛑 STOP | Inconsistent methodology across scripts |
+| Hybrid GEX+Technicals | 🛑 STOP | Underperforms pure strategies |
+
+**Why the contradiction?** The early results below (5/6 wins) used different methodology than later rigorous testing:
+
+- Early tests: Limited look-ahead protection, inconsistent cost modeling
+- Later tests (#516-#519): Proper `shift(1)`, turnover-proportional costs, EPSILON protection
+
+**Preserved below** for historical reference and methodology learnings.
+
+---
 
 ## Overview
 
@@ -90,7 +112,7 @@ Technical architecture for GEX calculation:
 ### Core Analysis
 
 | Script | Purpose | Output |
-|--------|---------|--------|
+| -------- | --------- | -------- |
 | `scripts/research/gex_vs_technicals.py` | Walk-forward backtest comparison | YAML results + SQLite DB |
 | `scripts/research/consolidate_gex_results.py` | Generate markdown report from results | Consolidated MD report |
 | `scripts/research/analyze_gex_significance.py` | Statistical significance testing | Console report with p-values |
@@ -98,7 +120,7 @@ Technical architecture for GEX calculation:
 ### Data Pipeline
 
 | Script | Purpose | Output |
-|--------|---------|--------|
+| -------- | --------- | -------- |
 | `scripts/research/gex/batch_gex_calculator.py` | Batch GEX calculation | SQLite database |
 | `scripts/research/gex/parallel_gex_calculator.py` | Parallel processing for speed | SQLite database |
 | `scripts/research/gex/dask_gex_calculator.py` | Distributed computing version | SQLite database |
@@ -168,7 +190,7 @@ CREATE TABLE gex_vs_technicals (
 ### Symbols Tested
 
 | Symbol | Type | Liquidity | Options Activity |
-|--------|------|-----------|------------------|
+| -------- | ------ | ----------- | ------------------ |
 | SPY | S&P 500 Index | Very High | Very High |
 | QQQ | Nasdaq-100 Index | Very High | Very High |
 | IWM | Russell 2000 | High | High |
