@@ -90,32 +90,96 @@ signal = gex_zscore > 1.5  # High relative to recent history
 
 These tests would need to be done **before** revisiting GEX strategies:
 
-#### 1. Execution Timing Sensitivity
+#### 1. Fix the Math: Rolling Z-Score Normalization
 
-Since `Close(t)` → `Close(t+1)` failed, test intraday execution:
-
-- Calculate GEX from yesterday's close
-- Execute at today's **Open** or first-hour VWAP
-- Dealer hedging flows happen throughout the day, not just at close
-
-#### 2. Dynamic Thresholding
-
-Instead of `GEX > 0 = Bullish`, test:
+Raw GEX (`Gamma * OI * Spot`) naturally doubles as S&P rises from 3000→6000. A threshold defined in 2020 is meaningless in 2025.
 
 ```python
-gex_signal = gex > gex.rolling(20).mean()  # Relative, not absolute
+def calculate_gex_zscore(df, window=252):
+    """
+    Normalize GEX relative to its own history (1 trading year).
+    Fixes market inflation affecting signals.
+    """
+    rolling_mean = df['total_gex'].rolling(window=window).mean()
+    rolling_std = df['total_gex'].rolling(window=window).std()
+
+    # Z-Score: how many std devs from rolling mean
+    df['gex_zscore'] = (df['total_gex'] - rolling_mean) / rolling_std
+    return df
+
+# Usage in strategy:
+# Instead of: if total_gex > 0:
+# Use: if gex_zscore > 1.5:  # High gamma relative to recent history
 ```
 
-This adapts to changing structural levels of open interest.
+#### 2. Test Intraday Execution (Day Trade Angle)
 
-#### 3. Distance to Gamma Flip
+Since `Close(t)` → `Close(t+1)` swing strategy failed, test intraday predictive power:
 
-Use distance between current price and Zero Gamma Level as signal:
+```python
+# Hypothesis: Dealers hedge primarily during the day
+# Test: Calculate GEX from yesterday's close
+#       Enter at Market Open, Exit at Market Close
 
-- Far above flip level → high stability
-- Approaching flip level → volatility expansion
+# If GEX highly positive → dealers suppress volatility intraday
+#   → Expect mean reversion (fade the open)
+# If GEX negative → dealers amplify moves
+#   → Expect trend expansion (follow the open)
 
-This is more nuanced than binary positive/negative classification.
+signal = "FADE" if gex_zscore > 1.5 else "FOLLOW" if gex_zscore < -1.5 else "NEUTRAL"
+entry_price = df['open']
+exit_price = df['close']
+```
+
+#### 3. Distance to Gamma Flip (Continuous Signal)
+
+Instead of binary positive/negative, use distance to Zero Gamma Level:
+
+```python
+def calculate_gamma_flip_distance(df):
+    """
+    Continuous signal based on proximity to regime change.
+    Zero Gamma Level is already in database.
+    """
+    # Normalized distance to flip level
+    df['flip_distance'] = (df['close'] - df['zero_gamma_level']) / df['close']
+
+    # As price approaches flip level, volatility increases
+    # Far above flip → stability (dealers long gamma, suppress moves)
+    # Near flip → instability (dealers hedging direction uncertain)
+    # Far below flip → volatility (dealers short gamma, amplify moves)
+
+    return df
+
+# Usage: fade moves when flip_distance > 0.05
+#        follow moves when flip_distance < -0.05
+#        reduce size when abs(flip_distance) < 0.02 (near flip = uncertain)
+```
+
+#### 4. Gamma Concentration (Beyond Total GEX)
+
+Total GEX loses the "lines" - where gamma is concentrated matters:
+
+```python
+def calculate_gamma_walls(chain_df, spot_price, threshold_pct=0.10):
+    """
+    Identify strikes with concentrated gamma (>10% of total).
+    Market with gamma at 5500 and 5600 behaves differently
+    than gamma spread evenly, even with same "Total GEX".
+    """
+    total_gamma = chain_df['gamma'].abs().sum()
+    chain_df['gamma_pct'] = chain_df['gamma'].abs() / total_gamma
+
+    walls = chain_df[chain_df['gamma_pct'] > threshold_pct][['strike', 'gamma_pct']]
+
+    # Distance to nearest wall affects expected behavior
+    nearest_wall = walls.iloc[(walls['strike'] - spot_price).abs().argmin()]
+    distance_to_wall = (spot_price - nearest_wall['strike']) / spot_price
+
+    return walls, distance_to_wall
+```
+
+**Summary**: All four fixes address real mathematical gaps. None were tested in the original research.
 
 ---
 
