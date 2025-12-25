@@ -208,19 +208,54 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Easier testing and deployment
   - Target: Q1 2026
 
-### Phase 3B: Signal Enhancement 🔜 PLANNED (Q1 2026)
+### Phase 3B: Signal Enhancement ⚠️ ON HOLD (Pending Research Resolution)
 
-**Planned Enhancements (based on Dec 2025 research):**
+#### CRITICAL: GEX Research Contradiction Identified (Dec 2025)
 
-- [ ] **Integrate GEX as Regime Filter**
-  - **Finding**: TSMOM Sharpe improves from -0.456 to 1.282 in positive GEX.
-  - **Action**: Add GEX regime check to `TradingPipeline` before signal generation.
+The project's GEX research contains contradictory findings that must be resolved before proceeding:
 
-- [ ] **Adopt S² Scaling for GEX**
-  - **Finding**: S² scaling improves cross-asset comparability.
-  - **Action**: Update `dask_gex_calculator.py` to use the academic formula.
+| Analysis Script | Finding | Optimal GEX Regime |
+|-----------------|---------|-------------------|
+| `tsmom_vs_gex_analysis.py` (#421) | MACD+RSI performs best in positive gamma | POSITIVE_GAMMA |
+| `tsmom_gex_hybrid.py` (#516) | Built on premise that TSMOM works best in negative gamma | NEGATIVE_GAMMA |
 
-- [ ] **Implement Weekly KAMA as Trend Filter**
+**#516 Experiment Results (Dec 24, 2025):**
+
+- Median improvement: **-2.9%** (hybrid performs WORSE than pure TSMOM)
+- The "inverse regime weighting" hypothesis is NOT validated
+- Transaction costs: 5 bps per rebalance, turnover-proportional
+
+**#518 MACD Parameter Stability Results:**
+
+- Most MACD configs show in-sample → out-of-sample decay (overfitting)
+- Only SQQQ (inverse QQQ) shows stable performance
+- Fast+none: OOS Sharpe 0.152 but only 12% pass rate
+
+**#519 Transaction Cost Analysis Results:**
+
+- TSMOM: Avg Net Sharpe -0.259, 19% pass rate, 4 trades/yr
+- MACD+RSI: Avg Net Sharpe 0.173, **44% pass rate**, 39 trades/yr
+- MACD+RSI is more robust despite 10x higher turnover
+
+**Recommended Actions Before Proceeding:**
+
+1. **Resolve Research Contradiction** - The two GEX analyses use different momentum definitions:
+   - `tsmom_vs_gex_analysis.py` uses MACD+RSI (short-term technical momentum)
+   - `tsmom_gex_hybrid.py` uses academic TSMOM (12-month return)
+   - These are fundamentally different strategies; results are not comparable
+
+2. **Standardize Strategy Definitions** - Create canonical implementations:
+   - `academic_tsmom` - Sign of 12-month return (Moskowitz 2012)
+   - `vol_scaled_tsmom` - Volatility-scaled version
+   - `technical_momentum` - MACD+RSI voting
+
+3. **Validate GEX Hypothesis with Consistent Methodology** - Re-run both analyses using the same strategy definition
+
+**Previously Planned (DEFERRED until resolution):**
+
+- [ ] ~~Integrate GEX as Regime Filter~~
+- [ ] ~~Adopt S² Scaling for GEX~~
+- [ ] **Implement Weekly KAMA as Trend Filter** (Independent of GEX - can proceed)
   - **Finding**: Weekly KAMA outperforms weekly MACD (avg Sharpe ~0.75).
   - **Action**: Create a new `TrendFilterAgent` or add KAMA as a voter.
 
