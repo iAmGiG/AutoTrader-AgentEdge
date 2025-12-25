@@ -43,6 +43,20 @@ Hypotheses tested and found **not actionable**. Saves the main project from purs
 
 **Important Caveat**: The intraday GEX use case (Open→Close, practitioner approach) was **never tested** - see #530.
 
+### Critique of TSMOM Scope (Why it failed here vs Academia)
+
+Similar to GEX, the "Academic TSMOM" tests (#519) may have failed due to implementation gaps relative to the literature (Moskowitz et al., 2012).
+
+| Feature | Academic TSMOM | AutoTrader Implementation |
+| :--- | :--- | :--- |
+| **Universe** | 58 instruments (Commodities, Bonds, FX, Equities) | Mostly Equity ETFs (SPY, QQQ) |
+| **Sizing** | **Volatility Scaled** (Target 40% Ann. Vol) | Capital Allocation (Equal Weight) |
+| **Mechanism** | Diversification across uncorrelated trends | Single-asset directional prediction |
+
+**The Gap**: TSMOM is primarily a *portfolio construction technique*, not a *stock picking signal*. It relies on the fact that *something* is usually trending somewhere (e.g., Long Oil, Short Bonds). Testing it on SPY alone removes the diversification benefit and exposes the strategy to single-asset whipsaws.
+
+**Status**: 🛑 STOP remains correct for *this project's current scope* (single-asset equity trading), but the strategy itself is likely valid for multi-asset portfolios.
+
 ---
 
 ### High Value Leads — ✅ DONE / 🔄 CONTINUE
