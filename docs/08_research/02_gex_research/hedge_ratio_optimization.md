@@ -11,7 +11,7 @@
 ### POSITIVE Gamma Regime
 
 | Asset | Weight | Asset Class |
-|-------|--------|-------------|
+| ------- | -------- | ------------- |
 | IEF | 62.3% | bond |
 | QQQ | 19.9% | equity |
 | IWM | 13.2% | equity |
@@ -22,7 +22,7 @@
 ## Hedge Effectiveness (vs QQQ)
 
 | Hedge Asset | Correlation | Optimal Ratio | Var Reduction | Significant |
-|-------------|-------------|---------------|---------------|-------------|
+| ------------- | ------------- | --------------- | --------------- | ------------- |
 | TLT | -0.252 | 0.461 | 6.3% | Yes |
 | IEF | -0.259 | 1.424 | 6.7% | Yes |
 | LQD | 0.551 | -1.187 | 30.4% | Yes |
@@ -34,7 +34,7 @@
 ## Correlation Stability Across Regimes
 
 | Pair | POSITIVE | NEUTRAL | NEGATIVE | Stability |
-|------|----------|---------|----------|-----------|
+| ------ | ---------- | --------- | ---------- | ----------- |
 | IWM-GLD | -0.07 | - | 0.40 | Variable |
 | IWM-IEF | -0.52 | - | -0.02 | Variable |
 | IWM-LQD | 0.37 | - | 0.65 | Stable |
@@ -51,7 +51,7 @@
 ### Static Allocation (Full Period)
 
 | Asset | Weight |
-|-------|--------|
+| ------- | -------- |
 | IEF | 59.0% |
 | QQQ | 28.4% |
 | VXX | 6.6% |
@@ -67,6 +67,7 @@
   Top holdings: IEF (62%), QQQ (20%), IWM (13%)
 
 **Dynamic Strategy Costs**:
+
 - Regime Switches: 21
 - Est. Cost Drag: 2.12% per year
 
@@ -75,7 +76,7 @@
 **Transitions Analyzed**: 20
 
 | Period | Annualized Return | Annualized Vol |
-|--------|-------------------|----------------|
+| -------- | ------------------- | ---------------- |
 | Pre-Transition | 9.6% | 10.0% |
 | Post-Transition | 38.7% | 11.5% |
 

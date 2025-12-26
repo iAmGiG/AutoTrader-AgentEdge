@@ -3,6 +3,7 @@
 ## Executive Summary
 
 **Research Questions:**
+
 1. Do bond GEX regimes correlate with equity GEX regimes?
 2. Does commodity GEX provide diversification signal?
 3. Can cross-asset regime divergence predict rotations?
@@ -10,7 +11,7 @@
 ## Regime Distribution by Asset Class
 
 | Asset Class | Symbols | Days | Positive GEX | Negative GEX | Neutral | Persistence |
-|-------------|---------|------|--------------|--------------|---------|-------------|
+| ------------- | --------- | ------ | -------------- | -------------- | --------- | ------------- |
 | equity | SPY, QQQ, IWM | 1326 | 81.9% | 18.1% | 0% | 8.1 days |
 | volatility | UVXY, VXX | 850 | 32.8% | 67.1% | 0.1% | 5.1 days |
 | bond | TLT, IEF, LQD | 207 | 85.2% | 14.8% | 0% | 7.6 days |
@@ -21,7 +22,7 @@
 Correlation of GEX regime states across symbols:
 
 | | AAPL | DIA | DUST | FAS | FAZ | GLD | IEF | IWM | IYR | LABD | LABU | LQD | MSFT | NUGT | QQQ | SLV | SOXL | SOXS | SPXL | SPXS | SPXU | SPY | SQQQ | TECL | TECS | TLT | TNA | TQQQ | TSLA | TZA | UPRO | UVXY | VTI | VXX |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AAPL | 1.00 | 0.61 | 0.07 | 0.27 | -0.31 | 0.05 | 0.02 | 0.60 | 0.30 | -0.15 | 0.47 | 0.14 | 0.61 | 0.13 | 0.61 | 0.10 | 0.40 | -0.26 | 0.23 | -0.20 | -0.25 | nan | -0.04 | 0.35 | -0.06 | 0.03 | 0.23 | 0.63 | 0.20 | -0.22 | 0.50 | -0.20 | 0.44 | -0.26 |
 | DIA | 0.61 | 1.00 | -0.01 | 0.45 | -0.46 | 0.10 | -0.11 | 0.84 | 0.45 | -0.23 | 0.35 | 0.31 | 0.68 | 0.15 | 0.70 | 0.24 | 0.41 | -0.34 | 0.51 | -0.38 | -0.34 | nan | -0.16 | 0.47 | -0.06 | -0.09 | 0.45 | 0.69 | 0.17 | -0.33 | 0.48 | -0.39 | 0.61 | -0.46 |
 | DUST | 0.07 | -0.01 | 1.00 | -0.04 | 0.06 | -0.25 | -0.18 | 0.04 | -0.09 | 0.02 | -0.13 | -0.06 | 0.05 | -0.32 | 0.04 | -0.24 | -0.07 | -0.04 | -0.03 | 0.22 | -0.08 | nan | 0.07 | -0.08 | 0.23 | -0.25 | -0.09 | 0.02 | 0.01 | -0.08 | -0.32 | -0.05 | -0.07 | 0.06 |
@@ -62,9 +63,9 @@ Correlation of GEX regime states across symbols:
 Does one asset class's GEX regime lead another?
 
 | Lead Asset | Lag Asset | Optimal Lag | Max Correlation |
-|------------|-----------|-------------|-----------------|
-| UVXY -> SPY | Same day | -0.264 |
-| SPY -> IWM | Same day | 0.642 |
+| ------------ | ----------- | ------------- | ----------------- |
+| UVXY | SPY | Same day | -0.264 |
+| SPY | IWM | Same day | 0.642 |
 
 ## Interpretation
 
@@ -76,6 +77,7 @@ This is expected - volatility products tend to have more extreme positioning.
 ### Diversification Potential
 
 Low correlation pairs (potential diversification):
+
 - QQQ vs TLT: -0.07
 - QQQ vs IEF: -0.04
 - QQQ vs GLD: 0.23
