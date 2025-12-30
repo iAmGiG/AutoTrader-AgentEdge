@@ -270,7 +270,7 @@ def get_symbols_with_alerts() -> Dict[str, Any]:
             return {"status": "error", "message": "Alerts manager not available"}
 
         alerts = mgr.get_alerts(enabled_only=True, untriggered_only=True)
-        symbols = sorted(set(a.symbol for a in alerts))
+        symbols = sorted({a.symbol for a in alerts})
 
         return {
             "status": "success",
