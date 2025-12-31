@@ -21,7 +21,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -39,8 +39,12 @@ from src.utils.date_utils import get_datetime_now
 
 def load_json_results(file_path: str) -> Dict[str, Any]:
     """Load backtest results from JSON file."""
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Error: File not found: {file_path}")
+        sys.exit(1)
 
 
 def load_all_results(directory: str) -> List[Dict[str, Any]]:
@@ -182,6 +186,23 @@ def generate_advanced_summary(
     return "\n".join(lines)
 
 
+def _parse_timeseries(
+    strategy_data: Dict[str, Any]
+) -> Tuple[Optional[pd.Series], Optional[List[Dict]]]:
+    """Extract and parse time series data from strategy results."""
+    returns = None
+    trades = None
+
+    if "daily_returns" in strategy_data and isinstance(strategy_data["daily_returns"], dict):
+        returns = pd.Series(strategy_data["daily_returns"])
+        returns.index = pd.to_datetime(returns.index)
+
+    if "trades" in strategy_data and isinstance(strategy_data["trades"], list):
+        trades = strategy_data["trades"]
+
+    return returns, trades
+
+
 def _extract_strategies(data: Dict[str, Any]) -> List[Dict]:
     """Extract strategy results from data."""
     strategies = []
@@ -246,6 +267,20 @@ def generate_markdown_report(
     return report
 
 
+def export_to_csv(data: Dict[str, Any], output_path: str):
+    """Export strategy comparison to CSV."""
+    strategies = _extract_strategies(data)
+    if not strategies:
+        print("No strategies found to export.")
+        return
+
+    df = pd.DataFrame(strategies)
+    # Exclude raw data columns to keep CSV clean
+    cols = [c for c in df.columns if c not in ["daily_returns", "trades", "equity_curve"]]
+    df[cols].to_csv(output_path, index=False)
+    print(f"Results exported to: {output_path}")
+
+
 def _create_parser() -> argparse.ArgumentParser:
     """Create argument parser."""
     parser = argparse.ArgumentParser(
@@ -262,6 +297,7 @@ Examples:
     parser.add_argument("--dir", "-d", help="Directory of JSON results to compare")
     parser.add_argument("--advanced", "-a", action="store_true", help="Include advanced metrics")
     parser.add_argument("--format", choices=["text", "markdown"], default="text")
+    parser.add_argument("--csv", help="Export results to CSV file")
     parser.add_argument("--output", "-o", help="Output file path")
     return parser
 
@@ -274,10 +310,21 @@ def _process_single_file(args) -> int:
 
     data = load_json_results(args.file)
 
+    if args.csv:
+        export_to_csv(data, args.csv)
+
     if args.format == "markdown":
         report = generate_markdown_report(data, args.output)
     elif args.advanced:
-        report = generate_advanced_summary(data)
+        # Iterate through strategies for advanced analysis
+        strategies = _extract_strategies(data)
+        reports = []
+        for strat in strategies:
+            name = strat.get("symbol", "Unknown")
+            reports.append(f"\n--- Advanced Analysis: {name} ---")
+            returns, trades = _parse_timeseries(strat)
+            reports.append(generate_advanced_summary(strat, returns, trades))
+        report = "\n".join(reports)
     else:
         report = generate_basic_summary(data)
 

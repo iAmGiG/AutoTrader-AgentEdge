@@ -58,7 +58,7 @@ Configuration management class with:
 ### Exit Strategy Comparison
 
 | Strategy | TP | SL | EV@50% | Breakeven |
-|----------|----|----|--------|-----------|
+| ---------- | ---- | ---- | -------- | ----------- |
 | Balanced | 8% | 5% | +1.5% | 38.5% |
 | Conservative | 6% | 8% | -1.0% | 57.1% |
 | Aggressive | 10% | 3% | +3.5% | 23.1% |
@@ -105,17 +105,54 @@ def calculate_macd(prices, fast=macd.fast, slow=macd.slow, signal=macd.signal):
 3. **Use Configuration System** for all future parameter management
 4. **Version Control Configs** to track parameter evolution
 
+## Research Gaps & Future Work
+
+### 1. Dynamic Regime Adaptation
+
+**Gap**: The current system applies static parameters (e.g., "Balanced") regardless of market conditions.
+**Future Work**: Investigate "Meta-Configurations" that automatically switch parameter sets (e.g., from Balanced to Conservative) based on real-time volatility metrics (VIX) or trend strength (ADX).
+
+### 2. Parameter Sensitivity Analysis
+
+**Gap**: The "Balanced" strategy is selected based on theoretical Expected Value (EV).
+**Future Work**: Perform robust sensitivity analysis (e.g., Monte Carlo simulations) to ensure parameters like 8% TP / 5% SL are not overfit to specific historical periods.
+
+### 3. Configuration Provenance
+
+**Gap**: While configs are version controlled, backtest results do not currently embed the specific configuration snapshot used.
+**Future Work**: Update the backtesting engine to embed a hash or copy of the active configuration into the results JSON for perfect reproducibility.
+
+### 4. Safety Bounds Validation
+
+**Gap**: The system allows flexible parameter tuning, but lacks "guardrails" for autonomous operation.
+**Future Work**: Define and implement "Safe Operating Bounds" (e.g., Max Stop Loss < 10%, Max Position Size < 20%) that reject valid but dangerous configurations.
+
+### 5. Support for TSMOM & Multi-Agent Parameters
+
+**Gap**: Current config focuses on MACD/RSI. The TSMOM strategy (Research Question 1 in paper) requires configurable lookback and holding periods.
+**Future Work**: Extend the configuration schema to support TSMOM parameters and voting weights for the triple-voting mechanism.
+
 ## Implementation Status
 
 ✅ Configuration files created
-✅ Configuration manager implemented  
+✅ Configuration manager implemented
 ✅ Usage demonstration complete
-⏳ **Issue #303**: Integration with existing codebase
+✅ **Issue #303**: Configuration system integrated (CLOSED)
 
 ## Related Issues
 
-- Issue #303 - Configuration system implementation
+- Issue #303 - Configuration system implementation (CLOSED)
 - Issue #293 - Uses these validated parameters
+
+## Open Research Gaps (Not Yet Tracked)
+
+The following gaps from this document are not yet tracked as GitHub issues:
+
+1. Dynamic Regime Adaptation (Meta-Config)
+2. Parameter Sensitivity Analysis (Monte Carlo)
+3. Configuration Provenance (embed config hash in results)
+4. Safety Bounds Validation (guardrails)
+5. TSMOM & Multi-Agent Parameters
 
 ## Usage
 
