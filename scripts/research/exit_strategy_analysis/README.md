@@ -53,13 +53,13 @@
 
 ### Expected Value Formula
 
-```
+```text
 EV per trade = (Win Rate × Take Profit %) - (Loss Rate × Stop Loss %)
 ```
 
 ### Breakeven Win Rate Formula
 
-```
+```text
 Breakeven WR = Stop Loss % / (Take Profit % + Stop Loss %)
 ```
 
@@ -80,6 +80,52 @@ Breakeven WR = Stop Loss % / (Take Profit % + Stop Loss %)
 - Best expected value at realistic win rates
 - Robust to win rate variations
 - Proven 27.48% annual returns in testing
+
+## Research Gaps & Future Work
+
+### Important Context
+
+While the "Balanced" strategy is mathematically superior to "Conservative" for fixed targets, a robust trading system—especially one using TSMOM—requires more adaptive exit logic. The current analysis makes sense for static, fixed-percentage exits but reveals significant gaps regarding dynamic market conditions and momentum-specific mechanics.
+
+### 1. Volatility Normalization (ATR)
+
+**Gap**: Fixed percentages (e.g., 5% SL) are rigid. In high volatility (high VIX), a 5% move might just be noise, triggering premature stops. In low volatility, an 8% target might never be reached.
+
+**Why It Matters**: Professional systems typically use Average True Range (ATR) multiples (e.g., 2xATR) to adapt to market "noise."
+
+**Future Work**: Test exits based on ATR multiples (e.g., SL = 2 × ATR, TP = 3 × ATR), allowing the system to breathe during volatile periods while tightening during calm markets.
+
+### 2. Trailing Stops vs. Fixed Targets
+
+**Gap**: Momentum strategies (like TSMOM) rely on "letting winners run." A fixed 8% Take Profit caps your upside on a stock that might run 50%.
+
+**Why It Matters**: Trailing stops are essential to capture the "fat tails" of momentum distributions. Fixed targets truncate the right tail of returns, reducing overall expectancy.
+
+**Future Work**: Investigate trailing stops (e.g., Chandelier Exit, parabolic SAR, ATR-trailing) to compare against fixed TP. Measure impact on Sharpe ratio and maximum favorable excursion.
+
+### 3. Time-Based Exits
+
+**Gap**: The current analysis ignores time. TSMOM often uses a fixed holding period (e.g., 1 month) rather than price targets. The interaction between price stops and time stops is missing.
+
+**Why It Matters**: Academic TSMOM (Moskowitz et al.) uses holding periods, not price targets. A strategy might exit after 21 days regardless of P&L, then re-evaluate the signal.
+
+**Future Work**: Compare fixed TP/SL against time-based exits (e.g., 5-day, 21-day holding periods). Test hybrid approaches: "exit at TP/SL OR after N days, whichever comes first."
+
+### 4. Signal-Based Exits
+
+**Gap**: The analysis assumes the trade must hit TP or SL. It doesn't account for exiting early if the signal reverses (e.g., MACD crosses down) before hitting either target.
+
+**Why It Matters**: Signal invalidation often precedes adverse price moves. Exiting on signal reversal may reduce drawdowns without waiting for stop-loss.
+
+**Future Work**: Test "exit on signal reversal" strategy. Compare: (A) fixed TP/SL only, (B) signal reversal only, (C) hybrid (whichever triggers first).
+
+### 5. Dynamic Exit Selection (Regime-Aware)
+
+**Gap**: One size (Balanced) fits all regimes. Market conditions vary—strong trends, mean-reversion, high/low volatility.
+
+**Why It Matters**: Aggressive exits (wide stops, trailing TP) may excel in trending markets but fail in choppy conditions. Conservative exits may work better in range-bound markets.
+
+**Future Work**: Link exit strategy selection to Market Regime Classifier or VIX levels (e.g., use Aggressive/Trailing in Bull, Conservative in Sideways, ATR-based in High-Vol).
 
 ## Related Issues
 
