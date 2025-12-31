@@ -187,7 +187,7 @@ def generate_advanced_summary(
 
 
 def _parse_timeseries(
-    strategy_data: Dict[str, Any]
+    strategy_data: Dict[str, Any],
 ) -> Tuple[Optional[pd.Series], Optional[List[Dict]]]:
     """Extract and parse time series data from strategy results."""
     returns = None
