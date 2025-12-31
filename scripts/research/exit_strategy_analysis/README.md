@@ -94,6 +94,7 @@ While the "Balanced" strategy is mathematically superior to "Conservative" for f
 **Why It Matters**: Professional systems typically use Average True Range (ATR) multiples (e.g., 2xATR) to adapt to market "noise."
 
 **Future Work**: Test exits based on ATR multiples (e.g., SL = 2 × ATR, TP = 3 × ATR), allowing the system to breathe during volatile periods while tightening during calm markets.
+**Tracked in**: Issue #538
 
 ### 2. Trailing Stops vs. Fixed Targets
 
@@ -102,6 +103,7 @@ While the "Balanced" strategy is mathematically superior to "Conservative" for f
 **Why It Matters**: Trailing stops are essential to capture the "fat tails" of momentum distributions. Fixed targets truncate the right tail of returns, reducing overall expectancy.
 
 **Future Work**: Investigate trailing stops (e.g., Chandelier Exit, parabolic SAR, ATR-trailing) to compare against fixed TP. Measure impact on Sharpe ratio and maximum favorable excursion.
+**Tracked in**: Issue #539
 
 ### 3. Time-Based Exits
 
@@ -110,6 +112,7 @@ While the "Balanced" strategy is mathematically superior to "Conservative" for f
 **Why It Matters**: Academic TSMOM (Moskowitz et al.) uses holding periods, not price targets. A strategy might exit after 21 days regardless of P&L, then re-evaluate the signal.
 
 **Future Work**: Compare fixed TP/SL against time-based exits (e.g., 5-day, 21-day holding periods). Test hybrid approaches: "exit at TP/SL OR after N days, whichever comes first."
+**Tracked in**: Issue #540
 
 ### 4. Signal-Based Exits
 
@@ -133,10 +136,10 @@ While the "Balanced" strategy is mathematically superior to "Conservative" for f
 
 While this script validates the mathematical Expected Value, it has specific limitations:
 
-1. **Synthetic Data**: Uses normally distributed random data. Real markets have "fat tails" (extreme events) that occur more frequently than this model predicts.
+1. **Synthetic Data**: Uses normally distributed random data. Real markets have "fat tails" (extreme events) that occur more frequently than this model predicts. (See #542)
 2. **Data Granularity**: Operates on daily closing prices. It cannot simulate intraday stop-loss hits or "gap openings" where price jumps past the stop level.
 3. **Compounding Aggressiveness**: The script bets 100% of equity on every trade. This maximizes growth rate (CAGR) but also maximizes drawdown depth compared to fixed-fractional sizing (e.g., 2% risk).
-4. **Transaction Costs**: Now includes a default 0.1% cost, but does not model variable slippage based on liquidity or volatility.
+4. **Transaction Costs**: Now includes a default 0.1% cost, but does not model variable slippage based on liquidity or volatility. (See #541)
 
 ### `expected_value_analysis.py` Constraints
 
@@ -149,6 +152,11 @@ While this script validates the mathematical Expected Value, it has specific lim
 
 - Issue #293 - Updated with these findings
 - Issue #303 - Configuration system to make exit strategies adjustable
+- Issue #538 - ATR-Based Exit Strategy Comparison
+- Issue #539 - Trailing Stop vs Fixed Take Profit Analysis
+- Issue #540 - Time-Based Exit Testing
+- Issue #541 - Transaction Cost Sensitivity Analysis
+- Issue #542 - Real Market Fat Tails Validation
 
 ## Usage
 
