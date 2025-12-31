@@ -127,6 +127,17 @@ While the "Balanced" strategy is mathematically superior to "Conservative" for f
 
 **Future Work**: Link exit strategy selection to Market Regime Classifier or VIX levels (e.g., use Aggressive/Trailing in Bull, Conservative in Sideways, ATR-based in High-Vol).
 
+## Tool Limitations
+
+### `performance_clarification.py` Constraints
+
+While this script validates the mathematical Expected Value, it has specific limitations:
+
+1. **Synthetic Data**: Uses normally distributed random data. Real markets have "fat tails" (extreme events) that occur more frequently than this model predicts.
+2. **Data Granularity**: Operates on daily closing prices. It cannot simulate intraday stop-loss hits or "gap openings" where price jumps past the stop level.
+3. **Compounding Aggressiveness**: The script bets 100% of equity on every trade. This maximizes growth rate (CAGR) but also maximizes drawdown depth compared to fixed-fractional sizing (e.g., 2% risk).
+4. **Transaction Costs**: Now includes a default 0.1% cost, but does not model variable slippage based on liquidity or volatility.
+
 ## Related Issues
 
 - Issue #293 - Updated with these findings

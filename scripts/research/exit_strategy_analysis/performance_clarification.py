@@ -41,10 +41,13 @@ class TechnicalIndicators:
 class DetailedBacktest:
     """Track everything explicitly for clarity."""
 
-    def __init__(self, take_profit=0.06, stop_loss=0.08, initial_capital=10000):
+    def __init__(
+        self, take_profit=0.06, stop_loss=0.08, initial_capital=10000, transaction_cost=0.001
+    ):
         self.take_profit = take_profit
         self.stop_loss = stop_loss
         self.initial_capital = initial_capital
+        self.transaction_cost = transaction_cost
 
     def run_detailed_backtest(self, prices: pd.Series) -> Dict:
         """Run backtest with detailed tracking."""
@@ -68,11 +71,12 @@ class DetailedBacktest:
 
             if position is None and entry_signals.iloc[i] and i < len(prices) - 1:
                 # Enter position (100% of capital)
+                capital_after_cost = current_capital * (1 - self.transaction_cost)
                 position = {
                     "entry_date": prices.index[i],
                     "entry_price": current_price,
                     "entry_idx": i,
-                    "shares": current_capital / current_price,
+                    "shares": capital_after_cost / current_price,
                     "capital_invested": current_capital,
                 }
 
@@ -88,7 +92,7 @@ class DetailedBacktest:
 
                 if exit_reason or i == len(prices) - 1:
                     # Exit position
-                    exit_value = position["shares"] * current_price
+                    exit_value = (position["shares"] * current_price) * (1 - self.transaction_cost)
                     trade_return = (exit_value - position["capital_invested"]) / position[
                         "capital_invested"
                     ]
@@ -204,6 +208,7 @@ def main():
     print("=" * 80)
     print("PERFORMANCE CLARIFICATION: Understanding the Real Numbers")
     print("=" * 80)
+    print("Note: Includes 0.1% transaction cost per trade (entry + exit)")
 
     # Generate test data
     prices = generate_realistic_data(252)  # 1 year of data
@@ -276,6 +281,7 @@ def main():
     print("3. Position sizing: 100% of available capital per trade")
     print("4. Actual annual returns depend on trade frequency and sequence")
     print("5. Sharpe ratio reflects risk-adjusted portfolio performance")
+    print("6. Transaction costs (0.1%) significantly impact high-frequency strategies")
     print("=" * 80)
 
 
