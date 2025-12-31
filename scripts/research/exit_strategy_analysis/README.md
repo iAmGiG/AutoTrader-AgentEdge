@@ -138,6 +138,13 @@ While this script validates the mathematical Expected Value, it has specific lim
 3. **Compounding Aggressiveness**: The script bets 100% of equity on every trade. This maximizes growth rate (CAGR) but also maximizes drawdown depth compared to fixed-fractional sizing (e.g., 2% risk).
 4. **Transaction Costs**: Now includes a default 0.1% cost, but does not model variable slippage based on liquidity or volatility.
 
+### `expected_value_analysis.py` Constraints
+
+1. **Binary Outcome Simplification**: Assumes every trade hits exactly TP or SL. Ignores time-based exits, signal reversals, or trailing stops which create a continuous distribution of returns.
+2. **Zero-Cost Assumption**: Does not factor in spread/commissions which reduce the effective TP and increase the effective SL.
+3. **Single-Bet Isolation**: Calculates EV for a single independent trial. Does not account for serial correlation (streaks) common in momentum strategies.
+4. **Missing Time Dimension**: Does not calculate "EV per Day". A lower EV strategy might be superior if it recycles capital faster.
+
 ## Related Issues
 
 - Issue #293 - Updated with these findings

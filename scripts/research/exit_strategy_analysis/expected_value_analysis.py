@@ -11,6 +11,15 @@ def analyze_expected_value(win_rate, take_profit, stop_loss):
     return expected_value
 
 
+def calculate_kelly_criterion(win_rate, win_loss_ratio):
+    """Calculate Kelly Criterion (optimal bet size)."""
+    # Kelly % = W - (1-W)/R
+    # where W = win probability, R = win/loss ratio
+    if win_loss_ratio == 0:
+        return 0
+    return win_rate - (1 - win_rate) / win_loss_ratio
+
+
 def main():
     print("=" * 60)
     print("EXPECTED VALUE ANALYSIS")
@@ -24,20 +33,22 @@ def main():
     ]
 
     print("\n" + "-" * 60)
-    print(f"{'Configuration':<40} {'EV/Trade':<10} {'Status'}")
+    print(f"{'Configuration':<40} {'EV/Trade':<10} {'Kelly %':<10} {'Status'}")
     print("-" * 60)
 
     for win_rate, tp, sl, name in configurations:
         ev = analyze_expected_value(win_rate, tp, sl)
         status = "✅ Positive" if ev > 0 else "❌ Negative"
 
-        print(f"{name:<40} {ev * 100:>6.2f}%    {status}")
+        # Calculate Kelly
+        win_loss_ratio = tp / sl
+        kelly = calculate_kelly_criterion(win_rate, win_loss_ratio)
+        kelly_str = f"{kelly * 100:>6.2f}%" if kelly > 0 else "   0.00%"
 
-        # Show the math
-        win_component = win_rate * tp * 100
-        loss_component = (1 - win_rate) * sl * 100
-        print(f"  Math: ({win_rate:.1%} × {tp:.1%}) - ({1 - win_rate:.1%} × {sl:.1%})")
-        print(f"        = {win_component:.2f}% - {loss_component:.2f}% = {ev * 100:.2f}%")
+        print(f"{name:<40} {ev * 100:>6.2f}%    {kelly_str:<10} {status}")
+
+        if ev < 0:
+            print("  ⚠️  WARNING: Negative Expectancy. Kelly suggests betting 0%.")
         print()
 
     print("=" * 60)
@@ -48,6 +59,7 @@ def main():
     print("3. Win rate is CRITICAL with these parameters")
     print("4. Need >57.1% win rate for positive EV with 6% TP / 8% SL")
     print("5. Need >38.5% win rate for positive EV with 8% TP / 5% SL")
+    print("6. Kelly Criterion shows optimal position size (Full Kelly is aggressive!)")
 
     # Calculate breakeven win rates
     print("\n" + "=" * 60)
