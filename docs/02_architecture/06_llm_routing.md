@@ -47,7 +47,7 @@ elif request.request_type == "trade":
 
 ### Request Classification Flow
 
-```
+```text
 User Input: "any open orders?"
     ↓
 LLM Parser (GPT-4o-mini)
@@ -139,7 +139,7 @@ tools = [
 
 **Key Addition:** Context-aware classification guidance
 
-```
+```text
 First, determine the request_type:
 
 - "trade" = User wants to buy, sell, or analyze a specific ticker

@@ -95,7 +95,7 @@ subprocess.run(['systemctl', '--user', 'status', 'trading-scheduler'])
 
 **Approach:** Dedicated supervisor daemon that manages scheduler lifecycle
 
-```
+```text
 ┌─────────────────────┐
 │   Trading CLI       │
 │                     │
@@ -335,7 +335,7 @@ def _monitor_worker(self):
 
 ### New Scheduler CLI Commands
 
-```
+```text
 Scheduler> service start    - Start background service
 Scheduler> service stop     - Stop background service
 Scheduler> service status   - Show service health
@@ -344,7 +344,7 @@ Scheduler> service restart  - Restart service
 
 **Example:**
 
-```
+```text
 Scheduler> service start
 
 ✅ Starting scheduler service...
@@ -393,7 +393,7 @@ Scheduler> service status
 
 ## File Structure
 
-```
+```text
 state/
 ├── scheduler.state      # Enabled/disabled state (CLI → Supervisor)
 ├── scheduler.pid        # Worker process ID

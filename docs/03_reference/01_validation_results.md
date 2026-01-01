@@ -131,7 +131,7 @@ Issues #297-#301 (Fibonacci regime detection) were closed after analysis showed 
 
 ---
 
-*Validation complete - Simple voting strategy proven effective and production-ready*
+Validation complete - Simple voting strategy proven effective and production-ready.
 
 **Files**:
 
