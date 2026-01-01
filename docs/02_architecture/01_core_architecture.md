@@ -134,7 +134,7 @@ src/
 
 ### 1. Separation of Concerns
 
-**Integration ≠ Business Logic ≠ Decisions**
+#### Integration ≠ Business Logic ≠ Decisions
 
 - Integration layer handles external communication
 - Business logic layer performs calculations
@@ -149,7 +149,7 @@ src/
 
 ### 2. Unified Architecture
 
-**Single codebase for paper and live trading**
+#### Single codebase for paper and live trading
 
 - Consistent interfaces across all components
 - Mode-aware behavior with safety rails
@@ -171,7 +171,7 @@ manager = AlpacaOrderManager(mode="live")   # Live trading (with confirmations)
 
 ### 3. Production Safety
 
-**Multi-level confirmations for live trading**
+#### Multi-level confirmations for live trading
 
 - Comprehensive validation and error handling
 - Risk management at every layer
@@ -186,7 +186,7 @@ manager = AlpacaOrderManager(mode="live")   # Live trading (with confirmations)
 
 ### 4. Agent-Ready Design
 
-**AutoGen tool wrappers for all functionality**
+#### AutoGen tool wrappers for all functionality
 
 - Standardized response formats
 - Agent-friendly error handling
