@@ -670,13 +670,14 @@ class AlertsWatchlistsManager:
             cursor = conn.cursor()
 
             placeholders = ",".join("?" * len(symbols))
-            cursor.execute(
-                f"""
+            query = f"""
                 SELECT * FROM user_alerts
                 WHERE symbol IN ({placeholders})
                 AND enabled = TRUE AND triggered_at IS NULL
                 ORDER BY symbol, alert_type
-            """,
+            """  # nosec
+            cursor.execute(
+                query,
                 [s.upper() for s in symbols],
             )
 

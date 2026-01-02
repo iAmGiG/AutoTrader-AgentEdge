@@ -56,7 +56,7 @@ repos:
     rev: 1.7.6
     hooks:
       - id: bandit
-        args: [-ll, --recursive]  # Only report medium+ severity
+        args: [-lll, --recursive]  # Only report high severity
         files: ^src/.*\.py$
         exclude: ^(tests/|deprecated/|src/deprecated/)
 

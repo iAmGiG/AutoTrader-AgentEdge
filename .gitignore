@@ -261,3 +261,6 @@ scripts/research/gex/data/
 
 # Local VSCode settings with machine-specific paths
 .vscode/settings.json
+
+# Daily reports (generated files)
+reports/daily/
