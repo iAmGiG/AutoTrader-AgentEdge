@@ -258,3 +258,6 @@ scripts/research/**/*.db
 scripts/research/gex/*.db
 scripts/research/gex/.cache/
 scripts/research/gex/data/
+
+# Local VSCode settings with machine-specific paths
+.vscode/settings.json
