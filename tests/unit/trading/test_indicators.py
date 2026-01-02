@@ -18,9 +18,12 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.trading_tools.indicators import (calculate_macd, calculate_rsi,
-                                          calculate_voting_consensus,
-                                          get_current_signals)
+from src.trading_tools.indicators import (
+    calculate_macd,
+    calculate_rsi,
+    calculate_voting_consensus,
+    get_current_signals,
+)
 
 # =============================================================================
 # Test Data Generators

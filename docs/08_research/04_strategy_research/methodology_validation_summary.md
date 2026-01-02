@@ -49,6 +49,7 @@ Documented WHO-WHOM-WHAT for validated patterns:
 ### Methodology
 
 Time-Series Momentum based on Moskowitz, Ooi, Pedersen (2012):
+
 - Lookback periods: 63, 126, 252 days
 - Volatility scaling: target 40% annualized vol
 

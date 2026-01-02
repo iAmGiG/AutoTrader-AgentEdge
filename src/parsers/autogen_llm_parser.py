@@ -19,7 +19,6 @@ from typing import Literal, Optional
 from autogen_core.models import UserMessage
 from autogen_core.tools import FunctionTool
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-
 from core.interfaces import InputParser
 from core.models import AssetType, TradeRequest
 

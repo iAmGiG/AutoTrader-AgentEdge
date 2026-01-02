@@ -13,11 +13,11 @@ In Development:
 
 from .executor_agent import ExecutorAgent, create_executor_agent
 from .multi_timeframe_voter import (
-                                    MultiTimeframeResult,
-                                    MultiTimeframeVoter,
-                                    TimeframeResult,
-                                    evaluate_multi_timeframe,
-                                    get_multi_timeframe_voter,
+    MultiTimeframeResult,
+    MultiTimeframeVoter,
+    TimeframeResult,
+    evaluate_multi_timeframe,
+    get_multi_timeframe_voter,
 )
 from .risk_agent import RiskAgent, create_risk_agent
 from .scanner_agent import ScanConfig, ScannerAgent, ScanResult, create_scanner_agent

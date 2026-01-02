@@ -33,7 +33,9 @@ DecisionFormatter = None
 def _get_decision_formatter():
     global DecisionFormatter
     if DecisionFormatter is None:
-        from src.cli.utils.decision_formatter import DecisionFormatter as DF  # noqa: N817
+        from src.cli.utils.decision_formatter import (  # noqa: N817
+            DecisionFormatter as DF,
+        )
 
         DecisionFormatter = DF
     return DecisionFormatter

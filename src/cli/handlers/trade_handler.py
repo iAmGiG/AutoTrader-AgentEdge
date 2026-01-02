@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING, Optional
 
 from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 
-from src.cli.utils.input_parser import BUY_INDICATORS, SELL_INDICATORS, detect_user_intent
+from src.cli.utils.input_parser import (
+    BUY_INDICATORS,
+    SELL_INDICATORS,
+    detect_user_intent,
+)
 from src.cli.utils.suggestion_display import (
     calc_pct,
     display_position_context,

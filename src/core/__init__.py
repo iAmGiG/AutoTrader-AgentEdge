@@ -13,26 +13,26 @@ from .interfaces import ExecutionManager, InputParser, RiskManager, StrategyAnal
 
 # New plugin architecture
 from .models import (
-                         AnalysisResult,
-                         AssetType,
-                         OrderResult,
-                         OrderType,
-                         RiskAssessment,
-                         SessionState,
-                         Signal,
-                         TimeInForce,
-                         TradeDecision,
-                         TradeRequest,
-                         TradeSuggestion,
+    AnalysisResult,
+    AssetType,
+    OrderResult,
+    OrderType,
+    RiskAssessment,
+    SessionState,
+    Signal,
+    TimeInForce,
+    TradeDecision,
+    TradeRequest,
+    TradeSuggestion,
 )
 from .trading_modes import (
-                         ModeParameters,
-                         TradingMode,
-                         TradingModeManager,
-                         get_current_mode,
-                         get_mode_manager,
-                         get_mode_parameters,
-                         set_trading_mode,
+    ModeParameters,
+    TradingMode,
+    TradingModeManager,
+    get_current_mode,
+    get_mode_manager,
+    get_mode_parameters,
+    set_trading_mode,
 )
 from .trading_orchestrator import TradingOrchestrator
 

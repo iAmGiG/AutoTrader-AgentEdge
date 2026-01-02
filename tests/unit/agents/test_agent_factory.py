@@ -12,10 +12,14 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.autogen_agents.agent_factory import (AgentConfig, AgentFactory,
-                                              AgentInstance, AgentType,
-                                              create_agent, create_voter,
-                                              get_agent_factory)
+from src.autogen_agents.agent_factory import (
+    AgentConfig,
+    AgentInstance,
+    AgentType,
+    create_agent,
+    create_voter,
+    get_agent_factory,
+)
 
 
 class TestAgentType(unittest.TestCase):
@@ -162,7 +166,7 @@ class TestConvenienceFunctions(unittest.TestCase):
         try:
             instance = create_voter()
             self.assertEqual(instance.agent_type, AgentType.VOTER)
-        except Exception as e:
+        except Exception:
             # If VoterAgent has import issues, just verify function exists
             self.assertTrue(callable(create_voter))
 

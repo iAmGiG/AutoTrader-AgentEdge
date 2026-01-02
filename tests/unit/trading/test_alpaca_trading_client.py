@@ -181,8 +181,7 @@ class TestAlpacaTradingClientInit:
         with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
             with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                 # Clear singleton instances
-                from src.trading.alpaca_trading_client import \
-                    AlpacaTradingClient
+                from src.trading.alpaca_trading_client import AlpacaTradingClient
 
                 AlpacaTradingClient._instances = {}
 
@@ -196,8 +195,7 @@ class TestAlpacaTradingClientInit:
 
         with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=empty_config):
             with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                from src.trading.alpaca_trading_client import \
-                    AlpacaTradingClient
+                from src.trading.alpaca_trading_client import AlpacaTradingClient
 
                 AlpacaTradingClient._instances = {}
 
@@ -216,8 +214,7 @@ class TestAlpacaTradingClientSingleton:
                 return_value=mock_trading_client,
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import \
-                        AlpacaTradingClient
+                    from src.trading.alpaca_trading_client import AlpacaTradingClient
 
                     AlpacaTradingClient._instances = {}
 
@@ -238,8 +235,7 @@ class TestAlpacaTradingClientSafetyCheck:
                 return_value=mock_trading_client,
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import \
-                        AlpacaTradingClient
+                    from src.trading.alpaca_trading_client import AlpacaTradingClient
 
                     AlpacaTradingClient._instances = {}
 
@@ -265,7 +261,9 @@ class TestAlpacaAccountMonitorInit:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -285,7 +283,9 @@ class TestAlpacaAccountMonitorGetAccount:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -309,7 +309,9 @@ class TestAlpacaAccountMonitorGetAccount:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -331,7 +333,9 @@ class TestAlpacaAccountMonitorGetPositions:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -353,7 +357,9 @@ class TestAlpacaAccountMonitorGetPositions:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -379,7 +385,9 @@ class TestAlpacaAccountMonitorGetOrders:
                         mock_query.CLOSED = "closed"
 
                         from src.trading.alpaca_trading_client import (
-                            AlpacaAccountMonitor, AlpacaTradingClient)
+                            AlpacaAccountMonitor,
+                            AlpacaTradingClient,
+                        )
 
                         AlpacaTradingClient._instances = {}
 
@@ -399,7 +407,9 @@ class TestAlpacaAccountMonitorGetOrders:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -424,7 +434,9 @@ class TestAlpacaAccountMonitorGetPortfolioSummary:
                         mock_query.OPEN = "open"
 
                         from src.trading.alpaca_trading_client import (
-                            AlpacaAccountMonitor, AlpacaTradingClient)
+                            AlpacaAccountMonitor,
+                            AlpacaTradingClient,
+                        )
 
                         AlpacaTradingClient._instances = {}
 
@@ -454,7 +466,9 @@ class TestAlpacaOrderManagerInit:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -479,7 +493,9 @@ class TestAlpacaOrderManagerInit:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -502,7 +518,9 @@ class TestAlpacaOrderManagerValidation:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -520,7 +538,9 @@ class TestAlpacaOrderManagerValidation:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -538,7 +558,9 @@ class TestAlpacaOrderManagerValidation:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -556,7 +578,9 @@ class TestAlpacaOrderManagerValidation:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -587,7 +611,9 @@ class TestAlpacaOrderManagerMarketOrder:
 
                             with patch("src.trading.alpaca_trading_client.MarketOrderRequest"):
                                 from src.trading.alpaca_trading_client import (
-                                    AlpacaOrderManager, AlpacaTradingClient)
+                                    AlpacaOrderManager,
+                                    AlpacaTradingClient,
+                                )
 
                                 AlpacaTradingClient._instances = {}
 
@@ -611,7 +637,9 @@ class TestAlpacaOrderManagerLimitOrder:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -634,7 +662,9 @@ class TestAlpacaOrderManagerCancelOrder:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -655,7 +685,9 @@ class TestAlpacaOrderManagerCancelOrder:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -680,7 +712,9 @@ class TestAlpacaOrderManagerClosePosition:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -703,7 +737,9 @@ class TestAlpacaOrderManagerStopOrder:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -726,7 +762,9 @@ class TestAlpacaOrderManagerTrailingStop:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -749,7 +787,9 @@ class TestAlpacaOrderManagerBracketOrder:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -772,7 +812,9 @@ class TestAlpacaOrderManagerMarketHours:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -801,7 +843,9 @@ class TestConvenienceFunctions:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaTradingClient, get_account_status)
+                        AlpacaTradingClient,
+                        get_account_status,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -817,7 +861,9 @@ class TestConvenienceFunctions:
             ):
                 with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                     from src.trading.alpaca_trading_client import (
-                        AlpacaTradingClient, get_positions)
+                        AlpacaTradingClient,
+                        get_positions,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -836,7 +882,9 @@ class TestConvenienceFunctions:
                         mock_query.OPEN = "open"
 
                         from src.trading.alpaca_trading_client import (
-                            AlpacaTradingClient, get_orders)
+                            AlpacaTradingClient,
+                            get_orders,
+                        )
 
                         AlpacaTradingClient._instances = {}
 

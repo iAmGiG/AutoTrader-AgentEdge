@@ -24,8 +24,11 @@ sys.modules["alpaca.trading"] = MagicMock()
 sys.modules["alpaca.trading.requests"] = MagicMock()
 sys.modules["src.trading.unified_price_fetcher"] = MagicMock()
 
-from src.trading.partial_exit_manager import (ExitTarget, PartialExitManager,
-                                              PartialExitState)
+from src.trading.partial_exit_manager import (
+    ExitTarget,
+    PartialExitManager,
+    PartialExitState,
+)
 
 
 class TestExitTarget(unittest.TestCase):
