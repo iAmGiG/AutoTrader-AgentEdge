@@ -26,6 +26,32 @@ from src.utils.date_utils import now_iso
 logger = logging.getLogger(__name__)
 
 
+def position_to_entry_side(position_direction: str) -> OrderSide:
+    """
+    Convert position direction to entry order side.
+
+    Args:
+        position_direction: "long" or "short"
+
+    Returns:
+        OrderSide for entry: BUY for long, SELL for short
+    """
+    return OrderSide.BUY if position_direction.lower() == "long" else OrderSide.SELL
+
+
+def position_to_exit_side(position_direction: str) -> OrderSide:
+    """
+    Convert position direction to exit order side.
+
+    Args:
+        position_direction: "long" or "short"
+
+    Returns:
+        OrderSide for exit: SELL for long, BUY for short
+    """
+    return OrderSide.SELL if position_direction.lower() == "long" else OrderSide.BUY
+
+
 class OrderManager:
     """
     Unified order management using Alpaca's actual API structure.
@@ -97,7 +123,12 @@ class OrderManager:
             return {"error": str(e)}
 
     def place_bracket_order(
-        self, symbol: str, qty: int, stop_price: float, target_price: float
+        self,
+        symbol: str,
+        qty: int,
+        stop_price: float,
+        target_price: float,
+        position_direction: str = "long",
     ) -> Dict[str, Any]:
         """
         Place a bracket order with stop loss and take profit.
@@ -112,16 +143,33 @@ class OrderManager:
             qty: Quantity
             stop_price: Stop loss price
             target_price: Take profit price
+            position_direction: Position direction - 'long' or 'short'
 
         Returns:
             Order response with entry_id and bracket details
         """
         try:
+            # Convert position direction to order sides
+            entry_side = position_to_entry_side(position_direction)
+
+            # Validate stop/target prices for position direction
+            if entry_side == OrderSide.BUY:  # Long position
+                if stop_price >= target_price:
+                    raise ValueError(
+                        f"Long: stop_price (${stop_price}) must be < target_price (${target_price})"
+                    )
+            else:  # Short position
+                if stop_price <= target_price:
+                    raise ValueError(
+                        f"Short: stop_price (${stop_price}) must be > target_price (${target_price})"
+                    )
+
             # Create bracket order request with stop loss and take profit
+            # Note: Alpaca bracket orders automatically set exit leg sides based on entry side
             order_request = MarketOrderRequest(
                 symbol=symbol,
                 qty=qty,
-                side=OrderSide.BUY,
+                side=entry_side,
                 time_in_force=TimeInForce.DAY,
                 order_class=OrderClass.BRACKET,
                 stop_loss=StopLossRequest(stop_price=stop_price),
@@ -136,7 +184,7 @@ class OrderManager:
                 "id": order.id,
                 "symbol": order.symbol,
                 "qty": float(order.qty),
-                "side": order.side.value,
+                "side": order.side.value if hasattr(order.side, "value") else str(order.side),
                 "order_type": order.order_type.value,
                 "status": order.status.value,
                 "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
@@ -150,7 +198,7 @@ class OrderManager:
             self.pending_orders[order.id] = entry_order
 
             logger.info(
-                f"Bracket order placed: BUY {qty} {symbol} "
+                f"Bracket order placed: {position_direction.upper()} {qty} {symbol} "
                 f"@ Stop:{stop_price} Target:{target_price} (ID: {order.id})"
             )
 
@@ -304,7 +352,12 @@ class OrderManager:
             return False
 
     def replace_stop_order(
-        self, order_id: str, new_stop_price: float, symbol: str = None, qty: int = None
+        self,
+        order_id: str,
+        new_stop_price: float,
+        symbol: str = None,
+        qty: int = None,
+        side: str = "sell",
     ) -> Dict[str, Any]:
         """
         Replace an existing stop order with a new stop price.
@@ -317,6 +370,7 @@ class OrderManager:
             new_stop_price: New stop price (must be higher than current for long positions)
             symbol: Symbol (required if not in pending_orders cache)
             qty: Quantity (required if not in pending_orders cache)
+            side: Side of the STOP order (usually 'sell' for long position exit)
 
         Returns:
             Dict with new order details or error
@@ -328,6 +382,7 @@ class OrderManager:
                 if existing_order:
                     symbol = symbol or existing_order.get("symbol")
                     qty = qty or int(existing_order.get("qty", 0))
+                    side = side or existing_order.get("side", "sell")
                 else:
                     return {"error": f"Order {order_id} not found and symbol/qty not provided"}
 
@@ -343,12 +398,14 @@ class OrderManager:
             # Small delay to ensure cancellation is processed
             time.sleep(0.5)
 
+            order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+
             # Step 2: Place new stop order at updated price
             logger.info(f"Placing new stop order for {symbol} at ${new_stop_price:.2f}")
             order_request = StopOrderRequest(
                 symbol=symbol,
                 qty=qty,
-                side=OrderSide.SELL,
+                side=order_side,
                 stop_price=new_stop_price,
                 time_in_force=TimeInForce.GTC,
             )

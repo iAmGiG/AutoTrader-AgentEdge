@@ -11,6 +11,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now, parse_date_string
 
 logger = logging.getLogger(__name__)
@@ -164,8 +165,8 @@ class PositionTracker:
 
     def __init__(
         self,
-        take_profit_pct: float = 0.08,
-        stop_loss_pct: float = 0.05,
+        take_profit_pct: Optional[float] = None,
+        stop_loss_pct: Optional[float] = None,
         alert_cooldown_seconds: int = 300,
     ):
         """
@@ -176,8 +177,11 @@ class PositionTracker:
             stop_loss_pct: Stop loss percentage (default 5%)
             alert_cooldown_seconds: Minimum seconds between repeated alerts (default 300 = 5 minutes)
         """
-        self.take_profit_pct = take_profit_pct
-        self.stop_loss_pct = stop_loss_pct
+        config = ConfigLoader()
+        self.take_profit_pct = take_profit_pct or config.get(
+            "trading.default_take_profit_pct", 0.08
+        )
+        self.stop_loss_pct = stop_loss_pct or config.get("trading.default_stop_loss_pct", 0.05)
         self.alert_cooldown_seconds = alert_cooldown_seconds
         self.positions: Dict[str, Position] = {}
         self.alert_counter = 0

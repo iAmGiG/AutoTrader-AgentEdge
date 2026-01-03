@@ -45,6 +45,7 @@ class PartialExitState:
     symbol: str
     entry_price: float
     total_quantity: int  # Original position size
+    side: str = "long"  # "long" or "short"
     targets: List[ExitTarget]
     stop_price: float  # Initial stop price
     stop_order_id: Optional[str] = None  # Stop order for remaining position
@@ -125,6 +126,7 @@ class PartialExitManager:
         total_quantity: int,
         stop_price: float,
         stop_order_id: Optional[str] = None,
+        side: str = "long",
     ) -> Optional[PartialExitState]:
         """
         Register a new position for partial exit management.
@@ -135,6 +137,7 @@ class PartialExitManager:
             total_quantity: Total shares/quantity
             stop_price: Initial stop loss price
             stop_order_id: ID of initial stop order (will be replaced)
+            side: Position side ("long" or "short")
 
         Returns:
             PartialExitState if registered, None if disabled/error
@@ -151,13 +154,14 @@ class PartialExitManager:
             return None
 
         # Calculate exit targets
-        targets = self._calculate_targets(symbol, entry_price, total_quantity, stop_price)
+        targets = self._calculate_targets(symbol, entry_price, total_quantity, stop_price, side)
 
         # Create exit state
         state = PartialExitState(
             symbol=symbol,
             entry_price=entry_price,
             total_quantity=total_quantity,
+            side=side,
             targets=targets,
             stop_price=stop_price,
             stop_order_id=stop_order_id,
@@ -176,7 +180,12 @@ class PartialExitManager:
         return state
 
     def _calculate_targets(
-        self, symbol: str, entry_price: float, total_quantity: int, stop_price: float
+        self,
+        symbol: str,
+        entry_price: float,
+        total_quantity: int,
+        stop_price: float,
+        side: str = "long",
     ) -> List[ExitTarget]:
         """
         Calculate exit targets based on configuration.
@@ -207,7 +216,11 @@ class PartialExitManager:
             if i == 1:
                 # Target 1: Limit order at profit percentage
                 target_pct = self.config.get("target_1_pct", 0.04)
-                exit_price = entry_price * (1 + target_pct)
+                if side.lower() == "short":
+                    # For shorts, profit is below entry
+                    exit_price = entry_price * (1 - target_pct)
+                else:
+                    exit_price = entry_price * (1 + target_pct)
                 exit_type = "limit"
             else:
                 # Target 2+: Trailing stop (no fixed price)
@@ -256,10 +269,13 @@ class PartialExitManager:
         """
         try:
             # Use order_manager to place limit sell order
+            # Exit side is opposite of position side
+            exit_side = "buy" if state.side.lower() == "short" else "sell"
+
             result = self.order_manager.place_limit_order(
                 symbol=state.symbol,
                 qty=target.quantity,
-                side="sell",
+                side=exit_side,
                 limit_price=target.exit_price,
             )
 
