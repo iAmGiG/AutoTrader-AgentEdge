@@ -78,6 +78,7 @@ class PortfolioOverrideManager:
 
         self._init_database()
         self._load_defaults()
+        self._cleanup_expired()  # Perform cleanup once on startup
 
         logger.debug(f"PortfolioOverrideManager initialized with db: {db_path}")
 
@@ -213,6 +214,9 @@ class PortfolioOverrideManager:
         Returns:
             True if successful
         """
+        # Clean expired overrides before setting new one
+        self._cleanup_expired()
+
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -331,6 +335,9 @@ class PortfolioOverrideManager:
         Returns:
             Number of overrides cleared
         """
+        # Clean expired overrides first for accurate audit trail
+        self._cleanup_expired()
+
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -434,19 +441,19 @@ class PortfolioOverrideManager:
         Returns:
             Effective configuration value
         """
-        # Cleanup expired overrides first
-        self._cleanup_expired()
-
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
 
+            # Optimization: Check expiration in read query to avoid WRITE lock on hot path
             cursor.execute(
                 """
                 SELECT override_value, value_type FROM portfolio_overrides
-                WHERE config_key = ? AND is_active = TRUE
+                WHERE config_key = ?
+                AND is_active = TRUE
+                AND (expires_at IS NULL OR expires_at > ?)
             """,
-                (key,),
+                (key, now_iso()),
             )
             row = cursor.fetchone()
             conn.close()

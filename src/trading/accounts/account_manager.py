@@ -11,7 +11,7 @@ Issue: #401 - Multi-Account Portfolio Management
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -21,6 +21,9 @@ from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_MAX_POSITION_PCT = 0.15
+DEFAULT_MAX_DAILY_TRADES = 50
 
 
 class AccountType(Enum):
@@ -105,8 +108,10 @@ class ManagedAccount:
     last_error: Optional[str] = None
     # User-defined settings
     enabled: bool = True
-    max_position_pct: float = 0.15
-    max_daily_trades: int = 50
+    max_position_pct: float = DEFAULT_MAX_POSITION_PCT
+    max_daily_trades: int = DEFAULT_MAX_DAILY_TRADES
+    # Cache for trading client to avoid recreation
+    _client: Optional[Any] = field(default=None, init=False, repr=False)
 
 
 class AccountManager:
@@ -160,6 +165,15 @@ class AccountManager:
 
         # Try multi-account format first
         accounts_config = self.config.get("accounts", [])
+
+        # Get global defaults from config or constants
+        default_max_pos = self.config.get(
+            "account.default_max_position_pct", DEFAULT_MAX_POSITION_PCT
+        )
+        default_max_trades = self.config.get(
+            "account.default_max_daily_trades", DEFAULT_MAX_DAILY_TRADES
+        )
+
         if accounts_config and isinstance(accounts_config, list):
             for account_cfg in accounts_config:
                 try:
@@ -174,8 +188,8 @@ class AccountManager:
                     managed = ManagedAccount(
                         credentials=credentials,
                         enabled=account_cfg.get("enabled", True),
-                        max_position_pct=account_cfg.get("max_position_pct", 0.15),
-                        max_daily_trades=account_cfg.get("max_daily_trades", 50),
+                        max_position_pct=account_cfg.get("max_position_pct", default_max_pos),
+                        max_daily_trades=account_cfg.get("max_daily_trades", default_max_trades),
                     )
 
                     # Store user-defined alias if provided
@@ -287,6 +301,7 @@ class AccountManager:
 
                     managed.info = info
                     managed.last_error = None
+                    managed._client = None  # Invalidate cache on new discovery
                     logger.info(
                         f"Discovered {account_type.value} account: "
                         f"{account.account_number} (${info.portfolio_value:,.2f})"
@@ -370,6 +385,30 @@ class AccountManager:
 
         return True
 
+    def rotate_active_account(self) -> Optional[str]:
+        """
+        Rotate to the next enabled account.
+        Useful for periodic swapping or load balancing.
+
+        Returns:
+            New active account ID, or None if no accounts available.
+        """
+        candidates = [
+            aid for aid, acc in self._accounts.items() if acc.enabled and acc.info is not None
+        ]
+
+        if not candidates:
+            return None
+
+        current = self._active_account_id
+        if current in candidates:
+            idx = candidates.index(current)
+            next_id = candidates[(idx + 1) % len(candidates)]
+        else:
+            next_id = candidates[0]
+
+        return next_id if self.set_active_account(next_id) else None
+
     def get_active_account(self) -> Optional[ManagedAccount]:
         """
         Get the currently active account.
@@ -450,13 +489,18 @@ class AccountManager:
             logger.error(f"Account {target_id} not discovered")
             return None
 
+        # Return cached client if available
+        if managed._client is not None:
+            return managed._client
+
         try:
             is_paper = managed.info.account_type == AccountType.PAPER
-            return TradingClient(
+            managed._client = TradingClient(
                 api_key=managed.credentials.api_key,
                 secret_key=managed.credentials.api_secret,
                 paper=is_paper,
             )
+            return managed._client
         except ImportError:
             logger.error("alpaca-py SDK required")
             return None

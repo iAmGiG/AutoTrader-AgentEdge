@@ -30,7 +30,6 @@ try:
         LimitOrderRequest,
         MarketOrderRequest,
         ReplaceOrderRequest,
-        StopLimitOrderRequest,
         StopLossRequest,
         StopOrderRequest,
         TakeProfitRequest,
@@ -45,9 +44,7 @@ except ImportError:
     MarketOrderRequest = None
     LimitOrderRequest = None
     StopOrderRequest = None
-    StopLimitOrderRequest = None
     TrailingStopOrderRequest = None
-    ClosePositionRequest = None
     TakeProfitRequest = None
     StopLossRequest = None
     ReplaceOrderRequest = None
@@ -64,6 +61,9 @@ except ImportError:
     )
 
 from src.utils.config_loader import ConfigLoader
+
+ALPACA_PAPER_URL = "https://paper-api.alpaca.markets"
+ALPACA_LIVE_URL = "https://api.alpaca.markets"
 
 logger = logging.getLogger(__name__)
 
@@ -138,12 +138,12 @@ class AlpacaTradingClient:
         if mode == "paper":
             api_key = config.get("ALPACA_PAPER_API_KEY")
             secret = config.get("ALPACA_PAPER_SECRET")
-            self.base_url = "https://paper-api.alpaca.markets"
+            self.base_url = ALPACA_PAPER_URL
         else:
             # For live trading - these keys would need to be added to config
             api_key = config.get("ALPACA_LIVE_API_KEY")
             secret = config.get("ALPACA_LIVE_SECRET")
-            self.base_url = "https://api.alpaca.markets"
+            self.base_url = ALPACA_LIVE_URL
 
         if not api_key or not secret:
             raise ValueError(

@@ -12,6 +12,15 @@ from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+# Import message loader for user-facing messages
+try:
+    from config_defaults.message_loader import MessageLoader
+
+    _MSG = MessageLoader()
+    MESSAGE_LOADER_AVAILABLE = True
+except ImportError:
+    MESSAGE_LOADER_AVAILABLE = False
+
 
 class APIErrorTranslator:
     """
@@ -81,6 +90,12 @@ class APIErrorTranslator:
             if result:
                 return result
 
+        if MESSAGE_LOADER_AVAILABLE:
+            return (
+                _MSG.get("errors.generic.title", ticker=ticker),
+                _MSG.get("errors.generic.desc"),
+            )
+
         # Generic fallback
         return (
             f"Order failed for {ticker}",
@@ -127,6 +142,17 @@ class APIErrorTranslator:
         if "stop_loss" in api_message and "must be <=" in api_message:
             stop_str = f"${stop:.2f}" if stop else "N/A"
             base_str = f"${base_price}" if base_price else "unknown"
+
+            if MESSAGE_LOADER_AVAILABLE:
+                return (
+                    _MSG.get("errors.bracket.stop_loss.title", stop=stop_str),
+                    _MSG.get(
+                        "errors.bracket.stop_loss.desc",
+                        entry=entry_str,
+                        stop=stop_str,
+                        base=base_str,
+                    ),
+                )
             return (
                 f"Order rejected: Stop loss price ({stop_str}) doesn't match market price",
                 f"The market is closed and price data may be stale. "
@@ -137,6 +163,17 @@ class APIErrorTranslator:
         if "take_profit" in api_message and "must be >=" in api_message:
             target_str = f"${target:.2f}" if target else "N/A"
             base_str = f"${base_price}" if base_price else "unknown"
+
+            if MESSAGE_LOADER_AVAILABLE:
+                return (
+                    _MSG.get("errors.bracket.take_profit.title", target=target_str),
+                    _MSG.get(
+                        "errors.bracket.take_profit.desc",
+                        entry=entry_str,
+                        target=target_str,
+                        base=base_str,
+                    ),
+                )
             return (
                 f"Order rejected: Take profit price ({target_str}) doesn't match market price",
                 f"The market is closed and price data may be stale. "
@@ -151,6 +188,8 @@ class APIErrorTranslator:
         """Handle insufficient buying power errors."""
         msg_lower = api_message.lower()
         if "buying power" in msg_lower or "insufficient" in msg_lower:
+            if MESSAGE_LOADER_AVAILABLE:
+                return (_MSG.get("errors.buying_power.title"), _MSG.get("errors.buying_power.desc"))
             return (
                 "Order rejected: Not enough cash available",
                 "Check your account balance and reduce the order size.",
@@ -162,6 +201,11 @@ class APIErrorTranslator:
         """Handle invalid symbol errors."""
         msg_lower = api_message.lower()
         if "symbol" in msg_lower and ("invalid" in msg_lower or "not found" in msg_lower):
+            if MESSAGE_LOADER_AVAILABLE:
+                return (
+                    _MSG.get("errors.invalid_symbol.title", ticker=ticker),
+                    _MSG.get("errors.invalid_symbol.desc"),
+                )
             return (
                 f"Order rejected: {ticker} is not a valid or tradeable symbol",
                 "Double-check the ticker symbol. It may be delisted or not supported by Alpaca.",
@@ -173,6 +217,11 @@ class APIErrorTranslator:
         """Handle market hours errors."""
         msg_lower = api_message.lower()
         if "market" in msg_lower and "closed" in msg_lower:
+            if MESSAGE_LOADER_AVAILABLE:
+                return (
+                    _MSG.get("errors.market_closed.title"),
+                    _MSG.get("errors.market_closed.desc"),
+                )
             return (
                 "Order rejected: Market is closed",
                 "Regular market hours: 9:30 AM - 4:00 PM ET. "

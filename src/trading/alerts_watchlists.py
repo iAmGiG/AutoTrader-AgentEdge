@@ -627,12 +627,13 @@ class AlertsWatchlistsManager:
         triggered_alerts: List[Alert] = []
 
         try:
-            alerts = self.get_alerts(enabled_only=True, untriggered_only=True)
+            # Optimization: Only fetch alerts for symbols we have prices for
+            symbols = list(prices.keys())
+            if not symbols:
+                return []
+            alerts = self.get_alerts_for_symbols(symbols)
 
             for alert in alerts:
-                if alert.symbol not in prices:
-                    continue
-
                 current_price = prices[alert.symbol]
                 should_trigger = False
 
@@ -665,6 +666,9 @@ class AlertsWatchlistsManager:
         Returns:
             List of alerts for those symbols
         """
+        if not symbols:
+            return []
+
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -710,12 +714,19 @@ class AlertsWatchlistsManager:
         alerts = self.get_alerts(enabled_only=True, untriggered_only=True)
         watchlists = self.get_watchlists()
 
+        alerts_by_symbol = {}
+        for alert in alerts:
+            alerts_by_symbol[alert.symbol] = alerts_by_symbol.get(alert.symbol, 0) + 1
+
+        default_watchlist = next((w for w in watchlists if w.is_default), None)
+        unique_watched = {item.symbol for w in watchlists for item in w.items}
+
         return {
             "active_alerts": len(alerts),
-            "alerts_by_symbol": {},
+            "alerts_by_symbol": alerts_by_symbol,
             "watchlist_count": len(watchlists),
-            "default_watchlist": None,
-            "total_watched_symbols": 0,
+            "default_watchlist": default_watchlist.name if default_watchlist else None,
+            "total_watched_symbols": len(unique_watched),
         }
 
     def get_alert_summary(self) -> Dict[str, int]:

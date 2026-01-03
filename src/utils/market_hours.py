@@ -9,11 +9,21 @@ Issue #437: Enhanced with extended_hours support and validation utilities.
 """
 
 import logging
+import os
 from datetime import time
 from typing import Any, Dict, Optional, Tuple
 
 import pytz
-from alpaca.trading.client import TradingClient
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
+try:
+    from alpaca.trading.client import TradingClient
+except ImportError:
+    TradingClient = None
 
 from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now
@@ -24,6 +34,34 @@ logger = logging.getLogger(__name__)
 DEFAULT_MARKET_OPEN = time(9, 30)
 DEFAULT_MARKET_CLOSE = time(16, 0)
 
+# Cache for loaded config
+_MARKET_CONFIG = None
+
+
+def _load_market_config() -> Dict[str, Any]:
+    """Load market configuration from YAML for fallbacks."""
+    global _MARKET_CONFIG
+    if _MARKET_CONFIG is not None:
+        return _MARKET_CONFIG
+
+    if yaml is None:
+        return {}
+
+    try:
+        # Path relative to this file: ../../config_defaults/market_hours.yaml
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        config_path = os.path.join(base_dir, "config_defaults", "market_hours.yaml")
+
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                _MARKET_CONFIG = yaml.safe_load(f)
+                logger.debug(f"Loaded market hours config from {config_path}")
+                return _MARKET_CONFIG
+    except Exception as e:
+        logger.warning(f"Failed to load market hours config: {e}")
+
+    return {}
+
 
 def _get_alpaca_calendar():
     """
@@ -32,6 +70,9 @@ def _get_alpaca_calendar():
     Returns:
         Alpaca trading client or None if unavailable
     """
+    if TradingClient is None:
+        return None
+
     try:
         config_loader = ConfigLoader()
         client = TradingClient(
@@ -69,7 +110,23 @@ def get_market_hours_for_date(
     try:
         client = _get_alpaca_calendar()
         if not client:
-            # Fallback to hardcoded defaults
+            # Fallback to YAML config or defaults
+            config = _load_market_config()
+
+            # Check holidays from config
+            date_str = date.strftime("%Y-%m-%d")
+            holidays = config.get("holidays", {})
+
+            if holidays.get("enabled", False):
+                # Check fixed and observed holidays
+                all_holidays = set(
+                    holidays.get("fixed_holidays", []) + holidays.get("observed_holidays", [])
+                )
+                if date_str in all_holidays:
+                    return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False
+
+            # Check early closes (simplified fallback)
+            # For now, just return defaults if API is down and not a known holiday
             return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, True
 
         # Get calendar for the date (Alpaca expects YYYY-MM-DD strings)
@@ -168,11 +225,14 @@ def get_market_status() -> Tuple[bool, str]:
         return False, "Market closed"
 
 
-def validate_market_hours(extended_hours: bool = False, warn_only: bool = True) -> bool:
+def validate_market_hours(
+    symbol: Optional[str] = None, extended_hours: bool = False, warn_only: bool = True
+) -> bool:
     """
     Validate that market is open for trading.
 
     Args:
+        symbol: Optional symbol for logging context
         extended_hours: Allow extended hours trading (pre-market/after-hours)
         warn_only: If True, warn but don't block; if False, raise ValueError
 
@@ -195,10 +255,11 @@ def validate_market_hours(extended_hours: bool = False, warn_only: bool = True) 
 
     if not is_open:
         status_open, status_msg = get_market_status()
-        message = f"Market is {status_msg}. Trading may be restricted."
+        symbol_msg = f" for {symbol}" if symbol else ""
+        message = f"Market is {status_msg}. Trading{symbol_msg} may be restricted."
 
         if warn_only:
-            logger.warning(f"⚠️  {message} - Proceeding anyway (broker will validate)")
+            logger.warning(f"⚠️  {message} - Order will be sent to broker (may fail validation)")
             return True
         else:
             logger.error(f"❌ {message} - Order blocked")

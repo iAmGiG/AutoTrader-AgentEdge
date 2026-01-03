@@ -14,6 +14,7 @@ from .api_error_translator import APIErrorTranslator
 from .validators.bracket_validator import BracketOrderValidator
 from src.core.interfaces import ExecutionManager
 from src.core.models import OrderResult, OrderType, TradeDecision, TradeSuggestion
+from src.utils.config_loader import ConfigLoader
 from src.utils.market_hours import is_market_hours
 
 # Import message loader for user-facing messages
@@ -42,6 +43,8 @@ except ImportError:
 
 # Default fallback price when data unavailable
 DEFAULT_FALLBACK_PRICE = 100.0
+DEFAULT_STOP_LOSS_PCT = 0.05
+DEFAULT_TAKE_PROFIT_PCT = 0.08
 
 logger = logging.getLogger(__name__)
 
@@ -60,20 +63,38 @@ class AlpacaExecutionManager(ExecutionManager):
     def __init__(
         self,
         order_manager: Optional[object] = None,
-        stop_loss_pct: float = 0.05,
-        take_profit_pct: float = 0.08,
+        stop_loss_pct: Optional[float] = None,
+        take_profit_pct: Optional[float] = None,
     ):
         """
         Initialize with existing OrderManager.
 
         Args:
             order_manager: OrderManager instance (from src/trading/order_manager.py)
-            stop_loss_pct: Stop loss percentage (default 5%)
-            take_profit_pct: Take profit percentage (default 8%)
+            stop_loss_pct: Stop loss percentage (overrides config/default)
+            take_profit_pct: Take profit percentage (overrides config/default)
         """
         self.order_manager = order_manager
-        self.stop_loss_pct = stop_loss_pct
-        self.take_profit_pct = take_profit_pct
+
+        # Load config for defaults
+        self.config = ConfigLoader()
+
+        # Priority: Argument > Config > Constant Default
+        if stop_loss_pct is not None:
+            self.stop_loss_pct = stop_loss_pct
+        else:
+            self.stop_loss_pct = self.config.get(
+                "trading.default_stop_loss_pct", DEFAULT_STOP_LOSS_PCT
+            )
+
+        if take_profit_pct is not None:
+            self.take_profit_pct = take_profit_pct
+        else:
+            self.take_profit_pct = self.config.get(
+                "trading.default_take_profit_pct", DEFAULT_TAKE_PROFIT_PCT
+            )
+
+        self._price_fetcher = None  # Lazy loaded
 
         if order_manager:
             msg = (
@@ -93,13 +114,13 @@ class AlpacaExecutionManager(ExecutionManager):
         msg = (
             _MSG.get(
                 "execution.strategy_config",
-                stop_loss_pct=stop_loss_pct * 100,
-                take_profit_pct=take_profit_pct * 100,
+                stop_loss_pct=self.stop_loss_pct * 100,
+                take_profit_pct=self.take_profit_pct * 100,
             )
             if MESSAGE_LOADER_AVAILABLE
             else (
-                f"Using strategy config: stop_loss={stop_loss_pct * 100}%, "
-                f"take_profit={take_profit_pct * 100}%"
+                f"Using strategy config: stop_loss={self.stop_loss_pct * 100}%, "
+                f"take_profit={self.take_profit_pct * 100}%"
             )
         )
         logger.info(msg)
@@ -255,8 +276,9 @@ class AlpacaExecutionManager(ExecutionManager):
         # Fallback to UnifiedPriceFetcher if Alpaca failed
         if current_market_price is None and PRICE_FETCHER_AVAILABLE:
             try:
-                price_fetcher = UnifiedPriceFetcher()
-                fetched_price = price_fetcher.get_current_price(ticker, use_cache=False)
+                if self._price_fetcher is None:
+                    self._price_fetcher = UnifiedPriceFetcher()
+                fetched_price = self._price_fetcher.get_current_price(ticker, use_cache=False)
                 # Only use if not the fallback default price
                 if fetched_price != DEFAULT_FALLBACK_PRICE:
                     current_market_price = fetched_price
@@ -451,6 +473,7 @@ class AlpacaExecutionManager(ExecutionManager):
         Returns:
             OrderResult with order details
         """
+        side = signal.lower()
         is_limit_order = order_type == OrderType.LIMIT
 
         if not self.order_manager:
@@ -474,26 +497,39 @@ class AlpacaExecutionManager(ExecutionManager):
         # Execute via OrderManager (only BUY orders reach here)
         error_data = None
         try:
-            # Issue #344: Use limit entry for pullback/breakout orders
-            limit_price = entry_price if is_limit_order else None
-
-            if is_limit_order:
-                logger.info(
-                    f"Placing LIMIT bracket order: {ticker} @ ${entry_price:.2f} "
-                    "(waiting for pullback/breakout price)"
-                )
+            # Handle SELL (Exit) separately - usually a simple order, not a bracket
+            if side == "sell":
+                logger.info(f"Placing SELL order for {ticker} (closing position)")
+                if is_limit_order:
+                    order_data = self.order_manager.place_limit_order_gtc(
+                        symbol=ticker, qty=quantity, side=side, limit_price=entry_price
+                    )
+                else:
+                    order_data = self.order_manager.place_market_order(
+                        symbol=ticker, qty=quantity, side=side
+                    )
             else:
-                logger.info(f"Placing MARKET bracket order: {ticker} (immediate fill)")
+                # Handle BUY (Entry) - Use Bracket Order
+                # Issue #344: Use limit entry for pullback/breakout orders
+                limit_price = entry_price if is_limit_order else None
 
-            order_data = self.order_manager.place_bracket_order(
-                symbol=ticker,
-                qty=quantity,
-                side="buy",
-                entry_limit_price=limit_price,
-                take_profit_price=take_profit,
-                stop_loss_price=stop_loss,
-                time_in_force="gtc",
-            )
+                if is_limit_order:
+                    logger.info(
+                        f"Placing LIMIT bracket order: {ticker} @ ${entry_price:.2f} "
+                        "(waiting for pullback/breakout price)"
+                    )
+                else:
+                    logger.info(f"Placing MARKET bracket order: {ticker} (immediate fill)")
+
+                order_data = self.order_manager.place_bracket_order(
+                    symbol=ticker,
+                    qty=quantity,
+                    side=side,
+                    entry_limit_price=limit_price,
+                    take_profit_price=take_profit,
+                    stop_loss_price=stop_loss,
+                    time_in_force="gtc",
+                )
 
             # Check for errors
             if order_data.get("status") == "error":
@@ -740,9 +776,6 @@ class AlpacaExecutionManager(ExecutionManager):
         """
         Modify an existing order.
 
-        MVP: Not implemented (Alpaca has limited modify support).
-        Alternative: Cancel and replace.
-
         Args:
             order_id: Order ID to modify
             new_quantity: New quantity (if changing)
@@ -751,8 +784,25 @@ class AlpacaExecutionManager(ExecutionManager):
         Returns:
             True if modified successfully
         """
-        logger.warning("Order modification not implemented in MVP - use cancel/replace pattern")
-        return False
+        if not self.order_manager:
+            logger.warning("Cannot modify order - no OrderManager")
+            return False
+
+        try:
+            # Delegate to OrderManager's modify capability
+            result = self.order_manager.modify_order(
+                order_id=order_id, qty=new_quantity, limit_price=new_price
+            )
+
+            if result.get("status") == "submitted":
+                logger.info(f"Order {order_id} modified successfully")
+                return True
+            else:
+                logger.error(f"Failed to modify order {order_id}: {result.get('message')}")
+                return False
+        except Exception as e:
+            logger.error(f"Error modifying order {order_id}: {e}")
+            return False
 
     def _create_stub_result(
         self, ticker: str, quantity: int, price: float, signal: str

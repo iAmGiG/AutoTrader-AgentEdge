@@ -9,6 +9,7 @@ from .account_tools import (
     get_available_accounts,
     is_account_paper_trading,
     refresh_account_data,
+    rotate_account,
     switch_active_account,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "get_account_buying_power",
     "is_account_paper_trading",
     "refresh_account_data",
+    "rotate_account",
     "switch_active_account",
 ]
