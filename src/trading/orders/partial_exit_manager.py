@@ -45,9 +45,9 @@ class PartialExitState:
     symbol: str
     entry_price: float
     total_quantity: int  # Original position size
-    side: str = "long"  # "long" or "short"
     targets: List[ExitTarget]
     stop_price: float  # Initial stop price
+    side: str = "long"  # "long" or "short"
     stop_order_id: Optional[str] = None  # Stop order for remaining position
     registered_at: str = None  # ISO timestamp
     last_updated: str = None
