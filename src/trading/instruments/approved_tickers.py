@@ -197,6 +197,36 @@ class ApprovedTickersManager:
         ticker = self.db.get_approved(symbol)
         return ticker is not None and ticker.is_active()
 
+    def validate_symbol(self, symbol: str) -> tuple[bool, str]:
+        """
+        Validate symbol with detailed reason code.
+
+        Args:
+            symbol: Ticker symbol to validate
+
+        Returns:
+            Tuple of (is_valid, reason):
+            - (True, "approved") - Symbol is approved and active
+            - (False, "not_approved") - Symbol exists but not on approved list
+            - (False, "invalid_symbol") - Symbol doesn't exist in database
+            - (False, "inactive") - Symbol exists but is marked inactive
+        """
+        # Check if symbol exists in database at all
+        metadata = self.db.get_ticker(symbol)
+        if not metadata:
+            return False, "invalid_symbol"
+
+        # Check if symbol is on approved list
+        approved_ticker = self.db.get_approved(symbol)
+        if not approved_ticker:
+            return False, "not_approved"
+
+        # Check if approved ticker is active
+        if not approved_ticker.is_active():
+            return False, "inactive"
+
+        return True, "approved"
+
     def can_open_position(self, symbol: str) -> bool:
         """
         Check if we can open a new position for this ticker.
@@ -354,17 +384,12 @@ class ApprovedTickersManager:
         Returns:
             List of TickerMetadata
         """
-        # Database list_leveraged_etfs only takes multiplier
-        # We need to combine results and filter manually
         if multiplier is None and underlying is None:
-            # Get common leveraged ETFs
-            result = []
-            for mult in [2.0, 3.0]:
-                result.extend(self.db.list_leveraged_etfs(multiplier=mult))
+            # Get all leveraged ETFs
+            result = self.db.list_leveraged_etfs(multiplier=None)
         elif multiplier is not None and underlying is None:
             result = self.db.list_leveraged_etfs(multiplier=multiplier)
         elif underlying is not None:
-            # Get all leveraged ETFs and filter by underlying
             result = self.db.list_by_underlying(underlying)
             if multiplier is not None:
                 result = [t for t in result if abs(t.multiplier) == abs(multiplier)]

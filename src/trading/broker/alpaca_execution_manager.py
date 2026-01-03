@@ -377,7 +377,7 @@ class AlpacaExecutionManager(ExecutionManager):
                 positions = self.order_manager.get_positions()
                 position = next((p for p in positions if p["symbol"] == ticker), None)
 
-                if position and position["qty"] > 0:
+                if position and float(position["qty"]) > 0:
                     has_position = True
                     position_qty = int(position["qty"])
                     logger.info(f"Found position: {position_qty} shares of {ticker}")

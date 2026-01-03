@@ -14,10 +14,13 @@ Phase 2 Supports:
 """
 
 import logging
-from datetime import datetime, time
+from datetime import time
 from typing import Dict, List, Optional
 
+import pytz
+
 from src.trading.gtt.gtt_manager import ConditionType, GTTTrigger, get_gtt_manager
+from src.utils.date_utils import get_datetime_now, get_default_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +40,8 @@ class TriggerEvaluator:
         trigger: GTTTrigger,
         current_price: float,
         reference_price: Optional[float] = None,
+        current_volume: Optional[float] = None,
+        average_volume: Optional[float] = None,
     ) -> bool:
         """
         Evaluate if a trigger condition is met.
@@ -45,6 +50,8 @@ class TriggerEvaluator:
             trigger: GTT trigger to evaluate
             current_price: Current market price
             reference_price: Reference price for percentage conditions
+            current_volume: Current session volume (for volume triggers)
+            average_volume: Average daily volume (for spike triggers)
 
         Returns:
             True if condition is met
@@ -83,10 +90,10 @@ class TriggerEvaluator:
 
         # Phase 2: Volume-based conditions
         elif condition == ConditionType.VOLUME_ABOVE.value:
-            return self._check_volume_above(trigger)
+            return self._check_volume_above(trigger, current_volume)
 
         elif condition == ConditionType.VOLUME_SPIKE.value:
-            return self._check_volume_spike(trigger)
+            return self._check_volume_spike(trigger, current_volume, average_volume)
 
         else:
             logger.warning(f"Unknown condition type: {condition}")
@@ -96,6 +103,8 @@ class TriggerEvaluator:
         self,
         prices: Dict[str, float],
         reference_prices: Optional[Dict[str, float]] = None,
+        volumes: Optional[Dict[str, float]] = None,
+        average_volumes: Optional[Dict[str, float]] = None,
     ) -> List[GTTTrigger]:
         """
         Evaluate all active triggers against current prices.
@@ -103,6 +112,8 @@ class TriggerEvaluator:
         Args:
             prices: Dict mapping symbol -> current price
             reference_prices: Dict mapping symbol -> reference price (for pct conditions)
+            volumes: Dict mapping symbol -> current volume
+            average_volumes: Dict mapping symbol -> average volume
 
         Returns:
             List of triggers that should fire
@@ -119,13 +130,15 @@ class TriggerEvaluator:
 
             current_price = prices[trigger.symbol]
             ref_price = reference_prices.get(trigger.symbol)
+            cur_vol = volumes.get(trigger.symbol) if volumes else None
+            avg_vol = average_volumes.get(trigger.symbol) if average_volumes else None
 
             # Update trailing stops (track highest price)
             if trigger.condition_type == ConditionType.TRAILING_STOP.value:
                 self._update_trailing_highest(trigger, current_price)
 
             # Evaluate condition
-            if self.evaluate_trigger(trigger, current_price, ref_price):
+            if self.evaluate_trigger(trigger, current_price, ref_price, cur_vol, avg_vol):
                 triggers_to_fire.append(trigger)
                 logger.info(
                     f"GTT trigger {trigger.id} fired: "
@@ -231,8 +244,9 @@ class TriggerEvaluator:
             end_time = time(int(end_parts[0]), int(end_parts[1]))
 
             # Get current time (would use pytz for timezone in production)
-            now = datetime.now()
-            current_time = now.time()
+            tz = pytz.timezone(get_default_timezone())
+            now = get_datetime_now(tz)
+            current_time = now.time()  # This is now timezone-aware wall time
             current_day = now.weekday()
 
             # Check day of week
@@ -255,46 +269,48 @@ class TriggerEvaluator:
     # Phase 2: Volume-Based Condition Checkers
     # =========================================================================
 
-    def _check_volume_above(self, trigger: GTTTrigger) -> bool:
+    def _check_volume_above(self, trigger: GTTTrigger, current_volume: Optional[float]) -> bool:
         """
         Check if current volume exceeds threshold.
 
         action_config expected keys:
-            - current_volume: int current session volume (injected during evaluation)
             - threshold: int volume threshold (or use trigger_value)
         """
         config = trigger.action_config or {}
 
-        current_volume = config.get("current_volume", 0)
+        # Use passed volume or fallback to config (for testing/manual injection)
+        vol = current_volume if current_volume is not None else config.get("current_volume", 0)
         threshold = config.get("threshold", trigger.trigger_value)
 
-        if not current_volume:
+        if not vol:
             logger.debug(f"No volume data for trigger {trigger.id}")
             return False
 
-        return current_volume >= threshold
+        return vol >= threshold
 
-    def _check_volume_spike(self, trigger: GTTTrigger) -> bool:
+    def _check_volume_spike(
+        self, trigger: GTTTrigger, current_volume: Optional[float], average_volume: Optional[float]
+    ) -> bool:
         """
         Check if volume spike detected (current vs average).
 
         action_config expected keys:
-            - current_volume: int current session volume
-            - average_volume: int average daily volume
             - spike_multiplier: float spike threshold (or use trigger_value, e.g., 2.0 for 2x)
         """
         config = trigger.action_config or {}
 
-        current_volume = config.get("current_volume", 0)
-        average_volume = config.get("average_volume", 0)
+        # Use passed values or fallback to config
+        cur_vol = current_volume if current_volume is not None else config.get("current_volume", 0)
+        avg_vol = average_volume if average_volume is not None else config.get("average_volume", 0)
+
         spike_mult = config.get("spike_multiplier", trigger.trigger_value)
 
-        if not current_volume or not average_volume:
+        if not cur_vol or not avg_vol:
             logger.debug(f"Missing volume data for spike check on trigger {trigger.id}")
             return False
 
         # Check if current volume exceeds spike threshold
-        return current_volume >= (average_volume * spike_mult)
+        return cur_vol >= (avg_vol * spike_mult)
 
     # =========================================================================
     # Utility Methods
@@ -327,7 +343,7 @@ class TriggerEvaluator:
             config = trigger.action_config or {}
             highest = config.get("highest_price", 0)
             stop = config.get("current_stop", highest * (1 - value))
-            return f"{symbol} drops {value*100:.1f}% from peak (highest=${highest:.2f}, stop=${stop:.2f})"
+            return f"{symbol} drops {value * 100:.1f}% from peak (highest=${highest:.2f}, stop=${stop:.2f})"
 
         # Phase 2: Time-based conditions
         elif condition == ConditionType.TIME_WINDOW.value:

@@ -296,25 +296,35 @@ class TickerDatabase:
             for row in cursor.fetchall()
         ]
 
-    def list_leveraged_etfs(self, multiplier: float = 2.0) -> List[TickerMetadata]:
+    def list_leveraged_etfs(self, multiplier: Optional[float] = None) -> List[TickerMetadata]:
         """
         Get leveraged ETFs by multiplier.
 
         Args:
-            multiplier: Leverage level (2.0 for 2x, 3.0 for 3x, -2.0 for -2x)
+            multiplier: Leverage level (2.0 for 2x). If None, returns all > 1x.
 
         Returns:
             List of TickerMetadata
         """
         cursor = self.conn.cursor()
-        cursor.execute(
+
+        if multiplier is not None:
+            cursor.execute(
+                """
+                SELECT * FROM ticker_metadata
+                WHERE ABS(multiplier) = ? AND ticker_type LIKE 'etf_%'
+                ORDER BY symbol
+            """,
+                (abs(multiplier),),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT * FROM ticker_metadata
+                WHERE ABS(multiplier) > 1.01 AND ticker_type LIKE 'etf_%'
+                ORDER BY symbol
             """
-            SELECT * FROM ticker_metadata
-            WHERE ABS(multiplier) = ? AND ticker_type LIKE 'etf_%'
-            ORDER BY symbol
-        """,
-            (abs(multiplier),),
-        )
+            )
 
         return [
             TickerMetadata(
