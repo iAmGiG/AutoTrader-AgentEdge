@@ -1,8 +1,9 @@
+<!-- markdownlint-disable MD060 -->
 # AutoTrader: Multi-Agent Trading System
 
 **Copyright (C) 2024-2025 Chris R. (iAmGiG)** | Licensed under [AGPL-3.0](LICENSE) | See [NOTICE](NOTICE)
 
-## Powered by AgentEdge - Autonomous AI agents seeking trading edge
+## Powered by AgentEdge - AI-assisted trading with human oversight
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
@@ -29,7 +30,7 @@
 
 **Core Philosophy**: Validated momentum + regime filtering + human decision making > curve-fit technical indicators
 
-### Key Research Findings (Dec 2025)
+### Key Research Findings (Jan 2026)
 
 Recent rigorous validation experiments with corrected methodology:
 
@@ -59,6 +60,8 @@ Recent rigorous validation experiments with corrected methodology:
 | Alpaca Integration | Operational |
 | Position Management | Complete |
 | Trading Cycle | Complete |
+| SQLite Cache | Complete (90%+ hit rate) |
+| LLM Intent Routing | Complete |
 | ScannerAgent | In Development |
 | RiskAgent | In Development |
 | ExecutorAgent | In Development |
@@ -75,6 +78,12 @@ Location: `src/autogen_agents/voter_agent.py`
 - **RSI Momentum Analysis**: 14-period with 30/70 thresholds
 - **Consensus Voting**: Strong signals when both indicators agree
 - **Validated Performance**: 0.856 Sharpe ratio over 2024-2025
+
+### LLM-Based Intent Classification
+
+- **Natural Language Commands**: GPT-4o-mini parses trade requests
+- **Context-Aware Routing**: Distinguishes "any open orders?" from ticker "ANY"
+- **Scalable Design**: No hardcoded keyword patterns for ticker disambiguation
 
 ### Agents in Development
 
