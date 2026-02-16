@@ -1,0 +1,88 @@
+run_timestamp: '2026-02-15T23:38:42.952923'
+issue: '#546'
+description: Pairs Trading Mean Reversion with GEX Regime Overlay
+methodology:
+  strategy: Cointegration-based pairs trading (Engle-Granger)
+  fit_period: 2020-01-02 to 2021-12-31
+  test_period: 2022-01-03 to 2023-12-29
+  pairs:
+  - - SPY
+    - IWM
+  - - QQQ
+    - SPY
+  entry_threshold: 2.0 sigma
+  exit_threshold: 0.5 sigma
+  lookback: 60 days
+  hedge_ratio: OLS on log prices
+  gex_overlay: options_daily_summary.regime (bullish_gamma, bearish_gamma, neutral)
+results:
+- pair: SPY/IWM
+  fit_period: 2020-01-02 to 2021-12-31
+  test_period: 2022-01-03 to 2023-12-29
+  cointegration:
+    hedge_ratio: 0.7128
+    coint_pvalue: 0.8493
+    adf_pvalue: 0.8391
+    half_life_days: 79.2
+    r_squared: 0.9152
+    is_cointegrated: false
+  baseline:
+    sharpe_ratio: 0.059
+    total_return_pct: 0.34
+    max_drawdown_pct: -5.28
+    win_rate_pct: 0.6
+    num_trades: 15
+    volatility_pct: 5.05
+  gex_enhanced:
+    sharpe_ratio: -0.041
+    total_return_pct: -0.57
+    max_drawdown_pct: -5.42
+    win_rate_pct: 0.6
+    num_trades: 15
+    volatility_pct: 4.56
+  sharpe_improvement: -0.1
+  regime_distribution:
+    bullish_gamma: 154
+    bearish_gamma: 292
+    neutral: 55
+    unknown: 0
+- pair: QQQ/SPY
+  fit_period: 2020-01-02 to 2021-12-31
+  test_period: 2022-01-03 to 2023-12-29
+  cointegration:
+    hedge_ratio: 1.2328
+    coint_pvalue: 0.0688
+    adf_pvalue: 0.0177
+    half_life_days: 30.4
+    r_squared: 0.9464
+    is_cointegrated: false
+  baseline:
+    sharpe_ratio: -1.321
+    total_return_pct: -13.22
+    max_drawdown_pct: -13.22
+    win_rate_pct: 0.2
+    num_trades: 12
+    volatility_pct: 5.3
+  gex_enhanced:
+    sharpe_ratio: -1.337
+    total_return_pct: -6.89
+    max_drawdown_pct: -6.89
+    win_rate_pct: 0.2
+    num_trades: 12
+    volatility_pct: 2.66
+  sharpe_improvement: -0.016
+  regime_distribution:
+    bullish_gamma: 0
+    bearish_gamma: 0
+    neutral: 501
+    unknown: 0
+causal_mechanisms:
+  gex_regime_filter:
+    who: Dealer gamma hedging (market makers)
+    whom: Mean-reverting spread dynamics between correlated ETFs
+    what: Persistent GEX regimes indicate stable dealer hedging flows, supporting mean reversion. Transitional
+      regimes imply hedging flow disruption, weakening mean reversion assumptions.
+    evidence:
+    - Bullish gamma regimes show dealer hedging that dampens volatility
+    - Spread half-life should be shorter in persistent regimes
+    - Trade suppression in neutral/transitional avoids false signals

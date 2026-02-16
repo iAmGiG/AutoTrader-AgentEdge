@@ -1,0 +1,71 @@
+run_timestamp: '2026-02-15T23:38:45.522287'
+issue: '#544'
+description: Delta Neutral / Long Volatility with GEX Regime Overlay
+methodology:
+  strategy: IV-RV spread mean reversion
+  data_source: options_daily_summary (iv_hv_spread_30, hv_30, realized_vol_30)
+  fit_period: 2020-01-02 to 2021-12-31
+  test_period: 2022-01-03 to 2023-12-29
+  entry_threshold: Adaptive (1 std of IS spread)
+  exit_threshold: Adaptive (0.25 std of IS spread)
+  pnl_model: 'Simplified: spread_change * 5.0 scaling factor'
+  gex_overlay: "Regime-conditional sizing (bearish_gamma \u2192 boost long vol, bullish_gamma \u2192 boost\
+    \ short vol)"
+results:
+- symbol: SPY
+  fit_period: 2020-01-02 to 2021-12-31
+  test_period: 2022-01-03 to 2023-12-29
+  in_sample_spread_stats:
+    mean: -0.0017248556678174606
+    std: 0.12191326659728749
+    min: -0.6098017
+    max: 0.3620998
+    median: 0.025549559
+    pct_positive: 68.05555555555556
+    pct_above_entry: 53.96825396825397
+    pct_below_neg_entry: 20.238095238095237
+    n_obs: 504
+  out_of_sample_spread_stats:
+    mean: -0.004616714394789999
+    std: 0.03923841453413194
+    min: -0.117505044
+    max: 0.13448572
+    median: -0.00036775903
+    pct_positive: 49.6
+    pct_above_entry: 0.4
+    pct_below_neg_entry: 0.0
+    n_obs: 500
+  adaptive_thresholds:
+    entry: 0.1219
+    exit: 0.0305
+  baseline:
+    sharpe_ratio: -0.012
+    total_return_pct: -0.24
+    max_drawdown_pct: -2.9
+    win_rate_pct: 0.6
+    num_trades: 4
+    volatility_pct: 3.85
+  gex_enhanced:
+    sharpe_ratio: 0
+    total_return_pct: 0.0
+    max_drawdown_pct: 0.0
+    win_rate_pct: 0.0
+    num_trades: 0
+    volatility_pct: 0.0
+  sharpe_improvement: 0.012
+  regime_distribution:
+    bullish_gamma: 154
+    bearish_gamma: 292
+    neutral: 55
+    unknown: 0
+causal_mechanisms:
+  gex_regime_filter:
+    who: Dealer gamma hedging (market makers)
+    whom: Implied vs realized volatility dynamics
+    what: "In negative gamma (bearish) regimes, dealers hedge by buying vol \u2192 amplifies moves \u2192\
+      \ benefits long vol. In positive gamma (bullish) regimes, dealers sell vol to hedge \u2192 dampens\
+      \ moves \u2192 benefits short vol."
+    evidence:
+    - Bearish gamma regimes historically show higher realized vol
+    - Bullish gamma regimes show compressed realized vol (dealer dampening)
+    - IV-RV spread tends to be negative in bearish gamma (vol underpriced)

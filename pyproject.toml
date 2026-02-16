@@ -28,10 +28,13 @@ dependencies = [
     # Sentiment analysis (for research/deprecated V0-V4 agents)
     "nltk>=3.9.0",
     "scikit-learn>=1.7.0",
+    "statsmodels>=0.14.0",
     # Utility
     "python-dotenv>=1.2.0",
     "pydantic>=2.12.0",
     "pyyaml>=6.0.3",
+    # GEX Database Infrastructure (options data, GEX calculations, regime detection)
+    "gex-database-infrastructure @ git+https://github.com/iAmGiG/gex-database-infrastructure.git",
 ]
 
 [project.optional-dependencies]
@@ -141,6 +144,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "db: marks tests requiring PostgreSQL database (deselect with '-m \"not db\"')",
 ]
 
 [tool.mypy]

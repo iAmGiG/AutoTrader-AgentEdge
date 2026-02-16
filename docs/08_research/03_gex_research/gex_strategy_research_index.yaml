@@ -1,0 +1,67 @@
+---
+# GEX-Enhanced Strategy Research Index
+# Consolidated findings: GitHub Issue #547
+# https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/547
+
+consolidated_issue: "#547"
+title: "GEX Regime Classification as a Systematic Overlay"
+
+strategies:
+  dispersion_trading:
+    issue: "#545"
+    results_file: dispersion_results.yaml
+    signal: src/backtesting/signals/dispersion_signal.py
+    runner: scripts/research/dispersion_gex.py
+    status: "Most promising — GEX overlay improved Sharpe by +0.108"
+
+  delta_neutral:
+    issue: "#544"
+    results_file: delta_neutral_results.yaml
+    signal: src/backtesting/signals/delta_neutral_signal.py
+    runner: scripts/research/delta_neutral_gex.py
+    status: "Informative null — threshold instability, overlay acted as protective filter"
+
+  pairs_trading:
+    issue: "#546"
+    results_file: pairs_trading_results.yaml
+    signal: src/backtesting/signals/pairs_trading_signal.py
+    runner: scripts/research/pairs_trading_gex.py
+    status: "Strategy premise fails — SPY/IWM not cointegrated"
+
+test_period: "2021-2023 (regime-diverse: 45% bullish, 44% bearish, 12% neutral)"
+fit_period: "2020-2021"
+total_tests: 154  # 121 unit + 33 integration
+
+# Extended research (batch 2)
+extended_research:
+  transaction_cost_sensitivity:
+    issue: "#541"
+    results_file: transaction_cost_results.yaml
+    runner: scripts/research/transaction_cost_sensitivity.py
+    status: "Pairs trading breakeven at 5.9 bps; dispersion/delta neutral negative at all cost levels"
+
+  fat_tails_validation:
+    issue: "#542"
+    results_file: fat_tails_results.yaml
+    runner: scripts/research/exit_strategy_analysis/real_data_fat_tails.py
+    status: "Conservative optimal full-period; Balanced optimal in bull; Aggressive least damage in bear"
+
+  var_cvar_risk_metrics:
+    issue: "#543"
+    results_file: var_cvar_results.yaml
+    runner: scripts/research/var_cvar_analysis.py
+    module: src/backtesting/risk_metrics.py
+    status: "ES/VaR 1.69 full sample (fat tails confirmed); bearish gamma ES/VaR 1.54 vs bullish 1.51"
+
+  macd_rsi_regime:
+    issue: "#531"
+    results_file: macd_rsi_regime_results.yaml
+    signal: src/backtesting/signals/macd_rsi_signal.py
+    runner: scripts/research/macd_rsi_regime_analysis.py
+    status: "SPY Sharpe 7.73 in bullish vs -4.52 in bearish (p<0.0001) — strongly confirmed"
+
+  intraday_gex_validation:
+    issue: "#530"
+    results_file: intraday_gex_results.yaml
+    runner: scripts/research/gex_intraday_validation.py
+    status: "No monotonic relationship (Spearman p=0.39); Q4/Q5 show mild positive bias"
