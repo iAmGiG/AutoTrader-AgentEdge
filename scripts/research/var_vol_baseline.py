@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 import yaml
+from scipy import stats as sp_stats
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -57,6 +58,7 @@ def build_frame(bt: ResearchBacktester, symbol: str) -> pd.DataFrame:
     df = pd.DataFrame(index=raw.index)
     ret = raw["close"].pct_change()
     # Annualised-free daily variance proxies, scaled to percent^2 for readable coefficients
+    df["ret"] = ret * 100
     df["rv_sq"] = (ret * 100) ** 2
     df["rv_park"] = (np.log(raw["high"] / raw["low"]) * 100) ** 2 / (4 * np.log(2))
 
@@ -172,6 +174,80 @@ def oos_forecast(df: pd.DataFrame, target: str) -> dict:
     return out
 
 
+def _kupiec_christoffersen(hits: np.ndarray, alpha: float) -> dict:
+    """Unconditional coverage (Kupiec POF), independence and conditional coverage LR tests."""
+    n, x = len(hits), int(hits.sum())
+    pi = x / n
+
+    def _ll(p, k, m):  # log-likelihood of k hits in m trials at rate p
+        p = min(max(p, 1e-12), 1 - 1e-12)
+        return k * np.log(p) + (m - k) * np.log(1 - p)
+
+    lr_uc = -2 * (_ll(alpha, x, n) - _ll(pi, x, n))
+    h0, h1 = hits[:-1], hits[1:]
+    n00 = int(((h0 == 0) & (h1 == 0)).sum())
+    n01 = int(((h0 == 0) & (h1 == 1)).sum())
+    n10 = int(((h0 == 1) & (h1 == 0)).sum())
+    n11 = int(((h0 == 1) & (h1 == 1)).sum())
+    pi01 = n01 / max(n00 + n01, 1)
+    pi11 = n11 / max(n10 + n11, 1)
+    pi_all = (n01 + n11) / max(n00 + n01 + n10 + n11, 1)
+    lr_ind = -2 * (
+        _ll(pi_all, n01 + n11, n00 + n01 + n10 + n11)
+        - _ll(pi01, n01, n00 + n01)
+        - _ll(pi11, n11, n10 + n11)
+    )
+    lr_cc = lr_uc + lr_ind
+    return {
+        "n": n,
+        "breaches": x,
+        "breach_rate": round(pi, 4),
+        "expected_rate": alpha,
+        "kupiec_p": round(float(sp_stats.chi2.sf(lr_uc, 1)), 4),
+        "christoffersen_ind_p": round(float(sp_stats.chi2.sf(lr_ind, 1)), 4),
+        "conditional_coverage_p": round(float(sp_stats.chi2.sf(lr_cc, 2)), 4),
+    }
+
+
+def var_backtest(df: pd.DataFrame, target: str = "log_rv_park") -> dict:
+    """Out-of-sample VaR from log-HAR forecasts, with and without regime dummies.
+
+    Filtered historical simulation: VaR_t = -q_alpha(train returns / train sigma) * sigma_t,
+    so the Parkinson scale (no overnight gap) and fat tails are absorbed by the quantile.
+    Coefficients and quantiles come from data before SPLIT_DATE; breaches are scored after it.
+    Models are compared by quantile (tick) loss with a Diebold-Mariano test (positive t =
+    regime model better).
+    """
+    split = pd.Timestamp(SPLIT_DATE)
+    ret = df["ret"]
+    sigmas = {}
+    for name, with_regime in (("har", False), ("har_regime", True)):
+        data = har_design(df, target, with_regime)
+        x = sm.add_constant(data.drop(columns="y"))
+        train = data.index < split
+        fit = sm.OLS(data.loc[train, "y"], x[train]).fit()
+        sigmas[name] = np.sqrt(np.exp(fit.predict(x) + fit.mse_resid / 2))
+    common = sigmas["har"].index.intersection(sigmas["har_regime"].index)
+    common = common[ret.loc[common].notna().to_numpy()]
+    train_idx, test_idx = common[common < split], common[common >= split]
+    out = {"train_end": SPLIT_DATE, "n_test": len(test_idx)}
+    for alpha in (0.05, 0.01):
+        level = {}
+        losses = {}
+        for name, sig in sigmas.items():
+            z = ret.loc[train_idx] / sig.loc[train_idx]
+            q = float(np.quantile(z, alpha))
+            var = q * sig.loc[test_idx]  # negative number: return threshold
+            r = ret.loc[test_idx]
+            hits = (r < var).astype(int).to_numpy()
+            level[name] = _kupiec_christoffersen(hits, alpha)
+            level[name]["mean_var_pct"] = round(float(-var.mean()), 4)
+            losses[name] = (alpha - (r < var).astype(float)) * (r - var)
+        level["quantile_loss_dm"] = _dm_test(losses["har"], losses["har_regime"])
+        out[f"var_{int((1 - alpha) * 100)}"] = level
+    return out
+
+
 def raw_regime_gap(df: pd.DataFrame, target: str) -> dict:
     """Mean RV by regime with no volatility controls, for comparison."""
     means = df.groupby("regime")[target].mean()
@@ -209,6 +285,19 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
         else:
             res["out_of_sample"] = {"skipped": "fewer than 20 bullish days before the split"}
         result["targets"][target] = res
+        if target == "log_rv_park" and "skipped" not in res["out_of_sample"]:
+            result["var_backtest"] = var_backtest(df)
+            for key in ("var_95", "var_99"):
+                lv = result["var_backtest"][key]
+                dm = lv["quantile_loss_dm"]
+                print(
+                    f"      {key}: breaches HAR {lv['har']['breach_rate']:.4f} "
+                    f"(Kupiec p={lv['har']['kupiec_p']}, CC p={lv['har']['conditional_coverage_p']})"
+                    f" | +regime {lv['har_regime']['breach_rate']:.4f} "
+                    f"(Kupiec p={lv['har_regime']['kupiec_p']}, "
+                    f"CC p={lv['har_regime']['conditional_coverage_p']})"
+                    f" | tick-loss DM t={dm['t_statistic']}, p={dm['p_value']}"
+                )
 
         gap, f = res["raw_gap"], res["full"]
         if "skipped" in f:

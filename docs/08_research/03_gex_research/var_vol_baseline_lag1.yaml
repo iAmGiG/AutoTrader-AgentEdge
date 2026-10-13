@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T14:54:16.700028'
+run_timestamp: '2026-10-13T14:57:15.527131'
 issue: '#576'
 description: Does the GEX regime predict next-day variance beyond a HAR baseline?
 methodology:
@@ -236,6 +236,55 @@ results:
             mean_loss_diff: 0.01174
             t_statistic: 1.724
             p_value: 0.0847
+  var_backtest:
+    train_end: '2020-01-01'
+    n_test: 1702
+    var_95:
+      har:
+        n: 1702
+        breaches: 81
+        breach_rate: 0.0476
+        expected_rate: 0.05
+        kupiec_p: 0.6459
+        christoffersen_ind_p: 0.5574
+        conditional_coverage_p: 0.7575
+        mean_var_pct: 1.7501
+      har_regime:
+        n: 1702
+        breaches: 88
+        breach_rate: 0.0517
+        expected_rate: 0.05
+        kupiec_p: 0.7483
+        christoffersen_ind_p: 0.4931
+        conditional_coverage_p: 0.751
+        mean_var_pct: 1.6784
+      quantile_loss_dm:
+        mean_loss_diff: 0.00115
+        t_statistic: 1.418
+        p_value: 0.1563
+    var_99:
+      har:
+        n: 1702
+        breaches: 20
+        breach_rate: 0.0118
+        expected_rate: 0.01
+        kupiec_p: 0.4799
+        christoffersen_ind_p: 0.2325
+        conditional_coverage_p: 0.382
+        mean_var_pct: 2.7598
+      har_regime:
+        n: 1702
+        breaches: 26
+        breach_rate: 0.0153
+        expected_rate: 0.01
+        kupiec_p: 0.0424
+        christoffersen_ind_p: 0.4133
+        conditional_coverage_p: 0.0912
+        mean_var_pct: 2.6764
+      quantile_loss_dm:
+        mean_loss_diff: -0.00017
+        t_statistic: -0.275
+        p_value: 0.7834
 - symbol: QQQ
   n_days: 3910
   regime_counts:
@@ -453,6 +502,55 @@ results:
             mean_loss_diff: 0.01065
             t_statistic: 2.382
             p_value: 0.0172
+  var_backtest:
+    train_end: '2020-01-01'
+    n_test: 1702
+    var_95:
+      har:
+        n: 1702
+        breaches: 100
+        breach_rate: 0.0588
+        expected_rate: 0.05
+        kupiec_p: 0.1064
+        christoffersen_ind_p: 0.6935
+        conditional_coverage_p: 0.2514
+        mean_var_pct: 2.1868
+      har_regime:
+        n: 1702
+        breaches: 92
+        breach_rate: 0.0541
+        expected_rate: 0.05
+        kupiec_p: 0.4485
+        christoffersen_ind_p: 0.6332
+        conditional_coverage_p: 0.6696
+        mean_var_pct: 2.2276
+      quantile_loss_dm:
+        mean_loss_diff: 0.0024
+        t_statistic: 2.153
+        p_value: 0.0313
+    var_99:
+      har:
+        n: 1702
+        breaches: 22
+        breach_rate: 0.0129
+        expected_rate: 0.01
+        kupiec_p: 0.2457
+        christoffersen_ind_p: 0.2876
+        conditional_coverage_p: 0.2896
+        mean_var_pct: 3.3957
+      har_regime:
+        n: 1702
+        breaches: 26
+        breach_rate: 0.0153
+        expected_rate: 0.01
+        kupiec_p: 0.0424
+        christoffersen_ind_p: 0.4133
+        conditional_coverage_p: 0.0912
+        mean_var_pct: 3.3936
+      quantile_loss_dm:
+        mean_loss_diff: 0.00126
+        t_statistic: 1.41
+        p_value: 0.1585
 - symbol: IWM
   n_days: 4722
   regime_counts:
