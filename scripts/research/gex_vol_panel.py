@@ -143,6 +143,10 @@ def build_symbol_frame(bt, conn, symbol: str, vix: pd.Series, vix_median: float)
     df["lev_w"] = neg.shift(1).rolling(5).mean()
     df["lev_m"] = neg.shift(1).rolling(22).mean()
     df["ret_m"] = ret.shift(1).rolling(22).sum()
+    # Liquidity: 20-day mean dollar volume, and |GEX| relative to it, both as of the prior day
+    adv = (px["close"] * px["volume"]).rolling(20, min_periods=15).mean().shift(1)
+    df["log_adv"] = np.log(adv.where(adv > 0))
+    df["gex_impact"] = np.log(g.abs() / adv.where(adv > 0))
     df["symbol"] = symbol
     return df.replace([np.inf, -np.inf], np.nan)
 
@@ -286,6 +290,42 @@ def pooled_oos(panel: pd.DataFrame, measure: str) -> dict:
     }
 
 
+def pooled_liquidity(panel: pd.DataFrame) -> dict:
+    """Does the negative-GEX variance effect scale with illiquidity or hedging impact?
+
+    illiquid = log ADV below that day's cross-sectional median; high_impact = |GEX| / ADV
+    above that day's median. Both lagged. Spec: HAR + leverage + VIX terms + neg_gex +
+    neg_gex x flag + flag, symbol fixed effects, errors clustered by date and symbol.
+    """
+    out = {}
+    for flag, source, above in (
+        ("illiquid", "log_adv", False),
+        ("high_impact", "gex_impact", True),
+    ):
+        med = panel.groupby(level=0)[source].transform("median")
+        f = (panel[source] > med) if above else (panel[source] < med)
+        df = panel.copy()
+        df[flag] = f.astype(float).where(panel[source].notna())
+        df[f"neg_gex_x_{flag}"] = df["neg_gex"] * df[flag]
+        cols = _design(df, None, True) + ["neg_gex", flag, f"neg_gex_x_{flag}"]
+        data = df[["y", "symbol"] + cols].dropna().copy()
+        dm = data[["y"] + cols] - data.groupby("symbol")[["y"] + cols].transform("mean")
+        groups = np.column_stack([pd.factorize(data.index)[0], pd.factorize(data["symbol"])[0]])
+        fit = sm.OLS(dm["y"], dm[cols]).fit(cov_type="cluster", cov_kwds={"groups": groups})
+        total = fit.t_test(f"neg_gex + neg_gex_x_{flag} = 0")
+        out[flag] = {
+            "n_obs": int(fit.nobs),
+            "neg_gex": _coef(fit, "neg_gex"),
+            f"neg_gex_x_{flag}": _coef(fit, f"neg_gex_x_{flag}"),
+            f"neg_gex_when_{flag}": {
+                "coef": round(float(np.squeeze(total.effect)), 5),
+                "t_statistic": round(float(np.squeeze(total.tvalue)), 3),
+                "p_value": float(np.squeeze(total.pvalue)),
+            },
+        }
+    return out
+
+
 def main():
     print("=" * 60)
     print("  MULTI-SYMBOL GEX VOLATILITY PANEL (#576)")
@@ -319,6 +359,7 @@ def main():
     }
 
     pooled_oos_res = {m: pooled_oos(panel, m) for m in MEASURES}
+    liquidity_res = pooled_liquidity(panel)
 
     summary = {}
     for m in MEASURES:
@@ -359,6 +400,15 @@ def main():
             f"mean diff high VIX {r['mean_loss_diff_high_vix']}, low VIX {r['mean_loss_diff_low_vix']}"
         )
 
+    print("\n  Liquidity split (pooled, HAR + leverage + VIX, neg_gex):")
+    for flag, r in liquidity_res.items():
+        base, ix, tot = r["neg_gex"], r[f"neg_gex_x_{flag}"], r[f"neg_gex_when_{flag}"]
+        print(
+            f"    {flag:11} other {base['coef']:+.4f} (t={base['t_statistic']}) | "
+            f"x {flag} {ix['coef']:+.4f} (t={ix['t_statistic']}, p={ix['p_value']:.4f}) | "
+            f"when {flag} {tot['coef']:+.4f} (t={tot['t_statistic']})"
+        )
+
     output = {
         "run_timestamp": datetime.datetime.now().isoformat(),
         "issue": "#576",
@@ -385,6 +435,7 @@ def main():
         "summary": summary,
         "pooled": pooled_res,
         "pooled_out_of_sample": pooled_oos_res,
+        "liquidity_split": liquidity_res,
         "per_symbol": per,
     }
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)

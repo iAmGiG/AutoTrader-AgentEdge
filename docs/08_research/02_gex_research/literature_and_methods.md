@@ -39,5 +39,5 @@ Status as of 2026-10-13. Results are in [regime_lookahead_revalidation.md](regim
 | 5 | Multiple-testing correction | Holm, BH and \|t\| > 3 done (`multiple_testing_audit.py`); Deflated Sharpe and Reality Check / SPA not done (no trading overlay was significant) |
 | 6 | Intraday tests on `intraday_gex_summary` (label change 2026-02-06, vendor break 2026-10-12) | Done (`intraday_gamma_momentum.py`): null |
 | 7 | Expiry-day and distance-to-strike pinning tests | Done (`expiry_pinning.py`): tiny effect when dealers long gamma |
-| 8 | Regime × liquidity split | Not done |
+| 8 | Regime × liquidity split | Done (`gex_vol_panel.py`): effect scales with \|GEX\|/dollar volume, not illiquidity |
 | 9 | Verify the from-memory citations | Done 2026-10-13 (citation level) |

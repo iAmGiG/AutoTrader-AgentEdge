@@ -191,6 +191,12 @@ def collect_panel(rows):
                 round(o["qlike_base"] - o["qlike_gex"], 5),
             )
         )
+    for flag, r in (data.get("liquidity_split") or {}).items():
+        for key in (f"neg_gex_x_{flag}", f"neg_gex_when_{flag}"):
+            c = r[key]
+            rows.append(
+                _row("Panel liquidity split", name, key, c["t_statistic"], c["p_value"], c["coef"])
+            )
     for m, specs in data["pooled"].items():
         c = specs["no_vix"][m]
         rows.append(

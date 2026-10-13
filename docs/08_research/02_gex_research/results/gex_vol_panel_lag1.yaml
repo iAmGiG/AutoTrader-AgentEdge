@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T15:42:40.234602'
+run_timestamp: '2026-10-13T16:14:13.244586'
 issue: '#576'
 description: Scale-free GEX measures vs next-day variance across symbols
 methodology:
@@ -159,6 +159,35 @@ pooled_out_of_sample:
     share_symbols_improved: 0.45
     mean_loss_diff_high_vix: -7.0e-05
     mean_loss_diff_low_vix: -0.001
+liquidity_split:
+  illiquid:
+    n_obs: 181393
+    neg_gex:
+      coef: 0.08413
+      t_statistic: 3.773
+      p_value: 0.0001611007486460161
+    neg_gex_x_illiquid:
+      coef: -0.05154
+      t_statistic: -1.956
+      p_value: 0.05045725635731143
+    neg_gex_when_illiquid:
+      coef: 0.03259
+      t_statistic: 2.154
+      p_value: 0.031224972111070864
+  high_impact:
+    n_obs: 181363
+    neg_gex:
+      coef: 0.0087
+      t_statistic: 0.75
+      p_value: 0.45321986788172264
+    neg_gex_x_high_impact:
+      coef: 0.10206
+      t_statistic: 4.254
+      p_value: 2.0969683104709536e-05
+    neg_gex_when_high_impact:
+      coef: 0.11077
+      t_statistic: 4.812
+      p_value: 1.4920022662331647e-06
 per_symbol:
   AMAT:
     neg_gex:
