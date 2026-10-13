@@ -204,6 +204,38 @@ def collect_panel(rows):
         )
 
 
+def collect_intraday(rows):
+    name = "intraday_gamma_momentum.yaml"
+    data = _load(name)
+    for m, res in (data or {}).get("results", {}).items():
+        for sample in ("all", "ex_leveraged", "SPY", "QQQ"):
+            r = res.get(sample)
+            if r:
+                ix = r["interaction"]
+                rows.append(
+                    _row(
+                        "#530 intraday momentum x GEX sign",
+                        name,
+                        f"{sample} {m} interaction",
+                        ix["t_statistic"],
+                        ix["p_value"],
+                        ix["coef"],
+                    )
+                )
+        t = res.get("timing_strategy_all")
+        if t:
+            rows.append(
+                _row(
+                    "#530 intraday timing strategy",
+                    name,
+                    f"{m} timing",
+                    t["t_statistic"],
+                    t["p_value"],
+                    t["mean_daily_bps_gross"],
+                )
+            )
+
+
 def main():
     print("=" * 60)
     print("  MULTIPLE-TESTING AUDIT, LAG-1 GEX TESTS (#576)")
@@ -213,6 +245,7 @@ def main():
     collect_overlays(rows)
     collect_volatility(rows)
     collect_panel(rows)
+    collect_intraday(rows)
     df = pd.DataFrame(rows)
     n = len(df)
     print(f"  Tests in family: {n}")

@@ -1,0 +1,203 @@
+run_timestamp: '2026-10-13T15:56:03.207387'
+issue: '#530, #576'
+description: Previous close to 15:30 return predicting 15:30 to 16:00, by GEX sign
+methodology:
+  model: r_late = a + b r_early + c r_early*negGEX + d negGEX (bps)
+  hypothesis: 'c > 0: momentum when dealers short gamma (Barbon-Buraschi)'
+  measures:
+    prior_close: sign of total_gex at previous day's 16:00 snapshot (primary)
+    snap_1530: sign of total_gex at today's 15:30 snapshot (secondary)
+  prices: official closes (equity_prices_daily) as endpoints; 15:30 snapshot price
+  price_source_robustness: robustness_snapshot_prices_all uses 16:00 snapshots
+  errors: 'pooled: clustered by date and symbol; single symbol: Newey-West'
+  filters: previous snapshot day within 5 calendar days; |return| < 2000 bps
+  period: 2026-01-14 to 2026-10-09
+  regime_lag_days: 1
+  caveats: equity GEX omits 0DTE; OI is prior night's; ~180 trading days
+results:
+  prior_close:
+    all:
+      n_obs: 10176
+      n_days: 166
+      n_symbols: 67
+      share_neg_gex: 0.266
+      slope_long_gamma:
+        coef: 0.00649
+        t_statistic: 0.994
+        p_value: 0.32026452659099125
+      interaction:
+        coef: -0.01219
+        t_statistic: -1.832
+        p_value: 0.06701039422323005
+      slope_short_gamma:
+        coef: -0.0057
+        t_statistic: -0.69
+        p_value: 0.49003052471923825
+    ex_leveraged:
+      n_obs: 8576
+      n_days: 166
+      n_symbols: 57
+      share_neg_gex: 0.296
+      slope_long_gamma:
+        coef: 0.0052
+        t_statistic: 1.042
+        p_value: 0.2975341976975229
+      interaction:
+        coef: -0.00822
+        t_statistic: -1.351
+        p_value: 0.1768262142319832
+      slope_short_gamma:
+        coef: -0.00303
+        t_statistic: -0.487
+        p_value: 0.6261321678204154
+    SPY:
+      n_obs: 165
+      n_days: 165
+      n_symbols: 1
+      share_neg_gex: 0.606
+      slope_long_gamma:
+        coef: -0.04118
+        t_statistic: -1.948
+        p_value: 0.051381539099435096
+      interaction:
+        coef: 0.05231
+        t_statistic: 1.991
+        p_value: 0.04652098658151254
+      slope_short_gamma:
+        coef: 0.01112
+        t_statistic: 0.663
+        p_value: 0.5071630727710452
+    QQQ:
+      n_obs: 163
+      n_days: 163
+      n_symbols: 1
+      share_neg_gex: 0.521
+      slope_long_gamma:
+        coef: 0.025
+        t_statistic: 1.26
+        p_value: 0.20784920279381391
+      interaction:
+        coef: -0.01884
+        t_statistic: -0.755
+        p_value: 0.45047745105732473
+      slope_short_gamma:
+        coef: 0.00616
+        t_statistic: 0.497
+        p_value: 0.6189709430949596
+    timing_strategy_all:
+      n_days: 166
+      mean_daily_bps_gross: -0.522
+      t_statistic: -0.804
+      p_value: 0.4212023778388976
+      annualized_sharpe_gross: -0.939
+      note: equal-weight across symbols each day; gross of costs (two trades per day)
+    robustness_snapshot_prices_all:
+      n_obs: 10334
+      n_days: 165
+      n_symbols: 74
+      share_neg_gex: 0.266
+      slope_long_gamma:
+        coef: -0.00238
+        t_statistic: -0.315
+        p_value: 0.7528794892388693
+      interaction:
+        coef: -0.0092
+        t_statistic: -1.162
+        p_value: 0.24536946995725195
+      slope_short_gamma:
+        coef: -0.01158
+        t_statistic: -1.259
+        p_value: 0.20811715052546953
+  snap_1530:
+    all:
+      n_obs: 10176
+      n_days: 166
+      n_symbols: 67
+      share_neg_gex: 0.268
+      slope_long_gamma:
+        coef: 0.00596
+        t_statistic: 0.913
+        p_value: 0.3611546301891225
+      interaction:
+        coef: -0.00736
+        t_statistic: -0.913
+        p_value: 0.36122636891175774
+      slope_short_gamma:
+        coef: -0.0014
+        t_statistic: -0.15
+        p_value: 0.8805934995083219
+    ex_leveraged:
+      n_obs: 8576
+      n_days: 166
+      n_symbols: 57
+      share_neg_gex: 0.299
+      slope_long_gamma:
+        coef: 0.00468
+        t_statistic: 0.887
+        p_value: 0.375267925068283
+      interaction:
+        coef: -0.00458
+        t_statistic: -0.55
+        p_value: 0.5824054971427481
+      slope_short_gamma:
+        coef: 0.0001
+        t_statistic: 0.014
+        p_value: 0.9892191469562263
+    SPY:
+      n_obs: 165
+      n_days: 165
+      n_symbols: 1
+      share_neg_gex: 0.6
+      slope_long_gamma:
+        coef: -0.0212
+        t_statistic: -1.118
+        p_value: 0.2635480574596706
+      interaction:
+        coef: 0.02485
+        t_statistic: 0.989
+        p_value: 0.32275778665235455
+      slope_short_gamma:
+        coef: 0.00365
+        t_statistic: 0.219
+        p_value: 0.8265399595013946
+    QQQ:
+      n_obs: 163
+      n_days: 163
+      n_symbols: 1
+      share_neg_gex: 0.515
+      slope_long_gamma:
+        coef: -0.00832
+        t_statistic: -0.404
+        p_value: 0.6862520557339267
+      interaction:
+        coef: 0.03602
+        t_statistic: 1.505
+        p_value: 0.13229991441662498
+      slope_short_gamma:
+        coef: 0.02769
+        t_statistic: 2.223
+        p_value: 0.02618592089317121
+    timing_strategy_all:
+      n_days: 166
+      mean_daily_bps_gross: -0.587
+      t_statistic: -0.861
+      p_value: 0.3892230616521597
+      annualized_sharpe_gross: -1.096
+      note: equal-weight across symbols each day; gross of costs (two trades per day)
+    robustness_snapshot_prices_all:
+      n_obs: 10334
+      n_days: 165
+      n_symbols: 74
+      share_neg_gex: 0.267
+      slope_long_gamma:
+        coef: -0.00171
+        t_statistic: -0.232
+        p_value: 0.816593337598003
+      interaction:
+        coef: -0.01087
+        t_statistic: -1.397
+        p_value: 0.16239513695999286
+      slope_short_gamma:
+        coef: -0.01258
+        t_statistic: -1.315
+        p_value: 0.1886407264688208

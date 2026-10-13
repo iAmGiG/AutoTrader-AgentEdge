@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T15:43:07.105919'
+run_timestamp: '2026-10-13T15:56:17.047451'
 issue: '#576'
 description: Multiple-testing audit of lag-1 GEX hypothesis tests
 methodology:
@@ -11,13 +11,25 @@ methodology:
   alpha: 0.05
   dependence_note: full and half-sample tests overlap; Holm valid, BH approximate
 summary:
-  n_tests: 217
-  raw_p_below_0.05: 94
-  expected_by_chance_at_0.05: 10.9
+  n_tests: 227
+  raw_p_below_0.05: 95
+  expected_by_chance_at_0.05: 11.4
   holm_rejections: 35
   bh_rejections: 70
   abs_t_above_3: 50
 by_study:
+- study: '#530 intraday momentum x GEX sign'
+  n: 8
+  raw: 1
+  holm: 0
+  bh: 0
+  t3: 0
+- study: '#530 intraday timing strategy'
+  n: 2
+  raw: 0
+  holm: 0
+  bh: 0
+  t3: 0
 - study: '#531 MACD+RSI regime gap'
   n: 3
   raw: 0
@@ -422,7 +434,7 @@ tests:
   t_statistic: -4.574
   p_value: 4.7757e-06
   holm_reject: true
-  holm_p: 0.0009
+  holm_p: 0.001
   bh_reject: true
   bh_q: 0.0
   raw_reject: true
@@ -434,7 +446,7 @@ tests:
   t_statistic: -4.534
   p_value: 5.7832e-06
   holm_reject: true
-  holm_p: 0.0011
+  holm_p: 0.0012
   bh_reject: true
   bh_q: 0.0
   raw_reject: true
@@ -446,7 +458,7 @@ tests:
   t_statistic: -4.329
   p_value: 1.49496e-05
   holm_reject: true
-  holm_p: 0.0028
+  holm_p: 0.003
   bh_reject: true
   bh_q: 0.0001
   raw_reject: true
@@ -458,7 +470,7 @@ tests:
   t_statistic: -4.183
   p_value: 2.87357e-05
   holm_reject: true
-  holm_p: 0.0054
+  holm_p: 0.0057
   bh_reject: true
   bh_q: 0.0002
   raw_reject: true
@@ -470,9 +482,9 @@ tests:
   t_statistic: -3.959
   p_value: 7.51835e-05
   holm_reject: true
-  holm_p: 0.0141
+  holm_p: 0.0149
   bh_reject: true
-  bh_q: 0.0005
+  bh_q: 0.0006
   raw_reject: true
   t_above_3: true
 - study: '#543 HAR regime term (in-sample)'
@@ -482,7 +494,7 @@ tests:
   t_statistic: 3.952
   p_value: 0.0001
   holm_reject: true
-  holm_p: 0.0187
+  holm_p: 0.0197
   bh_reject: true
   bh_q: 0.0007
   raw_reject: true
@@ -494,7 +506,7 @@ tests:
   t_statistic: -3.805
   p_value: 0.000141637
   holm_reject: true
-  holm_p: 0.0263
+  holm_p: 0.0278
   bh_reject: true
   bh_q: 0.001
   raw_reject: true
@@ -506,7 +518,7 @@ tests:
   t_statistic: -3.772
   p_value: 0.0001617065
   holm_reject: true
-  holm_p: 0.0299
+  holm_p: 0.0315
   bh_reject: true
   bh_q: 0.0011
   raw_reject: true
@@ -518,7 +530,7 @@ tests:
   t_statistic: 3.768
   p_value: 0.0002
   holm_reject: true
-  holm_p: 0.0368
+  holm_p: 0.0388
   bh_reject: true
   bh_q: 0.0013
   raw_reject: true
@@ -530,9 +542,9 @@ tests:
   t_statistic: 3.673
   p_value: 0.0002398503
   holm_reject: true
-  holm_p: 0.0439
+  holm_p: 0.0463
   bh_reject: true
-  bh_q: 0.0015
+  bh_q: 0.0016
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -542,9 +554,9 @@ tests:
   t_statistic: -3.556
   p_value: 0.0003761916
   holm_reject: false
-  holm_p: 0.0685
+  holm_p: 0.0722
   bh_reject: true
-  bh_q: 0.0023
+  bh_q: 0.0024
   raw_reject: true
   t_above_3: true
 - study: '#543 HAR regime term (in-sample)'
@@ -554,9 +566,9 @@ tests:
   t_statistic: 3.542
   p_value: 0.0004
   holm_reject: false
-  holm_p: 0.0724
+  holm_p: 0.0764
   bh_reject: true
-  bh_q: 0.0023
+  bh_q: 0.0024
   raw_reject: true
   t_above_3: true
 - study: '#543 HAR regime term (in-sample)'
@@ -566,9 +578,9 @@ tests:
   t_statistic: 3.54
   p_value: 0.0004
   holm_reject: false
-  holm_p: 0.0724
+  holm_p: 0.0764
   bh_reject: true
-  bh_q: 0.0023
+  bh_q: 0.0024
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -578,9 +590,9 @@ tests:
   t_statistic: 3.526
   p_value: 0.0004225984
   holm_reject: false
-  holm_p: 0.0756
+  holm_p: 0.0799
   bh_reject: true
-  bh_q: 0.0024
+  bh_q: 0.0025
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -590,9 +602,9 @@ tests:
   t_statistic: 3.503
   p_value: 0.0004605435
   holm_reject: false
-  holm_p: 0.082
+  holm_p: 0.0866
   bh_reject: true
-  bh_q: 0.0025
+  bh_q: 0.0026
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -602,9 +614,9 @@ tests:
   t_statistic: 3.414
   p_value: 0.0006402711
   holm_reject: false
-  holm_p: 0.1133
+  holm_p: 0.1197
   bh_reject: true
-  bh_q: 0.0034
+  bh_q: 0.0035
   raw_reject: true
   t_above_3: true
 - study: '#543 HAR regime term (in-sample)'
@@ -614,9 +626,9 @@ tests:
   t_statistic: 3.41
   p_value: 0.0007
   holm_reject: false
-  holm_p: 0.1232
+  holm_p: 0.1302
   bh_reject: true
-  bh_q: 0.0036
+  bh_q: 0.0038
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -626,9 +638,9 @@ tests:
   t_statistic: 3.344
   p_value: 0.0008264782
   holm_reject: false
-  holm_p: 0.1446
+  holm_p: 0.1529
   bh_reject: true
-  bh_q: 0.0042
+  bh_q: 0.0044
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -638,9 +650,9 @@ tests:
   t_statistic: 3.291
   p_value: 0.0009989959
   holm_reject: false
-  holm_p: 0.1738
+  holm_p: 0.1838
   bh_reject: true
-  bh_q: 0.0049
+  bh_q: 0.0052
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -650,9 +662,9 @@ tests:
   t_statistic: 3.262
   p_value: 0.0011055685
   holm_reject: false
-  holm_p: 0.1913
+  holm_p: 0.2023
   bh_reject: true
-  bh_q: 0.0053
+  bh_q: 0.0056
   raw_reject: true
   t_above_3: true
 - study: '#543 HAR out-of-sample forecast'
@@ -662,9 +674,9 @@ tests:
   t_statistic: 3.171
   p_value: 0.0015
   holm_reject: false
-  holm_p: 0.258
+  holm_p: 0.273
   bh_reject: true
-  bh_q: 0.0071
+  bh_q: 0.0074
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -674,9 +686,9 @@ tests:
   t_statistic: -3.149
   p_value: 0.0016365541
   holm_reject: false
-  holm_p: 0.2799
+  holm_p: 0.2962
   bh_reject: true
-  bh_q: 0.0076
+  bh_q: 0.0079
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -686,9 +698,9 @@ tests:
   t_statistic: -3.061
   p_value: 0.0022080658
   holm_reject: false
-  holm_p: 0.3754
+  holm_p: 0.3975
   bh_reject: true
-  bh_q: 0.01
+  bh_q: 0.0104
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -698,9 +710,9 @@ tests:
   t_statistic: 3.051
   p_value: 0.0022815671
   holm_reject: false
-  holm_p: 0.3856
+  holm_p: 0.4084
   bh_reject: true
-  bh_q: 0.0101
+  bh_q: 0.0106
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -710,9 +722,9 @@ tests:
   t_statistic: -3.028
   p_value: 0.0024652148
   holm_reject: false
-  holm_p: 0.4142
+  holm_p: 0.4388
   bh_reject: true
-  bh_q: 0.0107
+  bh_q: 0.0112
   raw_reject: true
   t_above_3: true
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -722,9 +734,9 @@ tests:
   t_statistic: -2.994
   p_value: 0.0027520967
   holm_reject: false
-  holm_p: 0.4596
+  holm_p: 0.4871
   bh_reject: true
-  bh_q: 0.0117
+  bh_q: 0.0122
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -734,9 +746,9 @@ tests:
   t_statistic: 2.987
   p_value: 0.0028154907
   holm_reject: false
-  holm_p: 0.4674
+  holm_p: 0.4955
   bh_reject: true
-  bh_q: 0.0117
+  bh_q: 0.0123
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -746,9 +758,9 @@ tests:
   t_statistic: 2.887
   p_value: 0.0039
   holm_reject: false
-  holm_p: 0.6435
+  holm_p: 0.6825
   bh_reject: true
-  bh_q: 0.016
+  bh_q: 0.0167
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -758,9 +770,9 @@ tests:
   t_statistic: 2.868
   p_value: 0.0041341649
   holm_reject: false
-  holm_p: 0.678
+  holm_p: 0.7193
   bh_reject: true
-  bh_q: 0.0166
+  bh_q: 0.0174
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -770,9 +782,9 @@ tests:
   t_statistic: -2.848
   p_value: 0.0043960578
   holm_reject: false
-  holm_p: 0.7166
+  holm_p: 0.7605
   bh_reject: true
-  bh_q: 0.0173
+  bh_q: 0.0181
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -782,9 +794,9 @@ tests:
   t_statistic: -2.834
   p_value: 0.0045927882
   holm_reject: false
-  holm_p: 0.744
+  holm_p: 0.79
   bh_reject: true
-  bh_q: 0.0178
+  bh_q: 0.0186
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -794,9 +806,9 @@ tests:
   t_statistic: 2.776
   p_value: 0.0055
   holm_reject: false
-  holm_p: 0.8855
+  holm_p: 0.9405
   bh_reject: true
-  bh_q: 0.0209
+  bh_q: 0.0219
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -806,9 +818,9 @@ tests:
   t_statistic: 2.762
   p_value: 0.0057
   holm_reject: false
-  holm_p: 0.912
+  holm_p: 0.969
   bh_reject: true
-  bh_q: 0.0213
+  bh_q: 0.0223
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -820,7 +832,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0267
+  bh_q: 0.028
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -832,7 +844,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0299
+  bh_q: 0.0313
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -844,7 +856,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0313
+  bh_q: 0.0327
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -856,7 +868,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0321
+  bh_q: 0.0336
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -868,7 +880,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0376
+  bh_q: 0.0394
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -880,7 +892,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.039
+  bh_q: 0.0408
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -892,7 +904,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0393
+  bh_q: 0.0411
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -904,7 +916,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0393
+  bh_q: 0.0411
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -916,7 +928,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0401
+  bh_q: 0.0419
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -928,7 +940,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0422
+  bh_q: 0.0441
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -940,7 +952,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0429
+  bh_q: 0.0449
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -952,7 +964,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: true
-  bh_q: 0.0429
+  bh_q: 0.0449
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -964,7 +976,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0526
+  bh_q: 0.055
   raw_reject: true
   t_above_3: false
 - study: Panel pooled
@@ -976,7 +988,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.056
+  bh_q: 0.0585
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -988,7 +1000,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0626
+  bh_q: 0.0655
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -1000,7 +1012,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0633
+  bh_q: 0.0663
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1012,7 +1024,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0667
+  bh_q: 0.0698
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1024,7 +1036,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0679
+  bh_q: 0.071
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1036,7 +1048,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0692
+  bh_q: 0.0724
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1048,7 +1060,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.072
+  bh_q: 0.0753
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1060,7 +1072,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0738
+  bh_q: 0.0772
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1072,7 +1084,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0745
+  bh_q: 0.0779
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1084,7 +1096,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0811
+  bh_q: 0.0848
   raw_reject: true
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -1096,7 +1108,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0828
+  bh_q: 0.0866
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1108,7 +1120,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0851
+  bh_q: 0.089
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1120,7 +1132,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0851
+  bh_q: 0.089
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1132,7 +1144,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0883
+  bh_q: 0.0924
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1144,7 +1156,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0892
+  bh_q: 0.0933
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -1156,7 +1168,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0945
+  bh_q: 0.0989
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1168,7 +1180,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0968
+  bh_q: 0.1013
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -1180,7 +1192,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1019
+  bh_q: 0.1066
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1192,7 +1204,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1064
+  bh_q: 0.1113
+  raw_reject: true
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: SPY prior_close interaction
+  effect: 0.05231
+  t_statistic: 1.991
+  p_value: 0.0465209866
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.1147
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -1204,7 +1228,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1108
+  bh_q: 0.1147
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1216,7 +1240,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1108
+  bh_q: 0.1147
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1228,7 +1252,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1108
+  bh_q: 0.1147
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1240,7 +1264,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1108
+  bh_q: 0.1147
   raw_reject: true
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1252,7 +1276,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1191
+  bh_q: 0.1233
   raw_reject: false
   t_above_3: false
 - study: Panel pooled out-of-sample
@@ -1264,7 +1288,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1249
+  bh_q: 0.1293
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1276,7 +1300,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1264
+  bh_q: 0.1309
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -1288,7 +1312,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.138
+  bh_q: 0.1428
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1300,7 +1324,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1425
+  bh_q: 0.1476
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: all prior_close interaction
+  effect: -0.01219
+  t_statistic: -1.832
+  p_value: 0.0670103942
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.1506
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1312,7 +1348,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1468
+  bh_q: 0.1506
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1324,7 +1360,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1586
+  bh_q: 0.1627
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1336,7 +1372,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1586
+  bh_q: 0.1627
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1348,7 +1384,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1695
+  bh_q: 0.174
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1360,7 +1396,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.175
+  bh_q: 0.1797
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -1372,7 +1408,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.175
+  bh_q: 0.1797
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1384,7 +1420,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1751
+  bh_q: 0.1798
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1396,7 +1432,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.188
+  bh_q: 0.1931
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1408,7 +1444,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2005
+  bh_q: 0.206
   raw_reject: false
   t_above_3: false
 - study: '#545 dispersion overlay, 2011-2026'
@@ -1420,7 +1456,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2045
+  bh_q: 0.21
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -1432,7 +1468,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2077
+  bh_q: 0.2134
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -1444,7 +1480,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2147
+  bh_q: 0.2206
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1456,7 +1492,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2207
+  bh_q: 0.2269
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1468,7 +1504,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2259
+  bh_q: 0.2322
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1480,7 +1516,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2259
+  bh_q: 0.2322
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1492,7 +1528,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2448
+  bh_q: 0.2517
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: QQQ snap_1530 interaction
+  effect: 0.03602
+  t_statistic: 1.505
+  p_value: 0.1322999144
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.2545
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1504,7 +1552,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2502
+  bh_q: 0.2551
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1516,7 +1564,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2601
+  bh_q: 0.2653
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1528,7 +1576,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2601
+  bh_q: 0.2653
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1540,7 +1588,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2826
+  bh_q: 0.2885
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -1552,7 +1600,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2826
+  bh_q: 0.2885
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -1564,7 +1612,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2843
+  bh_q: 0.2902
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: ex_leveraged prior_close interaction
+  effect: -0.00822
+  t_statistic: -1.351
+  p_value: 0.1768262142
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.3211
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1576,7 +1636,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3174
+  bh_q: 0.3217
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1588,7 +1648,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3174
+  bh_q: 0.3217
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1600,7 +1660,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3174
+  bh_q: 0.3217
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1612,7 +1672,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3423
+  bh_q: 0.3469
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -1624,7 +1684,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3565
+  bh_q: 0.3615
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1636,7 +1696,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3835
+  bh_q: 0.389
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2022-2023'
@@ -1648,7 +1708,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4021
+  bh_q: 0.4079
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1660,7 +1720,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4074
+  bh_q: 0.4135
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1672,7 +1732,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4074
+  bh_q: 0.4135
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -1684,7 +1744,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4086
+  bh_q: 0.4148
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1696,7 +1756,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4086
+  bh_q: 0.4148
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -1708,7 +1768,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4167
+  bh_q: 0.4233
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1720,7 +1780,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4167
+  bh_q: 0.4233
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1732,7 +1792,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4255
+  bh_q: 0.4323
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1744,7 +1804,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4298
+  bh_q: 0.4367
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -1756,7 +1816,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4391
+  bh_q: 0.4467
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1768,7 +1828,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4391
+  bh_q: 0.4467
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1780,7 +1840,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4391
+  bh_q: 0.4467
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1792,7 +1852,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4391
+  bh_q: 0.4467
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1804,7 +1864,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4391
+  bh_q: 0.4467
   raw_reject: false
   t_above_3: false
 - study: '#544 delta-neutral overlay, 2022-2023'
@@ -1816,7 +1876,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4482
+  bh_q: 0.456
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1828,7 +1888,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4596
+  bh_q: 0.4677
   raw_reject: false
   t_above_3: false
 - study: '#544 delta-neutral overlay, 2011-2026'
@@ -1840,7 +1900,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4809
+  bh_q: 0.4894
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: SPY snap_1530 interaction
+  effect: 0.02485
+  t_statistic: 0.989
+  p_value: 0.3227577867
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.4902
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1852,7 +1924,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4846
+  bh_q: 0.4902
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1864,7 +1936,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4846
+  bh_q: 0.4902
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1876,7 +1948,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.4918
+  bh_q: 0.4975
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1888,7 +1960,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5029
+  bh_q: 0.5089
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -1900,7 +1972,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5204
+  bh_q: 0.5237
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1912,7 +1984,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5204
+  bh_q: 0.5237
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: all snap_1530 interaction
+  effect: -0.00736
+  t_statistic: -0.913
+  p_value: 0.3612263689
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.5237
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1924,7 +2008,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5204
+  bh_q: 0.5237
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1936,7 +2020,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5204
+  bh_q: 0.5237
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -1948,7 +2032,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5238
+  bh_q: 0.5274
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1960,7 +2044,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5238
+  bh_q: 0.5274
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday timing strategy'
+  source: intraday_gamma_momentum.yaml
+  test: snap_1530 timing
+  effect: -0.587
+  t_statistic: -0.861
+  p_value: 0.3892230617
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.5488
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1972,7 +2068,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5477
+  bh_q: 0.5488
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -1984,7 +2080,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5477
+  bh_q: 0.5488
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -1996,7 +2092,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5477
+  bh_q: 0.5488
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2008,7 +2104,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5477
+  bh_q: 0.5488
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2020,7 +2116,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5477
+  bh_q: 0.5488
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday timing strategy'
+  source: intraday_gamma_momentum.yaml
+  test: prior_close timing
+  effect: -0.522
+  t_statistic: -0.804
+  p_value: 0.4212023778
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.5725
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2032,7 +2140,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5787
+  bh_q: 0.5767
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2044,7 +2152,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5787
+  bh_q: 0.5767
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2056,7 +2164,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5854
+  bh_q: 0.5836
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: QQQ prior_close interaction
+  effect: -0.01884
+  t_statistic: -0.755
+  p_value: 0.4504774511
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.5965
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2068,7 +2188,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6017
+  bh_q: 0.5965
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2080,7 +2200,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6127
+  bh_q: 0.6076
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2092,7 +2212,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6171
+  bh_q: 0.6122
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2104,7 +2224,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.618
+  bh_q: 0.6133
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2116,7 +2236,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6273
+  bh_q: 0.6234
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2128,7 +2248,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6273
+  bh_q: 0.6234
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2140,7 +2260,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6273
+  bh_q: 0.6234
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2152,7 +2272,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6273
+  bh_q: 0.6234
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2164,7 +2284,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6273
+  bh_q: 0.6234
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2176,7 +2296,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6306
+  bh_q: 0.6268
   raw_reject: false
   t_above_3: false
 - study: '#545 dispersion overlay, 2021-2023'
@@ -2188,7 +2308,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6344
+  bh_q: 0.6309
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -2200,7 +2320,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6443
+  bh_q: 0.6408
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2212,7 +2332,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6471
+  bh_q: 0.644
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2224,7 +2344,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6471
+  bh_q: 0.644
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2236,7 +2356,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6554
+  bh_q: 0.6524
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2248,7 +2368,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6554
+  bh_q: 0.6526
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2260,7 +2380,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.67
+  bh_q: 0.6673
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -2272,7 +2392,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.682
+  bh_q: 0.6794
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2284,7 +2404,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.683
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2296,7 +2416,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6845
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2308,7 +2428,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6845
+  bh_q: 0.6799
+  raw_reject: false
+  t_above_3: false
+- study: '#530 intraday momentum x GEX sign'
+  source: intraday_gamma_momentum.yaml
+  test: ex_leveraged snap_1530 interaction
+  effect: -0.00458
+  t_statistic: -0.55
+  p_value: 0.5824054971
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -2320,7 +2452,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6845
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2022-2023'
@@ -2332,7 +2464,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6845
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2344,7 +2476,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6845
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2356,7 +2488,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6845
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2368,7 +2500,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6845
+  bh_q: 0.6799
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2380,7 +2512,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6944
+  bh_q: 0.6899
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2392,7 +2524,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7118
+  bh_q: 0.7073
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2404,7 +2536,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7285
+  bh_q: 0.7242
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2416,7 +2548,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7573
+  bh_q: 0.7529
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2428,7 +2560,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7851
+  bh_q: 0.781
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2011-2026'
@@ -2440,7 +2572,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7851
+  bh_q: 0.781
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2452,7 +2584,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7877
+  bh_q: 0.7838
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2464,7 +2596,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7893
+  bh_q: 0.7857
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2476,7 +2608,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7893
+  bh_q: 0.7857
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2488,7 +2620,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8169
+  bh_q: 0.8135
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2500,7 +2632,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8239
+  bh_q: 0.8206
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -2512,7 +2644,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.85
+  bh_q: 0.8468
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2524,7 +2656,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8722
+  bh_q: 0.8691
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2536,7 +2668,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8808
+  bh_q: 0.8779
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2548,7 +2680,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.883
+  bh_q: 0.8803
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2560,7 +2692,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8833
+  bh_q: 0.8808
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2572,7 +2704,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8846
+  bh_q: 0.8823
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2584,7 +2716,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8847
+  bh_q: 0.8827
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (in-sample, leverage controls)
@@ -2596,7 +2728,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9024
+  bh_q: 0.9005
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2011-2026'
@@ -2608,7 +2740,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.907
+  bh_q: 0.9055
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2620,7 +2752,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.907
+  bh_q: 0.9055
   raw_reject: false
   t_above_3: false
 - study: Panel pooled out-of-sample
@@ -2632,7 +2764,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9173
+  bh_q: 0.9159
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2644,7 +2776,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9238
+  bh_q: 0.9226
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (in-sample, leverage controls)
@@ -2656,7 +2788,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9261
+  bh_q: 0.9252
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2668,7 +2800,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9393
+  bh_q: 0.9385
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2680,7 +2812,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9844
+  bh_q: 0.9842
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
@@ -2692,7 +2824,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9844
+  bh_q: 0.9842
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol gex_pct (out-of-sample QLIKE)
@@ -2704,7 +2836,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.9844
+  bh_q: 0.9842
   raw_reject: false
   t_above_3: false
 - study: Panel per-symbol neg_gex (out-of-sample QLIKE)
