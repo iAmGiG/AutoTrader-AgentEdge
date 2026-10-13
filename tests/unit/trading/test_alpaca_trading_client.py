@@ -23,27 +23,9 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
 
-# =============================================================================
-# Mock the alpaca imports before importing the module under test
-# =============================================================================
-
-
-@pytest.fixture(autouse=True)
-def mock_alpaca_imports():
-    """Mock alpaca imports for all tests."""
-    with patch.dict(
-        "sys.modules",
-        {
-            "alpaca": MagicMock(),
-            "alpaca.trading": MagicMock(),
-            "alpaca.trading.client": MagicMock(),
-            "alpaca.trading.enums": MagicMock(),
-            "alpaca.trading.requests": MagicMock(),
-            "alpaca.common": MagicMock(),
-            "alpaca.common.exceptions": MagicMock(),
-        },
-    ):
-        yield
+# alpaca-py is a project dependency, so the real SDK is imported. Tests patch the names
+# used inside src.trading.broker.alpaca_trading_client instead of stubbing sys.modules,
+# which leaked MagicMock packages into other tests.
 
 
 # =============================================================================
@@ -178,11 +160,12 @@ class TestAlpacaTradingClientInit:
 
     def test_invalid_mode_raises_error(self, mock_config):
         """Test that invalid mode raises ValueError."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
-            with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
+            with patch("src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
                 # Clear singleton instances
-                from src.trading.alpaca_trading_client import \
-                    AlpacaTradingClient
+                from src.trading.broker.alpaca_trading_client import AlpacaTradingClient
 
                 AlpacaTradingClient._instances = {}
 
@@ -194,10 +177,11 @@ class TestAlpacaTradingClientInit:
         empty_config = MagicMock()
         empty_config.get.return_value = None
 
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=empty_config):
-            with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                from src.trading.alpaca_trading_client import \
-                    AlpacaTradingClient
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=empty_config
+        ):
+            with patch("src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
+                from src.trading.broker.alpaca_trading_client import AlpacaTradingClient
 
                 AlpacaTradingClient._instances = {}
 
@@ -210,14 +194,19 @@ class TestAlpacaTradingClientSingleton:
 
     def test_singleton_returns_same_instance(self, mock_config, mock_trading_client):
         """Test that singleton returns same instance for same mode."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import \
-                        AlpacaTradingClient
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -232,14 +221,19 @@ class TestAlpacaTradingClientSafetyCheck:
 
     def test_safety_check_skipped_when_not_required(self, mock_config, mock_trading_client):
         """Test safety check is skipped when require_confirmation is False."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import \
-                        AlpacaTradingClient
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -258,14 +252,20 @@ class TestAlpacaAccountMonitorInit:
 
     def test_init_paper_mode(self, mock_config, mock_trading_client):
         """Test initialization in paper mode."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -278,14 +278,20 @@ class TestAlpacaAccountMonitorGetAccount:
 
     def test_get_account_status_returns_dict(self, mock_config, mock_trading_client):
         """Test get_account_status returns proper dict structure."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -302,14 +308,20 @@ class TestAlpacaAccountMonitorGetAccount:
         """Test get_account_status handles API errors."""
         mock_trading_client.get_account.side_effect = Exception("API Error")
 
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -324,14 +336,20 @@ class TestAlpacaAccountMonitorGetPositions:
 
     def test_get_positions_returns_list(self, mock_config, mock_trading_client):
         """Test get_positions returns list of positions."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -346,14 +364,20 @@ class TestAlpacaAccountMonitorGetPositions:
         """Test get_positions with no positions."""
         mock_trading_client.get_all_positions.return_value = []
 
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -368,18 +392,26 @@ class TestAlpacaAccountMonitorGetOrders:
 
     def test_get_orders_returns_list(self, mock_config, mock_trading_client):
         """Test get_orders returns list of orders."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    with patch("src.trading.alpaca_trading_client.QueryOrderStatus") as mock_query:
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    with patch(
+                        "src.trading.broker.alpaca_trading_client.QueryOrderStatus"
+                    ) as mock_query:
                         mock_query.OPEN = "open"
                         mock_query.CLOSED = "closed"
 
-                        from src.trading.alpaca_trading_client import (
-                            AlpacaAccountMonitor, AlpacaTradingClient)
+                        from src.trading.broker.alpaca_trading_client import (
+                            AlpacaAccountMonitor,
+                            AlpacaTradingClient,
+                        )
 
                         AlpacaTradingClient._instances = {}
 
@@ -392,14 +424,20 @@ class TestAlpacaAccountMonitorGetOrders:
 
     def test_get_orders_all_status(self, mock_config, mock_trading_client):
         """Test get_orders with 'all' status."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaAccountMonitor, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -414,17 +452,25 @@ class TestAlpacaAccountMonitorGetPortfolioSummary:
 
     def test_get_portfolio_summary(self, mock_config, mock_trading_client):
         """Test get_portfolio_summary returns comprehensive overview."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    with patch("src.trading.alpaca_trading_client.QueryOrderStatus") as mock_query:
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    with patch(
+                        "src.trading.broker.alpaca_trading_client.QueryOrderStatus"
+                    ) as mock_query:
                         mock_query.OPEN = "open"
 
-                        from src.trading.alpaca_trading_client import (
-                            AlpacaAccountMonitor, AlpacaTradingClient)
+                        from src.trading.broker.alpaca_trading_client import (
+                            AlpacaAccountMonitor,
+                            AlpacaTradingClient,
+                        )
 
                         AlpacaTradingClient._instances = {}
 
@@ -447,14 +493,20 @@ class TestAlpacaOrderManagerInit:
 
     def test_init_with_default_risk_limits(self, mock_config, mock_trading_client):
         """Test initialization with default risk limits."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -472,14 +524,20 @@ class TestAlpacaOrderManagerInit:
             "max_order_size": 500,
         }
 
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -495,14 +553,20 @@ class TestAlpacaOrderManagerValidation:
 
     def test_validate_order_empty_symbol(self, mock_config, mock_trading_client):
         """Test validation fails for empty symbol."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -513,14 +577,20 @@ class TestAlpacaOrderManagerValidation:
 
     def test_validate_order_negative_qty(self, mock_config, mock_trading_client):
         """Test validation fails for negative quantity."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -531,14 +601,20 @@ class TestAlpacaOrderManagerValidation:
 
     def test_validate_order_invalid_side(self, mock_config, mock_trading_client):
         """Test validation fails for invalid side."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -549,14 +625,20 @@ class TestAlpacaOrderManagerValidation:
 
     def test_validate_order_exceeds_max_size(self, mock_config, mock_trading_client):
         """Test validation fails when exceeding max order size."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -571,23 +653,32 @@ class TestAlpacaOrderManagerMarketOrder:
 
     def test_place_market_order_success(self, mock_config, mock_trading_client):
         """Test successful market order placement."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    with patch("src.trading.alpaca_trading_client.OrderSide") as mock_side:
-                        mock_side.BUY = "buy"
-                        mock_side.SELL = "sell"
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    with patch("src.trading.broker.alpaca_trading_client.map_side") as mock_side:
+                        mock_side.side_effect = lambda side: side
 
-                        with patch("src.trading.alpaca_trading_client.TimeInForce") as mock_tif:
+                        with patch(
+                            "src.trading.broker.alpaca_trading_client.TimeInForce"
+                        ) as mock_tif:
                             mock_tif.DAY = "day"
                             mock_tif.GTC = "gtc"
 
-                            with patch("src.trading.alpaca_trading_client.MarketOrderRequest"):
-                                from src.trading.alpaca_trading_client import (
-                                    AlpacaOrderManager, AlpacaTradingClient)
+                            with patch(
+                                "src.trading.broker.alpaca_trading_client.MarketOrderRequest"
+                            ):
+                                from src.trading.broker.alpaca_trading_client import (
+                                    AlpacaOrderManager,
+                                    AlpacaTradingClient,
+                                )
 
                                 AlpacaTradingClient._instances = {}
 
@@ -604,14 +695,20 @@ class TestAlpacaOrderManagerLimitOrder:
 
     def test_place_limit_order_negative_price(self, mock_config, mock_trading_client):
         """Test limit order fails with negative price."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -627,14 +724,20 @@ class TestAlpacaOrderManagerCancelOrder:
 
     def test_cancel_order_success(self, mock_config, mock_trading_client):
         """Test successful order cancellation."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -648,14 +751,20 @@ class TestAlpacaOrderManagerCancelOrder:
         """Test cancel order handles API errors."""
         mock_trading_client.cancel_order_by_id.side_effect = Exception("API Error")
 
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -673,14 +782,20 @@ class TestAlpacaOrderManagerClosePosition:
         """Test close_position when no position exists."""
         mock_trading_client.get_all_positions.return_value = []
 
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -696,14 +811,20 @@ class TestAlpacaOrderManagerStopOrder:
 
     def test_place_stop_order_negative_price(self, mock_config, mock_trading_client):
         """Test stop order fails with negative price."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -719,14 +840,20 @@ class TestAlpacaOrderManagerTrailingStop:
 
     def test_place_trailing_stop_no_trail_params(self, mock_config, mock_trading_client):
         """Test trailing stop order fails without trail parameters."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -742,14 +869,20 @@ class TestAlpacaOrderManagerBracketOrder:
 
     def test_place_bracket_order_no_exit_prices(self, mock_config, mock_trading_client):
         """Test bracket order fails without exit prices."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaOrderManager,
+                        AlpacaTradingClient,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -760,28 +893,25 @@ class TestAlpacaOrderManagerBracketOrder:
                     assert "take_profit_price or stop_loss_price" in result["message"]
 
 
-class TestAlpacaOrderManagerMarketHours:
-    """Test AlpacaOrderManager._is_market_hours()."""
+class TestAlpacaMarketHours:
+    """Market status used by the Alpaca agent tools (broker market_hours.is_market_hours)."""
 
-    def test_is_market_hours_returns_dict(self, mock_config, mock_trading_client):
-        """Test _is_market_hours returns proper structure."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
-            with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
-                return_value=mock_trading_client,
-            ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaOrderManager, AlpacaTradingClient)
+    def test_is_market_hours_returns_dict(self):
+        from src.trading.broker.market_hours import is_market_hours
 
-                    AlpacaTradingClient._instances = {}
+        for extended in (False, True):
+            result = is_market_hours(extended)
+            assert "is_open" in result
+            assert result["session"] == ("extended" if extended else "regular")
+            assert "current_session" in result
 
-                    manager = AlpacaOrderManager(mode="paper")
-                    result = manager._is_market_hours()
+    def test_unified_tool_check_market_hours(self):
+        """AlpacaUnifiedTool.check_market_hours called a missing manager method."""
+        from src.trading.broker.alpaca_autogen_tools import AlpacaUnifiedTool
 
-                    assert "is_open" in result
-                    assert "session" in result
-                    assert "current_session" in result
+        tool = AlpacaUnifiedTool.__new__(AlpacaUnifiedTool)  # skip broker setup
+        result = tool.check_market_hours(extended_hours=True)
+        assert result["extended_hours"] is True and "is_open" in result
 
 
 # =============================================================================
@@ -794,14 +924,20 @@ class TestConvenienceFunctions:
 
     def test_get_account_status_function(self, mock_config, mock_trading_client):
         """Test get_account_status convenience function."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaTradingClient, get_account_status)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaTradingClient,
+                        get_account_status,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -810,14 +946,20 @@ class TestConvenienceFunctions:
 
     def test_get_positions_function(self, mock_config, mock_trading_client):
         """Test get_positions convenience function."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    from src.trading.alpaca_trading_client import (
-                        AlpacaTradingClient, get_positions)
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaTradingClient,
+                        get_positions,
+                    )
 
                     AlpacaTradingClient._instances = {}
 
@@ -826,17 +968,25 @@ class TestConvenienceFunctions:
 
     def test_get_orders_function(self, mock_config, mock_trading_client):
         """Test get_orders convenience function."""
-        with patch("src.trading.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
             with patch(
-                "src.trading.alpaca_trading_client.TradingClient",
+                "src.trading.broker.alpaca_trading_client.TradingClient",
                 return_value=mock_trading_client,
             ):
-                with patch("src.trading.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
-                    with patch("src.trading.alpaca_trading_client.QueryOrderStatus") as mock_query:
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    with patch(
+                        "src.trading.broker.alpaca_trading_client.QueryOrderStatus"
+                    ) as mock_query:
                         mock_query.OPEN = "open"
 
-                        from src.trading.alpaca_trading_client import (
-                            AlpacaTradingClient, get_orders)
+                        from src.trading.broker.alpaca_trading_client import (
+                            AlpacaTradingClient,
+                            get_orders,
+                        )
 
                         AlpacaTradingClient._instances = {}
 

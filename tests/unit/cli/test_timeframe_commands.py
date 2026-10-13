@@ -20,6 +20,7 @@ import pytest
 @pytest.fixture(autouse=True, scope="module")
 def mock_config_defaults():
     """Mock config_defaults module."""
+    monkeypatch = pytest.MonkeyPatch()  # module scope: the builtin fixture is per-test
     mock_trading_config = MagicMock()
 
     # Mock TimeframeConfig
@@ -42,15 +43,17 @@ def mock_config_defaults():
 
     mock_trading_config.get_config.return_value = mock_config
 
-    sys.modules["config_defaults"] = MagicMock()
-    sys.modules["config_defaults.trading_config"] = mock_trading_config
-    sys.modules["config_defaults.message_loader"] = MagicMock()
+    monkeypatch.setitem(sys.modules, "config_defaults", MagicMock())
+    monkeypatch.setitem(sys.modules, "config_defaults.trading_config", mock_trading_config)
+    monkeypatch.setitem(sys.modules, "config_defaults.message_loader", MagicMock())
 
     yield
 
-    # Cleanup
+    monkeypatch.undo()
+    # monkeypatch restores the real config_defaults modules. Evict modules imported
+    # against the mocks so later tests import them fresh.
     for mod in list(sys.modules.keys()):
-        if mod.startswith("config_defaults"):
+        if "timeframe_commands" in mod or "timeframe_tools" in mod:
             del sys.modules[mod]
 
 
@@ -382,7 +385,9 @@ class TestSingletonPattern(TestTimeframeCommands):
             return_value=mock_timeframe_manager,
         ):
             from src.cli.commands.timeframe_commands import (
-                TimeframeCommands, get_timeframe_commands)
+                TimeframeCommands,
+                get_timeframe_commands,
+            )
 
             # Reset singleton
             TimeframeCommands._instance = None

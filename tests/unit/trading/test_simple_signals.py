@@ -19,10 +19,6 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-# Mock config_defaults before importing
-sys.modules["config_defaults"] = MagicMock()
-sys.modules["config_defaults.trading_config"] = MagicMock()
-
 
 # =============================================================================
 # Test Data Generators
@@ -140,8 +136,8 @@ def mock_trading_config():
 @pytest.fixture
 def signal_generator(mock_trading_config):
     """Create a SimpleSignalGenerator with mocked config."""
-    with patch("src.trading.simple_signals.TradingConfig", return_value=mock_trading_config):
-        from src.trading.simple_signals import SimpleSignalGenerator
+    with patch("src.trading.utils.simple_signals.TradingConfig", return_value=mock_trading_config):
+        from src.trading.utils.simple_signals import SimpleSignalGenerator
 
         return SimpleSignalGenerator(config=mock_trading_config)
 
@@ -156,8 +152,10 @@ class TestSimpleSignalGeneratorInit:
 
     def test_init_with_default_config(self, mock_trading_config):
         """Test initialization with default config."""
-        with patch("src.trading.simple_signals.TradingConfig", return_value=mock_trading_config):
-            from src.trading.simple_signals import SimpleSignalGenerator
+        with patch(
+            "src.trading.utils.simple_signals.TradingConfig", return_value=mock_trading_config
+        ):
+            from src.trading.utils.simple_signals import SimpleSignalGenerator
 
             generator = SimpleSignalGenerator(config=mock_trading_config)
 
@@ -170,8 +168,10 @@ class TestSimpleSignalGeneratorInit:
 
     def test_init_with_custom_parameters(self, mock_trading_config):
         """Test initialization with custom parameter overrides."""
-        with patch("src.trading.simple_signals.TradingConfig", return_value=mock_trading_config):
-            from src.trading.simple_signals import SimpleSignalGenerator
+        with patch(
+            "src.trading.utils.simple_signals.TradingConfig", return_value=mock_trading_config
+        ):
+            from src.trading.utils.simple_signals import SimpleSignalGenerator
 
             generator = SimpleSignalGenerator(
                 config=mock_trading_config,
@@ -376,8 +376,10 @@ class TestGetSimpleSignal:
 
     def test_get_simple_signal_returns_dict(self, mock_trading_config):
         """Test that get_simple_signal returns proper dict."""
-        with patch("src.trading.simple_signals.TradingConfig", return_value=mock_trading_config):
-            from src.trading.simple_signals import get_simple_signal
+        with patch(
+            "src.trading.utils.simple_signals.TradingConfig", return_value=mock_trading_config
+        ):
+            from src.trading.utils.simple_signals import get_simple_signal
 
             data = create_bullish_price_data()
             result = get_simple_signal(data, "SPY")
@@ -397,8 +399,10 @@ class TestErrorHandling:
 
     def test_exception_returns_hold(self, mock_trading_config):
         """Test that exceptions return HOLD with error."""
-        with patch("src.trading.simple_signals.TradingConfig", return_value=mock_trading_config):
-            from src.trading.simple_signals import SimpleSignalGenerator
+        with patch(
+            "src.trading.utils.simple_signals.TradingConfig", return_value=mock_trading_config
+        ):
+            from src.trading.utils.simple_signals import SimpleSignalGenerator
 
             generator = SimpleSignalGenerator(config=mock_trading_config)
 
