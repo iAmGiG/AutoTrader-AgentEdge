@@ -27,6 +27,7 @@ except ImportError:
     yaml = None
 
 from src.utils.date_utils import now_iso
+from src.utils.state_paths import get_user_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -109,13 +110,20 @@ class TradingModeManager:
     to position sizing, stop management, and risk calculations.
     """
 
-    def __init__(self, config_file: Optional[str] = None, mode: Optional[TradingMode] = None):
+    def __init__(
+        self,
+        config_file: Optional[str] = None,
+        mode: Optional[TradingMode] = None,
+        db_path: Optional[str] = None,
+    ):
         """
         Initialize trading mode manager.
 
         Args:
             config_file: Path to trading_modes.yaml (default: config_defaults/)
             mode: Initial trading mode (default: from config or MODERATE)
+            db_path: SQLite file for the persisted mode (default: <state dir>/user.db,
+                where the state dir honours $AUTOTRADER_STATE_DIR)
         """
         if yaml is None:
             raise ImportError("PyYAML required. Install with: pip install pyyaml")
@@ -128,9 +136,7 @@ class TradingModeManager:
         self._config = self._load_config()
 
         # SQLite database for persisting current mode (Issue #434 Phase 1)
-        db_dir = os.path.join(os.path.dirname(__file__), "../../state")
-        os.makedirs(db_dir, exist_ok=True)
-        self._db_path = os.path.join(db_dir, "user.db")
+        self._db_path = db_path or get_user_db_path()
         self._init_database()
 
         # Load persisted mode or use provided/default
