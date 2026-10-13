@@ -68,8 +68,13 @@ def build_frame(bt: ResearchBacktester, symbol: str) -> pd.DataFrame:
 
 
 def har_design(df: pd.DataFrame, target: str, with_regime: bool) -> pd.DataFrame:
-    """Target ``y`` plus HAR regressors (and regime dummies), rows with full history only."""
-    rv = df[target]
+    """Target ``y`` plus HAR regressors (and regime dummies), rows with full history only.
+
+    A ``log_`` prefix (e.g. ``log_rv_park``) fits log-HAR: the log of the variance on the logs
+    of its trailing averages, so regime dummies scale variance and forecasts stay positive.
+    """
+    log = target.startswith("log_")
+    rv = df[target[4:]] if log else df[target]
     x = pd.DataFrame(
         {
             "rv_d": rv.shift(1),
@@ -78,6 +83,9 @@ def har_design(df: pd.DataFrame, target: str, with_regime: bool) -> pd.DataFrame
         },
         index=df.index,
     )
+    if log:
+        rv = np.log(rv.where(rv > 0))
+        x = np.log(x.where(x > 0))
     if with_regime:
         x["bearish"] = df["bearish"]
         x["bullish"] = df["bullish"]
@@ -125,9 +133,11 @@ def _dm_test(loss_base: pd.Series, loss_model: pd.Series) -> dict:
 def oos_forecast(df: pd.DataFrame, target: str) -> dict:
     """Fit HAR with and without regime before SPLIT_DATE, forecast after it, compare losses.
 
-    Coefficients are fixed at the in-sample estimates (no re-estimation). Forecasts are
-    floored at 1% of the in-sample mean so QLIKE (log f + y/f) stays defined.
+    Coefficients are fixed at the in-sample estimates (no re-estimation). Linear forecasts
+    are floored at 1% of the in-sample mean so QLIKE (log f + y/f) stays defined. Log-HAR
+    forecasts are mapped back to variance as exp(pred + s^2/2) and losses use variance levels.
     """
+    log = target.startswith("log_")
     split = pd.Timestamp(SPLIT_DATE)
     forecasts = {}
     for name, with_regime in (("har", False), ("har_regime", True)):
@@ -135,9 +145,19 @@ def oos_forecast(df: pd.DataFrame, target: str) -> dict:
         train, test = data[data.index < split], data[data.index >= split]
         fit = sm.OLS(train["y"], sm.add_constant(train.drop(columns="y"))).fit()
         pred = fit.predict(sm.add_constant(test.drop(columns="y"), has_constant="add"))
-        forecasts[name] = pred.clip(lower=0.01 * train["y"].mean())
+        if log:
+            forecasts[name] = np.exp(pred + fit.mse_resid / 2)
+        else:
+            forecasts[name] = pred.clip(lower=0.01 * train["y"].mean())
     y = har_design(df, target, False)["y"]
     y = y[y.index >= split]
+    if log:
+        y = np.exp(y)
+    common = y.index.intersection(forecasts["har"].index).intersection(
+        forecasts["har_regime"].index
+    )
+    y = y.loc[common]
+    forecasts = {k: f.loc[common] for k, f in forecasts.items()}
     out = {"n_test": len(y), "train_end": SPLIT_DATE}
     for loss_name, loss in (
         ("mse", lambda f: (y - f) ** 2),
@@ -170,8 +190,8 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
     print(f"  Days: {len(df)}  regimes: {counts}")
     result = {"symbol": symbol, "n_days": len(df), "regime_counts": counts, "targets": {}}
 
-    for target in ("rv_sq", "rv_park"):
-        res = {"raw_gap": raw_regime_gap(df, target)}
+    for target in ("rv_sq", "rv_park", "log_rv_park"):
+        res = {"raw_gap": raw_regime_gap(df, target.removeprefix("log_"))}
         for label, part in (
             ("full", df),
             ("pre_2020", df[df.index < SPLIT_DATE]),
@@ -244,6 +264,7 @@ def main():
             "rv_proxies": {
                 "rv_sq": "squared close-to-close return (percent^2)",
                 "rv_park": "Parkinson high-low variance (percent^2)",
+                "log_rv_park": "log-HAR on Parkinson variance; dummies are log variance ratios",
             },
             "standard_errors": "Newey-West HAC, maxlags = floor(4 (n/100)^(2/9))",
             "regime_lag_days": args.regime_lag,
