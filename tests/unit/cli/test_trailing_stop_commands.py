@@ -249,9 +249,9 @@ class TestTrailingStopCommands(unittest.TestCase):
 
     def test_get_mode_description_conservative(self):
         """Test mode description for conservative settings."""
-        config = Mock()
+        config = Mock(spec=TrailingStopConfig)  # only fields the real config has
         config.progressive_breakeven_pct = 0.02
-        config.stop_loss = 0.02
+        config.climb_rate = "slow"  # conservative mode in trading_modes.yaml
 
         result = self.commands._get_mode_description(config)
         self.assertEqual(result, "Conservative")

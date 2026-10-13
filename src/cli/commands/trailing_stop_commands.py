@@ -270,10 +270,12 @@ class TrailingStopCommands:
         Returns:
             Mode description string
         """
-        # Try to infer mode from parameters
-        if config.progressive_breakeven_pct <= 0.02 and hasattr(config, "stop_loss"):
-            if config.stop_loss <= 0.03:
-                return "Conservative"
+        # The trading modes differ by climb rate (trading_modes.yaml: conservative=slow,
+        # moderate=medium, aggressive=fast); fall back to the breakeven trigger otherwise.
+        by_climb_rate = {"slow": "Conservative", "medium": "Moderate", "fast": "Aggressive"}
+        climb_rate = getattr(config, "climb_rate", None)
+        if isinstance(climb_rate, str) and climb_rate in by_climb_rate:
+            return by_climb_rate[climb_rate]
         if config.progressive_breakeven_pct >= 0.03:
             return "Aggressive"
         return "Moderate"
