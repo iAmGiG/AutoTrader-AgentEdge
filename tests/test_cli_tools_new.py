@@ -21,10 +21,18 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests.module_sandbox import sandboxed_modules
+
 # Add project root to path BEFORE any imports
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+
+
+@pytest.fixture(autouse=True)
+def isolated_state_dir(tmp_path, monkeypatch):
+    """Keep state managers away from the real state/user.db (see tests/unit/conftest.py)."""
+    monkeypatch.setenv("AUTOTRADER_STATE_DIR", str(tmp_path / "state"))
 
 
 def import_module_directly(module_path: str, module_name: str):
@@ -42,7 +50,14 @@ def import_module_directly(module_path: str, module_name: str):
 
 
 @pytest.fixture
-def voter_tools_module(monkeypatch):
+def module_sandbox():
+    """Restore sys.modules and the config singleton after a fixture installs stubs."""
+    with sandboxed_modules("voter_tools_test", "backup_tools_test", "timeframe_tools_test"):
+        yield
+
+
+@pytest.fixture
+def voter_tools_module(module_sandbox, monkeypatch):
     """Load voter_tools module directly."""
 
     # First mock the TradingConfig dependency
@@ -86,7 +101,7 @@ def voter_tools_module(monkeypatch):
 
 
 @pytest.fixture
-def backup_tools_module(monkeypatch):
+def backup_tools_module(module_sandbox, monkeypatch):
     """Load backup_tools module directly."""
 
     # Mock autogen_core.tools
@@ -219,7 +234,7 @@ class TestEnhancedTimeframeToolsFunctions:
     """
 
     @pytest.fixture
-    def timeframe_helpers(self, monkeypatch):
+    def timeframe_helpers(self, module_sandbox, monkeypatch):
         """Load just the helper functions from timeframe_tools."""
 
         # Mock all dependencies

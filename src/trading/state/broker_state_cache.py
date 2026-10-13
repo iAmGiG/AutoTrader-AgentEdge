@@ -119,8 +119,9 @@ class BrokerStateCache:
             positions = self.account_monitor.get_positions()
 
             # Get all orders (one API call)
-            # Use 'all' to include pending_new, accepted, and other statuses
-            orders = self.account_monitor.get_orders(status="all")
+            # 'open' covers every working status (new, accepted, pending_new, held,
+            # partially_filled); bracket legs come nested under their parent.
+            orders = self.account_monitor.get_orders(status="open")
 
             # Get account info (one API call)
             account = self.account_monitor.get_account_status()
@@ -154,14 +155,12 @@ class BrokerStateCache:
             active_statuses = ["new", "pending_new", "accepted", "partially_filled", "held"]
 
             for order in orders:
-                # Filter to only active orders
-                order_status = str(order.get("status", "")).lower()
-                if not any(status in order_status for status in active_statuses):
-                    continue  # Skip filled, cancelled, expired orders
-
                 symbol = order["symbol"]
-                if symbol not in broker_state["orders"]:
-                    broker_state["orders"][symbol] = []
+
+                # A filled bracket entry still has working stop/target legs, so a parent
+                # that is no longer active is skipped but its legs are still read.
+                order_status = str(order.get("status", "")).lower()
+                parent_active = any(status in order_status for status in active_statuses)
 
                 # Convert enums to strings for consistent comparison
                 order_entry = {
@@ -178,8 +177,9 @@ class BrokerStateCache:
                     "status": str(order["status"]),  # Convert enum to string
                     "time_in_force": str(order["time_in_force"]),  # Convert enum to string
                 }
-                broker_state["orders"][symbol].append(order_entry)
-                logger.debug(f"Order {symbol}: {order_entry}")
+                if parent_active:
+                    broker_state["orders"].setdefault(symbol, []).append(order_entry)
+                    logger.debug(f"Order {symbol}: {order_entry}")
 
                 # Process bracket order legs (stop-loss and take-profit)
                 if "legs" in order and order["legs"]:
@@ -203,7 +203,7 @@ class BrokerStateCache:
                             "time_in_force": str(leg["time_in_force"]),
                             "parent_order_id": order["id"],  # Track parent relationship
                         }
-                        broker_state["orders"][symbol].append(leg_entry)
+                        broker_state["orders"].setdefault(symbol, []).append(leg_entry)
                         logger.debug(f"  Bracket leg {symbol}: {leg_entry}")
 
             logger.info(

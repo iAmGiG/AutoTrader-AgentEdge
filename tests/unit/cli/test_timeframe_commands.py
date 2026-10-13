@@ -10,16 +10,21 @@ Tests timeframe management CLI functionality:
 - Agent data retrieval
 """
 
+import contextlib
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from tests.module_sandbox import sandboxed_modules
 
 
 # Mock config_defaults before any imports
 @pytest.fixture(autouse=True, scope="module")
 def mock_config_defaults():
     """Mock config_defaults module."""
+    sandbox = contextlib.ExitStack()  # restores sys.modules and get_config() afterwards
+    sandbox.enter_context(sandboxed_modules())
     monkeypatch = pytest.MonkeyPatch()  # module scope: the builtin fixture is per-test
     mock_trading_config = MagicMock()
 
@@ -50,11 +55,7 @@ def mock_config_defaults():
     yield
 
     monkeypatch.undo()
-    # monkeypatch restores the real config_defaults modules. Evict modules imported
-    # against the mocks so later tests import them fresh.
-    for mod in list(sys.modules.keys()):
-        if "timeframe_commands" in mod or "timeframe_tools" in mod:
-            del sys.modules[mod]
+    sandbox.close()  # evicts modules imported against the mocks; later tests re-import them
 
 
 class TestTimeframeCommands:

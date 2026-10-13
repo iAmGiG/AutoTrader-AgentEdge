@@ -33,6 +33,12 @@ import pandas as pd
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def isolated_state_dir(tmp_path, monkeypatch):
+    """Keep state managers away from the real state/user.db (see tests/unit/conftest.py)."""
+    monkeypatch.setenv("AUTOTRADER_STATE_DIR", str(tmp_path / "state"))
+
+
 def import_module_directly(module_path: str, module_name: str):
     """Import a module directly from file path, bypassing package __init__."""
     spec = importlib.util.spec_from_file_location(module_name, module_path)

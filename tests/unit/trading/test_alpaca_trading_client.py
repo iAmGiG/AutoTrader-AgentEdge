@@ -23,6 +23,14 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
 
+@pytest.fixture(autouse=True)
+def reset_client_singletons(monkeypatch):
+    """Give each test an empty AlpacaTradingClient singleton map, restored afterwards."""
+    from src.trading.broker.alpaca_trading_client import AlpacaTradingClient
+
+    monkeypatch.setattr(AlpacaTradingClient, "_instances", {})
+
+
 # alpaca-py is a project dependency, so the real SDK is imported. Tests patch the names
 # used inside src.trading.broker.alpaca_trading_client instead of stubbing sys.modules,
 # which leaked MagicMock packages into other tests.
@@ -153,6 +161,58 @@ def mock_positions_data():
 # =============================================================================
 # AlpacaTradingClient Tests
 # =============================================================================
+
+
+def _uuid(name: str) -> str:
+    import uuid
+
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, name))
+
+
+def _api_order(name, order_type, status, order_class, side="buy", legs=None, **prices):
+    """A real alpaca.trading.models.Order, shaped like a nested=True API response."""
+    from alpaca.trading.models import Order
+
+    now = "2026-10-13T14:30:00Z"
+    return Order.model_validate(
+        {
+            "id": _uuid(name),
+            "client_order_id": name,
+            "created_at": now,
+            "updated_at": now,
+            "submitted_at": now,
+            "filled_at": now if status == "filled" else None,
+            "symbol": "SPY",
+            "asset_class": "us_equity",
+            "qty": "10",
+            "filled_qty": "10" if status == "filled" else "0",
+            "order_class": order_class,
+            "order_type": order_type,
+            "type": order_type,
+            "side": side,
+            "time_in_force": "gtc",
+            "status": status,
+            "extended_hours": False,
+            "legs": legs,
+            **prices,
+        }
+    )
+
+
+def _monitor_get_orders(mock_config, mock_trading_client, status):
+    with patch("src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config):
+        with patch(
+            "src.trading.broker.alpaca_trading_client.TradingClient",
+            return_value=mock_trading_client,
+        ):
+            with patch("src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True):
+                from src.trading.broker.alpaca_trading_client import (
+                    AlpacaAccountMonitor,
+                    AlpacaTradingClient,
+                )
+
+                AlpacaTradingClient._instances = {}
+                return AlpacaAccountMonitor(mode="paper").get_orders(status=status)
 
 
 class TestAlpacaTradingClientInit:
@@ -423,63 +483,58 @@ class TestAlpacaAccountMonitorGetOrders:
                         assert orders[0]["symbol"] == "SPY"
 
     def test_get_orders_two_bracket_orders(self, mock_config, mock_trading_client):
-        """Legs of every bracket order are attached to their parent.
+        """Nested leg Orders of every bracket are attached to their parent.
 
-        get_orders used to rebind its leg-ID set to a list while logging, so a second
-        bracket order raised AttributeError ('list' object has no attribute 'add').
+        Real alpaca-py responses with nested=True carry legs as full Order objects under
+        the parent (never top-level). get_orders used to treat them as IDs: first it raised
+        AttributeError on a second bracket, then it attached no legs at all.
         """
-
-        def _order(oid, legs=None, order_class=None):
-            o = MagicMock()
-            o.id = oid
-            o.symbol = "SPY"
-            o.side = MagicMock(value="buy")
-            o.qty = "1"
-            o.filled_qty = "0"
-            o.status = MagicMock(value="new")
-            o.order_type = MagicMock(value="limit")
-            o.time_in_force = MagicMock(value="gtc")
-            o.limit_price = "100"
-            o.stop_price = None
-            o.submitted_at = None
-            o.filled_at = None
-            o.canceled_at = None
-            o.filled_avg_price = None
-            o.order_class = MagicMock(value=order_class or "simple")
-            o.legs = legs or []
-            return o
-
         orders = [
-            _order("p1", legs=["l1a", "l1b"], order_class="bracket"),
-            _order("p2", legs=["l2a", "l2b"], order_class="bracket"),
-            _order("l1a"),
-            _order("l1b"),
-            _order("l2a"),
-            _order("l2b"),
+            _api_order(
+                "p1",
+                "market",
+                "filled",
+                "bracket",
+                legs=[
+                    _api_order("p1-tp", "limit", "new", "simple", side="sell", limit_price="110"),
+                    _api_order("p1-sl", "stop", "held", "simple", side="sell", stop_price="95"),
+                ],
+            ),
+            _api_order(
+                "p2",
+                "market",
+                "filled",
+                "bracket",
+                legs=[
+                    _api_order("p2-tp", "limit", "new", "simple", side="sell", limit_price="210"),
+                    _api_order("p2-sl", "stop", "held", "simple", side="sell", stop_price="190"),
+                ],
+            ),
         ]
         mock_trading_client.get_orders.return_value = orders
-        with patch(
-            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
-        ):
-            with patch(
-                "src.trading.broker.alpaca_trading_client.TradingClient",
-                return_value=mock_trading_client,
-            ):
-                with patch(
-                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
-                ):
-                    from src.trading.broker.alpaca_trading_client import (
-                        AlpacaAccountMonitor,
-                        AlpacaTradingClient,
-                    )
-
-                    AlpacaTradingClient._instances = {}
-                    monitor = AlpacaAccountMonitor(mode="paper")
-                    result = monitor.get_orders(status="all")
+        result = _monitor_get_orders(mock_config, mock_trading_client, status="all")
 
         by_id = {o["id"]: o for o in result}
-        assert sorted(leg["id"] for leg in by_id["p1"]["legs"]) == ["l1a", "l1b"]
-        assert sorted(leg["id"] for leg in by_id["p2"]["legs"]) == ["l2a", "l2b"]
+        assert set(by_id) == {_uuid("p1"), _uuid("p2")}
+        legs = {leg["id"]: leg for leg in by_id[_uuid("p1")]["legs"]}
+        assert set(legs) == {_uuid("p1-tp"), _uuid("p1-sl")}
+        assert legs[_uuid("p1-sl")]["order_type"] == "stop"
+        assert legs[_uuid("p1-sl")]["stop_price"] == 95.0
+        assert legs[_uuid("p1-sl")]["status"] == "held"
+        assert legs[_uuid("p1-tp")]["limit_price"] == 110.0
+        assert len(by_id[_uuid("p2")]["legs"]) == 2
+        assert by_id[_uuid("p1")]["order_class"] == "bracket"
+        mock_trading_client.get_order_by_id.assert_not_called()
+
+    def test_get_orders_all_requests_all_statuses(self, mock_config, mock_trading_client):
+        """status='all' must send QueryOrderStatus.ALL (no status means Alpaca's 'open')."""
+        from alpaca.trading.enums import QueryOrderStatus
+
+        mock_trading_client.get_orders.return_value = []
+        _monitor_get_orders(mock_config, mock_trading_client, status="all")
+        request = mock_trading_client.get_orders.call_args.kwargs["filter"]
+        assert request.status == QueryOrderStatus.ALL
+        assert request.nested is True
 
     def test_get_orders_all_status(self, mock_config, mock_trading_client):
         """Test get_orders with 'all' status."""

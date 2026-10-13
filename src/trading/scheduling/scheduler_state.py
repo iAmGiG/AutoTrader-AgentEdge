@@ -13,12 +13,12 @@ Uses the same state/user.db as trading_modes.py for consistency.
 """
 
 import logging
-import os
 import sqlite3
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from src.utils.date_utils import get_datetime_now, now_iso
+from src.utils.state_paths import get_user_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,7 @@ class SchedulerStateManager:
             db_path: Path to SQLite database (default: state/user.db)
         """
         if db_path is None:
-            state_dir = os.path.join(os.path.dirname(__file__), "../../../state")
-            os.makedirs(state_dir, exist_ok=True)
-            db_path = os.path.join(state_dir, "user.db")
+            db_path = get_user_db_path()
 
         self._db_path = db_path
         self._init_database()

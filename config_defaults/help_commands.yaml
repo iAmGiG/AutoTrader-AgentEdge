@@ -803,32 +803,32 @@ exit:
 
 /backup:
   category: System
-  description: Create configuration backup (Issue #490)
-  usage: /backup [name]
+  description: Back up and restore the local databases (Issue #490)
+  usage: /backup [list | create | restore NAME | export TABLE | status]
   examples:
   - /backup
-  - /backup pre_changes
-  - /backup before_live_trading
+  - /backup create
+  - /backup list
+  - /backup restore user_20261013_143022.db
+  - /backup export trading_mode_history
   aliases:
   - backup
   tags:
   - system
-  - configuration
+  - database
   - backup
   - slash-command
   related:
   - show config
   - show config-file
-  details: "Create a timestamped backup of current configuration files.\n\nUsage:\n\
-    \  /backup              - Create backup with auto-generated timestamp name\n\
-    \  /backup NAME         - Create backup with custom name prefix\n\n\
-    Backs up:\n\
-    \  - trading_config.yaml\n\
-    \  - scanner_config.yaml\n\
-    \  - trading_modes.yaml\n\
-    \  - accounts_config.yaml\n\n\
-    Backups are stored in the state/backups/ directory.\n\
-    Use before making significant configuration changes."
+  details: "Back up and restore the SQLite state databases.\n\nSubcommands:\n\
+    \  /backup                - Show backup status\n\
+    \  /backup list           - List backups, newest first, with the database each belongs to\n\
+    \  /backup create         - Back up state/user.db (saved trading mode, alerts, watchlists, GTT orders)\n\
+    \  /backup restore NAME   - Restore a backup listed by /backup list (the current database is backed up first)\n\
+    \  /backup export TABLE   - Export a table of state/user.db to JSON in state/exports/\n\
+    \  /backup status         - Show backup status\n\n\
+    Backups are stored in state/backups/. Configuration YAML files are not included."
 
 # Slash Commands (Issue #506, #507, #508)
 /gtt:

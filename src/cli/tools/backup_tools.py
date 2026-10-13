@@ -12,7 +12,6 @@ Original Implementation: src/utils/db_backup.py (when available)
 Pattern: Pure function wrappers → FunctionTool → Registry
 """
 
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -26,7 +25,10 @@ from src.utils.safe_print import get_symbol
 # DBBackupManager maps these to actual paths: user -> state/user.db, cache -> .cache/trading_data.db
 STATE_DB = "user"  # Maps to state/user.db
 CACHE_DB = "cache"  # Maps to .cache/trading_data.db
-BACKUP_DIR = "state/backups"  # Same directory DBBackupManager writes to (project root)
+# Fallback paths, used only when DBBackupManager cannot be imported; with the manager,
+# its own (project-root) paths are used so the result does not depend on the cwd.
+BACKUP_DIR = "state/backups"
+DB_FILES = {STATE_DB: "state/user.db", CACHE_DB: ".cache/trading_data.db"}
 
 
 # ============================================================================
@@ -34,9 +36,13 @@ BACKUP_DIR = "state/backups"  # Same directory DBBackupManager writes to (projec
 # ============================================================================
 
 
-def _failure_text(result) -> str:
-    """Error text from a DBBackupManager result (BackupResult/ExportResult carry ``message``)."""
-    return getattr(result, "error", None) or getattr(result, "message", "") or "unknown error"
+def _failure_text(result, verb: str) -> str:
+    """Error text from a DBBackupManager result without repeating '<verb> failed:'."""
+    message = getattr(result, "message", "") or "unknown error"
+    prefix = f"{verb} failed:"
+    if message.lower().startswith(prefix.lower()):
+        message = message[len(prefix) :].strip()
+    return message
 
 
 def _get_backup_manager():
@@ -49,24 +55,40 @@ def _get_backup_manager():
         return None
 
 
+def _backup_dir(manager) -> Path:
+    return Path(manager.backup_dir) if manager else Path(BACKUP_DIR)
+
+
+def _db_file(manager, db_name: str) -> Path:
+    if manager:
+        return Path(manager.get_db_path(db_name))
+    return Path(DB_FILES.get(db_name, db_name))
+
+
+def _backup_db_name(backup_name: str):
+    """Database a backup file belongs to, from its 'user_' / 'cache_' prefix."""
+    prefix = backup_name.split("_", 1)[0]
+    return prefix if prefix in DB_FILES else None
+
+
 def backup_database(db_path: str = STATE_DB) -> str:
     """
-    Create a backup of a database file.
+    Create a backup of a database.
 
-    Creates a timestamped backup copy of the specified database.
-    Backups are stored in the backups/ directory.
+    Creates a timestamped backup copy of the specified database in state/backups/.
 
     Args:
-        db_path: Path to database file (default: state/user.db)
+        db_path: Database name, "user" (state/user.db, default) or "cache"
+            (.cache/trading_data.db)
 
     Returns:
         Success message with backup path, or error message
 
     Example:
         >>> backup_database()
-        'Backup created: backups/user_20241215_143022.db'
-        >>> backup_database('.cache/trading_data.db')
-        'Backup created: backups/trading_data_20241215_143022.db'
+        'Backup created: state/backups/user_20241215_143022.db'
+        >>> backup_database('cache')
+        'Backup created: state/backups/cache_20241215_143022.db'
     """
     manager = _get_backup_manager()
 
@@ -77,25 +99,22 @@ def backup_database(db_path: str = STATE_DB) -> str:
             return f"{get_symbol('ERROR')} Backup failed: {e}"
         if result.success:
             return f"{get_symbol('SUCCESS')} Backup created: {result.backup_path}"
-        return f"{get_symbol('ERROR')} Backup failed: {_failure_text(result)}"
+        return f"{get_symbol('ERROR')} Backup failed: {_failure_text(result, 'Backup')}"
 
     # Stub implementation - manual file copy
-    if not os.path.exists(db_path):
+    source = _db_file(None, db_path)
+    if not source.exists():
         return f"{get_symbol('ERROR')} Database not found: {db_path}"
 
-    # Create backup directory
-    backup_dir = Path(BACKUP_DIR)
+    backup_dir = _backup_dir(None)
     backup_dir.mkdir(parents=True, exist_ok=True)
-
-    # Generate backup filename
-    db_name = Path(db_path).stem
-    timestamp = format_for_filename()
-    backup_path = backup_dir / f"{db_name}_{timestamp}.db"
+    name = db_path if db_path in DB_FILES else source.stem
+    backup_path = backup_dir / f"{name}_{format_for_filename()}.db"
 
     try:
         import shutil
 
-        shutil.copy2(db_path, backup_path)
+        shutil.copy2(source, backup_path)
         return f"{get_symbol('SUCCESS')} Backup created: {backup_path}"
     except Exception as e:
         return f"{get_symbol('ERROR')} Backup failed: {e}"
@@ -105,8 +124,8 @@ def list_backups() -> str:
     """
     List all available database backups.
 
-    Shows all backup files in the backups/ directory with
-    their creation dates and sizes.
+    Shows the backup files in state/backups/ with the database each belongs to,
+    newest first.
 
     Returns:
         Formatted list of available backups
@@ -114,23 +133,22 @@ def list_backups() -> str:
     Example:
         >>> list_backups()
         'Available Backups
-        user_20241215_143022.db  (1.2 MB)  Dec 15, 2024
-        user_20241214_090000.db  (1.1 MB)  Dec 14, 2024'
+        user_20241215_143022.db  (user, 1.2 MB)  2024-12-15 14:30:22'
     """
-    backup_dir = Path(BACKUP_DIR)
+    backup_dir = _backup_dir(_get_backup_manager())
 
     if not backup_dir.exists():
-        return f"{get_symbol('MAILBOX')} No backups directory found.\n\nRun '/backup database' to create your first backup."
+        return f"{get_symbol('MAILBOX')} No backups directory found.\n\nRun '/backup create' to create your first backup."
 
     backups = list(backup_dir.glob("*.db"))
 
     if not backups:
-        return f"{get_symbol('MAILBOX')} No backups found.\n\nRun '/backup database' to create your first backup."
+        return f"{get_symbol('MAILBOX')} No backups found.\n\nRun '/backup create' to create your first backup."
 
     # Sort by modification time (newest first)
     backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 
-    output = f"{get_symbol('MAILBOX')} Available Backups\n"
+    output = f"{get_symbol('MAILBOX')} Available Backups ({backup_dir})\n"
     output += "=" * 60 + "\n\n"
 
     for backup in backups:
@@ -139,6 +157,7 @@ def list_backups() -> str:
         mod_time = datetime.fromtimestamp(stat.st_mtime)
 
         output += f"  {backup.name}\n"
+        output += f"    Database: {_backup_db_name(backup.name) or 'unknown'}\n"
         output += f"    Size: {size_mb:.1f} MB\n"
         output += f"    Date: {mod_time.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
@@ -148,51 +167,89 @@ def list_backups() -> str:
     return output
 
 
-def restore_backup(backup_name: str, target_db: str = STATE_DB) -> str:
+def _invalid_backup_name(backup_name: str):
+    """Error message if the name is not a plain backup file name (no directories)."""
+    if Path(backup_name).name != backup_name or not backup_name.endswith(".db"):
+        return (
+            f"{get_symbol('ERROR')} Invalid backup name: {backup_name}\n\n"
+            "Give a file name from '/backup list' (no directories)."
+        )
+    return None
+
+
+def _restore_target(backup_name: str, target_db: str):
+    """Database a restore writes to; returns (target database name, error message)."""
+    inferred = _backup_db_name(backup_name)
+    target = target_db or inferred
+    if target not in DB_FILES:
+        return None, (
+            f"{get_symbol('ERROR')} Cannot tell which database {backup_name} belongs to; "
+            f"pass target_db as one of {sorted(DB_FILES)}."
+        )
+    if inferred and target != inferred:
+        return None, (
+            f"{get_symbol('ERROR')} {backup_name} is a backup of the '{inferred}' database, "
+            f"not '{target}'."
+        )
+    return target, None
+
+
+def restore_backup(backup_name: str, target_db: str = "") -> str:
     """
     Restore a database from a backup.
 
-    Replaces the target database with a backup copy.
+    Replaces the database the backup belongs to (from its 'user_' / 'cache_' prefix)
+    with the backup copy. The current database is backed up first.
     WARNING: This will overwrite the current database!
 
     Args:
-        backup_name: Name of backup file (e.g., 'user_20241215_143022.db')
-        target_db: Target database path (default: state/user.db)
+        backup_name: File name of a backup listed by /backup list
+            (e.g., 'user_20241215_143022.db'); paths are not accepted
+        target_db: Optional database name ("user" or "cache"); must match the backup
 
     Returns:
         Success or error message
 
     Example:
         >>> restore_backup('user_20241215_143022.db')
-        'Database restored from: backups/user_20241215_143022.db'
+        'Database restored from: state/backups/user_20241215_143022.db'
     """
-    backup_path = Path(BACKUP_DIR) / backup_name
-
-    if not backup_path.exists():
-        return f"{get_symbol('ERROR')} Backup not found: {backup_name}\n\nRun '/backup list' to see available backups."
+    error = _invalid_backup_name(backup_name)
+    if error:
+        return error
 
     manager = _get_backup_manager()
+    backup_path = _backup_dir(manager) / backup_name
+
+    if not backup_path.is_file():
+        return f"{get_symbol('ERROR')} Backup not found: {backup_name}\n\nRun '/backup list' to see available backups."
+    if backup_path.stat().st_size == 0:
+        return f"{get_symbol('ERROR')} Backup file is empty: {backup_name}"
+
+    target, error = _restore_target(backup_name, target_db)
+    if error:
+        return error
 
     if manager:
         try:
-            result = manager.restore_backup(str(backup_path), target_db)
+            result = manager.restore_backup(str(backup_path), target)
         except Exception as e:
             return f"{get_symbol('ERROR')} Restore failed: {e}"
         if result.success:
             return f"{get_symbol('SUCCESS')} Database restored from: {backup_path}"
-        return f"{get_symbol('ERROR')} Restore failed: {_failure_text(result)}"
+        return f"{get_symbol('ERROR')} Restore failed: {_failure_text(result, 'Restore')}"
 
     # Stub implementation - manual file copy
+    target_file = _db_file(None, target)
     try:
         import shutil
 
         # Create backup of current before restore
-        if os.path.exists(target_db):
-            pre_restore = f"{target_db}.pre_restore"
-            shutil.copy2(target_db, pre_restore)
+        if target_file.exists():
+            shutil.copy2(target_file, f"{target_file}.pre_restore")
 
-        shutil.copy2(backup_path, target_db)
-        return f"{get_symbol('SUCCESS')} Database restored from: {backup_path}\n   (Previous DB saved to: {target_db}.pre_restore)"
+        shutil.copy2(backup_path, target_file)
+        return f"{get_symbol('SUCCESS')} Database restored from: {backup_path}\n   (Previous DB saved to: {target_file}.pre_restore)"
     except Exception as e:
         return f"{get_symbol('ERROR')} Restore failed: {e}"
 
@@ -210,40 +267,39 @@ def export_table(
 
     Args:
         table_name: Name of table to export
-        output_path: Output JSON file path (auto-generated if empty)
-        db_path: Source database path (default: state/user.db)
+        output_path: Output JSON file path (default: a new timestamped file in state/exports/)
+        db_path: Database name, "user" (default) or "cache"
 
     Returns:
         Success message with output path, or error message
 
     Example:
         >>> export_table('voter_ranking_history')
-        'Exported 150 rows to: exports/voter_ranking_history_20241215.json'
+        'Exported 150 rows to: state/exports/voter_ranking_history_20241215_143022.json'
     """
     manager = _get_backup_manager()
 
     if manager:
-        if not output_path:
-            timestamp = get_datetime_now().strftime("%Y%m%d")
-            output_path = f"exports/{table_name}_{timestamp}.json"
-
         try:
-            result = manager.export_table(db_path, table_name, output_path)
+            result = manager.export_table(db_path, table_name, output_path or None)
         except Exception as e:
             return f"{get_symbol('ERROR')} Export failed: {e}"
         if result.success:
-            return f"{get_symbol('SUCCESS')} Exported {result.row_count} rows to: {output_path}"
-        return f"{get_symbol('ERROR')} Export failed: {_failure_text(result)}"
+            return (
+                f"{get_symbol('SUCCESS')} Exported {result.row_count} rows to: {result.output_path}"
+            )
+        return f"{get_symbol('ERROR')} Export failed: {_failure_text(result, 'Export')}"
 
     # Stub implementation using sqlite3
     import json
     import sqlite3
 
-    if not os.path.exists(db_path):
+    source = _db_file(None, db_path)
+    if not source.exists():
         return f"{get_symbol('ERROR')} Database not found: {db_path}"
 
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(str(source))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -253,9 +309,6 @@ def export_table(
             (table_name,),
         )
         if not cursor.fetchone():
-            conn.close()
-            # List available tables
-            cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
             conn.close()
@@ -269,10 +322,9 @@ def export_table(
 
         # Generate output path if not provided
         if not output_path:
-            exports_dir = Path("exports")
+            exports_dir = Path("state") / "exports"
             exports_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = get_datetime_now().strftime("%Y%m%d")
-            output_path = str(exports_dir / f"{table_name}_{timestamp}.json")
+            output_path = str(exports_dir / f"{table_name}_{format_for_filename()}.json")
 
         # Write JSON
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -301,33 +353,28 @@ def show_backup_info() -> str:
         Cache DB: .cache/trading_data.db (15.1 MB)
         Backups: 5 files (23.4 MB total)'
     """
+    manager = _get_backup_manager()
     output = f"{get_symbol('INFO')} Backup System Info\n"
     output += "=" * 50 + "\n\n"
-
-    # Map database names to paths for display
-    db_path_map = {
-        STATE_DB: "state/user.db",
-        CACHE_DB: ".cache/trading_data.db",
-    }
 
     # Check databases
     output += "Databases:\n"
     for db_label, db_name in [("State DB", STATE_DB), ("Cache DB", CACHE_DB)]:
-        db_path = db_path_map.get(db_name, db_name)
-        if os.path.exists(db_path):
-            size_mb = os.path.getsize(db_path) / (1024 * 1024)
-            output += f"  {db_label}: {db_path} ({size_mb:.1f} MB)\n"
+        db_file = _db_file(manager, db_name)
+        if db_file.exists():
+            size_mb = db_file.stat().st_size / (1024 * 1024)
+            output += f"  {db_label}: {db_file} ({size_mb:.1f} MB)\n"
         else:
-            output += f"  {db_label}: {db_path} (not found)\n"
+            output += f"  {db_label}: {db_file} (not found)\n"
 
     output += "\n"
 
     # Check backups
-    backup_dir = Path(BACKUP_DIR)
+    backup_dir = _backup_dir(manager)
     if backup_dir.exists():
         backups = list(backup_dir.glob("*.db"))
         total_size = sum(b.stat().st_size for b in backups) / (1024 * 1024)
-        output += f"Backups Directory: {BACKUP_DIR}\n"
+        output += f"Backups Directory: {backup_dir}\n"
         output += f"  Total Backups: {len(backups)}\n"
         output += f"  Total Size: {total_size:.1f} MB\n"
 
@@ -338,7 +385,7 @@ def show_backup_info() -> str:
             output += f"  Created: {newest_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
     else:
         output += "Backups Directory: Not created yet\n"
-        output += "  Run '/backup database' to create your first backup\n"
+        output += "  Run '/backup create' to create your first backup\n"
 
     return output
 
@@ -347,8 +394,8 @@ def cleanup_old_backups(days: int = 30) -> str:
     """
     Clean up backups older than specified days.
 
-    Removes backup files older than the specified number of days
-    to free up disk space.
+    Removes backup files older than the specified number of days to free up disk space.
+    The 5 newest backups of each database are always kept.
 
     Args:
         days: Keep backups newer than this many days (default: 30)
@@ -369,11 +416,11 @@ def cleanup_old_backups(days: int = 30) -> str:
             return f"{get_symbol('ERROR')} Cleanup failed: {e}"
         return (
             f"{get_symbol('SUCCESS')} Cleanup complete: Removed {removed} backup(s) older than "
-            f"{days} days (the 5 newest are always kept)"
+            f"{days} days (the 5 newest backups of each database are always kept)"
         )
 
     # Stub implementation
-    backup_dir = Path(BACKUP_DIR)
+    backup_dir = _backup_dir(None)
 
     if not backup_dir.exists():
         return f"{get_symbol('MAILBOX')} No backups directory found."
@@ -409,7 +456,8 @@ def get_backup_params() -> Dict[str, Any]:
         >>> get_backup_params()
         {'state_db': 'state/user.db', 'backup_count': 5, ...}
     """
-    backup_dir = Path(BACKUP_DIR)
+    manager = _get_backup_manager()
+    backup_dir = _backup_dir(manager)
     backups: List[Dict[str, Any]] = []
 
     if backup_dir.exists():
@@ -418,21 +466,21 @@ def get_backup_params() -> Dict[str, Any]:
             backups.append(
                 {
                     "name": backup.name,
+                    "database": _backup_db_name(backup.name),
                     "size_bytes": stat.st_size,
                     "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 }
             )
 
-    # Map database names to paths
-    state_db_path = "state/user.db"
-    cache_db_path = ".cache/trading_data.db"
+    state_db_path = _db_file(manager, STATE_DB)
+    cache_db_path = _db_file(manager, CACHE_DB)
 
     return {
-        "state_db": state_db_path,
-        "cache_db": cache_db_path,
-        "backup_dir": BACKUP_DIR,
-        "state_db_exists": os.path.exists(state_db_path),
-        "cache_db_exists": os.path.exists(cache_db_path),
+        "state_db": str(state_db_path),
+        "cache_db": str(cache_db_path),
+        "backup_dir": str(backup_dir),
+        "state_db_exists": state_db_path.exists(),
+        "cache_db_exists": cache_db_path.exists(),
         "backup_count": len(backups),
         "backups": sorted(backups, key=lambda x: x["modified"], reverse=True),
     }
@@ -445,8 +493,8 @@ def get_backup_params() -> Dict[str, Any]:
 backup_database_tool = FunctionTool(
     backup_database,
     description=(
-        "Create a backup of a database file. Backups are stored with timestamps "
-        "in the backups/ directory."
+        "Create a backup of a database ('user' = state/user.db, default; 'cache'). "
+        "Backups are stored with timestamps in state/backups/."
     ),
 )
 
@@ -458,7 +506,9 @@ list_backups_tool = FunctionTool(
 restore_backup_tool = FunctionTool(
     restore_backup,
     description=(
-        "Restore a database from a backup. WARNING: This will overwrite " "the current database."
+        "Restore a database from a backup file listed by list_backups. The database is "
+        "chosen from the backup name; the current one is backed up first. "
+        "WARNING: This will overwrite the current database."
     ),
 )
 

@@ -68,6 +68,48 @@ ALPACA_LIVE_URL = "https://api.alpaca.markets"
 logger = logging.getLogger(__name__)
 
 
+def _enum_text(value) -> Optional[str]:
+    """Enum value as text ('bracket', 'stop', ...); other values via str(); None stays None."""
+    if value is None:
+        return None
+    return value.value if hasattr(value, "value") else str(value)
+
+
+def _is_order_like(obj) -> bool:
+    """Nested alpaca Order (legs with nested=True), as opposed to a bare leg ID."""
+    return hasattr(obj, "id") and hasattr(obj, "symbol")
+
+
+def _float_or_none(value) -> Optional[float]:
+    return float(value) if value else None
+
+
+def _iso_or_none(value) -> Optional[str]:
+    return value.isoformat() if value else None
+
+
+def _order_to_dict(order) -> Dict[str, Any]:
+    """Convert an alpaca Order to the dict shape returned by get_orders (legs empty)."""
+    return {
+        "id": str(order.id),
+        "symbol": order.symbol,
+        "side": _enum_text(order.side),
+        "qty": float(order.qty) if order.qty else 0.0,
+        "filled_qty": float(order.filled_qty) if order.filled_qty else 0.0,
+        "status": _enum_text(order.status),
+        "order_type": _enum_text(order.order_type),
+        "time_in_force": _enum_text(order.time_in_force),
+        "limit_price": _float_or_none(order.limit_price),
+        "stop_price": _float_or_none(order.stop_price),
+        "submitted_at": _iso_or_none(order.submitted_at),
+        "filled_at": _iso_or_none(order.filled_at),
+        "canceled_at": _iso_or_none(order.canceled_at),
+        "filled_avg_price": _float_or_none(order.filled_avg_price),
+        "order_class": _enum_text(getattr(order, "order_class", None)),
+        "legs": [],
+    }
+
+
 class AlpacaTradingClient:
     """
     Unified trading client that handles both paper and live trading.
@@ -329,149 +371,45 @@ class AlpacaAccountMonitor:
         """
         try:
             # Create request with filters
-            # IMPORTANT: nested=True includes bracket order legs (stop-loss, take-profit)
-            if status == "all":
-                request = GetOrdersRequest(limit=limit, symbols=symbols, nested=True)
-            else:
-                # Map status string to enum
-                status_enum = None
-                if status == "open":
-                    status_enum = QueryOrderStatus.OPEN
-                elif status == "closed":
-                    status_enum = QueryOrderStatus.CLOSED
-
-                request = GetOrdersRequest(
-                    status=status_enum, limit=limit, symbols=symbols, nested=True
-                )
+            # IMPORTANT: nested=True rolls bracket legs (stop-loss, take-profit) up under the
+            # parent's ``legs`` as full Order objects; they are not returned top-level.
+            status_enum = {
+                "open": QueryOrderStatus.OPEN,
+                "closed": QueryOrderStatus.CLOSED,
+                "all": QueryOrderStatus.ALL,
+            }.get(status)
+            request = GetOrdersRequest(
+                status=status_enum, limit=limit, symbols=symbols, nested=True
+            )
 
             orders = self.client.trading_client.get_orders(filter=request)
 
-            # First pass: collect all orders with their metadata
+            # First pass: convert orders; nested leg Orders are converted in place, while
+            # legs given only as IDs are matched against top-level orders below.
             result = []
-            leg_ids = set()  # Track leg order IDs
-            parent_map = {}  # Map leg IDs to parent order IDs
-
+            leg_parent = {}  # leg ID -> parent order ID (ID-only legs)
             for order in orders:
-                order_dict = {
-                    "id": str(order.id),
-                    "symbol": order.symbol,
-                    "side": order.side.value if hasattr(order.side, "value") else str(order.side),
-                    "qty": float(order.qty) if order.qty else 0.0,
-                    "filled_qty": float(order.filled_qty) if order.filled_qty else 0.0,
-                    "status": (
-                        order.status.value if hasattr(order.status, "value") else str(order.status)
-                    ),
-                    "order_type": (
-                        order.order_type.value
-                        if hasattr(order.order_type, "value")
-                        else str(order.order_type)
-                    ),
-                    "time_in_force": (
-                        order.time_in_force.value
-                        if hasattr(order.time_in_force, "value")
-                        else str(order.time_in_force)
-                    ),
-                    "limit_price": float(order.limit_price) if order.limit_price else None,
-                    "stop_price": float(order.stop_price) if order.stop_price else None,
-                    "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
-                    "filled_at": order.filled_at.isoformat() if order.filled_at else None,
-                    "canceled_at": order.canceled_at.isoformat() if order.canceled_at else None,
-                    "filled_avg_price": (
-                        float(order.filled_avg_price) if order.filled_avg_price else None
-                    ),
-                    "order_class": (
-                        order.order_class.value
-                        if hasattr(order, "order_class") and hasattr(order.order_class, "value")
-                        else (str(order.order_class) if hasattr(order, "order_class") else None)
-                    ),
-                    "legs": [],  # Will be populated in second pass
-                }
-
-                # Track leg IDs from bracket orders
-                if hasattr(order, "legs") and order.legs:
-                    # order.legs is a list of UUIDs for the leg orders
-                    for leg_id in order.legs:
-                        leg_id_str = str(leg_id)
-                        leg_ids.add(leg_id_str)
-                        parent_map[leg_id_str] = str(order.id)
-                    order_leg_ids = [str(leg_id) for leg_id in order.legs]
-                    logger.info(f"Bracket order {order.id} has leg IDs: {order_leg_ids}")
-
+                order_dict = _order_to_dict(order)
+                for leg in getattr(order, "legs", None) or []:
+                    if _is_order_like(leg):
+                        order_dict["legs"].append(_order_to_dict(leg))
+                    else:
+                        leg_parent[str(leg)] = order_dict["id"]
                 result.append(order_dict)
 
-            # Second pass: match leg orders to their parents
-            legs_found = 0
-            for order_dict in result:
-                order_id = order_dict["id"]
-
-                # If this order is a leg of another order
-                if order_id in leg_ids:
-                    parent_id = parent_map.get(order_id)
-                    if parent_id:
-                        # Find parent and add this as a leg
-                        for parent_order in result:
-                            if parent_order["id"] == parent_id:
-                                parent_order["legs"].append(order_dict)
-                                legs_found += 1
-                                logger.info(f"Matched leg {order_id} to parent {parent_id}")
-                                break
+            # Second pass: attach ID-only legs that were returned as top-level orders
+            by_id = {o["id"]: o for o in result}
+            for leg_id, parent_id in leg_parent.items():
+                if leg_id in by_id and parent_id in by_id:
+                    by_id[parent_id]["legs"].append(by_id[leg_id])
 
             # Third pass: For bracket orders with empty legs, try fetching by ID to get held orders
             # Alpaca's get_orders() doesn't return "held" orders, but get_order_by_id() might
             for order_dict in result:
-                if order_dict.get("order_class") == "OrderClass.BRACKET" and not order_dict.get(
-                    "legs"
-                ):
-                    try:
-                        # Fetch this specific order by ID to see if it includes held legs
-                        full_order = self.client.trading_client.get_order_by_id(order_dict["id"])
+                if order_dict.get("order_class") == "bracket" and not order_dict.get("legs"):
+                    self._fetch_missing_legs(order_dict)
 
-                        if hasattr(full_order, "legs") and full_order.legs:
-                            logger.info(
-                                f"Found {len(full_order.legs)} legs for bracket "
-                                f"order {order_dict['id']} via get_order_by_id"
-                            )
-
-                            # Fetch each leg order individually
-                            for leg_id in full_order.legs:
-                                try:
-                                    leg_order = self.client.trading_client.get_order_by_id(
-                                        str(leg_id)
-                                    )
-                                    leg_dict = {
-                                        "id": str(leg_order.id),
-                                        "symbol": leg_order.symbol,
-                                        "side": str(leg_order.side),
-                                        "qty": float(leg_order.qty) if leg_order.qty else 0.0,
-                                        "status": str(leg_order.status),
-                                        "order_type": str(leg_order.order_type),
-                                        "time_in_force": str(leg_order.time_in_force),
-                                        "limit_price": (
-                                            float(leg_order.limit_price)
-                                            if leg_order.limit_price
-                                            else None
-                                        ),
-                                        "stop_price": (
-                                            float(leg_order.stop_price)
-                                            if leg_order.stop_price
-                                            else None
-                                        ),
-                                    }
-                                    order_dict["legs"].append(leg_dict)
-                                    legs_found += 1
-                                    logger.info(
-                                        f"  Fetched leg {leg_order.id}: "
-                                        f"{leg_order.order_type} status={leg_order.status}"
-                                    )
-                                except Exception as e:
-                                    # Don't spam users with leg fetch errors
-                                    # (common for bracket orders)
-                                    logger.debug(f"  Failed to fetch leg {leg_id}: {e}")
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to fetch bracket order {order_dict['id']} by ID: {e}"
-                        )
-
+            legs_found = sum(len(o["legs"]) for o in result)
             logger.info(f"Processed {len(result)} orders, found {legs_found} bracket legs")
 
             return result
@@ -479,6 +417,22 @@ class AlpacaAccountMonitor:
         except Exception as e:
             logger.error(f"Failed to get orders: {e}")
             raise
+
+    def _fetch_missing_legs(self, order_dict: Dict[str, Any]) -> None:
+        """Fill ``legs`` of a bracket order by fetching it by ID (held legs)."""
+        try:
+            full_order = self.client.trading_client.get_order_by_id(order_dict["id"])
+        except Exception as e:
+            logger.warning(f"Failed to fetch bracket order {order_dict['id']} by ID: {e}")
+            return
+        for leg in getattr(full_order, "legs", None) or []:
+            try:
+                if not _is_order_like(leg):
+                    leg = self.client.trading_client.get_order_by_id(str(leg))
+                order_dict["legs"].append(_order_to_dict(leg))
+            except Exception as e:
+                # Don't spam users with leg fetch errors (common for bracket orders)
+                logger.debug(f"  Failed to fetch leg {leg}: {e}")
 
     def get_portfolio_summary(self) -> Dict[str, Any]:
         """
