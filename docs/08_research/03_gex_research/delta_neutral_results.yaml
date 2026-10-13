@@ -1,4 +1,4 @@
-run_timestamp: '2026-02-15T23:38:45.522287'
+run_timestamp: '2026-10-13T12:53:39.587926'
 issue: '#544'
 description: Delta Neutral / Long Volatility with GEX Regime Overlay
 methodology:
@@ -16,47 +16,47 @@ results:
   fit_period: 2020-01-02 to 2021-12-31
   test_period: 2022-01-03 to 2023-12-29
   in_sample_spread_stats:
-    mean: -0.0017248556678174606
-    std: 0.12191326659728749
-    min: -0.6098017
-    max: 0.3620998
-    median: 0.025549559
-    pct_positive: 68.05555555555556
-    pct_above_entry: 53.96825396825397
-    pct_below_neg_entry: 20.238095238095237
+    mean: -0.0019392518474900806
+    std: 0.12016909097732868
+    min: -0.6019816
+    max: 0.36269897
+    median: 0.025558298
+    pct_positive: 68.45238095238095
+    pct_above_entry: 54.96031746031746
+    pct_below_neg_entry: 20.03968253968254
     n_obs: 504
   out_of_sample_spread_stats:
-    mean: -0.004616714394789999
-    std: 0.03923841453413194
-    min: -0.117505044
-    max: 0.13448572
-    median: -0.00036775903
-    pct_positive: 49.6
-    pct_above_entry: 0.4
-    pct_below_neg_entry: 0.0
-    n_obs: 500
+    mean: -0.004405886135329342
+    std: 0.038556140104935445
+    min: -0.12361326
+    max: 0.13547313
+    median: 0.0005324616
+    pct_positive: 51.09780439121756
+    pct_above_entry: 0.5988023952095809
+    pct_below_neg_entry: 0.19960079840319359
+    n_obs: 501
   adaptive_thresholds:
-    entry: 0.1219
-    exit: 0.0305
+    entry: 0.1202
+    exit: 0.03
   baseline:
-    sharpe_ratio: -0.012
-    total_return_pct: -0.24
-    max_drawdown_pct: -2.9
-    win_rate_pct: 0.6
-    num_trades: 4
-    volatility_pct: 3.85
+    sharpe_ratio: 0.03
+    total_return_pct: 0.05
+    max_drawdown_pct: -3.77
+    win_rate_pct: 3.4
+    num_trades: 6
+    volatility_pct: 5.01
   gex_enhanced:
-    sharpe_ratio: 0
-    total_return_pct: 0.0
-    max_drawdown_pct: 0.0
-    win_rate_pct: 0.0
-    num_trades: 0
-    volatility_pct: 0.0
-  sharpe_improvement: 0.012
+    sharpe_ratio: 0.194
+    total_return_pct: 1.54
+    max_drawdown_pct: -3.77
+    win_rate_pct: 3.0
+    num_trades: 4
+    volatility_pct: 4.47
+  sharpe_improvement: 0.164
   regime_distribution:
-    bullish_gamma: 154
-    bearish_gamma: 292
-    neutral: 55
+    bullish_gamma: 125
+    bearish_gamma: 328
+    neutral: 48
     unknown: 0
 causal_mechanisms:
   gex_regime_filter:

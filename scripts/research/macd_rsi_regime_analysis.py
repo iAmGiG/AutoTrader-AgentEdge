@@ -13,8 +13,12 @@ Corrected methodology:
 
 Usage:
     ~/miniconda3/envs/AutoGex/bin/python scripts/research/macd_rsi_regime_analysis.py
+    ~/miniconda3/envs/AutoGex/bin/python scripts/research/macd_rsi_regime_analysis.py \\
+        --symbols SPY QQQ IWM XLK XLF --start 2009-01-02 --end 2026-10-09 \\
+        --warmup-start 2008-01-02 --output macd_rsi_regime_results_expanded.yaml
 """
 
+import argparse
 import datetime
 import sys
 from pathlib import Path
@@ -49,6 +53,7 @@ SYMBOLS = ["SPY", "QQQ", "IWM"]
 TEST_START = "2021-01-04"
 TEST_END = "2023-12-29"
 WARMUP_START = "2020-01-02"
+REGIME_LAG = 1  # 0 = same-day regime (look-ahead, comparison only)
 RESULTS_DIR = Path("docs/08_research/03_gex_research")
 
 
@@ -75,7 +80,7 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
     )
 
     # Stratify returns by regime
-    overlay = bt.get_gex_overlay()
+    overlay = bt.get_gex_overlay(lag_days=REGIME_LAG)
     import importlib.util as _ilu
 
     _ip = Path(__file__).parent.parent.parent / "src" / "trading" / "instruments" / "indicators.py"
@@ -181,6 +186,18 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
 
 
 def main():
+    global SYMBOLS, TEST_START, TEST_END, WARMUP_START, REGIME_LAG
+    parser = argparse.ArgumentParser(description="MACD+RSI regime re-validation (#531, #548)")
+    parser.add_argument("--symbols", nargs="+", default=SYMBOLS)
+    parser.add_argument("--start", default=TEST_START)
+    parser.add_argument("--end", default=TEST_END)
+    parser.add_argument("--warmup-start", default=WARMUP_START)
+    parser.add_argument("--regime-lag", type=int, default=REGIME_LAG)
+    parser.add_argument("--output", default="macd_rsi_regime_results.yaml")
+    args = parser.parse_args()
+    SYMBOLS, TEST_START, TEST_END = args.symbols, args.start, args.end
+    WARMUP_START, REGIME_LAG = args.warmup_start, args.regime_lag
+
     print("=" * 60)
     print("  MACD+RSI IN POSITIVE GAMMA RE-VALIDATION (#531)")
     print("=" * 60)
@@ -227,6 +244,7 @@ def main():
             "test_period": f"{TEST_START} to {TEST_END}",
             "warmup_from": WARMUP_START,
             "symbols": SYMBOLS,
+            "regime_lag_days": REGIME_LAG,
             "regime_source": "options_daily_summary.regime",
             "statistical_test": "Welch's t-test (unequal variance)",
         },
@@ -235,7 +253,7 @@ def main():
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    yaml_path = RESULTS_DIR / "macd_rsi_regime_results.yaml"
+    yaml_path = RESULTS_DIR / args.output
     with open(yaml_path, "w") as f:
         yaml.dump(_to_native(output), f, default_flow_style=False, sort_keys=False, width=100)
     print(f"\n  Results saved to {yaml_path}")

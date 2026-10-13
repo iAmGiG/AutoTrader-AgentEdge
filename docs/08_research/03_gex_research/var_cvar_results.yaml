@@ -1,4 +1,4 @@
-run_timestamp: '2026-02-16T02:50:22.931200'
+run_timestamp: '2026-10-13T12:53:47.436532'
 issue: '#543'
 description: VaR vs CVaR Risk Metrics with GEX Regime Stratification
 methodology:
@@ -35,38 +35,38 @@ results:
       kurtosis: 10.1529
     by_regime:
       bullish_gamma:
-        historical_var: 0.007509
-        cvar: 0.011342
-        parametric_var: 0.008715
-        cornish_fisher_var: 0.0063
-        es_var_ratio: 1.5105
-        n_obs: 472
-        mean_return: 0.003991
-        std_return: 0.007725
-        skewness: 0.7806
-        kurtosis: 3.9271
+        historical_var: 0.013783
+        cvar: 0.021348
+        parametric_var: 0.013559
+        cornish_fisher_var: 0.015131
+        es_var_ratio: 1.5489
+        n_obs: 420
+        mean_return: 0.000178
+        std_return: 0.008351
+        skewness: -1.205
+        kurtosis: 6.2965
       bearish_gamma:
-        historical_var: 0.032125
-        cvar: 0.049506
-        parametric_var: 0.035484
-        cornish_fisher_var: 0.033907
-        es_var_ratio: 1.541
-        n_obs: 379
-        mean_return: -0.004846
-        std_return: 0.018626
-        skewness: -0.2114
-        kurtosis: 7.1315
+        historical_var: 0.027358
+        cvar: 0.043774
+        parametric_var: 0.029688
+        cornish_fisher_var: 0.029079
+        es_var_ratio: 1.6001
+        n_obs: 455
+        mean_return: 0.000583
+        std_return: 0.018404
+        skewness: -0.3907
+        kurtosis: 7.002
       neutral:
-        historical_var: 0.014562
-        cvar: 0.020888
-        parametric_var: 0.019729
-        cornish_fisher_var: 0.013461
-        es_var_ratio: 1.4345
-        n_obs: 154
-        mean_return: 0.002837
-        std_return: 0.013719
-        skewness: 1.2261
-        kurtosis: 3.9687
+        historical_var: 0.02389
+        cvar: 0.030474
+        parametric_var: 0.020562
+        cornish_fisher_var: 0.022333
+        es_var_ratio: 1.2756
+        n_obs: 130
+        mean_return: 0.001105
+        std_return: 0.013173
+        skewness: -0.5421
+        kurtosis: 0.7023
     by_lookback:
       20d:
         historical_var: 0.006087
@@ -126,28 +126,39 @@ results:
       skewness: -0.3475
       kurtosis: 5.1456
     by_regime:
+      bullish_gamma:
+        historical_var: 0.014239
+        cvar: 0.017724
+        parametric_var: 0.012851
+        cornish_fisher_var: 0.012461
+        es_var_ratio: 1.2448
+        n_obs: 137
+        mean_return: 0.00142
+        std_return: 0.008677
+        skewness: 0.0833
+        kurtosis: 1.0485
       bearish_gamma:
-        historical_var: 0.060082
-        cvar: 0.080578
-        parametric_var: 0.066047
-        cornish_fisher_var: 0.065071
-        es_var_ratio: 1.3411
-        n_obs: 31
-        mean_return: -0.021115
-        std_return: 0.027317
-        skewness: 0.0323
-        kurtosis: 1.3144
+        historical_var: 0.031221
+        cvar: 0.048545
+        parametric_var: 0.034221
+        cornish_fisher_var: 0.035753
+        es_var_ratio: 1.5549
+        n_obs: 411
+        mean_return: -0.000201
+        std_return: 0.020683
+        skewness: -0.5608
+        kurtosis: 3.9355
       neutral:
-        historical_var: 0.024685
-        cvar: 0.035372
-        parametric_var: 0.025349
-        cornish_fisher_var: 0.024152
-        es_var_ratio: 1.4329
-        n_obs: 971
-        mean_return: 0.001455
-        std_return: 0.016296
-        skewness: -0.1205
-        kurtosis: 5.3249
+        historical_var: 0.022836
+        cvar: 0.034249
+        parametric_var: 0.023978
+        cornish_fisher_var: 0.021402
+        es_var_ratio: 1.4998
+        n_obs: 457
+        mean_return: 0.001478
+        std_return: 0.015476
+        skewness: 0.3165
+        kurtosis: 3.6964
     by_lookback:
       20d:
         historical_var: 0.009562
@@ -207,17 +218,39 @@ results:
       skewness: -0.6162
       kurtosis: 6.3481
     by_regime:
+      bullish_gamma:
+        historical_var: 0.01529
+        cvar: 0.019731
+        parametric_var: 0.017627
+        cornish_fisher_var: 0.015755
+        es_var_ratio: 1.2905
+        n_obs: 28
+        mean_return: 0.002567
+        std_return: 0.012277
+        skewness: 0.4765
+        kurtosis: 0.6304
+      bearish_gamma:
+        historical_var: 0.026864
+        cvar: 0.036759
+        parametric_var: 0.028421
+        cornish_fisher_var: 0.029234
+        es_var_ratio: 1.3683
+        n_obs: 393
+        mean_return: -0.0002
+        std_return: 0.017157
+        skewness: -0.3405
+        kurtosis: 2.3412
       neutral:
-        historical_var: 0.027073
-        cvar: 0.040937
-        parametric_var: 0.02944
-        cornish_fisher_var: 0.030153
-        es_var_ratio: 1.5121
-        n_obs: 1002
-        mean_return: 0.000391
-        std_return: 0.018136
-        skewness: -0.6179
-        kurtosis: 6.3994
+        historical_var: 0.027532
+        cvar: 0.044448
+        parametric_var: 0.030673
+        cornish_fisher_var: 0.031525
+        es_var_ratio: 1.6144
+        n_obs: 584
+        mean_return: 0.000624
+        std_return: 0.019027
+        skewness: -0.761
+        kurtosis: 7.9601
     by_lookback:
       20d:
         historical_var: 0.016661

@@ -20,6 +20,10 @@ from src.backtesting.results import BacktestResults
 
 DB_PARAMS = {"host": "localhost", "port": 5432, "user": "cregan1", "database": "gex_options"}
 
+# Alpha Vantage was retired 2026-10-10; Cboe delayed quotes are the source from 2026-10-12,
+# which introduces a GEX level break. Research stays on the single-vendor history by default.
+LAST_VALIDATED_DATE = "2026-10-09"
+
 
 @dataclass
 class SpreadPosition:
@@ -47,6 +51,7 @@ class ResearchBacktester:
     def _get_connection(self):
         if self._conn is None or self._conn.closed:
             self._conn = psycopg2.connect(**DB_PARAMS)
+            self._conn.set_session(readonly=True, autocommit=True)
         return self._conn
 
     def close(self):
@@ -62,6 +67,9 @@ class ResearchBacktester:
             DataFrame with columns: trading_date, symbol, open, high, low, close, volume
             Pivoted so each symbol's close is a column.
         """
+        if end_date > LAST_VALIDATED_DATE:
+            print(f"  WARNING: end_date {end_date} clamped to {LAST_VALIDATED_DATE} (vendor break)")
+            end_date = LAST_VALIDATED_DATE
         conn = self._get_connection()
         placeholders = ",".join(["%s"] * len(symbols))
         query = f"""
@@ -81,9 +89,9 @@ class ResearchBacktester:
         pivot = raw.pivot(index="trading_date", columns="symbol", values="close")
         return pivot.dropna()
 
-    def get_gex_overlay(self) -> GEXOverlay:
-        """Create a GEXOverlay connected to this backtester's DB."""
-        return GEXOverlay(self._get_connection())
+    def get_gex_overlay(self, lag_days: int = 1) -> GEXOverlay:
+        """Create a GEXOverlay connected to this backtester's DB (1-day lag by default)."""
+        return GEXOverlay(self._get_connection(), lag_days=lag_days)
 
     def run_spread_strategy(
         self,

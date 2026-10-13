@@ -1,4 +1,4 @@
-run_timestamp: '2026-02-15T23:38:42.952923'
+run_timestamp: '2026-10-13T12:53:45.482193'
 issue: '#546'
 description: Pairs Trading Mean Reversion with GEX Regime Overlay
 methodology:
@@ -42,9 +42,9 @@ results:
     volatility_pct: 4.56
   sharpe_improvement: -0.1
   regime_distribution:
-    bullish_gamma: 154
-    bearish_gamma: 292
-    neutral: 55
+    bullish_gamma: 125
+    bearish_gamma: 328
+    neutral: 48
     unknown: 0
 - pair: QQQ/SPY
   fit_period: 2020-01-02 to 2021-12-31
@@ -64,17 +64,17 @@ results:
     num_trades: 12
     volatility_pct: 5.3
   gex_enhanced:
-    sharpe_ratio: -1.337
-    total_return_pct: -6.89
-    max_drawdown_pct: -6.89
+    sharpe_ratio: -1.342
+    total_return_pct: -9.78
+    max_drawdown_pct: -9.78
     win_rate_pct: 0.2
     num_trades: 12
-    volatility_pct: 2.66
-  sharpe_improvement: -0.016
+    volatility_pct: 3.81
+  sharpe_improvement: -0.021
   regime_distribution:
-    bullish_gamma: 0
-    bearish_gamma: 0
-    neutral: 501
+    bullish_gamma: 92
+    bearish_gamma: 276
+    neutral: 133
     unknown: 0
 causal_mechanisms:
   gex_regime_filter:
