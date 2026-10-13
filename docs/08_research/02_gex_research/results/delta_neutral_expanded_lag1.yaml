@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T13:07:07.585924'
+run_timestamp: '2026-10-13T15:19:17.075497'
 issue: '#544'
 description: Delta Neutral / Long Volatility with GEX Regime Overlay
 methodology:
@@ -54,6 +54,12 @@ results:
     num_trades: 8
     volatility_pct: 88.09
   sharpe_improvement: -0.001
+  paired_return_test:
+    mean_daily_diff: -4.4e-06
+    t_statistic: -0.392
+    p_value: 0.6954
+    n_days: 3965
+    maxlags: 9
   regime_distribution:
     bullish_gamma: 1595
     bearish_gamma: 1785

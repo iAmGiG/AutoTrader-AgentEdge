@@ -21,7 +21,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.backtesting.research_backtester import ResearchBacktester
-from src.backtesting.research_cli import parse_window_args
+from src.backtesting.research_cli import paired_return_test, parse_window_args
 from src.backtesting.signals.dispersion_signal import DispersionSignal
 
 
@@ -210,6 +210,9 @@ def run_dispersion_experiment(  # noqa: C901
             "volatility_pct": round(gex_results.volatility, 2),
         },
         "sharpe_improvement": round(sharpe_diff, 3),
+        "paired_return_test": paired_return_test(
+            baseline_results.returns_series, gex_results.returns_series
+        ),
         "regime_distribution": regime_counts,
     }
 

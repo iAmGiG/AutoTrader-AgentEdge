@@ -1,9 +1,10 @@
-run_timestamp: '2026-10-13T12:53:39.587926'
+run_timestamp: '2026-10-13T15:19:19.251745'
 issue: '#544'
 description: Delta Neutral / Long Volatility with GEX Regime Overlay
 methodology:
   strategy: IV-RV spread mean reversion
   data_source: options_daily_summary (iv_hv_spread_30, hv_30, realized_vol_30)
+  regime_lag_days: 1
   fit_period: 2020-01-02 to 2021-12-31
   test_period: 2022-01-03 to 2023-12-29
   entry_threshold: Adaptive (1 std of IS spread)
@@ -53,6 +54,12 @@ results:
     num_trades: 4
     volatility_pct: 4.47
   sharpe_improvement: 0.164
+  paired_return_test:
+    mean_daily_diff: 2.84e-05
+    t_statistic: 0.701
+    p_value: 0.4835
+    n_days: 500
+    maxlags: 5
   regime_distribution:
     bullish_gamma: 125
     bearish_gamma: 328

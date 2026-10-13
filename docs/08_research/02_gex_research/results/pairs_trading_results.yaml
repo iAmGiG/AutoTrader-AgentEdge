@@ -1,8 +1,9 @@
-run_timestamp: '2026-10-13T12:53:45.482193'
+run_timestamp: '2026-10-13T15:19:50.086098'
 issue: '#546'
 description: Pairs Trading Mean Reversion with GEX Regime Overlay
 methodology:
   strategy: Cointegration-based pairs trading (Engle-Granger)
+  regime_lag_days: 1
   fit_period: 2020-01-02 to 2021-12-31
   test_period: 2022-01-03 to 2023-12-29
   pairs:
@@ -41,6 +42,12 @@ results:
     num_trades: 15
     volatility_pct: 4.56
   sharpe_improvement: -0.1
+  paired_return_test:
+    mean_daily_diff: -1.92e-05
+    t_statistic: -0.808
+    p_value: 0.419
+    n_days: 500
+    maxlags: 5
   regime_distribution:
     bullish_gamma: 125
     bearish_gamma: 328
@@ -71,6 +78,12 @@ results:
     num_trades: 12
     volatility_pct: 3.81
   sharpe_improvement: -0.021
+  paired_return_test:
+    mean_daily_diff: 7.5e-05
+    t_statistic: 1.693
+    p_value: 0.0904
+    n_days: 500
+    maxlags: 5
   regime_distribution:
     bullish_gamma: 92
     bearish_gamma: 276

@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T13:07:25.994171'
+run_timestamp: '2026-10-13T15:19:31.234362'
 issue: '#545'
 description: Correlation / Dispersion Trading with GEX Regime Overlay
 methodology:
@@ -53,6 +53,12 @@ results:
     num_trades: 88
     volatility_pct: 12.17
   sharpe_improvement: 0.12
+  paired_return_test:
+    mean_daily_diff: 5.92e-05
+    t_statistic: 2.617
+    p_value: 0.0089
+    n_days: 3965
+    maxlags: 9
   regime_distribution:
     bullish_gamma: 1595
     bearish_gamma: 1785

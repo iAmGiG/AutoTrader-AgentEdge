@@ -50,3 +50,29 @@ def newey_west_diff(returns, is_a, max_lags: Optional[int] = None) -> Optional[d
         "p_value": round(float(fit.pvalues[1]), 4),
         "maxlags": lags,
     }
+
+
+def paired_return_test(baseline_returns, overlay_returns) -> Optional[dict]:
+    """Newey-West test that the overlay's mean daily return differs from the baseline's.
+
+    Both strategies trade the same days, so the paired difference removes common market
+    moves. This tests mean return, not Sharpe; with similar volatility the two agree.
+    """
+    import pandas as pd
+    import statsmodels.api as sm
+
+    diff = (pd.Series(overlay_returns) - pd.Series(baseline_returns)).dropna()
+    diff = diff[np.isfinite(diff)]
+    if len(diff) < 30 or float(diff.std()) == 0.0:
+        return None
+    lags = int(np.floor(4 * (len(diff) / 100) ** (2 / 9)))
+    fit = sm.OLS(diff.to_numpy(), np.ones(len(diff))).fit(
+        cov_type="HAC", cov_kwds={"maxlags": lags}
+    )
+    return {
+        "mean_daily_diff": round(float(fit.params[0]), 7),
+        "t_statistic": round(float(fit.tvalues[0]), 3),
+        "p_value": round(float(fit.pvalues[0]), 4),
+        "n_days": int(len(diff)),
+        "maxlags": lags,
+    }

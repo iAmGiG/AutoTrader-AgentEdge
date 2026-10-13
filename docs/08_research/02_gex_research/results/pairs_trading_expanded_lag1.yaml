@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T13:07:49.573796'
+run_timestamp: '2026-10-13T15:19:47.234615'
 issue: '#546'
 description: Pairs Trading Mean Reversion with GEX Regime Overlay
 methodology:
@@ -42,6 +42,12 @@ results:
     num_trades: 123
     volatility_pct: 5.19
   sharpe_improvement: -0.029
+  paired_return_test:
+    mean_daily_diff: -3.5e-06
+    t_statistic: -0.142
+    p_value: 0.8873
+    n_days: 3965
+    maxlags: 9
   regime_distribution:
     bullish_gamma: 1595
     bearish_gamma: 1785
@@ -72,6 +78,12 @@ results:
     num_trades: 133
     volatility_pct: 3.18
   sharpe_improvement: 0.004
+  paired_return_test:
+    mean_daily_diff: 9.2e-06
+    t_statistic: 0.366
+    p_value: 0.7141
+    n_days: 3965
+    maxlags: 9
   regime_distribution:
     bullish_gamma: 525
     bearish_gamma: 866

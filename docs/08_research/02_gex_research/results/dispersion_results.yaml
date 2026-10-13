@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T12:53:42.843903'
+run_timestamp: '2026-10-13T15:19:34.821104'
 issue: '#545'
 description: Correlation / Dispersion Trading with GEX Regime Overlay
 methodology:
@@ -12,6 +12,7 @@ methodology:
   - QQQ
   - IWM
   data_source: equity_prices_daily (realized correlation), options_daily_summary (regime)
+  regime_lag_days: 1
   fit_period: 2020-01-02 to 2020-12-31
   test_period: 2021-01-04 to 2023-12-29
   correlation_lookback: 60 days
@@ -52,6 +53,12 @@ results:
     num_trades: 20
     volatility_pct: 8.97
   sharpe_improvement: 0.161
+  paired_return_test:
+    mean_daily_diff: 5.89e-05
+    t_statistic: 1.646
+    p_value: 0.0997
+    n_days: 752
+    maxlags: 6
   regime_distribution:
     bullish_gamma: 290
     bearish_gamma: 390

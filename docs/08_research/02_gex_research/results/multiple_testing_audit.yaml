@@ -1,0 +1,693 @@
+run_timestamp: '2026-10-13T15:20:28.564135'
+issue: '#576'
+description: Multiple-testing audit of lag-1 GEX hypothesis tests
+methodology:
+  family: all lag-1 tests of a GEX effect in the result YAMLs
+  excluded: lag-0 runs, VaR calibration tests, cointegration tests
+  corrections:
+  - holm
+  - benjamini_hochberg
+  - abs_t > 3
+  alpha: 0.05
+  dependence_note: full and half-sample tests overlap; Holm valid, BH approximate
+summary:
+  n_tests: 51
+  raw_p_below_0.05: 30
+  expected_by_chance_at_0.05: 2.6
+  holm_rejections: 17
+  bh_rejections: 26
+  abs_t_above_3: 18
+by_study:
+- study: '#531 MACD+RSI regime gap'
+  n: 3
+  raw: 0
+  holm: 0
+  bh: 0
+  t3: 0
+- study: '#543 HAR out-of-sample forecast'
+  n: 12
+  raw: 6
+  holm: 0
+  bh: 5
+  t3: 1
+- study: '#543 HAR regime term (in-sample)'
+  n: 24
+  raw: 22
+  holm: 17
+  bh: 20
+  t3: 17
+- study: '#543 VaR tick-loss comparison'
+  n: 4
+  raw: 1
+  holm: 0
+  bh: 0
+  t3: 0
+- study: '#544 delta-neutral overlay, 2011-2026'
+  n: 1
+  raw: 0
+  holm: 0
+  bh: 0
+  t3: 0
+- study: '#544 delta-neutral overlay, 2022-2023'
+  n: 1
+  raw: 0
+  holm: 0
+  bh: 0
+  t3: 0
+- study: '#545 dispersion overlay, 2011-2026'
+  n: 1
+  raw: 1
+  holm: 0
+  bh: 1
+  t3: 0
+- study: '#545 dispersion overlay, 2021-2023'
+  n: 1
+  raw: 0
+  holm: 0
+  bh: 0
+  t3: 0
+- study: '#546 pairs overlay, 2011-2026'
+  n: 2
+  raw: 0
+  holm: 0
+  bh: 0
+  t3: 0
+- study: '#546 pairs overlay, 2022-2023'
+  n: 2
+  raw: 0
+  holm: 0
+  bh: 0
+  t3: 0
+tests:
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_sq pre_2020 bear-bull
+  effect: 0.7212
+  t_statistic: 4.936
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_sq from_2020 bear-bull
+  effect: 0.9146
+  t_statistic: 4.197
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_sq full bear-bull
+  effect: 0.7672
+  t_statistic: 6.654
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_sq full bear-bull
+  effect: 1.6277
+  t_statistic: 5.522
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_sq from_2020 bear-bull
+  effect: 1.7686
+  t_statistic: 4.887
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY log_rv_park full bear-bull
+  effect: 0.4502
+  t_statistic: 13.696
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY log_rv_park from_2020 bear-bull
+  effect: 0.4847
+  t_statistic: 9.701
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY log_rv_park pre_2020 bear-bull
+  effect: 0.4432
+  t_statistic: 9.642
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ log_rv_park from_2020 bear-bull
+  effect: 0.4868
+  t_statistic: 8.815
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ log_rv_park full bear-bull
+  effect: 0.4114
+  t_statistic: 8.563
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_park pre_2020 bear-bull
+  effect: 0.8544
+  t_statistic: 4.06
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_park full bear-bull
+  effect: 0.7358
+  t_statistic: 4.381
+  p_value: 0.0
+  holm_reject: true
+  holm_p: 0.0
+  bh_reject: true
+  bh_q: 0.0
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_park full bear-bull
+  effect: 0.2479
+  t_statistic: 3.952
+  p_value: 0.0001
+  holm_reject: true
+  holm_p: 0.0039
+  bh_reject: true
+  bh_q: 0.0004
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_park from_2020 bear-bull
+  effect: 0.2989
+  t_statistic: 3.768
+  p_value: 0.0002
+  holm_reject: true
+  holm_p: 0.0076
+  bh_reject: true
+  bh_q: 0.0007
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_sq pre_2020 bear-bull
+  effect: 1.2604
+  t_statistic: 3.54
+  p_value: 0.0004
+  holm_reject: true
+  holm_p: 0.0148
+  bh_reject: true
+  bh_q: 0.0013
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_park from_2020 bear-bull
+  effect: 0.4973
+  t_statistic: 3.542
+  p_value: 0.0004
+  holm_reject: true
+  holm_p: 0.0148
+  bh_reject: true
+  bh_q: 0.0013
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ log_rv_park pre_2020 bear-bull
+  effect: 0.4374
+  t_statistic: 3.41
+  p_value: 0.0007
+  holm_reject: true
+  holm_p: 0.0245
+  bh_reject: true
+  bh_q: 0.0021
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_park mse DM
+  effect: 0.01799
+  t_statistic: 3.171
+  p_value: 0.0015
+  holm_reject: false
+  holm_p: 0.051
+  bh_reject: true
+  bh_q: 0.0042
+  raw_reject: true
+  t_above_3: true
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_park mse DM
+  effect: 0.18543
+  t_statistic: 2.887
+  p_value: 0.0039
+  holm_reject: false
+  holm_p: 0.1287
+  bh_reject: true
+  bh_q: 0.0105
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_park pre_2020 bear-bull
+  effect: 0.2175
+  t_statistic: 2.776
+  p_value: 0.0055
+  holm_reject: false
+  holm_p: 0.176
+  bh_reject: true
+  bh_q: 0.0138
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: IWM log_rv_park full bear-bull
+  effect: 0.2611
+  t_statistic: 2.762
+  p_value: 0.0057
+  holm_reject: false
+  holm_p: 0.1767
+  bh_reject: true
+  bh_q: 0.0138
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: IWM log_rv_park from_2020 bear-bull
+  effect: 0.2654
+  t_statistic: 2.619
+  p_value: 0.0088
+  holm_reject: false
+  holm_p: 0.264
+  bh_reject: true
+  bh_q: 0.0197
+  raw_reject: true
+  t_above_3: false
+- study: '#545 dispersion overlay, 2011-2026'
+  source: dispersion_expanded_lag1.yaml
+  test: index overlay-baseline daily return (NW)
+  effect: 0.12
+  t_statistic: 2.617
+  p_value: 0.0089
+  holm_reject: false
+  holm_p: 0.264
+  bh_reject: true
+  bh_q: 0.0197
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_sq mse DM
+  effect: 0.55041
+  t_statistic: 2.526
+  p_value: 0.0115
+  holm_reject: false
+  holm_p: 0.322
+  bh_reject: true
+  bh_q: 0.0244
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ log_rv_park qlike DM
+  effect: 0.01065
+  t_statistic: 2.382
+  p_value: 0.0172
+  holm_reject: false
+  holm_p: 0.4644
+  bh_reject: true
+  bh_q: 0.0351
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_sq mse DM
+  effect: 0.13223
+  t_statistic: 2.297
+  p_value: 0.0216
+  holm_reject: false
+  holm_p: 0.5616
+  bh_reject: true
+  bh_q: 0.0424
+  raw_reject: true
+  t_above_3: false
+- study: '#543 VaR tick-loss comparison'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ var_95 tick-loss DM
+  effect: 0.0024
+  t_statistic: 2.153
+  p_value: 0.0313
+  holm_reject: false
+  holm_p: 0.7825
+  bh_reject: false
+  bh_q: 0.0591
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_sq qlike DM
+  effect: -0.41766
+  t_statistic: -2.076
+  p_value: 0.0379
+  holm_reject: false
+  holm_p: 0.9096
+  bh_reject: false
+  bh_q: 0.069
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: IWM rv_sq full bear-bull
+  effect: 0.6591
+  t_statistic: 2.035
+  p_value: 0.0418
+  holm_reject: false
+  holm_p: 0.9614
+  bh_reject: false
+  bh_q: 0.0735
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: IWM rv_sq from_2020 bear-bull
+  effect: 0.8355
+  t_statistic: 1.989
+  p_value: 0.0467
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.0794
+  raw_reject: true
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_park qlike DM
+  effect: 0.02157
+  t_statistic: 1.864
+  p_value: 0.0623
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.1025
+  raw_reject: false
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY log_rv_park qlike DM
+  effect: 0.01174
+  t_statistic: 1.724
+  p_value: 0.0847
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.135
+  raw_reject: false
+  t_above_3: false
+- study: '#546 pairs overlay, 2022-2023'
+  source: pairs_trading_results.yaml
+  test: QQQ/SPY overlay-baseline daily return (NW)
+  effect: -0.021
+  t_statistic: 1.693
+  p_value: 0.0904
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.1397
+  raw_reject: false
+  t_above_3: false
+- study: '#545 dispersion overlay, 2021-2023'
+  source: dispersion_results.yaml
+  test: index overlay-baseline daily return (NW)
+  effect: 0.161
+  t_statistic: 1.646
+  p_value: 0.0997
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.1496
+  raw_reject: false
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ log_rv_park mse DM
+  effect: 0.15233
+  t_statistic: 1.62
+  p_value: 0.1053
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.1534
+  raw_reject: false
+  t_above_3: false
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: IWM rv_park full bear-bull
+  effect: 0.3856
+  t_statistic: 1.599
+  p_value: 0.1098
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.1556
+  raw_reject: false
+  t_above_3: false
+- study: '#543 VaR tick-loss comparison'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY var_95 tick-loss DM
+  effect: 0.00115
+  t_statistic: 1.418
+  p_value: 0.1563
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.2127
+  raw_reject: false
+  t_above_3: false
+- study: '#543 VaR tick-loss comparison'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ var_99 tick-loss DM
+  effect: 0.00126
+  t_statistic: 1.41
+  p_value: 0.1585
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.2127
+  raw_reject: false
+  t_above_3: false
+- study: '#543 HAR regime term (in-sample)'
+  source: var_vol_baseline_lag1.yaml
+  test: IWM rv_park from_2020 bear-bull
+  effect: 0.1887
+  t_statistic: 1.262
+  p_value: 0.207
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.2707
+  raw_reject: false
+  t_above_3: false
+- study: '#531 MACD+RSI regime gap'
+  source: macd_rsi_regime_expanded_lag1.yaml
+  test: SPY bull-bear mean return (NW)
+  effect: -0.000376
+  t_statistic: -1.158
+  p_value: 0.2469
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.3148
+  raw_reject: false
+  t_above_3: false
+- study: '#531 MACD+RSI regime gap'
+  source: macd_rsi_regime_expanded_lag1.yaml
+  test: IWM bull-bear mean return (NW)
+  effect: -0.001545
+  t_statistic: -1.133
+  p_value: 0.257
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.3197
+  raw_reject: false
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY rv_park qlike DM
+  effect: -0.02625
+  t_statistic: -1.079
+  p_value: 0.2804
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.3405
+  raw_reject: false
+  t_above_3: false
+- study: '#546 pairs overlay, 2022-2023'
+  source: pairs_trading_results.yaml
+  test: SPY/IWM overlay-baseline daily return (NW)
+  effect: -0.1
+  t_statistic: -0.808
+  p_value: 0.419
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.497
+  raw_reject: false
+  t_above_3: false
+- study: '#544 delta-neutral overlay, 2022-2023'
+  source: delta_neutral_results.yaml
+  test: SPY overlay-baseline daily return (NW)
+  effect: 0.164
+  t_statistic: 0.701
+  p_value: 0.4835
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.5604
+  raw_reject: false
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: QQQ rv_sq qlike DM
+  effect: 0.01248
+  t_statistic: 0.649
+  p_value: 0.5166
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.5855
+  raw_reject: false
+  t_above_3: false
+- study: '#531 MACD+RSI regime gap'
+  source: macd_rsi_regime_expanded_lag1.yaml
+  test: QQQ bull-bear mean return (NW)
+  effect: 0.000368
+  t_statistic: 0.574
+  p_value: 0.5657
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.6272
+  raw_reject: false
+  t_above_3: false
+- study: '#543 HAR out-of-sample forecast'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY log_rv_park mse DM
+  effect: -0.04599
+  t_statistic: -0.541
+  p_value: 0.5882
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.6383
+  raw_reject: false
+  t_above_3: false
+- study: '#544 delta-neutral overlay, 2011-2026'
+  source: delta_neutral_expanded_lag1.yaml
+  test: SPY overlay-baseline daily return (NW)
+  effect: -0.001
+  t_statistic: -0.392
+  p_value: 0.6954
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.7389
+  raw_reject: false
+  t_above_3: false
+- study: '#546 pairs overlay, 2011-2026'
+  source: pairs_trading_expanded_lag1.yaml
+  test: QQQ/SPY overlay-baseline daily return (NW)
+  effect: 0.004
+  t_statistic: 0.366
+  p_value: 0.7141
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.7432
+  raw_reject: false
+  t_above_3: false
+- study: '#543 VaR tick-loss comparison'
+  source: var_vol_baseline_lag1.yaml
+  test: SPY var_99 tick-loss DM
+  effect: -0.00017
+  t_statistic: -0.275
+  p_value: 0.7834
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.7991
+  raw_reject: false
+  t_above_3: false
+- study: '#546 pairs overlay, 2011-2026'
+  source: pairs_trading_expanded_lag1.yaml
+  test: SPY/IWM overlay-baseline daily return (NW)
+  effect: -0.029
+  t_statistic: -0.142
+  p_value: 0.8873
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.8873
+  raw_reject: false
+  t_above_3: false
