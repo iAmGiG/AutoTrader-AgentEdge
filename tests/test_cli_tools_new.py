@@ -21,10 +21,18 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests.module_sandbox import sandboxed_modules
+
 # Add project root to path BEFORE any imports
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+
+
+@pytest.fixture(autouse=True)
+def isolated_state_dir(tmp_path, monkeypatch):
+    """Keep state managers away from the real state/user.db (see tests/unit/conftest.py)."""
+    monkeypatch.setenv("AUTOTRADER_STATE_DIR", str(tmp_path / "state"))
 
 
 def import_module_directly(module_path: str, module_name: str):
@@ -42,7 +50,14 @@ def import_module_directly(module_path: str, module_name: str):
 
 
 @pytest.fixture
-def voter_tools_module():
+def module_sandbox():
+    """Restore sys.modules and the config singleton after a fixture installs stubs."""
+    with sandboxed_modules("voter_tools_test", "backup_tools_test", "timeframe_tools_test"):
+        yield
+
+
+@pytest.fixture
+def voter_tools_module(module_sandbox, monkeypatch):
     """Load voter_tools module directly."""
 
     # First mock the TradingConfig dependency
@@ -63,11 +78,11 @@ def voter_tools_module():
         def get_rsi_config(self):
             return MockRSI()
 
-    # Mock the config_defaults module
-    class MockConfigModule:
-        TradingConfig = MockTradingConfig
+    # Patch only TradingConfig on the real module; replacing the whole module dropped
+    # get_config and broke later imports (restored after the test by monkeypatch)
+    import config_defaults.trading_config as trading_config_module
 
-    sys.modules["config_defaults.trading_config"] = MockConfigModule()
+    monkeypatch.setattr(trading_config_module, "TradingConfig", MockTradingConfig)
 
     # Mock autogen_core.tools
     class MockFunctionTool:
@@ -79,14 +94,14 @@ def voter_tools_module():
     class MockAutoGenTools:
         FunctionTool = MockFunctionTool
 
-    sys.modules["autogen_core.tools"] = MockAutoGenTools()
+    monkeypatch.setitem(sys.modules, "autogen_core.tools", MockAutoGenTools())
 
     module_path = project_root / "src" / "cli" / "tools" / "voter_tools.py"
     return import_module_directly(str(module_path), "voter_tools_test")
 
 
 @pytest.fixture
-def backup_tools_module():
+def backup_tools_module(module_sandbox, monkeypatch):
     """Load backup_tools module directly."""
 
     # Mock autogen_core.tools
@@ -99,7 +114,7 @@ def backup_tools_module():
     class MockAutoGenTools:
         FunctionTool = MockFunctionTool
 
-    sys.modules["autogen_core.tools"] = MockAutoGenTools()
+    monkeypatch.setitem(sys.modules, "autogen_core.tools", MockAutoGenTools())
 
     module_path = project_root / "src" / "cli" / "tools" / "backup_tools.py"
     return import_module_directly(str(module_path), "backup_tools_test")
@@ -201,7 +216,9 @@ class TestVoterTools:
         CLI_VOTER_TOOLS = voter_tools_module.CLI_VOTER_TOOLS
 
         assert isinstance(CLI_VOTER_TOOLS, list)
-        assert len(CLI_VOTER_TOOLS) == 7  # 7 voter tools
+        # 7 explanation tools plus 7 voter-management tools (list, presets, promote/demote, role)
+        assert len(CLI_VOTER_TOOLS) == 14
+        assert len(set(map(id, CLI_VOTER_TOOLS))) == len(CLI_VOTER_TOOLS)
 
 
 # =============================================================================
@@ -217,7 +234,7 @@ class TestEnhancedTimeframeToolsFunctions:
     """
 
     @pytest.fixture
-    def timeframe_helpers(self):
+    def timeframe_helpers(self, module_sandbox, monkeypatch):
         """Load just the helper functions from timeframe_tools."""
 
         # Mock all dependencies
@@ -227,8 +244,9 @@ class TestEnhancedTimeframeToolsFunctions:
                 self.description = description
                 self.name = name
 
-        sys.modules["autogen_core.tools"] = MagicMock()
-        sys.modules["autogen_core.tools"].FunctionTool = MockFunctionTool
+        tools_mock = MagicMock()
+        tools_mock.FunctionTool = MockFunctionTool
+        monkeypatch.setitem(sys.modules, "autogen_core.tools", tools_mock)
 
         # Create a mock timeframe commands
         mock_tf_commands = MagicMock()
@@ -239,7 +257,7 @@ class TestEnhancedTimeframeToolsFunctions:
         mock_tf_module = MagicMock()
         mock_tf_module.get_timeframe_commands.return_value = mock_tf_commands
 
-        sys.modules["src.cli.commands.timeframe_commands"] = mock_tf_module
+        monkeypatch.setitem(sys.modules, "src.cli.commands.timeframe_commands", mock_tf_module)
 
         module_path = project_root / "src" / "cli" / "tools" / "timeframe_tools.py"
         return import_module_directly(str(module_path), "timeframe_tools_test")
@@ -400,9 +418,10 @@ class TestBackupTools:
 
     def test_default_paths_defined(self, backup_tools_module):
         """Test default path constants are defined."""
-        assert backup_tools_module.STATE_DB == "state/user.db"
-        assert backup_tools_module.CACHE_DB == ".cache/trading_data.db"
-        assert backup_tools_module.BACKUP_DIR == "backups"
+        # Logical names; DBBackupManager maps user -> state/user.db, cache -> .cache/trading_data.db
+        assert backup_tools_module.STATE_DB == "user"
+        assert backup_tools_module.CACHE_DB == "cache"
+        assert backup_tools_module.BACKUP_DIR == "state/backups"  # DBBackupManager.backup_dir
 
 
 # =============================================================================

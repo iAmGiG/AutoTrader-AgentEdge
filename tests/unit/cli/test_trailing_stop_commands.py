@@ -12,18 +12,11 @@ Tests cover:
 - Validation of stop prices
 """
 
-import sys
 import unittest
 from io import StringIO
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-# Mock imports that require external dependencies
-sys.modules["alpaca"] = MagicMock()
-sys.modules["alpaca.trading"] = MagicMock()
-sys.modules["alpaca.trading.client"] = MagicMock()
-sys.modules["alpaca.trading.requests"] = MagicMock()
-sys.modules["alpaca.data"] = MagicMock()
-sys.modules["alpaca.data.historical"] = MagicMock()
+from config_defaults.trading_config import TrailingStopConfig
 
 from src.cli.commands.trailing_stop_commands import TrailingStopCommands
 
@@ -39,7 +32,7 @@ class TestTrailingStopCommands(unittest.TestCase):
         self.mock_stop_manager.order_manager = None
 
         # Create mock config
-        self.mock_config = Mock()
+        self.mock_config = Mock(spec=TrailingStopConfig)  # hasattr matches the real config
         self.mock_config.climb_rate = "medium"
         self.mock_config.volatility_aware = True
         self.mock_config.atr_multiplier = 1.5
@@ -256,9 +249,9 @@ class TestTrailingStopCommands(unittest.TestCase):
 
     def test_get_mode_description_conservative(self):
         """Test mode description for conservative settings."""
-        config = Mock()
+        config = Mock(spec=TrailingStopConfig)  # only fields the real config has
         config.progressive_breakeven_pct = 0.02
-        config.stop_loss = 0.02
+        config.climb_rate = "slow"  # conservative mode in trading_modes.yaml
 
         result = self.commands._get_mode_description(config)
         self.assertEqual(result, "Conservative")

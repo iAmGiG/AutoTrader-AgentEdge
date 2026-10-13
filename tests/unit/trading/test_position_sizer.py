@@ -18,9 +18,9 @@ import tempfile
 import unittest
 
 from src.core.trading_modes import TradingMode, TradingModeManager
-from src.trading.approved_tickers import ApprovedTickersManager
-from src.trading.position_sizer import PositionSizer, SizingMode
-from src.trading.ticker_database import TickerMode
+from src.trading.instruments.approved_tickers import ApprovedTickersManager
+from src.trading.instruments.ticker_database import TickerMode
+from src.trading.positions.position_sizer import PositionSizer, SizingMode
 
 
 class TestPositionSizerBasics(unittest.TestCase):

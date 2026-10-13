@@ -9,16 +9,22 @@ Tests account management CLI functionality:
 - Agent data retrieval
 """
 
+import contextlib
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from tests.module_sandbox import sandboxed_modules
 
 
 # Mock config_defaults before any imports
 @pytest.fixture(autouse=True, scope="module")
 def mock_config_defaults():
     """Mock config_defaults module."""
+    sandbox = contextlib.ExitStack()  # restores sys.modules and get_config() afterwards
+    sandbox.enter_context(sandboxed_modules())
+    monkeypatch = pytest.MonkeyPatch()  # module scope: the builtin fixture is per-test
     mock_message_loader = MagicMock()
     mock_message_loader.CLIMessages = MagicMock()
     mock_message_loader.get_alert_severity_emoji = MagicMock(return_value="!")
@@ -26,17 +32,15 @@ def mock_config_defaults():
     mock_message_loader.get_signal_emoji = MagicMock(return_value=">")
     mock_message_loader.get_status_emoji = MagicMock(return_value="*")
 
-    sys.modules["config_defaults"] = MagicMock()
-    sys.modules["config_defaults.message_loader"] = mock_message_loader
-    sys.modules["config_defaults.trading_config"] = MagicMock()
-    sys.modules["config_defaults.accounts_config"] = MagicMock()
+    monkeypatch.setitem(sys.modules, "config_defaults", MagicMock())
+    monkeypatch.setitem(sys.modules, "config_defaults.message_loader", mock_message_loader)
+    monkeypatch.setitem(sys.modules, "config_defaults.trading_config", MagicMock())
+    monkeypatch.setitem(sys.modules, "config_defaults.accounts_config", MagicMock())
 
     yield
 
-    # Cleanup
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("config_defaults"):
-            del sys.modules[mod]
+    monkeypatch.undo()
+    sandbox.close()  # evicts modules imported against the mocks; later tests re-import them
 
 
 class TestAccountCommands:
@@ -82,8 +86,7 @@ class TestAccountCommands:
                 with patch("src.cli.commands.account_commands.get_symbol", return_value="*"):
                     # Reset singleton
                     import src.cli.commands.account_commands as acc_module
-                    from src.cli.commands.account_commands import \
-                        AccountCommands
+                    from src.cli.commands.account_commands import AccountCommands
 
                     acc_module._account_commands = None
 

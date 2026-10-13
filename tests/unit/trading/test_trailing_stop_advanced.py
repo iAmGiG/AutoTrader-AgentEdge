@@ -9,23 +9,12 @@ Tests the enhanced TrailingStopManager with:
 - Integration with TradingModeManager
 """
 
-import sys
 import unittest
 from unittest.mock import MagicMock
 
-# Mock problematic imports before importing modules
-sys.modules["alpaca"] = MagicMock()
-sys.modules["alpaca.trading"] = MagicMock()
-sys.modules["alpaca.trading.client"] = MagicMock()
-sys.modules["alpaca.data"] = MagicMock()
-sys.modules["alpaca.data.historical"] = MagicMock()
-sys.modules["src.trading.unified_price_fetcher"] = MagicMock()
-sys.modules["src.data_sources.sources.market.alpaca_market_data"] = MagicMock()
-sys.modules["src.utils.market_hours"] = MagicMock()
-
 from config_defaults.trading_config import ClimbRate, TrailingStopConfig
 
-from src.trading.trailing_stop_manager import StopState, TrailingStopManager
+from src.trading.orders.trailing_stop_manager import StopState, TrailingStopManager
 
 
 class TestClimbRate(unittest.TestCase):

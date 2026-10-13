@@ -28,7 +28,7 @@ class TestTradingCacheManager:
     @pytest.fixture
     def cache_manager(self, temp_db):
         """Create a TradingCacheManager with temporary database."""
-        from src.data_sources.cache.sqlite_cache import TradingCacheManager
+        from src.cache.sqlite_cache import TradingCacheManager
 
         return TradingCacheManager(db_path=temp_db)
 
@@ -53,7 +53,7 @@ class TestDatabaseInitialization(TestTradingCacheManager):
 
     def test_creates_database_file(self, temp_db):
         """Test that database file is created."""
-        from src.data_sources.cache.sqlite_cache import TradingCacheManager
+        from src.cache.sqlite_cache import TradingCacheManager
 
         TradingCacheManager(db_path=temp_db)
 
@@ -61,7 +61,7 @@ class TestDatabaseInitialization(TestTradingCacheManager):
 
     def test_creates_parent_directories(self, tmp_path):
         """Test that parent directories are created."""
-        from src.data_sources.cache.sqlite_cache import TradingCacheManager
+        from src.cache.sqlite_cache import TradingCacheManager
 
         db_path = str(tmp_path / "nested" / "dir" / "test.db")
         TradingCacheManager(db_path=db_path)

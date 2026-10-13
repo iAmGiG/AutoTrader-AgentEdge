@@ -26,6 +26,7 @@ except ImportError:
     yaml = None
 
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
+from src.utils.state_paths import get_user_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +64,7 @@ class PortfolioOverrideManager:
             config_path: Path to portfolio_config.yaml for defaults
         """
         if db_path is None:
-            state_dir = os.path.join(os.path.dirname(__file__), "../../state")
-            os.makedirs(state_dir, exist_ok=True)
-            db_path = os.path.join(state_dir, "user.db")
+            db_path = get_user_db_path()
 
         if config_path is None:
             config_path = os.path.join(

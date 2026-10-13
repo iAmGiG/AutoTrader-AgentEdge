@@ -14,13 +14,19 @@ Provides utilities for:
 
 import json
 import logging
+import os
+import shutil
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from src.utils.state_paths import get_state_dir
+
 logger = logging.getLogger(__name__)
+
+SQLITE_HEADER = b"SQLite format 3\x00"
 
 # Database paths relative to project root
 DB_PATHS = {
@@ -79,6 +85,7 @@ class DBBackupManager:
         Args:
             project_root: Path to project root. Defaults to auto-detect.
         """
+        explicit_root = project_root is not None
         if project_root is None:
             # Auto-detect project root (look for state/ directory)
             current = Path(__file__).resolve().parent
@@ -91,8 +98,11 @@ class DBBackupManager:
                 project_root = str(Path.cwd())
 
         self.project_root = Path(project_root)
-        self.backup_dir = self.project_root / "state" / "backups"
-        self.export_dir = self.project_root / "state" / "exports"
+        # user.db, backups and exports live in the state dir: <project_root>/state for an
+        # explicit root, otherwise get_state_dir() (honours $AUTOTRADER_STATE_DIR).
+        self.state_dir = self.project_root / "state" if explicit_root else get_state_dir()
+        self.backup_dir = self.state_dir / "backups"
+        self.export_dir = self.state_dir / "exports"
 
         # Ensure directories exist
         self.backup_dir.mkdir(parents=True, exist_ok=True)
@@ -100,16 +110,31 @@ class DBBackupManager:
 
         logger.info(f"DBBackupManager initialized at {self.project_root}")
 
+    def get_db_path(self, db_name: str) -> Path:
+        """Full path of a database by name ("user" or "cache")."""
+        return self._get_db_path(db_name)
+
     def _get_db_path(self, db_name: str) -> Path:
         """Get full path for a database by name."""
         if db_name not in DB_PATHS:
             raise ValueError(f"Unknown database: {db_name}. Available: {list(DB_PATHS.keys())}")
+        if db_name == "user":
+            return self.state_dir / "user.db"
         return self.project_root / DB_PATHS[db_name]
 
     def _generate_backup_filename(self, db_name: str) -> str:
-        """Generate timestamped backup filename."""
+        """Generate a timestamped backup filename that does not overwrite an existing backup.
+
+        Timestamps have one-second resolution; restore_backup takes a pre-restore backup, so
+        without the suffix a restore within the same second overwrote the file being restored.
+        """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"{db_name}_{timestamp}.db"
+        name = f"{db_name}_{timestamp}.db"
+        n = 1
+        while (self.backup_dir / name).exists():
+            name = f"{db_name}_{timestamp}_{n}.db"
+            n += 1
+        return name
 
     def backup_database(self, db_name: str = "user") -> BackupResult:
         """
@@ -138,14 +163,22 @@ class DBBackupManager:
             backup_path = self.backup_dir / backup_filename
 
             # Use SQLite backup API for consistency
-            source_conn = sqlite3.connect(str(source_path))
-            backup_conn = sqlite3.connect(str(backup_path))
-
-            with backup_conn:
-                source_conn.backup(backup_conn)
-
-            source_conn.close()
-            backup_conn.close()
+            source_conn = backup_conn = None
+            try:
+                source_conn = sqlite3.connect(str(source_path))
+                backup_conn = sqlite3.connect(str(backup_path))
+                with backup_conn:
+                    source_conn.backup(backup_conn)
+            except Exception:
+                if backup_conn is not None:
+                    backup_conn.close()
+                # Never leave a partial or empty file that list/restore would treat as a backup
+                backup_path.unlink(missing_ok=True)
+                raise
+            finally:
+                for conn in (source_conn, backup_conn):
+                    if conn is not None:
+                        conn.close()
 
             # Verify backup
             backup_size = backup_path.stat().st_size
@@ -163,7 +196,7 @@ class DBBackupManager:
             logger.error(f"Backup failed for {db_name}: {e}")
             return BackupResult(
                 success=False,
-                source_path=str(self._get_db_path(db_name)),
+                source_path=DB_PATHS.get(db_name, db_name),  # _get_db_path may be what failed
                 backup_path=None,
                 message=f"Backup failed: {e}",
                 timestamp=timestamp,
@@ -196,6 +229,53 @@ class DBBackupManager:
 
         return sorted(backups, key=lambda x: x["created"], reverse=True)
 
+    def _save_current_before_restore(self, db_name: str, target_path: Path, timestamp: str):
+        """Back up the live DB before a restore.
+
+        Returns (target_unreadable, error). If the SQLite backup fails (a damaged DB, the
+        main reason to restore), the raw file is set aside as ``.corrupt`` (never listed or
+        restored) and the restore continues.
+        """
+        if not target_path.exists():
+            return False, None
+        pre_restore_backup = self.backup_database(db_name)
+        if pre_restore_backup.success:
+            return False, None
+        aside = self.backup_dir / f"{db_name}_{timestamp[:19].replace(':', '')}.corrupt"
+        try:
+            shutil.copy2(target_path, aside)
+        except OSError as e:
+            return False, (
+                f"Could not save the current DB before restore "
+                f"({pre_restore_backup.message}; copy failed: {e})"
+            )
+        logger.warning(
+            f"Current {db_name} DB could not be backed up "
+            f"({pre_restore_backup.message}); raw copy saved to {aside}"
+        )
+        return True, None
+
+    @staticmethod
+    def _write_restore(backup_file: Path, target_path: Path, replace_file: bool) -> None:
+        """Copy a backup into the target DB."""
+        if replace_file:
+            # The SQLite backup API cannot write into a damaged file: replace it whole
+            tmp = target_path.with_suffix(".restore_tmp")
+            shutil.copy2(backup_file, tmp)
+            os.replace(tmp, target_path)
+            return
+        # SQLite backup API: safe while other connections have the DB open
+        source_conn = target_conn = None
+        try:
+            source_conn = sqlite3.connect(str(backup_file))
+            target_conn = sqlite3.connect(str(target_path))
+            with target_conn:
+                source_conn.backup(target_conn)
+        finally:
+            for conn in (source_conn, target_conn):
+                if conn is not None:
+                    conn.close()
+
     def restore_backup(self, backup_path: str, db_name: str = "user") -> BackupResult:
         """
         Restore a database from backup.
@@ -209,40 +289,34 @@ class DBBackupManager:
         """
         timestamp = datetime.now().isoformat()
 
+        def failed(message: str) -> BackupResult:
+            return BackupResult(
+                success=False,
+                source_path=backup_path,
+                backup_path=None,
+                message=message,
+                timestamp=timestamp,
+            )
+
         try:
             backup_file = Path(backup_path)
-            if not backup_file.exists():
-                return BackupResult(
-                    success=False,
-                    source_path=backup_path,
-                    backup_path=None,
-                    message=f"Backup file not found: {backup_path}",
-                    timestamp=timestamp,
-                )
+            if not backup_file.is_file():
+                return failed(f"Backup file not found: {backup_path}")
+            with open(backup_file, "rb") as fh:
+                if fh.read(len(SQLITE_HEADER)) != SQLITE_HEADER:
+                    return failed(f"Not a SQLite database backup: {backup_file.name}")
 
             target_path = self._get_db_path(db_name)
+            if target_path.exists() and backup_file.resolve() == target_path.resolve():
+                return failed("Backup file is the live database; choose a file from backups")
 
-            # Create backup of current before restore
-            if target_path.exists():
-                pre_restore_backup = self.backup_database(db_name)
-                if not pre_restore_backup.success:
-                    return BackupResult(
-                        success=False,
-                        source_path=backup_path,
-                        backup_path=None,
-                        message="Failed to backup current DB before restore",
-                        timestamp=timestamp,
-                    )
-
-            # Restore using SQLite backup API
-            source_conn = sqlite3.connect(backup_path)
-            target_conn = sqlite3.connect(str(target_path))
-
-            with target_conn:
-                source_conn.backup(target_conn)
-
-            source_conn.close()
-            target_conn.close()
+            # Keep a copy of the current DB before replacing it
+            target_unreadable, error = self._save_current_before_restore(
+                db_name, target_path, timestamp
+            )
+            if error:
+                return failed(error)
+            self._write_restore(backup_file, target_path, replace_file=target_unreadable)
 
             logger.info(f"Restored {db_name} from {backup_path}")
 
@@ -316,10 +390,15 @@ class DBBackupManager:
             rows = [dict(row) for row in cursor.fetchall()]
             conn.close()
 
-            # Generate output path if not provided
+            # Generate output path if not provided (never overwrite an earlier export)
             if output_path is None:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output_path = str(self.export_dir / f"{table_name}_{timestamp}.json")
+                name = f"{table_name}_{timestamp}.json"
+                n = 1
+                while (self.export_dir / name).exists():
+                    name = f"{table_name}_{timestamp}_{n}.json"
+                    n += 1
+                output_path = str(self.export_dir / name)
 
             # Write JSON
             output_file = Path(output_path)
@@ -572,31 +651,33 @@ class DBBackupManager:
         """
         Remove old backup files.
 
+        Retention applies per database (the ``user_`` and ``cache_`` backups are counted
+        separately), so cleanup can never remove every backup of one database.
+
         Args:
-            keep_days: Keep backups newer than this
-            keep_count: Always keep at least this many backups
+            keep_days: Keep backups modified within this many days
+            keep_count: Always keep at least this many backups of each database
 
         Returns:
             Number of backups deleted
         """
-        cutoff_date = datetime.now() - timedelta(days=keep_days)
+        cutoff = (datetime.now() - timedelta(days=keep_days)).timestamp()
         deleted = 0
 
-        backups = sorted(
-            self.backup_dir.glob("*.db"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
+        groups: Dict[str, List[Path]] = {}
+        for backup in self.backup_dir.glob("*.db"):
+            groups.setdefault(backup.name.split("_", 1)[0], []).append(backup)
 
-        for i, backup in enumerate(backups):
-            if i < keep_count:
-                continue
-
-            created = datetime.fromtimestamp(backup.stat().st_ctime)
-            if created < cutoff_date:
-                backup.unlink()
-                deleted += 1
-                logger.info(f"Deleted old backup: {backup.name}")
+        for files in groups.values():
+            files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            for backup in files[keep_count:]:
+                try:
+                    if backup.stat().st_mtime < cutoff:
+                        backup.unlink()
+                        deleted += 1
+                        logger.info(f"Deleted old backup: {backup.name}")
+                except OSError as e:
+                    logger.warning(f"Could not delete old backup {backup.name}: {e}")
 
         return deleted
 

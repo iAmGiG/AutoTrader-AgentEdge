@@ -10,16 +10,22 @@ Tests timeframe management CLI functionality:
 - Agent data retrieval
 """
 
+import contextlib
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from tests.module_sandbox import sandboxed_modules
 
 
 # Mock config_defaults before any imports
 @pytest.fixture(autouse=True, scope="module")
 def mock_config_defaults():
     """Mock config_defaults module."""
+    sandbox = contextlib.ExitStack()  # restores sys.modules and get_config() afterwards
+    sandbox.enter_context(sandboxed_modules())
+    monkeypatch = pytest.MonkeyPatch()  # module scope: the builtin fixture is per-test
     mock_trading_config = MagicMock()
 
     # Mock TimeframeConfig
@@ -42,16 +48,14 @@ def mock_config_defaults():
 
     mock_trading_config.get_config.return_value = mock_config
 
-    sys.modules["config_defaults"] = MagicMock()
-    sys.modules["config_defaults.trading_config"] = mock_trading_config
-    sys.modules["config_defaults.message_loader"] = MagicMock()
+    monkeypatch.setitem(sys.modules, "config_defaults", MagicMock())
+    monkeypatch.setitem(sys.modules, "config_defaults.trading_config", mock_trading_config)
+    monkeypatch.setitem(sys.modules, "config_defaults.message_loader", MagicMock())
 
     yield
 
-    # Cleanup
-    for mod in list(sys.modules.keys()):
-        if mod.startswith("config_defaults"):
-            del sys.modules[mod]
+    monkeypatch.undo()
+    sandbox.close()  # evicts modules imported against the mocks; later tests re-import them
 
 
 class TestTimeframeCommands:
@@ -382,7 +386,9 @@ class TestSingletonPattern(TestTimeframeCommands):
             return_value=mock_timeframe_manager,
         ):
             from src.cli.commands.timeframe_commands import (
-                TimeframeCommands, get_timeframe_commands)
+                TimeframeCommands,
+                get_timeframe_commands,
+            )
 
             # Reset singleton
             TimeframeCommands._instance = None

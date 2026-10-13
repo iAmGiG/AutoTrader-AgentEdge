@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from .alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from .market_hours import is_market_hours
 
 logger = logging.getLogger(__name__)
 
@@ -488,7 +489,7 @@ class AlpacaUnifiedTool:
         Returns:
             Dict with market status information
         """
-        return self.order_manager._is_market_hours(extended_hours)
+        return is_market_hours(extended_hours)
 
 
 # Factory functions for easy tool creation

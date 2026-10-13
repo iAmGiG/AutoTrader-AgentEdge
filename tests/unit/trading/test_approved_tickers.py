@@ -18,8 +18,12 @@ import tempfile
 import unittest
 
 from src.core.trading_modes import TradingMode
-from src.trading.approved_tickers import ApprovedTickersManager
-from src.trading.ticker_database import TickerDatabase, TickerMode, TickerType
+from src.trading.instruments.approved_tickers import ApprovedTickersManager
+from src.trading.instruments.ticker_database import (
+    TickerDatabase,
+    TickerMode,
+    TickerType,
+)
 
 
 class TestTickerDatabase(unittest.TestCase):
@@ -72,7 +76,7 @@ class TestTickerDatabase(unittest.TestCase):
 
         stocks = self.db.list_by_type(TickerType.STOCK)
         self.assertEqual(len(stocks), 2)
-        self.assertEqual(set(t.symbol for t in stocks), {"AAPL", "GOOGL"})
+        self.assertEqual({t.symbol for t in stocks}, {"AAPL", "GOOGL"})
 
     def test_list_by_underlying(self):
         """Test listing tickers by underlying asset."""
@@ -97,7 +101,7 @@ class TestTickerDatabase(unittest.TestCase):
 
         spy_etfs = self.db.list_by_underlying("SPY")
         self.assertEqual(len(spy_etfs), 2)
-        self.assertEqual(set(t.symbol for t in spy_etfs), {"UPRO", "SPXU"})
+        self.assertEqual({t.symbol for t in spy_etfs}, {"UPRO", "SPXU"})
 
     def test_list_leveraged_etfs(self):
         """Test filtering leveraged ETFs by multiplier."""
@@ -113,7 +117,7 @@ class TestTickerDatabase(unittest.TestCase):
 
         etfs_3x = self.db.list_leveraged_etfs(multiplier=3.0)
         self.assertEqual(len(etfs_3x), 2)
-        self.assertEqual(set(t.symbol for t in etfs_3x), {"UPRO", "TQQQ"})
+        self.assertEqual({t.symbol for t in etfs_3x}, {"UPRO", "TQQQ"})
 
     # Approved Tickers Tests
 
@@ -160,7 +164,7 @@ class TestTickerDatabase(unittest.TestCase):
 
         buy_add_tickers = self.db.list_approved(mode=TickerMode.BUY_ADD)
         self.assertEqual(len(buy_add_tickers), 2)
-        self.assertEqual(set(t.symbol for t in buy_add_tickers), {"AAPL", "GOOGL"})
+        self.assertEqual({t.symbol for t in buy_add_tickers}, {"AAPL", "GOOGL"})
 
     def test_seed_common_tickers(self):
         """Test seeding database with common tickers."""
