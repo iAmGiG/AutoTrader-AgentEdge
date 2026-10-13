@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T14:51:25.601719'
+run_timestamp: '2026-10-13T14:52:55.321915'
 issue: '#576'
 description: Does the GEX regime predict next-day variance beyond a HAR baseline?
 methodology:
@@ -11,6 +11,8 @@ methodology:
   regime_lag_days: 1
   period: 2008-01-02 to 2026-10-09
   split_date: '2020-01-01'
+  out_of_sample: fit before split_date, fixed coefficients, forecast after; MSE and QLIKE losses, Diebold-Mariano
+    with Newey-West errors (positive = regime better)
   symbols:
   - SPY
   - QQQ
@@ -76,6 +78,23 @@ results:
           t_statistic: 4.197
           p_value: 0.0
         r_squared_gain: 0.0048
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 31.7253
+          har_regime: 31.593
+          diebold_mariano:
+            mean_loss_diff: 0.13223
+            t_statistic: 2.297
+            p_value: 0.0216
+        qlike:
+          har: 1.0497
+          har_regime: 1.4673
+          diebold_mariano:
+            mean_loss_diff: -0.41766
+            t_statistic: -2.076
+            p_value: 0.0379
     rv_park:
       raw_gap:
         mean_bullish: 0.3074
@@ -129,6 +148,23 @@ results:
           t_statistic: 3.768
           p_value: 0.0002
         r_squared_gain: 0.0045
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 2.509
+          har_regime: 2.491
+          diebold_mariano:
+            mean_loss_diff: 0.01799
+            t_statistic: 3.171
+            p_value: 0.0015
+        qlike:
+          har: 0.4661
+          har_regime: 0.4924
+          diebold_mariano:
+            mean_loss_diff: -0.02625
+            t_statistic: -1.079
+            p_value: 0.2804
 - symbol: QQQ
   n_days: 3910
   regime_counts:
@@ -189,6 +225,23 @@ results:
           t_statistic: 4.887
           p_value: 0.0
         r_squared_gain: 0.0114
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 43.0955
+          har_regime: 42.545
+          diebold_mariano:
+            mean_loss_diff: 0.55041
+            t_statistic: 2.526
+            p_value: 0.0115
+        qlike:
+          har: 1.6276
+          har_regime: 1.6152
+          diebold_mariano:
+            mean_loss_diff: 0.01248
+            t_statistic: 0.649
+            p_value: 0.5166
     rv_park:
       raw_gap:
         mean_bullish: 0.5448
@@ -242,6 +295,23 @@ results:
           t_statistic: 3.542
           p_value: 0.0004
         r_squared_gain: 0.0071
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 5.0741
+          har_regime: 4.8887
+          diebold_mariano:
+            mean_loss_diff: 0.18543
+            t_statistic: 2.887
+            p_value: 0.0039
+        qlike:
+          har: 1.1051
+          har_regime: 1.0835
+          diebold_mariano:
+            mean_loss_diff: 0.02157
+            t_statistic: 1.864
+            p_value: 0.0623
 - symbol: IWM
   n_days: 4722
   regime_counts:
@@ -288,6 +358,8 @@ results:
           t_statistic: 1.989
           p_value: 0.0467
         r_squared_gain: 0.0008
+      out_of_sample:
+        skipped: fewer than 20 bullish days before the split
     rv_park:
       raw_gap:
         mean_bullish: 0.9991
@@ -327,3 +399,5 @@ results:
           t_statistic: 1.262
           p_value: 0.207
         r_squared_gain: 0.0002
+      out_of_sample:
+        skipped: fewer than 20 bullish days before the split

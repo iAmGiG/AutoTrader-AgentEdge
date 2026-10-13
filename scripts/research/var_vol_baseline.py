@@ -67,8 +67,8 @@ def build_frame(bt: ResearchBacktester, symbol: str) -> pd.DataFrame:
     return df.dropna(subset=["rv_sq", "rv_park", "regime"])
 
 
-def fit_har(df: pd.DataFrame, target: str, with_regime: bool) -> dict:
-    """HAR regression on ``target`` with optional regime dummies, Newey-West errors."""
+def har_design(df: pd.DataFrame, target: str, with_regime: bool) -> pd.DataFrame:
+    """Target ``y`` plus HAR regressors (and regime dummies), rows with full history only."""
     rv = df[target]
     x = pd.DataFrame(
         {
@@ -81,7 +81,12 @@ def fit_har(df: pd.DataFrame, target: str, with_regime: bool) -> dict:
     if with_regime:
         x["bearish"] = df["bearish"]
         x["bullish"] = df["bullish"]
-    data = pd.concat([rv.rename("y"), x], axis=1).dropna()
+    return pd.concat([rv.rename("y"), x], axis=1).dropna()
+
+
+def fit_har(df: pd.DataFrame, target: str, with_regime: bool) -> dict:
+    """HAR regression on ``target`` with optional regime dummies, Newey-West errors."""
+    data = har_design(df, target, with_regime)
     model = sm.OLS(data["y"], sm.add_constant(data.drop(columns="y")))
     lags = int(np.floor(4 * (len(data) / 100) ** (2 / 9)))
     fit = model.fit(cov_type="HAC", cov_kwds={"maxlags": lags})
@@ -98,6 +103,51 @@ def fit_har(df: pd.DataFrame, target: str, with_regime: bool) -> dict:
             "coef": round(float(np.squeeze(diff.effect)), 4),
             "t_statistic": round(float(np.squeeze(diff.tvalue)), 3),
             "p_value": round(float(np.squeeze(diff.pvalue)), 4),
+        }
+    return out
+
+
+def _dm_test(loss_base: pd.Series, loss_model: pd.Series) -> dict:
+    """Diebold-Mariano: mean(loss_base - loss_model) with a Newey-West t-statistic.
+
+    Positive mean and t mean the regime model forecasts better.
+    """
+    d = (loss_base - loss_model).dropna()
+    lags = int(np.floor(4 * (len(d) / 100) ** (2 / 9)))
+    fit = sm.OLS(d.to_numpy(), np.ones(len(d))).fit(cov_type="HAC", cov_kwds={"maxlags": lags})
+    return {
+        "mean_loss_diff": round(float(fit.params[0]), 5),
+        "t_statistic": round(float(fit.tvalues[0]), 3),
+        "p_value": round(float(fit.pvalues[0]), 4),
+    }
+
+
+def oos_forecast(df: pd.DataFrame, target: str) -> dict:
+    """Fit HAR with and without regime before SPLIT_DATE, forecast after it, compare losses.
+
+    Coefficients are fixed at the in-sample estimates (no re-estimation). Forecasts are
+    floored at 1% of the in-sample mean so QLIKE (log f + y/f) stays defined.
+    """
+    split = pd.Timestamp(SPLIT_DATE)
+    forecasts = {}
+    for name, with_regime in (("har", False), ("har_regime", True)):
+        data = har_design(df, target, with_regime)
+        train, test = data[data.index < split], data[data.index >= split]
+        fit = sm.OLS(train["y"], sm.add_constant(train.drop(columns="y"))).fit()
+        pred = fit.predict(sm.add_constant(test.drop(columns="y"), has_constant="add"))
+        forecasts[name] = pred.clip(lower=0.01 * train["y"].mean())
+    y = har_design(df, target, False)["y"]
+    y = y[y.index >= split]
+    out = {"n_test": len(y), "train_end": SPLIT_DATE}
+    for loss_name, loss in (
+        ("mse", lambda f: (y - f) ** 2),
+        ("qlike", lambda f: np.log(f) + y / f),
+    ):
+        base, model = loss(forecasts["har"]), loss(forecasts["har_regime"])
+        out[loss_name] = {
+            "har": round(float(base.mean()), 4),
+            "har_regime": round(float(model.mean()), 4),
+            "diebold_mariano": _dm_test(base, model),
         }
     return out
 
@@ -134,6 +184,10 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
             full = fit_har(part, target, with_regime=True)
             full["r_squared_gain"] = round(full["r_squared"] - base["r_squared"], 4)
             res[label] = full
+        if df.loc[df.index < SPLIT_DATE, "bullish"].sum() >= 20:
+            res["out_of_sample"] = oos_forecast(df, target)
+        else:
+            res["out_of_sample"] = {"skipped": "fewer than 20 bullish days before the split"}
         result["targets"][target] = res
 
         gap, f = res["raw_gap"], res["full"]
@@ -146,6 +200,14 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
             f"{d['coef']:+.4f} (t={d['t_statistic']}, p={d['p_value']}), "
             f"R2 gain {f['r_squared_gain']:+.4f}"
         )
+        oos = res["out_of_sample"]
+        if "skipped" not in oos:
+            for loss_name in ("mse", "qlike"):
+                dm = oos[loss_name]["diebold_mariano"]
+                print(
+                    f"      OOS {loss_name}: HAR {oos[loss_name]['har']} vs +regime "
+                    f"{oos[loss_name]['har_regime']} | DM t={dm['t_statistic']}, p={dm['p_value']}"
+                )
     return result
 
 
@@ -187,6 +249,8 @@ def main():
             "regime_lag_days": args.regime_lag,
             "period": f"{START} to {END}",
             "split_date": SPLIT_DATE,
+            "out_of_sample": "fit before split_date, fixed coefficients, forecast after; "
+            "MSE and QLIKE losses, Diebold-Mariano with Newey-West errors (positive = regime better)",
             "symbols": SYMBOLS,
         },
         "results": results,
