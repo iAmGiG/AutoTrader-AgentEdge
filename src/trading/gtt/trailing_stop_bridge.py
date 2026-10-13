@@ -14,12 +14,7 @@ Functions:
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from src.trading.gtt.gtt_manager import (
-    ActionType,
-    ConditionType,
-    GTTTrigger,
-    get_gtt_manager,
-)
+from src.trading.gtt.gtt_manager import ActionType, ConditionType, GTTTrigger, get_gtt_manager
 
 if TYPE_CHECKING:
     from src.trading.orders.trailing_stop_manager import StopState, TrailingStopManager

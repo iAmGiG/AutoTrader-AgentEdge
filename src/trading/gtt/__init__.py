@@ -17,11 +17,11 @@ Components:
 """
 
 from src.trading.gtt.gtt_manager import (
-    ActionType,
-    ConditionType,
-    GTTManager,
-    GTTTrigger,
-    get_gtt_manager,
+                                         ActionType,
+                                         ConditionType,
+                                         GTTManager,
+                                         GTTTrigger,
+                                         get_gtt_manager,
 )
 
 __all__ = [

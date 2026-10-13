@@ -314,13 +314,11 @@ class TickerDatabase:
                 (abs(multiplier),),
             )
         else:
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT * FROM ticker_metadata
                 WHERE ABS(multiplier) > 1.01 AND ticker_type LIKE 'etf_%'
                 ORDER BY symbol
-            """
-            )
+            """)
 
         return [
             TickerMetadata(

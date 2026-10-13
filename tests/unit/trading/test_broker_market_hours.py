@@ -27,7 +27,8 @@ def _trading(session, is_open):
 
 def test_package_imports():
     import src.trading  # noqa: F401  (failed before: broker/__init__ imported a missing name)
-    from src.trading.broker import is_market_hours, validate_market_hours  # noqa: F401
+    from src.trading.broker import (is_market_hours,  # noqa: F401
+                                    validate_market_hours)
 
 
 def test_regular_session_open(monkeypatch):
