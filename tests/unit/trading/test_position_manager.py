@@ -19,7 +19,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.trading.position_manager import PositionManager
+from src.trading.positions.position_manager import PositionManager
 
 # =============================================================================
 # Helper: Create PositionManager with tmp_path for state file

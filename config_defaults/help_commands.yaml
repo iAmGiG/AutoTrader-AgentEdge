@@ -827,7 +827,7 @@ exit:
     \  - scanner_config.yaml\n\
     \  - trading_modes.yaml\n\
     \  - accounts_config.yaml\n\n\
-    Backups are stored in config_defaults/backups/ directory.\n\
+    Backups are stored in the state/backups/ directory.\n\
     Use before making significant configuration changes."
 
 # Slash Commands (Issue #506, #507, #508)

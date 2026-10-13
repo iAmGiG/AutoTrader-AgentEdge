@@ -22,7 +22,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.trading.trading_pipeline import (
+from src.trading.scheduling.trading_pipeline import (
     PhaseResult,
     PipelineMetrics,
     PipelinePhase,
@@ -33,6 +33,12 @@ from src.trading.trading_pipeline import (
 # =============================================================================
 # Mock Fixtures
 # =============================================================================
+
+
+@pytest.fixture
+def anyio_backend():
+    """Run async tests on asyncio via anyio's pytest plugin (pytest-asyncio is not a dependency)."""
+    return "asyncio"
 
 
 @pytest.fixture
@@ -78,8 +84,8 @@ def mock_positions():
 def trading_pipeline():
     """Create a TradingPipeline instance with mocked dependencies."""
     with (
-        patch("src.trading.trading_pipeline.AlpacaMarketData"),
-        patch("src.trading.trading_pipeline.PositionManager"),
+        patch("src.trading.scheduling.trading_pipeline.AlpacaMarketData"),
+        patch("src.trading.scheduling.trading_pipeline.PositionManager"),
     ):
         pipeline = TradingPipeline(watchlist=["SPY", "QQQ", "AAPL"])
         return pipeline
@@ -138,7 +144,7 @@ class TestPipelineInitialization:
 # =============================================================================
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_data_collection_phase(trading_pipeline):
     """Test data collection phase validates market data."""
     result = await trading_pipeline._data_collection_phase()
@@ -148,7 +154,7 @@ async def test_data_collection_phase(trading_pipeline):
     assert result["tickers_validated"] == 3
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_analysis_phase_no_voter(trading_pipeline):
     """Test analysis phase gracefully handles missing VoterAgent."""
     result = await trading_pipeline._analysis_phase()
@@ -157,7 +163,7 @@ async def test_analysis_phase_no_voter(trading_pipeline):
     assert result["signals"] == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_analysis_phase_with_voter(trading_pipeline, mock_signals):
     """Test analysis phase generates signals with VoterAgent."""
     mock_voter = MagicMock()
@@ -172,7 +178,9 @@ async def test_analysis_phase_with_voter(trading_pipeline, mock_signals):
         "signal_type": "STRONG",
     }
 
-    with patch("src.trading.trading_pipeline.AlpacaMarketData") as mock_market_data_class:
+    with patch(
+        "src.trading.scheduling.trading_pipeline.AlpacaMarketData"
+    ) as mock_market_data_class:
         mock_instance = MagicMock()
         mock_market_data_class.return_value = mock_instance
         mock_instance.get_bars.return_value = {"SPY": [100, 101, 102]}
@@ -183,7 +191,7 @@ async def test_analysis_phase_with_voter(trading_pipeline, mock_signals):
         assert len(result["signals"]) > 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_execution_phase_no_signals(trading_pipeline):
     """Test execution phase with no signals."""
     result = await trading_pipeline._execution_phase(signals=None)
@@ -192,23 +200,23 @@ async def test_execution_phase_no_signals(trading_pipeline):
     assert result["executions"] == []
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_execution_phase_with_signals(trading_pipeline, mock_signals):
     """Test execution phase places orders."""
     mock_executor = MagicMock()
     mock_executor.execute_trade.return_value = {"status": "filled", "id": "order123"}
     trading_pipeline.executor = mock_executor
 
-    with patch("src.trading.trading_pipeline.get_current_price") as mock_price:
+    with patch("src.trading.scheduling.trading_pipeline.get_current_price") as mock_price:
         mock_price.return_value = 100.0
-        with patch("src.trading.trading_pipeline.PositionManager"):
+        with patch("src.trading.scheduling.trading_pipeline.PositionManager"):
             result = await trading_pipeline._execution_phase(signals=mock_signals)
 
             assert result["orders_placed"] >= 0
             assert "executions" in result
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_management_phase_with_positions(trading_pipeline, mock_positions):
     """Test management phase tracks positions."""
     mock_pos_mgr = MagicMock()
@@ -221,7 +229,7 @@ async def test_management_phase_with_positions(trading_pipeline, mock_positions)
     assert result["positions_updated"] >= 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_management_phase_no_positions(trading_pipeline):
     """Test management phase without PositionManager."""
     result = await trading_pipeline._management_phase()
@@ -230,7 +238,7 @@ async def test_management_phase_no_positions(trading_pipeline):
     assert result["positions_updated"] == 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_end_of_day_phase(trading_pipeline):
     """Test end-of-day phase completes reconciliation."""
     mock_pos_mgr = MagicMock()
@@ -251,7 +259,7 @@ async def test_end_of_day_phase(trading_pipeline):
 # =============================================================================
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_full_pipeline_execution(trading_pipeline):
     """Test complete 5-phase pipeline execution."""
     result = await trading_pipeline.run_full_pipeline()
@@ -263,7 +271,7 @@ async def test_full_pipeline_execution(trading_pipeline):
     assert len(result.phase_results) == 5
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_pipeline_status_running(trading_pipeline):
     """Test pipeline status updates during execution."""
     # Start pipeline execution
@@ -274,7 +282,7 @@ async def test_pipeline_status_running(trading_pipeline):
     assert metrics.phases_completed >= 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_pipeline_dry_run_mode():
     """Test pipeline can be configured for dry-run."""
     pipeline = TradingPipeline(watchlist=["SPY"])
@@ -366,7 +374,7 @@ def test_is_market_hours_mock():
 # =============================================================================
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_run_phase_handles_errors(trading_pipeline):
     """Test _run_phase handles exceptions gracefully."""
 
@@ -379,7 +387,7 @@ async def test_run_phase_handles_errors(trading_pipeline):
     assert len(result.errors) > 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_run_phase_success(trading_pipeline):
     """Test _run_phase tracks successful execution."""
 
@@ -399,7 +407,7 @@ async def test_run_phase_success(trading_pipeline):
 
 def test_load_default_watchlist():
     """Test default watchlist loading fallback."""
-    with patch("src.trading.trading_pipeline.yaml", None):
+    with patch("src.trading.scheduling.trading_pipeline.yaml", None):
         pipeline = TradingPipeline()
         # Should load fallback watchlist
         assert len(pipeline.watchlist) > 0

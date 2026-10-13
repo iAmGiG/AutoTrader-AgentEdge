@@ -16,7 +16,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from src.core.trading_modes import TradingMode, TradingModeManager
-from src.trading.portfolio_manager import (
+from src.trading.positions.portfolio_manager import (
     PortfolioConfig,
     PortfolioManager,
     TradeAssessment,

@@ -14,17 +14,10 @@ Tests cover:
 - Mode manager integration
 """
 
-import sys
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-# Mock imports that require external dependencies
-sys.modules["alpaca"] = MagicMock()
-sys.modules["alpaca.trading"] = MagicMock()
-sys.modules["alpaca.trading.requests"] = MagicMock()
-sys.modules["src.trading.unified_price_fetcher"] = MagicMock()
-
-from src.trading.partial_exit_manager import (
+from src.trading.orders.partial_exit_manager import (
     ExitTarget,
     PartialExitManager,
     PartialExitState,

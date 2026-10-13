@@ -19,12 +19,8 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-# Mock alpaca imports before importing OrderManager
-sys.modules["alpaca"] = MagicMock()
-sys.modules["alpaca.trading"] = MagicMock()
-sys.modules["alpaca.trading.requests"] = MagicMock()
 
-from src.trading.order_manager import OrderManager
+from src.trading.orders.order_manager import OrderManager
 
 # =============================================================================
 # Mock Order Response

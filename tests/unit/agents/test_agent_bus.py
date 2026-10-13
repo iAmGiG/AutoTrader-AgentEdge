@@ -13,7 +13,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.autogen_agents.agent_bus import (
+from src.autogen_agents.orchestration.agent_bus import (
     AgentMessage,
     EventType,
     create_message,
@@ -148,7 +148,9 @@ class TestAgentBus(unittest.TestCase):
     def test_subscribe(self):
         """Test subscribing to events."""
         bus = get_agent_bus()
-        callback = lambda msg: None
+
+        def callback(msg):
+            return None
 
         key = bus.subscribe("test_agent", EventType.SIGNAL_DETECTED, callback)
 
@@ -158,7 +160,9 @@ class TestAgentBus(unittest.TestCase):
     def test_unsubscribe(self):
         """Test unsubscribing from events."""
         bus = get_agent_bus()
-        callback = lambda msg: None
+
+        def callback(msg):
+            return None
 
         bus.subscribe("test_agent", EventType.SIGNAL_DETECTED, callback)
         result = bus.unsubscribe("test_agent", EventType.SIGNAL_DETECTED)

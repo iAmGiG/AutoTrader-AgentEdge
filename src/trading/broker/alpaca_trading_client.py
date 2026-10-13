@@ -394,8 +394,8 @@ class AlpacaAccountMonitor:
                         leg_id_str = str(leg_id)
                         leg_ids.add(leg_id_str)
                         parent_map[leg_id_str] = str(order.id)
-                    leg_ids = [str(leg_id) for leg_id in order.legs]
-                    logger.info(f"Bracket order {order.id} has leg IDs: {leg_ids}")
+                    order_leg_ids = [str(leg_id) for leg_id in order.legs]
+                    logger.info(f"Bracket order {order.id} has leg IDs: {order_leg_ids}")
 
                 result.append(order_dict)
 

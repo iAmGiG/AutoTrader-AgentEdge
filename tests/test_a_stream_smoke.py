@@ -119,7 +119,7 @@ def trading_config_module():
 
 
 @pytest.fixture
-def trailing_stop_module(trading_config_module):
+def trailing_stop_module(trading_config_module, monkeypatch):
     """Load trailing_stop_manager module directly."""
 
     # Mock the date_utils dependency
@@ -128,7 +128,7 @@ def trailing_stop_module(trading_config_module):
         def now_iso():
             return "2024-01-01T00:00:00Z"
 
-    sys.modules["src.utils.date_utils"] = MockDateUtils()
+    monkeypatch.setitem(sys.modules, "src.utils.date_utils", MockDateUtils())
 
     # Mock the unified_price_fetcher dependency
     class MockPriceFetcher:
@@ -140,7 +140,9 @@ def trailing_stop_module(trading_config_module):
     class MockPriceFetcherModule:
         get_current_price = MockPriceFetcher.get_current_price
 
-    sys.modules["src.trading.utils.unified_price_fetcher"] = MockPriceFetcherModule()
+    monkeypatch.setitem(
+        sys.modules, "src.trading.utils.unified_price_fetcher", MockPriceFetcherModule()
+    )
 
     module_path = project_root / "src" / "trading" / "orders" / "trailing_stop_manager.py"
     return import_module_directly(str(module_path), "trailing_stop_manager_direct")
