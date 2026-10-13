@@ -14,9 +14,10 @@ The February 2026 GEX results came from two methodology errors:
 1. **Same-day regime look-ahead.** `options_daily_summary.regime` is computed from end-of-day options data, but the runners used it to classify the same day's returns.
 2. **Backtester bugs in `run_daily_signal_strategy`.** It ignored position size, booked the same P&L for long and short trades, and the dispersion and delta-neutral signals booked the move that triggered each trade.
 
-With both fixed, and 51 to 217 tests corrected for multiple testing:
+With both fixed, and 227 tests corrected for multiple testing:
 
 - **No GEX trading overlay survives.** This covers MACD+RSI regime filtering, dispersion, delta neutral and pairs.
+- **No intraday effect.** GEX sign does not switch intraday momentum and reversal (Barbon-Buraschi design, 2026 snapshots).
 - **One finding survives, and it is descriptive.** Across 40 symbols, negative dealer gamma on the previous day goes with about 8% higher next-day variance, after controlling for trailing variance and the leverage effect. The effect is concentrated in stressed markets (VIX above its 2008-2019 median of 16.6) and is about zero in calm markets. It is stable across 2008-2019 and 2020-2026, but it does **not** improve out-of-sample variance forecasts beyond HAR, leverage and VIX.
 
 ---
@@ -97,6 +98,19 @@ The 252-day GEX percentile gives the same picture with the opposite sign (higher
 
 **Out of sample:** there is no gain. Per symbol, QLIKE improves for 40% of symbols; without leverage controls it was 70%, so the per-symbol gain was mostly the leverage effect. Pooled (fit 2008-2019, forecast 2020+, all 40 symbols): QLIKE goes from 1.53989 to 1.53984 (DM t = 0.14, p = 0.89).
 
+### #530 intraday momentum and reversal by GEX sign (`intraday_gamma_momentum.py`)
+
+The test regresses the 15:30→16:00 return on the previous-close→15:30 return, interacted with a negative-GEX dummy (Baltussen et al. 2021; Barbon-Buraschi). The data are 166 days and 67 symbols (10,176 symbol-days), 2026-01-14 to 2026-10-09. Official closes are the endpoints. The 16:00 snapshot price differs from the official close by more than 10 bps on about 25% of symbol-days, which would bias the design toward reversal.
+
+| GEX measured at | Sample | Interaction (expected > 0) | p |
+|---|---|---|---|
+| Prior close | All symbols | −0.012 | 0.067 |
+| Prior close | Ex leveraged ETFs | −0.008 | 0.18 |
+| Prior close | SPY | +0.052 | 0.047 |
+| 15:30 snapshot | All symbols | −0.007 | 0.36 |
+
+There is no intraday momentum in either gamma state across the panel. A timing strategy (follow the early move when GEX < 0, fade it otherwise) earns −0.5 bps/day gross (t = −0.8). SPY alone shows the predicted pattern, but it does not survive correction. **Null.**
+
 ---
 
 ## Multiple-testing audit
@@ -114,7 +128,8 @@ The 252-day GEX percentile gives the same picture with the opposite sign (higher
 | Panel per symbol, out-of-sample | 80 | 1 | 10 |
 | Panel pooled, in-sample | 4 | 3 | 3 |
 | Panel pooled, out-of-sample | 2 | 0 | 0 |
-| **Total** | **217** | **35** | **70** |
+| Intraday momentum × GEX, timing strategy | 10 | 0 | 0 |
+| **Total** | **227** | **35** | **70** |
 
 ---
 
@@ -122,7 +137,7 @@ The 252-day GEX percentile gives the same picture with the opposite sign (higher
 
 - **Trading.** Do not use the GEX regime as a filter or sizing overlay for VoterAgent, dispersion, delta-neutral or pairs strategies.
 - **Risk.** A RiskAgent could treat negative GEX in a high-VIX market as a descriptive warning flag (about 8% more next-day variance). It is not a forecasting input, since it adds nothing out of sample beyond trailing variance, recent returns and VIX. Do not use it to tighten VaR on positive-GEX days: that made 99% VaR breach too often.
-- **Still untested.** Intraday effects (Barbon-Buraschi momentum and reversal; #530 was null on an older method), expiry-day pinning, and real option P&L for dispersion and delta neutral. See [literature_and_methods.md](literature_and_methods.md).
+- **Still untested.** Expiry-day pinning, a regime × liquidity split, and real option P&L for dispersion and delta neutral. See [literature_and_methods.md](literature_and_methods.md).
 
 ---
 
@@ -140,6 +155,7 @@ $PY scripts/research/delta_neutral_gex.py $W --regime-lag 1 --output delta_neutr
 $PY scripts/research/pairs_trading_gex.py $W --regime-lag 1 --output pairs_trading_expanded_lag1.yaml
 $PY scripts/research/var_vol_baseline.py --regime-lag 1 --output var_vol_baseline_lag1.yaml
 $PY scripts/research/gex_vol_panel.py
+$PY scripts/research/intraday_gamma_momentum.py
 $PY scripts/research/multiple_testing_audit.py
 ```
 

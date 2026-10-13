@@ -36,9 +36,10 @@ GEX re-validation on 2008 to 2026-10-09 (#576). Full write-up: [02_gex_research/
 | GEX overlay improves dispersion trading | #545 | 🛑 STOP | +0.108 was a backtester artifact; fixed +0.085 (p=0.10) |
 | GEX overlay improves delta neutral / pairs | #544, #546 | 🛑 STOP | Null in every window after fixes |
 | Bearish regime VaR 4.3x bullish | #543 | 🛑 STOP | 2.1x at lag 1; regime makes 99% VaR breach too often |
+| GEX sign switches intraday momentum / reversal | #530 | 🛑 STOP | Pooled interaction p=0.067, wrong sign; timing strategy -0.5 bps/day |
 | Negative GEX goes with higher next-day variance | #576 | ✅ DONE | 40 symbols: +8% beyond HAR and leverage, high-VIX only; descriptive, no out-of-sample forecast gain |
 
-**Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay survives multiple-testing correction (217 tests).
+**Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay or intraday effect survives multiple-testing correction (227 tests).
 
 ---
 
@@ -153,7 +154,6 @@ All research scripts now follow these standards:
 
 ### Untested (Optional Future Research)
 
-- Intraday GEX (Open→Close) - practitioner use case (#530; Barbon-Buraschi momentum/reversal)
 - Expiry-day pinning near high-OI strikes
 - Real option P&L for dispersion and delta neutral (current P&L is a toy proxy)
 

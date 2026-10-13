@@ -81,10 +81,16 @@ extended_research:
     issue: "#576"
     results_file: results/multiple_testing_audit.yaml
     runner: scripts/research/multiple_testing_audit.py
-    status: "217 lag-1 tests: 35 Holm, 70 BH; no trading overlay survives"
+    status: "227 lag-1 tests: 35 Holm, 70 BH; no trading overlay or intraday effect survives"
 
   intraday_gex_validation:
     issue: "#530"
     results_file: results/intraday_gex_results.yaml
     runner: scripts/research/gex_intraday_validation.py
-    status: "No monotonic relationship (Spearman p=0.39); not re-run with the lag fix"
+    status: "No monotonic relationship (Spearman p=0.39); superseded by intraday_gamma_momentum"
+
+  intraday_gamma_momentum:
+    issue: "#530, #576"
+    results_file: results/intraday_gamma_momentum.yaml
+    runner: scripts/research/intraday_gamma_momentum.py
+    status: "STOP — GEX sign does not switch 15:30-16:00 momentum/reversal (pooled p=0.067, wrong sign)"

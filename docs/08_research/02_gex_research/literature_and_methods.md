@@ -37,6 +37,6 @@ Status as of 2026-10-13. Results are in [regime_lookahead_revalidation.md](regim
 | 3 | Out-of-sample split (pre-2020 vs 2020 onward) and VIX conditioning | Done (`var_vol_baseline.py`, `gex_vol_panel.py`) |
 | 4 | HAR realized-volatility baseline, plus leverage controls | Done (log-HAR on Parkinson variance) |
 | 5 | Multiple-testing correction | Holm, BH and \|t\| > 3 done (`multiple_testing_audit.py`); Deflated Sharpe and Reality Check / SPA not done (no trading overlay was significant) |
-| 6 | Intraday tests on `intraday_gex_summary` (label change 2026-02-06, vendor break 2026-10-12) | Not done |
+| 6 | Intraday tests on `intraday_gex_summary` (label change 2026-02-06, vendor break 2026-10-12) | Done (`intraday_gamma_momentum.py`): null |
 | 7 | Expiry-day and distance-to-strike pinning tests | Not done |
 | 8 | Regime × liquidity split | Not done |
