@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T15:19:34.821104'
+run_timestamp: '2026-10-13T15:29:50.465673'
 issue: '#545'
 description: Correlation / Dispersion Trading with GEX Regime Overlay
 methodology:
@@ -37,26 +37,26 @@ results:
     std: 0.081
     min: 0.7
     max: 0.954
-    n_obs: 192
+    n_obs: 193
   baseline:
-    sharpe_ratio: -0.314
-    total_return_pct: -9.31
-    max_drawdown_pct: -25.2
-    win_rate_pct: 25.4
+    sharpe_ratio: -0.076
+    total_return_pct: -3.15
+    max_drawdown_pct: -23.39
+    win_rate_pct: 26.1
     num_trades: 20
-    volatility_pct: 9.11
+    volatility_pct: 8.88
   gex_enhanced:
-    sharpe_ratio: -0.153
-    total_return_pct: -5.17
-    max_drawdown_pct: -22.35
-    win_rate_pct: 24.3
+    sharpe_ratio: 0.03
+    total_return_pct: -0.52
+    max_drawdown_pct: -22.66
+    win_rate_pct: 24.9
     num_trades: 20
-    volatility_pct: 8.97
-  sharpe_improvement: 0.161
+    volatility_pct: 9.69
+  sharpe_improvement: 0.107
   paired_return_test:
-    mean_daily_diff: 5.89e-05
-    t_statistic: 1.646
-    p_value: 0.0997
+    mean_daily_diff: 3.86e-05
+    t_statistic: 0.665
+    p_value: 0.5058
     n_days: 752
     maxlags: 6
   regime_distribution:

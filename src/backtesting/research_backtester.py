@@ -206,6 +206,12 @@ class ResearchBacktester:
         Generic runner for delta neutral and dispersion strategies where
         signal_fn returns daily P&L estimates.
 
+        Timing convention: the signal for row ``i`` must use information available
+        before day ``i`` (through day ``i - 1``), and ``daily_pnl_pct`` is the long-side
+        change of the traded quantity on day ``i``. Exits and entries are applied first,
+        then the open position earns ``direction * size * daily_pnl_pct`` for day ``i``,
+        with direction +1 for BUY and -1 for SELL and size taken from the entry signal.
+
         Args:
             signal_fn: Function(prices_df, row_index) -> signal dict with
                        'action', 'position_size', 'daily_pnl_pct' keys.
@@ -214,6 +220,8 @@ class ResearchBacktester:
         """
         capital = self.initial_capital
         in_position = False
+        direction = 0
+        size = 0.0
         trades = []
         portfolio_values = [capital]
 
@@ -223,23 +231,6 @@ class ResearchBacktester:
             date_str = str(prices.index[i].date())
             pnl_pct = signal.get("daily_pnl_pct", 0.0)
 
-            if action in ("BUY", "SELL") and not in_position:
-                in_position = True
-                cost = capital * self.commission_bps / 10_000
-                capital -= cost
-                trades.append(
-                    {
-                        "date": date_str,
-                        "action": action,
-                        "shares": signal.get("position_size", 1.0),
-                        "price": prices[symbol].iloc[i] if symbol in prices.columns else 0,
-                        "commission": cost,
-                    }
-                )
-
-            if in_position:
-                capital *= 1 + pnl_pct
-
             if action == "EXIT" and in_position:
                 in_position = False
                 cost = capital * self.commission_bps / 10_000
@@ -248,11 +239,30 @@ class ResearchBacktester:
                     {
                         "date": date_str,
                         "action": "EXIT",
-                        "shares": 1.0,
+                        "shares": size,
                         "price": 0,
                         "commission": cost,
                     }
                 )
+
+            if action in ("BUY", "SELL") and not in_position:
+                in_position = True
+                direction = 1 if action == "BUY" else -1
+                size = signal.get("position_size", 1.0)
+                cost = capital * self.commission_bps / 10_000
+                capital -= cost
+                trades.append(
+                    {
+                        "date": date_str,
+                        "action": action,
+                        "shares": size,
+                        "price": prices[symbol].iloc[i] if symbol in prices.columns else 0,
+                        "commission": cost,
+                    }
+                )
+
+            if in_position:
+                capital *= 1 + direction * size * pnl_pct
 
             portfolio_values.append(capital)
 

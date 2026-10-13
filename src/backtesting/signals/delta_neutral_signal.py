@@ -17,6 +17,7 @@ size long-vol positions larger. In positive gamma, volatility dampened — favor
 
 from typing import Any, Dict, Optional
 
+import numpy as np
 import pandas as pd
 
 
@@ -119,9 +120,18 @@ class DeltaNeutralSignal:
             }
 
         date = prices.index[idx]
+        if idx == 0:
+            return {
+                "action": "HOLD",
+                "position_size": 0.0,
+                "daily_pnl_pct": 0.0,
+                "confidence": 0.0,
+                "reasoning": "No prior day",
+            }
+        prev_date = prices.index[idx - 1]
 
-        # Find vol data for this date
-        mask = self._vol_data.index <= date
+        # Decide with the spread known at the previous close (end-of-day options data)
+        mask = self._vol_data.index <= prev_date
         if not mask.any():
             return {
                 "action": "HOLD",
@@ -134,19 +144,16 @@ class DeltaNeutralSignal:
         row = self._vol_data.loc[mask].iloc[-1]
         spread = float(row["iv_hv_spread"])
 
-        # Calculate daily P&L from spread changes (simplified)
-        # When long vol: profit if spread increases (IV rises relative to RV)
-        # When short vol: profit if spread decreases
+        # Daily P&L (long vol): change in the IV-RV spread over day ``date``.
+        # Long vol profits if the spread rises, short vol if it falls; the backtester
+        # signs it by position direction. Toy model, not tradable straddle P&L:
+        # calibrated 0.25x gives ~0.6% daily moves (avg daily |Δspread| = 0.023).
         daily_pnl_pct = 0.0
-        if idx > 0:
-            prev_date = prices.index[idx - 1]
-            prev_mask = self._vol_data.index <= prev_date
-            if prev_mask.any():
-                prev_spread = float(self._vol_data.loc[prev_mask, "iv_hv_spread"].iloc[-1])
-                spread_change = spread - prev_spread
-                # Calibrated: 0.25x gives ~1% daily vol, matching typical vol strategy
-                # (avg daily |Δspread| = 0.023, so 0.023 * 0.25 ≈ 0.6% daily move)
-                daily_pnl_pct = spread_change * 0.25
+        today_mask = self._vol_data.index <= date
+        if today_mask.any():
+            today_spread = float(self._vol_data.loc[today_mask, "iv_hv_spread"].iloc[-1])
+            if np.isfinite(today_spread) and np.isfinite(spread):
+                daily_pnl_pct = (today_spread - spread) * 0.25
 
         confidence = min(0.9, abs(spread) / (self.entry_threshold * 3))
 

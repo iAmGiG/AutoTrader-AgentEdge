@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T13:07:14.440229'
+run_timestamp: '2026-10-13T15:29:21.150949'
 issue: '#544'
 description: Delta Neutral / Long Volatility with GEX Regime Overlay
 methodology:
@@ -40,20 +40,26 @@ results:
     entry: 0.2237
     exit: 0.0559
   baseline:
-    sharpe_ratio: 0.007
-    total_return_pct: -637.33
-    max_drawdown_pct: -260.53
-    win_rate_pct: 1.1
-    num_trades: 10
-    volatility_pct: 88.17
-  gex_enhanced:
-    sharpe_ratio: 0.09
-    total_return_pct: 5.3
-    max_drawdown_pct: -14.98
+    sharpe_ratio: 0.277
+    total_return_pct: 336.74
+    max_drawdown_pct: -12.61
     win_rate_pct: 1.0
-    num_trades: 6
-    volatility_pct: 5.09
-  sharpe_improvement: 0.083
+    num_trades: 10
+    volatility_pct: 62.32
+  gex_enhanced:
+    sharpe_ratio: 0.273
+    total_return_pct: 411.6
+    max_drawdown_pct: -18.97
+    win_rate_pct: 1.0
+    num_trades: 8
+    volatility_pct: 77.91
+  sharpe_improvement: -0.004
+  paired_return_test:
+    mean_daily_diff: 0.0001577
+    t_statistic: 1.001
+    p_value: 0.3168
+    n_days: 3965
+    maxlags: 9
   regime_distribution:
     bullish_gamma: 1596
     bearish_gamma: 1785

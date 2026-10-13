@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T15:20:28.564135'
+run_timestamp: '2026-10-13T15:30:32.924862'
 issue: '#576'
 description: Multiple-testing audit of lag-1 GEX hypothesis tests
 methodology:
@@ -12,10 +12,10 @@ methodology:
   dependence_note: full and half-sample tests overlap; Holm valid, BH approximate
 summary:
   n_tests: 51
-  raw_p_below_0.05: 30
+  raw_p_below_0.05: 29
   expected_by_chance_at_0.05: 2.6
   holm_rejections: 17
-  bh_rejections: 26
+  bh_rejections: 25
   abs_t_above_3: 18
 by_study:
 - study: '#531 MACD+RSI regime gap'
@@ -56,9 +56,9 @@ by_study:
   t3: 0
 - study: '#545 dispersion overlay, 2011-2026'
   n: 1
-  raw: 1
+  raw: 0
   holm: 0
-  bh: 1
+  bh: 0
   t3: 0
 - study: '#545 dispersion overlay, 2021-2023'
   n: 1
@@ -340,19 +340,7 @@ tests:
   holm_reject: false
   holm_p: 0.264
   bh_reject: true
-  bh_q: 0.0197
-  raw_reject: true
-  t_above_3: false
-- study: '#545 dispersion overlay, 2011-2026'
-  source: dispersion_expanded_lag1.yaml
-  test: index overlay-baseline daily return (NW)
-  effect: 0.12
-  t_statistic: 2.617
-  p_value: 0.0089
-  holm_reject: false
-  holm_p: 0.264
-  bh_reject: true
-  bh_q: 0.0197
+  bh_q: 0.0204
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -362,9 +350,9 @@ tests:
   t_statistic: 2.526
   p_value: 0.0115
   holm_reject: false
-  holm_p: 0.322
+  holm_p: 0.3335
   bh_reject: true
-  bh_q: 0.0244
+  bh_q: 0.0255
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -374,9 +362,9 @@ tests:
   t_statistic: 2.382
   p_value: 0.0172
   holm_reject: false
-  holm_p: 0.4644
+  holm_p: 0.4816
   bh_reject: true
-  bh_q: 0.0351
+  bh_q: 0.0366
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -386,9 +374,9 @@ tests:
   t_statistic: 2.297
   p_value: 0.0216
   holm_reject: false
-  holm_p: 0.5616
+  holm_p: 0.5832
   bh_reject: true
-  bh_q: 0.0424
+  bh_q: 0.0441
   raw_reject: true
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -398,9 +386,9 @@ tests:
   t_statistic: 2.153
   p_value: 0.0313
   holm_reject: false
-  holm_p: 0.7825
+  holm_p: 0.8138
   bh_reject: false
-  bh_q: 0.0591
+  bh_q: 0.0614
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -410,9 +398,9 @@ tests:
   t_statistic: -2.076
   p_value: 0.0379
   holm_reject: false
-  holm_p: 0.9096
+  holm_p: 0.9475
   bh_reject: false
-  bh_q: 0.069
+  bh_q: 0.0716
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -422,9 +410,9 @@ tests:
   t_statistic: 2.035
   p_value: 0.0418
   holm_reject: false
-  holm_p: 0.9614
+  holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0735
+  bh_q: 0.0761
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -436,7 +424,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.0794
+  bh_q: 0.0821
   raw_reject: true
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -448,7 +436,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1025
+  bh_q: 0.1059
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -460,7 +448,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.135
+  bh_q: 0.1393
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2022-2023'
@@ -472,19 +460,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1397
+  bh_q: 0.1441
   raw_reject: false
   t_above_3: false
-- study: '#545 dispersion overlay, 2021-2023'
-  source: dispersion_results.yaml
+- study: '#545 dispersion overlay, 2011-2026'
+  source: dispersion_expanded_lag1.yaml
   test: index overlay-baseline daily return (NW)
-  effect: 0.161
-  t_statistic: 1.646
-  p_value: 0.0997
+  effect: 0.085
+  t_statistic: 1.632
+  p_value: 0.1027
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1496
+  bh_q: 0.158
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -496,7 +484,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1534
+  bh_q: 0.158
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -508,7 +496,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.1556
+  bh_q: 0.16
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -520,7 +508,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2127
+  bh_q: 0.2185
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -532,7 +520,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2127
+  bh_q: 0.2185
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -544,7 +532,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2707
+  bh_q: 0.2778
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -556,7 +544,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3148
+  bh_q: 0.3229
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -568,7 +556,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3197
+  bh_q: 0.3277
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -580,7 +568,31 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.3405
+  bh_q: 0.3488
+  raw_reject: false
+  t_above_3: false
+- study: '#544 delta-neutral overlay, 2022-2023'
+  source: delta_neutral_results.yaml
+  test: SPY overlay-baseline daily return (NW)
+  effect: -0.262
+  t_statistic: -1.051
+  p_value: 0.2933
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.3562
+  raw_reject: false
+  t_above_3: false
+- study: '#544 delta-neutral overlay, 2011-2026'
+  source: delta_neutral_expanded_lag1.yaml
+  test: SPY overlay-baseline daily return (NW)
+  effect: -0.037
+  t_statistic: -0.996
+  p_value: 0.3191
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.3785
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2022-2023'
@@ -592,19 +604,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.497
+  bh_q: 0.4857
   raw_reject: false
   t_above_3: false
-- study: '#544 delta-neutral overlay, 2022-2023'
-  source: delta_neutral_results.yaml
-  test: SPY overlay-baseline daily return (NW)
-  effect: 0.164
-  t_statistic: 0.701
-  p_value: 0.4835
+- study: '#545 dispersion overlay, 2021-2023'
+  source: dispersion_results.yaml
+  test: index overlay-baseline daily return (NW)
+  effect: 0.107
+  t_statistic: 0.665
+  p_value: 0.5058
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5604
+  bh_q: 0.5728
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -616,7 +628,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5855
+  bh_q: 0.5728
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -628,7 +640,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6272
+  bh_q: 0.6138
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -640,19 +652,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6383
-  raw_reject: false
-  t_above_3: false
-- study: '#544 delta-neutral overlay, 2011-2026'
-  source: delta_neutral_expanded_lag1.yaml
-  test: SPY overlay-baseline daily return (NW)
-  effect: -0.001
-  t_statistic: -0.392
-  p_value: 0.6954
-  holm_reject: false
-  holm_p: 1.0
-  bh_reject: false
-  bh_q: 0.7389
+  bh_q: 0.625
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2011-2026'

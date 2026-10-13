@@ -70,8 +70,9 @@ class DispersionSignal:
         correlations = []
         dates = returns.index
 
-        for i in range(self.correlation_lookback, len(returns)):
-            window = returns.iloc[i - self.correlation_lookback : i]
+        # The value labelled at day t includes day t's return (known at day t's close).
+        for i in range(self.correlation_lookback - 1, len(returns)):
+            window = returns.iloc[i - self.correlation_lookback + 1 : i + 1]
             corrs = []
             for comp in component_cols:
                 if comp in window.columns and index_col in window.columns:
@@ -83,7 +84,7 @@ class DispersionSignal:
 
         series = pd.Series(
             correlations,
-            index=dates[self.correlation_lookback :],
+            index=dates[self.correlation_lookback - 1 :],
             name="realized_correlation",
         )
         return series
@@ -143,9 +144,18 @@ class DispersionSignal:
             }
 
         date = prices.index[idx]
+        if idx == 0:
+            return {
+                "action": "HOLD",
+                "position_size": 0.0,
+                "daily_pnl_pct": 0.0,
+                "confidence": 0.0,
+                "reasoning": "No prior day",
+            }
+        prev_date = prices.index[idx - 1]
 
-        # Find z-score for this date
-        mask = self._zscore_series.index <= date
+        # Decide with the z-score known at the previous close (no same-day information)
+        mask = self._zscore_series.index <= prev_date
         if not mask.any():
             return {
                 "action": "HOLD",
@@ -156,7 +166,7 @@ class DispersionSignal:
             }
 
         z = self._zscore_series.loc[mask].iloc[-1]
-        corr = self._corr_series.loc[self._corr_series.index <= date].iloc[-1]
+        corr = self._corr_series.loc[self._corr_series.index <= prev_date].iloc[-1]
 
         if np.isnan(z):
             return {
@@ -167,16 +177,15 @@ class DispersionSignal:
                 "reasoning": "Z-score is NaN (insufficient history)",
             }
 
-        # Daily P&L: based on correlation change
+        # Daily P&L (long correlation): change in correlation over day ``date``.
+        # The backtester signs it by position direction (SELL = short correlation).
+        # Toy model, not tradable option P&L: calibrated 1.0x gives ~0.5% daily moves
+        # (avg daily |Δcorr| = 0.005).
         daily_pnl_pct = 0.0
-        if idx > 0:
-            prev_date = prices.index[idx - 1]
-            prev_mask = self._corr_series.index <= prev_date
-            if prev_mask.any():
-                prev_corr = self._corr_series.loc[prev_mask].iloc[-1]
-                corr_change = corr - prev_corr
-                # Calibrated: 1.0x gives ~1% daily vol, matching typical dispersion strategy
-                # (avg daily |Δcorr| = 0.005, so 0.005 * 1.0 ≈ 0.5% daily move)
+        today_mask = self._corr_series.index <= date
+        if today_mask.any():
+            corr_change = self._corr_series.loc[today_mask].iloc[-1] - corr
+            if np.isfinite(corr_change):
                 daily_pnl_pct = corr_change * 1.0
 
         confidence = min(0.9, abs(z) / (self.entry_z * 2))
