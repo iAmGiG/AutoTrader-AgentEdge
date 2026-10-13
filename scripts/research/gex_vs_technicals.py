@@ -434,8 +434,7 @@ def save_results_to_db(results: Dict[str, Any]) -> None:
     cursor = conn.cursor()
 
     # Create table if not exists
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS gex_vs_technicals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             run_timestamp TEXT NOT NULL,
@@ -460,8 +459,7 @@ def save_results_to_db(results: Dict[str, Any]) -> None:
             winner TEXT,
             gex_improvement REAL
         )
-    """
-    )
+    """)
 
     # Extract strategy results
     tech = results["results"].get("TECHNICALS (MACD+RSI)", {})

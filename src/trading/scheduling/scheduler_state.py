@@ -85,8 +85,7 @@ class SchedulerStateManager:
             cursor = conn.cursor()
 
             # Scheduler state table (single row for current state)
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS scheduler_state (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     enabled BOOLEAN DEFAULT FALSE,
@@ -99,12 +98,10 @@ class SchedulerStateManager:
                     timeout_seconds INTEGER DEFAULT 300,
                     updated_at TEXT
                 )
-            """
-            )
+            """)
 
             # Scheduler execution history (replaces JSON log)
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS scheduler_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     routine_type TEXT NOT NULL,
@@ -116,16 +113,13 @@ class SchedulerStateManager:
                     report_path TEXT,
                     api_calls_used INTEGER DEFAULT 0
                 )
-            """
-            )
+            """)
 
             # Create index for faster queries
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_scheduler_history_routine_date
                 ON scheduler_history(routine_type, started_at)
-            """
-            )
+            """)
 
             conn.commit()
             conn.close()

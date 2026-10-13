@@ -368,14 +368,12 @@ def get_symbols_to_process(db_path: Path) -> List[Tuple[str, int]]:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT symbol, COUNT(DISTINCT trading_date) as days
         FROM options_chains
         GROUP BY symbol
         ORDER BY days DESC
-    """
-    )
+    """)
 
     symbols = cursor.fetchall()
     conn.close()
@@ -449,15 +447,13 @@ def main():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT asset_class, COUNT(*) as days,
             SUM(CASE WHEN regime = 'POSITIVE_GAMMA' THEN 1 ELSE 0 END) as pos,
             SUM(CASE WHEN regime = 'NEGATIVE_GAMMA' THEN 1 ELSE 0 END) as neg
         FROM options_daily_summary
         GROUP BY asset_class
-    """
-    )
+    """)
 
     print("\nRegime Distribution by Asset Class:")
     print(f"{'Asset Class':<15} {'Days':>8} {'Positive':>10} {'Negative':>10}")

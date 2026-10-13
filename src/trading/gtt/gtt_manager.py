@@ -150,8 +150,7 @@ class GTTManager:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS gtt_triggers (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
@@ -168,32 +167,25 @@ class GTTManager:
                     notes TEXT,
                     created_at TEXT NOT NULL
                 )
-            """
-            )
+            """)
 
             # Index for symbol lookup
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_gtt_symbol
                 ON gtt_triggers(symbol)
-            """
-            )
+            """)
 
             # Index for active triggers
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_gtt_enabled
                 ON gtt_triggers(enabled)
-            """
-            )
+            """)
 
             # Index for OCO groups
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_gtt_oco
                 ON gtt_triggers(oco_group_id)
-            """
-            )
+            """)
 
             conn.commit()
             conn.close()

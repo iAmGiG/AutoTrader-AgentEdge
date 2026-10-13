@@ -108,8 +108,7 @@ class AlertsWatchlistsManager:
             cursor = conn.cursor()
 
             # User alerts table
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_alerts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
@@ -120,20 +119,16 @@ class AlertsWatchlistsManager:
                     triggered_at TEXT,
                     created_at TEXT NOT NULL
                 )
-            """
-            )
+            """)
 
             # Create index for symbol lookup
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_user_alerts_symbol
                 ON user_alerts(symbol)
-            """
-            )
+            """)
 
             # Watchlists table
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS watchlists (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT UNIQUE NOT NULL,
@@ -141,12 +136,10 @@ class AlertsWatchlistsManager:
                     is_default BOOLEAN DEFAULT FALSE,
                     created_at TEXT NOT NULL
                 )
-            """
-            )
+            """)
 
             # Watchlist items table
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS watchlist_items (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     watchlist_id INTEGER NOT NULL,
@@ -156,8 +149,7 @@ class AlertsWatchlistsManager:
                     FOREIGN KEY (watchlist_id) REFERENCES watchlists(id) ON DELETE CASCADE,
                     UNIQUE(watchlist_id, symbol)
                 )
-            """
-            )
+            """)
 
             # Enable foreign key support
             cursor.execute("PRAGMA foreign_keys = ON")

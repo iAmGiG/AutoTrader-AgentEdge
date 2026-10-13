@@ -137,13 +137,11 @@ class PriceBackfiller:
 
     def get_symbols_needing_prices(self) -> List[str]:
         """Get list of symbols with NULL underlying_price."""
-        self.cursor.execute(
-            """
+        self.cursor.execute("""
             SELECT DISTINCT symbol
             FROM options_chains
             WHERE underlying_price IS NULL
-        """
-        )
+        """)
         return [row[0] for row in self.cursor.fetchall()]
 
     def get_date_range(self, symbol: str) -> tuple[str, str]:

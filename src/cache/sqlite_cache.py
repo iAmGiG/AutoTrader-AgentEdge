@@ -59,8 +59,7 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
         with sqlite3.connect(self.db_path) as conn:
             # Create main market data table
             # Supports multiple timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M, custom
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS market_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -90,12 +89,10 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                     -- Unique constraint: one entry per symbol+timestamp+timeframe+source
                     UNIQUE(asset_type, symbol, trading_date, timeframe, source)
                 )
-            """
-            )
+            """)
 
             # Create technical indicators cache table (for pre-computed values)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS indicator_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -116,12 +113,10 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
 
                     UNIQUE(symbol, trading_date, timeframe, indicator_name, params)
                 )
-            """
-            )
+            """)
 
             # Create signal history table (for ML training and analysis)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS signal_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -155,12 +150,10 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                     strategy_name TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
             # Create execution quality table (slippage tracking)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS execution_quality (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -186,12 +179,10 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
 
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
             # Create raw options chain table (Issue #373)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS raw_options_chain (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -234,12 +225,10 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                     -- Unique constraint
                     UNIQUE(symbol, trading_date, strike, option_type, expiration, source)
                 )
-            """
-            )
+            """)
 
             # Create trade history table (Issue #373 extension - hybrid trade storage)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS trade_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -291,104 +280,73 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     notes TEXT
                 )
-            """
-            )
+            """)
 
             # Create indexes for market_cache
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_lookup
                 ON market_cache(asset_type, symbol, trading_date)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_symbol_range
                 ON market_cache(symbol, trading_date)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_expiry
                 ON market_cache(expires_at)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_symbol
                 ON market_cache(symbol)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_source
                 ON market_cache(source)
-            """
-            )
+            """)
 
             # Create indexes for raw_options_chain (Issue #373)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_options_symbol_date
                 ON raw_options_chain(symbol, trading_date)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_options_expiration
                 ON raw_options_chain(expiration)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_options_strike
                 ON raw_options_chain(symbol, trading_date, strike)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_options_source
                 ON raw_options_chain(source)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_options_quality
                 ON raw_options_chain(data_quality_score)
-            """
-            )
+            """)
 
             # Create indexes for trade_history (Issue #373 extension)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trade_symbol
                 ON trade_history(symbol)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trade_entry_date
                 ON trade_history(entry_date)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trade_strategy
                 ON trade_history(strategy_name)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trade_exit_reason
                 ON trade_history(exit_reason)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trade_broker
                 ON trade_history(broker_account)
-            """
-            )
+            """)
 
             conn.commit()
 
@@ -586,13 +544,11 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                     columns_list = ", ".join(columns_to_save)
 
                     # Copy to main table with INSERT OR REPLACE
-                    conn.execute(
-                        f"""
+                    conn.execute(f"""
                         INSERT OR REPLACE INTO market_cache
                         ({columns_list})
                         SELECT {columns_list} FROM {temp_table}
-                    """  # nosec B608
-                    )
+                    """)  # nosec B608
 
                     # Drop temp table
                     conn.execute(f"DROP TABLE {temp_table}")
@@ -705,12 +661,10 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    """
+                cursor = conn.execute("""
                     DELETE FROM market_cache
                     WHERE datetime(expires_at) <= datetime('now')
-                """
-                )
+                """)
                 deleted = cursor.rowcount
                 conn.commit()
 
@@ -766,12 +720,10 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                 ).fetchone()
 
                 # Expired entries
-                expired = conn.execute(
-                    """
+                expired = conn.execute("""
                     SELECT COUNT(*) FROM market_cache
                     WHERE datetime(expires_at) <= datetime('now')
-                """
-                ).fetchone()[0]
+                """).fetchone()[0]
 
             # Database file size
             db_size_mb = self.db_path.stat().st_size / (1024 * 1024) if self.db_path.exists() else 0
@@ -895,50 +847,36 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                 self.logger.debug("trading_date column will be treated as bar_timestamp")
 
             # Create new indexes for timeframe-aware queries
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_timeframe_lookup
                 ON market_cache(symbol, timeframe, trading_date)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_timeframe_source
                 ON market_cache(symbol, timeframe, source)
-            """
-            )
+            """)
 
             # Create indexes for new tables
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_indicator_lookup
                 ON indicator_cache(symbol, timeframe, indicator_name, trading_date)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_signal_lookup
                 ON signal_history(symbol, timeframe, signal_timestamp)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_signal_outcome
                 ON signal_history(outcome, strategy_name)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_execution_order
                 ON execution_quality(order_id)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_execution_symbol
                 ON execution_quality(symbol, order_submitted_at)
-            """
-            )
+            """)
 
             conn.commit()
 

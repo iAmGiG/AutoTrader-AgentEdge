@@ -36,8 +36,7 @@ class OHLCVCacheManager(BaseSQLiteCache):
         """Create market_cache table and indexes."""
         with self.get_connection() as conn:
             # Create main market data table
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS market_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -66,30 +65,23 @@ class OHLCVCacheManager(BaseSQLiteCache):
                     -- Unique constraint: one entry per symbol+date+source
                     UNIQUE(asset_type, symbol, trading_date, source)
                 )
-            """
-            )
+            """)
 
             # Create indexes for faster queries
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_market_symbol_date
                 ON market_cache(symbol, trading_date)
-            """
-            )
+            """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_market_expires
                 ON market_cache(expires_at)
-            """
-            )
+            """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_market_asset_type
                 ON market_cache(asset_type)
-            """
-            )
+            """)
 
     def get(
         self,

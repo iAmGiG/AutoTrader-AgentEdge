@@ -17,11 +17,9 @@ Tests cover:
 import unittest
 from unittest.mock import Mock, patch
 
-from src.trading.orders.partial_exit_manager import (
-    ExitTarget,
-    PartialExitManager,
-    PartialExitState,
-)
+from src.trading.orders.partial_exit_manager import (ExitTarget,
+                                                     PartialExitManager,
+                                                     PartialExitState)
 
 
 class TestExitTarget(unittest.TestCase):

@@ -213,7 +213,8 @@ class MockableVoterAgent:
     def evaluate_voting(self, symbol, price_data, return_components=False):  # noqa: C901
         """Core MACD+RSI voting logic."""
         # Import here to use actual indicator functions
-        from src.trading.instruments.indicators import calculate_macd, calculate_rsi
+        from src.trading.instruments.indicators import (calculate_macd,
+                                                        calculate_rsi)
 
         try:
             # Validate data sufficiency

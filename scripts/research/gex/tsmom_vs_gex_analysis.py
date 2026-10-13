@@ -287,16 +287,14 @@ def main():
     try:
         # Get symbols with GEX data
         cursor = conn.cursor()
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT DISTINCT symbol, COUNT(*) as days
             FROM options_daily_summary
             WHERE underlying_price IS NOT NULL
             GROUP BY symbol
             HAVING days >= 50
             ORDER BY days DESC
-        """
-        )
+        """)
         symbols = [(row[0], row[1]) for row in cursor.fetchall()]
 
         print("=" * 70)

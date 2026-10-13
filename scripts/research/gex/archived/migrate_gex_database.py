@@ -117,16 +117,14 @@ class DatabaseValidator:
                 warnings.append(f"{invalid_gamma} records have invalid gamma values (<0 or >1)")
 
             # Check for null values in critical columns
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT COUNT(*)
                 FROM options_chains
                 WHERE symbol IS NULL
                    OR trading_date IS NULL
                    OR strike IS NULL
                    OR option_type IS NULL
-            """
-            )
+            """)
             null_count = cursor.fetchone()[0]
             if null_count > 0:
                 warnings.append(f"{null_count} records have NULL critical values")
@@ -181,13 +179,11 @@ class DatabaseValidator:
             # Date coverage per symbol
             stats["date_coverage"] = {}
             for symbol in symbols:
-                cursor.execute(
-                    f"""
+                cursor.execute(f"""
                     SELECT MIN(trading_date), MAX(trading_date), COUNT(DISTINCT trading_date)
                     FROM options_chains
                     WHERE symbol = '{symbol}'
-                """
-                )
+                """)
                 min_date, max_date, days = cursor.fetchone()
                 stats["date_coverage"][symbol] = {
                     "start": min_date,

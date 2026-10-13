@@ -86,8 +86,7 @@ class PortfolioOverrideManager:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_overrides (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     config_key TEXT UNIQUE NOT NULL,
@@ -98,20 +97,16 @@ class PortfolioOverrideManager:
                     expires_at TEXT,
                     is_active BOOLEAN DEFAULT TRUE
                 )
-            """
-            )
+            """)
 
             # Create index for faster lookups
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_portfolio_overrides_key
                 ON portfolio_overrides(config_key)
-            """
-            )
+            """)
 
             # History table for audit trail
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS portfolio_override_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     config_key TEXT NOT NULL,
@@ -121,8 +116,7 @@ class PortfolioOverrideManager:
                     reason TEXT,
                     changed_at TEXT NOT NULL
                 )
-            """
-            )
+            """)
 
             conn.commit()
             conn.close()
@@ -470,12 +464,10 @@ class PortfolioOverrideManager:
             conn = self._get_connection()
             cursor = conn.cursor()
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT * FROM portfolio_overrides WHERE is_active = TRUE
                 ORDER BY config_key
-            """
-            )
+            """)
             rows = cursor.fetchall()
             conn.close()
 

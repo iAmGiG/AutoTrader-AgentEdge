@@ -560,13 +560,11 @@ class DBBackupManager:
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT name FROM sqlite_master
                 WHERE type='table' AND name NOT LIKE 'sqlite_%'
                 ORDER BY name
-                """
-            )
+                """)
             tables = []
 
             for (table_name,) in cursor.fetchall():
@@ -611,12 +609,10 @@ class DBBackupManager:
 
             # Auto-detect history tables if not specified
             if tables is None:
-                cursor.execute(
-                    """
+                cursor.execute("""
                     SELECT name FROM sqlite_master
                     WHERE type='table' AND name LIKE '%_history'
-                    """
-                )
+                    """)
                 tables = [row[0] for row in cursor.fetchall()]
 
             for table_name in tables:
@@ -705,14 +701,12 @@ class DBMigrator:
 
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS schema_version (
                 version INTEGER PRIMARY KEY,
                 applied_at TEXT NOT NULL
             )
-            """
-        )
+            """)
         conn.commit()
         conn.close()
 

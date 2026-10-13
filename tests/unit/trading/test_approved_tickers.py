@@ -19,11 +19,8 @@ import unittest
 
 from src.core.trading_modes import TradingMode
 from src.trading.instruments.approved_tickers import ApprovedTickersManager
-from src.trading.instruments.ticker_database import (
-    TickerDatabase,
-    TickerMode,
-    TickerType,
-)
+from src.trading.instruments.ticker_database import (TickerDatabase,
+                                                     TickerMode, TickerType)
 
 
 class TestTickerDatabase(unittest.TestCase):

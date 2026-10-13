@@ -22,13 +22,11 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.trading.scheduling.trading_pipeline import (
-    PhaseResult,
-    PipelineMetrics,
-    PipelinePhase,
-    PipelineStatus,
-    TradingPipeline,
-)
+from src.trading.scheduling.trading_pipeline import (PhaseResult,
+                                                     PipelineMetrics,
+                                                     PipelinePhase,
+                                                     PipelineStatus,
+                                                     TradingPipeline)
 
 # =============================================================================
 # Mock Fixtures

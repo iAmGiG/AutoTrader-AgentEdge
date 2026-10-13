@@ -90,8 +90,7 @@ class AnalysisHistoryManager:
         """Create analysis_history table if it doesn't exist."""
         conn = sqlite3.connect(self.db_path)
         try:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS analysis_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp TEXT NOT NULL,
@@ -107,37 +106,28 @@ class AnalysisHistoryManager:
                     trade_id INTEGER,
                     FOREIGN KEY (trade_id) REFERENCES trade_history(id)
                 )
-            """
-            )
+            """)
 
             # Create indexes for common queries
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_analysis_ticker
                 ON analysis_history(ticker)
-            """
-            )
+            """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_analysis_timestamp
                 ON analysis_history(timestamp)
-            """
-            )
+            """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_analysis_signal
                 ON analysis_history(final_signal)
-            """
-            )
+            """)
 
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_analysis_timeframe
                 ON analysis_history(timeframe)
-            """
-            )
+            """)
 
             conn.commit()
             logger.debug("analysis_history table and indexes ensured")

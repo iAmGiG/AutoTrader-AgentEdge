@@ -168,14 +168,12 @@ def get_symbols_info(db_path: Path) -> List[Tuple[str, int]]:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT symbol, COUNT(DISTINCT trading_date) as days
         FROM options_chains
         GROUP BY symbol
         ORDER BY days DESC
-    """
-    )
+    """)
 
     result = cursor.fetchall()
     conn.close()
@@ -536,20 +534,17 @@ def generate_report(db_path: Path, config: Dict, logger: logging.Logger) -> str:
     # Get summary statistics
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT
             COUNT(DISTINCT symbol) as symbols,
             COUNT(*) as total_days,
             MIN(trading_date) as start_date,
             MAX(trading_date) as end_date
         FROM options_daily_summary
-    """
-    )
+    """)
     summary = cursor.fetchone()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT
             asset_class,
             COUNT(*) as days,
@@ -559,20 +554,17 @@ def generate_report(db_path: Path, config: Dict, logger: logging.Logger) -> str:
             ROUND(AVG(data_quality_score), 3) as avg_quality
         FROM options_daily_summary
         GROUP BY asset_class
-    """
-    )
+    """)
     asset_breakdown = cursor.fetchall()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT symbol, COUNT(*) as days,
             SUM(CASE WHEN regime = 'POSITIVE_GAMMA' THEN 1 ELSE 0 END) as positive,
             SUM(CASE WHEN regime = 'NEGATIVE_GAMMA' THEN 1 ELSE 0 END) as negative
         FROM options_daily_summary
         GROUP BY symbol
         ORDER BY days DESC
-    """
-    )
+    """)
     symbol_breakdown = cursor.fetchall()
 
     conn.close()

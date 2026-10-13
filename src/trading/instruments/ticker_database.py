@@ -136,8 +136,7 @@ class TickerDatabase:
         cursor = self.conn.cursor()
 
         # Ticker metadata table
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS ticker_metadata (
                 symbol TEXT PRIMARY KEY,
                 name TEXT,
@@ -150,12 +149,10 @@ class TickerDatabase:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """
-        )
+        """)
 
         # Approved tickers table
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS approved_tickers (
                 symbol TEXT PRIMARY KEY,
                 mode TEXT NOT NULL DEFAULT 'buy_add',
@@ -168,8 +165,7 @@ class TickerDatabase:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (symbol) REFERENCES ticker_metadata(symbol)
             )
-        """
-        )
+        """)
 
         # Indexes for efficient lookups
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ticker_type ON ticker_metadata(ticker_type)")

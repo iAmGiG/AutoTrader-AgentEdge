@@ -41,12 +41,10 @@ def load_results_from_db():
 
     conn = sqlite3.connect(RESULTS_DB)
     conn.row_factory = sqlite3.Row
-    cursor = conn.execute(
-        """
+    cursor = conn.execute("""
         SELECT * FROM gex_vs_technicals
         ORDER BY symbol, run_timestamp DESC
-        """
-    )
+        """)
     rows = cursor.fetchall()
     conn.close()
 

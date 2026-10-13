@@ -281,8 +281,7 @@ class GEXCalculator:
 
     def get_summary_statistics(self) -> Dict:
         """Get summary statistics from options_daily_summary."""
-        self.cursor.execute(
-            """
+        self.cursor.execute("""
             SELECT
                 symbol,
                 COUNT(*) as days,
@@ -298,8 +297,7 @@ class GEXCalculator:
                 ROUND(AVG(data_quality_score), 3) as avg_quality_score
             FROM options_daily_summary
             GROUP BY symbol
-        """
-        )
+        """)
 
         row = self.cursor.fetchone()
         if not row:

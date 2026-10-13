@@ -26,8 +26,7 @@ def load_latest_results():
     conn.row_factory = sqlite3.Row
 
     # Get latest run per symbol
-    cursor = conn.execute(
-        """
+    cursor = conn.execute("""
         SELECT * FROM gex_vs_technicals
         WHERE run_timestamp IN (
             SELECT MAX(run_timestamp)
@@ -35,8 +34,7 @@ def load_latest_results():
             GROUP BY symbol
         )
         ORDER BY symbol
-        """
-    )
+        """)
     rows = cursor.fetchall()
     conn.close()
 

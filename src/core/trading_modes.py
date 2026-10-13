@@ -231,8 +231,7 @@ class TradingModeManager:
         try:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS trading_mode_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp TEXT NOT NULL,
@@ -241,8 +240,7 @@ class TradingModeManager:
                     reason TEXT,
                     session_id TEXT
                 )
-            """
-            )
+            """)
             conn.commit()
             conn.close()
             logger.debug(f"Initialized user.db at {self._db_path}")
@@ -254,13 +252,11 @@ class TradingModeManager:
         try:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT mode FROM trading_mode_history
                 WHERE symbol IS NULL
                 ORDER BY timestamp DESC LIMIT 1
-            """
-            )
+            """)
             row = cursor.fetchone()
             conn.close()
 
