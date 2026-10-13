@@ -406,7 +406,7 @@ class TestBackupTools:
         # Logical names; DBBackupManager maps user -> state/user.db, cache -> .cache/trading_data.db
         assert backup_tools_module.STATE_DB == "user"
         assert backup_tools_module.CACHE_DB == "cache"
-        assert backup_tools_module.BACKUP_DIR == "backups"
+        assert backup_tools_module.BACKUP_DIR == "state/backups"  # DBBackupManager.backup_dir
 
 
 # =============================================================================

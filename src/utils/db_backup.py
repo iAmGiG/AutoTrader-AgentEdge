@@ -107,9 +107,18 @@ class DBBackupManager:
         return self.project_root / DB_PATHS[db_name]
 
     def _generate_backup_filename(self, db_name: str) -> str:
-        """Generate timestamped backup filename."""
+        """Generate a timestamped backup filename that does not overwrite an existing backup.
+
+        Timestamps have one-second resolution; restore_backup takes a pre-restore backup, so
+        without the suffix a restore within the same second overwrote the file being restored.
+        """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"{db_name}_{timestamp}.db"
+        name = f"{db_name}_{timestamp}.db"
+        n = 1
+        while (self.backup_dir / name).exists():
+            name = f"{db_name}_{timestamp}_{n}.db"
+            n += 1
+        return name
 
     def backup_database(self, db_name: str = "user") -> BackupResult:
         """
@@ -163,7 +172,7 @@ class DBBackupManager:
             logger.error(f"Backup failed for {db_name}: {e}")
             return BackupResult(
                 success=False,
-                source_path=str(self._get_db_path(db_name)),
+                source_path=DB_PATHS.get(db_name, db_name),  # _get_db_path may be what failed
                 backup_path=None,
                 message=f"Backup failed: {e}",
                 timestamp=timestamp,

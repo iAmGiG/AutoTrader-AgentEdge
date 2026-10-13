@@ -26,12 +26,17 @@ from src.utils.safe_print import get_symbol
 # DBBackupManager maps these to actual paths: user -> state/user.db, cache -> .cache/trading_data.db
 STATE_DB = "user"  # Maps to state/user.db
 CACHE_DB = "cache"  # Maps to .cache/trading_data.db
-BACKUP_DIR = "backups"
+BACKUP_DIR = "state/backups"  # Same directory DBBackupManager writes to (project root)
 
 
 # ============================================================================
 # Pure Function Wrappers
 # ============================================================================
+
+
+def _failure_text(result) -> str:
+    """Error text from a DBBackupManager result (BackupResult/ExportResult carry ``message``)."""
+    return getattr(result, "error", None) or getattr(result, "message", "") or "unknown error"
 
 
 def _get_backup_manager():
@@ -66,10 +71,13 @@ def backup_database(db_path: str = STATE_DB) -> str:
     manager = _get_backup_manager()
 
     if manager:
-        result = manager.backup_database(db_path)
+        try:
+            result = manager.backup_database(db_path)
+        except Exception as e:  # e.g. unknown database name
+            return f"{get_symbol('ERROR')} Backup failed: {e}"
         if result.success:
             return f"{get_symbol('SUCCESS')} Backup created: {result.backup_path}"
-        return f"{get_symbol('ERROR')} Backup failed: {result.error}"
+        return f"{get_symbol('ERROR')} Backup failed: {_failure_text(result)}"
 
     # Stub implementation - manual file copy
     if not os.path.exists(db_path):
@@ -166,10 +174,13 @@ def restore_backup(backup_name: str, target_db: str = STATE_DB) -> str:
     manager = _get_backup_manager()
 
     if manager:
-        result = manager.restore_database(str(backup_path), target_db)
+        try:
+            result = manager.restore_backup(str(backup_path), target_db)
+        except Exception as e:
+            return f"{get_symbol('ERROR')} Restore failed: {e}"
         if result.success:
             return f"{get_symbol('SUCCESS')} Database restored from: {backup_path}"
-        return f"{get_symbol('ERROR')} Restore failed: {result.error}"
+        return f"{get_symbol('ERROR')} Restore failed: {_failure_text(result)}"
 
     # Stub implementation - manual file copy
     try:
@@ -216,10 +227,13 @@ def export_table(
             timestamp = get_datetime_now().strftime("%Y%m%d")
             output_path = f"exports/{table_name}_{timestamp}.json"
 
-        result = manager.export_table(db_path, table_name, output_path)
+        try:
+            result = manager.export_table(db_path, table_name, output_path)
+        except Exception as e:
+            return f"{get_symbol('ERROR')} Export failed: {e}"
         if result.success:
             return f"{get_symbol('SUCCESS')} Exported {result.row_count} rows to: {output_path}"
-        return f"{get_symbol('ERROR')} Export failed: {result.error}"
+        return f"{get_symbol('ERROR')} Export failed: {_failure_text(result)}"
 
     # Stub implementation using sqlite3
     import json
@@ -349,10 +363,14 @@ def cleanup_old_backups(days: int = 30) -> str:
     manager = _get_backup_manager()
 
     if manager:
-        result = manager.cleanup_old_backups(days=days)
-        if result.success:
-            return f"{get_symbol('SUCCESS')} Cleanup complete: Removed {result.files_removed} backup(s) older than {days} days"
-        return f"{get_symbol('ERROR')} Cleanup failed: {result.error}"
+        try:
+            removed = manager.cleanup_old_backups(keep_days=days)  # returns a count
+        except Exception as e:
+            return f"{get_symbol('ERROR')} Cleanup failed: {e}"
+        return (
+            f"{get_symbol('SUCCESS')} Cleanup complete: Removed {removed} backup(s) older than "
+            f"{days} days (the 5 newest are always kept)"
+        )
 
     # Stub implementation
     backup_dir = Path(BACKUP_DIR)
