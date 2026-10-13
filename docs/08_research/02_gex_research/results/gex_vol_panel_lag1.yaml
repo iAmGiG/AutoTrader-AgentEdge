@@ -1,0 +1,2021 @@
+run_timestamp: '2026-10-13T15:40:58.420699'
+issue: '#576'
+description: Scale-free GEX measures vs next-day variance across symbols
+methodology:
+  model: log-HAR on Parkinson variance plus leverage terms and lagged GEX measure
+  leverage_controls: lagged negative return (1, 5, 22-day means), trailing 22-day return
+  pooled_specs: har_only (no leverage), no_vix (leverage), with_vix (leverage + VIX)
+  measures:
+    neg_gex: 1 if previous day's total_gex < 0
+    gex_pct: previous day's percentile of total_gex in trailing 252 obs
+  vix: lagged log VIXCLS and highVIX (above 2008-2019 median) with interaction
+  per_symbol_errors: Newey-West HAC
+  pooled: symbol fixed effects, errors clustered by date and symbol
+  out_of_sample: fit before split_date, QLIKE, Diebold-Mariano (positive = GEX better)
+  symbol_rule: '>= 200 positive and negative GEX days in each half'
+  period: 2008-01-02 to 2026-10-09
+  split_date: '2020-01-01'
+  regime_lag_days: 1
+  vix_median_2008_2019: 16.6
+symbols:
+- AMAT
+- AMD
+- AMZN
+- AVGO
+- BAC
+- COHR
+- DIA
+- EEM
+- EFA
+- HYG
+- IEF
+- INTC
+- IWM
+- JPM
+- LQD
+- LRCX
+- MRVL
+- MU
+- NOW
+- NVDA
+- QQQ
+- SMH
+- SOXX
+- SPY
+- SVXY
+- TLT
+- TNA
+- TSLA
+- TSM
+- UNG
+- USO
+- UVXY
+- XLB
+- XLE
+- XLF
+- XLK
+- XLP
+- XLU
+- XLV
+- XLY
+summary:
+  neg_gex:
+    expected_sign: +
+    share_expected_sign: 0.8
+    n_expected_sign_p05: 17
+    n_wrong_sign_p05: 2
+    share_oos_qlike_improved: 0.4
+    n_oos_dm_t_above_2: 6
+    n_oos_dm_t_below_minus_2: 5
+    median_coef: 0.04438
+  gex_pct:
+    expected_sign: '-'
+    share_expected_sign: 0.75
+    n_expected_sign_p05: 17
+    n_wrong_sign_p05: 3
+    share_oos_qlike_improved: 0.55
+    n_oos_dm_t_above_2: 5
+    n_oos_dm_t_below_minus_2: 6
+    median_coef: -0.05161
+pooled:
+  neg_gex:
+    har_only:
+      n_obs: 181426
+      n_symbols: 40
+      neg_gex:
+        coef: 0.10106
+        t_statistic: 5.824
+        p_value: 5.731857999002124e-09
+    no_vix:
+      n_obs: 181393
+      n_symbols: 40
+      neg_gex:
+        coef: 0.07726
+        t_statistic: 4.954
+        p_value: 7.273947662600975e-07
+    with_vix:
+      n_obs: 181393
+      n_symbols: 40
+      neg_gex:
+        coef: 0.01611
+        t_statistic: 0.97
+        p_value: 0.3322364480593958
+      log_vix:
+        coef: 0.47925
+        t_statistic: 9.125
+        p_value: 7.187073263601293e-20
+      neg_gex_x_highvix:
+        coef: 0.07339
+        t_statistic: 5.495
+        p_value: 3.9080366836139807e-08
+  gex_pct:
+    har_only:
+      n_obs: 172067
+      n_symbols: 40
+      gex_pct:
+        coef: -0.15969
+        t_statistic: -5.511
+        p_value: 3.563666948039609e-08
+    no_vix:
+      n_obs: 172067
+      n_symbols: 40
+      gex_pct:
+        coef: -0.11685
+        t_statistic: -4.574
+        p_value: 4.775734026541541e-06
+    with_vix:
+      n_obs: 172067
+      n_symbols: 40
+      gex_pct:
+        coef: -0.04869
+        t_statistic: -1.77
+        p_value: 0.07670142332239337
+      log_vix:
+        coef: 0.49443
+        t_statistic: 8.739
+        p_value: 2.353565675995944e-18
+      gex_pct_x_highvix:
+        coef: -0.05742
+        t_statistic: -2.354
+        p_value: 0.018565534740398994
+per_symbol:
+  AMAT:
+    neg_gex:
+      in_sample:
+        n_obs: 4696
+        neg_gex:
+          coef: -0.02729
+          t_statistic: -0.841
+          p_value: 0.40034783036565025
+      in_sample_vix:
+        n_obs: 4696
+        neg_gex:
+          coef: -0.03718
+          t_statistic: -0.713
+          p_value: 0.4761483183367209
+        neg_gex_x_highvix:
+          coef: 0.02251
+          t_statistic: 0.359
+          p_value: 0.7198169024793393
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.50507
+        har_gex: 2.5051
+        dm_t_statistic: -0.792
+        dm_p_value: 0.42819432509185207
+    gex_pct:
+      in_sample:
+        n_obs: 4467
+        gex_pct:
+          coef: 0.00783
+          t_statistic: 0.175
+          p_value: 0.8608535559077548
+      in_sample_vix:
+        n_obs: 4467
+        gex_pct:
+          coef: 0.00644
+          t_statistic: 0.116
+          p_value: 0.9078538265548594
+        gex_pct_x_highvix:
+          coef: 0.04824
+          t_statistic: 0.643
+          p_value: 0.5199241168862925
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.50447
+        har_gex: 2.50512
+        dm_t_statistic: -1.977
+        dm_p_value: 0.047990503834726674
+  AMD:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.02115
+          t_statistic: 0.699
+          p_value: 0.4846592854717172
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: -0.09521
+          t_statistic: -1.864
+          p_value: 0.06225805235456267
+        neg_gex_x_highvix:
+          coef: 0.16568
+          t_statistic: 2.762
+          p_value: 0.005751686558369763
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 2.93895
+        har_gex: 2.939
+        dm_t_statistic: -0.311
+        dm_p_value: 0.7555394234279824
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: 0.04599
+          t_statistic: 1.03
+          p_value: 0.30285477019422213
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: 0.1644
+          t_statistic: 2.764
+          p_value: 0.005707808198016247
+        gex_pct_x_highvix:
+          coef: -0.14607
+          t_statistic: -1.955
+          p_value: 0.0505772618601007
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 2.93798
+        har_gex: 2.93774
+        dm_t_statistic: 0.685
+        dm_p_value: 0.4930975420309215
+  AMZN:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.16405
+          t_statistic: 4.98
+          p_value: 6.346390015307458e-07
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.07307
+          t_statistic: 1.526
+          p_value: 0.12701315465915958
+        neg_gex_x_highvix:
+          coef: 0.09064
+          t_statistic: 1.605
+          p_value: 0.10849852306484369
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.95406
+        har_gex: 1.95135
+        dm_t_statistic: 1.719
+        dm_p_value: 0.08553737673445881
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.22457
+          t_statistic: -4.329
+          p_value: 1.494955423153915e-05
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.19948
+          t_statistic: -3.238
+          p_value: 0.0012056237297749484
+        gex_pct_x_highvix:
+          coef: 0.0612
+          t_statistic: 0.769
+          p_value: 0.4419762330040785
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.95425
+        har_gex: 1.95504
+        dm_t_statistic: -0.243
+        dm_p_value: 0.8078533429188268
+  AVGO:
+    neg_gex:
+      in_sample:
+        n_obs: 4293
+        neg_gex:
+          coef: 0.09967
+          t_statistic: 3.051
+          p_value: 0.0022815670904177627
+      in_sample_vix:
+        n_obs: 4293
+        neg_gex:
+          coef: 0.01242
+          t_statistic: 0.215
+          p_value: 0.8297351948844907
+        neg_gex_x_highvix:
+          coef: 0.03198
+          t_statistic: 0.469
+          p_value: 0.638807146808085
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.25767
+        har_gex: 2.26008
+        dm_t_statistic: -1.783
+        dm_p_value: 0.07455201774032304
+    gex_pct:
+      in_sample:
+        n_obs: 4052
+        gex_pct:
+          coef: -0.04589
+          t_statistic: -0.982
+          p_value: 0.3260555780491371
+      in_sample_vix:
+        n_obs: 4052
+        gex_pct:
+          coef: 0.05847
+          t_statistic: 0.916
+          p_value: 0.3595566976297213
+        gex_pct_x_highvix:
+          coef: -0.06003
+          t_statistic: -0.729
+          p_value: 0.4660317193306349
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.26046
+        har_gex: 2.26051
+        dm_t_statistic: -0.228
+        dm_p_value: 0.8199096187890677
+  BAC:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.09732
+          t_statistic: 2.545
+          p_value: 0.010928000126604389
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: -0.0004
+          t_statistic: -0.004
+          p_value: 0.996674053839766
+        neg_gex_x_highvix:
+          coef: 0.04905
+          t_statistic: 0.479
+          p_value: 0.6320427361817866
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.74457
+        har_gex: 1.74474
+        dm_t_statistic: -0.128
+        dm_p_value: 0.898237492911731
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.13469
+          t_statistic: -2.994
+          p_value: 0.002752096727318789
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.06469
+          t_statistic: -1.024
+          p_value: 0.30569806943432887
+        gex_pct_x_highvix:
+          coef: 0.11507
+          t_statistic: 1.416
+          p_value: 0.15680853507575768
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.74414
+        har_gex: 1.74303
+        dm_t_statistic: 1.515
+        dm_p_value: 0.12972801575603354
+  COHR:
+    neg_gex:
+      in_sample:
+        n_obs: 4630
+        neg_gex:
+          coef: 0.02463
+          t_statistic: 0.692
+          p_value: 0.4892192585962355
+      in_sample_vix:
+        n_obs: 4630
+        neg_gex:
+          coef: 0.00723
+          t_statistic: 0.068
+          p_value: 0.9453966621145212
+        neg_gex_x_highvix:
+          coef: -0.03184
+          t_statistic: -0.285
+          p_value: 0.7756998888098008
+      out_of_sample_qlike:
+        n_test: 1662
+        har: 3.23068
+        har_gex: 3.23221
+        dm_t_statistic: -2.013
+        dm_p_value: 0.04412030288351749
+    gex_pct:
+      in_sample:
+        n_obs: 4401
+        gex_pct:
+          coef: -0.03576
+          t_statistic: -0.893
+          p_value: 0.3717112930427472
+      in_sample_vix:
+        n_obs: 4401
+        gex_pct:
+          coef: 0.09687
+          t_statistic: 1.605
+          p_value: 0.10838956762644456
+        gex_pct_x_highvix:
+          coef: -0.11387
+          t_statistic: -1.459
+          p_value: 0.14443357069830404
+      out_of_sample_qlike:
+        n_test: 1662
+        har: 3.23563
+        har_gex: 3.2359
+        dm_t_statistic: -0.897
+        dm_p_value: 0.3694606200635082
+  DIA:
+    neg_gex:
+      in_sample:
+        n_obs: 4685
+        neg_gex:
+          coef: 0.17511
+          t_statistic: 5.31
+          p_value: 1.096830499198798e-07
+      in_sample_vix:
+        n_obs: 4685
+        neg_gex:
+          coef: 0.13229
+          t_statistic: 2.266
+          p_value: 0.023475319973259315
+        neg_gex_x_highvix:
+          coef: -0.05198
+          t_statistic: -0.791
+          p_value: 0.4289062181714144
+      out_of_sample_qlike:
+        n_test: 1698
+        har: 0.32398
+        har_gex: 0.31973
+        dm_t_statistic: 3.262
+        dm_p_value: 0.0011055685252837342
+    gex_pct:
+      in_sample:
+        n_obs: 4456
+        gex_pct:
+          coef: -0.33227
+          t_statistic: -6.304
+          p_value: 2.89375780135552e-10
+      in_sample_vix:
+        n_obs: 4456
+        gex_pct:
+          coef: -0.37624
+          t_statistic: -5.634
+          p_value: 1.7582624897730224e-08
+        gex_pct_x_highvix:
+          coef: 0.15893
+          t_statistic: 1.838
+          p_value: 0.06612421238847355
+      out_of_sample_qlike:
+        n_test: 1698
+        har: 0.32765
+        har_gex: 0.32339
+        dm_t_statistic: 1.581
+        dm_p_value: 0.11392471086280614
+  EEM:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.05726
+          t_statistic: 1.681
+          p_value: 0.0927212652127478
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.01989
+          t_statistic: 0.55
+          p_value: 0.5822159473491082
+        neg_gex_x_highvix:
+          coef: 0.04657
+          t_statistic: 0.916
+          p_value: 0.3598225836650599
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 0.23824
+        har_gex: 0.23846
+        dm_t_statistic: -0.325
+        dm_p_value: 0.7453827122513668
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.01034
+          t_statistic: -0.214
+          p_value: 0.8304024840389631
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.03881
+          t_statistic: -0.648
+          p_value: 0.5169501302862756
+        gex_pct_x_highvix:
+          coef: -0.01827
+          t_statistic: -0.227
+          p_value: 0.8200984194752928
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 0.23465
+        har_gex: 0.23497
+        dm_t_statistic: -1.075
+        dm_p_value: 0.282457562708609
+  EFA:
+    neg_gex:
+      in_sample:
+        n_obs: 4687
+        neg_gex:
+          coef: 0.02191
+          t_statistic: 0.79
+          p_value: 0.42938350098242273
+      in_sample_vix:
+        n_obs: 4687
+        neg_gex:
+          coef: 0.00489
+          t_statistic: 0.131
+          p_value: 0.8955289639001749
+        neg_gex_x_highvix:
+          coef: -0.07792
+          t_statistic: -1.553
+          p_value: 0.12040605168250983
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -0.03926
+        har_gex: -0.03919
+        dm_t_statistic: -0.675
+        dm_p_value: 0.49979629635010236
+    gex_pct:
+      in_sample:
+        n_obs: 4458
+        gex_pct:
+          coef: -0.09036
+          t_statistic: -1.827
+          p_value: 0.06766122188054256
+      in_sample_vix:
+        n_obs: 4458
+        gex_pct:
+          coef: -0.05219
+          t_statistic: -0.909
+          p_value: 0.3635916434463634
+        gex_pct_x_highvix:
+          coef: 0.00192
+          t_statistic: 0.024
+          p_value: 0.9811780328722565
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -0.03826
+        har_gex: -0.03839
+        dm_t_statistic: 0.207
+        dm_p_value: 0.8356955235704144
+  HYG:
+    neg_gex:
+      in_sample:
+        n_obs: 4685
+        neg_gex:
+          coef: 0.0629
+          t_statistic: 2.461
+          p_value: 0.01384450077775333
+      in_sample_vix:
+        n_obs: 4685
+        neg_gex:
+          coef: 0.05737
+          t_statistic: 1.601
+          p_value: 0.10931924991847634
+        neg_gex_x_highvix:
+          coef: -0.01956
+          t_statistic: -0.377
+          p_value: 0.70580841585055
+      out_of_sample_qlike:
+        n_test: 1699
+        har: -1.55481
+        har_gex: -1.55556
+        dm_t_statistic: 2.517
+        dm_p_value: 0.011849762817696558
+    gex_pct:
+      in_sample:
+        n_obs: 4456
+        gex_pct:
+          coef: -0.10537
+          t_statistic: -2.478
+          p_value: 0.013221092010712683
+      in_sample_vix:
+        n_obs: 4456
+        gex_pct:
+          coef: -0.11604
+          t_statistic: -2.019
+          p_value: 0.043455295487091136
+        gex_pct_x_highvix:
+          coef: 0.0629
+          t_statistic: 0.774
+          p_value: 0.4390789532152861
+      out_of_sample_qlike:
+        n_test: 1699
+        har: -1.55486
+        har_gex: -1.55593
+        dm_t_statistic: 1.499
+        dm_p_value: 0.1337524794314589
+  IEF:
+    neg_gex:
+      in_sample:
+        n_obs: 4687
+        neg_gex:
+          coef: 0.03508
+          t_statistic: 1.29
+          p_value: 0.19715769137753114
+      in_sample_vix:
+        n_obs: 4687
+        neg_gex:
+          coef: -0.02284
+          t_statistic: -0.661
+          p_value: 0.5084093471472761
+        neg_gex_x_highvix:
+          coef: 0.04182
+          t_statistic: 0.849
+          p_value: 0.3960065297242983
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -1.71178
+        har_gex: -1.71226
+        dm_t_statistic: 0.594
+        dm_p_value: 0.5526760280560328
+    gex_pct:
+      in_sample:
+        n_obs: 4458
+        gex_pct:
+          coef: 0.05451
+          t_statistic: 1.215
+          p_value: 0.22446460528567924
+      in_sample_vix:
+        n_obs: 4458
+        gex_pct:
+          coef: 0.01772
+          t_statistic: 0.308
+          p_value: 0.7579284907592037
+        gex_pct_x_highvix:
+          coef: 0.09642
+          t_statistic: 1.181
+          p_value: 0.23741970649308497
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -1.71073
+        har_gex: -1.71097
+        dm_t_statistic: 0.908
+        dm_p_value: 0.3637817888396455
+  INTC:
+    neg_gex:
+      in_sample:
+        n_obs: 4667
+        neg_gex:
+          coef: -0.03735
+          t_statistic: -1.165
+          p_value: 0.24408839288216988
+      in_sample_vix:
+        n_obs: 4667
+        neg_gex:
+          coef: -0.07125
+          t_statistic: -1.47
+          p_value: 0.1416729204616698
+        neg_gex_x_highvix:
+          coef: 0.03358
+          t_statistic: 0.568
+          p_value: 0.5697945579315262
+      out_of_sample_qlike:
+        n_test: 1697
+        har: 2.51091
+        har_gex: 2.51195
+        dm_t_statistic: -1.154
+        dm_p_value: 0.24853992983235873
+    gex_pct:
+      in_sample:
+        n_obs: 4438
+        gex_pct:
+          coef: 0.08079
+          t_statistic: 1.786
+          p_value: 0.07402881450656232
+      in_sample_vix:
+        n_obs: 4438
+        gex_pct:
+          coef: 0.07484
+          t_statistic: 1.28
+          p_value: 0.2006325629710739
+        gex_pct_x_highvix:
+          coef: 0.05254
+          t_statistic: 0.73
+          p_value: 0.46569538208405314
+      out_of_sample_qlike:
+        n_test: 1697
+        har: 2.51436
+        har_gex: 2.51407
+        dm_t_statistic: 0.375
+        dm_p_value: 0.7078115189257199
+  IWM:
+    neg_gex:
+      in_sample:
+        n_obs: 4684
+        neg_gex:
+          coef: 0.11404
+          t_statistic: 3.344
+          p_value: 0.000826478249639561
+      in_sample_vix:
+        n_obs: 4684
+        neg_gex:
+          coef: 0.08201
+          t_statistic: 1.763
+          p_value: 0.07787630862169082
+        neg_gex_x_highvix:
+          coef: 0.00198
+          t_statistic: 0.029
+          p_value: 0.9765743031171864
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.27395
+        har_gex: 1.27678
+        dm_t_statistic: -1.47
+        dm_p_value: 0.14144002845865092
+    gex_pct:
+      in_sample:
+        n_obs: 4455
+        gex_pct:
+          coef: -0.26817
+          t_statistic: -5.854
+          p_value: 4.812155749979669e-09
+      in_sample_vix:
+        n_obs: 4455
+        gex_pct:
+          coef: -0.25297
+          t_statistic: -4.002
+          p_value: 6.26986502428943e-05
+        gex_pct_x_highvix:
+          coef: 0.09
+          t_statistic: 1.135
+          p_value: 0.25641976698643354
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.27726
+        har_gex: 1.27901
+        dm_t_statistic: -0.734
+        dm_p_value: 0.4630762511809141
+  JPM:
+    neg_gex:
+      in_sample:
+        n_obs: 4688
+        neg_gex:
+          coef: 0.13217
+          t_statistic: 3.414
+          p_value: 0.0006402711196235661
+      in_sample_vix:
+        n_obs: 4688
+        neg_gex:
+          coef: -0.07484
+          t_statistic: -0.969
+          p_value: 0.3327065261925223
+        neg_gex_x_highvix:
+          coef: 0.16354
+          t_statistic: 1.928
+          p_value: 0.05382831120572425
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.53474
+        har_gex: 1.53392
+        dm_t_statistic: 1.42
+        dm_p_value: 0.1556379806372969
+    gex_pct:
+      in_sample:
+        n_obs: 4459
+        gex_pct:
+          coef: -0.0491
+          t_statistic: -1.115
+          p_value: 0.26468353734129646
+      in_sample_vix:
+        n_obs: 4459
+        gex_pct:
+          coef: -0.03304
+          t_statistic: -0.548
+          p_value: 0.5837814618275546
+        gex_pct_x_highvix:
+          coef: 0.08879
+          t_statistic: 1.182
+          p_value: 0.23718283351436997
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.53535
+        har_gex: 1.53527
+        dm_t_statistic: 0.687
+        dm_p_value: 0.49177719531944375
+  LQD:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: -0.02345
+          t_statistic: -0.919
+          p_value: 0.3583037638937847
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: -0.04881
+          t_statistic: -1.4
+          p_value: 0.16148638529750314
+        neg_gex_x_highvix:
+          coef: 0.01805
+          t_statistic: 0.361
+          p_value: 0.717819733057629
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -1.17959
+        har_gex: -1.17672
+        dm_t_statistic: -2.261
+        dm_p_value: 0.02377415091025808
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: 0.01535
+          t_statistic: 0.365
+          p_value: 0.7150435724323649
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: 0.07574
+          t_statistic: 1.433
+          p_value: 0.15199843067689772
+        gex_pct_x_highvix:
+          coef: -0.02483
+          t_statistic: -0.329
+          p_value: 0.7423877806141396
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -1.16444
+        har_gex: -1.16407
+        dm_t_statistic: -1.336
+        dm_p_value: 0.18139175205650415
+  LRCX:
+    neg_gex:
+      in_sample:
+        n_obs: 4696
+        neg_gex:
+          coef: 0.06343
+          t_statistic: 2.213
+          p_value: 0.026878834995700734
+      in_sample_vix:
+        n_obs: 4696
+        neg_gex:
+          coef: -0.01617
+          t_statistic: -0.377
+          p_value: 0.7064510402989532
+        neg_gex_x_highvix:
+          coef: 0.10247
+          t_statistic: 2.087
+          p_value: 0.03685503453855243
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.6127
+        har_gex: 2.613
+        dm_t_statistic: -0.638
+        dm_p_value: 0.5236753305411184
+    gex_pct:
+      in_sample:
+        n_obs: 4467
+        gex_pct:
+          coef: -0.08574
+          t_statistic: -1.907
+          p_value: 0.056499870962163835
+      in_sample_vix:
+        n_obs: 4467
+        gex_pct:
+          coef: -0.04957
+          t_statistic: -0.815
+          p_value: 0.4151266160423118
+        gex_pct_x_highvix:
+          coef: -0.1188
+          t_statistic: -1.573
+          p_value: 0.11562701575440877
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.61461
+        har_gex: 2.61521
+        dm_t_statistic: -1.56
+        dm_p_value: 0.11866146882736374
+  MRVL:
+    neg_gex:
+      in_sample:
+        n_obs: 4694
+        neg_gex:
+          coef: 0.02464
+          t_statistic: 0.839
+          p_value: 0.40133177956272736
+      in_sample_vix:
+        n_obs: 4694
+        neg_gex:
+          coef: 0.00912
+          t_statistic: 0.164
+          p_value: 0.8695391255118081
+        neg_gex_x_highvix:
+          coef: 0.01806
+          t_statistic: 0.281
+          p_value: 0.7790289655965517
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.95402
+        har_gex: 2.95545
+        dm_t_statistic: -2.462
+        dm_p_value: 0.013824327170277692
+    gex_pct:
+      in_sample:
+        n_obs: 4465
+        gex_pct:
+          coef: -0.02348
+          t_statistic: -0.537
+          p_value: 0.5909651657346386
+      in_sample_vix:
+        n_obs: 4465
+        gex_pct:
+          coef: 0.06365
+          t_statistic: 1.012
+          p_value: 0.31153784595049383
+        gex_pct_x_highvix:
+          coef: -0.14154
+          t_statistic: -1.746
+          p_value: 0.08081951399204529
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.95225
+        har_gex: 2.95287
+        dm_t_statistic: -2.104
+        dm_p_value: 0.0353460042359223
+  MU:
+    neg_gex:
+      in_sample:
+        n_obs: 4692
+        neg_gex:
+          coef: 0.00338
+          t_statistic: 0.12
+          p_value: 0.9047832127050163
+      in_sample_vix:
+        n_obs: 4692
+        neg_gex:
+          coef: -0.05441
+          t_statistic: -1.271
+          p_value: 0.20362447247913973
+        neg_gex_x_highvix:
+          coef: 0.02363
+          t_statistic: 0.433
+          p_value: 0.6647258883723015
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.72568
+        har_gex: 2.72649
+        dm_t_statistic: -1.068
+        dm_p_value: 0.2853373021568466
+    gex_pct:
+      in_sample:
+        n_obs: 4463
+        gex_pct:
+          coef: -0.0254
+          t_statistic: -0.616
+          p_value: 0.5376116035533938
+      in_sample_vix:
+        n_obs: 4463
+        gex_pct:
+          coef: 0.03021
+          t_statistic: 0.577
+          p_value: 0.5640978553411868
+        gex_pct_x_highvix:
+          coef: -0.04448
+          t_statistic: -0.655
+          p_value: 0.5123326349354466
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.72452
+        har_gex: 2.72467
+        dm_t_statistic: -0.363
+        dm_p_value: 0.7165128129813392
+  NOW:
+    neg_gex:
+      in_sample:
+        n_obs: 3559
+        neg_gex:
+          coef: 0.02779
+          t_statistic: 0.777
+          p_value: 0.4370399244675447
+      in_sample_vix:
+        n_obs: 3559
+        neg_gex:
+          coef: -0.06459
+          t_statistic: -1.427
+          p_value: 0.1536408353242449
+        neg_gex_x_highvix:
+          coef: 0.16454
+          t_statistic: 2.648
+          p_value: 0.008107747158303313
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.40329
+        har_gex: 2.40502
+        dm_t_statistic: -2.513
+        dm_p_value: 0.011959918787043299
+    gex_pct:
+      in_sample:
+        n_obs: 3308
+        gex_pct:
+          coef: -0.17592
+          t_statistic: -3.061
+          p_value: 0.0022080658011253682
+      in_sample_vix:
+        n_obs: 3308
+        gex_pct:
+          coef: -0.03763
+          t_statistic: -0.567
+          p_value: 0.5705911780041324
+        gex_pct_x_highvix:
+          coef: -0.12304
+          t_statistic: -1.252
+          p_value: 0.21070347950219181
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.40529
+        har_gex: 2.40385
+        dm_t_statistic: 2.133
+        dm_p_value: 0.03295120334756228
+  NVDA:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.10379
+          t_statistic: 3.291
+          p_value: 0.0009989958873073042
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.1116
+          t_statistic: 1.9
+          p_value: 0.05744727583551792
+        neg_gex_x_highvix:
+          coef: -0.03199
+          t_statistic: -0.461
+          p_value: 0.644449409741622
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.72353
+        har_gex: 2.72321
+        dm_t_statistic: 0.466
+        dm_p_value: 0.6412163743689072
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.16919
+          t_statistic: -3.805
+          p_value: 0.00014163699622746936
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.05406
+          t_statistic: -0.98
+          p_value: 0.3268660805189312
+        gex_pct_x_highvix:
+          coef: -0.1049
+          t_statistic: -1.335
+          p_value: 0.18198167859554293
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 2.72396
+        har_gex: 2.72307
+        dm_t_statistic: 0.718
+        dm_p_value: 0.47277065870043655
+  QQQ:
+    neg_gex:
+      in_sample:
+        n_obs: 3895
+        neg_gex:
+          coef: 0.20816
+          t_statistic: 6.568
+          p_value: 5.1117440967419304e-11
+      in_sample_vix:
+        n_obs: 3895
+        neg_gex:
+          coef: 0.18248
+          t_statistic: 4.616
+          p_value: 3.910057081823285e-06
+        neg_gex_x_highvix:
+          coef: 0.00708
+          t_statistic: 0.125
+          p_value: 0.9003426613858688
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.06491
+        har_gex: 1.06249
+        dm_t_statistic: 1.133
+        dm_p_value: 0.2573339535452406
+    gex_pct:
+      in_sample:
+        n_obs: 3644
+        gex_pct:
+          coef: -0.36618
+          t_statistic: -6.449
+          p_value: 1.1274238371420014e-10
+      in_sample_vix:
+        n_obs: 3644
+        gex_pct:
+          coef: -0.37115
+          t_statistic: -5.587
+          p_value: 2.3049733142493417e-08
+        gex_pct_x_highvix:
+          coef: 0.16984
+          t_statistic: 1.71
+          p_value: 0.08735619036412955
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.08098
+        har_gex: 1.07476
+        dm_t_statistic: 2.136
+        dm_p_value: 0.032668316981117974
+  SMH:
+    neg_gex:
+      in_sample:
+        n_obs: 4697
+        neg_gex:
+          coef: -0.00632
+          t_statistic: -0.22
+          p_value: 0.8259934344024413
+      in_sample_vix:
+        n_obs: 4697
+        neg_gex:
+          coef: -0.10545
+          t_statistic: -2.654
+          p_value: 0.007959303660931165
+        neg_gex_x_highvix:
+          coef: 0.17723
+          t_statistic: 3.713
+          p_value: 0.0002048847267931962
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 1.89801
+        har_gex: 1.89754
+        dm_t_statistic: 0.915
+        dm_p_value: 0.3604501625966319
+    gex_pct:
+      in_sample:
+        n_obs: 4468
+        gex_pct:
+          coef: -0.02671
+          t_statistic: -0.552
+          p_value: 0.5806394942742746
+      in_sample_vix:
+        n_obs: 4468
+        gex_pct:
+          coef: 0.05892
+          t_statistic: 1.029
+          p_value: 0.30337163798835753
+        gex_pct_x_highvix:
+          coef: -0.2837
+          t_statistic: -3.96
+          p_value: 7.484988410804501e-05
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 1.90053
+        har_gex: 1.9004
+        dm_t_statistic: 0.534
+        dm_p_value: 0.5930270836950728
+  SOXX:
+    neg_gex:
+      in_sample:
+        n_obs: 4016
+        neg_gex:
+          coef: 0.10775
+          t_statistic: 3.526
+          p_value: 0.0004225984419273489
+      in_sample_vix:
+        n_obs: 4016
+        neg_gex:
+          coef: 0.12416
+          t_statistic: 3.261
+          p_value: 0.0011096032762020604
+        neg_gex_x_highvix:
+          coef: -0.03724
+          t_statistic: -0.691
+          p_value: 0.4894704480190054
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.00308
+        har_gex: 2.00147
+        dm_t_statistic: 2.113
+        dm_p_value: 0.034605678937895054
+    gex_pct:
+      in_sample:
+        n_obs: 3765
+        gex_pct:
+          coef: -0.10974
+          t_statistic: -2.248
+          p_value: 0.02454546940180412
+      in_sample_vix:
+        n_obs: 3765
+        gex_pct:
+          coef: -0.08641
+          t_statistic: -1.479
+          p_value: 0.1390833569911908
+        gex_pct_x_highvix:
+          coef: -0.08424
+          t_statistic: -1.007
+          p_value: 0.3140232273277941
+      out_of_sample_qlike:
+        n_test: 1701
+        har: 2.00796
+        har_gex: 2.00873
+        dm_t_statistic: -1.985
+        dm_p_value: 0.04709988908775023
+  SPY:
+    neg_gex:
+      in_sample:
+        n_obs: 4677
+        neg_gex:
+          coef: 0.29778
+          t_statistic: 9.744
+          p_value: 1.954299605548825e-22
+      in_sample_vix:
+        n_obs: 4677
+        neg_gex:
+          coef: 0.28154
+          t_statistic: 7.066
+          p_value: 1.595315033615569e-12
+        neg_gex_x_highvix:
+          coef: -0.06404
+          t_statistic: -1.156
+          p_value: 0.24752079331916976
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 0.44748
+        har_gex: 0.44499
+        dm_t_statistic: 0.517
+        dm_p_value: 0.6048417046569988
+    gex_pct:
+      in_sample:
+        n_obs: 4448
+        gex_pct:
+          coef: -0.55731
+          t_statistic: -9.739
+          p_value: 2.0643858113266405e-22
+      in_sample_vix:
+        n_obs: 4448
+        gex_pct:
+          coef: -0.5185
+          t_statistic: -7.542
+          p_value: 4.611071543843138e-14
+        gex_pct_x_highvix:
+          coef: 0.12643
+          t_statistic: 1.389
+          p_value: 0.16468897482602185
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 0.44806
+        har_gex: 0.4382
+        dm_t_statistic: 2.307
+        dm_p_value: 0.02106973320351543
+  SVXY:
+    neg_gex:
+      in_sample:
+        n_obs: 3649
+        neg_gex:
+          coef: 0.06024
+          t_statistic: 1.563
+          p_value: 0.11813490406403815
+      in_sample_vix:
+        n_obs: 3649
+        neg_gex:
+          coef: -0.05031
+          t_statistic: -0.851
+          p_value: 0.39501771133578856
+        neg_gex_x_highvix:
+          coef: 0.19172
+          t_statistic: 2.589
+          p_value: 0.009613763907329256
+      out_of_sample_qlike:
+        n_test: 1695
+        har: 1.91582
+        har_gex: 1.93196
+        dm_t_statistic: -3.772
+        dm_p_value: 0.00016170646692835868
+    gex_pct:
+      in_sample:
+        n_obs: 3398
+        gex_pct:
+          coef: -0.16303
+          t_statistic: -2.834
+          p_value: 0.004592788171117717
+      in_sample_vix:
+        n_obs: 3398
+        gex_pct:
+          coef: -0.06286
+          t_statistic: -0.838
+          p_value: 0.40197813643033486
+        gex_pct_x_highvix:
+          coef: -0.26141
+          t_statistic: -2.479
+          p_value: 0.013188168709199682
+      out_of_sample_qlike:
+        n_test: 1695
+        har: 1.91445
+        har_gex: 1.92408
+        dm_t_statistic: -2.061
+        dm_p_value: 0.039265171640508904
+  TLT:
+    neg_gex:
+      in_sample:
+        n_obs: 4687
+        neg_gex:
+          coef: -0.01658
+          t_statistic: -0.636
+          p_value: 0.5248186817265451
+      in_sample_vix:
+        n_obs: 4687
+        neg_gex:
+          coef: -0.01298
+          t_statistic: -0.387
+          p_value: 0.6986477919514472
+        neg_gex_x_highvix:
+          coef: -0.02622
+          t_statistic: -0.571
+          p_value: 0.5682900876882228
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -0.02111
+        har_gex: -0.02049
+        dm_t_statistic: -1.845
+        dm_p_value: 0.06500854596363163
+    gex_pct:
+      in_sample:
+        n_obs: 4458
+        gex_pct:
+          coef: 0.09804
+          t_statistic: 2.228
+          p_value: 0.02588468123245897
+      in_sample_vix:
+        n_obs: 4458
+        gex_pct:
+          coef: 0.04818
+          t_statistic: 0.817
+          p_value: 0.41401008554425534
+        gex_pct_x_highvix:
+          coef: 0.0613
+          t_statistic: 0.812
+          p_value: 0.4165053093930725
+      out_of_sample_qlike:
+        n_test: 1700
+        har: -0.02066
+        har_gex: -0.02127
+        dm_t_statistic: 1.942
+        dm_p_value: 0.0521579790391468
+  TNA:
+    neg_gex:
+      in_sample:
+        n_obs: 4457
+        neg_gex:
+          coef: 0.09886
+          t_statistic: 2.987
+          p_value: 0.002815490745392646
+      in_sample_vix:
+        n_obs: 4457
+        neg_gex:
+          coef: 0.02451
+          t_statistic: 0.517
+          p_value: 0.6053495908687876
+        neg_gex_x_highvix:
+          coef: 0.0583
+          t_statistic: 0.992
+          p_value: 0.3213384790302918
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 3.45389
+        har_gex: 3.45496
+        dm_t_statistic: -0.968
+        dm_p_value: 0.33314812275370875
+    gex_pct:
+      in_sample:
+        n_obs: 4206
+        gex_pct:
+          coef: -0.22898
+          t_statistic: -4.755
+          p_value: 1.986970660163701e-06
+      in_sample_vix:
+        n_obs: 4206
+        gex_pct:
+          coef: -0.16905
+          t_statistic: -2.724
+          p_value: 0.006457770038094188
+        gex_pct_x_highvix:
+          coef: 0.02348
+          t_statistic: 0.283
+          p_value: 0.7775229664988019
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 3.454
+        har_gex: 3.45681
+        dm_t_statistic: -1.341
+        dm_p_value: 0.17979136036942345
+  TSLA:
+    neg_gex:
+      in_sample:
+        n_obs: 3954
+        neg_gex:
+          coef: 0.08915
+          t_statistic: 2.868
+          p_value: 0.004134164878274031
+      in_sample_vix:
+        n_obs: 3954
+        neg_gex:
+          coef: 0.05594
+          t_statistic: 1.356
+          p_value: 0.1752358317028142
+        neg_gex_x_highvix:
+          coef: 0.06375
+          t_statistic: 1.11
+          p_value: 0.26719885334684856
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 3.16001
+        har_gex: 3.15958
+        dm_t_statistic: 2.606
+        dm_p_value: 0.009169036119402507
+    gex_pct:
+      in_sample:
+        n_obs: 3703
+        gex_pct:
+          coef: -0.19009
+          t_statistic: -3.959
+          p_value: 7.518349941784522e-05
+      in_sample_vix:
+        n_obs: 3703
+        gex_pct:
+          coef: -0.0934
+          t_statistic: -1.641
+          p_value: 0.10073432155486674
+        gex_pct_x_highvix:
+          coef: -0.17457
+          t_statistic: -2.019
+          p_value: 0.043475989870577464
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 3.16217
+        har_gex: 3.15994
+        dm_t_statistic: 2.205
+        dm_p_value: 0.027454016938742505
+  TSM:
+    neg_gex:
+      in_sample:
+        n_obs: 4693
+        neg_gex:
+          coef: -0.04277
+          t_statistic: -1.726
+          p_value: 0.0843540823172139
+      in_sample_vix:
+        n_obs: 4693
+        neg_gex:
+          coef: -0.06571
+          t_statistic: -1.788
+          p_value: 0.07378363188306056
+        neg_gex_x_highvix:
+          coef: 0.05176
+          t_statistic: 1.07
+          p_value: 0.284619133644466
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 2.03282
+        har_gex: 2.03215
+        dm_t_statistic: 1.981
+        dm_p_value: 0.04759506446700162
+    gex_pct:
+      in_sample:
+        n_obs: 4464
+        gex_pct:
+          coef: 0.03296
+          t_statistic: 0.845
+          p_value: 0.39807355056522564
+      in_sample_vix:
+        n_obs: 4464
+        gex_pct:
+          coef: 0.11746
+          t_statistic: 1.995
+          p_value: 0.04604003181532235
+        gex_pct_x_highvix:
+          coef: -0.14382
+          t_statistic: -1.849
+          p_value: 0.06449754167905575
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 2.03444
+        har_gex: 2.03511
+        dm_t_statistic: -2.848
+        dm_p_value: 0.004396057767282842
+  UNG:
+    neg_gex:
+      in_sample:
+        n_obs: 4685
+        neg_gex:
+          coef: -0.12142
+          t_statistic: -4.183
+          p_value: 2.873574600764197e-05
+      in_sample_vix:
+        n_obs: 4685
+        neg_gex:
+          coef: -0.1451
+          t_statistic: -3.674
+          p_value: 0.00023849405149974052
+        neg_gex_x_highvix:
+          coef: 0.04276
+          t_statistic: 0.775
+          p_value: 0.43815783546815235
+      out_of_sample_qlike:
+        n_test: 1697
+        har: 2.70868
+        har_gex: 2.70871
+        dm_t_statistic: -0.028
+        dm_p_value: 0.9773576655512485
+    gex_pct:
+      in_sample:
+        n_obs: 4456
+        gex_pct:
+          coef: 0.16335
+          t_statistic: 3.503
+          p_value: 0.00046054348073839435
+      in_sample_vix:
+        n_obs: 4456
+        gex_pct:
+          coef: 0.23755
+          t_statistic: 3.87
+          p_value: 0.00010904713174181729
+        gex_pct_x_highvix:
+          coef: -0.11686
+          t_statistic: -1.438
+          p_value: 0.15029473698463822
+      out_of_sample_qlike:
+        n_test: 1697
+        har: 2.7099
+        har_gex: 2.70988
+        dm_t_statistic: 0.025
+        dm_p_value: 0.9798633614487461
+  USO:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.04572
+          t_statistic: 1.646
+          p_value: 0.09980820393100599
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.03093
+          t_statistic: 0.907
+          p_value: 0.3641469222061656
+        neg_gex_x_highvix:
+          coef: 0.06795
+          t_statistic: 1.491
+          p_value: 0.13595725851875354
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.89872
+        har_gex: 1.89232
+        dm_t_statistic: 1.169
+        dm_p_value: 0.24241481963285605
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.02654
+          t_statistic: -0.538
+          p_value: 0.5905217653167418
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.05886
+          t_statistic: -1.008
+          p_value: 0.31356851699326427
+        gex_pct_x_highvix:
+          coef: 0.03096
+          t_statistic: 0.393
+          p_value: 0.6939866720268975
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.90412
+        har_gex: 1.90419
+        dm_t_statistic: -0.098
+        dm_p_value: 0.9219526633828672
+  UVXY:
+    neg_gex:
+      in_sample:
+        n_obs: 3650
+        neg_gex:
+          coef: -0.10774
+          t_statistic: -3.149
+          p_value: 0.0016365540988639716
+      in_sample_vix:
+        n_obs: 3650
+        neg_gex:
+          coef: -0.06201
+          t_statistic: -1.501
+          p_value: 0.13325888950106415
+        neg_gex_x_highvix:
+          coef: -0.00297
+          t_statistic: -0.043
+          p_value: 0.9655430788662539
+      out_of_sample_qlike:
+        n_test: 1694
+        har: 4.01781
+        har_gex: 4.0205
+        dm_t_statistic: -1.473
+        dm_p_value: 0.14083275191696232
+    gex_pct:
+      in_sample:
+        n_obs: 3399
+        gex_pct:
+          coef: 0.29023
+          t_statistic: 4.993
+          p_value: 5.952508568049157e-07
+      in_sample_vix:
+        n_obs: 3399
+        gex_pct:
+          coef: 0.25021
+          t_statistic: 3.499
+          p_value: 0.00046673377066963856
+        gex_pct_x_highvix:
+          coef: -0.01047
+          t_statistic: -0.104
+          p_value: 0.9174127164876853
+      out_of_sample_qlike:
+        n_test: 1694
+        har: 4.01597
+        har_gex: 4.0143
+        dm_t_statistic: 0.621
+        dm_p_value: 0.5345908808234685
+  XLB:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.09209
+          t_statistic: 3.673
+          p_value: 0.00023985034123310246
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.07127
+          t_statistic: 2.081
+          p_value: 0.03742270476792941
+        neg_gex_x_highvix:
+          coef: 0.00322
+          t_statistic: 0.07
+          p_value: 0.9444949500557331
+      out_of_sample_qlike:
+        n_test: 1698
+        har: 0.8917
+        har_gex: 0.89104
+        dm_t_statistic: 0.844
+        dm_p_value: 0.3986415083536802
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.1165
+          t_statistic: -2.684
+          p_value: 0.00726826419970759
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.09785
+          t_statistic: -1.904
+          p_value: 0.05695680942878271
+        gex_pct_x_highvix:
+          coef: 0.05081
+          t_statistic: 0.741
+          p_value: 0.45873582397956736
+      out_of_sample_qlike:
+        n_test: 1698
+        har: 0.89501
+        har_gex: 0.89472
+        dm_t_statistic: 0.948
+        dm_p_value: 0.34301192503204203
+  XLE:
+    neg_gex:
+      in_sample:
+        n_obs: 4685
+        neg_gex:
+          coef: 0.01729
+          t_statistic: 0.683
+          p_value: 0.49433807285239084
+      in_sample_vix:
+        n_obs: 4685
+        neg_gex:
+          coef: -0.00608
+          t_statistic: -0.194
+          p_value: 0.8458973515594095
+        neg_gex_x_highvix:
+          coef: 0.00011
+          t_statistic: 0.003
+          p_value: 0.9978620427549522
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.67325
+        har_gex: 1.67325
+        dm_t_statistic: -0.016
+        dm_p_value: 0.987320065571081
+    gex_pct:
+      in_sample:
+        n_obs: 4456
+        gex_pct:
+          coef: -0.03399
+          t_statistic: -0.724
+          p_value: 0.4692468969259327
+      in_sample_vix:
+        n_obs: 4456
+        gex_pct:
+          coef: 0.01796
+          t_statistic: 0.325
+          p_value: 0.745319501382633
+        gex_pct_x_highvix:
+          coef: -0.02715
+          t_statistic: -0.37
+          p_value: 0.7114710005766408
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 1.67996
+        har_gex: 1.68287
+        dm_t_statistic: -3.028
+        dm_p_value: 0.0024652147734492065
+  XLF:
+    neg_gex:
+      in_sample:
+        n_obs: 4684
+        neg_gex:
+          coef: 0.02886
+          t_statistic: 1.105
+          p_value: 0.26935932783514105
+      in_sample_vix:
+        n_obs: 4684
+        neg_gex:
+          coef: 0.00662
+          t_statistic: 0.175
+          p_value: 0.8612918968056884
+        neg_gex_x_highvix:
+          coef: -0.0838
+          t_statistic: -1.655
+          p_value: 0.0978666173402173
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 0.85237
+        har_gex: 0.85235
+        dm_t_statistic: 0.848
+        dm_p_value: 0.39666842869104557
+    gex_pct:
+      in_sample:
+        n_obs: 4455
+        gex_pct:
+          coef: -0.15414
+          t_statistic: -3.556
+          p_value: 0.0003761915512108957
+      in_sample_vix:
+        n_obs: 4455
+        gex_pct:
+          coef: -0.15601
+          t_statistic: -2.435
+          p_value: 0.014892181843856754
+        gex_pct_x_highvix:
+          coef: 0.10811
+          t_statistic: 1.346
+          p_value: 0.17818906310330151
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 0.85297
+        har_gex: 0.85344
+        dm_t_statistic: -0.426
+        dm_p_value: 0.6700121519487598
+  XLK:
+    neg_gex:
+      in_sample:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.06715
+          t_statistic: 2.272
+          p_value: 0.023058747853622098
+      in_sample_vix:
+        n_obs: 4686
+        neg_gex:
+          coef: 0.01116
+          t_statistic: 0.266
+          p_value: 0.7904506204264827
+        neg_gex_x_highvix:
+          coef: 0.04639
+          t_statistic: 0.867
+          p_value: 0.38569364081102187
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.26597
+        har_gex: 1.26597
+        dm_t_statistic: -0.033
+        dm_p_value: 0.9736604344037036
+    gex_pct:
+      in_sample:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.11525
+          t_statistic: -2.166
+          p_value: 0.030275628344171846
+      in_sample_vix:
+        n_obs: 4457
+        gex_pct:
+          coef: -0.06747
+          t_statistic: -1.054
+          p_value: 0.2918561262343947
+        gex_pct_x_highvix:
+          coef: -0.06651
+          t_statistic: -0.758
+          p_value: 0.4484890694881859
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.27756
+        har_gex: 1.27751
+        dm_t_statistic: 0.386
+        dm_p_value: 0.6998429183539199
+  XLP:
+    neg_gex:
+      in_sample:
+        n_obs: 4688
+        neg_gex:
+          coef: 0.04304
+          t_statistic: 1.748
+          p_value: 0.08046451186738675
+      in_sample_vix:
+        n_obs: 4688
+        neg_gex:
+          coef: 0.06857
+          t_statistic: 2.046
+          p_value: 0.0407688286501147
+        neg_gex_x_highvix:
+          coef: 0.0489
+          t_statistic: 1.043
+          p_value: 0.2968804915341353
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 0.38622
+        har_gex: 0.38587
+        dm_t_statistic: 2.501
+        dm_p_value: 0.012379721777506751
+    gex_pct:
+      in_sample:
+        n_obs: 4459
+        gex_pct:
+          coef: -0.05413
+          t_statistic: -1.341
+          p_value: 0.18000961191215126
+      in_sample_vix:
+        n_obs: 4459
+        gex_pct:
+          coef: 0.00177
+          t_statistic: 0.033
+          p_value: 0.9736579125134157
+        gex_pct_x_highvix:
+          coef: -0.08592
+          t_statistic: -1.12
+          p_value: 0.26289960858405104
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 0.38821
+        har_gex: 0.38809
+        dm_t_statistic: 2.641
+        dm_p_value: 0.008269259408811002
+  XLU:
+    neg_gex:
+      in_sample:
+        n_obs: 4687
+        neg_gex:
+          coef: 0.01409
+          t_statistic: 0.568
+          p_value: 0.5697289369684371
+      in_sample_vix:
+        n_obs: 4687
+        neg_gex:
+          coef: 0.02976
+          t_statistic: 0.877
+          p_value: 0.38053422383610025
+        neg_gex_x_highvix:
+          coef: 0.09267
+          t_statistic: 2.082
+          p_value: 0.03734852739763294
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 0.99794
+        har_gex: 0.99795
+        dm_t_statistic: -0.202
+        dm_p_value: 0.8398953258447638
+    gex_pct:
+      in_sample:
+        n_obs: 4458
+        gex_pct:
+          coef: 0.022
+          t_statistic: 0.552
+          p_value: 0.5812778588078144
+      in_sample_vix:
+        n_obs: 4458
+        gex_pct:
+          coef: 0.00999
+          t_statistic: 0.184
+          p_value: 0.8536426225270761
+        gex_pct_x_highvix:
+          coef: -0.02742
+          t_statistic: -0.373
+          p_value: 0.708776781399761
+      out_of_sample_qlike:
+        n_test: 1699
+        har: 0.99845
+        har_gex: 0.99817
+        dm_t_statistic: 0.984
+        dm_p_value: 0.3249002562814499
+  XLV:
+    neg_gex:
+      in_sample:
+        n_obs: 4685
+        neg_gex:
+          coef: 0.00392
+          t_statistic: 0.159
+          p_value: 0.873544912456764
+      in_sample_vix:
+        n_obs: 4685
+        neg_gex:
+          coef: 0.01762
+          t_statistic: 0.482
+          p_value: 0.6298068553603041
+        neg_gex_x_highvix:
+          coef: -0.03294
+          t_statistic: -0.715
+          p_value: 0.47439769890561
+      out_of_sample_qlike:
+        n_test: 1698
+        har: 0.56192
+        har_gex: 0.56204
+        dm_t_statistic: -0.491
+        dm_p_value: 0.6232080157882496
+    gex_pct:
+      in_sample:
+        n_obs: 4456
+        gex_pct:
+          coef: -0.03822
+          t_statistic: -0.907
+          p_value: 0.36453239979107577
+      in_sample_vix:
+        n_obs: 4456
+        gex_pct:
+          coef: -0.03138
+          t_statistic: -0.561
+          p_value: 0.575061149205134
+        gex_pct_x_highvix:
+          coef: -0.04078
+          t_statistic: -0.541
+          p_value: 0.5887072174606133
+      out_of_sample_qlike:
+        n_test: 1698
+        har: 0.56459
+        har_gex: 0.56506
+        dm_t_statistic: -1.07
+        dm_p_value: 0.28466774843145115
+  XLY:
+    neg_gex:
+      in_sample:
+        n_obs: 4687
+        neg_gex:
+          coef: 0.16064
+          t_statistic: 6.196
+          p_value: 5.788349127451592e-10
+      in_sample_vix:
+        n_obs: 4687
+        neg_gex:
+          coef: 0.08426
+          t_statistic: 2.278
+          p_value: 0.022727691486648407
+        neg_gex_x_highvix:
+          coef: 0.03948
+          t_statistic: 0.76
+          p_value: 0.44708494589488856
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.09812
+        har_gex: 1.10056
+        dm_t_statistic: -1.073
+        dm_p_value: 0.2834055343446745
+    gex_pct:
+      in_sample:
+        n_obs: 4458
+        gex_pct:
+          coef: -0.22037
+          t_statistic: -4.534
+          p_value: 5.783212881508356e-06
+      in_sample_vix:
+        n_obs: 4458
+        gex_pct:
+          coef: -0.10962
+          t_statistic: -1.723
+          p_value: 0.08491296028119256
+        gex_pct_x_highvix:
+          coef: -0.0873
+          t_statistic: -1.005
+          p_value: 0.3149773089592641
+      out_of_sample_qlike:
+        n_test: 1700
+        har: 1.10614
+        har_gex: 1.10503
+        dm_t_statistic: 0.752
+        dm_p_value: 0.4519400552224573

@@ -151,6 +151,48 @@ def collect_volatility(rows):
                 )
 
 
+def collect_panel(rows):
+    name = "gex_vol_panel_lag1.yaml"
+    data = _load(name)
+    if not data:
+        return
+    for sym, res in data["per_symbol"].items():
+        for m, r in res.items():
+            c = r["in_sample"][m]
+            rows.append(
+                _row(
+                    f"Panel per-symbol {m} (in-sample, leverage controls)",
+                    name,
+                    f"{sym} {m}",
+                    c["t_statistic"],
+                    c["p_value"],
+                    c["coef"],
+                )
+            )
+            o = r["out_of_sample_qlike"]
+            rows.append(
+                _row(
+                    f"Panel per-symbol {m} (out-of-sample QLIKE)",
+                    name,
+                    f"{sym} {m} QLIKE DM",
+                    o["dm_t_statistic"],
+                    o["dm_p_value"],
+                    round(o["har"] - o["har_gex"], 5),
+                )
+            )
+    for m, specs in data["pooled"].items():
+        c = specs["no_vix"][m]
+        rows.append(
+            _row("Panel pooled", name, f"{m} (leverage)", c["t_statistic"], c["p_value"], c["coef"])
+        )
+        ix = specs["with_vix"][f"{m}_x_highvix"]
+        rows.append(
+            _row(
+                "Panel pooled", name, f"{m} x highVIX", ix["t_statistic"], ix["p_value"], ix["coef"]
+            )
+        )
+
+
 def main():
     print("=" * 60)
     print("  MULTIPLE-TESTING AUDIT, LAG-1 GEX TESTS (#576)")
@@ -159,6 +201,7 @@ def main():
     collect_macd(rows)
     collect_overlays(rows)
     collect_volatility(rows)
+    collect_panel(rows)
     df = pd.DataFrame(rows)
     n = len(df)
     print(f"  Tests in family: {n}")
