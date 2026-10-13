@@ -1,0 +1,124 @@
+run_timestamp: '2025-12-23T23:26:12.732396'
+issue: '#502'
+description: S-Squared GEX Scaling Impact Analysis
+formulas:
+  current: "weighted_gamma = gamma \xD7 open_interest"
+  academic: "GEX = OI \xD7 Gamma \xD7 S\xB2 \xD7 0.01 \xD7 100"
+symbol_results:
+  SPY:
+    category: high_price
+    avg_price: 455.90053475935827
+    current_formula:
+      total_return: 43.38730459298358
+      sharpe_ratio: 0.551922511531434
+      max_drawdown: -18.68461939712358
+      days_tested: 1466.0
+    s_squared_formula:
+      total_return: 40.2849348741983
+      sharpe_ratio: 0.5108245339177978
+      max_drawdown: -19.20009566534394
+      days_tested: 1466.0
+    s_squared_better: false
+  QQQ:
+    category: high_price
+    avg_price: 376.84940268456376
+    current_formula:
+      total_return: 62.50393078620454
+      sharpe_ratio: 0.6271901171450056
+      max_drawdown: -18.99096851780851
+      days_tested: 1460.0
+    s_squared_formula:
+      total_return: 74.93815547670242
+      sharpe_ratio: 0.7076895096073073
+      max_drawdown: -17.253287843454597
+      days_tested: 1460.0
+    s_squared_better: true
+  IWM:
+    category: medium_price
+    avg_price: 195.8837415426252
+    current_formula:
+      total_return: 51.99072657376491
+      sharpe_ratio: 0.509460833235276
+      max_drawdown: -23.369887793073353
+      days_tested: 1448.0
+    s_squared_formula:
+      total_return: 78.40916454114173
+      sharpe_ratio: 0.6500259937807342
+      max_drawdown: -23.369887793073353
+      days_tested: 1448.0
+    s_squared_better: true
+  SQQQ:
+    category: low_price
+    avg_price: 22.964795986622075
+    current_formula:
+      total_return: -42.07345958371312
+      sharpe_ratio: 0.3496635720423399
+      max_drawdown: -89.9893254125113
+      days_tested: 1465.0
+    s_squared_formula:
+      total_return: -44.86142382120828
+      sharpe_ratio: 0.36720634892908083
+      max_drawdown: -92.8564799285953
+      days_tested: 1465.0
+    s_squared_better: true
+  UVXY:
+    category: low_price
+    avg_price: 18.101790495314592
+    current_formula:
+      total_return: 239.70142705175795
+      sharpe_ratio: 0.5109222569886537
+      max_drawdown: -95.24345554663158
+      days_tested: 1464.0
+    s_squared_formula:
+      total_return: -73.67162354761294
+      sharpe_ratio: 0.290733064383011
+      max_drawdown: -98.97757088579075
+      days_tested: 1464.0
+    s_squared_better: false
+  TQQQ:
+    category: leveraged
+    avg_price: 75.92593854375419
+    current_formula:
+      total_return: 913.3992392658946
+      sharpe_ratio: 1.0722366505242535
+      max_drawdown: -61.854778764129115
+      days_tested: 1467.0
+    s_squared_formula:
+      total_return: 426.04452595910976
+      sharpe_ratio: 0.8520864284323728
+      max_drawdown: -46.273205867697754
+      days_tested: 1467.0
+    s_squared_better: false
+  SOXL:
+    category: leveraged
+    avg_price: 80.09483633934536
+    current_formula:
+      total_return: -47.25441428185737
+      sharpe_ratio: 0.21434271331782342
+      max_drawdown: -91.90210849420146
+      days_tested: 1467.0
+    s_squared_formula:
+      total_return: 2.1288430298252567
+      sharpe_ratio: 0.36165373205796325
+      max_drawdown: -88.41328353053451
+      days_tested: 1467.0
+    s_squared_better: true
+cross_asset_analysis:
+  avg_cv_current: 0.5319895130845137
+  avg_cv_s_squared: 0.7353409735161404
+  s_squared_more_stable: false
+summary:
+  symbols_tested: 7
+  s_squared_wins: 4
+  s_squared_win_rate: 57.14285714285714
+  avg_sharpe_improvement: -0.013645577668074144
+conclusion:
+  s_squared_recommended: false
+  cross_asset_comparability_improved: false
+  recommendation: Current formula performs adequately for single-asset analysis
+  causal_mechanism:
+    who: Market makers hedging gamma exposure
+    whom: Price movement through delta hedging
+    what: "S\xB2 scaling normalizes dollar gamma across price levels"
+    rationale: "Dollar gamma (\u2202Delta \xD7 $) matters for hedging flows. S\xB2\
+      \ naturally appears when converting gamma to dollar terms."

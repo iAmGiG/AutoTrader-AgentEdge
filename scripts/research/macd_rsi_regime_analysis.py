@@ -55,7 +55,7 @@ TEST_START = "2021-01-04"
 TEST_END = "2023-12-29"
 WARMUP_START = "2020-01-02"
 REGIME_LAG = 1  # 0 = same-day regime (look-ahead, comparison only)
-RESULTS_DIR = Path("docs/08_research/03_gex_research")
+RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
 
 
 def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:  # noqa: C901

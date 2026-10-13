@@ -71,7 +71,8 @@ def calculate_stochastic(df: pd.DataFrame, period: int, smooth: int = 3) -> pd.S
     """Calculate stochastic oscillator."""
     low_min = df["low"].rolling(period).min()
     high_max = df["high"].rolling(period).max()
-    raw_k = 100 * (df["close"] - low_min) / (high_max - low_min)
+    denom = high_max - low_min
+    raw_k = 100 * (df["close"] - low_min) / (denom + 1e-9)
     return raw_k.rolling(smooth).mean()
 
 
@@ -152,7 +153,7 @@ def generate_voter_signals(df: pd.DataFrame) -> pd.Series:
         delta = prices.diff()
         gain = delta.where(delta > 0, 0).rolling(period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
-        rs = gain / loss
+        rs = gain / (loss + 1e-9)
         return 100 - (100 / (1 + rs))
 
     def calculate_macd(prices: pd.Series) -> Dict:
@@ -328,7 +329,7 @@ def main():
     results = run_comparison()
 
     # Save results
-    output = Path("docs/08_research/04_strategy_research/raf_results.yaml")
+    output = Path("docs/08_research/03_strategy_research/raf_results.yaml")
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w") as f:
         yaml.dump(results, f, default_flow_style=False, sort_keys=False)

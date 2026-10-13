@@ -116,12 +116,10 @@ def calculate_lead_lag_correlation(
     # Calculate correlations at different lags
     correlations = {}
     for lag in range(-max_lag, max_lag + 1):
-        if lag < 0:
-            # Lead asset leads
-            shifted = lead_data.shift(-lag)
-        else:
-            # Lag asset leads
-            shifted = lag_data.shift(lag)
+        # Always shift the lag_asset relative to lead_asset
+        # lag > 0: lag_asset(t-k) vs lead_asset(t) -> Lag leads Lead
+        # lag < 0: lag_asset(t+k) vs lead_asset(t) -> Lead leads Lag
+        shifted = lag_data.shift(lag)
 
         valid = ~(lead_data.isna() | shifted.isna())
         if valid.sum() > 30:
@@ -321,7 +319,7 @@ def main():
         report = generate_report(corr_matrix, asset_metrics, lead_lag_results)
 
         # Save report
-        report_path = Path("docs/08_research/03_gex_research/cross_asset_correlation.md")
+        report_path = Path("docs/08_research/02_gex_research/cross_asset_correlation.md")
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(report)
         print(f"\n[OK] Report saved: {report_path}")

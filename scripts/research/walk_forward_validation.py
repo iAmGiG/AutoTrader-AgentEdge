@@ -365,10 +365,10 @@ def apply_multiple_testing_corrections(
     results: List[ValidationResult], n_observations: int = 252
 ) -> List[ValidationResult]:
     """
-    Apply multiple testing corrections to validation results.
+    Apply Benjamini-Hochberg multiple testing correction to validation results.
 
-    Estimates p-values from OOS Sharpe ratios and applies both
-    Bonferroni and BH corrections.
+    Estimates p-values from OOS Sharpe ratios and applies the BH correction
+    to control the False Discovery Rate.
     """
     # Estimate p-values
     p_values = [
@@ -376,7 +376,6 @@ def apply_multiple_testing_corrections(
     ]
 
     # Apply corrections
-    bonf_adjusted, bonf_sig = bonferroni_correction(p_values)
     bh_adjusted, bh_sig = benjamini_hochberg_correction(p_values)
 
     # Update results with BH-adjusted p-values (less conservative)
@@ -493,7 +492,7 @@ def macd_rsi_strategy(df: pd.DataFrame) -> pd.Series:
     delta = prices.diff()
     gain = delta.where(delta > 0, 0).rolling(14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    rs = gain / loss
+    rs = gain / (loss + 1e-9)
     rsi = 100 - (100 / (1 + rs))
 
     signals = pd.Series(0.0, index=df.index)
@@ -555,6 +554,38 @@ def gex_regime_strategy(df: pd.DataFrame, symbol: str) -> pd.Series:
     return signals
 
 
+def _test_strategy_batch(
+    strategy_fn: Callable[[pd.DataFrame], pd.Series],
+    strategy_prefix: str,
+    symbols: List[str],
+    description: str,
+) -> List[ValidationResult]:
+    """Helper to run validation on a batch of symbols for a specific strategy."""
+    print("\n" + "-" * 50)
+    print(f"Testing: {description}")
+    print("-" * 50)
+
+    results = []
+    for symbol in symbols:
+        try:
+            result = validate_strategy(
+                strategy_fn=strategy_fn,
+                symbol=symbol,
+                strategy_name=f"{strategy_prefix}_{symbol}",
+            )
+            results.append(result)
+            status = "PASS" if result.passes_validation else "FAIL"
+            print(f"\n{symbol}:")
+            print(
+                f"  IS Sharpe: {result.in_sample_sharpe:.3f}, OOS Sharpe: {result.out_of_sample_sharpe:.3f}"
+            )
+            print(f"  Degradation: {result.degradation_pct:.1f}%")
+            print(f"  Status: {status}")
+        except Exception as e:
+            print(f"\n{symbol}: ERROR - {e}")
+    return results
+
+
 # =============================================================================
 # MAIN VALIDATION RUN
 # =============================================================================
@@ -590,50 +621,16 @@ def run_walk_forward_validation():
     all_results = []
 
     # Test MACD+RSI strategy
-    print("\n" + "-" * 50)
-    print("Testing: MACD+RSI Voting Strategy (VoterAgent Baseline)")
-    print("-" * 50)
-
-    for symbol in symbols:
-        try:
-            result = validate_strategy(
-                strategy_fn=macd_rsi_strategy,
-                symbol=symbol,
-                strategy_name=f"MACD_RSI_{symbol}",
-            )
-            all_results.append(result)
-            status = "PASS" if result.passes_validation else "FAIL"
-            print(f"\n{symbol}:")
-            print(
-                f"  IS Sharpe: {result.in_sample_sharpe:.3f}, OOS Sharpe: {result.out_of_sample_sharpe:.3f}"
-            )
-            print(f"  Degradation: {result.degradation_pct:.1f}%")
-            print(f"  Status: {status}")
-        except Exception as e:
-            print(f"\n{symbol}: ERROR - {e}")
+    all_results.extend(
+        _test_strategy_batch(
+            macd_rsi_strategy, "MACD_RSI", symbols, "MACD+RSI Voting Strategy (VoterAgent Baseline)"
+        )
+    )
 
     # Test TSMOM strategy
-    print("\n" + "-" * 50)
-    print("Testing: Time-Series Momentum (12-month)")
-    print("-" * 50)
-
-    for symbol in symbols:
-        try:
-            result = validate_strategy(
-                strategy_fn=tsmom_strategy,
-                symbol=symbol,
-                strategy_name=f"TSMOM_{symbol}",
-            )
-            all_results.append(result)
-            status = "PASS" if result.passes_validation else "FAIL"
-            print(f"\n{symbol}:")
-            print(
-                f"  IS Sharpe: {result.in_sample_sharpe:.3f}, OOS Sharpe: {result.out_of_sample_sharpe:.3f}"
-            )
-            print(f"  Degradation: {result.degradation_pct:.1f}%")
-            print(f"  Status: {status}")
-        except Exception as e:
-            print(f"\n{symbol}: ERROR - {e}")
+    all_results.extend(
+        _test_strategy_batch(tsmom_strategy, "TSMOM", symbols, "Time-Series Momentum (12-month)")
+    )
 
     # Apply multiple testing corrections
     print("\n" + "=" * 70)
@@ -699,7 +696,7 @@ def run_walk_forward_validation():
         "causal_mechanisms": {k: convert_to_native(v) for k, v in KNOWN_CAUSAL_MECHANISMS.items()},
     }
 
-    output = Path("docs/08_research/04_strategy_research/walk_forward_results.yaml")
+    output = Path("docs/08_research/03_strategy_research/walk_forward_results.yaml")
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w") as f:
         yaml.dump(results_dict, f, default_flow_style=False, sort_keys=False)

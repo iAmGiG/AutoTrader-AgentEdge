@@ -9,7 +9,7 @@
 ## Executive Summary
 
 | Broker | API Cost | Markets | Key Differentiators | API Availability |
-|--------|----------|---------|---------------------|------------------|
+| -------- | ---------- | --------- | --------------------- | ------------------ |
 | **Alpaca** | Free | US Stocks, Crypto | Paper trading, fractional shares, commission-free | ✅ Public |
 | **Zerodha (Kite)** | ₹2,000/mo (~$24) | NSE/BSE (India) | 10 years historical data, GTT orders, free for personal use (2025) | ✅ Public |
 | **Upstox** | ₹1,999/mo (~$24) | NSE/BSE (India) | MTF (margin trading), trailing stop loss, sandbox mode | ✅ Public |
@@ -235,7 +235,7 @@ Newcomer to trading APIs (launched 2024-2025), positioning as most affordable op
 ### Core Trading Features
 
 | Feature | Alpaca | Zerodha | Upstox | Groww | Angel One |
-|---------|--------|---------|--------|-------|-----------|
+| --------- | -------- | --------- | -------- | ------- | ----------- |
 | **REST API** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **WebSocket (Real-time)** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Paper Trading** | ✅ | ❌ | ✅ (Sandbox) | ❌ | ❌ |
@@ -246,7 +246,7 @@ Newcomer to trading APIs (launched 2024-2025), positioning as most affordable op
 ### Advanced Order Types
 
 | Feature | Alpaca | Zerodha | Upstox | Groww | Angel One |
-|---------|--------|---------|--------|-------|-----------|
+| --------- | -------- | --------- | -------- | ------- | ----------- |
 | **Market Orders** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Limit Orders** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Stop Orders** | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -259,7 +259,7 @@ Newcomer to trading APIs (launched 2024-2025), positioning as most affordable op
 ### Asset Classes
 
 | Asset Class | Alpaca | Zerodha | Upstox | Groww | Angel One |
-|-------------|--------|---------|--------|-------|-----------|
+| ------------- | -------- | --------- | -------- | ------- | ----------- |
 | **Stocks (Equity)** | ✅ (US) | ✅ (India) | ✅ (India) | ✅ (India) | ✅ (India) |
 | **Crypto** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Futures** | ❌ | ✅ | ✅ | ✅ | ✅ |
@@ -271,7 +271,7 @@ Newcomer to trading APIs (launched 2024-2025), positioning as most affordable op
 ### Developer Experience
 
 | Feature | Alpaca | Zerodha | Upstox | Groww | Angel One |
-|---------|--------|---------|--------|-------|-----------|
+| --------- | -------- | --------- | -------- | ------- | ----------- |
 | **Python SDK** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **JavaScript/NodeJS** | ✅ | ✅ | ✅ | ❌ | ✅ |
 | **Java** | ❌ | ❌ | ✅ | ❌ | ✅ |
@@ -294,7 +294,7 @@ Newcomer to trading APIs (launched 2024-2025), positioning as most affordable op
 
 **Example:**
 
-```
+```text
 Set: "Buy 100 RELIANCE when price drops to ₹2,400"
 Duration: Order stays active for 365 days
 Benefit: Don't need to monitor price constantly
@@ -314,7 +314,7 @@ Benefit: Don't need to monitor price constantly
 
 **Example:**
 
-```
+```text
 Buy: ₹100,000 worth of stock
 Your capital: ₹25,000
 Broker funds: ₹75,000 (MTF)
@@ -336,7 +336,7 @@ Interest: Charged daily on funded amount
 
 **Example:**
 
-```
+```text
 Buy: ₹1,000
 Trailing SL: 5% below highest price
 Price rises to ₹1,200 → SL moves to ₹1,140
@@ -358,7 +358,7 @@ Locks in profits automatically
 
 **Example:**
 
-```
+```text
 NIFTY 50 Call Options
 Bank NIFTY Futures
 Stock-specific options (weekly, monthly expiry)
@@ -390,7 +390,7 @@ Stock-specific options (weekly, monthly expiry)
 
 **Example:**
 
-```
+```text
 Connection 1: 50 stocks (portfolio monitoring)
 Connection 2: 50 stocks (watchlist scanning)
 Connection 3: Index data
@@ -412,7 +412,7 @@ Connection 5: Backup/failover
 
 **Example:**
 
-```
+```text
 MCX Gold futures
 MCX Crude Oil
 USD/INR currency pairs
@@ -439,7 +439,7 @@ USD/INR currency pairs
 ## Pricing Comparison
 
 | Broker | Monthly Cost (USD) | Free Tier | Paper Trading | Notes |
-|--------|-------------------|-----------|---------------|-------|
+| -------- | ------------------- | ----------- | --------------- | ------- |
 | **Alpaca** | $0 | ✅ Full access | ✅ | Free with rate limits |
 | **Zerodha** | $0 (personal) / $24 (commercial) | ✅ Personal use | ❌ | Historical data now included |
 | **Upstox** | $24 | ❌ | ✅ (Sandbox) | Most 2025 feature updates |
@@ -715,6 +715,7 @@ order = alpaca.submit_order(
     side="buy",
     type="limit",
     limit_price=600,
+    time_in_force="day", # Required for extended hours
     extended_hours=True  # Enable extended hours
 )
 ```

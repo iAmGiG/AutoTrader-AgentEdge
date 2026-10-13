@@ -36,7 +36,7 @@ SYMBOLS = ["SPY", "QQQ", "IWM"]
 START = "2008-01-02"
 END = "2026-10-09"
 SPLIT_DATE = "2020-01-01"
-RESULTS_DIR = Path("docs/08_research/03_gex_research")
+RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
 
 
 def _to_native(obj):

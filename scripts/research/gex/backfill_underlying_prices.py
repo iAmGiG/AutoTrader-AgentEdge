@@ -68,9 +68,9 @@ class PriceBackfiller:
         """Fetch daily prices from Alpha Vantage TIME_SERIES_DAILY."""
         self._rate_limit()
 
-        url = "https://www.alphavantage.co/query"
+        url = "https://www.alphavantage.co/query"  # Using adjusted prices is critical
         params = {
-            "function": "TIME_SERIES_DAILY",
+            "function": "TIME_SERIES_DAILY_ADJUSTED",
             "symbol": symbol,
             "outputsize": "full",
             "apikey": self.api_key,
@@ -90,7 +90,7 @@ class PriceBackfiller:
             prices = {}
             for date_str, daily_data in data["Time Series (Daily)"].items():
                 if start_date <= date_str <= end_date:
-                    prices[date_str] = float(daily_data["4. close"])
+                    prices[date_str] = float(daily_data["5. adjusted close"])
 
             return prices
 

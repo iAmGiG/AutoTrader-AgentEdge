@@ -207,6 +207,7 @@ def _report_lead_lag_section(lead_lag_results: list) -> list:
     report.append("## Lead-Lag Analysis")
     report.append("")
     report.append("Does one segment's GEX predict another's?")
+    report.append("> **Note**: P-values may be optimistic due to regime autocorrelation.")
     report.append("")
     report.append("| Leader | Follower | Best Lag | Correlation | P-Value | Significant |")
     report.append("|--------|----------|----------|-------------|---------|-------------|")
@@ -387,7 +388,7 @@ if __name__ == "__main__":
     report = generate_report(regime_corr, lead_lag_results, divergence_df, prediction_results)
 
     # Save report
-    report_path = Path("docs/08_research/03_gex_research/sector_cap_divergence.md")
+    report_path = Path("docs/08_research/02_gex_research/sector_cap_divergence.md")
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report)
     print(f"\n[OK] Report saved: {report_path}")

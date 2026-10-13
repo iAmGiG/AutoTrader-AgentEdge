@@ -1,8 +1,9 @@
+<!-- markdownlint-disable MD060 -->
 # AutoTrader: Multi-Agent Trading System
 
 **Copyright (C) 2024-2025 Chris R. (iAmGiG)** | Licensed under [AGPL-3.0](LICENSE) | See [NOTICE](NOTICE)
 
-## Powered by AgentEdge - Autonomous AI agents seeking trading edge
+## Powered by AgentEdge - AI-assisted trading with human oversight
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
@@ -29,20 +30,26 @@
 
 **Core Philosophy**: Validated momentum + regime filtering + human decision making > curve-fit technical indicators
 
-### Walk-Forward Validated Performance
+### Key Research Findings (Jan 2026)
 
-Results from [research validation](docs/08_research/04_strategy_research/methodology_validation_summary.md):
+Recent rigorous validation experiments with corrected methodology:
 
-| Strategy         | Out-of-Sample Sharpe | Period    | Validation Status              |
-|------------------|----------------------|-----------|--------------------------------|
-| TSMOM-12M (QQQ)  | 1.097                | 2023-2024 | ✅ Passed                      |
-| TSMOM-12M (UVXY) | 1.082                | 2023-2024 | ✅ Passed                      |
-| TSMOM-12M (TQQQ) | 0.819                | 2023-2024 | ✅ Passed                      |
-| MACD+RSI (QQQ)   | 0.468                | 2023-2024 | ❌ Failed (65% degradation)    |
+- **GEX Regime Filtering**: Research contradiction identified - MACD+RSI and academic TSMOM behave differently in GEX regimes. Phase 3B on hold pending resolution. See [project status](docs/04_development/02_project_status.md).
+- **Transaction Cost Robustness**: MACD+RSI shows 44% pass rate vs TSMOM's 19% despite 10x higher turnover (#519)
+- **MACD Parameter Stability**: No robustly profitable MACD configs found out-of-sample. Best OOS Sharpe: -0.223 (#518)
+- **Simulation Fidelity Gap**: Path-dependent backtesting engine created to address "wick risk" (#528)
 
-**Methodology**: Walk-forward split (2020-2022 train / 2023-2024 test), Benjamini-Hochberg FDR correction applied.
+### Strategy Validation Results
 
-**Note**: Past performance does not guarantee future results. All strategies validated using out-of-sample testing to minimize overfitting risk.
+| Issue | Strategy | Finding | Status |
+|-------|----------|---------|--------|
+| #516 | TSMOM+GEX Hybrid | Median improvement: **-2.9%** (worse than baseline) | CLOSED |
+| #518 | MACD Stability | OOS Sharpe: -0.223 (least unprofitable) | CLOSED |
+| #519 | Transaction Costs | MACD+RSI: 44% pass rate, TSMOM: 19% | CLOSED |
+
+**Methodology**: Walk-forward validation, turnover-proportional transaction costs, look-ahead bias protection, median reporting for outlier robustness.
+
+**Note**: Past performance does not guarantee future results. Research is ongoing with focus on simulation fidelity improvements.
 
 ### Production Status
 
@@ -53,6 +60,8 @@ Results from [research validation](docs/08_research/04_strategy_research/methodo
 | Alpaca Integration | Operational |
 | Position Management | Complete |
 | Trading Cycle | Complete |
+| SQLite Cache | Complete (90%+ hit rate) |
+| LLM Intent Routing | Complete |
 | ScannerAgent | In Development |
 | RiskAgent | In Development |
 | ExecutorAgent | In Development |
@@ -69,6 +78,12 @@ Location: `src/autogen_agents/voter_agent.py`
 - **RSI Momentum Analysis**: 14-period with 30/70 thresholds
 - **Consensus Voting**: Strong signals when both indicators agree
 - **Validated Performance**: 0.856 Sharpe ratio over 2024-2025
+
+### LLM-Based Intent Classification
+
+- **Natural Language Commands**: GPT-4o-mini parses trade requests
+- **Context-Aware Routing**: Distinguishes "any open orders?" from ticker "ANY"
+- **Scalable Design**: No hardcoded keyword patterns for ticker disambiguation
 
 ### Agents in Development
 

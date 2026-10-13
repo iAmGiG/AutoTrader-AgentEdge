@@ -37,7 +37,7 @@ _spec.loader.exec_module(_ind)
 calculate_macd = _ind.calculate_macd
 calculate_rsi = _ind.calculate_rsi
 
-RESULTS_DIR = Path("docs/08_research/03_gex_research")
+RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
 
 PERIODS = {
     "covid_crash": ("2020-02-19", "2020-03-23"),

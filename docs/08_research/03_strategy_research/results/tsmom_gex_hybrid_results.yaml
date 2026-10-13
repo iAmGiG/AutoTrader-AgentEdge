@@ -1,0 +1,309 @@
+experiment: TSMOM + GEX Hybrid Strategy
+issue: '#516'
+methodology:
+  base_strategy: TSMOM 12-month momentum (unscaled)
+  regime_weighting:
+    NEGATIVE_GAMMA: 1.0
+    NEUTRAL: 0.5
+    POSITIVE_GAMMA: 0.25
+  look_ahead_protection: signals.shift(1), regimes.shift(1)
+  execution: t+1 (signal at close, execute next day)
+  transaction_cost_bps: 5
+  note: Uses unscaled TSMOM (sign of 12-mo return), distinct from vol-scaled version
+    in multi_asset_tsmom.py
+summary:
+  symbols_analyzed: 16
+  symbols_total: 16
+  avg_tsmom_sharpe_net: -0.26
+  avg_hybrid_sharpe_net: -0.323
+  median_improvement_pct: -2.9
+  mean_improvement_pct: 480.4
+results:
+- symbol: SOXL
+  period: 2020-01-02 to 2025-12-16
+  tsmom_only:
+    sharpe_net: -0.308
+    return_pct: -99.85
+    max_dd_pct: -99.91
+    trades: 29
+  hybrid:
+    sharpe_net: -0.499
+    return_pct: -96.42
+    max_dd_pct: -97.05
+    trades: 280
+  regime_exposure:
+    negative_gamma_days: 538
+    positive_gamma_days: 958
+    neutral_days: 0
+  sharpe_improvement_pct: -62.0
+  drawdown_improvement_pct: 2.9
+- symbol: TQQQ
+  period: 2020-01-02 to 2025-12-16
+  tsmom_only:
+    sharpe_net: 0.217
+    return_pct: -52.09
+    max_dd_pct: -72.94
+    trades: 42
+  hybrid:
+    sharpe_net: -0.099
+    return_pct: -72.81
+    max_dd_pct: -83.98
+    trades: 300
+  regime_exposure:
+    negative_gamma_days: 523
+    positive_gamma_days: 973
+    neutral_days: 0
+  sharpe_improvement_pct: -145.9
+  drawdown_improvement_pct: -15.1
+- symbol: SQQQ
+  period: 2020-01-02 to 2025-12-16
+  tsmom_only:
+    sharpe_net: -0.612
+    return_pct: -4620.74
+    max_dd_pct: -1188.91
+    trades: 12
+  hybrid:
+    sharpe_net: -0.56
+    return_pct: -267.62
+    max_dd_pct: -1108.02
+    trades: 316
+  regime_exposure:
+    negative_gamma_days: 508
+    positive_gamma_days: 984
+    neutral_days: 2
+  sharpe_improvement_pct: 8.6
+  drawdown_improvement_pct: 6.8
+- symbol: SOXS
+  period: 2020-01-02 to 2025-12-16
+  tsmom_only:
+    sharpe_net: -0.466
+    return_pct: 14363.25
+    max_dd_pct: -942.39
+    trades: 11
+  hybrid:
+    sharpe_net: -0.295
+    return_pct: 446.78
+    max_dd_pct: -286.72
+    trades: 270
+  regime_exposure:
+    negative_gamma_days: 641
+    positive_gamma_days: 852
+    neutral_days: 0
+  sharpe_improvement_pct: 36.8
+  drawdown_improvement_pct: 69.6
+- symbol: UVXY
+  period: 2020-01-02 to 2025-12-16
+  tsmom_only:
+    sharpe_net: -0.506
+    return_pct: -24048.78
+    max_dd_pct: -705.3
+    trades: 29
+  hybrid:
+    sharpe_net: -0.233
+    return_pct: -1570.12
+    max_dd_pct: -1094.08
+    trades: 291
+  regime_exposure:
+    negative_gamma_days: 1040
+    positive_gamma_days: 452
+    neutral_days: 1
+  sharpe_improvement_pct: 53.9
+  drawdown_improvement_pct: -55.1
+- symbol: QQQ
+  period: 2020-01-02 to 2025-12-15
+  tsmom_only:
+    sharpe_net: 0.355
+    return_pct: 35.81
+    max_dd_pct: -33.44
+    trades: 13
+  hybrid:
+    sharpe_net: -0.147
+    return_pct: -15.46
+    max_dd_pct: -35.26
+    trades: 169
+  regime_exposure:
+    negative_gamma_days: 243
+    positive_gamma_days: 1246
+    neutral_days: 0
+  sharpe_improvement_pct: -141.5
+  drawdown_improvement_pct: -5.4
+- symbol: IWM
+  period: 2020-01-02 to 2025-12-16
+  tsmom_only:
+    sharpe_net: -0.021
+    return_pct: -14.55
+    max_dd_pct: -32.16
+    trades: 49
+  hybrid:
+    sharpe_net: -0.35
+    return_pct: -27.99
+    max_dd_pct: -40.54
+    trades: 202
+  regime_exposure:
+    negative_gamma_days: 309
+    positive_gamma_days: 1168
+    neutral_days: 0
+  sharpe_improvement_pct: -1536.3
+  drawdown_improvement_pct: -26.1
+- symbol: SPY
+  period: 2021-12-07 to 2025-12-15
+  tsmom_only:
+    sharpe_net: 0.561
+    return_pct: 30.46
+    max_dd_pct: -28.37
+    trades: 4
+  hybrid:
+    sharpe_net: -0.332
+    return_pct: -11.08
+    max_dd_pct: -20.53
+    trades: 71
+  regime_exposure:
+    negative_gamma_days: 169
+    positive_gamma_days: 840
+    neutral_days: 0
+  sharpe_improvement_pct: -159.1
+  drawdown_improvement_pct: 27.6
+- symbol: FAS
+  period: 2020-01-02 to 2021-06-02
+  tsmom_only:
+    sharpe_net: 0.008
+    return_pct: -6.01
+    max_dd_pct: -37.46
+    trades: 2
+  hybrid:
+    sharpe_net: 0.829
+    return_pct: 21.7
+    max_dd_pct: -24.05
+    trades: 17
+  regime_exposure:
+    negative_gamma_days: 111
+    positive_gamma_days: 240
+    neutral_days: 0
+  sharpe_improvement_pct: 9654.8
+  drawdown_improvement_pct: 35.8
+- symbol: TECL
+  period: 2020-01-02 to 2021-05-19
+  tsmom_only:
+    sharpe_net: -0.707
+    return_pct: -90.46
+    max_dd_pct: -93.5
+    trades: 2
+  hybrid:
+    sharpe_net: -0.859
+    return_pct: -91.36
+    max_dd_pct: -92.16
+    trades: 11
+  regime_exposure:
+    negative_gamma_days: 97
+    positive_gamma_days: 245
+    neutral_days: 0
+  sharpe_improvement_pct: -21.5
+  drawdown_improvement_pct: 1.4
+- symbol: FAZ
+  period: 2020-01-02 to 2021-05-24
+  tsmom_only:
+    sharpe_net: -0.836
+    return_pct: -807.48
+    max_dd_pct: -704.15
+    trades: 12
+  hybrid:
+    sharpe_net: -0.884
+    return_pct: -174.37
+    max_dd_pct: -176.58
+    trades: 41
+  regime_exposure:
+    negative_gamma_days: 151
+    positive_gamma_days: 189
+    neutral_days: 0
+  sharpe_improvement_pct: -5.7
+  drawdown_improvement_pct: 74.9
+- symbol: LABU
+  period: 2020-01-02 to 2021-05-19
+  tsmom_only:
+    sharpe_net: -0.376
+    return_pct: -41.29
+    max_dd_pct: -69.61
+    trades: 1
+  hybrid:
+    sharpe_net: -0.624
+    return_pct: -35.91
+    max_dd_pct: -51.34
+    trades: 22
+  regime_exposure:
+    negative_gamma_days: 97
+    positive_gamma_days: 243
+    neutral_days: 0
+  sharpe_improvement_pct: -66.1
+  drawdown_improvement_pct: 26.2
+- symbol: DUST
+  period: 2020-01-02 to 2021-05-13
+  tsmom_only:
+    sharpe_net: 0.433
+    return_pct: 12.37
+    max_dd_pct: -32.1
+    trades: 2
+  hybrid:
+    sharpe_net: 0.606
+    return_pct: 6.54
+    max_dd_pct: -8.81
+    trades: 4
+  regime_exposure:
+    negative_gamma_days: 58
+    positive_gamma_days: 278
+    neutral_days: 0
+  sharpe_improvement_pct: 40.2
+  drawdown_improvement_pct: 72.6
+- symbol: NUGT
+  period: 2020-01-02 to 2021-05-11
+  tsmom_only:
+    sharpe_net: -0.644
+    return_pct: -29.14
+    max_dd_pct: -36.87
+    trades: 4
+  hybrid:
+    sharpe_net: -0.568
+    return_pct: -23.82
+    max_dd_pct: -31.45
+    trades: 18
+  regime_exposure:
+    negative_gamma_days: 165
+    positive_gamma_days: 171
+    neutral_days: 0
+  sharpe_improvement_pct: 11.7
+  drawdown_improvement_pct: 14.7
+- symbol: LABD
+  period: 2020-01-02 to 2021-05-14
+  tsmom_only:
+    sharpe_net: -0.559
+    return_pct: -51.72
+    max_dd_pct: -63.99
+    trades: 5
+  hybrid:
+    sharpe_net: -0.46
+    return_pct: -28.18
+    max_dd_pct: -41.16
+    trades: 25
+  regime_exposure:
+    negative_gamma_days: 101
+    positive_gamma_days: 233
+    neutral_days: 1
+  sharpe_improvement_pct: 17.7
+  drawdown_improvement_pct: 35.7
+- symbol: TECS
+  period: 2020-01-02 to 2021-05-10
+  tsmom_only:
+    sharpe_net: -0.7
+    return_pct: -31.09
+    max_dd_pct: -36.39
+    trades: 8
+  hybrid:
+    sharpe_net: -0.7
+    return_pct: -7.68
+    max_dd_pct: -9.72
+    trades: 8
+  regime_exposure:
+    negative_gamma_days: 42
+    positive_gamma_days: 291
+    neutral_days: 1
+  sharpe_improvement_pct: 0.0
+  drawdown_improvement_pct: 73.3

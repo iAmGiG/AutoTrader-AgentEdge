@@ -47,7 +47,7 @@ START = "2021-01-04"
 END = "2023-12-29"
 GEX_LOOKBACK = 60  # rolling z-score window
 COMMISSION_BPS = 2.0
-RESULTS_DIR = Path("docs/08_research/03_gex_research")
+RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
 
 
 def load_gex_data(conn, symbol: str, start: str, end: str) -> pd.DataFrame:

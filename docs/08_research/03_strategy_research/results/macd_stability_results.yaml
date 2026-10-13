@@ -1,0 +1,726 @@
+experiment: MACD Parameter Stability Analysis
+issue: '#518'
+methodology:
+  train_period: 2016-01-01 to 2022-12-31
+  test_period: 2023-01-01 to 2024-12-31
+  look_ahead_protection: signals.shift(1)
+  transaction_cost_bps: 5
+  signal_type: symmetric (+1/-1)
+  rsi_filter: trend-confirming (RSI>50 for long, RSI<50 for short)
+  validation_criteria:
+    oos_sharpe_min: 0.3
+    stability_min: 0.5
+  fixes_applied:
+  - Symmetric signals (was asymmetric +1/-0.5)
+  - Trend-confirming RSI (was range-bound 30-70)
+  - Dynamic warmup calculation
+  - Transaction costs modeled
+  - TSMOM baseline comparison added
+parameter_grid:
+  macd:
+    standard:
+    - 12
+    - 26
+    - 9
+    fibonacci:
+    - 13
+    - 34
+    - 8
+    fast:
+    - 8
+    - 17
+    - 9
+    slow:
+    - 19
+    - 39
+    - 9
+  rsi:
+    none: None
+    trend_confirm: (14, 'trend')
+tsmom_baseline:
+  SOXL:
+    is_sharpe_net: -0.273
+    oos_sharpe_net: -0.183
+    degradation_pct: -33.0
+    stability: 0.67
+    is_trades: 8
+    oos_trades: 15
+  TQQQ:
+    is_sharpe_net: 0.44
+    oos_sharpe_net: 0.085
+    degradation_pct: 80.6
+    stability: 0.194
+    is_trades: 22
+    oos_trades: 16
+  SQQQ:
+    is_sharpe_net: -0.432
+    oos_sharpe_net: -0.823
+    degradation_pct: 90.5
+    stability: 0.095
+    is_trades: 6
+    oos_trades: 4
+  SOXS:
+    is_sharpe_net: -0.508
+    oos_sharpe_net: -0.422
+    degradation_pct: -16.9
+    stability: 0.831
+    is_trades: 8
+    oos_trades: 3
+  UVXY:
+    is_sharpe_net: -0.577
+    oos_sharpe_net: 0.009
+    degradation_pct: -101.5
+    stability: 0.0
+    is_trades: 21
+    oos_trades: 8
+  QQQ:
+    is_sharpe_net: 0.217
+    oos_sharpe_net: 0.488
+    degradation_pct: -124.4
+    stability: 0.0
+    is_trades: 6
+    oos_trades: 3
+  IWM:
+    is_sharpe_net: 0.303
+    oos_sharpe_net: -0.148
+    degradation_pct: 149.0
+    stability: 0.0
+    is_trades: 2
+    oos_trades: 21
+aggregate_results:
+  standard+none:
+    avg_is_sharpe: 0.53
+    avg_oos_sharpe: -0.151
+    avg_stability: 0.109
+    pass_rate_pct: 12.5
+    n_tests: 8
+  standard+trend_confirm:
+    avg_is_sharpe: 0.258
+    avg_oos_sharpe: -0.072
+    avg_stability: 0.106
+    pass_rate_pct: 12.5
+    n_tests: 8
+  fibonacci+none:
+    avg_is_sharpe: 0.378
+    avg_oos_sharpe: -0.186
+    avg_stability: 0.113
+    pass_rate_pct: 12.5
+    n_tests: 8
+  fibonacci+trend_confirm:
+    avg_is_sharpe: 0.078
+    avg_oos_sharpe: -0.1
+    avg_stability: 0.179
+    pass_rate_pct: 12.5
+    n_tests: 8
+  fast+none:
+    avg_is_sharpe: -0.079
+    avg_oos_sharpe: 0.152
+    avg_stability: 0.121
+    pass_rate_pct: 0.0
+    n_tests: 8
+  fast+trend_confirm:
+    avg_is_sharpe: -0.134
+    avg_oos_sharpe: 0.082
+    avg_stability: 0.174
+    pass_rate_pct: 0.0
+    n_tests: 8
+  slow+none:
+    avg_is_sharpe: 0.346
+    avg_oos_sharpe: -0.015
+    avg_stability: 0.25
+    pass_rate_pct: 12.5
+    n_tests: 8
+  slow+trend_confirm:
+    avg_is_sharpe: -0.015
+    avg_oos_sharpe: -0.006
+    avg_stability: 0.245
+    pass_rate_pct: 12.5
+    n_tests: 8
+best_parameters: fast+none
+detailed_results:
+  SOXL:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.734
+    oos_sharpe_net: -0.404
+    degradation_pct: 155.1
+    stability: 0.0
+    trades_is: 45
+    trades_oos: 61
+    passes: false
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.215
+    oos_sharpe_net: -0.44
+    degradation_pct: 304.3
+    stability: 0.0
+    trades_is: 113
+    trades_oos: 136
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: 0.345
+    oos_sharpe_net: -0.507
+    degradation_pct: 246.7
+    stability: 0.0
+    trades_is: 45
+    trades_oos: 61
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: -0.13
+    oos_sharpe_net: -0.495
+    degradation_pct: 282.3
+    stability: 0.0
+    trades_is: 114
+    trades_oos: 131
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: 0.231
+    oos_sharpe_net: -0.228
+    degradation_pct: 199.1
+    stability: 0.0
+    trades_is: 70
+    trades_oos: 73
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.151
+    oos_sharpe_net: -0.407
+    degradation_pct: 168.5
+    stability: 0.0
+    trades_is: 140
+    trades_oos: 143
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: -0.245
+    oos_sharpe_net: -0.178
+    degradation_pct: -27.4
+    stability: 0.726
+    trades_is: 47
+    trades_oos: 45
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.568
+    oos_sharpe_net: -0.287
+    degradation_pct: -49.5
+    stability: 0.505
+    trades_is: 114
+    trades_oos: 121
+    passes: false
+  TQQQ:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.614
+    oos_sharpe_net: -0.215
+    degradation_pct: 135.0
+    stability: 0.0
+    trades_is: 51
+    trades_oos: 62
+    passes: false
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.58
+    oos_sharpe_net: -0.065
+    degradation_pct: 111.1
+    stability: 0.0
+    trades_is: 105
+    trades_oos: 119
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: 0.471
+    oos_sharpe_net: -0.414
+    degradation_pct: 188.0
+    stability: 0.0
+    trades_is: 51
+    trades_oos: 58
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: 0.394
+    oos_sharpe_net: -0.175
+    degradation_pct: 144.3
+    stability: 0.0
+    trades_is: 105
+    trades_oos: 111
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: 0.075
+    oos_sharpe_net: 0.198
+    degradation_pct: -163.2
+    stability: 0.0
+    trades_is: 72
+    trades_oos: 74
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.219
+    oos_sharpe_net: 0.126
+    degradation_pct: 42.5
+    stability: 0.575
+    trades_is: 126
+    trades_oos: 132
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: 0.666
+    oos_sharpe_net: 0.188
+    degradation_pct: 71.7
+    stability: 0.283
+    trades_is: 37
+    trades_oos: 42
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.489
+    oos_sharpe_net: 0.124
+    degradation_pct: 74.7
+    stability: 0.253
+    trades_is: 95
+    trades_oos: 98
+    passes: false
+  SQQQ:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.853
+    oos_sharpe_net: 0.744
+    degradation_pct: 12.7
+    stability: 0.873
+    trades_is: 39
+    trades_oos: 52
+    passes: true
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.634
+    oos_sharpe_net: 0.54
+    degradation_pct: 14.9
+    stability: 0.851
+    trades_is: 94
+    trades_oos: 106
+    passes: true
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: 0.821
+    oos_sharpe_net: 0.745
+    degradation_pct: 9.3
+    stability: 0.907
+    trades_is: 39
+    trades_oos: 48
+    passes: true
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: 0.587
+    oos_sharpe_net: 0.543
+    degradation_pct: 7.5
+    stability: 0.925
+    trades_is: 92
+    trades_oos: 102
+    passes: true
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: 0.614
+    oos_sharpe_net: 0.034
+    degradation_pct: 94.5
+    stability: 0.055
+    trades_is: 62
+    trades_oos: 70
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.466
+    oos_sharpe_net: 0.049
+    degradation_pct: 89.6
+    stability: 0.104
+    trades_is: 119
+    trades_oos: 127
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: 0.75
+    oos_sharpe_net: 0.756
+    degradation_pct: -0.7
+    stability: 0.993
+    trades_is: 33
+    trades_oos: 34
+    passes: true
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.543
+    oos_sharpe_net: 0.544
+    degradation_pct: -0.2
+    stability: 0.998
+    trades_is: 81
+    trades_oos: 87
+    passes: true
+  SOXS:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.104
+    oos_sharpe_net: 0.521
+    degradation_pct: -398.7
+    stability: 0.0
+    trades_is: 49
+    trades_oos: 51
+    passes: false
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.482
+    oos_sharpe_net: 0.542
+    degradation_pct: -212.5
+    stability: 0.0
+    trades_is: 112
+    trades_oos: 113
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: 0.076
+    oos_sharpe_net: 0.502
+    degradation_pct: -557.9
+    stability: 0.0
+    trades_is: 41
+    trades_oos: 49
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: -0.519
+    oos_sharpe_net: 0.536
+    degradation_pct: -203.2
+    stability: 0.0
+    trades_is: 104
+    trades_oos: 110
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: 0.065
+    oos_sharpe_net: 0.482
+    degradation_pct: -643.9
+    stability: 0.0
+    trades_is: 62
+    trades_oos: 67
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.523
+    oos_sharpe_net: 0.515
+    degradation_pct: -198.5
+    stability: 0.0
+    trades_is: 127
+    trades_oos: 132
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: 0.068
+    oos_sharpe_net: 0.469
+    degradation_pct: -589.0
+    stability: 0.0
+    trades_is: 37
+    trades_oos: 39
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.524
+    oos_sharpe_net: 0.517
+    degradation_pct: -198.6
+    stability: 0.0
+    trades_is: 102
+    trades_oos: 102
+    passes: false
+  UVXY:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.728
+    oos_sharpe_net: -0.15
+    degradation_pct: 120.6
+    stability: 0.0
+    trades_is: 41
+    trades_oos: 63
+    passes: false
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.099
+    oos_sharpe_net: -0.14
+    degradation_pct: 241.2
+    stability: 0.0
+    trades_is: 106
+    trades_oos: 114
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: 0.661
+    oos_sharpe_net: -0.124
+    degradation_pct: 118.8
+    stability: 0.0
+    trades_is: 39
+    trades_oos: 56
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: -0.25
+    oos_sharpe_net: -0.126
+    degradation_pct: -49.4
+    stability: 0.506
+    trades_is: 102
+    trades_oos: 111
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: -0.464
+    oos_sharpe_net: 0.861
+    degradation_pct: -285.7
+    stability: 0.0
+    trades_is: 80
+    trades_oos: 72
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.588
+    oos_sharpe_net: 0.669
+    degradation_pct: -213.6
+    stability: 0.0
+    trades_is: 140
+    trades_oos: 131
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: 0.526
+    oos_sharpe_net: -0.159
+    degradation_pct: 130.2
+    stability: 0.0
+    trades_is: 37
+    trades_oos: 44
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.708
+    oos_sharpe_net: -0.143
+    degradation_pct: -79.8
+    stability: 0.202
+    trades_is: 95
+    trades_oos: 100
+    passes: false
+  QQQ:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.02
+    oos_sharpe_net: -0.551
+    degradation_pct: 2819.5
+    stability: 0.0
+    trades_is: 55
+    trades_oos: 63
+    passes: false
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.309
+    oos_sharpe_net: -0.154
+    degradation_pct: 149.9
+    stability: 0.0
+    trades_is: 104
+    trades_oos: 117
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: -0.18
+    oos_sharpe_net: -0.644
+    degradation_pct: 258.5
+    stability: 0.0
+    trades_is: 55
+    trades_oos: 57
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: 0.099
+    oos_sharpe_net: -0.21
+    degradation_pct: 311.0
+    stability: 0.0
+    trades_is: 106
+    trades_oos: 109
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: -0.546
+    oos_sharpe_net: -0.151
+    degradation_pct: -72.2
+    stability: 0.278
+    trades_is: 80
+    trades_oos: 73
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.064
+    oos_sharpe_net: 0.021
+    degradation_pct: -133.5
+    stability: 0.0
+    trades_is: 137
+    trades_oos: 129
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: -0.074
+    oos_sharpe_net: -0.361
+    degradation_pct: 388.4
+    stability: 0.0
+    trades_is: 47
+    trades_oos: 47
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.147
+    oos_sharpe_net: -0.083
+    degradation_pct: 156.4
+    stability: 0.0
+    trades_is: 94
+    trades_oos: 100
+    passes: false
+  IWM:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.393
+    oos_sharpe_net: -0.286
+    degradation_pct: 172.7
+    stability: 0.0
+    trades_is: 53
+    trades_oos: 54
+    passes: false
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.349
+    oos_sharpe_net: -0.314
+    degradation_pct: 190.1
+    stability: 0.0
+    trades_is: 118
+    trades_oos: 126
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: 0.305
+    oos_sharpe_net: -0.384
+    degradation_pct: 225.9
+    stability: 0.0
+    trades_is: 47
+    trades_oos: 54
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: 0.135
+    oos_sharpe_net: -0.405
+    degradation_pct: 400.8
+    stability: 0.0
+    trades_is: 114
+    trades_oos: 127
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: -0.024
+    oos_sharpe_net: 0.399
+    degradation_pct: -1760.7
+    stability: 0.0
+    trades_is: 79
+    trades_oos: 69
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.104
+    oos_sharpe_net: 0.011
+    degradation_pct: 89.5
+    stability: 0.105
+    trades_is: 144
+    trades_oos: 145
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: 0.238
+    oos_sharpe_net: -0.248
+    degradation_pct: 204.5
+    stability: 0.0
+    trades_is: 41
+    trades_oos: 42
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.033
+    oos_sharpe_net: -0.34
+    degradation_pct: 1125.9
+    stability: 0.0
+    trades_is: 114
+    trades_oos: 112
+    passes: false
+  SPY:
+  - macd: standard (12/26/9)
+    rsi: none
+    is_sharpe_net: 0.793
+    oos_sharpe_net: -0.868
+    degradation_pct: 209.5
+    stability: 0.0
+    trades_is: 14
+    trades_oos: 72
+    passes: false
+  - macd: standard (12/26/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.358
+    oos_sharpe_net: -0.548
+    degradation_pct: 252.8
+    stability: 0.0
+    trades_is: 32
+    trades_oos: 130
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: none
+    is_sharpe_net: 0.528
+    oos_sharpe_net: -0.665
+    degradation_pct: 226.0
+    stability: 0.0
+    trades_is: 14
+    trades_oos: 64
+    passes: false
+  - macd: fibonacci (13/34/8)
+    rsi: trend_confirm
+    is_sharpe_net: 0.312
+    oos_sharpe_net: -0.466
+    degradation_pct: 249.4
+    stability: 0.0
+    trades_is: 30
+    trades_oos: 122
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: none
+    is_sharpe_net: -0.587
+    oos_sharpe_net: -0.375
+    degradation_pct: -36.2
+    stability: 0.638
+    trades_is: 23
+    trades_oos: 79
+    passes: false
+  - macd: fast (8/17/9)
+    rsi: trend_confirm
+    is_sharpe_net: -0.536
+    oos_sharpe_net: -0.327
+    degradation_pct: -39.0
+    stability: 0.61
+    trades_is: 41
+    trades_oos: 132
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: none
+    is_sharpe_net: 0.839
+    oos_sharpe_net: -0.59
+    degradation_pct: 170.3
+    stability: 0.0
+    trades_is: 9
+    trades_oos: 58
+    passes: false
+  - macd: slow (19/39/9)
+    rsi: trend_confirm
+    is_sharpe_net: 0.466
+    oos_sharpe_net: -0.382
+    degradation_pct: 182.1
+    stability: 0.0
+    trades_is: 22
+    trades_oos: 118
+    passes: false
+  FAS: []
+  TECL: []

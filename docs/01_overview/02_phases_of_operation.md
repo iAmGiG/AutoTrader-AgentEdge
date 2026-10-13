@@ -328,20 +328,20 @@ Order Execution
 
 ### Scenario: AAPL Trade from Signal to Exit
 
-**Phase 1: Data Acquisition**
+#### Phase 1: Data Acquisition
 
 - Scanner requests AAPL data for 2024-01-15 to 2024-01-31
 - TradingCacheManager queries SQLite database (cache hit)
 - Returns 11 trading days of OHLCV data in ~5-10ms
 
-**Phase 2: Signal Generation**
+#### Phase 2: Signal Generation
 
 - VoterAgent calculates MACD: Bullish crossover detected
 - VoterAgent calculates RSI: 45 (neutral, not oversold)
 - Voting result: MACD BUY + RSI HOLD = WEAK BUY signal
 - Position size: 50% (weak signal modifier)
 
-**Phase 3: Risk Assessment**
+#### Phase 3: Risk Assessment
 
 - Market hours: ✅ Open (2:30 PM ET)
 - Account equity: $10,000
@@ -350,7 +350,7 @@ Order Execution
 - Buying power: ✅ $8,500 available
 - Risk checks: ✅ All passed
 
-**Phase 4: Trade Execution**
+#### Phase 4: Trade Execution
 
 - Order type: Market order for $500 of AAPL (~3 shares at $170)
 - Submission: Order #abc123 accepted
@@ -358,7 +358,7 @@ Order Execution
 - Position tracking: 3 shares AAPL, avg price $170.25
 - Stop placement: Stop-loss at -5% ($161.74)
 
-**Phase 5: Position Management** (Current System)
+#### Phase 5: Position Management (Current System)
 
 - Monitor for exit signal (VoterAgent checks daily)
 - Stop-loss monitoring (OrderManager)

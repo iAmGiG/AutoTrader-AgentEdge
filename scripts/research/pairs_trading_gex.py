@@ -48,7 +48,7 @@ FIT_END = "2021-12-31"
 TEST_START = "2022-01-03"
 TEST_END = "2023-12-29"
 
-RESULTS_DIR = Path("docs/08_research/03_gex_research")
+RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
 OUTPUT_NAME = "pairs_trading_results.yaml"
 
 

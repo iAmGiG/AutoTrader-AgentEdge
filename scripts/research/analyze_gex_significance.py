@@ -53,7 +53,8 @@ def test_sharpe_significance(results):
 
     # Effect size (Cohen's d for paired samples)
     differences = np.array(gex_sharpes) - np.array(tech_sharpes)
-    cohen_d = np.mean(differences) / np.std(differences, ddof=1)
+    diff_std = np.std(differences, ddof=1)
+    cohen_d = np.mean(differences) / diff_std if diff_std > 0 else 0
 
     return {
         "t_statistic": t_stat,

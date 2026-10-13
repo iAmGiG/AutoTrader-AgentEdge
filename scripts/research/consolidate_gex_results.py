@@ -1,7 +1,7 @@
 """
 Consolidate GEX vs Technicals Results (#394)
 
-Reads YAML results from results/gex_research/ or backtest_results.db
+Reads YAML results from docs/08_research/02_gex_research/results/ or backtest_results.db
 and generates a markdown report.
 """
 
@@ -18,9 +18,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 # Use centralized date utilities
 from src.utils.date_utils import now_iso
 
-RESULTS_DIR = Path("results/gex_research")
+RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
 RESULTS_DB = Path(".cache/backtest_results.db")
-OUTPUT_FILE = Path("docs/08_research/03_gex_research/gex_vs_technicals_results.md")
+OUTPUT_FILE = Path("docs/08_research/02_gex_research/gex_vs_technicals_results.md")
 
 
 def load_results_from_yaml():

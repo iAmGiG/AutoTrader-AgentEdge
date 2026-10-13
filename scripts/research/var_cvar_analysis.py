@@ -43,7 +43,7 @@ SYMBOLS = ["SPY", "QQQ", "IWM"]
 START = "2020-01-02"
 END = "2023-12-29"
 LOOKBACKS = [20, 60, 120, 252]
-RESULTS_DIR = Path("docs/08_research/03_gex_research")
+RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
 OUTPUT_NAME = "var_cvar_results.yaml"
 
 

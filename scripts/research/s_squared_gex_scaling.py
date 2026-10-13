@@ -159,7 +159,8 @@ def generate_trading_signals(gex_df: pd.DataFrame, use_s_squared: bool) -> pd.Se
 
     # Normalize net gamma to z-scores for comparability
     net_gamma = gex_df[net_gamma_col]
-    z_scores = (net_gamma - net_gamma.rolling(20).mean()) / net_gamma.rolling(20).std()
+    rolling_std = net_gamma.rolling(20).std()
+    z_scores = (net_gamma - net_gamma.rolling(20).mean()) / (rolling_std + 1e-9)
 
     signals = pd.Series(0.0, index=gex_df.index)
 
@@ -190,6 +191,9 @@ def backtest_gex_signals(
         return {}
 
     signals = generate_trading_signals(merged, use_s_squared)
+
+    # Shift signals to avoid lookahead bias (Signal t-1 -> Trade t)
+    signals = signals.shift(1).fillna(0)
 
     # Simple backtest
     position = 0
@@ -414,7 +418,7 @@ def run_s_squared_analysis():
         total = len(backtest_results)
 
         print(f"\nSymbols tested: {total}")
-        print(f"S² formula wins: {s_squared_wins}/{total} ({s_squared_wins/total*100:.0f}%)")
+        print(f"S² formula wins: {s_squared_wins}/{total} ({s_squared_wins / total * 100:.0f}%)")
 
         avg_improvement = np.mean([r["improvement"] for r in backtest_results])
         print(f"Average Sharpe improvement: {avg_improvement:+.3f}")
@@ -456,7 +460,7 @@ def run_s_squared_analysis():
         }
 
     # Save results
-    output = Path("docs/08_research/03_gex_research/s_squared_scaling_results.yaml")
+    output = Path("docs/08_research/02_gex_research/s_squared_scaling_results.yaml")
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w", encoding="utf-8") as f:
         yaml.dump(results, f, default_flow_style=False, sort_keys=False)
