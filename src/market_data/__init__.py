@@ -2,8 +2,8 @@
 Market data sources package.
 
 This package contains tools for retrieving market data from:
-- Polygon.io (primary market data source)
-- Alpha Vantage (fallback market data source)
+- Alpaca (primary market data source, via unified_market_tool)
+- Polygon.io and Alpha Vantage (fallback sources, in that order)
 """
 
 # Lazy imports to avoid import errors when optional dependencies are missing
