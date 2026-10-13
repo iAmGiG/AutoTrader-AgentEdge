@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T15:30:01.417975'
+run_timestamp: '2026-10-13T15:37:24.258878'
 issue: '#541'
 description: Transaction Cost Sensitivity Analysis
 methodology:
@@ -97,38 +97,38 @@ results:
   pairs_trading:
     results:
     - commission_bps: 0
-      sharpe: 0.089
+      sharpe: 0.081
       total_return_pct: 0.64
-      max_drawdown_pct: -5.03
+      max_drawdown_pct: -8.77
       num_trades: 15
     - commission_bps: 1
-      sharpe: 0.074
+      sharpe: 0.07
       total_return_pct: 0.49
-      max_drawdown_pct: -5.15
+      max_drawdown_pct: -8.88
       num_trades: 15
     - commission_bps: 2
-      sharpe: 0.059
+      sharpe: 0.06
       total_return_pct: 0.34
-      max_drawdown_pct: -5.28
+      max_drawdown_pct: -8.99
       num_trades: 15
     - commission_bps: 5
-      sharpe: 0.014
+      sharpe: 0.027
       total_return_pct: -0.11
-      max_drawdown_pct: -5.65
+      max_drawdown_pct: -9.32
       num_trades: 15
     - commission_bps: 10
-      sharpe: -0.06
+      sharpe: -0.026
       total_return_pct: -0.86
-      max_drawdown_pct: -6.26
+      max_drawdown_pct: -9.86
       num_trades: 15
     - commission_bps: 25
-      sharpe: -0.28
+      sharpe: -0.182
       total_return_pct: -3.07
-      max_drawdown_pct: -8.08
+      max_drawdown_pct: -11.48
       num_trades: 15
     - commission_bps: 50
-      sharpe: -0.627
+      sharpe: -0.428
       total_return_pct: -6.66
-      max_drawdown_pct: -11.05
+      max_drawdown_pct: -14.12
       num_trades: 15
-    breakeven_bps: 5.9
+    breakeven_bps: 7.5

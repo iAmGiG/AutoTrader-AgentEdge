@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T15:30:32.924862'
+run_timestamp: '2026-10-13T15:37:25.216877'
 issue: '#576'
 description: Multiple-testing audit of lag-1 GEX hypothesis tests
 methodology:
@@ -451,18 +451,6 @@ tests:
   bh_q: 0.1393
   raw_reject: false
   t_above_3: false
-- study: '#546 pairs overlay, 2022-2023'
-  source: pairs_trading_results.yaml
-  test: QQQ/SPY overlay-baseline daily return (NW)
-  effect: -0.021
-  t_statistic: 1.693
-  p_value: 0.0904
-  holm_reject: false
-  holm_p: 1.0
-  bh_reject: false
-  bh_q: 0.1441
-  raw_reject: false
-  t_above_3: false
 - study: '#545 dispersion overlay, 2011-2026'
   source: dispersion_expanded_lag1.yaml
   test: index overlay-baseline daily return (NW)
@@ -472,7 +460,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.158
+  bh_q: 0.1627
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -484,7 +472,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.158
+  bh_q: 0.1627
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -496,7 +484,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.16
+  bh_q: 0.1647
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -508,7 +496,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2185
+  bh_q: 0.2245
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -520,7 +508,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2185
+  bh_q: 0.2245
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR regime term (in-sample)'
@@ -532,7 +520,19 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.2778
+  bh_q: 0.2853
+  raw_reject: false
+  t_above_3: false
+- study: '#546 pairs overlay, 2022-2023'
+  source: pairs_trading_results.yaml
+  test: QQQ/SPY overlay-baseline daily return (NW)
+  effect: -0.043
+  t_statistic: 1.182
+  p_value: 0.2372
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.3183
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -595,18 +595,6 @@ tests:
   bh_q: 0.3785
   raw_reject: false
   t_above_3: false
-- study: '#546 pairs overlay, 2022-2023'
-  source: pairs_trading_results.yaml
-  test: SPY/IWM overlay-baseline daily return (NW)
-  effect: -0.1
-  t_statistic: -0.808
-  p_value: 0.419
-  holm_reject: false
-  holm_p: 1.0
-  bh_reject: false
-  bh_q: 0.4857
-  raw_reject: false
-  t_above_3: false
 - study: '#545 dispersion overlay, 2021-2023'
   source: dispersion_results.yaml
   test: index overlay-baseline daily return (NW)
@@ -616,7 +604,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5728
+  bh_q: 0.5855
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -628,7 +616,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.5728
+  bh_q: 0.5855
   raw_reject: false
   t_above_3: false
 - study: '#531 MACD+RSI regime gap'
@@ -640,7 +628,7 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.6138
+  bh_q: 0.6259
   raw_reject: false
   t_above_3: false
 - study: '#543 HAR out-of-sample forecast'
@@ -652,19 +640,31 @@ tests:
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.625
+  bh_q: 0.6259
+  raw_reject: false
+  t_above_3: false
+- study: '#546 pairs overlay, 2022-2023'
+  source: pairs_trading_results.yaml
+  test: SPY/IWM overlay-baseline daily return (NW)
+  effect: -0.081
+  t_statistic: -0.54
+  p_value: 0.5891
+  holm_reject: false
+  holm_p: 1.0
+  bh_reject: false
+  bh_q: 0.6259
   raw_reject: false
   t_above_3: false
 - study: '#546 pairs overlay, 2011-2026'
   source: pairs_trading_expanded_lag1.yaml
   test: QQQ/SPY overlay-baseline daily return (NW)
-  effect: 0.004
-  t_statistic: 0.366
-  p_value: 0.7141
+  effect: 0.016
+  t_statistic: 0.383
+  p_value: 0.7019
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.7432
+  bh_q: 0.7305
   raw_reject: false
   t_above_3: false
 - study: '#543 VaR tick-loss comparison'
@@ -682,12 +682,12 @@ tests:
 - study: '#546 pairs overlay, 2011-2026'
   source: pairs_trading_expanded_lag1.yaml
   test: SPY/IWM overlay-baseline daily return (NW)
-  effect: -0.029
-  t_statistic: -0.142
-  p_value: 0.8873
+  effect: -0.018
+  t_statistic: -0.16
+  p_value: 0.8729
   holm_reject: false
   holm_p: 1.0
   bh_reject: false
-  bh_q: 0.8873
+  bh_q: 0.8729
   raw_reject: false
   t_above_3: false

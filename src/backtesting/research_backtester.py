@@ -111,7 +111,9 @@ class ResearchBacktester:
             symbol_b: Second symbol in pair.
 
         Returns:
-            BacktestResults with spread P&L metrics.
+            BacktestResults with spread P&L metrics. Open positions are marked to market
+            daily, so ``returns_series`` reflects daily spread moves; realized P&L at exit
+            is unchanged.
         """
         capital = self.initial_capital
         position: Optional[SpreadPosition] = None
@@ -171,7 +173,11 @@ class ResearchBacktester:
                 )
                 position = None
 
-            portfolio_values.append(capital)
+            if position is not None:
+                mark = (spread_val - position.entry_spread) * position.direction
+                portfolio_values.append(capital * (1 + position.size * mark))
+            else:
+                portfolio_values.append(capital)
 
         # Close any remaining position at last price
         if position is not None:

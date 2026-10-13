@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T15:19:50.086098'
+run_timestamp: '2026-10-13T15:37:13.449935'
 issue: '#546'
 description: Pairs Trading Mean Reversion with GEX Regime Overlay
 methodology:
@@ -28,24 +28,24 @@ results:
     r_squared: 0.9152
     is_cointegrated: false
   baseline:
-    sharpe_ratio: 0.059
+    sharpe_ratio: 0.06
     total_return_pct: 0.34
-    max_drawdown_pct: -5.28
-    win_rate_pct: 0.6
+    max_drawdown_pct: -8.99
+    win_rate_pct: 20.2
     num_trades: 15
-    volatility_pct: 5.05
+    volatility_pct: 7.03
   gex_enhanced:
-    sharpe_ratio: -0.041
+    sharpe_ratio: -0.021
     total_return_pct: -0.57
-    max_drawdown_pct: -5.42
-    win_rate_pct: 0.6
+    max_drawdown_pct: -8.21
+    win_rate_pct: 20.2
     num_trades: 15
-    volatility_pct: 4.56
-  sharpe_improvement: -0.1
+    volatility_pct: 5.79
+  sharpe_improvement: -0.081
   paired_return_test:
-    mean_daily_diff: -1.92e-05
-    t_statistic: -0.808
-    p_value: 0.419
+    mean_daily_diff: -2.15e-05
+    t_statistic: -0.54
+    p_value: 0.5891
     n_days: 500
     maxlags: 5
   regime_distribution:
@@ -64,24 +64,24 @@ results:
     r_squared: 0.9464
     is_cointegrated: false
   baseline:
-    sharpe_ratio: -1.321
+    sharpe_ratio: -1.03
     total_return_pct: -13.22
-    max_drawdown_pct: -13.22
-    win_rate_pct: 0.2
+    max_drawdown_pct: -13.8
+    win_rate_pct: 22.6
     num_trades: 12
-    volatility_pct: 5.3
+    volatility_pct: 6.72
   gex_enhanced:
-    sharpe_ratio: -1.342
+    sharpe_ratio: -1.073
     total_return_pct: -9.78
-    max_drawdown_pct: -9.78
-    win_rate_pct: 0.2
+    max_drawdown_pct: -10.22
+    win_rate_pct: 22.6
     num_trades: 12
-    volatility_pct: 3.81
-  sharpe_improvement: -0.021
+    volatility_pct: 4.73
+  sharpe_improvement: -0.043
   paired_return_test:
-    mean_daily_diff: 7.5e-05
-    t_statistic: 1.693
-    p_value: 0.0904
+    mean_daily_diff: 7.33e-05
+    t_statistic: 1.182
+    p_value: 0.2372
     n_days: 500
     maxlags: 5
   regime_distribution:
