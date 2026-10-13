@@ -28,11 +28,15 @@ Added 2026-10-13 after the same-day regime look-ahead finding in #531 (see issue
 
 ## Methods to add to the runners
 
-1. Report regime effects at lags 0, 1, 2, 5 (lag 0 is look-ahead and is for comparison only).
-2. Block bootstrap or Newey-West standard errors instead of Welch's t-test.
-3. Out-of-sample split (pre-2020 vs 2020 onward) and a VIX-conditioned version.
-4. HAR realized-volatility baseline for volatility claims.
-5. Deflated Sharpe Ratio and Reality Check / SPA across all strategies, with a logged trial count.
-6. Intraday tests on `intraday_gex_summary` (watch the `Long Gamma`/`Short Gamma` label change from 2026-02-06 and the 2026-10-12 break).
-7. Expiry-day and distance-to-strike pinning tests.
-8. Regime x liquidity split.
+Status as of 2026-10-13. Results are in [regime_lookahead_revalidation.md](regime_lookahead_revalidation.md).
+
+| # | Method | Status |
+|---|---|---|
+| 1 | Report regime effects at lags 0, 1, 2, 5 (lag 0 is look-ahead, comparison only) | Done for MACD+RSI (`--regime-lags`) |
+| 2 | Newey-West errors instead of Welch's t-test | Done (`research_cli.py`); block bootstrap not done |
+| 3 | Out-of-sample split (pre-2020 vs 2020 onward) and VIX conditioning | Done (`var_vol_baseline.py`, `gex_vol_panel.py`) |
+| 4 | HAR realized-volatility baseline, plus leverage controls | Done (log-HAR on Parkinson variance) |
+| 5 | Multiple-testing correction | Holm, BH and \|t\| > 3 done (`multiple_testing_audit.py`); Deflated Sharpe and Reality Check / SPA not done (no trading overlay was significant) |
+| 6 | Intraday tests on `intraday_gex_summary` (label change 2026-02-06, vendor break 2026-10-12) | Not done |
+| 7 | Expiry-day and distance-to-strike pinning tests | Not done |
+| 8 | Regime × liquidity split | Not done |
