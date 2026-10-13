@@ -81,7 +81,7 @@ extended_research:
     issue: "#576"
     results_file: results/multiple_testing_audit.yaml
     runner: scripts/research/multiple_testing_audit.py
-    status: "227 lag-1 tests: 35 Holm, 70 BH; no trading overlay or intraday effect survives"
+    status: "231 lag-1 tests: 35 Holm, 72 BH; no trading overlay or intraday effect survives"
 
   intraday_gex_validation:
     issue: "#530"
@@ -94,3 +94,9 @@ extended_research:
     results_file: results/intraday_gamma_momentum.yaml
     runner: scripts/research/intraday_gamma_momentum.py
     status: "STOP — GEX sign does not switch 15:30-16:00 momentum/reversal (pooled p=0.067, wrong sign)"
+
+  expiry_pinning:
+    issue: "#576"
+    results_file: results/expiry_pinning.yaml
+    runner: scripts/research/expiry_pinning.py
+    status: "Closes ~0.7 bps nearer strikes on expiry when dealers long expiring gamma (BH only); no unconditional clustering"

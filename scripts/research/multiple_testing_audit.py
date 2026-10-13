@@ -236,6 +236,27 @@ def collect_intraday(rows):
             )
 
 
+def collect_pinning(rows):
+    name = "expiry_pinning.yaml"
+    data = _load(name)
+    for outcome, r in (data or {}).get("results", {}).items():
+        for key, label in (
+            ("expiry_x_long_gamma", "expiry x long gamma"),
+            ("expiry_effect_when_long_gamma", "expiry effect, long gamma"),
+        ):
+            c = r[key]
+            rows.append(
+                _row(
+                    "Expiry-day pinning",
+                    name,
+                    f"{outcome} {label}",
+                    c["t_statistic"],
+                    c["p_value"],
+                    c["coef"],
+                )
+            )
+
+
 def main():
     print("=" * 60)
     print("  MULTIPLE-TESTING AUDIT, LAG-1 GEX TESTS (#576)")
@@ -246,6 +267,7 @@ def main():
     collect_volatility(rows)
     collect_panel(rows)
     collect_intraday(rows)
+    collect_pinning(rows)
     df = pd.DataFrame(rows)
     n = len(df)
     print(f"  Tests in family: {n}")

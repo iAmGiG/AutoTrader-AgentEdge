@@ -14,10 +14,11 @@ The February 2026 GEX results came from two methodology errors:
 1. **Same-day regime look-ahead.** `options_daily_summary.regime` is computed from end-of-day options data, but the runners used it to classify the same day's returns.
 2. **Backtester bugs in `run_daily_signal_strategy`.** It ignored position size, booked the same P&L for long and short trades, and the dispersion and delta-neutral signals booked the move that triggered each trade.
 
-With both fixed, and 227 tests corrected for multiple testing:
+With both fixed, and 231 tests corrected for multiple testing:
 
 - **No GEX trading overlay survives.** This covers MACD+RSI regime filtering, dispersion, delta neutral and pairs.
 - **No intraday effect.** GEX sign does not switch intraday momentum and reversal (Barbon-Buraschi design, 2026 snapshots).
+- **Expiry pinning is real but tiny.** When dealers are long expiring gamma, monthly-expiry closes land about 0.7 bps closer to a strike (BH only).
 - **One finding survives, and it is descriptive.** Across 40 symbols, negative dealer gamma on the previous day goes with about 8% higher next-day variance, after controlling for trailing variance and the leverage effect. The effect is concentrated in stressed markets (VIX above its 2008-2019 median of 16.6) and is about zero in calm markets. It is stable across 2008-2019 and 2020-2026, but it does **not** improve out-of-sample variance forecasts beyond HAR, leverage and VIX.
 
 ---
@@ -111,6 +112,17 @@ The test regresses the 15:30→16:00 return on the previous-close→15:30 return
 
 There is no intraday momentum in either gamma state across the panel. A timing strategy (follow the early move when GEX < 0, fade it otherwise) earns −0.5 bps/day gross (t = −0.8). SPY alone shows the predicted pattern, but it does not survive correction. **Null.**
 
+### Expiry-day pinning by dealer gamma (`expiry_pinning.py`)
+
+The test follows Ni, Pearson & Poteshman (2005), using 54 symbols and 221 monthly expiries (8,859 symbol-months), 2008 to 2026-09. Each expiry day is compared with a placebo day one week earlier for the same contracts, using the previous day's chain. The outcome is the distance from the official close to the nearest listed strike, in units of strike spacing (0.25 means no pinning), and to the max-OI strike. It is conditioned on the sign of net expiring dealer gamma within 5% of spot.
+
+| Outcome | Expiry effect, dealers short gamma | Interaction, long gamma | Expiry effect, dealers long gamma |
+|---|---|---|---|
+| Nearest-strike distance (spacing units) | +0.0005 (t = 0.1) | −0.0073 (p = 0.12) | −0.0069 (t = −2.6) |
+| log distance to max-OI strike | +0.036 (t = 1.2) | −0.093 (p = 0.015) | −0.057 (t = −2.1) |
+
+Unconditional clustering is negligible (mean distance 0.248 on expiry vs 0.252 on placebo days). When dealers are long expiring gamma (63% of expiries), closes land closer to strikes, which is consistent with hedge-rebalancing pinning. The effect is about 0.007 of a strike spacing, roughly 0.7 bps at the median spacing of 99 bps. Two of four tests survive BH, none survive Holm, and none clear t > 3. **Real but economically tiny.**
+
 ---
 
 ## Multiple-testing audit
@@ -129,7 +141,8 @@ There is no intraday momentum in either gamma state across the panel. A timing s
 | Panel pooled, in-sample | 4 | 3 | 3 |
 | Panel pooled, out-of-sample | 2 | 0 | 0 |
 | Intraday momentum × GEX, timing strategy | 10 | 0 | 0 |
-| **Total** | **227** | **35** | **70** |
+| Expiry-day pinning | 4 | 0 | 2 |
+| **Total** | **231** | **35** | **72** |
 
 ---
 
@@ -137,7 +150,7 @@ There is no intraday momentum in either gamma state across the panel. A timing s
 
 - **Trading.** Do not use the GEX regime as a filter or sizing overlay for VoterAgent, dispersion, delta-neutral or pairs strategies.
 - **Risk.** A RiskAgent could treat negative GEX in a high-VIX market as a descriptive warning flag (about 8% more next-day variance). It is not a forecasting input, since it adds nothing out of sample beyond trailing variance, recent returns and VIX. Do not use it to tighten VaR on positive-GEX days: that made 99% VaR breach too often.
-- **Still untested.** Expiry-day pinning, a regime × liquidity split, and real option P&L for dispersion and delta neutral. See [literature_and_methods.md](literature_and_methods.md).
+- **Still untested.** A regime × liquidity split, and real option P&L for dispersion and delta neutral. See [literature_and_methods.md](literature_and_methods.md).
 
 ---
 
@@ -156,6 +169,7 @@ $PY scripts/research/pairs_trading_gex.py $W --regime-lag 1 --output pairs_tradi
 $PY scripts/research/var_vol_baseline.py --regime-lag 1 --output var_vol_baseline_lag1.yaml
 $PY scripts/research/gex_vol_panel.py
 $PY scripts/research/intraday_gamma_momentum.py
+$PY scripts/research/expiry_pinning.py                  # about 4 minutes
 $PY scripts/research/multiple_testing_audit.py
 ```
 
