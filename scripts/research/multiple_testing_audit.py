@@ -180,6 +180,17 @@ def collect_panel(rows):
                     round(o["har"] - o["har_gex"], 5),
                 )
             )
+    for m, o in (data.get("pooled_out_of_sample") or {}).items():
+        rows.append(
+            _row(
+                "Panel pooled out-of-sample",
+                name,
+                f"{m} QLIKE DM",
+                o["dm_t_statistic"],
+                o["dm_p_value"],
+                round(o["qlike_base"] - o["qlike_gex"], 5),
+            )
+        )
     for m, specs in data["pooled"].items():
         c = specs["no_vix"][m]
         rows.append(

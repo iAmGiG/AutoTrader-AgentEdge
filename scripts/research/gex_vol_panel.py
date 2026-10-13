@@ -238,6 +238,54 @@ def pooled(panel: pd.DataFrame, measure: str, with_vix: bool, leverage: bool = T
     return res
 
 
+def pooled_oos(panel: pd.DataFrame, measure: str) -> dict:
+    """Pooled out-of-sample QLIKE test: fit before SPLIT_DATE, forecast after.
+
+    Both models use symbol fixed effects and shared slopes estimated on training data only.
+    Baseline: HAR + leverage + VIX terms. GEX model adds the measure and its high-VIX
+    interaction. Daily QLIKE differences are averaged across symbols, then tested with a
+    Newey-West Diebold-Mariano statistic (positive = GEX model better).
+    """
+    split = pd.Timestamp(SPLIT_DATE)
+    gex_cols = _design(panel, measure, True)
+    base_cols = [c for c in gex_cols if c not in (measure, f"{measure}_x_highvix")]
+    data = panel[["y", "symbol"] + gex_cols].dropna()
+    train, test = data[data.index < split], data[data.index >= split]
+    test = test[test["symbol"].isin(train["symbol"].unique())]
+
+    losses = {}
+    for name, cols in (("base", base_cols), ("gex", gex_cols)):
+        means = train.groupby("symbol")[["y"] + cols].mean()
+        dm = train[["y"] + cols] - train.groupby("symbol")[["y"] + cols].transform("mean")
+        fit = sm.OLS(dm["y"], dm[cols]).fit()
+        alpha = means["y"] - means[cols].to_numpy() @ fit.params.to_numpy()
+        resid_var = float(np.var(dm["y"] - fit.predict(dm[cols]), ddof=len(cols)))
+        pred = test["symbol"].map(alpha) + test[cols].to_numpy() @ fit.params.to_numpy()
+        f = np.exp(pred + resid_var / 2)
+        y = np.exp(test["y"])
+        losses[name] = np.log(f) + y / f
+
+    diff = (losses["base"] - losses["gex"]).rename("d").to_frame()
+    diff["symbol"] = test["symbol"]
+    daily = diff.groupby(level=0)["d"].mean()
+    fit = sm.OLS(daily.to_numpy(), np.ones(len(daily))).fit(
+        cov_type="HAC", cov_kwds={"maxlags": _nw_lags(len(daily))}
+    )
+    by_symbol = diff.groupby("symbol")["d"].mean()
+    high = test["high_vix"] == 1
+    return {
+        "n_obs": int(len(test)),
+        "n_days": int(len(daily)),
+        "qlike_base": round(float(losses["base"].mean()), 5),
+        "qlike_gex": round(float(losses["gex"].mean()), 5),
+        "dm_t_statistic": round(float(fit.tvalues[0]), 3),
+        "dm_p_value": float(fit.pvalues[0]),
+        "share_symbols_improved": round(float((by_symbol > 0).mean()), 3),
+        "mean_loss_diff_high_vix": round(float(diff.loc[high.to_numpy(), "d"].mean()), 5),
+        "mean_loss_diff_low_vix": round(float(diff.loc[~high.to_numpy(), "d"].mean()), 5),
+    }
+
+
 def main():
     print("=" * 60)
     print("  MULTI-SYMBOL GEX VOLATILITY PANEL (#576)")
@@ -270,6 +318,8 @@ def main():
         for m in MEASURES
     }
 
+    pooled_oos_res = {m: pooled_oos(panel, m) for m in MEASURES}
+
     summary = {}
     for m in MEASURES:
         expect_pos = m == "neg_gex"
@@ -301,6 +351,14 @@ def main():
             f"(t={b['t_statistic']}), x highVIX {ix['coef']:+.4f} (t={ix['t_statistic']})"
         )
 
+    print("\n  Pooled out-of-sample (fit 2008-2019, QLIKE 2020+, positive = GEX better):")
+    for m, r in pooled_oos_res.items():
+        print(
+            f"    {m}: QLIKE {r['qlike_base']} -> {r['qlike_gex']}, DM t={r['dm_t_statistic']}, "
+            f"p={r['dm_p_value']:.4f}; symbols improved {r['share_symbols_improved']}; "
+            f"mean diff high VIX {r['mean_loss_diff_high_vix']}, low VIX {r['mean_loss_diff_low_vix']}"
+        )
+
     output = {
         "run_timestamp": datetime.datetime.now().isoformat(),
         "issue": "#576",
@@ -326,6 +384,7 @@ def main():
         "symbols": symbols,
         "summary": summary,
         "pooled": pooled_res,
+        "pooled_out_of_sample": pooled_oos_res,
         "per_symbol": per,
     }
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
