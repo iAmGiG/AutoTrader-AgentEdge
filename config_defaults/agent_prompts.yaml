@@ -36,7 +36,7 @@ agents:
 tools:
   unified_market_data:
     name: "fetch_unified_market_data"
-    description: "Fetch market data using unified cache system. Routes through cache adapter for consistent data management across Polygon and Alpha Vantage sources."
+    description: "Fetch market data using unified cache system. Checks the cache first, then Alpaca (primary), with Polygon and Alpha Vantage as fallbacks."
 
   vxx_volatility_data:
     name: "fetch_vxx_volatility_data"

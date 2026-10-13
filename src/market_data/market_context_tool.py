@@ -4,15 +4,50 @@ Fetches SPY/QQQ market context data to enhance sentiment analysis
 """
 
 import logging
-from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
+import pandas as pd
 from autogen_core.tools import FunctionTool
 
-from src.cache.sqlite_cache import TradingCacheManager
+from src.market_data.unified_market_tool import fetch_unified_market_data
 from src.utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
+
+LOOKBACK_DAYS = 14  # calendar days fetched before the target date (enough for 5 bars)
+
+
+def _load_daily_bars(symbol: str, date: str) -> pd.DataFrame:
+    """Daily bars up to and including ``date`` via the unified data path.
+
+    Uses cache first, then Alpaca, Polygon and Alpha Vantage (``fetch_unified_market_data``).
+    Normalizes column case, drops duplicate dates and excludes bars after ``date``.
+    """
+    end = pd.Timestamp(date)
+    start = (end - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    # Alpaca treats the end date as midnight (exclusive), so request one day past the target
+    # and drop anything after it below.
+    fetch_end = (end + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    data = fetch_unified_market_data(symbol, start, fetch_end, source="auto", timeframe="1Day")
+    if data is None or data.empty:
+        return pd.DataFrame()
+
+    df = data.copy()
+    if isinstance(df.index, pd.MultiIndex):
+        df.index = df.index.get_level_values(-1)
+    elif "timestamp" in df.columns and not isinstance(df.index, pd.DatetimeIndex):
+        df = df.set_index("timestamp")
+    df.columns = [str(c).lower() for c in df.columns]
+    df = df.loc[:, ~df.columns.duplicated()]
+    if "close" not in df.columns:
+        return pd.DataFrame()
+
+    idx = pd.to_datetime(df.index)
+    if idx.tz is not None:
+        idx = idx.tz_convert(None)
+    df.index = idx.normalize()
+    df = df[~df.index.duplicated(keep="last")].sort_index()
+    return df[df.index <= end]
 
 
 def fetch_market_context_data(
@@ -34,33 +69,16 @@ def fetch_market_context_data(
     try:
         logger.info(f"Fetching market context for {symbols} on {date}")
 
-        # Initialize SQLite cache manager for Polygon.io primary + Alpha Vantage fallback
-        cache_manager = TradingCacheManager()
-
         market_data = {}
 
         for symbol in symbols:
             try:
-                # Fetch recent data around the target date
-                start_date = (datetime.strptime(date, "%Y-%m-%d") - timedelta(days=7)).strftime(
-                    "%Y-%m-%d"
-                )
-                end_date = (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)).strftime(
-                    "%Y-%m-%d"
-                )
+                # Bars up to and including the target date (no later bars: no look-ahead)
+                data = _load_daily_bars(symbol, date)
+                data_source = "unified (cache, Alpaca, Polygon, Alpha Vantage)"
 
-                # Get market data using Polygon.io primary + Alpha Vantage fallback pattern
-                data = cache_manager.get(symbol, start_date, end_date, source="polygon")
-                data_source = "Polygon.io"
-
-                if data is None or data.empty:
-                    data = cache_manager.get(symbol, start_date, end_date, source="alpha_vantage")
-                    data_source = "Alpha Vantage"
-
-                if data is None or data.empty:
-                    logger.warning(
-                        f"No market data available from either Polygon.io or Alpha Vantage for {symbol}"
-                    )
+                if data.empty:
+                    logger.warning(f"No market data available for {symbol} up to {date}")
                     data_source = "None"
 
                 if data is not None and len(data) > 0:
@@ -101,7 +119,7 @@ def fetch_market_context_data(
                         logger.warning(f"No data available for {symbol} on {date}")
                         market_data[symbol] = _create_fallback_data(symbol, date)
                 else:
-                    logger.warning(f"No market data returned for {symbol} from either source")
+                    logger.warning(f"No market data returned for {symbol}")
                     market_data[symbol] = _create_fallback_data(symbol, date)
 
             except Exception as e:
