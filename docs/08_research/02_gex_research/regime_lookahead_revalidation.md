@@ -14,7 +14,7 @@ The February 2026 GEX results came from two methodology errors:
 1. **Same-day regime look-ahead.** `options_daily_summary.regime` is computed from end-of-day options data, but the runners used it to classify the same day's returns.
 2. **Backtester bugs in `run_daily_signal_strategy`.** It ignored position size, booked the same P&L for long and short trades, and the dispersion and delta-neutral signals booked the move that triggered each trade.
 
-With both fixed, and 235 tests corrected for multiple testing:
+With both fixed, and 237 tests corrected for multiple testing:
 
 - **No GEX trading overlay survives.** This covers MACD+RSI regime filtering, dispersion, delta neutral and pairs.
 - **No intraday effect.** GEX sign does not switch intraday momentum and reversal (Barbon-Buraschi design, 2026 snapshots).
@@ -104,7 +104,7 @@ The 252-day GEX percentile gives the same picture with the opposite sign (higher
 | Illiquid (low 20-day dollar volume) | +0.084 (t = 3.8) | −0.052 (p = 0.05) | +0.033 (t = 2.2) |
 | High hedging impact (\|GEX\| / dollar volume) | +0.009 (t = 0.8) | +0.102 (p < 0.001) | +0.111 (t = 4.8) |
 
-Liquidity alone does not amplify the effect; in this all-large-cap universe it is weaker in the less liquid names, against Barbon-Buraschi. What matters is gamma size relative to liquidity: the effect is entirely in high-impact names, where dealer hedging flows are large compared with normal trading. Both high-impact tests survive Holm.
+Liquidity alone does not amplify the effect; in this all-large-cap universe it is weaker in the less liquid names, against Barbon-Buraschi. What matters is gamma size relative to liquidity: the effect is entirely in high-impact names, where dealer hedging flows are large compared with normal trading. Both high-impact tests survive Holm. Out of sample (fit 2008-2019, forecast 2020+), adding the high-impact mechanism still gives no QLIKE gain: DM t = −0.55 on all rows and −0.79 on high-impact rows alone.
 
 **Out of sample:** there is no gain. Per symbol, QLIKE improves for 40% of symbols; without leverage controls it was 70%, so the per-symbol gain was mostly the leverage effect. Pooled (fit 2008-2019, forecast 2020+, all 40 symbols): QLIKE goes from 1.53989 to 1.53984 (DM t = 0.14, p = 0.89).
 
@@ -152,7 +152,8 @@ Unconditional clustering is negligible (mean distance 0.248 on expiry vs 0.252 o
 | Intraday momentum × GEX, timing strategy | 10 | 0 | 0 |
 | Expiry-day pinning | 4 | 0 | 2 |
 | Panel liquidity split | 4 | 2 | 2 |
-| **Total** | **235** | **37** | **74** |
+| Panel impact out-of-sample | 2 | 0 | 0 |
+| **Total** | **237** | **37** | **74** |
 
 ---
 
@@ -160,7 +161,7 @@ Unconditional clustering is negligible (mean distance 0.248 on expiry vs 0.252 o
 
 - **Trading.** Do not use the GEX regime as a filter or sizing overlay for VoterAgent, dispersion, delta-neutral or pairs strategies.
 - **Risk.** A RiskAgent could treat negative GEX in a high-VIX market as a descriptive warning flag (about 8% more next-day variance). It is not a forecasting input, since it adds nothing out of sample beyond trailing variance, recent returns and VIX. Do not use it to tighten VaR on positive-GEX days: that made 99% VaR breach too often.
-- **Still untested.** Real option P&L for dispersion and delta neutral, and an out-of-sample test of the high-impact interaction. See [literature_and_methods.md](literature_and_methods.md).
+- **Still untested.** Real option P&L for dispersion and delta neutral. See [literature_and_methods.md](literature_and_methods.md).
 
 ---
 

@@ -243,17 +243,49 @@ def pooled(panel: pd.DataFrame, measure: str, with_vix: bool, leverage: bool = T
 
 
 def pooled_oos(panel: pd.DataFrame, measure: str) -> dict:
-    """Pooled out-of-sample QLIKE test: fit before SPLIT_DATE, forecast after.
-
-    Both models use symbol fixed effects and shared slopes estimated on training data only.
-    Baseline: HAR + leverage + VIX terms. GEX model adds the measure and its high-VIX
-    interaction. Daily QLIKE differences are averaged across symbols, then tested with a
-    Newey-West Diebold-Mariano statistic (positive = GEX model better).
-    """
-    split = pd.Timestamp(SPLIT_DATE)
+    """Pooled out-of-sample QLIKE: base HAR + leverage + VIX vs + measure and x highVIX."""
     gex_cols = _design(panel, measure, True)
     base_cols = [c for c in gex_cols if c not in (measure, f"{measure}_x_highvix")]
-    data = panel[["y", "symbol"] + gex_cols].dropna()
+    return _oos_compare(panel, base_cols, gex_cols)
+
+
+def add_liquidity_flags(panel: pd.DataFrame) -> pd.DataFrame:
+    """illiquid: log ADV below the day's median; high_impact: |GEX| / ADV above it (lagged)."""
+    panel = panel.copy()
+    for flag, source, above in (
+        ("illiquid", "log_adv", False),
+        ("high_impact", "gex_impact", True),
+    ):
+        med = panel.groupby(level=0)[source].transform("median")
+        f = (panel[source] > med) if above else (panel[source] < med)
+        panel[flag] = f.astype(float).where(panel[source].notna())
+        panel[f"neg_gex_x_{flag}"] = panel["neg_gex"] * panel[flag]
+    return panel
+
+
+def pooled_oos_impact(panel: pd.DataFrame) -> dict:
+    """Out-of-sample test of the hedging-impact mechanism.
+
+    Base: HAR + leverage + VIX. GEX model adds neg_gex, high_impact and their interaction.
+    Scored on all test rows and on high-impact rows only. ``panel`` needs the liquidity flags.
+    """
+    base_cols = _design(panel, None, True)
+    gex_cols = base_cols + ["neg_gex", "high_impact", "neg_gex_x_high_impact"]
+    return _oos_compare(panel, base_cols, gex_cols, subset_col="high_impact")
+
+
+def _oos_compare(panel: pd.DataFrame, base_cols: list, gex_cols: list, subset_col=None) -> dict:
+    """Fixed-effects log-HAR fit before SPLIT_DATE, QLIKE after; Diebold-Mariano on daily means.
+
+    Both models use symbol fixed effects and shared slopes estimated on training data only.
+    Daily QLIKE differences (base minus GEX) are averaged across symbols and tested with a
+    Newey-West Diebold-Mariano statistic (positive = GEX model better). ``subset_col``, if
+    given, adds the same comparison restricted to test rows where that column is 1.
+    """
+    split = pd.Timestamp(SPLIT_DATE)
+    extra = [subset_col] if subset_col else []
+    cols_all = list(dict.fromkeys(base_cols + gex_cols + extra + ["high_vix"]))
+    data = panel[["y", "symbol"] + cols_all].dropna()
     train, test = data[data.index < split], data[data.index >= split]
     test = test[test["symbol"].isin(train["symbol"].unique())]
 
@@ -271,23 +303,33 @@ def pooled_oos(panel: pd.DataFrame, measure: str) -> dict:
 
     diff = (losses["base"] - losses["gex"]).rename("d").to_frame()
     diff["symbol"] = test["symbol"]
-    daily = diff.groupby(level=0)["d"].mean()
-    fit = sm.OLS(daily.to_numpy(), np.ones(len(daily))).fit(
-        cov_type="HAC", cov_kwds={"maxlags": _nw_lags(len(daily))}
-    )
+
+    def _dm(d: pd.DataFrame) -> dict:
+        daily = d.groupby(level=0)["d"].mean()
+        fit = sm.OLS(daily.to_numpy(), np.ones(len(daily))).fit(
+            cov_type="HAC", cov_kwds={"maxlags": _nw_lags(len(daily))}
+        )
+        return {
+            "n_obs": int(len(d)),
+            "n_days": int(len(daily)),
+            "mean_loss_diff": round(float(d["d"].mean()), 6),
+            "dm_t_statistic": round(float(fit.tvalues[0]), 3),
+            "dm_p_value": float(fit.pvalues[0]),
+        }
+
     by_symbol = diff.groupby("symbol")["d"].mean()
-    high = test["high_vix"] == 1
-    return {
-        "n_obs": int(len(test)),
-        "n_days": int(len(daily)),
+    high = (test["high_vix"] == 1).to_numpy()
+    out = {
+        **_dm(diff),
         "qlike_base": round(float(losses["base"].mean()), 5),
         "qlike_gex": round(float(losses["gex"].mean()), 5),
-        "dm_t_statistic": round(float(fit.tvalues[0]), 3),
-        "dm_p_value": float(fit.pvalues[0]),
         "share_symbols_improved": round(float((by_symbol > 0).mean()), 3),
-        "mean_loss_diff_high_vix": round(float(diff.loc[high.to_numpy(), "d"].mean()), 5),
-        "mean_loss_diff_low_vix": round(float(diff.loc[~high.to_numpy(), "d"].mean()), 5),
+        "mean_loss_diff_high_vix": round(float(diff.loc[high, "d"].mean()), 5),
+        "mean_loss_diff_low_vix": round(float(diff.loc[~high, "d"].mean()), 5),
     }
+    if subset_col:
+        out[f"only_{subset_col}"] = _dm(diff[(test[subset_col] == 1).to_numpy()])
+    return out
 
 
 def pooled_liquidity(panel: pd.DataFrame) -> dict:
@@ -298,15 +340,8 @@ def pooled_liquidity(panel: pd.DataFrame) -> dict:
     neg_gex x flag + flag, symbol fixed effects, errors clustered by date and symbol.
     """
     out = {}
-    for flag, source, above in (
-        ("illiquid", "log_adv", False),
-        ("high_impact", "gex_impact", True),
-    ):
-        med = panel.groupby(level=0)[source].transform("median")
-        f = (panel[source] > med) if above else (panel[source] < med)
-        df = panel.copy()
-        df[flag] = f.astype(float).where(panel[source].notna())
-        df[f"neg_gex_x_{flag}"] = df["neg_gex"] * df[flag]
+    df = add_liquidity_flags(panel)
+    for flag in ("illiquid", "high_impact"):
         cols = _design(df, None, True) + ["neg_gex", flag, f"neg_gex_x_{flag}"]
         data = df[["y", "symbol"] + cols].dropna().copy()
         dm = data[["y"] + cols] - data.groupby("symbol")[["y"] + cols].transform("mean")
@@ -360,6 +395,7 @@ def main():
 
     pooled_oos_res = {m: pooled_oos(panel, m) for m in MEASURES}
     liquidity_res = pooled_liquidity(panel)
+    impact_oos = pooled_oos_impact(add_liquidity_flags(panel))
 
     summary = {}
     for m in MEASURES:
@@ -409,6 +445,17 @@ def main():
             f"when {flag} {tot['coef']:+.4f} (t={tot['t_statistic']})"
         )
 
+    o, h = impact_oos, impact_oos["only_high_impact"]
+    print("\n  Impact mechanism out-of-sample (fit 2008-2019, QLIKE 2020+, positive = GEX better):")
+    print(
+        f"    all rows: QLIKE {o['qlike_base']} -> {o['qlike_gex']}, DM t={o['dm_t_statistic']}, "
+        f"p={o['dm_p_value']:.4f}; symbols improved {o['share_symbols_improved']}"
+    )
+    print(
+        f"    high-impact rows: mean diff {h['mean_loss_diff']}, DM t={h['dm_t_statistic']}, "
+        f"p={h['dm_p_value']:.4f} (n={h['n_obs']})"
+    )
+
     output = {
         "run_timestamp": datetime.datetime.now().isoformat(),
         "issue": "#576",
@@ -436,6 +483,7 @@ def main():
         "pooled": pooled_res,
         "pooled_out_of_sample": pooled_oos_res,
         "liquidity_split": liquidity_res,
+        "impact_out_of_sample": impact_oos,
         "per_symbol": per,
     }
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)

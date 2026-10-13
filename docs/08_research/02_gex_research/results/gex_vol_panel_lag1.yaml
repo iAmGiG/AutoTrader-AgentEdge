@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T16:14:13.244586'
+run_timestamp: '2026-10-13T16:19:38.881914'
 issue: '#576'
 description: Scale-free GEX measures vs next-day variance across symbols
 methodology:
@@ -142,20 +142,22 @@ pooled_out_of_sample:
   neg_gex:
     n_obs: 67934
     n_days: 1701
+    mean_loss_diff: 4.8e-05
+    dm_t_statistic: 0.141
+    dm_p_value: 0.8876914275255241
     qlike_base: 1.53989
     qlike_gex: 1.53984
-    dm_t_statistic: 0.141
-    dm_p_value: 0.8876914275255318
     share_symbols_improved: 0.575
     mean_loss_diff_high_vix: 0.00026
     mean_loss_diff_low_vix: -0.00038
   gex_pct:
     n_obs: 67934
     n_days: 1701
+    mean_loss_diff: -0.000376
+    dm_t_statistic: -1.917
+    dm_p_value: 0.05525251308180524
     qlike_base: 1.54072
     qlike_gex: 1.54109
-    dm_t_statistic: -1.917
-    dm_p_value: 0.05525251308180591
     share_symbols_improved: 0.45
     mean_loss_diff_high_vix: -7.0e-05
     mean_loss_diff_low_vix: -0.001
@@ -188,6 +190,23 @@ liquidity_split:
       coef: 0.11077
       t_statistic: 4.812
       p_value: 1.4920022662331647e-06
+impact_out_of_sample:
+  n_obs: 67921
+  n_days: 1701
+  mean_loss_diff: -0.000138
+  dm_t_statistic: -0.546
+  dm_p_value: 0.5850028049999647
+  qlike_base: 1.53968
+  qlike_gex: 1.53982
+  share_symbols_improved: 0.6
+  mean_loss_diff_high_vix: 0.00062
+  mean_loss_diff_low_vix: -0.00169
+  only_high_impact:
+    n_obs: 33923
+    n_days: 1701
+    mean_loss_diff: -0.000426
+    dm_t_statistic: -0.786
+    dm_p_value: 0.43181499709976057
 per_symbol:
   AMAT:
     neg_gex:

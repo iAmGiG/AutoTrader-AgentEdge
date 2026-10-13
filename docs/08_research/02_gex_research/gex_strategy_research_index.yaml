@@ -81,7 +81,7 @@ extended_research:
     issue: "#576"
     results_file: results/multiple_testing_audit.yaml
     runner: scripts/research/multiple_testing_audit.py
-    status: "235 lag-1 tests: 37 Holm, 74 BH; no trading overlay or intraday effect survives"
+    status: "237 lag-1 tests: 37 Holm, 74 BH; no trading overlay or intraday effect survives"
 
   intraday_gex_validation:
     issue: "#530"

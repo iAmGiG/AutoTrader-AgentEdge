@@ -191,6 +191,19 @@ def collect_panel(rows):
                 round(o["qlike_base"] - o["qlike_gex"], 5),
             )
         )
+    imp = data.get("impact_out_of_sample")
+    if imp:
+        for label, r in (("all rows", imp), ("high-impact rows", imp["only_high_impact"])):
+            rows.append(
+                _row(
+                    "Panel impact out-of-sample",
+                    name,
+                    f"impact QLIKE DM, {label}",
+                    r["dm_t_statistic"],
+                    r["dm_p_value"],
+                    r["mean_loss_diff"],
+                )
+            )
     for flag, r in (data.get("liquidity_split") or {}).items():
         for key in (f"neg_gex_x_{flag}", f"neg_gex_when_{flag}"):
             c = r[key]
