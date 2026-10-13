@@ -422,6 +422,65 @@ class TestAlpacaAccountMonitorGetOrders:
                         assert len(orders) == 1
                         assert orders[0]["symbol"] == "SPY"
 
+    def test_get_orders_two_bracket_orders(self, mock_config, mock_trading_client):
+        """Legs of every bracket order are attached to their parent.
+
+        get_orders used to rebind its leg-ID set to a list while logging, so a second
+        bracket order raised AttributeError ('list' object has no attribute 'add').
+        """
+
+        def _order(oid, legs=None, order_class=None):
+            o = MagicMock()
+            o.id = oid
+            o.symbol = "SPY"
+            o.side = MagicMock(value="buy")
+            o.qty = "1"
+            o.filled_qty = "0"
+            o.status = MagicMock(value="new")
+            o.order_type = MagicMock(value="limit")
+            o.time_in_force = MagicMock(value="gtc")
+            o.limit_price = "100"
+            o.stop_price = None
+            o.submitted_at = None
+            o.filled_at = None
+            o.canceled_at = None
+            o.filled_avg_price = None
+            o.order_class = MagicMock(value=order_class or "simple")
+            o.legs = legs or []
+            return o
+
+        orders = [
+            _order("p1", legs=["l1a", "l1b"], order_class="bracket"),
+            _order("p2", legs=["l2a", "l2b"], order_class="bracket"),
+            _order("l1a"),
+            _order("l1b"),
+            _order("l2a"),
+            _order("l2b"),
+        ]
+        mock_trading_client.get_orders.return_value = orders
+        with patch(
+            "src.trading.broker.alpaca_trading_client.ConfigLoader", return_value=mock_config
+        ):
+            with patch(
+                "src.trading.broker.alpaca_trading_client.TradingClient",
+                return_value=mock_trading_client,
+            ):
+                with patch(
+                    "src.trading.broker.alpaca_trading_client.ALPACA_TRADING_AVAILABLE", True
+                ):
+                    from src.trading.broker.alpaca_trading_client import (
+                        AlpacaAccountMonitor,
+                        AlpacaTradingClient,
+                    )
+
+                    AlpacaTradingClient._instances = {}
+                    monitor = AlpacaAccountMonitor(mode="paper")
+                    result = monitor.get_orders(status="all")
+
+        by_id = {o["id"]: o for o in result}
+        assert sorted(leg["id"] for leg in by_id["p1"]["legs"]) == ["l1a", "l1b"]
+        assert sorted(leg["id"] for leg in by_id["p2"]["legs"]) == ["l2a", "l2b"]
+
     def test_get_orders_all_status(self, mock_config, mock_trading_client):
         """Test get_orders with 'all' status."""
         with patch(
