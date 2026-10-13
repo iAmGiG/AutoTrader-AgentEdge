@@ -1,0 +1,67 @@
+run_timestamp: '2026-02-16T02:50:23.311287'
+issue: '#530'
+description: "Intraday GEX Validation \u2014 Practitioner Use Case"
+methodology:
+  entry: Market Open
+  exit: Market Close (same day)
+  gex_signal: Prior-day GEX z-score (rolling 60d)
+  quintile_partition: Prior-day GEX z-score quintiles
+  symbols:
+  - SPY
+  - QQQ
+  - IWM
+  period: 2021-01-04 to 2023-12-29
+  commission: 2.0 bps round-trip
+  data_source: equity_prices_daily (OHLC) + options_daily_summary (total_gex)
+  hypothesis: "High GEX z-score \u2192 mean reversion (positive intraday), Low GEX z-score \u2192 trend\
+    \ continuation"
+results:
+- symbol: SPY
+  n_days: 752
+  quintiles:
+    Q1:
+      n_days: 151
+      mean_gex_zscore: -1.503
+      mean_intraday_return_pct: 0.0448
+      std_intraday_return_pct: 1.1475
+      gross_sharpe: 0.62
+      net_sharpe: 0.343
+      win_rate_pct: 55.6
+    Q2:
+      n_days: 150
+      mean_gex_zscore: -0.597
+      mean_intraday_return_pct: 0.0082
+      std_intraday_return_pct: 0.9491
+      gross_sharpe: 0.137
+      net_sharpe: -0.197
+      win_rate_pct: 52.7
+    Q3:
+      n_days: 150
+      mean_gex_zscore: 0.066
+      mean_intraday_return_pct: 0.0078
+      std_intraday_return_pct: 0.8901
+      gross_sharpe: 0.139
+      net_sharpe: -0.217
+      win_rate_pct: 54.7
+    Q4:
+      n_days: 150
+      mean_gex_zscore: 0.692
+      mean_intraday_return_pct: 0.0524
+      std_intraday_return_pct: 0.8358
+      gross_sharpe: 0.994
+      net_sharpe: 0.615
+      win_rate_pct: 56.0
+    Q5:
+      n_days: 151
+      mean_gex_zscore: 1.55
+      mean_intraday_return_pct: 0.047
+      std_intraday_return_pct: 0.7134
+      gross_sharpe: 1.047
+      net_sharpe: 0.602
+      win_rate_pct: 54.3
+  monotonicity_test:
+    spearman_correlation: 0.5
+    p_value: 0.391
+  long_short_spread_pct: 0.0022
+comparison_with_swing: "Previous tests (#516-519) used close\u2192close+1 (overnight swing). This test\
+  \ uses open\u2192close (intraday only)."

@@ -14,10 +14,10 @@ Supports:
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from src.trading.gtt.gtt_manager import ActionType, GTTTrigger, get_gtt_manager
+from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class ActionResult:
         if self.details is None:
             self.details = {}
         if self.timestamp is None:
-            self.timestamp = datetime.now().isoformat()
+            self.timestamp = now_iso()
 
     def to_dict(self) -> Dict[str, Any]:
         return {

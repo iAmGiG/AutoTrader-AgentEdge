@@ -4,11 +4,14 @@ Risk Calculation - Pure Functions
 Portfolio-level risk metrics and position sizing.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,9 +69,29 @@ def calculate_portfolio_risk(
     # Maximum daily loss risk (all positions hit stop loss)
     max_daily_loss = 0
     for position in positions:
-        # Assume 5% stop loss per position
-        position_max_loss = position["position_value"] * 0.05
-        max_daily_loss += position_max_loss
+        # Use actual stop loss if available, otherwise default to 5%
+        pos_value = position.get("position_value", 0)
+        entry_price = position.get("entry_price", 0)
+        stop_price = position.get("stop_loss_price") or position.get("stop_price")
+        side = position.get("side", "long").lower()  # Default to long if not specified
+
+        if stop_price and entry_price > 0:
+            # Calculate risk based on position side
+            if side == "short":
+                # For shorts: stop is above entry, so risk is (stop - entry)
+                risk_pct = max(0, (stop_price - entry_price) / entry_price)
+            else:
+                # For longs: stop is below entry, so risk is (entry - stop)
+                risk_pct = max(0, (entry_price - stop_price) / entry_price)
+            max_daily_loss += pos_value * risk_pct
+        else:
+            # No stop loss - assume 5% risk
+            symbol = position.get("symbol", "UNKNOWN")
+            logger.debug(
+                f"Position {symbol}: no stop loss defined, assuming 5% risk "
+                f"(stop_price={stop_price}, entry_price={entry_price})"
+            )
+            max_daily_loss += pos_value * 0.05
 
     # Advanced metrics if portfolio history available
     portfolio_beta = None
@@ -135,12 +158,20 @@ def calculate_position_size(
             }
 
     # Fallback: equal weight approach
+    logger.warning(
+        f"Position sizing fallback: entry_price={entry_price}, "
+        f"stop_loss={stop_loss_price} - using equal weight (10% max) instead of risk-based"
+    )
     max_position_pct = 0.10  # Max 10% per position
     max_position_value = portfolio_value * max_position_pct
 
     if entry_price > 0:
         shares = int(max_position_value / entry_price)
         position_value = shares * entry_price
+        logger.info(
+            f"Equal weight sizing: {shares} shares @ ${entry_price:.2f} "
+            f"= ${position_value:.2f} ({max_position_pct * 100}% of portfolio)"
+        )
 
         return {
             "recommended_shares": shares,
@@ -149,6 +180,11 @@ def calculate_position_size(
             "position_size_pct": (position_value / portfolio_value) * 100,
         }
 
+    # Cannot size position without entry price
+    logger.error(
+        f"Cannot calculate position size: entry_price={entry_price} is invalid. "
+        f"Returning zero position."
+    )
     return {
         "recommended_shares": 0,
         "position_value": 0,
@@ -158,7 +194,10 @@ def calculate_position_size(
 
 
 def check_portfolio_limits(
-    current_positions: int, position_exposure_pct: float, largest_position_pct: float
+    current_positions: int,
+    position_exposure_pct: float,
+    largest_position_pct: float,
+    limits_config: Optional[Dict[str, float]] = None,
 ) -> Dict[str, bool]:
     """
     Check portfolio risk limits.
@@ -167,14 +206,20 @@ def check_portfolio_limits(
         current_positions: Number of current positions
         position_exposure_pct: Percentage of portfolio in positions
         largest_position_pct: Largest single position percentage
+        limits_config: Optional dictionary of limits (max_positions, max_exposure_pct, max_single_position_pct)
 
     Returns:
         Dictionary of limit checks
     """
+    cfg = limits_config or {}
+    max_pos = cfg.get("max_positions", 10)
+    max_exp = cfg.get("max_exposure_pct", 80.0)
+    max_single = cfg.get("max_single_position_pct", 15.0)
+
     limits = {
-        "max_positions": current_positions <= 10,  # Max 10 positions
-        "max_exposure": position_exposure_pct <= 80,  # Max 80% invested
-        "max_single_position": largest_position_pct <= 15,  # Max 15% per position
+        "max_positions": current_positions <= max_pos,
+        "max_exposure": position_exposure_pct <= max_exp,
+        "max_single_position": largest_position_pct <= max_single,
         # If only 1 position, allow up to 25%
         "diversification_ok": current_positions <= 1 or largest_position_pct <= 25,
     }

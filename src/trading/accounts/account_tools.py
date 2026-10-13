@@ -111,6 +111,31 @@ def switch_active_account(account_id: str) -> Dict[str, Any]:
     }
 
 
+def rotate_account() -> Dict[str, Any]:
+    """
+    Rotate to the next available trading account.
+
+    Returns:
+        Dict with result status and new account info
+    """
+    manager = get_account_manager()
+    new_id = manager.rotate_active_account()
+
+    if new_id:
+        active = manager.get_active_account()
+        return {
+            "success": True,
+            "account_id": new_id,
+            "portfolio_value": active.info.portfolio_value if active and active.info else 0,
+            "message": f"Rotated to account: {new_id}",
+        }
+
+    return {
+        "success": False,
+        "message": "Failed to rotate account (no other accounts available?)",
+    }
+
+
 def refresh_account_data(account_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Refresh account data by querying Alpaca API.
@@ -240,6 +265,14 @@ ACCOUNT_TOOLS = [
                 },
                 "required": ["account_id"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rotate_account",
+            "description": "Rotate to the next available trading account (e.g. for load balancing)",
+            "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
     {

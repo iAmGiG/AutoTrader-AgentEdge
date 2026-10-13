@@ -52,6 +52,7 @@ class MultiLevelState:
     symbol: str
     entry_price: float
     total_quantity: int
+    side: str = "long"  # "long" or "short"
     targets: List[PriceTarget] = field(default_factory=list)
     distribution: DistributionStrategy = DistributionStrategy.EQUAL
     stop_price: Optional[float] = None
@@ -118,6 +119,7 @@ class MultiLevelTargetManager:
         distribution: DistributionStrategy = DistributionStrategy.EQUAL,
         target_percentages: Optional[List[float]] = None,
         base_percentage: float = 0.03,
+        side: str = "long",
     ) -> List[PriceTarget]:
         """
         Calculate price targets for a position.
@@ -129,6 +131,7 @@ class MultiLevelTargetManager:
             distribution: Distribution strategy
             target_percentages: Custom percentages [0.03, 0.06, 0.10] for profit levels
             base_percentage: Starting percentage for equal/progressive distribution
+            side: Position side ("long" or "short")
 
         Returns:
             List of PriceTarget objects
@@ -146,7 +149,22 @@ class MultiLevelTargetManager:
 
         targets = []
         for i, (qty, pct) in enumerate(zip(quantities, percentages), start=1):
-            target_price = round(entry_price * (1 + pct), 2)
+            if side.lower() == "short":
+                # For shorts, target is below entry
+                target_price = round(entry_price * (1 - pct), 2)
+                # Validation: short targets must be below entry
+                if target_price >= entry_price:
+                    raise ValueError(
+                        f"Short target #{i} price ${target_price:.2f} must be below entry ${entry_price:.2f}"
+                    )
+            else:
+                # For longs, target is above entry
+                target_price = round(entry_price * (1 + pct), 2)
+                # Validation: long targets must be above entry
+                if target_price <= entry_price:
+                    raise ValueError(
+                        f"Long target #{i} price ${target_price:.2f} must be above entry ${entry_price:.2f}"
+                    )
             targets.append(
                 PriceTarget(
                     target_number=i,
@@ -166,6 +184,7 @@ class MultiLevelTargetManager:
         num_targets: int = 3,
         distribution: DistributionStrategy = DistributionStrategy.EQUAL,
         atr_multipliers: Optional[List[float]] = None,
+        side: str = "long",
     ) -> List[PriceTarget]:
         """
         Calculate ATR-based price targets (Issue #366 integration).
@@ -177,6 +196,7 @@ class MultiLevelTargetManager:
             num_targets: Number of targets (1-5)
             distribution: Distribution strategy
             atr_multipliers: ATR multipliers for each target [1.0, 2.0, 3.0]
+            side: Position side ("long" or "short")
 
         Returns:
             List of PriceTarget objects with ATR-based prices
@@ -196,8 +216,24 @@ class MultiLevelTargetManager:
 
         targets = []
         for i, (qty, mult) in enumerate(zip(quantities, atr_multipliers), start=1):
-            target_price = round(entry_price + (current_atr * mult), 2)
-            pct_gain = ((target_price - entry_price) / entry_price) * 100
+            if side.lower() == "short":
+                target_price = round(entry_price - (current_atr * mult), 2)
+                # Validation: short targets must be below entry
+                if target_price >= entry_price:
+                    raise ValueError(
+                        f"Short ATR target #{i} price ${target_price:.2f} must be below entry ${entry_price:.2f}"
+                    )
+                # Gain is positive when price drops
+                pct_gain = ((entry_price - target_price) / entry_price) * 100
+            else:
+                target_price = round(entry_price + (current_atr * mult), 2)
+                # Validation: long targets must be above entry
+                if target_price <= entry_price:
+                    raise ValueError(
+                        f"Long ATR target #{i} price ${target_price:.2f} must be above entry ${entry_price:.2f}"
+                    )
+                pct_gain = ((target_price - entry_price) / entry_price) * 100
+
             targets.append(
                 PriceTarget(
                     target_number=i,
@@ -262,6 +298,7 @@ class MultiLevelTargetManager:
         ohlcv_data=None,
         use_atr: bool = False,
         atr_multipliers: Optional[List[float]] = None,
+        side: str = "long",
     ) -> Optional[MultiLevelState]:
         """
         Register a position for multi-level target management.
@@ -277,6 +314,7 @@ class MultiLevelTargetManager:
             ohlcv_data: OHLCV data for ATR-based targets
             use_atr: Whether to use ATR-based target calculation
             atr_multipliers: ATR multipliers if using ATR targets
+            side: Position side ("long" or "short")
 
         Returns:
             MultiLevelState if registered, None on error
@@ -291,11 +329,23 @@ class MultiLevelTargetManager:
         # Calculate targets
         if use_atr and ohlcv_data is not None:
             targets = self.calculate_atr_targets(
-                entry_price, total_quantity, ohlcv_data, num_targets, distribution, atr_multipliers
+                entry_price,
+                total_quantity,
+                ohlcv_data,
+                num_targets,
+                distribution,
+                atr_multipliers,
+                side,
             )
         else:
             targets = self.calculate_targets(
-                entry_price, total_quantity, num_targets, distribution, target_percentages
+                entry_price,
+                total_quantity,
+                num_targets,
+                distribution,
+                target_percentages,
+                0.03,
+                side,
             )
 
         # Create state
@@ -303,6 +353,7 @@ class MultiLevelTargetManager:
             symbol=symbol,
             entry_price=entry_price,
             total_quantity=total_quantity,
+            side=side,
             targets=targets,
             distribution=distribution,
             stop_price=stop_price,
@@ -329,6 +380,9 @@ class MultiLevelTargetManager:
         state = self.positions[symbol]
         results = {"symbol": symbol, "orders_placed": 0, "errors": []}
 
+        # Determine exit side (opposite of position side)
+        exit_side = "buy" if state.side.lower() == "short" else "sell"
+
         for target in state.targets:
             if target.status != "pending":
                 continue
@@ -337,7 +391,7 @@ class MultiLevelTargetManager:
                 result = self.order_manager.place_limit_order(
                     symbol=symbol,
                     qty=target.quantity,
-                    side="sell",
+                    side=exit_side,
                     limit_price=target.target_price,
                 )
 
@@ -366,6 +420,7 @@ class MultiLevelTargetManager:
         total_quantity: int,
         num_targets: int = 3,
         distribution: DistributionStrategy = DistributionStrategy.EQUAL,
+        side: str = "long",
     ) -> Dict[str, Any]:
         """
         Split an existing take-profit order into multiple targets.
@@ -377,6 +432,7 @@ class MultiLevelTargetManager:
             total_quantity: Total position quantity
             num_targets: Number of targets to create
             distribution: Distribution strategy
+            side: Position side ("long" or "short")
 
         Returns:
             Dict with split operation results
@@ -402,6 +458,7 @@ class MultiLevelTargetManager:
             total_quantity=total_quantity,
             num_targets=num_targets,
             distribution=distribution,
+            side=side,
         )
 
         if state:

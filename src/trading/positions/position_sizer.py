@@ -24,6 +24,7 @@ from typing import Optional
 from src.core.trading_modes import TradingMode, TradingModeManager, get_mode_manager
 from src.trading.instruments.approved_tickers import ApprovedTickersManager
 from src.trading.instruments.ticker_database import TickerMode
+from src.utils.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ class PositionSizer:
         self,
         mode_manager: Optional[TradingModeManager] = None,
         tickers_manager: Optional[ApprovedTickersManager] = None,
+        config_loader: Optional[ConfigLoader] = None,
     ):
         """
         Initialize position sizer.
@@ -101,16 +103,20 @@ class PositionSizer:
         Args:
             mode_manager: Trading mode manager (default: global instance)
             tickers_manager: Approved tickers manager (optional)
+            config_loader: Config loader for defaults
         """
         self.mode_manager = mode_manager or get_mode_manager()
         self.tickers_manager = tickers_manager
+        self.config = config_loader or ConfigLoader()
 
         # Default sizing mode
         self.default_sizing_mode = SizingMode.PROFILE_BASED
 
         # Fixed amount settings (for FIXED_DOLLAR/FIXED_SHARES modes)
-        self.fixed_dollar_amount: float = 5000.0
-        self.fixed_shares_count: int = 100
+        self.fixed_dollar_amount: float = self.config.get(
+            "trading.position_sizing.fixed_dollar", 5000.0
+        )
+        self.fixed_shares_count: int = self.config.get("trading.position_sizing.fixed_shares", 100)
 
         logger.info("PositionSizer initialized")
 

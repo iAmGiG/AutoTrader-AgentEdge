@@ -1,0 +1,62 @@
+run_timestamp: '2026-10-13T16:12:36.693658'
+issue: '#576'
+description: Expiry-day clustering at strikes, conditioned on expiring dealer gamma
+methodology:
+  model: distance = a + b expiry + c long_gamma + k expiry*long_gamma
+  hypotheses: b < 0 (NPP 2005 clustering); k < 0 (stronger when dealers long gamma)
+  expiry_day: last trading day on or before the third Friday (monthly options)
+  placebo_day: 5 trading days before expiry, same expiry contracts
+  chain: previous trading day's chain for the monthly expiry (ex-ante)
+  outcomes:
+    d_norm: distance to nearest listed strike / local strike spacing, capped 0.5
+    log_d_maxoi: log(1 + bps distance to max-OI strike within 5% of spot)
+  gamma_sign: sum OI x gamma x (+1 call, -1 put) within 5% of spot
+  errors: clustered by month and symbol
+  period: 2008-01-02 to 2026-10-09
+  regime_lag_days: 1
+summary:
+  symbol_months: 8859
+  n_symbols: 54
+  mean_d_norm_expiry: 0.24815
+  mean_d_norm_placebo: 0.25228
+  share_within_0.1_expiry: 0.2203
+  share_within_0.1_placebo: 0.2081
+  share_long_gamma_expiry: 0.626
+  median_spacing_bps: 98.7
+results:
+  nearest_strike:
+    n_obs: 17718
+    expiry:
+      coef: 0.00048
+      t_statistic: 0.114
+      p_value: 0.9089435219471732
+    long_gamma:
+      coef: 0.00167
+      t_statistic: 0.476
+      p_value: 0.6341442772444297
+    expiry_x_long_gamma:
+      coef: -0.00732
+      t_statistic: -1.536
+      p_value: 0.12450821415851233
+    expiry_effect_when_long_gamma:
+      coef: -0.00685
+      t_statistic: -2.575
+      p_value: 0.010021526004385967
+  max_oi_strike:
+    n_obs: 17718
+    expiry:
+      coef: 0.0361
+      t_statistic: 1.231
+      p_value: 0.2182510583711822
+    long_gamma:
+      coef: 0.07311
+      t_statistic: 1.889
+      p_value: 0.05895821393791478
+    expiry_x_long_gamma:
+      coef: -0.09329
+      t_statistic: -2.441
+      p_value: 0.014658585835607097
+    expiry_effect_when_long_gamma:
+      coef: -0.05719
+      t_statistic: -2.058
+      p_value: 0.039574507418314114

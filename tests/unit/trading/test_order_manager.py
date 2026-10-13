@@ -498,6 +498,48 @@ class TestReplaceStopOrder:
         assert result["id"] == "stop-003"
         assert "error" not in result
 
+    @pytest.mark.parametrize("existing_side", ["buy", "BUY"])
+    def test_replace_stop_order_keeps_short_positions_buy_side(
+        self, order_manager, mock_broker, mock_position_manager, existing_side
+    ):
+        """A short position's BUY stop must be replaced with a BUY stop, not SELL."""
+        from alpaca.trading.enums import OrderSide
+
+        side_value = OrderSide.BUY if existing_side == "BUY" else existing_side
+        mock_position_manager.get_order.return_value = {
+            "id": "stop-001",
+            "symbol": "SPY",
+            "qty": 10,
+            "side": side_value,
+        }
+        new_order = create_mock_order_response(order_id="stop-004", symbol="SPY", qty="10")
+        new_order.stop_price = "610.00"
+        mock_broker.submit_order.return_value = new_order
+
+        with patch("time.sleep"):
+            # Trailing-stop callers pass symbol and qty but no side
+            result = order_manager.replace_stop_order("stop-001", 610.00, symbol="SPY", qty=10)
+
+        assert "error" not in result
+        request = mock_broker.submit_order.call_args.kwargs["order_data"]
+        assert request.side == OrderSide.BUY
+
+    def test_replace_stop_order_explicit_side_wins(
+        self, order_manager, mock_broker, mock_position_manager
+    ):
+        """An explicit side is used as given."""
+        from alpaca.trading.enums import OrderSide
+
+        new_order = create_mock_order_response(order_id="stop-005", symbol="SPY", qty="10")
+        new_order.stop_price = "580.00"
+        mock_broker.submit_order.return_value = new_order
+
+        with patch("time.sleep"):
+            order_manager.replace_stop_order("stop-001", 580.00, symbol="SPY", qty=10, side="sell")
+
+        request = mock_broker.submit_order.call_args.kwargs["order_data"]
+        assert request.side == OrderSide.SELL
+
     def test_replace_stop_order_missing_params(self, order_manager, mock_position_manager):
         """Test error when order not found and params not provided."""
         mock_position_manager.get_order.return_value = None

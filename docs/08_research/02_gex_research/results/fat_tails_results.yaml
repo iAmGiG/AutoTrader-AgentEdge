@@ -1,0 +1,217 @@
+run_timestamp: '2026-02-16T02:50:25.329282'
+issue: '#542'
+description: Real Market Fat Tails Validation
+methodology:
+  symbol: SPY
+  periods:
+    covid_crash: 2020-02-19 to 2020-03-23
+    covid_recovery: 2020-03-24 to 2020-08-31
+    bear_2022: 2022-01-03 to 2022-10-12
+    bull_2023: 2023-01-03 to 2023-12-29
+    full: 2020-01-02 to 2023-12-29
+  exit_configs:
+    conservative:
+      take_profit: 0.06
+      stop_loss: 0.08
+    balanced:
+      take_profit: 0.08
+      stop_loss: 0.05
+    aggressive:
+      take_profit: 0.1
+      stop_loss: 0.03
+  signal: MACD(13/34/8) + RSI(14/30/70) consensus
+  look_ahead_prevention: shift(1)
+  distribution_tests:
+  - skewness
+  - kurtosis
+  - Jarque-Bera
+results:
+  covid_crash:
+    period: 2020-02-19 to 2020-03-23
+    distribution:
+      n_obs: 24
+      mean_pct: -1.5935
+      std_pct: 4.7573
+      skewness: 0.1653
+      kurtosis: -0.2442
+      min_pct: -10.94
+      max_pct: 8.55
+      jarque_bera_p: 0.919
+    exit_strategies:
+      conservative:
+        error: insufficient_data
+        n_days: 24
+      balanced:
+        error: insufficient_data
+        n_days: 24
+      aggressive:
+        error: insufficient_data
+        n_days: 24
+  covid_recovery:
+    period: 2020-03-24 to 2020-08-31
+    distribution:
+      n_obs: 112
+      mean_pct: 0.4189
+      std_pct: 1.8734
+      skewness: 0.8155
+      kurtosis: 5.192
+      min_pct: -5.76
+      max_pct: 9.06
+      jarque_bera_p: 0.0
+    exit_strategies:
+      conservative:
+        n_trades: 4
+        n_days: 112
+        mean_pnl_pct: 5.98
+        median_pnl_pct: 6.434
+        win_rate_pct: 100.0
+        stop_out_rate_pct: 0.0
+        tp_hit_rate_pct: 75.0
+        max_adverse_pct: 4.09
+        avg_holding_days: 17.5
+      balanced:
+        n_trades: 2
+        n_days: 112
+        mean_pnl_pct: 8.739
+        median_pnl_pct: 8.739
+        win_rate_pct: 100.0
+        stop_out_rate_pct: 0.0
+        tp_hit_rate_pct: 100.0
+        max_adverse_pct: 8.56
+        avg_holding_days: 32.0
+      aggressive:
+        n_trades: 3
+        n_days: 112
+        mean_pnl_pct: 5.664
+        median_pnl_pct: 10.383
+        win_rate_pct: 66.7
+        stop_out_rate_pct: 33.3
+        tp_hit_rate_pct: 66.7
+        max_adverse_pct: -3.79
+        avg_holding_days: 21.7
+  bear_2022:
+    period: 2022-01-03 to 2022-10-12
+    distribution:
+      n_obs: 196
+      mean_pct: -0.1346
+      std_pct: 1.5222
+      skewness: -0.1644
+      kurtosis: -0.08
+      min_pct: -4.35
+      max_pct: 3.18
+      jarque_bera_p: 0.6264
+    exit_strategies:
+      conservative:
+        n_trades: 5
+        n_days: 196
+        mean_pnl_pct: -5.312
+        median_pnl_pct: -8.398
+        win_rate_pct: 20.0
+        stop_out_rate_pct: 60.0
+        tp_hit_rate_pct: 20.0
+        max_adverse_pct: -10.84
+        avg_holding_days: 28.2
+      balanced:
+        n_trades: 6
+        n_days: 196
+        mean_pnl_pct: -3.308
+        median_pnl_pct: -5.314
+        win_rate_pct: 16.7
+        stop_out_rate_pct: 66.7
+        tp_hit_rate_pct: 16.7
+        max_adverse_pct: -7.48
+        avg_holding_days: 17.3
+      aggressive:
+        n_trades: 7
+        n_days: 196
+        mean_pnl_pct: -1.613
+        median_pnl_pct: -3.532
+        win_rate_pct: 14.3
+        stop_out_rate_pct: 85.7
+        tp_hit_rate_pct: 14.3
+        max_adverse_pct: -3.83
+        avg_holding_days: 14.0
+  bull_2023:
+    period: 2023-01-03 to 2023-12-29
+    distribution:
+      n_obs: 250
+      mean_pct: 0.0904
+      std_pct: 0.8308
+      skewness: -0.0355
+      kurtosis: -0.1923
+      min_pct: -2.01
+      max_pct: 2.29
+      jarque_bera_p: 0.8036
+    exit_strategies:
+      conservative:
+        n_trades: 5
+        n_days: 250
+        mean_pnl_pct: 2.771
+        median_pnl_pct: 6.28
+        win_rate_pct: 80.0
+        stop_out_rate_pct: 20.0
+        tp_hit_rate_pct: 60.0
+        max_adverse_pct: -8.07
+        avg_holding_days: 44.2
+      balanced:
+        n_trades: 4
+        n_days: 250
+        mean_pnl_pct: 2.906
+        median_pnl_pct: 4.395
+        win_rate_pct: 75.0
+        stop_out_rate_pct: 25.0
+        tp_hit_rate_pct: 50.0
+        max_adverse_pct: -5.52
+        avg_holding_days: 55.2
+      aggressive:
+        n_trades: 5
+        n_days: 250
+        mean_pnl_pct: 1.702
+        median_pnl_pct: -3.468
+        win_rate_pct: 40.0
+        stop_out_rate_pct: 60.0
+        tp_hit_rate_pct: 20.0
+        max_adverse_pct: -3.89
+        avg_holding_days: 37.6
+  full:
+    period: 2020-01-02 to 2023-12-29
+    distribution:
+      n_obs: 1005
+      mean_pct: 0.0482
+      std_pct: 1.4306
+      skewness: -0.5089
+      kurtosis: 10.1529
+      min_pct: -10.94
+      max_pct: 9.06
+      jarque_bera_p: 0.0
+    exit_strategies:
+      conservative:
+        n_trades: 21
+        n_days: 1006
+        mean_pnl_pct: 2.436
+        median_pnl_pct: 6.102
+        win_rate_pct: 76.2
+        stop_out_rate_pct: 23.8
+        tp_hit_rate_pct: 71.4
+        max_adverse_pct: -10.31
+        avg_holding_days: 42.1
+      balanced:
+        n_trades: 22
+        n_days: 1006
+        mean_pnl_pct: 2.397
+        median_pnl_pct: 8.125
+        win_rate_pct: 59.1
+        stop_out_rate_pct: 40.9
+        tp_hit_rate_pct: 54.5
+        max_adverse_pct: -7.48
+        avg_holding_days: 37.4
+      aggressive:
+        n_trades: 23
+        n_days: 1006
+        mean_pnl_pct: 2.333
+        median_pnl_pct: -3.053
+        win_rate_pct: 43.5
+        stop_out_rate_pct: 56.5
+        tp_hit_rate_pct: 39.1
+        max_adverse_pct: -5.92
+        avg_holding_days: 34.7

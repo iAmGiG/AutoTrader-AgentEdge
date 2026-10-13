@@ -1,0 +1,683 @@
+run_timestamp: '2026-10-13T14:57:20.375002'
+issue: '#576'
+description: Does the GEX regime predict next-day variance beyond a HAR baseline?
+methodology:
+  model: 'HAR: RV_t on RV_{t-1}, 5-day and 22-day trailing means, plus regime dummies'
+  omitted_regime: neutral
+  rv_proxies:
+    rv_sq: squared close-to-close return (percent^2)
+    rv_park: Parkinson high-low variance (percent^2)
+    log_rv_park: log-HAR on Parkinson variance; dummies are log variance ratios
+  standard_errors: Newey-West HAC, maxlags = floor(4 (n/100)^(2/9))
+  regime_lag_days: 0
+  period: 2008-01-02 to 2026-10-09
+  split_date: '2020-01-01'
+  out_of_sample: fit before split_date, fixed coefficients, forecast after; MSE and QLIKE losses, Diebold-Mariano
+    with Newey-West errors (positive = regime better)
+  symbols:
+  - SPY
+  - QQQ
+  - IWM
+results:
+- symbol: SPY
+  n_days: 4722
+  regime_counts:
+    bearish_gamma: 2066
+    bullish_gamma: 1669
+    neutral: 987
+  targets:
+    rv_sq:
+      raw_gap:
+        mean_bullish: 0.5907
+        mean_bearish: 2.1724
+        ratio_bearish_to_bullish: 3.678
+      full:
+        n_obs: 4700
+        r_squared: 0.213
+        bearish:
+          coef: 0.8361
+          t_statistic: 2.697
+          p_value: 0.007
+        bullish:
+          coef: 0.1446
+          t_statistic: 0.741
+          p_value: 0.4589
+        bearish_minus_bullish:
+          coef: 0.6916
+          t_statistic: 4.252
+          p_value: 0.0
+        r_squared_gain: 0.0035
+      pre_2020:
+        n_obs: 2998
+        r_squared: 0.2089
+        bearish:
+          coef: 0.9359
+          t_statistic: 2.276
+          p_value: 0.0229
+        bullish:
+          coef: 0.1469
+          t_statistic: 0.552
+          p_value: 0.5809
+        bearish_minus_bullish:
+          coef: 0.7889
+          t_statistic: 3.971
+          p_value: 0.0001
+        r_squared_gain: 0.0044
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.2676
+        bearish:
+          coef: 0.7351
+          t_statistic: 2.53
+          p_value: 0.0114
+        bullish:
+          coef: 0.1939
+          t_statistic: 0.799
+          p_value: 0.424
+        bearish_minus_bullish:
+          coef: 0.5411
+          t_statistic: 2.736
+          p_value: 0.0062
+        r_squared_gain: 0.0021
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 31.7253
+          har_regime: 31.6835
+          diebold_mariano:
+            mean_loss_diff: 0.04177
+            t_statistic: 0.343
+            p_value: 0.7313
+        qlike:
+          har: 1.0497
+          har_regime: 1.3389
+          diebold_mariano:
+            mean_loss_diff: -0.28919
+            t_statistic: -1.869
+            p_value: 0.0617
+    rv_park:
+      raw_gap:
+        mean_bullish: 0.3057
+        mean_bearish: 1.3728
+        ratio_bearish_to_bullish: 4.49
+      full:
+        n_obs: 4700
+        r_squared: 0.5184
+        bearish:
+          coef: 0.335
+          t_statistic: 4.295
+          p_value: 0.0
+        bullish:
+          coef: -0.0055
+          t_statistic: -0.096
+          p_value: 0.9237
+        bearish_minus_bullish:
+          coef: 0.3405
+          t_statistic: 6.487
+          p_value: 0.0
+        r_squared_gain: 0.0036
+      pre_2020:
+        n_obs: 2998
+        r_squared: 0.5218
+        bearish:
+          coef: 0.3297
+          t_statistic: 3.388
+          p_value: 0.0007
+        bullish:
+          coef: 0.0213
+          t_statistic: 0.307
+          p_value: 0.7589
+        bearish_minus_bullish:
+          coef: 0.3085
+          t_statistic: 4.605
+          p_value: 0.0
+        r_squared_gain: 0.0026
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.5208
+        bearish:
+          coef: 0.3976
+          t_statistic: 3.746
+          p_value: 0.0002
+        bullish:
+          coef: 0.0085
+          t_statistic: 0.095
+          p_value: 0.924
+        bearish_minus_bullish:
+          coef: 0.3891
+          t_statistic: 5.563
+          p_value: 0.0
+        r_squared_gain: 0.0072
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 2.509
+          har_regime: 2.4766
+          diebold_mariano:
+            mean_loss_diff: 0.03239
+            t_statistic: 2.555
+            p_value: 0.0106
+        qlike:
+          har: 0.4661
+          har_regime: 0.4491
+          diebold_mariano:
+            mean_loss_diff: 0.01702
+            t_statistic: 1.31
+            p_value: 0.1901
+    log_rv_park:
+      raw_gap:
+        mean_bullish: 0.3057
+        mean_bearish: 1.3728
+        ratio_bearish_to_bullish: 4.49
+      full:
+        n_obs: 4700
+        r_squared: 0.5864
+        bearish:
+          coef: 0.3068
+          t_statistic: 9.283
+          p_value: 0.0
+        bullish:
+          coef: -0.2523
+          t_statistic: -7.329
+          p_value: 0.0
+        bearish_minus_bullish:
+          coef: 0.5591
+          t_statistic: 18.128
+          p_value: 0.0
+        r_squared_gain: 0.0322
+      pre_2020:
+        n_obs: 2998
+        r_squared: 0.6145
+        bearish:
+          coef: 0.2747
+          t_statistic: 7.288
+          p_value: 0.0
+        bullish:
+          coef: -0.2745
+          t_statistic: -6.183
+          p_value: 0.0
+        bearish_minus_bullish:
+          coef: 0.5491
+          t_statistic: 13.502
+          p_value: 0.0
+        r_squared_gain: 0.0254
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.5265
+        bearish:
+          coef: 0.3949
+          t_statistic: 5.855
+          p_value: 0.0
+        bullish:
+          coef: -0.1999
+          t_statistic: -3.084
+          p_value: 0.002
+        bearish_minus_bullish:
+          coef: 0.5947
+          t_statistic: 12.05
+          p_value: 0.0
+        r_squared_gain: 0.0499
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 2.6834
+          har_regime: 2.7234
+          diebold_mariano:
+            mean_loss_diff: -0.04005
+            t_statistic: -0.634
+            p_value: 0.5263
+        qlike:
+          har: 0.4723
+          har_regime: 0.4284
+          diebold_mariano:
+            mean_loss_diff: 0.04383
+            t_statistic: 4.981
+            p_value: 0.0
+  var_backtest:
+    train_end: '2020-01-01'
+    n_test: 1702
+    var_95:
+      har:
+        n: 1702
+        breaches: 81
+        breach_rate: 0.0476
+        expected_rate: 0.05
+        kupiec_p: 0.6459
+        christoffersen_ind_p: 0.5574
+        conditional_coverage_p: 0.7575
+        mean_var_pct: 1.7501
+      har_regime:
+        n: 1702
+        breaches: 79
+        breach_rate: 0.0464
+        expected_rate: 0.05
+        kupiec_p: 0.4925
+        christoffersen_ind_p: 0.8581
+        conditional_coverage_p: 0.7776
+        mean_var_pct: 1.6003
+      quantile_loss_dm:
+        mean_loss_diff: 0.00798
+        t_statistic: 8.428
+        p_value: 0.0
+    var_99:
+      har:
+        n: 1702
+        breaches: 20
+        breach_rate: 0.0118
+        expected_rate: 0.01
+        kupiec_p: 0.4799
+        christoffersen_ind_p: 0.2325
+        conditional_coverage_p: 0.382
+        mean_var_pct: 2.7598
+      har_regime:
+        n: 1702
+        breaches: 22
+        breach_rate: 0.0129
+        expected_rate: 0.01
+        kupiec_p: 0.2457
+        christoffersen_ind_p: 0.2876
+        conditional_coverage_p: 0.2896
+        mean_var_pct: 2.547
+      quantile_loss_dm:
+        mean_loss_diff: 0.00224
+        t_statistic: 2.924
+        p_value: 0.0035
+- symbol: QQQ
+  n_days: 3911
+  regime_counts:
+    neutral: 2520
+    bearish_gamma: 866
+    bullish_gamma: 525
+  targets:
+    rv_sq:
+      raw_gap:
+        mean_bullish: 1.1284
+        mean_bearish: 2.9986
+        ratio_bearish_to_bullish: 2.657
+      full:
+        n_obs: 3889
+        r_squared: 0.194
+        bearish:
+          coef: 0.8258
+          t_statistic: 4.732
+          p_value: 0.0
+        bullish:
+          coef: -0.0801
+          t_statistic: -0.793
+          p_value: 0.4279
+        bearish_minus_bullish:
+          coef: 0.9059
+          t_statistic: 4.808
+          p_value: 0.0
+        r_squared_gain: 0.0044
+      pre_2020:
+        n_obs: 2187
+        r_squared: 0.1319
+        bearish:
+          coef: 0.7239
+          t_statistic: 2.689
+          p_value: 0.0072
+        bullish:
+          coef: -0.3146
+          t_statistic: -3.497
+          p_value: 0.0005
+        bearish_minus_bullish:
+          coef: 1.0385
+          t_statistic: 3.73
+          p_value: 0.0002
+        r_squared_gain: 0.0068
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.1921
+        bearish:
+          coef: 0.6943
+          t_statistic: 2.397
+          p_value: 0.0165
+        bullish:
+          coef: -0.2469
+          t_statistic: -0.92
+          p_value: 0.3577
+        bearish_minus_bullish:
+          coef: 0.9412
+          t_statistic: 4.167
+          p_value: 0.0
+        r_squared_gain: 0.0031
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 43.0959
+          har_regime: 42.9009
+          diebold_mariano:
+            mean_loss_diff: 0.19507
+            t_statistic: 1.142
+            p_value: 0.2536
+        qlike:
+          har: 1.6277
+          har_regime: 1.6116
+          diebold_mariano:
+            mean_loss_diff: 0.01614
+            t_statistic: 0.815
+            p_value: 0.4149
+    rv_park:
+      raw_gap:
+        mean_bullish: 0.5104
+        mean_bearish: 1.9038
+        ratio_bearish_to_bullish: 3.73
+      full:
+        n_obs: 3889
+        r_squared: 0.162
+        bearish:
+          coef: 0.6078
+          t_statistic: 5.471
+          p_value: 0.0
+        bullish:
+          coef: -0.2158
+          t_statistic: -3.288
+          p_value: 0.001
+        bearish_minus_bullish:
+          coef: 0.8237
+          t_statistic: 5.762
+          p_value: 0.0
+        r_squared_gain: 0.0092
+      pre_2020:
+        n_obs: 2187
+        r_squared: 0.0406
+        bearish:
+          coef: 0.6526
+          t_statistic: 3.542
+          p_value: 0.0004
+        bullish:
+          coef: -0.2808
+          t_statistic: -3.142
+          p_value: 0.0017
+        bearish_minus_bullish:
+          coef: 0.9334
+          t_statistic: 4.78
+          p_value: 0.0
+        r_squared_gain: 0.0043
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.43
+        bearish:
+          coef: 0.3805
+          t_statistic: 3.819
+          p_value: 0.0001
+        bullish:
+          coef: -0.2542
+          t_statistic: -3.067
+          p_value: 0.0022
+        bearish_minus_bullish:
+          coef: 0.6347
+          t_statistic: 6.549
+          p_value: 0.0
+        r_squared_gain: 0.0097
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 5.0742
+          har_regime: 4.88
+          diebold_mariano:
+            mean_loss_diff: 0.19423
+            t_statistic: 3.516
+            p_value: 0.0004
+        qlike:
+          har: 1.1051
+          har_regime: 1.0511
+          diebold_mariano:
+            mean_loss_diff: 0.05402
+            t_statistic: 4.109
+            p_value: 0.0
+    log_rv_park:
+      raw_gap:
+        mean_bullish: 0.5104
+        mean_bearish: 1.9038
+        ratio_bearish_to_bullish: 3.73
+      full:
+        n_obs: 3889
+        r_squared: 0.4823
+        bearish:
+          coef: 0.4289
+          t_statistic: 11.677
+          p_value: 0.0
+        bullish:
+          coef: -0.1817
+          t_statistic: -5.011
+          p_value: 0.0
+        bearish_minus_bullish:
+          coef: 0.6107
+          t_statistic: 13.4
+          p_value: 0.0
+        r_squared_gain: 0.0288
+      pre_2020:
+        n_obs: 2187
+        r_squared: 0.4026
+        bearish:
+          coef: 0.3566
+          t_statistic: 4.905
+          p_value: 0.0
+        bullish:
+          coef: -0.2638
+          t_statistic: -2.881
+          p_value: 0.004
+        bearish_minus_bullish:
+          coef: 0.6204
+          t_statistic: 5.35
+          p_value: 0.0
+        r_squared_gain: 0.0107
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.4806
+        bearish:
+          coef: 0.4043
+          t_statistic: 8.814
+          p_value: 0.0
+        bullish:
+          coef: -0.2597
+          t_statistic: -5.011
+          p_value: 0.0
+        bearish_minus_bullish:
+          coef: 0.664
+          t_statistic: 12.765
+          p_value: 0.0
+        r_squared_gain: 0.0598
+      out_of_sample:
+        n_test: 1702
+        train_end: '2020-01-01'
+        mse:
+          har: 4.363
+          har_regime: 4.3233
+          diebold_mariano:
+            mean_loss_diff: 0.03968
+            t_statistic: 0.485
+            p_value: 0.6277
+        qlike:
+          har: 1.0675
+          har_regime: 1.0284
+          diebold_mariano:
+            mean_loss_diff: 0.03909
+            t_statistic: 5.31
+            p_value: 0.0
+  var_backtest:
+    train_end: '2020-01-01'
+    n_test: 1702
+    var_95:
+      har:
+        n: 1702
+        breaches: 100
+        breach_rate: 0.0588
+        expected_rate: 0.05
+        kupiec_p: 0.1064
+        christoffersen_ind_p: 0.6935
+        conditional_coverage_p: 0.2514
+        mean_var_pct: 2.1879
+      har_regime:
+        n: 1702
+        breaches: 73
+        breach_rate: 0.0429
+        expected_rate: 0.05
+        kupiec_p: 0.1682
+        christoffersen_ind_p: 0.9371
+        conditional_coverage_p: 0.3858
+        mean_var_pct: 2.1669
+      quantile_loss_dm:
+        mean_loss_diff: 0.01188
+        t_statistic: 9.461
+        p_value: 0.0
+    var_99:
+      har:
+        n: 1702
+        breaches: 22
+        breach_rate: 0.0129
+        expected_rate: 0.01
+        kupiec_p: 0.2457
+        christoffersen_ind_p: 0.2876
+        conditional_coverage_p: 0.2896
+        mean_var_pct: 3.3956
+      har_regime:
+        n: 1702
+        breaches: 17
+        breach_rate: 0.01
+        expected_rate: 0.01
+        kupiec_p: 0.9961
+        christoffersen_ind_p: 0.1606
+        conditional_coverage_p: 0.3737
+        mean_var_pct: 3.3993
+      quantile_loss_dm:
+        mean_loss_diff: 0.00395
+        t_statistic: 3.283
+        p_value: 0.001
+- symbol: IWM
+  n_days: 4722
+  regime_counts:
+    neutral: 3347
+    bearish_gamma: 1278
+    bullish_gamma: 97
+  targets:
+    rv_sq:
+      raw_gap:
+        mean_bullish: 2.7291
+        mean_bearish: 2.1302
+        ratio_bearish_to_bullish: 0.781
+      full:
+        n_obs: 4700
+        r_squared: 0.2504
+        bearish:
+          coef: 0.2382
+          t_statistic: 1.479
+          p_value: 0.1391
+        bullish:
+          coef: 0.8912
+          t_statistic: 1.828
+          p_value: 0.0675
+        bearish_minus_bullish:
+          coef: -0.653
+          t_statistic: -1.354
+          p_value: 0.1757
+        r_squared_gain: 0.0005
+      pre_2020:
+        skipped: fewer than 20 bullish or bearish days
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.216
+        bearish:
+          coef: 0.0207
+          t_statistic: 0.059
+          p_value: 0.9528
+        bullish:
+          coef: 0.7914
+          t_statistic: 1.232
+          p_value: 0.2179
+        bearish_minus_bullish:
+          coef: -0.7707
+          t_statistic: -1.323
+          p_value: 0.186
+        r_squared_gain: 0.0005
+      out_of_sample:
+        skipped: fewer than 20 bullish days before the split
+    rv_park:
+      raw_gap:
+        mean_bullish: 1.7385
+        mean_bearish: 1.6295
+        ratio_bearish_to_bullish: 0.937
+      full:
+        n_obs: 4700
+        r_squared: 0.4686
+        bearish:
+          coef: 0.2041
+          t_statistic: 2.917
+          p_value: 0.0035
+        bullish:
+          coef: 0.6583
+          t_statistic: 0.856
+          p_value: 0.3919
+        bearish_minus_bullish:
+          coef: -0.4541
+          t_statistic: -0.59
+          p_value: 0.5552
+        r_squared_gain: 0.0011
+      pre_2020:
+        skipped: fewer than 20 bullish or bearish days
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.5422
+        bearish:
+          coef: 0.2319
+          t_statistic: 1.851
+          p_value: 0.0641
+        bullish:
+          coef: -0.144
+          t_statistic: -1.178
+          p_value: 0.2387
+        bearish_minus_bullish:
+          coef: 0.3759
+          t_statistic: 2.922
+          p_value: 0.0035
+        r_squared_gain: 0.0016
+      out_of_sample:
+        skipped: fewer than 20 bullish days before the split
+    log_rv_park:
+      raw_gap:
+        mean_bullish: 1.7385
+        mean_bearish: 1.6295
+        ratio_bearish_to_bullish: 0.937
+      full:
+        n_obs: 4700
+        r_squared: 0.51
+        bearish:
+          coef: 0.2368
+          t_statistic: 8.632
+          p_value: 0.0
+        bullish:
+          coef: -0.064
+          t_statistic: -0.709
+          p_value: 0.4783
+        bearish_minus_bullish:
+          coef: 0.3008
+          t_statistic: 3.263
+          p_value: 0.0011
+        r_squared_gain: 0.0096
+      pre_2020:
+        skipped: fewer than 20 bullish or bearish days
+      from_2020:
+        n_obs: 1680
+        r_squared: 0.395
+        bearish:
+          coef: 0.2389
+          t_statistic: 5.506
+          p_value: 0.0
+        bullish:
+          coef: -0.0314
+          t_statistic: -0.337
+          p_value: 0.7362
+        bearish_minus_bullish:
+          coef: 0.2703
+          t_statistic: 2.972
+          p_value: 0.003
+        r_squared_gain: 0.0161
+      out_of_sample:
+        skipped: fewer than 20 bullish days before the split

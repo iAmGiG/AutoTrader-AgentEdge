@@ -26,6 +26,23 @@ This companion repository tests practitioner hypotheses and documents what works
 
 ---
 
+## Research Summary (Oct 2026)
+
+GEX re-validation on 2008 to 2026-10-09 (#576). Full write-up: [02_gex_research/regime_lookahead_revalidation.md](02_gex_research/regime_lookahead_revalidation.md).
+
+| Hypothesis | Issue | Status | Evidence |
+| ------------ | ------- | -------- | ---------- |
+| MACD+RSI performs better in bullish gamma | #531 | 🛑 STOP | Same-day regime look-ahead; lag 1 SPY 0.81 vs 0.81 Sharpe (p=0.25) |
+| GEX overlay improves dispersion trading | #545 | 🛑 STOP | +0.108 was a backtester artifact; fixed +0.085 (p=0.10) |
+| GEX overlay improves delta neutral / pairs | #544, #546 | 🛑 STOP | Null in every window after fixes |
+| Bearish regime VaR 4.3x bullish | #543 | 🛑 STOP | 2.1x at lag 1; regime makes 99% VaR breach too often |
+| GEX sign switches intraday momentum / reversal | #530 | 🛑 STOP | Pooled interaction p=0.067, wrong sign; timing strategy -0.5 bps/day |
+| Negative GEX goes with higher next-day variance | #576 | ✅ DONE | 40 symbols: +8% beyond HAR and leverage, high-VIX only; descriptive, no out-of-sample forecast gain |
+
+**Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay or intraday effect survives multiple-testing correction (227 tests).
+
+---
+
 ## Research Summary (Dec 2025)
 
 ### Scope Narrowing — 🛑 STOP
@@ -70,7 +87,7 @@ Findings that show **promise**. Some integrated into production, others warrant 
 | Ready-Aim-Fire (RAF) outperforms VoterAgent | #460, #532 | 🔄 CONTINUE | 0.553 Sharpe, 80% win rate - integration planned |
 | Weekly KAMA outperforms weekly MACD | #467 | 🔄 CONTINUE | Consider TrendFilterAgent implementation |
 | Path-dependent simulation reveals wick risk | #528 | 🔄 CONTINUE | Apply framework to all strategies |
-| MACD+RSI in positive gamma (short-term) | #531 | 🔄 CONTINUE | Re-validate with corrected methodology |
+| MACD+RSI in positive gamma (short-term) | #531 | 🛑 STOP | Re-validated Oct 2026: look-ahead artifact (see Oct 2026 summary) |
 
 **Conclusion**: VoterAgent work is complete. RAF is the best practitioner strategy tested - consider integration as 3rd voter.
 
@@ -98,7 +115,7 @@ Issues that **must be addressed** before production deployment.
 | `tsmom_vs_gex_analysis.py` (#421) | MACD+RSI (short-term) | Better in POSITIVE_GAMMA |
 | `tsmom_gex_hybrid.py` (#516) | 12-month return (academic) | Tested NEGATIVE_GAMMA (failed) |
 
-**Resolution**: These are different strategies. The contradiction arose from inconsistent terminology ("TSMOM" used for both). The #421 finding for MACD+RSI may still hold but requires re-validation with corrected methodology.
+**Resolution**: These are different strategies. The contradiction arose from inconsistent terminology ("TSMOM" used for both). The #421 finding for MACD+RSI was re-validated in Oct 2026 (#531, #576) and did not hold once the regime was lagged.
 
 ---
 
@@ -111,6 +128,10 @@ All research scripts now follow these standards:
 3. **Div-by-zero protection**: EPSILON = 1e-9
 4. **Reporting**: Median alongside mean for outlier-robust metrics
 5. **YAML serialization**: Explicit `float()`, `int()` casts to avoid numpy types
+6. **GEX regime lag**: `GEXOverlay` returns the regime known before the queried date (`lag_days=1`); end-of-day options data cannot classify the same day (#576)
+7. **Daily-signal backtests**: the signal for row *i* uses data through day *i − 1*; P&L is direction × size × the day's change (`run_daily_signal_strategy`)
+8. **Multiple testing**: count every test run and report Holm and Benjamini-Hochberg results (`scripts/research/multiple_testing_audit.py`)
+9. **Data end date**: research stops at 2026-10-09 (options vendor break on 2026-10-12)
 
 ---
 
@@ -118,6 +139,7 @@ All research scripts now follow these standards:
 
 ### Stop Working On
 
+- GEX regime as a filter or sizing overlay for any daily strategy (#531, #544-#546, #576)
 - GEX as overnight/swing filter (Close→Close+1)
 - Academic TSMOM (12-month lookback)
 - MACD parameter optimization for Sharpe
@@ -128,12 +150,12 @@ All research scripts now follow these standards:
 - **Ready-Aim-Fire (RAF) integration** (#532) - best practitioner strategy, 0.553 Sharpe
 - Weekly KAMA TrendFilterAgent (#529, research in #467)
 - Path-dependent wick simulation (#528)
-- MACD+RSI in positive gamma re-validation (#531)
 - Portfolio-level correlation analysis
 
 ### Untested (Optional Future Research)
 
-- Intraday GEX (Open→Close) - practitioner use case (#530)
+- Expiry-day pinning near high-OI strikes
+- Real option P&L for dispersion and delta neutral (current P&L is a toy proxy)
 
 ### Already Complete
 

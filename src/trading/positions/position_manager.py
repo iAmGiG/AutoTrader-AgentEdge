@@ -11,8 +11,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml
-
+from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)
@@ -33,17 +32,9 @@ class PositionManager:
         Args:
             broker_client: Alpaca trading client instance
         """
-        # Load paths configuration
-        paths_config_file = "config_defaults/paths_config.yaml"
-        try:
-            with open(paths_config_file) as f:
-                paths_config = yaml.safe_load(f)
-                logger.info(f"Loaded paths config from {paths_config_file}")
-        except FileNotFoundError:
-            logger.warning(
-                f"Paths config not found at {paths_config_file}, using hardcoded defaults"
-            )
-            paths_config = {"state_files": {"positions": "state/positions.json"}}
+        # Load paths configuration using ConfigLoader
+        config = ConfigLoader()
+        positions_file = config.get("state_files.positions", "state/positions.json")
 
         self.broker = broker_client
         self._session_cache = {}
@@ -51,10 +42,7 @@ class PositionManager:
         self._cache_ttl_seconds = 60  # Cache for 1 minute
 
         # Backup state file for persistence across restarts
-        state_file_path = paths_config.get("state_files", {}).get(
-            "positions", "state/positions.json"
-        )
-        self.state_file = Path(state_file_path)
+        self.state_file = Path(positions_file)
         self.state_file.parent.mkdir(exist_ok=True)
 
     def get_positions(self, force_refresh: bool = False) -> Dict[str, Dict[str, Any]]:
@@ -88,7 +76,11 @@ class PositionManager:
                     "side": "long" if float(pos.qty) > 0 else "short",
                     "avg_entry_price": float(pos.avg_cost),
                     "current_price": (
-                        float(pos.market_value) / float(pos.qty) if float(pos.qty) != 0 else 0
+                        float(pos.current_price)
+                        if hasattr(pos, "current_price") and pos.current_price is not None
+                        else (
+                            float(pos.market_value) / float(pos.qty) if float(pos.qty) != 0 else 0
+                        )
                     ),
                     "market_value": float(pos.market_value),
                     "unrealized_pl": float(pos.unrealized_pl),

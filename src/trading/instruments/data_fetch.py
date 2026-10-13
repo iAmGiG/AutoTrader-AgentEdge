@@ -35,7 +35,7 @@ def fetch_market_data(
     """
     try:
         if use_cache:
-            cached_data = get_cached_data(symbol, start_date, end_date)
+            cached_data = get_cached_data(symbol, start_date, end_date, timeframe=timeframe)
             if cached_data is not None:
                 return cached_data
 
@@ -63,7 +63,9 @@ def fetch_market_data(
     return None
 
 
-def get_cached_data(symbol: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+def get_cached_data(
+    symbol: str, start_date: str, end_date: str, timeframe: str = "1Day"
+) -> Optional[pd.DataFrame]:
     """
     Get cached market data if available.
 
@@ -71,6 +73,7 @@ def get_cached_data(symbol: str, start_date: str, end_date: str) -> Optional[pd.
         symbol: Stock symbol
         start_date: Start date
         end_date: End date
+        timeframe: Bar timeframe (must match cached data)
 
     Returns:
         Cached DataFrame or None
@@ -81,8 +84,11 @@ def get_cached_data(symbol: str, start_date: str, end_date: str) -> Optional[pd.
         if not cache_dir.exists():
             return None
 
-        # Look for cached files
-        for cache_file in cache_dir.glob(f"{symbol}_*.csv"):
+        # Normalize timeframe for cache key (e.g., "1Min" -> "1min")
+        tf_normalized = timeframe.lower()
+
+        # Look for cached files with matching timeframe
+        for cache_file in cache_dir.glob(f"{symbol}_{tf_normalized}_*.csv"):
             try:
                 cached_df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
 
@@ -144,12 +150,29 @@ def get_current_price(symbol: str) -> Optional[float]:
         Current price or None
     """
     try:
-        # Get recent data (last few days)
+        # Try to get recent minute data first for accuracy
         end_date = datetime.date.today()
-        start_date = end_date - datetime.timedelta(days=5)
+        start_date = end_date - datetime.timedelta(days=3)  # Look back a few days for weekends
 
         data = fetch_market_data(
-            symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), use_cache=False
+            symbol,
+            start_date.strftime("%Y-%m-%d"),
+            end_date.strftime("%Y-%m-%d"),
+            use_cache=False,
+            timeframe="1Min",
+        )
+
+        if data is not None and not data.empty:
+            return float(data["Close"].iloc[-1])
+
+        # Fallback to daily data if minute data fails
+        start_date_daily = end_date - datetime.timedelta(days=7)
+        data = fetch_market_data(
+            symbol,
+            start_date_daily.strftime("%Y-%m-%d"),
+            end_date.strftime("%Y-%m-%d"),
+            use_cache=False,
+            timeframe="1Day",
         )
 
         if data is not None and not data.empty:

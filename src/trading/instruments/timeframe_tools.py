@@ -142,7 +142,10 @@ class TimeframeManager:
 
     def _get_current_timeframe(self) -> str:
         """Get current active timeframe."""
-        timeframe_config = self.config.get_timeframe_config()
+        try:
+            timeframe_config = self.config.get_timeframe_config()
+        except AttributeError:
+            return "1d"  # Fallback if config structure is different
         return timeframe_config.default
 
     def get_current_timeframe(self) -> str:

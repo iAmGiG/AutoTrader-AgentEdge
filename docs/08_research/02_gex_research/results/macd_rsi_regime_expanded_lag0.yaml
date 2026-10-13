@@ -1,0 +1,150 @@
+run_timestamp: '2026-10-13T13:06:26.448244'
+issue: '#531'
+description: MACD+RSI in Positive Gamma Re-validation
+methodology:
+  strategy: MACD(13/34/8) + RSI(14/30/70) voting consensus
+  look_ahead_prevention: shift(1) applied to signal series
+  commission: 2 bps turnover-proportional
+  test_period: 2009-01-02 to 2026-10-09
+  warmup_from: '2008-01-02'
+  symbols:
+  - SPY
+  - QQQ
+  - IWM
+  regime_lag_days: 0
+  regime_source: options_daily_summary.regime
+  statistical_test: Welch's t-test (unequal variance)
+results:
+- symbol: SPY
+  full_sharpe: 0.561
+  full_return_pct: 166.64
+  num_trades: 651
+  by_regime:
+    bullish_gamma:
+      n_days: 1659
+      n_signal_days: 634
+      mean_return: 0.004241
+      median_return: 0.003147
+      std_return: 0.006304
+      sharpe_ratio: 10.68
+      signal_sharpe: 10.167
+      win_rate: 75.9
+      max_drawdown: -0.0239
+    bearish_gamma:
+      n_days: 1938
+      n_signal_days: 488
+      mean_return: -0.003614
+      median_return: -0.003106
+      std_return: 0.013086
+      sharpe_ratio: -4.384
+      signal_sharpe: -7.379
+      win_rate: 33.6
+      max_drawdown: -0.1094
+    neutral:
+      n_days: 873
+      n_signal_days: 336
+      mean_return: 0.002753
+      median_return: 0.001636
+      std_return: 0.01083
+      sharpe_ratio: 4.036
+      signal_sharpe: 3.995
+      win_rate: 62.1
+      max_drawdown: -0.0528
+  welch_t_test:
+    t_statistic: 23.438
+    p_value: 0.0
+  newey_west_test:
+    diff_mean: 0.007855
+    t_statistic: 24.524
+    p_value: 0.0
+    maxlags: 8
+  sharpe_diff_bull_minus_bear: 15.064
+- symbol: QQQ
+  full_sharpe: 0.603
+  full_return_pct: 230.66
+  num_trades: 635
+  by_regime:
+    bullish_gamma:
+      n_days: 525
+      n_signal_days: 188
+      mean_return: 0.007352
+      median_return: 0.006094
+      std_return: 0.007675
+      sharpe_ratio: 15.207
+      signal_sharpe: 14.473
+      win_rate: 86.9
+      max_drawdown: -0.0152
+    bearish_gamma:
+      n_days: 866
+      n_signal_days: 204
+      mean_return: -0.006464
+      median_return: -0.005932
+      std_return: 0.016074
+      sharpe_ratio: -6.384
+      signal_sharpe: -11.681
+      win_rate: 30.9
+      max_drawdown: -0.0917
+    neutral:
+      n_days: 2520
+      n_signal_days: 850
+      mean_return: 0.001858
+      median_return: 0.001402
+      std_return: 0.011694
+      sharpe_ratio: 2.522
+      signal_sharpe: 2.932
+      win_rate: 57.5
+      max_drawdown: -0.1198
+  welch_t_test:
+    t_statistic: 21.562
+    p_value: 0.0
+  newey_west_test:
+    diff_mean: 0.013816
+    t_statistic: 22.249
+    p_value: 0.0
+    maxlags: 7
+  sharpe_diff_bull_minus_bear: 21.591
+- symbol: IWM
+  full_sharpe: 0.402
+  full_return_pct: 142.58
+  num_trades: 646
+  by_regime:
+    bullish_gamma:
+      n_days: 95
+      n_signal_days: 42
+      mean_return: 0.009809
+      median_return: 0.007589
+      std_return: 0.012536
+      sharpe_ratio: 12.421
+      signal_sharpe: 10.649
+      win_rate: 80.0
+      max_drawdown: -0.0134
+    bearish_gamma:
+      n_days: 1213
+      n_signal_days: 281
+      mean_return: -0.004438
+      median_return: -0.004279
+      std_return: 0.01329
+      sharpe_ratio: -5.302
+      signal_sharpe: -8.71
+      win_rate: 36.1
+      max_drawdown: -0.0642
+    neutral:
+      n_days: 3162
+      n_signal_days: 1213
+      mean_return: 0.002106
+      median_return: 0.002203
+      std_return: 0.014519
+      sharpe_ratio: 2.303
+      signal_sharpe: 2.578
+      win_rate: 59.1
+      max_drawdown: -0.1327
+  welch_t_test:
+    t_statistic: 10.62
+    p_value: 0.0
+  newey_west_test:
+    diff_mean: 0.014247
+    t_statistic: 12.457
+    p_value: 0.0
+    maxlags: 7
+  sharpe_diff_bull_minus_bear: 17.723
+hypothesis: MACD+RSI performs better in bullish_gamma (Sharpe diff > 0.2)

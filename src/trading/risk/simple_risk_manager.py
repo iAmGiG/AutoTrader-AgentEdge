@@ -10,6 +10,9 @@ from typing import Optional
 from core.interfaces import RiskManager
 from core.models import AnalysisResult, RiskAssessment, TradeRequest
 
+from src.trading.risk.risk_calculator import check_portfolio_limits
+from src.utils.config_loader import ConfigLoader
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,8 +48,12 @@ class SimpleRiskManager(RiskManager):
             max_position_pct: Warning threshold for large positions (default: 15%)
         """
         self.account = account_service
-        self.default_position_pct = default_position_pct
-        self.max_position_pct = max_position_pct
+        self.config = ConfigLoader()
+
+        self.default_position_pct = self.config.get(
+            "risk.default_position_pct", default_position_pct
+        )
+        self.max_position_pct = self.config.get("risk.max_position_pct", max_position_pct)
 
         logger.info(
             f"SimpleRiskManager initialized: "
@@ -54,7 +61,7 @@ class SimpleRiskManager(RiskManager):
             f"max_warning={max_position_pct}%"
         )
 
-    async def assess(
+    async def assess(  # noqa: C901
         self, request: TradeRequest, analysis: AnalysisResult, user_id: str = "default"
     ) -> RiskAssessment:
         """
@@ -134,6 +141,46 @@ class SimpleRiskManager(RiskManager):
                     f"(>{self.max_position_pct}% threshold)"
                 )
 
+            # Portfolio-level risk checks
+            # Get current positions count and exposure (simplified for MVP)
+            # TODO: Integrate with actual PositionManager when available
+            current_positions_count = 0  # Placeholder - would get from PositionManager
+            current_exposure_pct = 0.0  # Placeholder - would calculate from positions
+
+            # After this trade, what would exposure be?
+            projected_exposure_pct = current_exposure_pct + portfolio_pct
+            projected_positions_count = current_positions_count + 1
+
+            # Check portfolio limits
+            limits_config = {
+                "max_positions": self.config.get("risk.max_positions", 10),
+                "max_exposure_pct": self.config.get("risk.max_exposure_pct", 80.0),
+                "max_single_position_pct": self.max_position_pct,
+            }
+
+            limits_check = check_portfolio_limits(
+                current_positions=projected_positions_count,
+                position_exposure_pct=projected_exposure_pct,
+                largest_position_pct=max(portfolio_pct, current_exposure_pct),
+                limits_config=limits_config,
+            )
+
+            # Add warnings for limit violations
+            if not limits_check.get("max_positions", True):
+                warnings.append(
+                    f"⚠️  Portfolio limit: Would exceed max positions "
+                    f"({projected_positions_count} > {limits_config['max_positions']})"
+                )
+
+            if not limits_check.get("max_exposure", True):
+                warnings.append(
+                    f"⚠️  Portfolio limit: Would exceed max exposure "
+                    f"({projected_exposure_pct:.1f}% > {limits_config['max_exposure_pct']}%)"
+                )
+
+            if not limits_check.get("diversification_ok", True):
+                warnings.append("⚠️  Diversification warning: Position concentration too high")
+
             # Calculate risk metrics (with None guards for stop_loss/take_profit)
             if stop_loss is not None:
                 risk_per_share = abs(entry_price - stop_loss)
@@ -157,9 +204,23 @@ class SimpleRiskManager(RiskManager):
 
             risk_reward_ratio = potential_gain / max_loss_usd if max_loss_usd > 0 else 0.0
 
+            # Determine approval based on portfolio limits and buying power
+            # Block trade if critical limits are violated
+            approved = True
+            if trade_value > buying_power:
+                approved = False
+                logger.warning(f"Trade blocked: insufficient buying power for {ticker}")
+            elif not limits_check.get("max_exposure", True):
+                approved = False
+                logger.warning(f"Trade blocked: would exceed max exposure limit for {ticker}")
+            elif not limits_check.get("max_positions", True):
+                approved = False
+                logger.warning(f"Trade blocked: would exceed max positions limit for {ticker}")
+            # Note: Other warnings (large position, diversification) don't block trades
+
             # Create assessment
             assessment = RiskAssessment(
-                approved=True,  # MVP: Always approve, just warn
+                approved=approved,
                 recommended_quantity=quantity,
                 portfolio_pct=portfolio_pct,
                 max_loss_usd=max_loss_usd,
@@ -180,10 +241,10 @@ class SimpleRiskManager(RiskManager):
 
         except Exception as e:
             logger.error(f"Risk assessment error: {e}", exc_info=True)
-            # Return safe defaults on error
+            # FAIL-SAFE: Block trade on error
             return RiskAssessment(
-                approved=True,
-                recommended_quantity=10,  # Safe fallback
+                approved=False,
+                recommended_quantity=0,
                 portfolio_pct=0.0,
                 max_loss_usd=0.0,
                 risk_reward_ratio=0.0,

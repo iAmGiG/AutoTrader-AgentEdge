@@ -1,0 +1,77 @@
+run_timestamp: '2026-10-13T15:29:50.465673'
+issue: '#545'
+description: Correlation / Dispersion Trading with GEX Regime Overlay
+methodology:
+  strategy: Realized correlation z-score mean reversion
+  index: SPY
+  components:
+  - XLF
+  - XLE
+  - XLK
+  - XLV
+  - QQQ
+  - IWM
+  data_source: equity_prices_daily (realized correlation), options_daily_summary (regime)
+  regime_lag_days: 1
+  fit_period: 2020-01-02 to 2020-12-31
+  test_period: 2021-01-04 to 2023-12-29
+  correlation_lookback: 60 days
+  zscore_lookback: 120 days
+  entry_threshold: 1.5 sigma
+  exit_threshold: 0.5 sigma
+  pnl_model: 'Calibrated: correlation_change * 1.0 (~1% daily vol)'
+  gex_overlay: "Regime-conditional: bearish_gamma \u2192 boost sell-corr, bullish_gamma \u2192 boost buy-corr"
+results:
+- index: SPY
+  components:
+  - XLF
+  - XLE
+  - XLK
+  - XLV
+  - QQQ
+  - IWM
+  fit_period: 2020-01-02 to 2020-12-31
+  test_period: 2021-01-04 to 2023-12-29
+  correlation_stats:
+    mean: 0.834
+    std: 0.081
+    min: 0.7
+    max: 0.954
+    n_obs: 193
+  baseline:
+    sharpe_ratio: -0.076
+    total_return_pct: -3.15
+    max_drawdown_pct: -23.39
+    win_rate_pct: 26.1
+    num_trades: 20
+    volatility_pct: 8.88
+  gex_enhanced:
+    sharpe_ratio: 0.03
+    total_return_pct: -0.52
+    max_drawdown_pct: -22.66
+    win_rate_pct: 24.9
+    num_trades: 20
+    volatility_pct: 9.69
+  sharpe_improvement: 0.107
+  paired_return_test:
+    mean_daily_diff: 3.86e-05
+    t_statistic: 0.665
+    p_value: 0.5058
+    n_days: 752
+    maxlags: 6
+  regime_distribution:
+    bullish_gamma: 290
+    bearish_gamma: 390
+    neutral: 73
+    unknown: 0
+causal_mechanisms:
+  gex_regime_filter:
+    who: Dealer gamma hedging (market makers) across multiple ETFs
+    whom: Cross-asset correlation structure
+    what: "In negative gamma regimes, dealer hedging amplifies idiosyncratic moves in individual sectors\
+      \ \u2192 correlation breaks down \u2192 favors dispersion trades. In positive gamma, dealer dampening\
+      \ synchronizes returns \u2192 correlation increases \u2192 favors convergence trades."
+    evidence:
+    - Bearish gamma regimes show higher realized vol dispersion across sectors
+    - Bullish gamma regimes show tighter cross-asset correlations
+    - GEX regime transitions often coincide with correlation regime shifts

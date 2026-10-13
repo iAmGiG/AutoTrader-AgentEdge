@@ -75,6 +75,7 @@ class OrderValidator:
 
         # Risk limit checks
         self._validate_order_size(qty)
+        self._validate_max_order_value(symbol, qty, price)
 
         # Account-specific checks (require providers)
         if side.lower() == "buy":
@@ -104,6 +105,22 @@ class OrderValidator:
         if qty > max_size:
             raise ValueError(f"Order size {qty} exceeds limit {max_size}")
 
+    def _validate_max_order_value(self, symbol: str, qty: int, price: Optional[float]):
+        """Validate order value doesn't exceed maximum dollar limit."""
+        # Skip if price is not provided
+        if not price or price <= 0:
+            logger.debug("Skipping order value check: No price provided")
+            return
+
+        order_value = qty * price
+        max_value = self.risk_limits.get("max_order_value", 50000)  # Default $50k
+
+        if order_value > max_value:
+            raise ValueError(
+                f"Order value ${order_value:,.2f} exceeds limit ${max_value:,.2f} "
+                f"({qty} shares @ ${price:.2f})"
+            )
+
     def _validate_buying_power(self, symbol: str, qty: int, price: Optional[float]):
         """Validate sufficient buying power for buy orders."""
         if not self.account_provider:
@@ -112,9 +129,15 @@ class OrderValidator:
 
         try:
             account = self.account_provider()
-            estimated_cost = qty * (price or 100.0)  # Conservative estimate if no price
 
-            buying_power = account.get("buying_power", 0)
+            # Skip check if price is not provided to avoid arbitrary guessing
+            if not price or price <= 0:
+                logger.debug("Skipping buying power check: No price provided")
+                return
+
+            estimated_cost = qty * price
+            buying_power = float(account.get("buying_power", 0))
+
             if estimated_cost > buying_power:
                 raise ValueError(
                     f"Estimated cost ${estimated_cost:,.2f} exceeds buying power "

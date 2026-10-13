@@ -330,6 +330,18 @@ class AlpacaOrderTool:
                 },
             }
 
+    def check_market_hours(self, extended_hours: bool = False) -> Dict[str, Any]:
+        """
+        Check if market is currently open.
+
+        Args:
+            extended_hours: Include pre-market and after-hours
+
+        Returns:
+            Dict with market status information
+        """
+        return is_market_hours(extended_hours)
+
     # Inherit all read-only methods from account tool
     def get_account_status(self) -> Dict[str, Any]:
         """Get account status (inherited from account monitor)."""

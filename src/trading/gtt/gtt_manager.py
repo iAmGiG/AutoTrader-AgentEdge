@@ -13,14 +13,16 @@ Provides:
 
 import json
 import logging
+import os
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from src.utils.date_utils import now_iso, parse_date_string
-from src.utils.state_paths import get_user_db_path
+from src.utils.config_loader import ConfigLoader
+from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
+from src.utils.state_paths import STATE_DIR_ENV, get_user_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +83,7 @@ class GTTTrigger:
             return False
         try:
             exp = parse_date_string(self.expiration_date)
-            return datetime.now() > exp
+            return get_datetime_now() > exp
         except Exception:
             return False
 
@@ -135,10 +137,17 @@ class GTTManager:
         Initialize GTT manager.
 
         Args:
-            db_path: Path to SQLite database (default: state/user.db)
+            db_path: Path to SQLite database (default: from config or state/user.db)
         """
         if db_path is None:
-            db_path = get_user_db_path()
+            if os.environ.get(STATE_DIR_ENV):
+                # Explicit override (e.g. the test suite's temp dir) wins over the config
+                db_path = get_user_db_path()
+            else:
+                config = ConfigLoader()
+                state_dir = config.get("paths.state_dir", "state")
+                os.makedirs(state_dir, exist_ok=True)
+                db_path = os.path.join(state_dir, "user.db")
 
         self._db_path = db_path
         self._init_database()
@@ -239,7 +248,7 @@ class GTTManager:
             # Calculate expiration date
             expiration_date = None
             if expiration_days:
-                exp = datetime.now() + timedelta(days=expiration_days)
+                exp = get_datetime_now() + timedelta(days=expiration_days)
                 expiration_date = exp.isoformat()
 
             # Serialize action config
@@ -441,6 +450,7 @@ class GTTManager:
 
         Increments trigger_count and sets last_triggered_at.
         Auto-disables if max_triggers reached.
+        Cancels OCO group partners if applicable.
 
         Args:
             trigger_id: ID of trigger that fired
@@ -467,6 +477,16 @@ class GTTManager:
             )
             conn.commit()
             conn.close()
+
+            # OCO: Cancel partner triggers in same group
+            if trigger.oco_group_id:
+                disabled_count = self.disable_oco_group(
+                    trigger.oco_group_id, except_trigger_id=trigger_id
+                )
+                if disabled_count > 0:
+                    logger.info(
+                        f"GTT trigger {trigger_id} fired - cancelled {disabled_count} OCO partner(s)"
+                    )
 
             # Auto-disable if max reached
             if trigger.max_triggers and new_count >= trigger.max_triggers:

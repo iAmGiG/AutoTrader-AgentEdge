@@ -829,3 +829,110 @@ exit:
     \  /backup export TABLE   - Export a table of state/user.db to JSON in state/exports/\n\
     \  /backup status         - Show backup status\n\n\
     Backups are stored in state/backups/. Configuration YAML files are not included."
+
+# Slash Commands (Issue #506, #507, #508)
+/gtt:
+  category: Configuration
+  description: GTT order management (Issue #506)
+  usage: /gtt {list|create|summary|status|delete|cancel|enable|disable} [args]
+  examples:
+  - /gtt
+  - /gtt list
+  - /gtt create AAPL above 200
+  - /gtt create SPY below 450 breakout watch
+  - /gtt summary
+  - /gtt status <id>
+  - /gtt delete <id>
+  - /gtt cancel <id>
+  - /gtt enable <id>
+  - /gtt disable <id>
+  aliases:
+  - gtt
+  tags:
+  - configuration
+  - orders
+  - gtt
+  - slash-command
+  related:
+  - show orders
+  - cancel
+  details: "Manage Good-Till-Triggered persistent order triggers.\n\nSubcommands:\n\
+    \  create SYM COND VAL [notes] - Create trigger\n\
+    \  list              - Show all GTT triggers\n\
+    \  summary           - Show GTT summary with counts\n\
+    \  status <id>       - Show trigger details\n\
+    \  delete <id>       - Delete a trigger\n\
+    \  cancel <id>       - Alias for delete\n\
+    \  enable <id>       - Enable a disabled trigger\n\
+    \  disable <id>      - Disable a trigger\n\n\
+    Conditions: above, below, gain, loss, trailing\n\
+    GTT triggers persist across sessions and execute when conditions are met."
+
+/watchlist:
+  category: Configuration
+  description: Watchlist management (Issue #507)
+  usage: /watchlist {list|add|remove|show|create|limits|scanner} [args]
+  examples:
+  - /watchlist
+  - /watchlist list
+  - /watchlist add AAPL
+  - /watchlist add MSFT tech
+  - /watchlist remove NVDA
+  - /watchlist show tech
+  - /watchlist create growth High growth stocks
+  - /watchlist limits
+  - /watchlist scanner
+  aliases:
+  - wl
+  tags:
+  - configuration
+  - watchlist
+  - scanner
+  - slash-command
+  related:
+  - show watchlist
+  - morning-routine
+  details: "Manage watchlists for trading opportunities.\n\nSubcommands:\n\
+    \  list              - Show all watchlists\n\
+    \  add <sym> [name]  - Add symbol (default: 'default')\n\
+    \  remove <sym> [name] - Remove symbol from watchlist\n\
+    \  show <name>       - Show specific watchlist details\n\
+    \  create <name> [desc] - Create a new watchlist\n\
+    \  limits            - Show watchlist statistics\n\
+    \  scanner           - Show ScannerAgent tier status\n\n\
+    User watchlists are for personal tracking.\n\
+    Scanner tiers are for automated scan prioritization."
+
+/partial:
+  category: Trading
+  description: Partial exit management (Issue #508)
+  usage: /partial {list|summary|active|levels|modify} [args]
+  examples:
+  - /partial
+  - /partial list
+  - /partial summary
+  - /partial AAPL
+  - /partial levels AAPL
+  - /partial active
+  - /partial modify AAPL 1 210.50
+  aliases:
+  - pe
+  tags:
+  - trading
+  - exits
+  - partial
+  - slash-command
+  related:
+  - show positions
+  - sell
+  - show portfolio
+  details: "Manage multi-target partial position exits.\n\nSubcommands:\n\
+    \  list              - Show all partial exit plans\n\
+    \  summary           - Summary of active targets\n\
+    \  active            - List only active targets\n\
+    \  levels <symbol>   - Show exit target levels for position\n\
+    \  modify <sym> <n> <price> - Modify target n exit price\n\
+    \  <symbol>          - Show plan for specific symbol\n\n\
+    Partial exits split positions across multiple targets:\n\
+    - Target 1: Profit-taking at fixed level (limit order)\n\
+    - Target 2: Trailing stop for remaining position"

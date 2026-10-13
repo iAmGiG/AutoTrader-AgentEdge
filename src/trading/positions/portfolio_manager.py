@@ -212,7 +212,7 @@ class PortfolioManager:
     def _load_config(self, config_path: Optional[str] = None) -> PortfolioConfig:
         """Load configuration from YAML file."""
         if config_path is None:
-            config_dir = os.path.join(os.path.dirname(__file__), "../../config_defaults")
+            config_dir = os.path.join(os.path.dirname(__file__), "../../../config_defaults")
             config_path = os.path.join(config_dir, "portfolio_config.yaml")
 
         if os.path.exists(config_path):

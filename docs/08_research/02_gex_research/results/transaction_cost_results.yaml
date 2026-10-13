@@ -1,0 +1,134 @@
+run_timestamp: '2026-10-13T15:37:24.258878'
+issue: '#541'
+description: Transaction Cost Sensitivity Analysis
+methodology:
+  cost_levels_bps:
+  - 0
+  - 1
+  - 2
+  - 5
+  - 10
+  - 25
+  - 50
+  strategies:
+  - dispersion
+  - delta_neutral
+  - pairs_trading
+  fit_period: 2020-01-02 to 2021-12-31
+  test_period: 2022-01-03 to 2023-12-29
+  initial_capital: 100000
+results:
+  dispersion:
+    results:
+    - commission_bps: 0
+      sharpe: -0.997
+      total_return_pct: -14.03
+      max_drawdown_pct: -23.3
+      num_trades: 10
+    - commission_bps: 1
+      sharpe: -1.004
+      total_return_pct: -14.11
+      max_drawdown_pct: -23.35
+      num_trades: 10
+    - commission_bps: 2
+      sharpe: -1.01
+      total_return_pct: -14.2
+      max_drawdown_pct: -23.39
+      num_trades: 10
+    - commission_bps: 5
+      sharpe: -1.031
+      total_return_pct: -14.46
+      max_drawdown_pct: -23.53
+      num_trades: 10
+    - commission_bps: 10
+      sharpe: -1.065
+      total_return_pct: -14.88
+      max_drawdown_pct: -23.76
+      num_trades: 10
+    - commission_bps: 25
+      sharpe: -1.164
+      total_return_pct: -16.15
+      max_drawdown_pct: -24.45
+      num_trades: 10
+    - commission_bps: 50
+      sharpe: -1.324
+      total_return_pct: -18.23
+      max_drawdown_pct: -25.77
+      num_trades: 10
+    breakeven_bps: 0.0
+  delta_neutral:
+    results:
+    - commission_bps: 0
+      sharpe: 1.523
+      total_return_pct: 12.04
+      max_drawdown_pct: -1.03
+      num_trades: 8
+    - commission_bps: 1
+      sharpe: 1.517
+      total_return_pct: 11.95
+      max_drawdown_pct: -1.03
+      num_trades: 8
+    - commission_bps: 2
+      sharpe: 1.511
+      total_return_pct: 11.86
+      max_drawdown_pct: -1.03
+      num_trades: 8
+    - commission_bps: 5
+      sharpe: 1.492
+      total_return_pct: 11.59
+      max_drawdown_pct: -1.03
+      num_trades: 8
+    - commission_bps: 10
+      sharpe: 1.458
+      total_return_pct: 11.14
+      max_drawdown_pct: -1.03
+      num_trades: 8
+    - commission_bps: 25
+      sharpe: 1.347
+      total_return_pct: 9.81
+      max_drawdown_pct: -1.03
+      num_trades: 8
+    - commission_bps: 50
+      sharpe: 1.124
+      total_return_pct: 7.63
+      max_drawdown_pct: -1.03
+      num_trades: 8
+    breakeven_bps: .inf
+  pairs_trading:
+    results:
+    - commission_bps: 0
+      sharpe: 0.081
+      total_return_pct: 0.64
+      max_drawdown_pct: -8.77
+      num_trades: 15
+    - commission_bps: 1
+      sharpe: 0.07
+      total_return_pct: 0.49
+      max_drawdown_pct: -8.88
+      num_trades: 15
+    - commission_bps: 2
+      sharpe: 0.06
+      total_return_pct: 0.34
+      max_drawdown_pct: -8.99
+      num_trades: 15
+    - commission_bps: 5
+      sharpe: 0.027
+      total_return_pct: -0.11
+      max_drawdown_pct: -9.32
+      num_trades: 15
+    - commission_bps: 10
+      sharpe: -0.026
+      total_return_pct: -0.86
+      max_drawdown_pct: -9.86
+      num_trades: 15
+    - commission_bps: 25
+      sharpe: -0.182
+      total_return_pct: -3.07
+      max_drawdown_pct: -11.48
+      num_trades: 15
+    - commission_bps: 50
+      sharpe: -0.428
+      total_return_pct: -6.66
+      max_drawdown_pct: -14.12
+      num_trades: 15
+    breakeven_bps: 7.5
