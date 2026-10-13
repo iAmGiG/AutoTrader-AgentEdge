@@ -20,6 +20,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.backtesting.research_backtester import ResearchBacktester
+from src.backtesting.research_cli import parse_window_args
 from src.backtesting.signals.delta_neutral_signal import DeltaNeutralSignal
 
 
@@ -46,6 +47,7 @@ TEST_START = "2022-01-03"
 TEST_END = "2023-12-29"
 
 RESULTS_DIR = Path("docs/08_research/03_gex_research")
+OUTPUT_NAME = "delta_neutral_results.yaml"
 
 
 def run_delta_neutral_experiment(  # noqa: C901
@@ -213,12 +215,32 @@ def run_delta_neutral_experiment(  # noqa: C901
 
 
 def main():
+    global FIT_START, FIT_END, TEST_START, TEST_END, SYMBOLS, OUTPUT_NAME
+    args = parse_window_args(
+        "DeltaNeutral GEX study (#576)",
+        {
+            "fit_start": FIT_START,
+            "fit_end": FIT_END,
+            "test_start": TEST_START,
+            "test_end": TEST_END,
+            "symbols": SYMBOLS,
+        },
+        "delta_neutral_results.yaml",
+    )
+    FIT_START = args.fit_start
+    FIT_END = args.fit_end
+    TEST_START = args.test_start
+    TEST_END = args.test_end
+    SYMBOLS = args.symbols
+    OUTPUT_NAME = args.output
+
     print("=" * 60)
     print("  DELTA NEUTRAL / LONG VOLATILITY — GEX REGIME OVERLAY (#544)")
     print("=" * 60)
     print(f"  Timestamp: {datetime.datetime.now().isoformat()}")
 
     bt = ResearchBacktester(initial_capital=100_000, commission_bps=2.0)
+    bt.regime_lag = args.regime_lag
 
     all_results = []
     for symbol in SYMBOLS:
@@ -248,6 +270,7 @@ def main():
         "methodology": {
             "strategy": "IV-RV spread mean reversion",
             "data_source": "options_daily_summary (iv_hv_spread_30, hv_30, realized_vol_30)",
+            "regime_lag_days": args.regime_lag,
             "fit_period": f"{FIT_START} to {FIT_END}",
             "test_period": f"{TEST_START} to {TEST_END}",
             "entry_threshold": "Adaptive (1 std of IS spread)",
@@ -273,7 +296,7 @@ def main():
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    yaml_path = RESULTS_DIR / "delta_neutral_results.yaml"
+    yaml_path = RESULTS_DIR / OUTPUT_NAME
     with open(yaml_path, "w") as f:
         yaml.dump(_to_native(output), f, default_flow_style=False, sort_keys=False, width=100)
     print(f"\n  Results saved to {yaml_path}")

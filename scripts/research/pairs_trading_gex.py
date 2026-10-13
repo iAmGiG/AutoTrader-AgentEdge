@@ -22,6 +22,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.backtesting.research_backtester import ResearchBacktester
+from src.backtesting.research_cli import parse_window_args
 from src.backtesting.signals.pairs_trading_signal import PairsTradingSignal
 
 
@@ -48,6 +49,7 @@ TEST_START = "2022-01-03"
 TEST_END = "2023-12-29"
 
 RESULTS_DIR = Path("docs/08_research/03_gex_research")
+OUTPUT_NAME = "pairs_trading_results.yaml"
 
 
 def run_pair_experiment(
@@ -185,6 +187,23 @@ def run_pair_experiment(
 
 
 def main():
+    global FIT_START, FIT_END, TEST_START, TEST_END, OUTPUT_NAME
+    args = parse_window_args(
+        "Pairs GEX study (#576)",
+        {
+            "fit_start": FIT_START,
+            "fit_end": FIT_END,
+            "test_start": TEST_START,
+            "test_end": TEST_END,
+        },
+        "pairs_trading_results.yaml",
+    )
+    FIT_START = args.fit_start
+    FIT_END = args.fit_end
+    TEST_START = args.test_start
+    TEST_END = args.test_end
+    OUTPUT_NAME = args.output
+
     print("=" * 60)
     print("  PAIRS TRADING MEAN REVERSION — GEX REGIME OVERLAY (#546)")
     print("=" * 60)
@@ -194,6 +213,7 @@ def main():
     print(f"  Test: {TEST_START} → {TEST_END}")
 
     bt = ResearchBacktester(initial_capital=100_000, commission_bps=2.0)
+    bt.regime_lag = args.regime_lag
 
     all_results = []
     for sym_a, sym_b in PAIRS:
@@ -217,6 +237,7 @@ def main():
         "description": "Pairs Trading Mean Reversion with GEX Regime Overlay",
         "methodology": {
             "strategy": "Cointegration-based pairs trading (Engle-Granger)",
+            "regime_lag_days": args.regime_lag,
             "fit_period": f"{FIT_START} to {FIT_END}",
             "test_period": f"{TEST_START} to {TEST_END}",
             "pairs": [[a, b] for a, b in PAIRS],
@@ -245,7 +266,7 @@ def main():
 
     # Save YAML
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    yaml_path = RESULTS_DIR / "pairs_trading_results.yaml"
+    yaml_path = RESULTS_DIR / OUTPUT_NAME
     with open(yaml_path, "w") as f:
         yaml.dump(_to_native(output), f, default_flow_style=False, sort_keys=False, width=100)
     print(f"\n  Results saved to {yaml_path}")

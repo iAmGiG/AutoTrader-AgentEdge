@@ -21,6 +21,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.backtesting.research_backtester import ResearchBacktester
+from src.backtesting.research_cli import parse_window_args
 from src.backtesting.signals.dispersion_signal import DispersionSignal
 
 
@@ -49,6 +50,7 @@ TEST_START = "2021-01-04"
 TEST_END = "2023-12-29"
 
 RESULTS_DIR = Path("docs/08_research/03_gex_research")
+OUTPUT_NAME = "dispersion_results.yaml"
 
 
 def run_dispersion_experiment(  # noqa: C901
@@ -213,12 +215,30 @@ def run_dispersion_experiment(  # noqa: C901
 
 
 def main():
+    global FIT_START, FIT_END, TEST_START, TEST_END, OUTPUT_NAME
+    args = parse_window_args(
+        "Dispersion GEX study (#576)",
+        {
+            "fit_start": FIT_START,
+            "fit_end": FIT_END,
+            "test_start": TEST_START,
+            "test_end": TEST_END,
+        },
+        "dispersion_results.yaml",
+    )
+    FIT_START = args.fit_start
+    FIT_END = args.fit_end
+    TEST_START = args.test_start
+    TEST_END = args.test_end
+    OUTPUT_NAME = args.output
+
     print("=" * 60)
     print("  CORRELATION / DISPERSION TRADING — GEX REGIME OVERLAY (#545)")
     print("=" * 60)
     print(f"  Timestamp: {datetime.datetime.now().isoformat()}")
 
     bt = ResearchBacktester(initial_capital=100_000, commission_bps=2.0)
+    bt.regime_lag = args.regime_lag
 
     try:
         result = run_dispersion_experiment(bt, FIT_START, FIT_END, TEST_START, TEST_END)
@@ -245,6 +265,7 @@ def main():
             "index": INDEX,
             "components": COMPONENTS,
             "data_source": "equity_prices_daily (realized correlation), options_daily_summary (regime)",
+            "regime_lag_days": args.regime_lag,
             "fit_period": f"{FIT_START} to {FIT_END}",
             "test_period": f"{TEST_START} to {TEST_END}",
             "correlation_lookback": "60 days",
@@ -273,7 +294,7 @@ def main():
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    yaml_path = RESULTS_DIR / "dispersion_results.yaml"
+    yaml_path = RESULTS_DIR / OUTPUT_NAME
     with open(yaml_path, "w") as f:
         yaml.dump(_to_native(output), f, default_flow_style=False, sort_keys=False, width=100)
     print(f"\n  Results saved to {yaml_path}")

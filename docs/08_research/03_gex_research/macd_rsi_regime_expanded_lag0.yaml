@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T12:38:42.508641'
+run_timestamp: '2026-10-13T13:06:26.448244'
 issue: '#531'
 description: MACD+RSI in Positive Gamma Re-validation
 methodology:
@@ -53,6 +53,11 @@ results:
   welch_t_test:
     t_statistic: 23.438
     p_value: 0.0
+  newey_west_test:
+    diff_mean: 0.007855
+    t_statistic: 24.524
+    p_value: 0.0
+    maxlags: 8
   sharpe_diff_bull_minus_bear: 15.064
 - symbol: QQQ
   full_sharpe: 0.603
@@ -92,6 +97,11 @@ results:
   welch_t_test:
     t_statistic: 21.562
     p_value: 0.0
+  newey_west_test:
+    diff_mean: 0.013816
+    t_statistic: 22.249
+    p_value: 0.0
+    maxlags: 7
   sharpe_diff_bull_minus_bear: 21.591
 - symbol: IWM
   full_sharpe: 0.402
@@ -131,5 +141,10 @@ results:
   welch_t_test:
     t_statistic: 10.62
     p_value: 0.0
+  newey_west_test:
+    diff_mean: 0.014247
+    t_statistic: 12.457
+    p_value: 0.0
+    maxlags: 7
   sharpe_diff_bull_minus_bear: 17.723
 hypothesis: MACD+RSI performs better in bullish_gamma (Sharpe diff > 0.2)

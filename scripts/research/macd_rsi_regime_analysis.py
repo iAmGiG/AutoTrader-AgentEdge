@@ -31,6 +31,7 @@ from scipy import stats as sp_stats
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.backtesting.research_backtester import ResearchBacktester
+from src.backtesting.research_cli import newey_west_diff
 from src.backtesting.signals.macd_rsi_signal import MACDRSISignal
 
 
@@ -57,7 +58,7 @@ REGIME_LAG = 1  # 0 = same-day regime (look-ahead, comparison only)
 RESULTS_DIR = Path("docs/08_research/03_gex_research")
 
 
-def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
+def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:  # noqa: C901
     """Run MACD+RSI analysis for one symbol, stratified by GEX regime."""
     print(f"\n  --- {symbol} ---")
 
@@ -104,6 +105,7 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
     # For each test day: regime + whether signal was active + return
     regime_returns = {"bullish_gamma": [], "bearish_gamma": [], "neutral": [], "all": []}
     regime_signal_returns = {"bullish_gamma": [], "bearish_gamma": [], "neutral": []}
+    ordered = []  # (return, regime) in date order for the Newey-West test
 
     test_mask = prices.index >= pd.Timestamp(TEST_START)
     for i in range(len(prices)):
@@ -120,6 +122,7 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
 
         regime_returns[regime].append(ret)
         regime_returns["all"].append(ret)
+        ordered.append((ret, regime))
 
         # Signal-conditional return: return when indicator says BUY
         if bool(consensus.iloc[i]):
@@ -169,6 +172,16 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
         t_test = {"t_statistic": round(float(t_stat), 3), "p_value": round(float(p_val), 4)}
         print(f"    Welch t-test (bull vs bear): t={t_stat:.3f}, p={p_val:.4f}")
 
+    # Newey-West (HAC) test: bullish vs bearish, accounts for autocorrelation/persistence
+    nw_test = None
+    bb = [(r, g == "bullish_gamma") for r, g in ordered if g in ("bullish_gamma", "bearish_gamma")]
+    if bb:
+        nw_test = newey_west_diff([r for r, _ in bb], [f for _, f in bb])
+    if nw_test:
+        print(
+            f"    Newey-West (bull - bear mean): t={nw_test['t_statistic']}, p={nw_test['p_value']}"
+        )
+
     # Sharpe difference
     bull_sharpe = regime_metrics.get("bullish_gamma", {}).get("sharpe_ratio", 0)
     bear_sharpe = regime_metrics.get("bearish_gamma", {}).get("sharpe_ratio", 0)
@@ -181,28 +194,47 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
         "num_trades": results.num_trades,
         "by_regime": regime_metrics,
         "welch_t_test": t_test,
+        "newey_west_test": nw_test,
         "sharpe_diff_bull_minus_bear": round(sharpe_diff, 3),
     }
 
 
 def main():
-    global SYMBOLS, TEST_START, TEST_END, WARMUP_START, REGIME_LAG
     parser = argparse.ArgumentParser(description="MACD+RSI regime re-validation (#531, #548)")
     parser.add_argument("--symbols", nargs="+", default=SYMBOLS)
     parser.add_argument("--start", default=TEST_START)
     parser.add_argument("--end", default=TEST_END)
     parser.add_argument("--warmup-start", default=WARMUP_START)
-    parser.add_argument("--regime-lag", type=int, default=REGIME_LAG)
-    parser.add_argument("--output", default="macd_rsi_regime_results.yaml")
+    parser.add_argument(
+        "--regime-lags",
+        type=int,
+        nargs="+",
+        default=[REGIME_LAG],
+        help="regime lags to report; 0 = same-day (look-ahead, comparison only)",
+    )
+    parser.add_argument(
+        "--output",
+        default="macd_rsi_regime_results.yaml",
+        help="output file; '{lag}' is replaced when several lags are given",
+    )
     args = parser.parse_args()
-    SYMBOLS, TEST_START, TEST_END = args.symbols, args.start, args.end
-    WARMUP_START, REGIME_LAG = args.warmup_start, args.regime_lag
+    for lag in args.regime_lags:
+        out = args.output.replace("{lag}", str(lag))
+        if len(args.regime_lags) > 1 and "{lag}" not in args.output:
+            out = args.output.replace(".yaml", f"_lag{lag}.yaml")
+        run(args.symbols, args.start, args.end, args.warmup_start, lag, out)
+
+
+def run(symbols, start, end, warmup_start, lag, output_name):
+    global SYMBOLS, TEST_START, TEST_END, WARMUP_START, REGIME_LAG
+    SYMBOLS, TEST_START, TEST_END = symbols, start, end
+    WARMUP_START, REGIME_LAG = warmup_start, lag
 
     print("=" * 60)
     print("  MACD+RSI IN POSITIVE GAMMA RE-VALIDATION (#531)")
     print("=" * 60)
     print(f"  Timestamp: {datetime.datetime.now().isoformat()}")
-    print(f"  Test: {TEST_START} → {TEST_END}")
+    print(f"  Test: {TEST_START} → {TEST_END}   regime lag: {REGIME_LAG}")
 
     bt = ResearchBacktester(initial_capital=100_000, commission_bps=2.0)
     results = []
@@ -253,7 +285,7 @@ def main():
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    yaml_path = RESULTS_DIR / args.output
+    yaml_path = RESULTS_DIR / output_name
     with open(yaml_path, "w") as f:
         yaml.dump(_to_native(output), f, default_flow_style=False, sort_keys=False, width=100)
     print(f"\n  Results saved to {yaml_path}")

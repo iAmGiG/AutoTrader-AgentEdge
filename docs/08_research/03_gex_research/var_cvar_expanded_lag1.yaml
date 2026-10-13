@@ -1,0 +1,310 @@
+run_timestamp: '2026-10-13T13:08:11.287108'
+issue: '#543'
+description: VaR vs CVaR Risk Metrics with GEX Regime Stratification
+methodology:
+  metrics:
+  - Historical VaR
+  - CVaR (Expected Shortfall)
+  - Parametric VaR
+  - Cornish-Fisher VaR
+  - ES/VaR ratio
+  confidence: 95%
+  regime_lag_days: 1
+  symbols:
+  - SPY
+  - QQQ
+  - IWM
+  period: 2008-01-02 to 2026-10-09
+  lookbacks:
+  - 20
+  - 60
+  - 120
+  - 252
+  regime_source: options_daily_summary.regime
+results:
+  SPY:
+    full_sample:
+      historical_var: 0.018104
+      cvar: 0.030347
+      parametric_var: 0.02004
+      cornish_fisher_var: 0.016307
+      es_var_ratio: 1.6763
+      n_obs: 4722
+      mean_return: 0.000434
+      std_return: 0.012447
+      skewness: 0.0122
+      kurtosis: 14.6882
+    by_regime:
+      bullish_gamma:
+        historical_var: 0.010452
+        cvar: 0.017154
+        parametric_var: 0.010673
+        cornish_fisher_var: 0.011796
+        es_var_ratio: 1.6412
+        n_obs: 1668
+        mean_return: 0.000327
+        std_return: 0.006687
+        skewness: -1.1575
+        kurtosis: 6.7303
+      bearish_gamma:
+        historical_var: 0.022054
+        cvar: 0.034936
+        parametric_var: 0.023477
+        cornish_fisher_var: 0.022495
+        es_var_ratio: 1.5841
+        n_obs: 2067
+        mean_return: 0.000618
+        std_return: 0.014649
+        skewness: -0.3238
+        kurtosis: 7.7834
+      neutral:
+        historical_var: 0.022021
+        cvar: 0.034868
+        parametric_var: 0.023972
+        cornish_fisher_var: 0.014949
+        es_var_ratio: 1.5834
+        n_obs: 987
+        mean_return: 0.000228
+        std_return: 0.014712
+        skewness: 0.8606
+        kurtosis: 17.5778
+    by_lookback:
+      20d:
+        historical_var: 0.007214
+        cvar: 0.007441
+        parametric_var: 0.009398
+        cornish_fisher_var: 0.008174
+        es_var_ratio: 1.0315
+        n_obs: 20
+        mean_return: 0.000945
+        std_return: 0.006288
+        skewness: 0.6809
+        kurtosis: -0.3794
+      60d:
+        historical_var: 0.008475
+        cvar: 0.012545
+        parametric_var: 0.010856
+        cornish_fisher_var: 0.00997
+        es_var_ratio: 1.4802
+        n_obs: 60
+        mean_return: 0.000631
+        std_return: 0.006983
+        skewness: 0.4306
+        kurtosis: 0.0486
+      120d:
+        historical_var: 0.012045
+        cvar: 0.016054
+        parametric_var: 0.011648
+        cornish_fisher_var: 0.011838
+        es_var_ratio: 1.3328
+        n_obs: 120
+        mean_return: 0.000812
+        std_return: 0.007575
+        skewness: -0.1357
+        kurtosis: 0.6533
+      252d:
+        historical_var: 0.014209
+        cvar: 0.017944
+        parametric_var: 0.012875
+        cornish_fisher_var: 0.013048
+        es_var_ratio: 1.2628
+        n_obs: 252
+        mean_return: 0.000611
+        std_return: 0.008199
+        skewness: -0.1448
+        kurtosis: 0.9785
+    n_days: 4722
+  QQQ:
+    full_sample:
+      historical_var: 0.022659
+      cvar: 0.033585
+      parametric_var: 0.022525
+      cornish_fisher_var: 0.020586
+      es_var_ratio: 1.4822
+      n_obs: 4722
+      mean_return: 0.000672
+      std_return: 0.014102
+      skewness: -0.0503
+      kurtosis: 7.5171
+    by_regime:
+      bullish_gamma:
+        historical_var: 0.015217
+        cvar: 0.019074
+        parametric_var: 0.013322
+        cornish_fisher_var: 0.012882
+        es_var_ratio: 1.2535
+        n_obs: 525
+        mean_return: 0.001103
+        std_return: 0.00877
+        skewness: 0.0372
+        kurtosis: 1.9596
+      bearish_gamma:
+        historical_var: 0.028699
+        cvar: 0.041881
+        parametric_var: 0.029716
+        cornish_fisher_var: 0.029068
+        es_var_ratio: 1.4593
+        n_obs: 866
+        mean_return: 0.000735
+        std_return: 0.018513
+        skewness: -0.2509
+        kurtosis: 5.2114
+      neutral:
+        historical_var: 0.018865
+        cvar: 0.027589
+        parametric_var: 0.018231
+        cornish_fisher_var: 0.017498
+        es_var_ratio: 1.4625
+        n_obs: 2519
+        mean_return: 0.000684
+        std_return: 0.011499
+        skewness: -0.0888
+        kurtosis: 4.4021
+    by_lookback:
+      20d:
+        historical_var: 0.01084
+        cvar: 0.013395
+        parametric_var: 0.013439
+        cornish_fisher_var: 0.011528
+        es_var_ratio: 1.2358
+        n_obs: 20
+        mean_return: 0.00253
+        std_return: 0.009708
+        skewness: 0.62
+        kurtosis: 0.6623
+      60d:
+        historical_var: 0.015125
+        cvar: 0.018763
+        parametric_var: 0.017711
+        cornish_fisher_var: 0.015076
+        es_var_ratio: 1.2405
+        n_obs: 60
+        mean_return: 0.001102
+        std_return: 0.011437
+        skewness: 0.7186
+        kurtosis: 0.8098
+      120d:
+        historical_var: 0.01898
+        cvar: 0.026544
+        parametric_var: 0.020923
+        cornish_fisher_var: 0.021032
+        es_var_ratio: 1.3985
+        n_obs: 120
+        mean_return: 0.001339
+        std_return: 0.013535
+        skewness: -0.097
+        kurtosis: 0.9608
+      252d:
+        historical_var: 0.019056
+        cvar: 0.02496
+        parametric_var: 0.019758
+        cornish_fisher_var: 0.019971
+        es_var_ratio: 1.3098
+        n_obs: 252
+        mean_return: 0.000896
+        std_return: 0.012557
+        skewness: -0.118
+        kurtosis: 0.8096
+    n_days: 4722
+  IWM:
+    full_sample:
+      historical_var: 0.02378
+      cvar: 0.036654
+      parametric_var: 0.02526
+      cornish_fisher_var: 0.024687
+      es_var_ratio: 1.5414
+      n_obs: 4722
+      mean_return: 0.0004
+      std_return: 0.0156
+      skewness: -0.3217
+      kurtosis: 6.2548
+    by_regime:
+      bullish_gamma:
+        historical_var: 0.019772
+        cvar: 0.0314
+        parametric_var: 0.022579
+        cornish_fisher_var: 0.022496
+        es_var_ratio: 1.5881
+        n_obs: 97
+        mean_return: -0.001669
+        std_return: 0.012713
+        skewness: -0.0889
+        kurtosis: 1.5717
+      bearish_gamma:
+        historical_var: 0.023953
+        cvar: 0.033136
+        parametric_var: 0.023911
+        cornish_fisher_var: 0.023878
+        es_var_ratio: 1.3834
+        n_obs: 1277
+        mean_return: 0.000422
+        std_return: 0.014794
+        skewness: -0.2153
+        kurtosis: 3.1004
+      neutral:
+        historical_var: 0.023749
+        cvar: 0.038132
+        parametric_var: 0.025818
+        cornish_fisher_var: 0.02512
+        es_var_ratio: 1.6056
+        n_obs: 3348
+        mean_return: 0.000451
+        std_return: 0.015971
+        skewness: -0.3604
+        kurtosis: 7.1233
+    by_lookback:
+      20d:
+        historical_var: 0.013212
+        cvar: 0.018419
+        parametric_var: 0.013502
+        cornish_fisher_var: 0.014557
+        es_var_ratio: 1.3941
+        n_obs: 20
+        mean_return: -0.001726
+        std_return: 0.007159
+        skewness: -0.5143
+        kurtosis: -0.305
+      60d:
+        historical_var: 0.013517
+        cvar: 0.016152
+        parametric_var: 0.014776
+        cornish_fisher_var: 0.01446
+        es_var_ratio: 1.195
+        n_obs: 60
+        mean_return: -0.000931
+        std_return: 0.008417
+        skewness: 0.1626
+        kurtosis: -0.4541
+      120d:
+        historical_var: 0.013677
+        cvar: 0.020642
+        parametric_var: 0.01664
+        cornish_fisher_var: 0.016456
+        es_var_ratio: 1.5093
+        n_obs: 120
+        mean_return: 9.9e-05
+        std_return: 0.010177
+        skewness: 0.0074
+        kurtosis: 0.7941
+      252d:
+        historical_var: 0.018437
+        cvar: 0.023173
+        parametric_var: 0.018779
+        cornish_fisher_var: 0.018554
+        es_var_ratio: 1.2569
+        n_obs: 252
+        mean_return: 0.000556
+        std_return: 0.011755
+        skewness: 0.0458
+        kurtosis: 0.3051
+    n_days: 4722
+causal_mechanisms:
+  regime_tail_risk:
+    who: Dealer gamma hedging
+    whom: Return distribution tails
+    what: "In bearish gamma, dealer hedging amplifies moves \u2192 fatter tails \u2192 higher ES/VaR ratio.\
+      \ VaR alone understates risk in these regimes."
+    evidence:
+    - ES/VaR ratio should be > 1.26 in bearish_gamma (fat tails)
+    - Cornish-Fisher VaR > Parametric VaR when skewness/kurtosis are non-zero
+    - Lookback sensitivity reveals regime-dependent risk dynamics

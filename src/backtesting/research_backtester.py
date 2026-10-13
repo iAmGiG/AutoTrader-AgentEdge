@@ -46,6 +46,7 @@ class ResearchBacktester:
     def __init__(self, initial_capital: float = 100_000, commission_bps: float = 2.0):
         self.initial_capital = initial_capital
         self.commission_bps = commission_bps
+        self.regime_lag = 1  # GEX regime lag used by get_gex_overlay (0 = look-ahead)
         self._conn = None
 
     def _get_connection(self):
@@ -89,9 +90,10 @@ class ResearchBacktester:
         pivot = raw.pivot(index="trading_date", columns="symbol", values="close")
         return pivot.dropna()
 
-    def get_gex_overlay(self, lag_days: int = 1) -> GEXOverlay:
-        """Create a GEXOverlay connected to this backtester's DB (1-day lag by default)."""
-        return GEXOverlay(self._get_connection(), lag_days=lag_days)
+    def get_gex_overlay(self, lag_days: Optional[int] = None) -> GEXOverlay:
+        """Create a GEXOverlay connected to this backtester's DB (``regime_lag`` by default)."""
+        lag = self.regime_lag if lag_days is None else lag_days
+        return GEXOverlay(self._get_connection(), lag_days=lag)
 
     def run_spread_strategy(
         self,

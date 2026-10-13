@@ -20,6 +20,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.backtesting.research_backtester import ResearchBacktester
+from src.backtesting.research_cli import parse_window_args
 from src.backtesting.risk_metrics import calculate_all_risk_metrics
 
 
@@ -43,6 +44,7 @@ START = "2020-01-02"
 END = "2023-12-29"
 LOOKBACKS = [20, 60, 120, 252]
 RESULTS_DIR = Path("docs/08_research/03_gex_research")
+OUTPUT_NAME = "var_cvar_results.yaml"
 
 
 def run_var_cvar_analysis(bt: ResearchBacktester) -> dict:
@@ -117,12 +119,24 @@ def run_var_cvar_analysis(bt: ResearchBacktester) -> dict:
 
 
 def main():
+    global START, END, SYMBOLS, OUTPUT_NAME
+    args = parse_window_args(
+        "VaR GEX study (#576)",
+        {"start": START, "end": END, "symbols": SYMBOLS},
+        "var_cvar_results.yaml",
+    )
+    START = args.start
+    END = args.end
+    SYMBOLS = args.symbols
+    OUTPUT_NAME = args.output
+
     print("=" * 60)
     print("  VAR vs CVAR RISK METRICS — GEX REGIME ANALYSIS (#543)")
     print("=" * 60)
     print(f"  Timestamp: {datetime.datetime.now().isoformat()}")
 
     bt = ResearchBacktester(initial_capital=100_000)
+    bt.regime_lag = args.regime_lag
 
     try:
         results = run_var_cvar_analysis(bt)
@@ -172,6 +186,7 @@ def main():
                 "ES/VaR ratio",
             ],
             "confidence": "95%",
+            "regime_lag_days": args.regime_lag,
             "symbols": SYMBOLS,
             "period": f"{START} to {END}",
             "lookbacks": LOOKBACKS,
@@ -194,7 +209,7 @@ def main():
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    yaml_path = RESULTS_DIR / "var_cvar_results.yaml"
+    yaml_path = RESULTS_DIR / OUTPUT_NAME
     with open(yaml_path, "w") as f:
         yaml.dump(_to_native(output), f, default_flow_style=False, sort_keys=False, width=100)
     print(f"\n  Results saved to {yaml_path}")
