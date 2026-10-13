@@ -39,6 +39,12 @@ def position_to_entry_side(position_direction: str) -> OrderSide:
     return OrderSide.BUY if position_direction.lower() == "long" else OrderSide.SELL
 
 
+def _side_text(side) -> Optional[str]:
+    """'buy' / 'sell' from an OrderSide enum or string; None when unknown."""
+    text = str(getattr(side, "value", side) or "").lower()
+    return text if text in ("buy", "sell") else None
+
+
 def position_to_exit_side(position_direction: str) -> OrderSide:
     """
     Convert position direction to exit order side.
@@ -357,7 +363,7 @@ class OrderManager:
         new_stop_price: float,
         symbol: str = None,
         qty: int = None,
-        side: str = "sell",
+        side: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Replace an existing stop order with a new stop price.
@@ -370,21 +376,29 @@ class OrderManager:
             new_stop_price: New stop price (must be higher than current for long positions)
             symbol: Symbol (required if not in pending_orders cache)
             qty: Quantity (required if not in pending_orders cache)
-            side: Side of the STOP order (usually 'sell' for long position exit)
+            side: Side of the STOP order. Default: the side of the order being replaced
+                (SELL for a long position's stop, BUY for a short's); 'sell' only if that
+                cannot be determined
 
         Returns:
             Dict with new order details or error
         """
         try:
-            # Get existing order details if not provided
-            if symbol is None or qty is None:
+            # Get existing order details if not provided. The replacement keeps the side of
+            # the stop it replaces; a fixed 'sell' default turned a short's BUY stop into a SELL.
+            if symbol is None or qty is None or side is None:
                 existing_order = self.position_manager.get_order(order_id)
                 if existing_order:
                     symbol = symbol or existing_order.get("symbol")
                     qty = qty or int(existing_order.get("qty", 0))
-                    side = side or existing_order.get("side", "sell")
-                else:
+                    side = side or _side_text(existing_order.get("side"))
+                elif symbol is None or qty is None:
                     return {"error": f"Order {order_id} not found and symbol/qty not provided"}
+            if side is None:
+                logger.warning(
+                    f"Side of stop order {order_id} unknown; assuming 'sell' (long position exit)"
+                )
+                side = "sell"
 
             if not symbol or not qty:
                 return {"error": "Missing symbol or quantity for stop order replacement"}
