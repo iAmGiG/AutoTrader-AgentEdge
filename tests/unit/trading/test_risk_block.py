@@ -13,14 +13,8 @@ import pytest
 
 import src.trading.risk.simple_risk_manager as risk_module
 from src.cli.handlers import trade_handler as handler_module
-from src.core.models import (
-    AnalysisResult,
-    RiskAssessment,
-    Signal,
-    TradeDecision,
-    TradeRequest,
-    TradeSuggestion,
-)
+from src.core.models import (AnalysisResult, RiskAssessment, Signal,
+                             TradeDecision, TradeRequest, TradeSuggestion)
 from src.core.trading_orchestrator import TradingOrchestrator
 
 

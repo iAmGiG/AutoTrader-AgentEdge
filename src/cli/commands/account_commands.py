@@ -13,10 +13,7 @@ Issue #401: Multi-Account Portfolio Management
 import logging
 from typing import Callable, Dict, Optional
 
-from src.trading.accounts.account_manager import (
-    get_account_manager,
-    needs_live_confirmation,
-)
+from src.trading.accounts.account_manager import get_account_manager, needs_live_confirmation
 from src.utils.safe_print import get_symbol, safe_print
 
 logger = logging.getLogger(__name__)
