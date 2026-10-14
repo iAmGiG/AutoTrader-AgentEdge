@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 from config_defaults.trading_config import TradingConfig
 
 from src.market_data.alpaca_market_data import AlpacaMarketData
-from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import (
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+)
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.state.broker_state_cache import BrokerStateCache
@@ -37,6 +40,7 @@ from src.trading.state.state_reconciler import (
     PositionAlertSummary,
     StateReconciler,
     StopAdjustment,
+    StopRepair,
 )
 from src.trading.utils.report_generator import ReportGenerator, RoutineType
 from src.utils.date_utils import get_datetime_now
@@ -281,12 +285,12 @@ class CostEfficientTradeCycle:
                 logger.debug(f"  New stop: ${adjustment.new_stop:.2f}")
                 logger.debug(f"  Reason: {adjustment.reason}")
 
-                # Modify the stop order
-                success = self.order_manager.modify_order(
+                # Modify the stop order (returns a dict; status "submitted" on success)
+                result = self.order_manager.modify_order(
                     order_id=adjustment.order_id, stop_price=adjustment.new_stop
                 )
 
-                if success:
+                if result.get("status") == "submitted":
                     results["modifications"] += 1
                     entry_price = (
                         self.local_state_manager.state.get("positions", {})
@@ -301,7 +305,10 @@ class CostEfficientTradeCycle:
                     results["details"].append(detail_msg)
                     logger.info(detail_msg)
                 else:
-                    error_msg = f"Failed to modify {adjustment.symbol} stop order"
+                    error_msg = (
+                        f"Failed to modify {adjustment.symbol} stop order: "
+                        f"{result.get('message', 'unknown error')}"
+                    )
                     results["errors"].append(error_msg)
                     results["success"] = False
                     logger.error(error_msg)
@@ -325,6 +332,91 @@ class CostEfficientTradeCycle:
             self.broker_cache.invalidate()
 
         return results
+
+    # -------------------------------------------------------------------------
+    # Protective stops - Issue #586
+    # -------------------------------------------------------------------------
+
+    def check_and_repair_stops(self, broker_state: Dict[str, Any]) -> List[Discrepancy]:
+        """
+        Re-place missing protective stops and renew GTC stops near Alpaca's 90-day limit.
+
+        Errors are contained, so a failure here never stops the rest of the routine.
+
+        Returns:
+            Discrepancies to record and report (repairs with their outcome, and cases
+            left for review)
+        """
+        try:
+            needs_review, repairs = self.reconciler.check_protective_stops(
+                broker_state, self.local_state_manager.state
+            )
+            return needs_review + self.repair_stops(repairs)
+        except Exception as e:
+            logger.error(f"Protective-stop check failed: {e}", exc_info=True)
+            return [
+                Discrepancy(
+                    type="STOP_CHECK_FAILED",
+                    symbol="*",
+                    details={"reason": str(e)},
+                    action="NEEDS_HUMAN_REVIEW",
+                    severity="HIGH",
+                )
+            ]
+
+    def repair_stops(self, repairs: List[StopRepair]) -> List[Discrepancy]:
+        """
+        Place or renew protective stops.
+
+        A renewal replaces the old stop order, which creates a new order and so restarts
+        Alpaca's 90-day GTC clock.
+
+        Returns:
+            One discrepancy per repair, with its outcome
+        """
+        discrepancies = []
+        for repair in repairs:
+            if repair.replaces_order_id:
+                result = self.order_manager.modify_order(
+                    order_id=repair.replaces_order_id, stop_price=repair.stop_price
+                )
+            else:
+                result = self.order_manager.place_stop_order(
+                    symbol=repair.symbol,
+                    qty=repair.quantity,
+                    side="sell",
+                    stop_price=repair.stop_price,
+                    time_in_force="gtc",
+                )
+
+            ok = result.get("status") == "submitted"
+            verb = "renewed" if repair.replaces_order_id else "placed"
+            if ok:
+                logger.info(f"{repair.symbol}: stop {verb} at ${repair.stop_price:.2f}")
+            else:
+                logger.error(
+                    f"{repair.symbol}: stop not {verb}: {result.get('message', 'unknown error')}"
+                )
+            discrepancies.append(
+                Discrepancy(
+                    type=repair.kind,
+                    symbol=repair.symbol,
+                    details={
+                        "quantity": repair.quantity,
+                        "stop_price": repair.stop_price,
+                        "reason": repair.reason,
+                        "replaced_order_id": repair.replaces_order_id,
+                        "order_id": result.get("order_id"),
+                        "error": None if ok else result.get("message", "unknown error"),
+                    },
+                    action="AUTO_FIXED" if ok else "NEEDS_HUMAN_REVIEW",
+                    severity="MEDIUM" if ok and repair.kind == "STOP_EXPIRING" else "HIGH",
+                )
+            )
+
+        if any(d.action == "AUTO_FIXED" for d in discrepancies):
+            self.broker_cache.invalidate()
+        return discrepancies
 
     # -------------------------------------------------------------------------
     # GTT (Good-Till-Triggered) Integration - Issue #340
@@ -424,6 +516,13 @@ class CostEfficientTradeCycle:
             # Step 2: Reconcile with local JSON (no API calls)
             discrepancies = self.reconcile_state(broker_state)
 
+            # Step 2.5: Re-place missing stops, renew aging GTC ones (Issue #586)
+            stop_discrepancies = self.check_and_repair_stops(broker_state)
+            discrepancies.extend(stop_discrepancies)
+            if any(d.action == "AUTO_FIXED" for d in stop_discrepancies):
+                # Later steps (stop adjustments) must see the new stop orders
+                broker_state = self.fetch_broker_state(force_refresh=True)
+
             # Step 3: Check for position alerts (no API calls)
             alerts = self.check_position_alerts(broker_state)
 
@@ -491,6 +590,9 @@ class CostEfficientTradeCycle:
             # Similar structure to morning, but focus on EOD analysis
             broker_state = self.fetch_broker_state()
             discrepancies = self.reconcile_state(broker_state)
+
+            # Re-place missing stops, renew aging GTC ones (Issue #586)
+            discrepancies.extend(self.check_and_repair_stops(broker_state))
 
             # Check for position alerts
             alerts = self.check_position_alerts(broker_state)

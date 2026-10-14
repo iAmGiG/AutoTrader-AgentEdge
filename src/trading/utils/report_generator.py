@@ -38,6 +38,22 @@ class PositionSummary:
     stop_action: str  # "No change", "Move to breakeven", etc.
 
 
+def _detail_text(details: Dict[str, Any]) -> str:
+    """One line for a discrepancy's details: stop/limit, shares, reason, error."""
+    parts = []
+    for key, label in (("stop_price", "stop"), ("limit_price", "limit")):
+        if details.get(key) is not None:
+            parts.append(f"{label} ${float(details[key]):.2f}")
+    if details.get("quantity"):
+        parts.append(f"{details['quantity']} shares")
+    if details.get("current_price"):
+        parts.append(f"price ${float(details['current_price']):.2f}")
+    for key in ("reason", "error"):
+        if details.get(key):
+            parts.append(str(details[key]))
+    return ", ".join(parts) or "no details"
+
+
 class ReportGenerator:
     """
     Generates human-readable trading reports.
@@ -106,7 +122,7 @@ class ReportGenerator:
 
         return summaries
 
-    def generate_routine_report(
+    def generate_routine_report(  # noqa: C901
         self,
         routine_type: RoutineType,
         broker_state: Dict[str, Any],
@@ -180,9 +196,7 @@ class ReportGenerator:
         if discrepancies:
             report_lines.extend(["## Discrepancies Found"])
             for disc in discrepancies:
-                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(
-                    disc.severity, "ℹ️"
-                )
+                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(disc.severity, "ℹ️")
                 report_lines.append(f"{severity_emoji} {disc.type}: {disc.symbol}")
 
                 if disc.type == "UNKNOWN_POSITION":
@@ -198,6 +212,9 @@ class ReportGenerator:
                     report_lines.append(
                         f"   Broker: {broker_qty}, Local: {local_qty} - {disc.action}"
                     )
+                else:
+                    # Protective stops (#586) and any other type: details plus action
+                    report_lines.append(f"   {_detail_text(disc.details)} - {disc.action}")
 
                 report_lines.append("")
 
