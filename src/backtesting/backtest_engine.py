@@ -127,6 +127,7 @@ class BacktestEngine:
         prices = data["close"]
         portfolio_values = [self.initial_capital]
         daily_returns = []
+        return_dates = []  # the day each return was earned
 
         # Generate decisions and execute trades
         # Directly ported from experiment_293 simulate_trading() loop (lines 226-278)
@@ -137,6 +138,7 @@ class BacktestEngine:
                 # Skip NaN prices
                 portfolio_values.append(portfolio_values[-1])
                 daily_returns.append(0)
+                return_dates.append(data.index[i])
                 continue
 
             # Generate signal using provided signal generator
@@ -158,10 +160,11 @@ class BacktestEngine:
             if i > 0:
                 daily_return = (portfolio_value - portfolio_values[-2]) / portfolio_values[-2]
                 daily_returns.append(daily_return)
+                return_dates.append(data.index[i])
 
         # Create returns series
         if len(daily_returns) > 0:
-            returns_series = pd.Series(daily_returns, index=data.index[: len(daily_returns)])
+            returns_series = pd.Series(daily_returns, index=return_dates)
         else:
             returns_series = pd.Series()
 
@@ -283,12 +286,14 @@ def run_validation_test():
     prices = df["close"]
     portfolio_values = [engine.initial_capital]
     daily_returns = []
+    return_dates = []  # the day each return was earned
 
     for i in range(len(df)):
         current_price = prices.iloc[i]
         if pd.isna(current_price):
             portfolio_values.append(portfolio_values[-1])
             daily_returns.append(0)
+            return_dates.append(df.index[i])
             continue
 
         # Generate signal
@@ -308,9 +313,10 @@ def run_validation_test():
         if i > 0:
             daily_return = (portfolio_value - portfolio_values[-2]) / portfolio_values[-2]
             daily_returns.append(daily_return)
+            return_dates.append(df.index[i])
 
     # Create returns series
-    returns_series = pd.Series(daily_returns, index=df.index[: len(daily_returns)])
+    returns_series = pd.Series(daily_returns, index=return_dates)
 
     # Create results
     results = BacktestResults.from_trading_simulation(

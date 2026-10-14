@@ -74,7 +74,10 @@ class GEXOverlay:
             known = df[df.index <= as_of_date]
         else:
             known = df[df.index < as_of_date]
-            known = known.iloc[: len(known) - (self.lag_days - 1)]
+            # Drop the newest lag_days - 1 rows; with too few rows there's nothing that old
+            # (a negative stop would keep early rows instead and return a shorter lag)
+            keep = len(known) - (self.lag_days - 1)
+            known = known.iloc[:keep] if keep > 0 else known.iloc[:0]
         return known.iloc[-1] if len(known) else None
 
     def get_regime(self, symbol: str, as_of_date) -> Optional[str]:
@@ -103,6 +106,8 @@ class GEXOverlay:
         return self.REGIME_SCALES.get(regime, 0.5)
 
     def get_total_gex(self, symbol: str, as_of_date) -> Optional[float]:
-        """Get total GEX value for a date (for regime-conditional analysis)."""
+        """Get total GEX value for a date (for regime-conditional analysis); None if absent."""
         row = self._lagged_row(self._load_regime_data(symbol), as_of_date)
-        return None if row is None else float(row["total_gex"])
+        if row is None or pd.isna(row["total_gex"]):  # a row can have a regime but no GEX
+            return None
+        return float(row["total_gex"])

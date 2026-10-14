@@ -186,9 +186,10 @@ class ResearchBacktester:
             capital += capital * position.size * spread_pnl
             portfolio_values[-1] = capital
 
+        # The return from day i-1 to day i is earned on day i, so it carries day i's date
         daily_returns = pd.Series(
             np.diff(portfolio_values) / np.array(portfolio_values[:-1]),
-            index=prices.index[: len(portfolio_values) - 1],
+            index=prices.index[1 : len(portfolio_values)],
         )
 
         return BacktestResults.from_trading_simulation(
@@ -272,9 +273,10 @@ class ResearchBacktester:
 
             portfolio_values.append(capital)
 
+        # The return from day i-1 to day i is earned on day i, so it carries day i's date
         daily_returns = pd.Series(
             np.diff(portfolio_values) / np.array(portfolio_values[:-1]),
-            index=prices.index[: len(portfolio_values) - 1],
+            index=prices.index[1 : len(portfolio_values)],
         )
 
         return BacktestResults.from_trading_simulation(

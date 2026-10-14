@@ -51,3 +51,19 @@ def test_total_gex_is_lagged_too():
 def test_negative_lag_rejected():
     with pytest.raises(ValueError):
         _overlay(lag_days=-1)
+
+
+def test_total_gex_missing_value_is_none():
+    import datetime as dt
+
+    conn = MagicMock()  # a row can have a regime but a NULL total_gex
+    conn.cursor.return_value.fetchall.return_value = [
+        (dt.date(2024, 1, 2), "bullish_gamma", None, 100.0)
+    ]
+    assert GEXOverlay(conn).get_total_gex("SPY", "2024-01-03") is None
+
+
+def test_lag_longer_than_history_has_no_regime():
+    # Two rows before 2024-01-04 can't supply a regime five observations back
+    assert _overlay(lag_days=5).get_regime("SPY", "2024-01-04") is None
+    assert _overlay(lag_days=3).get_regime("SPY", "2024-01-04") is None

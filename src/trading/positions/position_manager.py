@@ -8,11 +8,10 @@ Fetches directly from broker to eliminate state synchronization issues.
 
 import json
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now, now_iso
+from src.utils.state_paths import get_state_dir
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +31,14 @@ class PositionManager:
         Args:
             broker_client: Alpaca trading client instance
         """
-        # Load paths configuration using ConfigLoader
-        config = ConfigLoader()
-        positions_file = config.get("state_files.positions", "state/positions.json")
-
         self.broker = broker_client
         self._session_cache = {}
         self._cache_timestamp = None
         self._cache_ttl_seconds = 60  # Cache for 1 minute
 
-        # Backup state file for persistence across restarts
-        self.state_file = Path(positions_file)
-        self.state_file.parent.mkdir(exist_ok=True)
+        # Backup state file for persistence across restarts. It lives in the shared state
+        # dir, which honours AUTOTRADER_STATE_DIR, so tests never touch the real file.
+        self.state_file = get_state_dir() / "positions.json"
 
     def get_positions(self, force_refresh: bool = False) -> Dict[str, Dict[str, Any]]:
         """

@@ -10,7 +10,7 @@ Pattern: Pure function wrappers -> FunctionTool -> Registry
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from autogen_core.tools import FunctionTool
 
@@ -416,39 +416,73 @@ def show_gtt_triggers(symbol: Optional[str] = None) -> str:  # noqa: C901
     lines = [f"GTT Triggers ({len(triggers)})", "=" * 60]
 
     for t in triggers:
-        # Status indicator
-        if not t.get("enabled"):
-            status = "DISABLED"
-        elif t.get("is_expired"):
-            status = "EXPIRED"
-        elif not t.get("is_active"):
-            status = "INACTIVE"
-        else:
-            status = "ACTIVE"
-
-        # Build line
-        line = f"[{t['id']}] {t['symbol']} {t['condition_type']} @ {t['trigger_value']}"
-        lines.append(line)
-        lines.append(f"     Action: {t['action_type']} | Status: {status}")
-
-        # Additional info
-        extras = []
-        if t.get("expiration_date"):
-            extras.append(f"Expires: {t['expiration_date'][:10]}")
-        if t.get("max_triggers"):
-            extras.append(f"Max: {t['max_triggers']} (fired: {t.get('trigger_count', 0)})")
-        if t.get("oco_group_id"):
-            extras.append(f"OCO Group: {t['oco_group_id']}")
-
-        if extras:
-            lines.append(f"     {' | '.join(extras)}")
-
-        if t.get("notes"):
-            lines.append(f"     Notes: {t['notes']}")
-
+        lines.extend(_trigger_lines(t))
         lines.append("")
 
     return "\n".join(lines)
+
+
+def _trigger_lines(t: Dict[str, Any]) -> List[str]:
+    """Display lines for one trigger dict (from GTTTrigger.to_dict())."""
+    # Status indicator
+    if not t.get("enabled"):
+        status = "DISABLED"
+    elif t.get("is_expired"):
+        status = "EXPIRED"
+    elif not t.get("is_active"):
+        status = "INACTIVE"
+    else:
+        status = "ACTIVE"
+
+    # Build line
+    lines = [
+        f"[{t['id']}] {t['symbol']} {t['condition_type']} @ {t['trigger_value']}",
+        f"     Action: {t['action_type']} | Status: {status}",
+    ]
+
+    # Additional info
+    extras = []
+    if t.get("expiration_date"):
+        extras.append(f"Expires: {t['expiration_date'][:10]}")
+    if t.get("max_triggers"):
+        extras.append(f"Max: {t['max_triggers']} (fired: {t.get('trigger_count', 0)})")
+    if t.get("oco_group_id"):
+        extras.append(f"OCO Group: {t['oco_group_id']}")
+
+    if extras:
+        lines.append(f"     {' | '.join(extras)}")
+
+    if t.get("notes"):
+        lines.append(f"     Notes: {t['notes']}")
+
+    return lines
+
+
+def show_gtt_trigger(trigger_id: int) -> str:
+    """Display one GTT trigger's details."""
+    try:
+        mgr = _get_gtt_manager()
+        if not mgr:
+            return "Error: GTT manager not available"
+
+        trigger = mgr.get_trigger(trigger_id)
+        if not trigger:
+            return f"No GTT trigger with ID {trigger_id}"
+
+        t = trigger.to_dict()
+        lines = [f"GTT Trigger {trigger_id}", "=" * 60, *_trigger_lines(t)]
+        if t.get("action_config"):
+            lines.append(f"     Action config: {t['action_config']}")
+        lines.append(f"     Fired: {t.get('trigger_count', 0)} time(s)")
+        if t.get("last_triggered_at"):
+            lines.append(f"     Last fired: {t['last_triggered_at']}")
+        if t.get("created_at"):
+            lines.append(f"     Created: {t['created_at']}")
+        return "\n".join(lines)
+
+    except Exception as e:
+        logger.error(f"Error showing GTT trigger {trigger_id}: {e}", exc_info=True)
+        return f"Error: {e}"
 
 
 def show_gtt_summary() -> str:

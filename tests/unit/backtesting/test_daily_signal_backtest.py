@@ -66,3 +66,25 @@ def test_spread_strategy_marks_open_position_daily():
     assert res.final_value == pytest.approx(120.0)
     # day 2 is marked at +10% instead of being booked only at exit
     assert res.returns_series.iloc[1] == pytest.approx(0.10)
+
+
+def test_returns_carry_the_day_they_were_earned():
+    # Day 2 earns +10%: a date join (e.g. to regimes) must see it on day 2, not day 1
+    days = _prices().index
+    res = _run({1: ("BUY", 1.0, 0.0), 2: ("HOLD", 0.0, 0.10)})
+
+    assert list(res.returns_series.index) == list(days[1:])
+    assert res.returns_series.loc[days[2]] == pytest.approx(0.10)
+
+
+def test_spread_returns_carry_the_day_they_were_earned():
+    idx = pd.bdate_range("2024-01-01", periods=4)
+    prices = pd.DataFrame({"A": np.exp([0.0, 0.0, 0.1, 0.2]), "B": [1.0, 1.0, 1.0, 1.0]}, index=idx)
+    script = {1: "BUY", 3: "EXIT"}
+    bt = ResearchBacktester(initial_capital=100.0, commission_bps=0.0)
+    res = bt.run_spread_strategy(
+        lambda p, i: {"action": script.get(i, "HOLD"), "position_size": 1.0}, prices, "A", "B"
+    )
+
+    assert list(res.returns_series.index) == list(idx[1:])
+    assert res.returns_series.loc[idx[2]] == pytest.approx(0.10)

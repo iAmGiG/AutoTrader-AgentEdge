@@ -13,16 +13,14 @@ Provides:
 
 import json
 import logging
-import os
 import sqlite3
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
-from src.utils.state_paths import STATE_DIR_ENV, get_user_db_path
+from src.utils.state_paths import get_user_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -137,17 +135,11 @@ class GTTManager:
         Initialize GTT manager.
 
         Args:
-            db_path: Path to SQLite database (default: from config or state/user.db)
+            db_path: Path to SQLite database (default: the shared state/user.db, which
+                the other user-state managers use too)
         """
         if db_path is None:
-            if os.environ.get(STATE_DIR_ENV):
-                # Explicit override (e.g. the test suite's temp dir) wins over the config
-                db_path = get_user_db_path()
-            else:
-                config = ConfigLoader()
-                state_dir = config.get("paths.state_dir", "state")
-                os.makedirs(state_dir, exist_ok=True)
-                db_path = os.path.join(state_dir, "user.db")
+            db_path = get_user_db_path()
 
         self._db_path = db_path
         self._init_database()
@@ -159,7 +151,8 @@ class GTTManager:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS gtt_triggers (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
@@ -176,25 +169,32 @@ class GTTManager:
                     notes TEXT,
                     created_at TEXT NOT NULL
                 )
-            """)
+            """
+            )
 
             # Index for symbol lookup
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_gtt_symbol
                 ON gtt_triggers(symbol)
-            """)
+            """
+            )
 
             # Index for active triggers
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_gtt_enabled
                 ON gtt_triggers(enabled)
-            """)
+            """
+            )
 
             # Index for OCO groups
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_gtt_oco
                 ON gtt_triggers(oco_group_id)
-            """)
+            """
+            )
 
             conn.commit()
             conn.close()
