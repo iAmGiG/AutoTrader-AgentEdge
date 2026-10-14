@@ -103,6 +103,8 @@ class GEXOverlay:
         return self.REGIME_SCALES.get(regime, 0.5)
 
     def get_total_gex(self, symbol: str, as_of_date) -> Optional[float]:
-        """Get total GEX value for a date (for regime-conditional analysis)."""
+        """Get total GEX value for a date (for regime-conditional analysis); None if absent."""
         row = self._lagged_row(self._load_regime_data(symbol), as_of_date)
-        return None if row is None else float(row["total_gex"])
+        if row is None or pd.isna(row["total_gex"]):  # a row can have a regime but no GEX
+            return None
+        return float(row["total_gex"])
