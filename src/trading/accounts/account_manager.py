@@ -148,7 +148,7 @@ class AccountManager:
 
         logger.info("AccountManager initialized")
 
-    def load_accounts_from_config(self) -> int:
+    def load_accounts_from_config(self) -> int:  # noqa: C901
         """
         Load account credentials from configuration.
 
@@ -387,14 +387,19 @@ class AccountManager:
 
     def rotate_active_account(self) -> Optional[str]:
         """
-        Rotate to the next enabled account.
+        Rotate to the next enabled paper account.
         Useful for periodic swapping or load balancing.
+
+        Live accounts are never rotated into; activating one takes an explicit,
+        confirmed switch.
 
         Returns:
             New active account ID, or None if no accounts available.
         """
         candidates = [
-            aid for aid, acc in self._accounts.items() if acc.enabled and acc.info is not None
+            aid
+            for aid, acc in self._accounts.items()
+            if acc.enabled and acc.info is not None and acc.info.account_type == AccountType.PAPER
         ]
 
         if not candidates:
@@ -586,6 +591,23 @@ class AccountManager:
         # self._credential_provider.remove_credentials(account_id)
 
         return True
+
+
+def needs_live_confirmation(manager: "AccountManager", account_id: str) -> bool:
+    """
+    Whether switching to ``account_id`` must be confirmed as a live (real money) switch.
+
+    Discovers the account first if needed. Anything not confirmed as paper counts as
+    live, so callers that refuse live accounts fail closed. Unknown IDs return False
+    and are left for ``set_active_account`` to reject.
+    """
+    managed = manager.get_account(account_id)
+    if managed is None:
+        return False
+    if managed.info is None:
+        manager.discover_account(account_id)
+    account_type = getattr(getattr(managed.info, "account_type", None), "value", None)
+    return account_type != AccountType.PAPER.value
 
 
 # Module-level singleton

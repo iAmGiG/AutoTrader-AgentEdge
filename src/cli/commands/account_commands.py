@@ -11,12 +11,25 @@ Issue #401: Multi-Account Portfolio Management
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
-from src.trading.accounts.account_manager import get_account_manager
+from src.trading.accounts.account_manager import (
+    get_account_manager,
+    needs_live_confirmation,
+)
 from src.utils.safe_print import get_symbol, safe_print
 
 logger = logging.getLogger(__name__)
+
+
+def confirm_live_switch(account_id: str) -> bool:
+    """Ask the user to type the account ID before switching to a live account."""
+    safe_print(
+        f"\n{get_symbol('WARNING')} {account_id} is not a confirmed paper account - "
+        "treat it as LIVE (real money at risk)"
+    )
+    typed = input(f"   Type '{account_id}' to switch to it (anything else cancels): ")
+    return typed.strip() == account_id
 
 
 class AccountCommands:
@@ -92,17 +105,31 @@ class AccountCommands:
 
         return {"status": "success", "accounts": accounts, "active": active_id}
 
-    def switch_account(self, account_id: str) -> Dict:
+    def switch_account(
+        self, account_id: str, confirm_live: Optional[Callable[[str], bool]] = None
+    ) -> Dict:
         """
         Switch to a different trading account.
 
         Args:
             account_id: Account to switch to
+            confirm_live: Asks the user to confirm a live (real money) switch. Without
+                it, live accounts are refused, which is how agent tools call this.
 
         Returns:
             Dict with status and account info
         """
         safe_print(f"{get_symbol('GEAR')} Switching to account: {account_id}")
+
+        if needs_live_confirmation(self.manager, account_id) and not (
+            confirm_live and confirm_live(account_id)
+        ):
+            safe_print(
+                f"{get_symbol('ERROR')} Not switched: {account_id} is not a confirmed "
+                "paper account"
+            )
+            print("   Live accounts need a typed confirmation: switch to account <ID>")
+            return {"status": "refused", "account_id": account_id}
 
         # Try to set as active
         if self.manager.set_active_account(account_id):

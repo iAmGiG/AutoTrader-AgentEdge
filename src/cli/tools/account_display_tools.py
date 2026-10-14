@@ -56,17 +56,17 @@ def list_accounts(verbose: bool = False) -> Dict:
 
 def switch_account(account_id: str) -> Dict:
     """
-    Switch to a different trading account.
+    Switch to a different paper trading account.
 
-    Changes the active account used for all trading operations.
-    Displays warning for live accounts (real money).
+    Changes the active account used for all trading operations. Live accounts are
+    refused: the user switches to those in the CLI with a typed confirmation.
 
     Args:
         account_id: The account identifier to switch to
 
     Returns:
         Dict with:
-        - status: "success" or "error"
+        - status: "success", "refused" (not a confirmed paper account) or "error"
         - account_id: The requested account ID
         - account_type: "paper" or "live" (on success)
         - portfolio_value: Current portfolio value (on success)
@@ -138,7 +138,10 @@ list_accounts_tool = FunctionTool(
 switch_account_tool = FunctionTool(
     func=switch_account,
     name="switch_account",
-    description="Switch to a different trading account. Displays warning for live accounts.",
+    description=(
+        "Switch to a different paper trading account. Live accounts are refused; "
+        "the user must switch to those in the CLI."
+    ),
 )
 
 show_current_account_tool = FunctionTool(
