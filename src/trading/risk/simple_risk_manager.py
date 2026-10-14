@@ -26,7 +26,7 @@ class SimpleRiskManager(RiskManager):
     - Simple position sizing (default 5% of portfolio)
     - Generate warnings
     - Block trades that open or add to a position beyond buying power, max exposure
-      or max positions (selling shares already held is never blocked)
+      or max positions (selling shares already held isn't subject to these limits)
 
     NOT included (deferred to #333 Portfolio Manager):
     - Sector concentration limits
@@ -70,15 +70,17 @@ class SimpleRiskManager(RiskManager):
         Assess risk and recommend position size.
 
         MVP Logic:
-        1. Get portfolio value, buying power and open positions
-        2. If user specified quantity, use it; otherwise calculate from %
+        1. Get open positions, portfolio value and buying power
+        2. If user specified quantity, use it; otherwise calculate from % (a sell of
+           a held position defaults to the whole position)
         3. Check if affordable (buying power check)
         4. Calculate portfolio % and projected exposure from open positions
         5. Generate warnings (>15% = large position)
         6. Block (approved=False, with block_reasons) when a trade that opens or adds
-           to a position breaks buying power, max exposure or max positions. Selling
-           shares already held only reduces risk and is never blocked. If account
-           data can't be read, the trade is blocked.
+           to a position breaks buying power, max exposure or max positions, or when
+           account data can't be read. Selling shares already held only reduces risk:
+           account limits don't apply and it only needs the positions, but selling
+           more than is held (a short) is blocked.
 
         Args:
             request: Original trade request
@@ -107,40 +109,39 @@ class SimpleRiskManager(RiskManager):
             )
 
         try:
-            # Get portfolio info
-            portfolio_value = await self.get_portfolio_value(user_id)
-            buying_power = await self.get_buying_power(user_id, portfolio_value=portfolio_value)
             held = {
                 p["symbol"]: p
                 for p in await self.get_positions(user_id)
                 if float(p.get("qty") or 0) != 0
             }
+            existing_qty = float(held[ticker]["qty"]) if ticker in held else 0.0
+            # Selling shares already held only reduces risk, so account limits don't apply
+            is_exit = analysis.signal.value == "sell" and existing_qty > 0
 
-            # Determine quantity
-            if request.quantity:
-                # User specified quantity - use it
-                quantity = request.quantity
-                logger.info(f"Using user-specified quantity: {quantity} shares")
+            if is_exit:
+                # Without a quantity, a sell closes the whole position
+                quantity = request.quantity or int(existing_qty)
+                portfolio_value, buying_power = await self._exit_account_values(user_id)
             else:
-                # Calculate from default portfolio %
-                target_value = portfolio_value * (self.default_position_pct / 100.0)
-                quantity = int(target_value / entry_price)
-                logger.info(
-                    f"Calculated quantity: {quantity} shares "
-                    f"({self.default_position_pct}% of ${portfolio_value:,.0f})"
-                )
+                portfolio_value = await self.get_portfolio_value(user_id)
+                buying_power = await self.get_buying_power(user_id, portfolio_value=portfolio_value)
+                if portfolio_value <= 0:
+                    raise ValueError("the account has no portfolio value to size a trade against")
+                quantity = self._quantity(request, portfolio_value, entry_price)
 
             # Calculate trade value
             trade_value = quantity * entry_price
 
             # Calculate portfolio % (after transaction)
-            portfolio_pct = (trade_value / portfolio_value) * 100.0
+            portfolio_pct = (trade_value / portfolio_value) * 100.0 if portfolio_value > 0 else 0.0
 
-            existing_qty = float(held[ticker]["qty"]) if ticker in held else 0.0
-            # Selling shares already held only reduces risk, so it is never blocked
-            reduces_position = analysis.signal.value == "sell" and existing_qty > 0
-            if reduces_position:
+            if is_exit:
                 warnings, block_reasons = [], []
+                if quantity > existing_qty:
+                    block_reasons.append(
+                        f"Can't sell {quantity} shares of {ticker}: only {existing_qty:g} held "
+                        "(short selling isn't supported)"
+                    )
             else:
                 warnings, block_reasons = self._limit_breaches(
                     ticker, trade_value, buying_power, portfolio_value, portfolio_pct, held
@@ -208,6 +209,36 @@ class SimpleRiskManager(RiskManager):
                 warnings=[f"⚠️  Risk assessment error: {e}"],
                 block_reasons=[f"Risk assessment error: {e}"],
             )
+
+    def _quantity(self, request: TradeRequest, portfolio_value: float, entry_price: float) -> int:
+        """Shares for a new position: the user's quantity, else the default portfolio %."""
+        if request.quantity:
+            # User specified quantity - use it
+            logger.info(f"Using user-specified quantity: {request.quantity} shares")
+            return request.quantity
+
+        # Calculate from default portfolio %
+        target_value = portfolio_value * (self.default_position_pct / 100.0)
+        quantity = int(target_value / entry_price)
+        logger.info(
+            f"Calculated quantity: {quantity} shares "
+            f"({self.default_position_pct}% of ${portfolio_value:,.0f})"
+        )
+        return quantity
+
+    async def _exit_account_values(self, user_id: str) -> Tuple[float, float]:
+        """
+        Portfolio value and buying power to show for an exit, or 0.0 if unreadable.
+
+        An exit doesn't depend on them, so a failed read doesn't block it.
+        """
+        try:
+            portfolio_value = await self.get_portfolio_value(user_id)
+            buying_power = await self.get_buying_power(user_id, portfolio_value=portfolio_value)
+            return portfolio_value, buying_power
+        except Exception as e:
+            logger.warning(f"Could not read account values for an exit: {e}")
+            return 0.0, 0.0
 
     def _limit_breaches(
         self,

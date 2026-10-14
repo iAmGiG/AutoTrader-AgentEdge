@@ -343,12 +343,14 @@ class AccountManager:
             results[account_id] = self.discover_account(account_id)
         return results
 
-    def set_active_account(self, account_id: str) -> bool:
+    def set_active_account(self, account_id: str, allow_live: bool = False) -> bool:
         """
         Set the active account for trading operations.
 
         Args:
             account_id: Account to activate
+            allow_live: Allow an account not confirmed as paper. Only pass True after
+                the user has confirmed a live (real money) switch.
 
         Returns:
             True if account was activated successfully
@@ -363,10 +365,18 @@ class AccountManager:
             logger.error(f"Account {account_id} is disabled")
             return False
 
-        if managed.info is None:
+        # Alias-only config entries get a placeholder with UNKNOWN type until discovered
+        if managed.info is None or managed.info.account_type == AccountType.UNKNOWN:
             logger.warning(f"Account {account_id} not yet discovered, discovering now...")
             if not self.discover_account(account_id):
                 return False
+
+        if managed.info.account_type != AccountType.PAPER and not allow_live:
+            logger.error(
+                f"Account {account_id} is not a confirmed paper account; "
+                "a live switch needs the user's confirmation"
+            )
+            return False
 
         # Deactivate previous account
         if self._active_account_id and self._active_account_id in self._accounts:
@@ -597,17 +607,20 @@ def needs_live_confirmation(manager: "AccountManager", account_id: str) -> bool:
     """
     Whether switching to ``account_id`` must be confirmed as a live (real money) switch.
 
-    Discovers the account first if needed. Anything not confirmed as paper counts as
-    live, so callers that refuse live accounts fail closed. Unknown IDs return False
-    and are left for ``set_active_account`` to reject.
+    Discovers the account first if its type isn't known yet. Anything not confirmed as
+    paper counts as live, so callers that refuse live accounts fail closed. Unknown IDs
+    return False and are left for ``set_active_account`` to reject.
     """
     managed = manager.get_account(account_id)
     if managed is None:
         return False
-    if managed.info is None:
+
+    def account_type() -> Optional[str]:
+        return getattr(getattr(managed.info, "account_type", None), "value", None)
+
+    if account_type() in (None, AccountType.UNKNOWN.value):
         manager.discover_account(account_id)
-    account_type = getattr(getattr(managed.info, "account_type", None), "value", None)
-    return account_type != AccountType.PAPER.value
+    return account_type() != AccountType.PAPER.value
 
 
 # Module-level singleton

@@ -233,7 +233,9 @@ class TestSwitchAccount(TestAccountCommands):
         confirmed = account_commands.switch_account("live_main", confirm_live=lambda _id: True)
         assert confirmed["status"] == "success"
         assert confirmed["account_type"] == "live"
-        mock_account_manager.set_active_account.assert_called_once_with("live_main")
+        mock_account_manager.set_active_account.assert_called_once_with(
+            "live_main", allow_live=True
+        )
 
 
 class TestShowCurrentAccount(TestAccountCommands):

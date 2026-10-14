@@ -110,6 +110,38 @@ class TestSimpleRiskManager:
         assert any("max positions" in r for r in new_symbol.block_reasons)
         assert added_to_held.approved
 
+    def test_exit_needs_only_the_positions(self, risk_manager):
+        manager = risk_manager(
+            error=ConnectionError("account endpoint down"),
+            positions=[_position("SPY", 50, 33_000.0)],
+        )
+
+        assessment = _assess(manager, Signal.SELL, 50)
+
+        assert assessment.approved
+
+    def test_selling_more_than_held_is_blocked(self, risk_manager):
+        manager = risk_manager(positions=[_position("SPY", 10, 6_600.0)])
+
+        assessment = _assess(manager, Signal.SELL, 100)
+
+        assert not assessment.approved
+        assert any("only 10 held" in r for r in assessment.block_reasons)
+
+    def test_sell_without_quantity_closes_the_position(self, risk_manager):
+        manager = risk_manager(positions=[_position("SPY", 37, 24_420.0)])
+
+        assessment = _assess(manager, Signal.SELL, None)
+
+        assert assessment.approved
+        assert assessment.recommended_quantity == 37
+
+    def test_unfunded_account_is_blocked_with_a_clear_reason(self, risk_manager):
+        assessment = _assess(risk_manager(portfolio=0.0, buying_power=0.0), Signal.BUY, None)
+
+        assert not assessment.approved
+        assert any("no portfolio value" in r for r in assessment.block_reasons)
+
     def test_unreadable_account_blocks_instead_of_using_demo_values(self, risk_manager):
         manager = risk_manager(error=ConnectionError("broker down"))
 
@@ -224,4 +256,44 @@ def test_cli_does_not_ask_to_confirm_a_refused_trade(monkeypatch):
     asyncio.run(handler.handle_trade_request("buy 50 SPY"))
 
     handler._get_confirmation.assert_not_called()
+    orchestrator.execute_decision.assert_not_awaited()
+
+
+def _refused_trade_handler(monkeypatch, action="buy"):
+    orchestrator = MagicMock()
+    decision = TradeDecision(suggestion=_suggestion(["Insufficient buying power"]))
+    orchestrator.process_request = AsyncMock(return_value=decision)
+    orchestrator.parser.parse = AsyncMock(
+        return_value=TradeRequest(ticker="SPY", action=action, quantity=50)
+    )
+    orchestrator.execute_decision = AsyncMock()
+    monkeypatch.setattr(handler_module, "display_position_context", MagicMock())
+    monkeypatch.setattr(handler_module, "display_suggestion", MagicMock())
+
+    handler = handler_module.TradeHandler(orchestrator, MagicMock(), None, "confirm")
+    monkeypatch.setattr(handler, "_check_position_for_ticker", lambda ticker: None)
+    monkeypatch.setattr(handler, "_get_confirmation", MagicMock(return_value=True))
+    monkeypatch.setattr(handler, "_show_risk_refusal", MagicMock())
+    return handler, orchestrator
+
+
+def test_cli_review_request_reports_the_block_without_trading(monkeypatch):
+    handler, orchestrator = _refused_trade_handler(monkeypatch, action="review")
+
+    asyncio.run(handler.handle_trade_request("review SPY"))
+
+    handler._show_risk_refusal.assert_called_once()
+    handler._get_confirmation.assert_not_called()
+    orchestrator.execute_decision.assert_not_awaited()
+
+
+def test_cli_resolves_signal_conflicts_before_refusing(monkeypatch):
+    # e.g. a SELL signal with no position first offers buy / short / review
+    handler, orchestrator = _refused_trade_handler(monkeypatch)
+    conflicts = AsyncMock(return_value=None)  # the user picks "review"
+    monkeypatch.setattr(handler, "_handle_signal_conflicts", conflicts)
+
+    asyncio.run(handler.handle_trade_request("buy 50 SPY"))
+
+    conflicts.assert_awaited_once()
     orchestrator.execute_decision.assert_not_awaited()

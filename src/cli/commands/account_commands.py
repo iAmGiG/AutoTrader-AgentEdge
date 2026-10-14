@@ -121,9 +121,8 @@ class AccountCommands:
         """
         safe_print(f"{get_symbol('GEAR')} Switching to account: {account_id}")
 
-        if needs_live_confirmation(self.manager, account_id) and not (
-            confirm_live and confirm_live(account_id)
-        ):
+        live = needs_live_confirmation(self.manager, account_id)
+        if live and not (confirm_live and confirm_live(account_id)):
             safe_print(
                 f"{get_symbol('ERROR')} Not switched: {account_id} is not a confirmed "
                 "paper account"
@@ -132,7 +131,7 @@ class AccountCommands:
             return {"status": "refused", "account_id": account_id}
 
         # Try to set as active
-        if self.manager.set_active_account(account_id):
+        if self.manager.set_active_account(account_id, allow_live=live):
             active = self.manager.get_active_account()
             if active and active.info:
                 safe_print(f"{get_symbol('SUCCESS')} Now using: {account_id}")
