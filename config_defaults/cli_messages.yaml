@@ -153,10 +153,36 @@ errors:
 
     Check your account balance and reduce the order size.
 
-  market_closed: |
-    Order rejected: Market is closed
+  # Broker error translations (src/trading/broker/api_error_translator.py)
+  market_closed:
+    title: "Order rejected: Market is closed"
+    desc: "Regular market hours: 9:30 AM - 4:00 PM ET. Your order may execute when the market opens."
 
-    Regular market hours: 9:30 AM - 4:00 PM ET. Your order may execute when the market opens.
+  generic:
+    title: "Order failed for {ticker}"
+    desc: "Please try again during market hours or contact support if the issue persists."
+
+  bracket:
+    stop_loss:
+      title: "Order rejected: Stop loss price ({stop}) doesn't match market price"
+      desc: >-
+        The market is closed and price data may be stale. Entry: {entry}, Stop: {stop},
+        Alpaca expects stop={base}. Try again during market hours (9:30 AM - 4:00 PM ET)
+        for accurate pricing.
+    take_profit:
+      title: "Order rejected: Take profit price ({target}) doesn't match market price"
+      desc: >-
+        The market is closed and price data may be stale. Entry: {entry}, Target: {target},
+        Alpaca expects target>={base}. Try again during market hours (9:30 AM - 4:00 PM ET)
+        for accurate pricing.
+
+  buying_power:
+    title: "Order rejected: Not enough cash available"
+    desc: "Check your account balance and reduce the order size."
+
+  invalid_symbol:
+    title: "Order rejected: {ticker} is not a valid or tradeable symbol"
+    desc: "Double-check the ticker symbol. It may be delisted or not supported by Alpaca."
 
 # Trade suggestion display
 suggestion:

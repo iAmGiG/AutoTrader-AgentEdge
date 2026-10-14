@@ -344,6 +344,17 @@ def _gtt_try_trigger_action(action_func, trigger_id_str: str, action_name: str) 
         return f"[ERROR] Invalid trigger ID: {trigger_id_str}"
 
 
+def _gtt_show_trigger(trigger_id_str: str) -> str:
+    """Show one GTT trigger's details. Returns result string."""
+    from src.cli.tools.gtt_tools import show_gtt_trigger
+
+    try:
+        trigger_id = int(trigger_id_str)
+    except ValueError:
+        return f"[ERROR] Invalid trigger ID: {trigger_id_str}"
+    return show_gtt_trigger(trigger_id)
+
+
 def _gtt_create_trigger(args_str: str) -> str:
     """Parse and create a GTT trigger. Format: SYMBOL CONDITION VALUE [notes]"""
     from src.cli.tools.gtt_tools import create_gtt_trigger
@@ -402,7 +413,7 @@ def _gtt_handle_subcommand(subcommand: str, subarg: str | None) -> str:
         return (
             f"Usage: /gtt status <id>\n{show_gtt_summary()}"
             if not subarg
-            else show_gtt_triggers(symbol=subarg)
+            else _gtt_show_trigger(subarg)
         )
     if subcommand == "create":
         return _gtt_create_trigger(subarg)
