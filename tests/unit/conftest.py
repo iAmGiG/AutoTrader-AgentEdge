@@ -16,3 +16,25 @@ def isolated_state_dir(tmp_path, monkeypatch):
     state_dir = tmp_path / "state"
     monkeypatch.setenv(STATE_DIR_ENV, str(state_dir))
     return state_dir
+
+
+@pytest.fixture(autouse=True)
+def offline_market_calendar(monkeypatch):
+    """Answer market-hours questions from the NYSE rules, not Alpaca's calendar API.
+
+    Keeps unit tests offline and deterministic; tests of the API path install their own
+    fake client.
+    """
+    from src.utils import market_hours
+
+    monkeypatch.setattr(market_hours, "_CALENDAR_CLIENT", None)
+    monkeypatch.setattr(market_hours, "_CALENDAR_CACHE", {})
+    monkeypatch.setattr(market_hours, "_CALENDAR_DOWN_UNTIL", 0.0)
+
+
+@pytest.fixture(autouse=True)
+def fresh_ranked_voter_manager(monkeypatch):
+    """Drop the shared RankedVoterManager so it can't keep an earlier test's state dir."""
+    from src.core import ranked_voter_config
+
+    monkeypatch.setattr(ranked_voter_config, "_manager", None)

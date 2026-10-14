@@ -26,6 +26,7 @@ except ImportError:
     yaml = None
 
 from src.utils.date_utils import now_iso
+from src.utils.state_paths import get_user_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +99,9 @@ class RankedVoterManager:
         self.config_file = config_file
         self._config = self._load_config()
 
-        # SQLite database for persisting current ranking
-        db_dir = os.path.join(os.path.dirname(__file__), "../../state")
-        os.makedirs(db_dir, exist_ok=True)
-        self._db_path = os.path.join(db_dir, "user.db")
+        # SQLite database for persisting current ranking (shared state/user.db, which
+        # honours AUTOTRADER_STATE_DIR)
+        self._db_path = get_user_db_path()
         self._init_database()
 
         # Load persisted ranking or use default
@@ -182,7 +182,8 @@ class RankedVoterManager:
         try:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS voter_ranking_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp TEXT NOT NULL,
@@ -190,7 +191,8 @@ class RankedVoterManager:
                     preset_name TEXT,
                     reason TEXT
                 )
-            """)
+            """
+            )
             conn.commit()
             conn.close()
             logger.debug(f"Initialized voter ranking table in {self._db_path}")
@@ -202,10 +204,12 @@ class RankedVoterManager:
         try:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT ranking_json FROM voter_ranking_history
                 ORDER BY timestamp DESC LIMIT 1
-            """)
+            """
+            )
             row = cursor.fetchone()
             conn.close()
 

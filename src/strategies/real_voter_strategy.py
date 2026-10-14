@@ -127,6 +127,8 @@ class RealVoterStrategy(StrategyAnalyzer):
             use_multi_tf = tf_params.get("mode") == "multi"
 
             # Issue #504: Check if ranked voting is enabled
+            # A fresh manager reloads the ranking persisted in user.db, so changes made
+            # with /voters in another process (e.g. the CLI vs the scheduler) apply
             ranked_voter = RankedVoterManager()
             active_voters = ranked_voter.get_active_voters()
             use_ranked = len(active_voters) > 1  # Use ranked if multiple active voters

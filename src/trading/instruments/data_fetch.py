@@ -1,61 +1,44 @@
 """
 Market Data Fetching - Pure Functions
 
-Clean interface for market data retrieval with caching.
+Clean interface for market data retrieval (cached by the unified market data tool).
 """
 
-import datetime
-from pathlib import Path
 from typing import Dict, List, Optional
 
 import pandas as pd
 
 from src.market_data.unified_market_tool import fetch_unified_market_data
 
+_OHLCV_NAMES = {"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}
+
 
 def fetch_market_data(
     symbol: str,
     start_date: str,
     end_date: str,
-    use_cache: bool = True,
     timeframe: str = "1Day",
 ) -> Optional[pd.DataFrame]:
     """
     Fetch market data for a symbol and date range.
 
+    Caching happens in fetch_unified_market_data (which skips the cache for the
+    current trading day during market hours).
+
     Args:
         symbol: Stock symbol (e.g., 'AAPL')
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
-        use_cache: Whether to use cached data first
         timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
     Returns:
-        DataFrame with OHLCV data or None if failed
+        DataFrame with OHLCV data (capitalized column names) or None if failed
     """
     try:
-        if use_cache:
-            cached_data = get_cached_data(symbol, start_date, end_date, timeframe=timeframe)
-            if cached_data is not None:
-                return cached_data
-
-        # Fetch using unified market data function
         data = fetch_unified_market_data(symbol, start_date, end_date, timeframe=timeframe)
 
         if data is not None and not data.empty:
-            # Standardize column names
-            if "close" in data.columns:
-                data.rename(columns={"close": "Close"}, inplace=True)
-            if "open" in data.columns:
-                data.rename(columns={"open": "Open"}, inplace=True)
-            if "high" in data.columns:
-                data.rename(columns={"high": "High"}, inplace=True)
-            if "low" in data.columns:
-                data.rename(columns={"low": "Low"}, inplace=True)
-            if "volume" in data.columns:
-                data.rename(columns={"volume": "Volume"}, inplace=True)
-
-            return data
+            return _standard_ohlcv(data)
 
     except Exception as e:
         print(f"Error fetching market data for {symbol}: {e}")
@@ -63,56 +46,15 @@ def fetch_market_data(
     return None
 
 
-def get_cached_data(
-    symbol: str, start_date: str, end_date: str, timeframe: str = "1Day"
-) -> Optional[pd.DataFrame]:
+def _standard_ohlcv(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Get cached market data if available.
+    Capitalized OHLCV column names, on a copy so a cached frame is never changed.
 
-    Args:
-        symbol: Stock symbol
-        start_date: Start date
-        end_date: End date
-        timeframe: Bar timeframe (must match cached data)
-
-    Returns:
-        Cached DataFrame or None
+    The Alpaca path already adds capitalized copies next to the lowercase columns;
+    those lowercase twins are dropped so no name appears twice.
     """
-    try:
-        # Check cache directory structure
-        cache_dir = Path(".cache/market_data")
-        if not cache_dir.exists():
-            return None
-
-        # Normalize timeframe for cache key (e.g., "1Min" -> "1min")
-        tf_normalized = timeframe.lower()
-
-        # Look for cached files with matching timeframe
-        for cache_file in cache_dir.glob(f"{symbol}_{tf_normalized}_*.csv"):
-            try:
-                cached_df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
-
-                # Check if date range is covered
-                start_dt = pd.to_datetime(start_date)
-                end_dt = pd.to_datetime(end_date)
-
-                if cached_df.index.min() <= start_dt and cached_df.index.max() >= end_dt:
-
-                    # Filter to requested range
-                    filtered = cached_df[
-                        (cached_df.index >= start_dt) & (cached_df.index <= end_dt)
-                    ]
-
-                    if not filtered.empty:
-                        return filtered
-
-            except Exception:
-                continue
-
-    except Exception as e:
-        print(f"Error accessing cached data: {e}")
-
-    return None
+    twins = [low for low, up in _OHLCV_NAMES.items() if low in data.columns and up in data.columns]
+    return data.drop(columns=twins).rename(columns=_OHLCV_NAMES)
 
 
 def fetch_multiple_tickers(
@@ -137,48 +79,3 @@ def fetch_multiple_tickers(
             results[ticker] = data
 
     return results
-
-
-def get_current_price(symbol: str) -> Optional[float]:
-    """
-    Get current price for a symbol.
-
-    Args:
-        symbol: Stock symbol
-
-    Returns:
-        Current price or None
-    """
-    try:
-        # Try to get recent minute data first for accuracy
-        end_date = datetime.date.today()
-        start_date = end_date - datetime.timedelta(days=3)  # Look back a few days for weekends
-
-        data = fetch_market_data(
-            symbol,
-            start_date.strftime("%Y-%m-%d"),
-            end_date.strftime("%Y-%m-%d"),
-            use_cache=False,
-            timeframe="1Min",
-        )
-
-        if data is not None and not data.empty:
-            return float(data["Close"].iloc[-1])
-
-        # Fallback to daily data if minute data fails
-        start_date_daily = end_date - datetime.timedelta(days=7)
-        data = fetch_market_data(
-            symbol,
-            start_date_daily.strftime("%Y-%m-%d"),
-            end_date.strftime("%Y-%m-%d"),
-            use_cache=False,
-            timeframe="1Day",
-        )
-
-        if data is not None and not data.empty:
-            return float(data["Close"].iloc[-1])
-
-    except Exception as e:
-        print(f"Error getting current price for {symbol}: {e}")
-
-    return None

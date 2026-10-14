@@ -10,8 +10,9 @@ Issue #437: Enhanced with extended_hours support and validation utilities.
 
 import logging
 import os
-from datetime import time
-from typing import Any, Dict, Optional, Tuple
+from datetime import date, datetime, time, timedelta
+from time import monotonic
+from typing import Any, Dict, Optional, Set, Tuple
 
 import pytz
 
@@ -22,8 +23,10 @@ except ImportError:
 
 try:
     from alpaca.trading.client import TradingClient
+    from alpaca.trading.requests import GetCalendarRequest
 except ImportError:
     TradingClient = None
+    GetCalendarRequest = None
 
 from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now
@@ -33,9 +36,18 @@ logger = logging.getLogger(__name__)
 # Default market hours (fallback when API unavailable)
 DEFAULT_MARKET_OPEN = time(9, 30)
 DEFAULT_MARKET_CLOSE = time(16, 0)
+EARLY_MARKET_CLOSE = time(13, 0)  # NYSE early-close days
 
 # Cache for loaded config
 _MARKET_CONFIG = None
+
+# Alpaca calendar client (built once) and its answers per day
+_UNSET = object()
+_CALENDAR_CLIENT: Any = _UNSET
+_CALENDAR_CACHE: Dict[date, Tuple[time, time, bool]] = {}
+# After a calendar failure, skip the API (use NYSE rules) until this monotonic time
+_CALENDAR_RETRY_SECONDS = 300
+_CALENDAR_DOWN_UNTIL = 0.0
 
 
 def _load_market_config() -> Dict[str, Any]:
@@ -65,24 +77,131 @@ def _load_market_config() -> Dict[str, Any]:
 
 def _get_alpaca_calendar():
     """
-    Get market calendar from Alpaca API.
+    Get an Alpaca trading client for calendar lookups (cached).
+
+    The market calendar is the same for paper and live, so the paper keys are used
+    (falling back to generic key names).
 
     Returns:
         Alpaca trading client or None if unavailable
     """
+    global _CALENDAR_CLIENT
+    if _CALENDAR_CLIENT is not _UNSET:
+        return _CALENDAR_CLIENT
     if TradingClient is None:
+        _CALENDAR_CLIENT = None
+        return None
+    if monotonic() < _CALENDAR_DOWN_UNTIL:
         return None
 
     try:
         config_loader = ConfigLoader()
-        client = TradingClient(
-            api_key=config_loader.get("ALPACA_API_KEY"),
-            secret_key=config_loader.get("ALPACA_SECRET_KEY"),
-        )
-        return client
+        api_key = config_loader.get("ALPACA_PAPER_API_KEY") or config_loader.get("ALPACA_API_KEY")
+        secret = config_loader.get("ALPACA_PAPER_SECRET") or config_loader.get("ALPACA_SECRET_KEY")
+        if not (api_key and secret):
+            logger.warning(
+                "No Alpaca keys for the market calendar; using NYSE rules "
+                "(one-off closures are not covered)"
+            )
+            _CALENDAR_CLIENT = None
+            return None
+        _CALENDAR_CLIENT = TradingClient(api_key=api_key, secret_key=secret, paper=True)
     except Exception as e:
-        logger.debug(f"Could not initialize Alpaca calendar client: {e}")
+        _calendar_failed(e)  # built again after the back-off
         return None
+    return _CALENDAR_CLIENT
+
+
+def _calendar_failed(error: Exception) -> None:
+    """Back off from the calendar API for a while after a failure."""
+    global _CALENDAR_DOWN_UNTIL
+    _CALENDAR_DOWN_UNTIL = monotonic() + _CALENDAR_RETRY_SECONDS
+    logger.warning(
+        f"Alpaca market calendar unavailable ({error}); using NYSE rules for "
+        f"{_CALENDAR_RETRY_SECONDS // 60} min (one-off closures are not covered)"
+    )
+
+
+def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
+    """The n-th given weekday (Mon=0) of a month; n=-1 is the last one."""
+    if n > 0:
+        first = date(year, month, 1)
+        return first + timedelta(days=(weekday - first.weekday()) % 7 + 7 * (n - 1))
+    last = date(year, month + 1, 1) - timedelta(days=1) if month < 12 else date(year, 12, 31)
+    return last - timedelta(days=(last.weekday() - weekday) % 7)
+
+
+def _observed(day: date) -> date:
+    """NYSE observance: a Saturday holiday moves to Friday, a Sunday one to Monday."""
+    if day.weekday() == 5:
+        return day - timedelta(days=1)
+    if day.weekday() == 6:
+        return day + timedelta(days=1)
+    return day
+
+
+def _easter(year: int) -> date:
+    """Western Easter Sunday (anonymous Gregorian algorithm)."""
+    a, b, c = year % 19, year // 100, year % 100
+    d, e = b // 4, b % 4
+    g = (b - (b + 8) // 25 + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = c // 4, c % 4
+    l_ = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l_) // 451
+    month, day = divmod(h + l_ - 7 * m + 114, 31)
+    return date(year, month, day + 1)
+
+
+def nyse_holidays(year: int) -> Set[date]:
+    """
+    Regular NYSE full-day holidays for a year, by rule.
+
+    One-off closures (e.g. a national day of mourning) aren't predictable; only the
+    Alpaca calendar or the YAML extra closures know them.
+    """
+    holidays = {
+        _nth_weekday(year, 1, 0, 3),  # Martin Luther King Jr. Day
+        _nth_weekday(year, 2, 0, 3),  # Presidents Day
+        _easter(year) - timedelta(days=2),  # Good Friday
+        _nth_weekday(year, 5, 0, -1),  # Memorial Day
+        _observed(date(year, 7, 4)),  # Independence Day
+        _nth_weekday(year, 9, 0, 1),  # Labor Day
+        _nth_weekday(year, 11, 3, 4),  # Thanksgiving
+        _observed(date(year, 12, 25)),  # Christmas
+    }
+    new_year = date(year, 1, 1)
+    if new_year.weekday() != 5:  # a Saturday New Year's Day isn't observed on Dec 31
+        holidays.add(_observed(new_year))
+    if year >= 2022:
+        holidays.add(_observed(date(year, 6, 19)))  # Juneteenth
+    return holidays
+
+
+def nyse_early_closes(year: int) -> Set[date]:
+    """NYSE 1:00 PM early closes for a year, by rule."""
+    closes = {_nth_weekday(year, 11, 3, 4) + timedelta(days=1)}  # day after Thanksgiving
+    for day in (date(year, 7, 3), date(year, 12, 24)):
+        if day.weekday() < 4:  # Mon-Thu, so the holiday itself falls on a weekday
+            closes.add(day)
+    return closes
+
+
+def _extra_closures() -> Set[str]:
+    """One-off closures from config_defaults/market_hours.yaml (when enabled)."""
+    holidays = _load_market_config().get("holidays", {})
+    if not holidays.get("enabled", False):
+        return set()
+    return set(holidays.get("fixed_holidays", []) + holidays.get("observed_holidays", []))
+
+
+def _rule_based_hours(day: date) -> Tuple[time, time, bool]:
+    """Market hours by NYSE rules, for when the Alpaca calendar is unavailable."""
+    if day.weekday() >= 5 or day in nyse_holidays(day.year) or day.isoformat() in _extra_closures():
+        return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False
+    if day in nyse_early_closes(day.year):
+        return DEFAULT_MARKET_OPEN, EARLY_MARKET_CLOSE, True
+    return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, True
 
 
 def get_market_hours_for_date(
@@ -93,11 +212,14 @@ def get_market_hours_for_date(
 
     Handles:
     - Market holidays (closed)
-    - Early closes (e.g., Black Friday at 3 PM)
+    - Early closes (e.g., Black Friday at 1 PM)
     - Regular trading days (9:30 AM - 4:00 PM)
 
+    Falls back to NYSE rules when the calendar can't be reached, and after a failure
+    skips the API for a few minutes. Calendar answers are cached per day.
+
     Args:
-        date: Date to check (defaults to today)
+        date: Date or datetime to check (defaults to today in ET)
 
     Returns:
         Tuple of (open_time, close_time, is_trading_day)
@@ -106,51 +228,35 @@ def get_market_hours_for_date(
 
     if date is None:
         date = get_datetime_now(et_tz)
+    day = date.date() if isinstance(date, datetime) else date
+
+    if day in _CALENDAR_CACHE:
+        return _CALENDAR_CACHE[day]
+
+    client = _get_alpaca_calendar()
+    if not client or monotonic() < _CALENDAR_DOWN_UNTIL:
+        return _rule_based_hours(day)
 
     try:
-        client = _get_alpaca_calendar()
-        if not client:
-            # Fallback to YAML config or defaults
-            config = _load_market_config()
+        calendar = client.get_calendar(GetCalendarRequest(start=day, end=day))
+    except Exception as e:
+        _calendar_failed(e)
+        return _rule_based_hours(day)
 
-            # Check holidays from config
-            date_str = date.strftime("%Y-%m-%d")
-            holidays = config.get("holidays", {})
-
-            if holidays.get("enabled", False):
-                # Check fixed and observed holidays
-                all_holidays = set(
-                    holidays.get("fixed_holidays", []) + holidays.get("observed_holidays", [])
-                )
-                if date_str in all_holidays:
-                    return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False
-
-            # Check early closes (simplified fallback)
-            # For now, just return defaults if API is down and not a known holiday
-            return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, True
-
-        # Get calendar for the date (Alpaca expects YYYY-MM-DD strings)
-        date_str = date.strftime("%Y-%m-%d") if hasattr(date, "strftime") else str(date)
-        # pylint: disable=unexpected-keyword-arg
-        calendar = client.get_calendar(start=date_str, end=date_str)
-
-        if not calendar:
-            # Market is closed (holiday)
-            return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False
-
+    if not calendar:
+        # Market is closed (holiday or weekend)
+        hours = (DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False)
+    else:
         cal_day = calendar[0]
-        # Alpaca returns times as datetime objects
+        # Alpaca returns ET open/close as naive datetimes
         open_time = cal_day.open.time() if hasattr(cal_day.open, "time") else DEFAULT_MARKET_OPEN
         close_time = (
             cal_day.close.time() if hasattr(cal_day.close, "time") else DEFAULT_MARKET_CLOSE
         )
+        hours = (open_time, close_time, True)
 
-        return open_time, close_time, True
-
-    except Exception as e:
-        # Fallback to hardcoded defaults if API fails
-        logger.debug(f"Error fetching market hours from Alpaca: {e}")
-        return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, True
+    _CALENDAR_CACHE[day] = hours
+    return hours
 
 
 def is_market_hours() -> bool:

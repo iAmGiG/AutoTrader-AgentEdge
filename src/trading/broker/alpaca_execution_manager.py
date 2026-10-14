@@ -41,8 +41,6 @@ except ImportError:
         PRICE_FETCHER_AVAILABLE = False
         logging.warning("UnifiedPriceFetcher not available - will use suggestion prices")
 
-# Default fallback price when data unavailable
-DEFAULT_FALLBACK_PRICE = 100.0
 DEFAULT_STOP_LOSS_PCT = 0.05
 DEFAULT_TAKE_PROFIT_PCT = 0.08
 
@@ -279,15 +277,11 @@ class AlpacaExecutionManager(ExecutionManager):
                 if self._price_fetcher is None:
                     self._price_fetcher = UnifiedPriceFetcher()
                 fetched_price = self._price_fetcher.get_current_price(ticker, use_cache=False)
-                # Only use if not the fallback default price
-                if fetched_price != DEFAULT_FALLBACK_PRICE:
+                if fetched_price is not None:  # None when no real price is available
                     current_market_price = fetched_price
                     logger.info(f"Got price from UnifiedPriceFetcher: ${current_market_price:.2f}")
                 else:
-                    logger.warning(
-                        f"UnifiedPriceFetcher returned default fallback price "
-                        f"${fetched_price:.2f} - not using"
-                    )
+                    logger.warning(f"UnifiedPriceFetcher has no price for {ticker}")
             except Exception as e:
                 logger.error(f"UnifiedPriceFetcher failed with exception: {e}", exc_info=True)
 

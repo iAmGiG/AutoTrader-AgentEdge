@@ -31,27 +31,15 @@ weekend:
   description: "Market closed on weekends"
 
 # Holiday calendar
+# Alpaca's market calendar is authoritative. When it can't be reached,
+# src/utils/market_hours.py computes the regular NYSE holidays and 1:00 PM early
+# closes by rule, so only one-off closures (e.g. a national day of mourning) go here.
 holidays:
   enabled: false
-  # When enabled, these dates will be treated as market closed
-  # Format: YYYY-MM-DD
-  fixed_holidays:
-    - "2025-01-01"  # New Year's Day
-    - "2025-07-04"  # Independence Day
-    - "2025-12-25"  # Christmas Day
-  observed_holidays:
-    - "2025-01-20"  # MLK Jr. Day (3rd Monday in January)
-    - "2025-02-17"  # Presidents Day (3rd Monday in February)
-    - "2025-04-18"  # Good Friday (varies)
-    - "2025-05-26"  # Memorial Day (last Monday in May)
-    - "2025-09-01"  # Labor Day (1st Monday in September)
-    - "2025-11-27"  # Thanksgiving (4th Thursday in November)
-  early_close:
-    # Market closes at 1:00 PM ET on these days
-    - "2025-07-03"   # Day before Independence Day
-    - "2025-11-28"   # Day after Thanksgiving
-    - "2025-12-24"   # Christmas Eve
-  description: "NYSE/NASDAQ holiday calendar"
+  # When enabled, these dates are treated as market closed (YYYY-MM-DD)
+  fixed_holidays: []
+  observed_holidays: []
+  description: "One-off NYSE closures the rules can't predict"
 
 # International markets (for future expansion)
 international_markets:
@@ -79,9 +67,9 @@ validation:
 
 # Metadata
 metadata:
-  last_updated: "2025-11-23"
+  last_updated: "2026-10-14"
   version: "1.0.0"
   notes:
     - "Market hours extracted from alpaca_execution_manager.py constants"
-    - "Holiday calendar based on NYSE 2025 schedule"
+    - "Regular NYSE holidays and early closes are computed by rule in market_hours.py"
     - "Extended hours and international markets disabled by default"

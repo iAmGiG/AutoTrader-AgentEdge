@@ -437,8 +437,8 @@ class TradingPipeline:
 
                 # Get current price for quantity calculation
                 current_price = get_current_price(ticker)
-                if current_price <= 0:
-                    logger.error(f"Invalid price for {ticker}: {current_price}")
+                if not current_price or current_price <= 0:  # None: no real price
+                    logger.error(f"No valid price for {ticker}: {current_price}")
                     continue
 
                 quantity = max(1, int(adjusted_allocation / current_price))

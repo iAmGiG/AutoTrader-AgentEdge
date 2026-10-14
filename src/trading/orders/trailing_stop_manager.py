@@ -507,7 +507,7 @@ class TrailingStopManager:
 
         Args:
             price_fetcher: Function to get current price for a symbol
-                          Signature: price_fetcher(symbol) -> float
+                          Signature: price_fetcher(symbol) -> Optional[float]
 
         Returns:
             Dict mapping symbol to update result
@@ -520,6 +520,13 @@ class TrailingStopManager:
         for symbol in list(self.stop_states.keys()):
             try:
                 current_price = price_fetcher(symbol)
+                if current_price is None:
+                    # Never move a stop on a guessed price
+                    results[symbol] = {
+                        "status": "error",
+                        "message": "No current price available; stop left unchanged",
+                    }
+                    continue
                 result = self.update_stop(symbol, current_price)
                 results[symbol] = result
             except Exception as e:
