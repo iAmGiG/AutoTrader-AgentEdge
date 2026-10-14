@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now, now_iso
+from src.utils.state_paths import get_state_dir
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,9 @@ class PositionManager:
         Args:
             broker_client: Alpaca trading client instance
         """
-        # Load paths configuration using ConfigLoader
+        # Config can override; the default lives in the shared state dir (not cwd-relative)
         config = ConfigLoader()
-        positions_file = config.get("state_files.positions", "state/positions.json")
+        positions_file = config.get("state_files.positions") or get_state_dir() / "positions.json"
 
         self.broker = broker_client
         self._session_cache = {}
@@ -43,7 +44,7 @@ class PositionManager:
 
         # Backup state file for persistence across restarts
         self.state_file = Path(positions_file)
-        self.state_file.parent.mkdir(exist_ok=True)
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
     def get_positions(self, force_refresh: bool = False) -> Dict[str, Dict[str, Any]]:
         """

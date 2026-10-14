@@ -38,11 +38,13 @@ class SimpleRiskManager(RiskManager):
     def __init__(
         self,
         account_service: Optional[object] = None,  # AccountService (to be injected)
-        default_position_pct: float = 5.0,  # Default: 5% of portfolio per position
-        max_position_pct: float = 15.0,  # Warning threshold
+        default_position_pct: Optional[float] = None,  # % of portfolio per position
+        max_position_pct: Optional[float] = None,  # Warning threshold
     ):
         """
         Initialize SimpleRiskManager.
+
+        Priority for each setting: Argument > Config (``risk.*``) > Default.
 
         Args:
             account_service: Service to query account info (portfolio value, buying power)
@@ -52,15 +54,21 @@ class SimpleRiskManager(RiskManager):
         self.account = account_service
         self.config = ConfigLoader()
 
-        self.default_position_pct = self.config.get(
-            "risk.default_position_pct", default_position_pct
+        self.default_position_pct = (
+            default_position_pct
+            if default_position_pct is not None
+            else self.config.get("risk.default_position_pct", 5.0)
         )
-        self.max_position_pct = self.config.get("risk.max_position_pct", max_position_pct)
+        self.max_position_pct = (
+            max_position_pct
+            if max_position_pct is not None
+            else self.config.get("risk.max_position_pct", 15.0)
+        )
 
         logger.info(
             f"SimpleRiskManager initialized: "
-            f"default_position={default_position_pct}%, "
-            f"max_warning={max_position_pct}%"
+            f"default_position={self.default_position_pct}%, "
+            f"max_warning={self.max_position_pct}%"
         )
 
     async def assess(  # noqa: C901
