@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING, Optional
 from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 
 from src.cli.utils.error_utils import sanitize_error_message
-from src.cli.utils.input_parser import BUY_INDICATORS, SELL_INDICATORS, detect_user_intent
+from src.cli.utils.input_parser import (
+    BUY_INDICATORS,
+    SELL_INDICATORS,
+    detect_user_intent,
+)
 from src.cli.utils.suggestion_display import (
     calc_pct,
     display_position_context,
@@ -86,6 +90,12 @@ class TradeHandler:
             # Check position context
             position = self._check_position_for_ticker(decision.suggestion.ticker)
             display_position_context(decision.suggestion.ticker, position)
+
+            # A trade the risk check refused can't be confirmed (execution refuses it too)
+            if decision.suggestion.risk_block_reasons:
+                display_suggestion(decision.suggestion, position)
+                self._show_risk_refusal(decision.suggestion)
+                return
 
             # Handle signal conflicts
             decision = await self._handle_signal_conflicts(
@@ -256,6 +266,12 @@ class TradeHandler:
                 f"   💡 Tip: You can be specific next time, e.g., 'buy {suggestion.ticker}' or 'analyze {suggestion.ticker}'"
             )
             return None
+
+    def _show_risk_refusal(self, suggestion) -> None:
+        """Show why the risk check refused a trade."""
+        print(f"\n{MSG.EMOJI['error']} Trade refused by risk check - it can't be placed:")
+        for reason in suggestion.risk_block_reasons:
+            print(f"   • {reason}")
 
     def _show_cannot_sell_message(self, ticker: str) -> None:
         """Show message when user wants to sell but has no position."""

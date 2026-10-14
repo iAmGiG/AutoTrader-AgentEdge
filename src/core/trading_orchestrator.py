@@ -169,7 +169,8 @@ class TradingOrchestrator:
             modifications: Optional modifications to quantity/price
 
         Returns:
-            OrderResult with order IDs and execution details
+            OrderResult with order IDs and execution details. success=False with
+            message "Trade refused by risk check" when the risk check blocks the trade.
 
         Raises:
             ValueError: If decision not approved or invalid modifications
@@ -186,6 +187,19 @@ class TradingOrchestrator:
             # Apply modifications if provided
             if modifications:
                 decision = self._apply_modifications(decision, modifications)
+
+            refusal = await self._risk_refusal(decision)
+            if refusal:
+                logger.warning(
+                    f"Trade refused by risk check for {decision.suggestion.ticker}: {refusal}"
+                )
+                return OrderResult(
+                    success=False,
+                    ticker=decision.suggestion.ticker,
+                    quantity=decision.suggestion.recommended_quantity,
+                    message="Trade refused by risk check",
+                    error=refusal,
+                )
 
             # Execute via execution manager
             result = await self.executor.execute_trade(decision.suggestion, decision)
@@ -333,9 +347,41 @@ class TradingOrchestrator:
             timestamp=get_datetime_now(),
             # Issue #474: Pass indicators for HOLD signal overrides
             indicators=analysis.indicators,
+            risk_block_reasons=list(risk_assessment.block_reasons),
         )
 
         return suggestion
+
+    async def _risk_refusal(self, decision: TradeDecision) -> Optional[str]:
+        """
+        Why the risk check refuses this decision's trade, or None if it may go ahead.
+
+        A suggestion refused when it was made stays refused. Otherwise the trade is
+        assessed again as it will be placed, since overrides and edits made after the
+        suggestion (e.g. a HOLD turned into a BUY) change what the first check covered.
+        """
+        suggestion = decision.suggestion
+        if suggestion.risk_block_reasons:
+            return "; ".join(suggestion.risk_block_reasons)
+
+        entry_price = decision.modified_entry or suggestion.entry_price
+        request = TradeRequest(
+            ticker=suggestion.ticker,
+            action=suggestion.signal.value,
+            quantity=decision.modified_quantity or suggestion.recommended_quantity,
+            price=entry_price,
+        )
+        analysis = AnalysisResult(
+            signal=suggestion.signal,
+            confidence=suggestion.confidence,
+            entry_price=entry_price,
+            stop_loss=decision.modified_stop or suggestion.stop_loss,
+            take_profit=decision.modified_target or suggestion.take_profit,
+        )
+        assessment = await self.risk.assess(request, analysis, decision.user_id)
+        if assessment.approved:
+            return None
+        return "; ".join(assessment.block_reasons or assessment.warnings) or "not approved"
 
     def _apply_modifications(self, decision: TradeDecision, modifications: dict) -> TradeDecision:
         """

@@ -15,6 +15,7 @@ from src.core.trading_orchestrator import TradingOrchestrator
 from src.parsers import AutoGenLLMParser
 from src.strategies import RealVoterStrategy, VoterStrategy
 from src.trading.broker.alpaca_execution_manager import AlpacaExecutionManager
+from src.trading.risk.broker_account_service import BrokerAccountService
 from src.trading.risk.simple_risk_manager import SimpleRiskManager
 
 logger = logging.getLogger(__name__)
@@ -122,19 +123,7 @@ class OrchestratorFactory:
             logger.info("  - Creating VoterStrategy (stub)...")
             strategy_analyzer = VoterStrategy()
 
-        # 3. Create Risk Manager (using trading mode parameters - Issue #400)
-        logger.info(
-            f"  - Creating SimpleRiskManager "
-            f"(position: {mode_params.max_position_pct:.0%}, "
-            f"portfolio: {mode_params.max_portfolio_pct:.0%})..."
-        )
-        risk_manager = SimpleRiskManager(
-            account_service=None,  # Will use fallback ($100k portfolio)
-            default_position_pct=mode_params.risk_per_trade * 100,  # Convert to percentage
-            max_position_pct=mode_params.max_position_pct * 100,  # Convert to percentage
-        )
-
-        # 4. Create Execution Manager
+        # 3. Create Execution Manager
         logger.info("  - Creating AlpacaExecutionManager...")
 
         # Auto-create OrderManager if requested and not provided
@@ -153,6 +142,19 @@ class OrchestratorFactory:
             logger.warning("    No OrderManager - using stub mode")
 
         execution_manager = AlpacaExecutionManager(order_manager=order_manager)
+
+        # 4. Create Risk Manager (using trading mode parameters - Issue #400)
+        logger.info(
+            f"  - Creating SimpleRiskManager "
+            f"(position: {mode_params.max_position_pct:.0%}, "
+            f"portfolio: {mode_params.max_portfolio_pct:.0%})..."
+        )
+        risk_manager = SimpleRiskManager(
+            # Real account data when trading; stub mode uses demo values ($100k portfolio)
+            account_service=BrokerAccountService(order_manager) if order_manager else None,
+            default_position_pct=mode_params.risk_per_trade * 100,  # Convert to percentage
+            max_position_pct=mode_params.max_position_pct * 100,  # Convert to percentage
+        )
 
         # 5. Create TradingOrchestrator
         logger.info("  - Wiring TradingOrchestrator...")

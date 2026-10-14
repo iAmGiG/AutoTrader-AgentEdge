@@ -5,7 +5,7 @@ MVP implementation for #308. Upgrade to full Portfolio Manager (#333) later.
 """
 
 import logging
-from typing import Optional
+from typing import Dict, List, Optional, Tuple
 
 from core.interfaces import RiskManager
 from core.models import AnalysisResult, RiskAssessment, TradeRequest
@@ -24,7 +24,9 @@ class SimpleRiskManager(RiskManager):
     - Check buying power (can afford the trade?)
     - Calculate portfolio % allocation
     - Simple position sizing (default 5% of portfolio)
-    - Generate warnings (but don't block trades)
+    - Generate warnings
+    - Block trades that open or add to a position beyond buying power, max exposure
+      or max positions (selling shares already held is never blocked)
 
     NOT included (deferred to #333 Portfolio Manager):
     - Sector concentration limits
@@ -68,12 +70,15 @@ class SimpleRiskManager(RiskManager):
         Assess risk and recommend position size.
 
         MVP Logic:
-        1. Get portfolio value and buying power
+        1. Get portfolio value, buying power and open positions
         2. If user specified quantity, use it; otherwise calculate from %
         3. Check if affordable (buying power check)
-        4. Calculate portfolio %
+        4. Calculate portfolio % and projected exposure from open positions
         5. Generate warnings (>15% = large position)
-        6. Always approve (warnings only, no blocking)
+        6. Block (approved=False, with block_reasons) when a trade that opens or adds
+           to a position breaks buying power, max exposure or max positions. Selling
+           shares already held only reduces risk and is never blocked. If account
+           data can't be read, the trade is blocked.
 
         Args:
             request: Original trade request
@@ -105,6 +110,11 @@ class SimpleRiskManager(RiskManager):
             # Get portfolio info
             portfolio_value = await self.get_portfolio_value(user_id)
             buying_power = await self.get_buying_power(user_id, portfolio_value=portfolio_value)
+            held = {
+                p["symbol"]: p
+                for p in await self.get_positions(user_id)
+                if float(p.get("qty") or 0) != 0
+            }
 
             # Determine quantity
             if request.quantity:
@@ -123,63 +133,18 @@ class SimpleRiskManager(RiskManager):
             # Calculate trade value
             trade_value = quantity * entry_price
 
-            # Check buying power
-            warnings = []
-            if trade_value > buying_power:
-                warnings.append(
-                    f"⚠️  Insufficient buying power: need ${trade_value:,.2f}, "
-                    f"have ${buying_power:,.2f}"
-                )
-
             # Calculate portfolio % (after transaction)
             portfolio_pct = (trade_value / portfolio_value) * 100.0
 
-            # Warning for large positions
-            if portfolio_pct > self.max_position_pct:
-                warnings.append(
-                    f"⚠️  Large position: {portfolio_pct:.1f}% of portfolio "
-                    f"(>{self.max_position_pct}% threshold)"
+            existing_qty = float(held[ticker]["qty"]) if ticker in held else 0.0
+            # Selling shares already held only reduces risk, so it is never blocked
+            reduces_position = analysis.signal.value == "sell" and existing_qty > 0
+            if reduces_position:
+                warnings, block_reasons = [], []
+            else:
+                warnings, block_reasons = self._limit_breaches(
+                    ticker, trade_value, buying_power, portfolio_value, portfolio_pct, held
                 )
-
-            # Portfolio-level risk checks
-            # Get current positions count and exposure (simplified for MVP)
-            # TODO: Integrate with actual PositionManager when available
-            current_positions_count = 0  # Placeholder - would get from PositionManager
-            current_exposure_pct = 0.0  # Placeholder - would calculate from positions
-
-            # After this trade, what would exposure be?
-            projected_exposure_pct = current_exposure_pct + portfolio_pct
-            projected_positions_count = current_positions_count + 1
-
-            # Check portfolio limits
-            limits_config = {
-                "max_positions": self.config.get("risk.max_positions", 10),
-                "max_exposure_pct": self.config.get("risk.max_exposure_pct", 80.0),
-                "max_single_position_pct": self.max_position_pct,
-            }
-
-            limits_check = check_portfolio_limits(
-                current_positions=projected_positions_count,
-                position_exposure_pct=projected_exposure_pct,
-                largest_position_pct=max(portfolio_pct, current_exposure_pct),
-                limits_config=limits_config,
-            )
-
-            # Add warnings for limit violations
-            if not limits_check.get("max_positions", True):
-                warnings.append(
-                    f"⚠️  Portfolio limit: Would exceed max positions "
-                    f"({projected_positions_count} > {limits_config['max_positions']})"
-                )
-
-            if not limits_check.get("max_exposure", True):
-                warnings.append(
-                    f"⚠️  Portfolio limit: Would exceed max exposure "
-                    f"({projected_exposure_pct:.1f}% > {limits_config['max_exposure_pct']}%)"
-                )
-
-            if not limits_check.get("diversification_ok", True):
-                warnings.append("⚠️  Diversification warning: Position concentration too high")
 
             # Calculate risk metrics (with None guards for stop_loss/take_profit)
             if stop_loss is not None:
@@ -204,30 +169,22 @@ class SimpleRiskManager(RiskManager):
 
             risk_reward_ratio = potential_gain / max_loss_usd if max_loss_usd > 0 else 0.0
 
-            # Determine approval based on portfolio limits and buying power
             # Block trade if critical limits are violated
-            approved = True
-            if trade_value > buying_power:
-                approved = False
-                logger.warning(f"Trade blocked: insufficient buying power for {ticker}")
-            elif not limits_check.get("max_exposure", True):
-                approved = False
-                logger.warning(f"Trade blocked: would exceed max exposure limit for {ticker}")
-            elif not limits_check.get("max_positions", True):
-                approved = False
-                logger.warning(f"Trade blocked: would exceed max positions limit for {ticker}")
+            for reason in block_reasons:
+                logger.warning(f"Trade blocked for {ticker}: {reason}")
             # Note: Other warnings (large position, diversification) don't block trades
 
             # Create assessment
             assessment = RiskAssessment(
-                approved=approved,
+                approved=not block_reasons,
                 recommended_quantity=quantity,
                 portfolio_pct=portfolio_pct,
                 max_loss_usd=max_loss_usd,
                 risk_reward_ratio=risk_reward_ratio,
                 warnings=warnings,
                 buying_power_available=buying_power,
-                existing_position_qty=0,  # MVP: Not checking existing positions yet
+                existing_position_qty=int(existing_qty),
+                block_reasons=block_reasons,
             )
 
             logger.info(
@@ -249,7 +206,80 @@ class SimpleRiskManager(RiskManager):
                 max_loss_usd=0.0,
                 risk_reward_ratio=0.0,
                 warnings=[f"⚠️  Risk assessment error: {e}"],
+                block_reasons=[f"Risk assessment error: {e}"],
             )
+
+    def _limit_breaches(
+        self,
+        ticker: str,
+        trade_value: float,
+        buying_power: float,
+        portfolio_value: float,
+        portfolio_pct: float,
+        held: Dict[str, dict],
+    ) -> Tuple[List[str], List[str]]:
+        """Warnings and blocking reasons for a trade that opens or adds to a position."""
+        warnings: List[str] = []
+        block_reasons: List[str] = []
+
+        # Check buying power
+        if trade_value > buying_power:
+            reason = (
+                f"Insufficient buying power: need ${trade_value:,.2f}, "
+                f"have ${buying_power:,.2f}"
+            )
+            warnings.append(f"⚠️  {reason}")
+            block_reasons.append(reason)
+
+        # Warning for large positions
+        if portfolio_pct > self.max_position_pct:
+            warnings.append(
+                f"⚠️  Large position: {portfolio_pct:.1f}% of portfolio "
+                f"(>{self.max_position_pct}% threshold)"
+            )
+
+        # Portfolio-level limits after this trade, from the open positions
+        position_pcts = {
+            symbol: abs(float(p.get("market_value") or 0)) / portfolio_value * 100.0
+            for symbol, p in held.items()
+        }
+        projected_exposure_pct = sum(position_pcts.values()) + portfolio_pct
+        projected_positions_count = len(held) + (0 if ticker in held else 1)
+        position_pcts[ticker] = position_pcts.get(ticker, 0.0) + portfolio_pct
+
+        limits_config = {
+            "max_positions": self.config.get("risk.max_positions", 10),
+            "max_exposure_pct": self.config.get("risk.max_exposure_pct", 80.0),
+            "max_single_position_pct": self.max_position_pct,
+        }
+
+        limits_check = check_portfolio_limits(
+            current_positions=projected_positions_count,
+            position_exposure_pct=projected_exposure_pct,
+            largest_position_pct=max(position_pcts.values()),
+            limits_config=limits_config,
+        )
+
+        if not limits_check.get("max_positions", True):
+            reason = (
+                f"Portfolio limit: Would exceed max positions "
+                f"({projected_positions_count} > {limits_config['max_positions']})"
+            )
+            warnings.append(f"⚠️  {reason}")
+            block_reasons.append(reason)
+
+        if not limits_check.get("max_exposure", True):
+            reason = (
+                f"Portfolio limit: Would exceed max exposure "
+                f"({projected_exposure_pct:.1f}% > {limits_config['max_exposure_pct']}%)"
+            )
+            warnings.append(f"⚠️  {reason}")
+            block_reasons.append(reason)
+
+        if not limits_check.get("diversification_ok", True):
+            warnings.append("⚠️  Diversification warning: Position concentration too high")
+
+        return warnings, block_reasons
 
     async def get_portfolio_value(self, user_id: str = "default") -> float:
         """
@@ -264,12 +294,8 @@ class SimpleRiskManager(RiskManager):
             Total portfolio value in USD
         """
         if self.account:
-            try:
-                return await self.account.get_portfolio_value(user_id)
-            except Exception as e:
-                # Real error - log at warning level
-                logger.warning(f"Failed to get portfolio value: {e}")
-                # Fall through to use demo values
+            # Errors propagate: demo values would approve trades against a fake account
+            return await self.account.get_portfolio_value(user_id)
 
         # MVP: Using demo portfolio value (account service not configured)
         # This is expected during MVP - only log at DEBUG level
@@ -292,12 +318,8 @@ class SimpleRiskManager(RiskManager):
             Available cash in USD
         """
         if self.account:
-            try:
-                return await self.account.get_buying_power(user_id)
-            except Exception as e:
-                # Real error - log at warning level
-                logger.warning(f"Failed to get buying power: {e}")
-                # Fall through to use demo values
+            # Errors propagate: demo values would approve trades against a fake account
+            return await self.account.get_buying_power(user_id)
 
         # MVP: Using demo buying power (account service not configured)
         # This is expected during MVP - only log at DEBUG level
@@ -308,3 +330,19 @@ class SimpleRiskManager(RiskManager):
             f"Account service not configured - using demo buying power: ${buying_power:,.0f}"
         )
         return buying_power
+
+    async def get_positions(self, user_id: str = "default") -> List[dict]:
+        """
+        Get open positions for user.
+
+        MVP: If account service not available (or has no positions lookup), return [].
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Position dicts with symbol, qty and market_value
+        """
+        if self.account and hasattr(self.account, "get_positions"):
+            return await self.account.get_positions(user_id)
+        return []
