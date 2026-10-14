@@ -66,3 +66,27 @@ def test_sell_reports_no_leg_ids(manager):
     assert result.entry_order_id == "exit-1"
     assert result.stop_order_id is None and result.target_order_id is None
     assert "bracket" not in result.message
+
+
+def test_order_declined_at_live_confirmation_is_not_reported_as_placed(manager):
+    em, om = manager
+    om.place_bracket_order.return_value = {
+        "status": "cancelled",
+        "message": "Order cancelled by user",
+    }
+
+    result = asyncio.run(em._place_order("SPY", 7, "BUY", 660.0, 627.0, 712.8, OrderType.MARKET))
+
+    assert not result.success
+    assert result.entry_order_id is None
+
+
+def test_success_display_shows_none_for_missing_legs(capsys):
+    from src.cli.utils.suggestion_display import display_result
+    from src.core.models import OrderResult
+
+    display_result(OrderResult(success=True, entry_order_id="exit-1", ticker="SPY", quantity=7))
+
+    out = capsys.readouterr().out
+    assert "Stop Order:   none" in out
+    assert "None" not in out

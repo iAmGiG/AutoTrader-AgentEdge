@@ -11,7 +11,7 @@ This module provides display formatting functions for:
 
 from typing import Optional
 
-from config_defaults.message_loader import CLIMessages as MSG
+from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 from config_defaults.message_loader import get_pl_emoji, get_signal_emoji
 
 from src.cli.commands.timeframe_commands import get_timeframe_commands
@@ -107,7 +107,7 @@ def display_position_context(ticker: str, position: Optional[dict]) -> None:
     print(f"{'=' * 60}\n")
 
 
-def display_suggestion(
+def display_suggestion(  # noqa: C901
     suggestion, position: Optional[dict] = None, override_mode: Optional[str] = None
 ) -> None:
     """
@@ -241,8 +241,9 @@ def display_result(result) -> None:
                 qty=result.quantity,
                 ticker=result.ticker,
                 entry_id=result.entry_order_id,
-                stop_id=result.stop_order_id,
-                target_id=result.target_order_id,
+                # A sell exit has no bracket legs
+                stop_id=result.stop_order_id or "none",
+                target_id=result.target_order_id or "none",
                 message=result.message,
             )
         )

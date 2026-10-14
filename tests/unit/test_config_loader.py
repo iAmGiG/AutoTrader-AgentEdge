@@ -44,3 +44,10 @@ def test_missing_default_file_uses_defaults(tmp_path):
 def test_missing_explicit_file_still_raises(tmp_path):
     with pytest.raises(Exception, match="Error loading config file"):
         ConfigLoader(str(tmp_path / "nope.json"))
+
+
+def test_null_value_returns_default(tmp_path):
+    loader = _loader(tmp_path, {"risk": {"max_position_pct": None}, "MODEL": None})
+
+    assert loader.get("risk.max_position_pct", 15.0) == 15.0
+    assert loader.get("MODEL", "gpt-4o-mini") == "gpt-4o-mini"

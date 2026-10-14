@@ -54,18 +54,18 @@ class ConfigLoader:
 
     def get(self, key, default=None):
         """
-        Value for ``key``, or ``default`` when it isn't set.
+        Value for ``key``, or ``default`` when it isn't set (missing or null).
 
         A dotted key such as ``"risk.max_position_pct"`` reads nested sections
         (``{"risk": {"max_position_pct": ...}}``); a top-level key with that exact
         name takes precedence.
         """
         if key in self.config:
-            return self.config[key]
-
-        node = self.config
-        for part in key.split("."):
-            if not isinstance(node, dict) or part not in node:
-                return default
-            node = node[part]
-        return node
+            node = self.config[key]
+        else:
+            node = self.config
+            for part in key.split("."):
+                if not isinstance(node, dict) or part not in node:
+                    return default
+                node = node[part]
+        return default if node is None else node

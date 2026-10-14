@@ -20,6 +20,7 @@ from autogen_core.tools import FunctionTool
 
 from src.utils.date_utils import format_for_filename, get_datetime_now
 from src.utils.safe_print import get_symbol
+from src.utils.state_paths import get_state_dir
 
 # Default database names (for DBBackupManager)
 # DBBackupManager maps these to actual paths: user -> state/user.db, cache -> .cache/trading_data.db
@@ -327,13 +328,13 @@ def export_table(
 
         # Generate output path if not provided
         if not output_path:
-            exports_dir = Path("state") / "exports"
+            exports_dir = get_state_dir() / "exports"
             exports_dir.mkdir(parents=True, exist_ok=True)
             output_path = str(exports_dir / f"{table_name}_{format_for_filename()}.json")
 
         # Write JSON
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w") as f:
+        with open(output_path, "x") as f:  # never overwrite an earlier file
             json.dump(rows, f, indent=2, default=str)
 
         return f"{get_symbol('SUCCESS')} Exported {len(rows)} rows to: {output_path}"

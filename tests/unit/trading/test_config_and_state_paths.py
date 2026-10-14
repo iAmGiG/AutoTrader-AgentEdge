@@ -58,7 +58,6 @@ def test_gtt_uses_the_shared_user_db(monkeypatch, tmp_path):
 
 def test_positions_backup_lives_in_the_state_dir(monkeypatch, tmp_path):
     cwd = _elsewhere(monkeypatch, tmp_path)
-    monkeypatch.setattr(position_module, "ConfigLoader", lambda: _Config())
 
     manager = position_module.PositionManager(MagicMock())
 

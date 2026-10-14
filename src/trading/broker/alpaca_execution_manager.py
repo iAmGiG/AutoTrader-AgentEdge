@@ -494,41 +494,21 @@ class AlpacaExecutionManager(ExecutionManager):
             )
             logger.warning(msg)
 
-        # Execute via OrderManager (only BUY orders reach here)
+        # Execute via OrderManager
         error_data = None
         try:
-            # Handle SELL (Exit) separately - usually a simple order, not a bracket
-            if side == "sell":
-                logger.info(f"Placing SELL order for {ticker} (closing position)")
-                if is_limit_order:
-                    order_data = self.order_manager.place_limit_order_gtc(
-                        symbol=ticker, qty=quantity, side=side, limit_price=entry_price
-                    )
-                else:
-                    order_data = self.order_manager.place_market_order(
-                        symbol=ticker, qty=quantity, side=side
-                    )
-            else:
-                # Handle BUY (Entry) - Use Bracket Order
-                # Issue #344: Use limit entry for pullback/breakout orders
-                limit_price = entry_price if is_limit_order else None
+            order_data = self._submit_order(
+                ticker, quantity, side, is_limit_order, entry_price, stop_loss, take_profit
+            )
 
-                if is_limit_order:
-                    logger.info(
-                        f"Placing LIMIT bracket order: {ticker} @ ${entry_price:.2f} "
-                        "(waiting for pullback/breakout price)"
-                    )
-                else:
-                    logger.info(f"Placing MARKET bracket order: {ticker} (immediate fill)")
-
-                order_data = self.order_manager.place_bracket_order(
-                    symbol=ticker,
-                    qty=quantity,
-                    side=side,
-                    entry_limit_price=limit_price,
-                    take_profit_price=take_profit,
-                    stop_loss_price=stop_loss,
-                    time_in_force="gtc",
+            # Declined at the live-trading confirmation: nothing was sent
+            if order_data.get("status") == "cancelled":
+                return OrderResult(
+                    success=False,
+                    ticker=ticker,
+                    quantity=quantity,
+                    message=order_data.get("message", "Order cancelled"),
+                    error="Cancelled at confirmation; no order was sent",
                 )
 
             # Check for errors
@@ -595,6 +575,46 @@ class AlpacaExecutionManager(ExecutionManager):
         )
 
         return result
+
+    def _submit_order(
+        self,
+        ticker: str,
+        quantity: int,
+        side: str,
+        is_limit_order: bool,
+        entry_price: float,
+        stop_loss: float,
+        take_profit: float,
+    ) -> dict:
+        """Submit a SELL exit as a plain order, or a BUY entry as a bracket order."""
+        # Handle SELL (Exit) separately - usually a simple order, not a bracket
+        if side == "sell":
+            logger.info(f"Placing SELL order for {ticker} (closing position)")
+            if is_limit_order:
+                return self.order_manager.place_limit_order_gtc(
+                    symbol=ticker, qty=quantity, side=side, limit_price=entry_price
+                )
+            return self.order_manager.place_market_order(symbol=ticker, qty=quantity, side=side)
+
+        # Handle BUY (Entry) - Use Bracket Order
+        # Issue #344: Use limit entry for pullback/breakout orders
+        if is_limit_order:
+            logger.info(
+                f"Placing LIMIT bracket order: {ticker} @ ${entry_price:.2f} "
+                "(waiting for pullback/breakout price)"
+            )
+        else:
+            logger.info(f"Placing MARKET bracket order: {ticker} (immediate fill)")
+
+        return self.order_manager.place_bracket_order(
+            symbol=ticker,
+            qty=quantity,
+            side=side,
+            entry_limit_price=entry_price if is_limit_order else None,
+            take_profit_price=take_profit,
+            stop_loss_price=stop_loss,
+            time_in_force="gtc",
+        )
 
     async def _handle_bracket_fallback(
         self,

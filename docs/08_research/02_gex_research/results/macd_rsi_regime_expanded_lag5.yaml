@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-13T13:06:37.986046'
+run_timestamp: '2026-10-14T03:50:01.556017'
 issue: '#531'
 description: MACD+RSI in Positive Gamma Re-validation
 methodology:
@@ -85,13 +85,13 @@ results:
       win_rate: 55.8
       max_drawdown: -0.1198
     neutral:
-      n_days: 2519
-      n_signal_days: 824
-      mean_return: 0.000762
-      median_return: 0.000993
-      std_return: 0.011464
-      sharpe_ratio: 1.055
-      signal_sharpe: 1.361
+      n_days: 2518
+      n_signal_days: 823
+      mean_return: 0.000764
+      median_return: 0.000998
+      std_return: 0.011466
+      sharpe_ratio: 1.058
+      signal_sharpe: 1.371
       win_rate: 55.3
       max_drawdown: -0.0602
   welch_t_test:

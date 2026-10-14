@@ -74,7 +74,10 @@ class GEXOverlay:
             known = df[df.index <= as_of_date]
         else:
             known = df[df.index < as_of_date]
-            known = known.iloc[: len(known) - (self.lag_days - 1)]
+            # Drop the newest lag_days - 1 rows; with too few rows there's nothing that old
+            # (a negative stop would keep early rows instead and return a shorter lag)
+            keep = len(known) - (self.lag_days - 1)
+            known = known.iloc[:keep] if keep > 0 else known.iloc[:0]
         return known.iloc[-1] if len(known) else None
 
     def get_regime(self, symbol: str, as_of_date) -> Optional[str]:

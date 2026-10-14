@@ -414,7 +414,8 @@ class DBBackupManager:
             output_file = Path(output_path)
             output_file.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_file, "w", encoding="utf-8") as f:
+            # "x" fails if the file appeared since the check above: never overwrite
+            with open(output_file, "x", encoding="utf-8") as f:
                 json.dump(
                     {
                         "table": table_name,

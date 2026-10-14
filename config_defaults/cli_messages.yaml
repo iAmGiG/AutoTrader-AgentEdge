@@ -134,25 +134,6 @@ errors:
        Please specify what you want to trade.
        Examples: 'AAPL', 'buy META', 'analyze TSLA'
 
-  broker_validation_stop: |
-    Order rejected: Stop loss price (${stop_price:.2f}) doesn't match market price
-
-    The market is closed and price data may be stale. Alpaca expects stop<=${base_price}
-    but we calculated ${stop_price:.2f}. Try again during market hours (9:30 AM - 4:00 PM ET)
-    for accurate pricing.
-
-  broker_validation_target: |
-    Order rejected: Take profit price (${target_price:.2f}) doesn't match market price
-
-    The market is closed and price data may be stale. Alpaca expects target>=${base_price}
-    but we calculated ${target_price:.2f}. Try again during market hours (9:30 AM - 4:00 PM ET)
-    for accurate pricing.
-
-  insufficient_funds: |
-    Order rejected: Not enough cash available
-
-    Check your account balance and reduce the order size.
-
   # Broker error translations (src/trading/broker/api_error_translator.py)
   market_closed:
     title: "Order rejected: Market is closed"
