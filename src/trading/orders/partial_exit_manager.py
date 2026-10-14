@@ -15,11 +15,23 @@ Design:
 - Per-mode configuration via trading_modes.yaml
 """
 
+import json
 import logging
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+import math
+import os
+import tempfile
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass, fields
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-from src.utils.date_utils import now_iso
+from src.utils.date_utils import format_for_filename, now_iso
+from src.utils.state_paths import get_state_dir
+
+try:
+    import fcntl
+except ImportError:  # Windows: no cross-process lock, writes are still atomic
+    fcntl = None
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +84,22 @@ class PartialExitState:
         """Get list of targets that are still active."""
         return [target for target in self.targets if not target.filled]
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "PartialExitState":
+        """Rebuild a state saved with dataclasses.asdict() (unknown keys are ignored)."""
+        target_fields = {f.name for f in fields(ExitTarget)}
+        targets = [
+            ExitTarget(**{k: v for k, v in target.items() if k in target_fields})
+            for target in data.get("targets", [])
+        ]
+        state_fields = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in {**data, "targets": targets}.items() if k in state_fields})
+
+
+def default_state_file() -> Path:
+    """Where partial exit plans are saved (honours AUTOTRADER_STATE_DIR)."""
+    return get_state_dir() / "partial_exits.json"
+
 
 class PartialExitManager:
     """
@@ -90,6 +118,7 @@ class PartialExitManager:
         order_manager,
         trailing_stop_manager=None,
         partial_exit_config: Optional[Dict[str, Any]] = None,
+        state_file: Optional[Path] = None,
     ):
         """
         Initialize partial exit manager.
@@ -98,6 +127,7 @@ class PartialExitManager:
             order_manager: OrderManager instance for broker operations
             trailing_stop_manager: TrailingStopManager for dynamic stops
             partial_exit_config: Configuration dict for partial exits
+            state_file: JSON file plans are loaded from and saved to (None: memory only)
         """
         self.order_manager = order_manager
         self.trailing_stop_manager = trailing_stop_manager
@@ -111,8 +141,10 @@ class PartialExitManager:
             "target_2": "trailing",
         }
 
-        # Track exit states for each position
-        self.exit_states: Dict[str, PartialExitState] = {}
+        # Track exit states for each position (saved so other processes, like the CLI,
+        # see the same plans)
+        self.state_file = Path(state_file) if state_file else None
+        self.exit_states: Dict[str, PartialExitState] = self._load()
 
         logger.info(
             f"PartialExitManager initialized: enabled={self.config.get('enabled')}, "
@@ -171,6 +203,7 @@ class PartialExitManager:
 
         # Place orders for targets
         self._place_target_orders(state)
+        self.save(symbol)
 
         logger.info(
             f"Registered {symbol} for partial exits: "
@@ -342,6 +375,7 @@ class PartialExitManager:
         Returns:
             True if any targets were filled, False otherwise
         """
+        self._refresh(symbol)  # pick up changes another process saved
         if symbol not in self.exit_states:
             return False
 
@@ -367,6 +401,7 @@ class PartialExitManager:
 
         if updated:
             state.last_updated = now_iso()
+            self.save(symbol)
 
         return updated
 
@@ -439,13 +474,152 @@ class PartialExitManager:
         """
         if symbol in self.exit_states:
             del self.exit_states[symbol]
+            self.save(symbol)
             logger.info(f"Removed {symbol} from partial exit tracking")
             return True
         return False
 
+    def update_target_price(
+        self, symbol: str, target_number: int, new_price: float
+    ) -> Tuple[bool, str]:
+        """
+        Change the exit price of an unfilled limit target in a saved plan.
+
+        A target with a live broker order is refused: changing only the stored price
+        would leave the broker order at the old one.
+
+        Returns:
+            Tuple of (changed, message)
+        """
+        self._refresh(symbol)  # edit the latest saved plan
+        state = self.exit_states.get(symbol)
+        if state is None:
+            return False, f"No partial exit plan found for {symbol}"
+        target = next((t for t in state.targets if t.target_number == target_number), None)
+        if target is None:
+            return False, f"Target {target_number} not found for {symbol}"
+        if target.filled:
+            return False, f"Target {target_number} for {symbol} has already been filled"
+        if target.exit_type != "limit":
+            return False, f"Target {target_number} is a {target.exit_type} target, not a limit"
+        if not math.isfinite(new_price) or new_price <= 0:
+            return False, f"Exit price must be a positive number, got {new_price}"
+        if target.order_id:
+            return False, (
+                f"Target {target_number} for {symbol} has a live order ({target.order_id}); "
+                "change it at the broker, not here"
+            )
+
+        old_price = target.exit_price
+        target.exit_price = new_price
+        state.last_updated = now_iso()
+        self.save(symbol)
+        previous = f"${old_price:.2f}" if old_price else "none"
+        return True, (
+            f"Modified {symbol} target {target_number}\n"
+            f"  Previous price: {previous}\n"
+            f"  New price: ${new_price:.2f}\n"
+            "  Saved in the plan only: this target has no broker order, so nothing was sent"
+        )
+
+    def save(self, symbol: Optional[str] = None) -> None:
+        """
+        Write plans to the state file, if one is configured.
+
+        With a symbol, only that plan is written (or removed) on top of what is on disk,
+        so plans other processes saved are kept. The file is locked while it is read and
+        rewritten, and replaced atomically. An unreadable file is never overwritten.
+        """
+        if self.state_file is None:
+            return
+        try:
+            with self._file_lock():
+                if symbol is None:
+                    plans = {sym: asdict(state) for sym, state in self.exit_states.items()}
+                else:
+                    plans = self._read_plans()
+                    if symbol in self.exit_states:
+                        plans[symbol] = asdict(self.exit_states[symbol])
+                    else:
+                        plans.pop(symbol, None)
+                self._write_plans(plans)
+        except Exception as e:
+            logger.error(f"Failed to save partial exit plans to {self.state_file}: {e}")
+
+    def _refresh(self, symbol: str) -> None:
+        """Replace a plan in memory with its saved version, if the file has one."""
+        if self.state_file is None:
+            return
+        try:
+            saved = self._read_plans().get(symbol)
+        except Exception as e:
+            logger.warning(f"Could not re-read partial exit plans: {e}")
+            return
+        if saved is not None:
+            self.exit_states[symbol] = PartialExitState.from_dict(saved)
+
+    def _read_plans(self) -> Dict[str, Dict[str, Any]]:
+        """Raw saved plans by symbol ({} if no file); raises if the file is unreadable."""
+        if not self.state_file.exists():
+            return {}
+        return json.loads(self.state_file.read_text()).get("positions", {})
+
+    def _write_plans(self, plans: Dict[str, Dict[str, Any]]) -> None:
+        """Atomically replace the state file (unique temp file, then rename)."""
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=self.state_file.parent, prefix=self.state_file.name)
+        try:
+            with os.fdopen(fd, "w") as handle:
+                json.dump({"positions": plans, "saved_at": now_iso()}, handle, indent=2)
+            os.replace(tmp, self.state_file)
+        except BaseException:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
+
+    @contextmanager
+    def _file_lock(self):
+        """Exclusive lock (POSIX) around a read-modify-write of the state file."""
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.state_file.with_name(self.state_file.name + ".lock"), "a") as handle:
+            if fcntl:
+                fcntl.flock(handle, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if fcntl:
+                    fcntl.flock(handle, fcntl.LOCK_UN)
+
+    def _load(self) -> Dict[str, PartialExitState]:
+        """
+        Plans saved in the state file ({} if none).
+
+        An unreadable file is moved aside (``.unreadable-<time>``) rather than left to
+        be overwritten by the next save, so its plans can still be recovered.
+        """
+        if self.state_file is None or not self.state_file.exists():
+            return {}
+        try:
+            return {
+                symbol: PartialExitState.from_dict(state)
+                for symbol, state in self._read_plans().items()
+            }
+        except Exception as e:
+            aside = self.state_file.with_name(
+                f"{self.state_file.name}.unreadable-{format_for_filename()}"
+            )
+            os.replace(self.state_file, aside)
+            logger.error(f"Could not read partial exit plans ({e}); moved the file to {aside}")
+            return {}
+
     @classmethod
     def from_mode_manager(
-        cls, order_manager, trailing_stop_manager, mode_manager, mode=None
+        cls,
+        order_manager,
+        trailing_stop_manager,
+        mode_manager,
+        mode=None,
+        state_file: Optional[Path] = None,
     ) -> "PartialExitManager":
         """
         Create PartialExitManager from TradingModeManager configuration.
@@ -455,6 +629,8 @@ class PartialExitManager:
             trailing_stop_manager: TrailingStopManager instance
             mode_manager: TradingModeManager instance
             mode: TradingMode to use (default: current mode)
+            state_file: Where plans are saved (default: state/partial_exits.json, so
+                the CLI sees them)
 
         Returns:
             PartialExitManager instance configured for the mode
@@ -481,4 +657,15 @@ class PartialExitManager:
             order_manager=order_manager,
             trailing_stop_manager=trailing_stop_manager,
             partial_exit_config=partial_exit_config,
+            state_file=state_file or default_state_file(),
         )
+
+
+def load_partial_exit_manager(order_manager=None) -> PartialExitManager:
+    """
+    A PartialExitManager over the saved plans in the state dir.
+
+    Each call reads the file, so it sees plans saved by other processes. Without an
+    order manager it can show and edit saved plans but not place or check orders.
+    """
+    return PartialExitManager(order_manager=order_manager, state_file=default_state_file())

@@ -4,16 +4,24 @@ Partial Exit CLI Tools - FunctionTool wrappers for partial exit management.
 Issue #508: CLI integration for multi-target position exits.
 
 This module wraps the PartialExitManager functions as FunctionTool instances
-for integration with the AutoGen agent architecture and CLI.
+for integration with the AutoGen agent architecture and CLI. Plans are read from
+the saved state (state/partial_exits.json), so these tools see plans registered by
+other processes (#524, #584).
 
 Pattern: Pure function wrappers -> FunctionTool -> Registry
 """
 
 import logging
+from typing import List
 
 from autogen_core.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
+
+NO_PLANS = (
+    "[INFO] No partial exit plans registered.\n\n"
+    "Plans appear here once a position is registered for partial exits."
+)
 
 
 # =============================================================================
@@ -22,14 +30,55 @@ logger = logging.getLogger(__name__)
 
 
 def _get_partial_exit_manager():
-    """Get PartialExitManager instance."""
+    """PartialExitManager over the saved plans (None if they can't be read)."""
     try:
-        from src.trading.orders.partial_exit_manager import PartialExitManager
+        from src.trading.orders.partial_exit_manager import load_partial_exit_manager
 
-        return PartialExitManager()
+        return load_partial_exit_manager()
     except Exception as e:
         logger.error(f"Failed to get PartialExitManager: {e}")
         return None
+
+
+def _target_lines(target, state, indent: str = "    ") -> List[str]:
+    """Display lines for one exit target of a plan."""
+    status = "[FILLED]" if target.filled else "[ACTIVE]"
+    lines = [f"{indent}{status} Target {target.target_number}: {target.quantity} shares"]
+    if target.exit_type == "limit" and target.exit_price:
+        entry = state.entry_price
+        move = (target.exit_price - entry) / entry * 100 if entry else 0.0
+        gain = -move if str(state.side).lower() == "short" else move  # shorts gain below entry
+        live = f", order {target.order_id}" if target.order_id else ""
+        lines.append(
+            f"{indent}          Limit @ ${target.exit_price:.2f} ({gain:+.1f}% gain{live})"
+        )
+    elif target.exit_type == "limit":
+        lines.append(f"{indent}          Limit (no price set)")
+    else:
+        lines.append(f"{indent}          Trailing Stop")
+    if target.filled_at:
+        lines.append(f"{indent}          Filled: {target.filled_at}")
+    return lines
+
+
+def _plan_lines(state) -> List[str]:
+    """Display lines for one position's plan."""
+    lines = [
+        f"[{state.symbol}] {state.total_quantity} shares @ ${state.entry_price:.2f}",
+        f"  Registered: {state.registered_at}",
+        f"  Remaining: {state.get_remaining_quantity()} shares",
+        f"  Stop Price: ${state.stop_price:.2f}",
+        "  Targets:",
+    ]
+    for target in state.targets:
+        lines.extend(_target_lines(target, state))
+    return lines
+
+
+def _error(action: str, error: Exception) -> str:
+    """An [ERROR] reply for a view that failed (e.g. a malformed saved plan)."""
+    logger.error(f"Failed to {action}: {error}")
+    return f"[ERROR] Failed to {action}: {error}"
 
 
 # =============================================================================
@@ -47,47 +96,23 @@ def show_all_partial_exits() -> str:
     Example:
         >>> show_all_partial_exits()
         'Partial Exit Plans
-        AAPL: 100 shares @ $150.00 entry
-          Target 1: 50 shares (limit @ $156.00)
-          Target 2: 50 shares (trailing stop)'
+        [AAPL] 100 shares @ $150.00
+          ...'
     """
     manager = _get_partial_exit_manager()
     if not manager:
         return "[ERROR] Could not access PartialExitManager"
+    if not manager.exit_states:
+        return NO_PLANS
 
     try:
-        # Get all positions from manager's state
-        if not hasattr(manager, "positions") or not manager.positions:
-            return "[INFO] No partial exit plans registered.\n\nUse order manager to set up partial exits."
-
-        output = "Partial Exit Plans\n"
-        output += "=" * 60 + "\n\n"
-
-        for symbol, state in manager.positions.items():
-            output += f"[{symbol}] {state.total_quantity} shares @ ${state.entry_price:.2f}\n"
-            output += f"  Registered: {state.registered_at}\n"
-            output += f"  Remaining: {state.get_remaining_quantity()} shares\n\n"
-
-            output += "  Targets:\n"
-            for target in state.targets:
-                status = "[FILLED]" if target.filled else "[ACTIVE]"
-                output += f"    {status} Target {target.target_number}: {target.quantity} shares\n"
-                if target.exit_type == "limit":
-                    output += f"              Type: Limit @ ${target.exit_price:.2f}\n"
-                else:
-                    output += "              Type: Trailing Stop\n"
-                if target.filled_at:
-                    output += f"              Filled: {target.filled_at}\n"
-                output += "\n"
-
-            output += f"  Stop Price: ${state.stop_price:.2f}\n"
-            output += "-" * 60 + "\n\n"
-
-        return output
-
+        lines = ["Partial Exit Plans", "=" * 60, ""]
+        for state in manager.exit_states.values():
+            lines.extend(_plan_lines(state))
+            lines.extend(["-" * 60, ""])
+        return "\n".join(lines)
     except Exception as e:
-        logger.error(f"Error showing partial exits: {e}")
-        return f"[ERROR] Failed to retrieve partial exits: {e}"
+        return _error("retrieve partial exits", e)
 
 
 def show_partial_exit_plan(symbol: str) -> str:
@@ -99,51 +124,19 @@ def show_partial_exit_plan(symbol: str) -> str:
 
     Returns:
         Formatted string with exit plan details
-
-    Example:
-        >>> show_partial_exit_plan('AAPL')
-        'Partial Exit Plan: AAPL
-        Position: 100 shares @ $150.00
-        Remaining: 75 shares
-        ...'
     """
     manager = _get_partial_exit_manager()
     if not manager:
         return "[ERROR] Could not access PartialExitManager"
 
     symbol = symbol.upper()
-
+    state = manager.exit_states.get(symbol)
+    if state is None:
+        return f"[INFO] No partial exit plan for {symbol}"
     try:
-        state = manager.get_position_summary(symbol)
-        if not state:
-            return f"[INFO] No partial exit plan for {symbol}"
-
-        # Format as readable string
-        if isinstance(state, dict):
-            output = f"Partial Exit Plan: {symbol}\n"
-            output += "=" * 50 + "\n"
-            output += f"Entry Price: ${state.get('entry_price', 'N/A')}\n"
-            output += f"Total Quantity: {state.get('total_quantity', 'N/A')} shares\n"
-            output += f"Remaining: {state.get('remaining_quantity', 'N/A')} shares\n"
-            output += f"Stop Price: ${state.get('stop_price', 'N/A')}\n\n"
-            output += "Targets:\n"
-
-            targets = state.get("targets", [])
-            for target in targets:
-                status = "[FILLED]" if target.get("filled") else "[ACTIVE]"
-                output += f"  {status} Target {target.get('target_number')}: {target.get('quantity')} shares\n"
-                if target.get("exit_type") == "limit":
-                    output += f"         Limit @ ${target.get('exit_price')}\n"
-                else:
-                    output += "         Trailing Stop\n"
-
-            return output
-        else:
-            return str(state)
-
+        return "\n".join([f"Partial Exit Plan: {symbol}", "=" * 50, *_plan_lines(state)])
     except Exception as e:
-        logger.error(f"Error showing partial exit plan for {symbol}: {e}")
-        return f"[ERROR] Failed to retrieve exit plan for {symbol}: {e}"
+        return _error(f"retrieve exit plan for {symbol}", e)
 
 
 def show_exit_targets(symbol: str) -> str:
@@ -155,56 +148,23 @@ def show_exit_targets(symbol: str) -> str:
 
     Returns:
         Formatted string with target levels
-
-    Example:
-        >>> show_exit_targets('AAPL')
-        'Exit Targets: AAPL
-        Target 1: 50 shares @ limit $156.00 (4% gain)
-        Target 2: 50 shares @ trailing stop'
     """
     manager = _get_partial_exit_manager()
     if not manager:
         return "[ERROR] Could not access PartialExitManager"
 
     symbol = symbol.upper()
+    state = manager.exit_states.get(symbol)
+    if state is None:
+        return f"[INFO] No targets configured for {symbol}"
 
     try:
-        state = manager.get_position_summary(symbol)
-        if not state:
-            return f"[INFO] No targets configured for {symbol}"
-
-        if isinstance(state, dict):
-            output = f"Exit Targets: {symbol}\n"
-            output += "=" * 50 + "\n"
-
-            entry_price = state.get("entry_price", 0)
-            targets = state.get("targets", [])
-
-            for target in targets:
-                target_num = target.get("target_number")
-                quantity = target.get("quantity")
-                exit_type = target.get("exit_type")
-                exit_price = target.get("exit_price")
-                filled = target.get("filled", False)
-
-                status = "[FILLED]" if filled else "[ACTIVE]"
-                output += f"{status} Target {target_num}: {quantity} shares\n"
-
-                if exit_type == "limit" and exit_price:
-                    gain_pct = (
-                        ((exit_price - entry_price) / entry_price * 100) if entry_price else 0
-                    )
-                    output += f"         @ Limit ${exit_price:.2f} ({gain_pct:+.1f}% gain)\n"
-                else:
-                    output += "         @ Trailing Stop\n"
-
-            return output
-        else:
-            return str(state)
-
+        lines = [f"Exit Targets: {symbol}", "=" * 50]
+        for target in state.targets:
+            lines.extend(_target_lines(target, state, indent=""))
+        return "\n".join(lines)
     except Exception as e:
-        logger.error(f"Error showing targets for {symbol}: {e}")
-        return f"[ERROR] Failed to retrieve targets for {symbol}: {e}"
+        return _error(f"retrieve targets for {symbol}", e)
 
 
 def list_active_exits() -> str:
@@ -213,52 +173,30 @@ def list_active_exits() -> str:
 
     Returns:
         Formatted string with active targets
-
-    Example:
-        >>> list_active_exits()
-        'Active Exit Targets
-        AAPL: 2 targets, 75 shares remaining
-        MSFT: 1 target, 100 shares remaining'
     """
     manager = _get_partial_exit_manager()
     if not manager:
         return "[ERROR] Could not access PartialExitManager"
 
     try:
-        if not hasattr(manager, "positions") or not manager.positions:
-            return "[INFO] No active exit targets."
-
-        output = "Active Exit Targets\n"
-        output += "=" * 60 + "\n\n"
-
-        has_active = False
-        for symbol, state in manager.positions.items():
-            active_targets = state.get_active_targets()
-            if active_targets:
-                has_active = True
-                remaining = state.get_remaining_quantity()
-                output += (
-                    f"[{symbol}] {len(active_targets)} target(s), {remaining} shares remaining\n"
-                )
-
-                for target in active_targets:
-                    if target.exit_type == "limit":
-                        output += f"  - Target {target.target_number}: {target.quantity}sh @ ${target.exit_price:.2f}\n"
-                    else:
-                        output += f"  - Target {target.target_number}: {target.quantity}sh @ Trailing Stop\n"
-
-                output += "\n"
-
-        if not has_active:
-            output = (
-                "[INFO] No active exit targets.\n\nAll targets have been filled or no plans exist."
+        blocks = []
+        for symbol, state in manager.exit_states.items():
+            active = state.get_active_targets()
+            if not active:
+                continue
+            blocks.append(
+                f"[{symbol}] {len(active)} target(s), "
+                f"{state.get_remaining_quantity()} shares remaining"
             )
-
-        return output
-
+            for target in active:
+                blocks.extend(_target_lines(target, state, indent="  "))
+            blocks.append("")
     except Exception as e:
-        logger.error(f"Error listing active exits: {e}")
-        return f"[ERROR] Failed to list active exits: {e}"
+        return _error("list active exits", e)
+
+    if not blocks:
+        return "[INFO] No active exit targets.\n\nAll targets have been filled or no plans exist."
+    return "\n".join(["Active Exit Targets", "=" * 60, "", *blocks])
 
 
 def get_exit_summary() -> str:
@@ -267,52 +205,35 @@ def get_exit_summary() -> str:
 
     Returns:
         Summary statistics
-
-    Example:
-        >>> get_exit_summary()
-        'Partial Exit Summary
-        Total Positions: 3
-        Active Targets: 5
-        Filled Targets: 2'
     """
     manager = _get_partial_exit_manager()
     if not manager:
         return "[ERROR] Could not access PartialExitManager"
+    if not manager.exit_states:
+        return "[INFO] No partial exit positions registered."
 
+    states = manager.exit_states.values()
     try:
-        if not hasattr(manager, "positions") or not manager.positions:
-            return "[INFO] No partial exit positions registered."
-
-        total_positions = len(manager.positions)
-        total_active = 0
-        total_filled = 0
-        total_remaining_qty = 0
-
-        for symbol, state in manager.positions.items():
-            total_active += len(state.get_active_targets())
-            total_filled += len(state.get_filled_targets())
-            total_remaining_qty += state.get_remaining_quantity()
-
-        output = "Partial Exit Summary\n"
-        output += "=" * 50 + "\n"
-        output += f"Total Positions: {total_positions}\n"
-        output += f"Active Targets: {total_active}\n"
-        output += f"Filled Targets: {total_filled}\n"
-        output += f"Shares Remaining: {total_remaining_qty}\n"
-
-        return output
-
+        return "\n".join(
+            [
+                "Partial Exit Summary",
+                "=" * 50,
+                f"Total Positions: {len(manager.exit_states)}",
+                f"Active Targets: {sum(len(s.get_active_targets()) for s in states)}",
+                f"Filled Targets: {sum(len(s.get_filled_targets()) for s in states)}",
+                f"Shares Remaining: {sum(s.get_remaining_quantity() for s in states)}",
+            ]
+        )
     except Exception as e:
-        logger.error(f"Error generating exit summary: {e}")
-        return f"[ERROR] Failed to generate summary: {e}"
+        return _error("generate summary", e)
 
 
 def modify_exit_target(symbol: str, target_number: int, new_price: float) -> str:
     """
     Modify the exit price of a partial exit target.
 
-    Updates the exit price for a specific target on a position.
-    Only works for limit order targets that haven't been filled yet.
+    Only unfilled limit targets without a live broker order can be changed here; the
+    change is saved.
 
     Args:
         symbol: Stock ticker symbol (e.g., "AAPL")
@@ -324,55 +245,18 @@ def modify_exit_target(symbol: str, target_number: int, new_price: float) -> str
 
     Example:
         >>> modify_exit_target("AAPL", 1, 205.50)
-        '[OK] Modified AAPL target 1: new exit price $205.50'
+        '[OK] Modified AAPL target 1 ...'
     """
     manager = _get_partial_exit_manager()
     if not manager:
         return "[ERROR] Could not access PartialExitManager"
 
     try:
-        symbol = symbol.upper()
-
-        if not hasattr(manager, "positions") or symbol not in manager.positions:
-            return f"[ERROR] No partial exit plan found for {symbol}"
-
-        state = manager.positions[symbol]
-
-        # Find the target
-        target = None
-        for t in state.targets:
-            if t.target_number == target_number:
-                target = t
-                break
-
-        if not target:
-            return f"[ERROR] Target {target_number} not found for {symbol}"
-
-        if target.filled:
-            return f"[ERROR] Target {target_number} for {symbol} has already been filled"
-
-        if target.exit_type != "limit":
-            return (
-                f"[ERROR] Target {target_number} is a {target.exit_type} order, not a limit order"
-            )
-
-        old_price = target.exit_price
-        target.exit_price = new_price
-
-        # Update timestamp
-        from src.utils.date_utils import now_iso
-
-        state.last_updated = now_iso()
-
-        return (
-            f"[OK] Modified {symbol} target {target_number}\n"
-            f"  Previous price: ${old_price:.2f}\n"
-            f"  New price: ${new_price:.2f}"
-        )
-
+        changed, message = manager.update_target_price(symbol.upper(), target_number, new_price)
     except Exception as e:
         logger.error(f"Error modifying exit target: {e}")
         return f"[ERROR] Failed to modify target: {e}"
+    return f"[OK] {message}" if changed else f"[ERROR] {message}"
 
 
 # =============================================================================
