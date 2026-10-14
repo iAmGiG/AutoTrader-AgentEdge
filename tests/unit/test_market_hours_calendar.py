@@ -105,3 +105,44 @@ def test_calendar_client_uses_the_paper_keys(monkeypatch):
 
     assert mh._get_alpaca_calendar() == "client"
     assert built == {"api_key": "pk", "secret_key": "ps", "paper": True}
+
+
+def test_calendar_failure_backs_off_then_retries(monkeypatch):
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(mh, "monotonic", lambda: clock["now"])
+    client = _FakeCalendarClient(error=ConnectionError("down"))
+    monkeypatch.setattr(mh, "_CALENDAR_CLIENT", client)
+
+    mh.get_market_hours_for_date(date(2026, 10, 14))
+    mh.get_market_hours_for_date(date(2026, 10, 15))  # within the back-off: rules only
+    assert len(client.requests) == 1
+
+    clock["now"] += mh._CALENDAR_RETRY_SECONDS + 1
+    mh.get_market_hours_for_date(date(2026, 10, 16))
+    assert len(client.requests) == 2
+
+
+def test_client_build_failure_is_retried_after_back_off(monkeypatch):
+    class _Config:
+        def get(self, key, default=None):
+            return {"ALPACA_PAPER_API_KEY": "pk", "ALPACA_PAPER_SECRET": "ps"}.get(key, default)
+
+    clock = {"now": 1000.0}
+    attempts = []
+
+    def flaky_client(**kwargs):
+        attempts.append(kwargs)
+        if len(attempts) == 1:
+            raise OSError("transient")
+        return "client"
+
+    monkeypatch.setattr(mh, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(mh, "_CALENDAR_CLIENT", mh._UNSET)
+    monkeypatch.setattr(mh, "ConfigLoader", _Config)
+    monkeypatch.setattr(mh, "TradingClient", flaky_client)
+
+    assert mh._get_alpaca_calendar() is None
+    assert mh._get_alpaca_calendar() is None  # still backing off, no new attempt
+    clock["now"] += mh._CALENDAR_RETRY_SECONDS + 1
+    assert mh._get_alpaca_calendar() == "client"
+    assert len(attempts) == 2

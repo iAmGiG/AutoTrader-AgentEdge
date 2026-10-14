@@ -251,8 +251,10 @@ class ExecutorAgent(BaseAgent):
         """Simulate order execution for paper trading without broker."""
         import uuid
 
-        # Get simulated price
-        current_price = self._get_current_price(symbol) or 100.0
+        # Get simulated price; never simulate a fill at a guessed price
+        current_price = self._get_current_price(symbol)
+        if current_price is None:
+            raise ValueError(f"No price available for {symbol}; not simulating a fill")
 
         order_id = str(uuid.uuid4())[:8]
 

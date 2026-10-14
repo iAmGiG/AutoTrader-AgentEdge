@@ -19,7 +19,7 @@ from src.autogen_agents.tools import fetch_unified_market_data
 from src.cli.tools.timeframe_tools import get_multi_timeframe_params
 from src.core.interfaces.strategy_analyzer import StrategyAnalyzer
 from src.core.models import AnalysisResult, AssetType, Signal, TradeRequest
-from src.core.ranked_voter_config import get_ranked_voter_manager
+from src.core.ranked_voter_config import RankedVoterManager
 from src.core.trading_modes import ModeParameters, get_mode_manager
 from src.database import AnalysisHistoryManager
 from src.trading.instruments.entry_planning import calculate_entry_plan
@@ -127,8 +127,9 @@ class RealVoterStrategy(StrategyAnalyzer):
             use_multi_tf = tf_params.get("mode") == "multi"
 
             # Issue #504: Check if ranked voting is enabled
-            # The shared manager the CLI's /voters commands change (not a fresh reload)
-            ranked_voter = get_ranked_voter_manager()
+            # A fresh manager reloads the ranking persisted in user.db, so changes made
+            # with /voters in another process (e.g. the CLI vs the scheduler) apply
+            ranked_voter = RankedVoterManager()
             active_voters = ranked_voter.get_active_voters()
             use_ranked = len(active_voters) > 1  # Use ranked if multiple active voters
 

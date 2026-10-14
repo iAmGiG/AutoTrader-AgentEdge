@@ -38,13 +38,23 @@ def fetch_market_data(
         data = fetch_unified_market_data(symbol, start_date, end_date, timeframe=timeframe)
 
         if data is not None and not data.empty:
-            # Standardize column names on a copy, so a cached frame is never changed
-            return data.rename(columns=_OHLCV_NAMES)
+            return _standard_ohlcv(data)
 
     except Exception as e:
         print(f"Error fetching market data for {symbol}: {e}")
 
     return None
+
+
+def _standard_ohlcv(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Capitalized OHLCV column names, on a copy so a cached frame is never changed.
+
+    The Alpaca path already adds capitalized copies next to the lowercase columns;
+    those lowercase twins are dropped so no name appears twice.
+    """
+    twins = [low for low, up in _OHLCV_NAMES.items() if low in data.columns and up in data.columns]
+    return data.drop(columns=twins).rename(columns=_OHLCV_NAMES)
 
 
 def fetch_multiple_tickers(

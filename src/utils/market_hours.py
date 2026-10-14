@@ -11,6 +11,7 @@ Issue #437: Enhanced with extended_hours support and validation utilities.
 import logging
 import os
 from datetime import date, datetime, time, timedelta
+from time import monotonic
 from typing import Any, Dict, Optional, Set, Tuple
 
 import pytz
@@ -44,6 +45,9 @@ _MARKET_CONFIG = None
 _UNSET = object()
 _CALENDAR_CLIENT: Any = _UNSET
 _CALENDAR_CACHE: Dict[date, Tuple[time, time, bool]] = {}
+# After a calendar failure, skip the API (use NYSE rules) until this monotonic time
+_CALENDAR_RETRY_SECONDS = 300
+_CALENDAR_DOWN_UNTIL = 0.0
 
 
 def _load_market_config() -> Dict[str, Any]:
@@ -84,22 +88,38 @@ def _get_alpaca_calendar():
     global _CALENDAR_CLIENT
     if _CALENDAR_CLIENT is not _UNSET:
         return _CALENDAR_CLIENT
-
-    _CALENDAR_CLIENT = None
     if TradingClient is None:
+        _CALENDAR_CLIENT = None
+        return None
+    if monotonic() < _CALENDAR_DOWN_UNTIL:
         return None
 
     try:
         config_loader = ConfigLoader()
         api_key = config_loader.get("ALPACA_PAPER_API_KEY") or config_loader.get("ALPACA_API_KEY")
         secret = config_loader.get("ALPACA_PAPER_SECRET") or config_loader.get("ALPACA_SECRET_KEY")
-        if api_key and secret:
-            _CALENDAR_CLIENT = TradingClient(api_key=api_key, secret_key=secret, paper=True)
-        else:
-            logger.debug("No Alpaca keys for the market calendar; using NYSE rules")
+        if not (api_key and secret):
+            logger.warning(
+                "No Alpaca keys for the market calendar; using NYSE rules "
+                "(one-off closures are not covered)"
+            )
+            _CALENDAR_CLIENT = None
+            return None
+        _CALENDAR_CLIENT = TradingClient(api_key=api_key, secret_key=secret, paper=True)
     except Exception as e:
-        logger.debug(f"Could not initialize Alpaca calendar client: {e}")
+        _calendar_failed(e)  # built again after the back-off
+        return None
     return _CALENDAR_CLIENT
+
+
+def _calendar_failed(error: Exception) -> None:
+    """Back off from the calendar API for a while after a failure."""
+    global _CALENDAR_DOWN_UNTIL
+    _CALENDAR_DOWN_UNTIL = monotonic() + _CALENDAR_RETRY_SECONDS
+    logger.warning(
+        f"Alpaca market calendar unavailable ({error}); using NYSE rules for "
+        f"{_CALENDAR_RETRY_SECONDS // 60} min (one-off closures are not covered)"
+    )
 
 
 def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
@@ -195,8 +215,8 @@ def get_market_hours_for_date(
     - Early closes (e.g., Black Friday at 1 PM)
     - Regular trading days (9:30 AM - 4:00 PM)
 
-    Falls back to NYSE rules when the calendar can't be reached. Calendar answers are
-    cached per day.
+    Falls back to NYSE rules when the calendar can't be reached, and after a failure
+    skips the API for a few minutes. Calendar answers are cached per day.
 
     Args:
         date: Date or datetime to check (defaults to today in ET)
@@ -214,13 +234,13 @@ def get_market_hours_for_date(
         return _CALENDAR_CACHE[day]
 
     client = _get_alpaca_calendar()
-    if not client:
+    if not client or monotonic() < _CALENDAR_DOWN_UNTIL:
         return _rule_based_hours(day)
 
     try:
         calendar = client.get_calendar(GetCalendarRequest(start=day, end=day))
     except Exception as e:
-        logger.debug(f"Error fetching market hours from Alpaca: {e}")
+        _calendar_failed(e)
         return _rule_based_hours(day)
 
     if not calendar:
