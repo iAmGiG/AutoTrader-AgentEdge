@@ -104,6 +104,62 @@ class TestCheckProtectiveStops:
 
         assert (review, repairs) == ([], [])
 
+    def test_shares_held_by_another_sell_order_go_to_review(self):
+        take_profit = {
+            "id": "tp-1",
+            "type": "limit",
+            "side": "sell",
+            "quantity": 14,
+            "limit_price": 712.8,
+            "time_in_force": "gtc",
+            "created_at": (NOW - timedelta(days=5)).isoformat(),
+        }
+        review, repairs = _reconciler().check_protective_stops(
+            _broker(orders=[take_profit]), _local(), NOW
+        )
+
+        assert repairs == []
+        assert review[0].type == "MISSING_STOP"
+        assert "held by open sell orders" in review[0].details["reason"]
+
+    def test_aging_trailing_stop_goes_to_review(self):
+        trailing = _stop_order(85)
+        trailing["type"] = "trailing_stop"
+
+        review, repairs = _reconciler().check_protective_stops(
+            _broker(orders=[trailing]), _local(), NOW
+        )
+
+        assert repairs == []
+        assert (review[0].type, review[0].action) == ("STOP_EXPIRING", "NEEDS_HUMAN_REVIEW")
+
+    def test_aging_take_profit_is_noticed_next_to_a_renewed_stop(self):
+        take_profit = {
+            "id": "tp-1",
+            "type": "limit",
+            "side": "sell",
+            "quantity": 14,
+            "limit_price": 712.8,
+            "time_in_force": "gtc",
+            "created_at": (NOW - timedelta(days=85)).isoformat(),
+        }
+
+        review, repairs = _reconciler().check_protective_stops(
+            _broker(orders=[_stop_order(85), take_profit]), _local(), NOW
+        )
+
+        assert [r.kind for r in repairs] == ["STOP_EXPIRING"]
+        assert [(d.type, d.details["order_id"]) for d in review] == [("TARGET_EXPIRING", "tp-1")]
+
+    def test_age_uses_utc_by_default(self):
+        # A stop created 85 days ago in UTC; `now` is left to the default
+        order = _stop_order(0)
+        order["created_at"] = (datetime.now(timezone.utc) - timedelta(days=85)).isoformat()
+
+        _, repairs = _reconciler().check_protective_stops(_broker(orders=[order]), _local())
+
+        assert repairs and repairs[0].kind == "STOP_EXPIRING"
+
     def test_short_positions_are_skipped(self):
         review, repairs = _reconciler().check_protective_stops(_broker(side="short"), _local(), NOW)
 
@@ -125,7 +181,7 @@ class TestRepairStops:
         om.place_stop_order.return_value = {"status": "submitted", "order_id": "new-sl"}
         cycle = _cycle(om)
 
-        discrepancies, lines = cycle.check_and_repair_stops(_broker())
+        discrepancies = cycle.check_and_repair_stops(_broker())
 
         om.place_stop_order.assert_called_once_with(
             symbol="SPY", qty=14, side="sell", stop_price=627.0, time_in_force="gtc"
@@ -133,7 +189,6 @@ class TestRepairStops:
         assert discrepancies[0].type == "MISSING_STOP"
         assert discrepancies[0].action == "AUTO_FIXED"
         assert discrepancies[0].details["order_id"] == "new-sl"
-        assert lines[0].startswith("[+] SPY: stop placed at $627.00")
         cycle.broker_cache.invalidate.assert_called_once()
 
     def test_failed_placement_needs_review(self):
@@ -141,10 +196,10 @@ class TestRepairStops:
         om.place_stop_order.return_value = {"status": "error", "message": "insufficient qty"}
         cycle = _cycle(om)
 
-        discrepancies, lines = cycle.check_and_repair_stops(_broker())
+        discrepancies = cycle.check_and_repair_stops(_broker())
 
         assert discrepancies[0].action == "NEEDS_HUMAN_REVIEW"
-        assert "insufficient qty" in lines[0]
+        assert discrepancies[0].details["error"] == "insufficient qty"
         cycle.broker_cache.invalidate.assert_not_called()
 
     def test_aging_stop_is_renewed_by_replacing_it(self):
@@ -152,7 +207,7 @@ class TestRepairStops:
         om.modify_order.return_value = {"status": "submitted", "order_id": "sl-2"}
         cycle = _cycle(om)
 
-        discrepancies, _ = cycle.check_and_repair_stops(_broker(orders=[_stop_order(85)]))
+        discrepancies = cycle.check_and_repair_stops(_broker(orders=[_stop_order(85)]))
 
         om.modify_order.assert_called_once_with(order_id="sl-1", stop_price=627.0)
         om.place_stop_order.assert_not_called()
@@ -162,11 +217,24 @@ class TestRepairStops:
         om = MagicMock()
         cycle = _cycle(om)
 
-        discrepancies, lines = cycle.check_and_repair_stops(_broker(price=600.0))
+        discrepancies = cycle.check_and_repair_stops(_broker(price=600.0))
 
         om.place_stop_order.assert_not_called()
         assert discrepancies[0].action == "NEEDS_HUMAN_REVIEW"
-        assert "needs review" in lines[0]
+
+    def test_check_errors_do_not_escape(self):
+        om = MagicMock()
+        cycle = _cycle(om)
+        cycle.local_state_manager.state = {"positions": {}}  # forces the config lookup
+        cycle.reconciler.config.get_risk_config.side_effect = KeyError("stop_loss")
+
+        discrepancies = cycle.check_and_repair_stops(_broker())
+
+        assert (discrepancies[0].type, discrepancies[0].action) == (
+            "STOP_CHECK_FAILED",
+            "NEEDS_HUMAN_REVIEW",
+        )
+        om.place_stop_order.assert_not_called()
 
 
 def test_failed_stop_modification_is_not_counted_as_success():
@@ -180,3 +248,46 @@ def test_failed_stop_modification_is_not_counted_as_success():
     assert results["modifications"] == 0
     assert not results["success"]
     assert "order not found" in results["errors"][0]
+
+
+def test_report_shows_stop_details():
+    from src.trading.state.state_reconciler import Discrepancy
+    from src.trading.utils.report_generator import ReportGenerator, RoutineType
+
+    disc = Discrepancy(
+        type="MISSING_STOP",
+        symbol="SPY",
+        details={"quantity": 14, "stop_price": 624.72, "reason": "no live stop order"},
+        action="AUTO_FIXED",
+        severity="HIGH",
+    )
+    broker_state = {"positions": {}, "orders": {}, "account": {}}
+    report = ReportGenerator().generate_routine_report(
+        RoutineType.MORNING, broker_state, {"positions": {}}, [disc], [], []
+    )
+
+    assert "MISSING_STOP: SPY" in report
+    assert "stop $624.72, 14 shares, no live stop order - AUTO_FIXED" in report
+
+
+def test_morning_routine_adjusts_stops_against_fresh_broker_state(monkeypatch, tmp_path):
+    import src.trading.scheduling.trading_cycle as cycle_module
+    from src.trading.state.state_reconciler import Discrepancy
+
+    monkeypatch.setattr(cycle_module, "GTT_AVAILABLE", False)
+    cycle = _cycle(MagicMock())
+    stale, fresh = {"positions": {}, "orders": {}}, {"positions": {}, "orders": {"SPY": []}}
+    placed = Discrepancy("MISSING_STOP", "SPY", {}, "AUTO_FIXED", "HIGH")
+    cycle.fetch_broker_state = MagicMock(side_effect=[stale, fresh])
+    cycle.reconcile_state = MagicMock(return_value=[])
+    cycle.check_and_repair_stops = MagicMock(return_value=[placed])
+    cycle.check_position_alerts = MagicMock(return_value=[])
+    cycle.check_gtt_triggers = MagicMock(return_value=[])
+    cycle.calculate_stop_adjustments = MagicMock(return_value=[])
+    cycle.generate_routine_report = MagicMock(return_value="report")
+    cycle._get_report_file_path = lambda routine: str(tmp_path / f"{routine}.md")
+
+    cycle.morning_routine()
+
+    cycle.fetch_broker_state.assert_called_with(force_refresh=True)
+    cycle.calculate_stop_adjustments.assert_called_once_with(fresh)

@@ -337,47 +337,50 @@ class CostEfficientTradeCycle:
     # Protective stops - Issue #586
     # -------------------------------------------------------------------------
 
-    def check_and_repair_stops(
-        self, broker_state: Dict[str, Any]
-    ) -> tuple[List[Discrepancy], List[str]]:
+    def check_and_repair_stops(self, broker_state: Dict[str, Any]) -> List[Discrepancy]:
         """
         Re-place missing protective stops and renew GTC stops near Alpaca's 90-day limit.
 
-        Returns:
-            Tuple of (discrepancies to record, report lines)
-        """
-        needs_review, repairs = self.reconciler.check_protective_stops(
-            broker_state, self.local_state_manager.state
-        )
-        repaired, lines = self.repair_stops(repairs)
-        for discrepancy in needs_review:
-            details = discrepancy.details
-            lines.append(
-                f"[x] {discrepancy.symbol}: no live stop, and none placed (last known stop "
-                f"{details.get('last_known_stop')}, price {details.get('current_price')}) "
-                "- needs review"
-            )
-        return needs_review + repaired, lines
+        Errors are contained, so a failure here never stops the rest of the routine.
 
-    def repair_stops(self, repairs: List[StopRepair]) -> tuple[List[Discrepancy], List[str]]:
+        Returns:
+            Discrepancies to record and report (repairs with their outcome, and cases
+            left for review)
         """
-        Place or renew protective stops (one broker call each).
+        try:
+            needs_review, repairs = self.reconciler.check_protective_stops(
+                broker_state, self.local_state_manager.state
+            )
+            return needs_review + self.repair_stops(repairs)
+        except Exception as e:
+            logger.error(f"Protective-stop check failed: {e}", exc_info=True)
+            return [
+                Discrepancy(
+                    type="STOP_CHECK_FAILED",
+                    symbol="*",
+                    details={"reason": str(e)},
+                    action="NEEDS_HUMAN_REVIEW",
+                    severity="HIGH",
+                )
+            ]
+
+    def repair_stops(self, repairs: List[StopRepair]) -> List[Discrepancy]:
+        """
+        Place or renew protective stops.
 
         A renewal replaces the old stop order, which creates a new order and so restarts
         Alpaca's 90-day GTC clock.
 
         Returns:
-            Tuple of (one discrepancy per repair with its outcome, report lines)
+            One discrepancy per repair, with its outcome
         """
-        discrepancies, lines = [], []
+        discrepancies = []
         for repair in repairs:
             if repair.replaces_order_id:
-                verb = "renewed"
                 result = self.order_manager.modify_order(
                     order_id=repair.replaces_order_id, stop_price=repair.stop_price
                 )
             else:
-                verb = "placed"
                 result = self.order_manager.place_stop_order(
                     symbol=repair.symbol,
                     qty=repair.quantity,
@@ -387,6 +390,13 @@ class CostEfficientTradeCycle:
                 )
 
             ok = result.get("status") == "submitted"
+            verb = "renewed" if repair.replaces_order_id else "placed"
+            if ok:
+                logger.info(f"{repair.symbol}: stop {verb} at ${repair.stop_price:.2f}")
+            else:
+                logger.error(
+                    f"{repair.symbol}: stop not {verb}: {result.get('message', 'unknown error')}"
+                )
             discrepancies.append(
                 Discrepancy(
                     type=repair.kind,
@@ -403,28 +413,10 @@ class CostEfficientTradeCycle:
                     severity="MEDIUM" if ok and repair.kind == "STOP_EXPIRING" else "HIGH",
                 )
             )
-            if ok:
-                line = (
-                    f"[+] {repair.symbol}: stop {verb} at ${repair.stop_price:.2f} "
-                    f"for {repair.quantity} shares - {repair.reason}"
-                )
-                logger.info(line)
-            else:
-                line = (
-                    f"[x] {repair.symbol}: stop not {verb} at ${repair.stop_price:.2f} - "
-                    f"{result.get('message', 'unknown error')} ({repair.reason})"
-                )
-                logger.error(line)
-            lines.append(line)
 
         if any(d.action == "AUTO_FIXED" for d in discrepancies):
             self.broker_cache.invalidate()
-        return discrepancies, lines
-
-    @staticmethod
-    def _format_stop_lines_for_report(stop_lines: List[str]) -> List[str]:
-        """Protective-stop results as a report section."""
-        return ["", "## Protective Stops", "", *stop_lines] if stop_lines else []
+        return discrepancies
 
     # -------------------------------------------------------------------------
     # GTT (Good-Till-Triggered) Integration - Issue #340
@@ -525,8 +517,11 @@ class CostEfficientTradeCycle:
             discrepancies = self.reconcile_state(broker_state)
 
             # Step 2.5: Re-place missing stops, renew aging GTC ones (Issue #586)
-            stop_discrepancies, stop_lines = self.check_and_repair_stops(broker_state)
+            stop_discrepancies = self.check_and_repair_stops(broker_state)
             discrepancies.extend(stop_discrepancies)
+            if any(d.action == "AUTO_FIXED" for d in stop_discrepancies):
+                # Later steps (stop adjustments) must see the new stop orders
+                broker_state = self.fetch_broker_state(force_refresh=True)
 
             # Step 3: Check for position alerts (no API calls)
             alerts = self.check_position_alerts(broker_state)
@@ -565,9 +560,7 @@ class CostEfficientTradeCycle:
                 modification_results,
             )
 
-            # Append protective-stop and GTT results to report if any
-            if stop_lines:
-                report += "\n" + "\n".join(self._format_stop_lines_for_report(stop_lines))
+            # Append GTT results to report if any
             if gtt_results:
                 gtt_lines = self._format_gtt_results_for_report(gtt_results)
                 report += "\n" + "\n".join(gtt_lines)
@@ -599,8 +592,7 @@ class CostEfficientTradeCycle:
             discrepancies = self.reconcile_state(broker_state)
 
             # Re-place missing stops, renew aging GTC ones (Issue #586)
-            stop_discrepancies, stop_lines = self.check_and_repair_stops(broker_state)
-            discrepancies.extend(stop_discrepancies)
+            discrepancies.extend(self.check_and_repair_stops(broker_state))
 
             # Check for position alerts
             alerts = self.check_position_alerts(broker_state)
@@ -623,9 +615,7 @@ class CostEfficientTradeCycle:
                 RoutineType.EVENING, broker_state, discrepancies, [], alerts
             )
 
-            # Append protective-stop and GTT results to report if any
-            if stop_lines:
-                report += "\n" + "\n".join(self._format_stop_lines_for_report(stop_lines))
+            # Append GTT results to report if any
             if gtt_results:
                 gtt_lines = self._format_gtt_results_for_report(gtt_results)
                 report += "\n" + "\n".join(gtt_lines)

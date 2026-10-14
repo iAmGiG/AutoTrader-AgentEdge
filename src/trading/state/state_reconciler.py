@@ -439,24 +439,28 @@ class StateReconciler:
         now: Optional[datetime] = None,
     ) -> tuple[List[Discrepancy], List[StopRepair]]:
         """
-        Find long positions with no live stop, and GTC stops near Alpaca's 90-day limit.
+        Find long positions with no live stop, and GTC orders near Alpaca's 90-day limit.
 
         Alpaca cancels GTC orders 90 days after creation, bracket legs included, so a
         position's stop can lapse without notice. A missing stop is re-placed at the
         last known stop (local state, else entry minus the configured stop loss); a GTC
-        stop older than STOP_RENEW_AFTER_DAYS is renewed. A position with no usable stop
-        level, or already at or below its last known stop (that stop would trigger at
-        once), is reported for a human instead.
+        stop older than STOP_RENEW_AFTER_DAYS is renewed.
+
+        Reported for a human instead of repaired:
+        - no usable stop level below the current price (that stop would trigger at once);
+        - shares held by other open sell orders (a new stop would be rejected);
+        - an aging trailing stop (its trail can't be renewed by a stop-price replace);
+        - an aging GTC take-profit (it lapses on its own clock, even next to a renewed stop).
 
         Args:
             broker_state: Current broker state (positions, and open orders with legs)
             local_state: Local state, after reconcile()
-            now: Current time (for tests)
+            now: Current time (for tests); UTC by default
 
         Returns:
             Tuple of (discrepancies needing human review, stop repairs to make)
         """
-        now = now or get_datetime_now()
+        now = now or get_datetime_now(timezone.utc)
         needs_review: List[Discrepancy] = []
         repairs: List[StopRepair] = []
         positions = local_state.get("positions", {})
@@ -466,41 +470,50 @@ class StateReconciler:
             if quantity <= 0 or "short" in str(broker_pos.get("side", "")).lower():
                 continue  # only long positions are protected by sell stops
 
-            stops = [
+            sells = [
                 order
                 for order in broker_state.get("orders", {}).get(symbol, [])
-                if "sell" in str(order.get("side", "")).lower() and order.get("stop_price")
+                if "sell" in str(order.get("side", "")).lower()
             ]
+            stops = [order for order in sells if order.get("stop_price")]
+            needs_review.extend(self._aging_targets(symbol, sells, now))
+
             if stops:
-                repairs.extend(self._stop_renewals(symbol, stops, quantity, now))
+                renewals, reviews = self._stop_renewals(symbol, stops, quantity, now)
+                repairs.extend(renewals)
+                needs_review.extend(reviews)
                 continue
 
             current_price = float(broker_pos.get("current_price") or 0)
             stop_price = self._last_known_stop(symbol, positions, broker_pos)
+            details = {
+                "quantity": quantity,
+                "stop_price": stop_price,
+                "current_price": current_price,
+            }
             if stop_price is None or stop_price >= current_price:
-                needs_review.append(
-                    Discrepancy(
-                        type="MISSING_STOP",
+                details["reason"] = "no stop level below the current price to place"
+            elif sells:
+                details["reason"] = "shares are held by open sell orders, so a stop can't be added"
+            else:
+                repairs.append(
+                    StopRepair(
+                        kind="MISSING_STOP",
                         symbol=symbol,
-                        details={
-                            "quantity": quantity,
-                            "last_known_stop": stop_price,
-                            "current_price": current_price,
-                            "reason": "no stop level below the current price to place",
-                        },
-                        action="NEEDS_HUMAN_REVIEW",
-                        severity="HIGH",
+                        quantity=quantity,
+                        stop_price=stop_price,
+                        reason="no live stop order (GTC stops lapse after 90 days)",
                     )
                 )
                 continue
 
-            repairs.append(
-                StopRepair(
-                    kind="MISSING_STOP",
+            needs_review.append(
+                Discrepancy(
+                    type="MISSING_STOP",
                     symbol=symbol,
-                    quantity=quantity,
-                    stop_price=stop_price,
-                    reason="no live stop order (GTC stops lapse after 90 days)",
+                    details=details,
+                    action="NEEDS_HUMAN_REVIEW",
+                    severity="HIGH",
                 )
             )
 
@@ -508,26 +521,73 @@ class StateReconciler:
 
     def _stop_renewals(
         self, symbol: str, stops: List[Dict[str, Any]], quantity: int, now: datetime
-    ) -> List[StopRepair]:
-        """Renewals for GTC stops old enough to be cancelled soon."""
-        renewals = []
+    ) -> tuple[List[StopRepair], List[Discrepancy]]:
+        """Renewals for GTC stops old enough to be cancelled soon (trailing stops: review)."""
+        renewals, reviews = [], []
         for order in stops:
             age = _age_days(order.get("created_at"), now)
             if age is None or age < STOP_RENEW_AFTER_DAYS:
                 continue
             if "gtc" not in str(order.get("time_in_force", "")).lower():
                 continue  # DAY stops end each day; a missing one is re-placed as GTC
+            reason = f"GTC stop is {age:.0f} days old (Alpaca cancels at {GTC_LIFETIME_DAYS})"
+            if "trailing" in str(order.get("type", "")).lower():
+                reviews.append(
+                    Discrepancy(
+                        type="STOP_EXPIRING",
+                        symbol=symbol,
+                        details={
+                            "order_id": order["id"],
+                            "stop_price": order.get("stop_price"),
+                            "reason": f"{reason}; re-place this trailing stop",
+                        },
+                        action="NEEDS_HUMAN_REVIEW",
+                        severity="HIGH",
+                    )
+                )
+                continue
             renewals.append(
                 StopRepair(
                     kind="STOP_EXPIRING",
                     symbol=symbol,
                     quantity=int(order.get("quantity") or quantity),
                     stop_price=float(order["stop_price"]),
-                    reason=f"GTC stop is {age:.0f} days old (Alpaca cancels at {GTC_LIFETIME_DAYS})",
+                    reason=reason,
                     replaces_order_id=order["id"],
                 )
             )
-        return renewals
+        return renewals, reviews
+
+    def _aging_targets(
+        self, symbol: str, sells: List[Dict[str, Any]], now: datetime
+    ) -> List[Discrepancy]:
+        """Notices for GTC take-profit orders about to reach Alpaca's 90-day limit."""
+        notices = []
+        for order in sells:
+            if order.get("stop_price") or not order.get("limit_price"):
+                continue
+            age = _age_days(order.get("created_at"), now)
+            if age is None or age < STOP_RENEW_AFTER_DAYS:
+                continue
+            if "gtc" not in str(order.get("time_in_force", "")).lower():
+                continue
+            notices.append(
+                Discrepancy(
+                    type="TARGET_EXPIRING",
+                    symbol=symbol,
+                    details={
+                        "order_id": order["id"],
+                        "limit_price": order.get("limit_price"),
+                        "reason": (
+                            f"GTC take-profit is {age:.0f} days old "
+                            f"(Alpaca cancels at {GTC_LIFETIME_DAYS})"
+                        ),
+                    },
+                    action="NEEDS_HUMAN_REVIEW",
+                    severity="LOW",
+                )
+            )
+        return notices
 
     def _last_known_stop(
         self, symbol: str, positions: Dict[str, Any], broker_pos: Dict[str, Any]
