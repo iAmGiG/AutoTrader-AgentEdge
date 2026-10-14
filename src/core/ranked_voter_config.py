@@ -182,8 +182,7 @@ class RankedVoterManager:
         try:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS voter_ranking_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp TEXT NOT NULL,
@@ -191,8 +190,7 @@ class RankedVoterManager:
                     preset_name TEXT,
                     reason TEXT
                 )
-            """
-            )
+            """)
             conn.commit()
             conn.close()
             logger.debug(f"Initialized voter ranking table in {self._db_path}")
@@ -204,12 +202,10 @@ class RankedVoterManager:
         try:
             conn = sqlite3.connect(self._db_path)
             cursor = conn.cursor()
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT ranking_json FROM voter_ranking_history
                 ORDER BY timestamp DESC LIMIT 1
-            """
-            )
+            """)
             row = cursor.fetchone()
             conn.close()
 
