@@ -38,7 +38,9 @@ class UnifiedPriceFetcher:
             cls._instance.market_data = AlpacaMarketData()
         return cls._instance
 
-    def get_current_price(self, symbol: str, use_cache: bool = True) -> float:  # noqa: C901
+    def get_current_price(  # noqa: C901
+        self, symbol: str, use_cache: bool = True
+    ) -> Optional[float]:
         """
         Get current price with consistent fallback logic.
 
@@ -47,19 +49,20 @@ class UnifiedPriceFetcher:
         2. Latest trade from Alpaca
         3. Quote mid-price from Alpaca
         4. Historical close price
-        5. Default fallback prices
 
         Args:
             symbol: Stock symbol
             use_cache: Whether to use cached prices
 
         Returns:
-            Current price as float
+            Current price, or None when no real price is available. Callers must not
+            trade on a made-up price, so there is no default.
         """
         # Check cache first
         if use_cache and symbol in self._cache:
             cache_entry = self._cache[symbol]
-            if (get_datetime_now() - cache_entry["timestamp"]).seconds < self._cache_ttl:
+            age = (get_datetime_now() - cache_entry["timestamp"]).total_seconds()
+            if age < self._cache_ttl:  # .seconds would ignore whole days
                 logger.debug(f"Using cached price for {symbol}: ${cache_entry['price']:.2f}")
                 return cache_entry["price"]
 
@@ -126,21 +129,8 @@ class UnifiedPriceFetcher:
         except Exception as e:
             logger.error(f"Error fetching price for {symbol}: {e}")
 
-        # Last resort: default prices (updated to 2025 levels)
-        default_prices = {
-            "TQQQ": 85.50,
-            "SQQQ": 12.30,
-            "SPXL": 140.00,
-            "SPXS": 10.50,
-            "SPY": 660.00,  # Updated to current market level
-            "QQQ": 510.00,  # Updated to current market level
-            "SOXL": 28.40,
-        }
-
-        price = default_prices.get(symbol, 100.0)
-        logger.warning(f"Using default price for {symbol}: ${price:.2f}")
-        self._update_cache(symbol, price)
-        return price
+        logger.warning(f"No price available for {symbol}")
+        return None
 
     def _update_cache(self, symbol: str, price: float):
         """Update the price cache."""
@@ -158,9 +148,9 @@ class UnifiedPriceFetcher:
 price_fetcher = UnifiedPriceFetcher()
 
 
-def get_current_price(symbol: str) -> float:
+def get_current_price(symbol: str) -> Optional[float]:
     """
-    Convenience function for getting current price.
+    Convenience function for getting current price (None when unavailable).
 
     This is the function that should be imported and used
     throughout the trading system.
