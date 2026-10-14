@@ -101,6 +101,7 @@ def _order_to_dict(order) -> Dict[str, Any]:
         "time_in_force": _enum_text(order.time_in_force),
         "limit_price": _float_or_none(order.limit_price),
         "stop_price": _float_or_none(order.stop_price),
+        "created_at": _iso_or_none(getattr(order, "created_at", None)),  # GTC 90-day clock
         "submitted_at": _iso_or_none(order.submitted_at),
         "filled_at": _iso_or_none(order.filled_at),
         "canceled_at": _iso_or_none(order.canceled_at),

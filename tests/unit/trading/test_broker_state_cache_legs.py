@@ -72,3 +72,20 @@ def test_symbol_with_no_working_orders_has_no_entry():
     done["legs"][0]["symbol"] = "QQQ"
     state, _ = _fetch([done])
     assert "QQQ" not in state["orders"]
+
+
+def test_orders_and_legs_keep_their_creation_time():
+    # The protective-stop check (#586) needs it: Alpaca cancels GTC orders after 90 days
+    parent = _leg("p1", "market", "filled")
+    parent["side"] = "buy"
+    stop = _leg("p1-sl", "stop", "held", stop_price=95.0)
+    stop["created_at"] = "2025-09-12T08:00:00+00:00"
+    standalone = _leg("s1", "stop", "new", stop_price=96.0)
+    standalone["submitted_at"] = "2026-10-01T13:30:00+00:00"  # no created_at: falls back
+    parent["legs"] = [stop]
+
+    state, _ = _fetch([parent, standalone])
+    entries = {o["id"]: o for o in state["orders"]["SPY"]}
+
+    assert entries["p1-sl"]["created_at"] == "2025-09-12T08:00:00+00:00"
+    assert entries["s1"]["created_at"] == "2026-10-01T13:30:00+00:00"

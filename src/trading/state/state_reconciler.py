@@ -7,11 +7,17 @@ Handles state reconciliation, stop adjustments, and position alerts.
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from src.utils.date_utils import now_iso
+from src.utils.date_utils import get_datetime_now, now_iso
 
 logger = logging.getLogger(__name__)
+
+# Alpaca cancels GTC orders (bracket legs included) this many days after creation
+GTC_LIFETIME_DAYS = 90
+# Renew a GTC stop once it is this old, ahead of that cancellation
+STOP_RENEW_AFTER_DAYS = 80
 
 
 @dataclass
@@ -35,6 +41,33 @@ class StopAdjustment:
     new_stop: float
     reason: str
     profit_percent: float
+
+
+@dataclass
+class StopRepair:
+    """A protective stop to place (none is live) or renew (an aging GTC stop)."""
+
+    kind: str  # MISSING_STOP or STOP_EXPIRING
+    symbol: str
+    quantity: int
+    stop_price: float
+    reason: str
+    replaces_order_id: Optional[str] = None  # the stop being renewed
+
+
+def _age_days(created_at: Optional[str], now: datetime) -> Optional[float]:
+    """Days since an ISO timestamp (naive values are UTC); None if unknown."""
+    if not created_at:
+        return None
+    try:
+        created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return (now - created).total_seconds() / 86400
 
 
 @dataclass
@@ -77,7 +110,7 @@ class StateReconciler:
 
         logger.info("StateReconciler initialized")
 
-    def reconcile(
+    def reconcile(  # noqa: C901
         self,
         broker_state: Dict[str, Any],
         local_state: Dict[str, Any],
@@ -210,8 +243,9 @@ class StateReconciler:
         """
         Extract stop_price and target_price from broker's open orders for a symbol.
 
-        If orders can't be found (Alpaca hides "held" stop orders), calculate expected
-        stop from entry price and strategy config.
+        If no live stop order is found (e.g. a GTC stop lapsed after 90 days), the saved
+        stop or one calculated from the entry price is returned for tracking only;
+        check_protective_stops() re-places the missing order.
 
         Args:
             symbol: Ticker symbol
@@ -270,9 +304,8 @@ class StateReconciler:
             calculated_stop = round(entry_price * (1 - stop_loss_pct), 2)
             stop_price = calculated_stop
             logger.warning(
-                f"{symbol}: Stop order hidden by Alpaca API, no saved value found. "
-                f"Calculated from entry: ${calculated_stop}. "
-                f"Verify actual stop on Alpaca dashboard."
+                f"{symbol}: No live stop order and no saved value; tracking a stop "
+                f"calculated from entry: ${calculated_stop}"
             )
 
         logger.info(
@@ -282,7 +315,7 @@ class StateReconciler:
 
         return stop_price, target_price, stop_verified
 
-    def calculate_stop_adjustments(
+    def calculate_stop_adjustments(  # noqa: C901
         self,
         broker_state: Dict[str, Any],
         local_state: Dict[str, Any],
@@ -399,7 +432,116 @@ class StateReconciler:
         logger.info(f"Found {len(adjustments)} stop adjustments needed")
         return adjustments, local_state
 
-    def check_position_alerts(
+    def check_protective_stops(
+        self,
+        broker_state: Dict[str, Any],
+        local_state: Dict[str, Any],
+        now: Optional[datetime] = None,
+    ) -> tuple[List[Discrepancy], List[StopRepair]]:
+        """
+        Find long positions with no live stop, and GTC stops near Alpaca's 90-day limit.
+
+        Alpaca cancels GTC orders 90 days after creation, bracket legs included, so a
+        position's stop can lapse without notice. A missing stop is re-placed at the
+        last known stop (local state, else entry minus the configured stop loss); a GTC
+        stop older than STOP_RENEW_AFTER_DAYS is renewed. A position with no usable stop
+        level, or already at or below its last known stop (that stop would trigger at
+        once), is reported for a human instead.
+
+        Args:
+            broker_state: Current broker state (positions, and open orders with legs)
+            local_state: Local state, after reconcile()
+            now: Current time (for tests)
+
+        Returns:
+            Tuple of (discrepancies needing human review, stop repairs to make)
+        """
+        now = now or get_datetime_now()
+        needs_review: List[Discrepancy] = []
+        repairs: List[StopRepair] = []
+        positions = local_state.get("positions", {})
+
+        for symbol, broker_pos in broker_state["positions"].items():
+            quantity = int(broker_pos.get("quantity", 0))
+            if quantity <= 0 or "short" in str(broker_pos.get("side", "")).lower():
+                continue  # only long positions are protected by sell stops
+
+            stops = [
+                order
+                for order in broker_state.get("orders", {}).get(symbol, [])
+                if "sell" in str(order.get("side", "")).lower() and order.get("stop_price")
+            ]
+            if stops:
+                repairs.extend(self._stop_renewals(symbol, stops, quantity, now))
+                continue
+
+            current_price = float(broker_pos.get("current_price") or 0)
+            stop_price = self._last_known_stop(symbol, positions, broker_pos)
+            if stop_price is None or stop_price >= current_price:
+                needs_review.append(
+                    Discrepancy(
+                        type="MISSING_STOP",
+                        symbol=symbol,
+                        details={
+                            "quantity": quantity,
+                            "last_known_stop": stop_price,
+                            "current_price": current_price,
+                            "reason": "no stop level below the current price to place",
+                        },
+                        action="NEEDS_HUMAN_REVIEW",
+                        severity="HIGH",
+                    )
+                )
+                continue
+
+            repairs.append(
+                StopRepair(
+                    kind="MISSING_STOP",
+                    symbol=symbol,
+                    quantity=quantity,
+                    stop_price=stop_price,
+                    reason="no live stop order (GTC stops lapse after 90 days)",
+                )
+            )
+
+        return needs_review, repairs
+
+    def _stop_renewals(
+        self, symbol: str, stops: List[Dict[str, Any]], quantity: int, now: datetime
+    ) -> List[StopRepair]:
+        """Renewals for GTC stops old enough to be cancelled soon."""
+        renewals = []
+        for order in stops:
+            age = _age_days(order.get("created_at"), now)
+            if age is None or age < STOP_RENEW_AFTER_DAYS:
+                continue
+            if "gtc" not in str(order.get("time_in_force", "")).lower():
+                continue  # DAY stops end each day; a missing one is re-placed as GTC
+            renewals.append(
+                StopRepair(
+                    kind="STOP_EXPIRING",
+                    symbol=symbol,
+                    quantity=int(order.get("quantity") or quantity),
+                    stop_price=float(order["stop_price"]),
+                    reason=f"GTC stop is {age:.0f} days old (Alpaca cancels at {GTC_LIFETIME_DAYS})",
+                    replaces_order_id=order["id"],
+                )
+            )
+        return renewals
+
+    def _last_known_stop(
+        self, symbol: str, positions: Dict[str, Any], broker_pos: Dict[str, Any]
+    ) -> Optional[float]:
+        """The saved stop for a position, else entry price minus the configured stop loss."""
+        saved = positions.get(symbol, {}).get("stop_price")
+        if saved:
+            return round(float(saved), 2)
+        entry_price = float(broker_pos.get("entry_price") or 0)
+        if not entry_price:
+            return None
+        return round(entry_price * (1 - self.config.get_risk_config("stop_loss")), 2)
+
+    def check_position_alerts(  # noqa: C901
         self,
         broker_state: Dict[str, Any],
         local_state: Dict[str, Any],

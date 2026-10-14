@@ -176,6 +176,8 @@ class BrokerStateCache:
                     ),
                     "status": str(order["status"]),  # Convert enum to string
                     "time_in_force": str(order["time_in_force"]),  # Convert enum to string
+                    # Alpaca cancels GTC orders 90 days after creation
+                    "created_at": order.get("created_at") or order.get("submitted_at"),
                 }
                 if parent_active:
                     broker_state["orders"].setdefault(symbol, []).append(order_entry)
@@ -201,6 +203,7 @@ class BrokerStateCache:
                             ),
                             "status": str(leg["status"]),
                             "time_in_force": str(leg["time_in_force"]),
+                            "created_at": leg.get("created_at") or leg.get("submitted_at"),
                             "parent_order_id": order["id"],  # Track parent relationship
                         }
                         broker_state["orders"].setdefault(symbol, []).append(leg_entry)
