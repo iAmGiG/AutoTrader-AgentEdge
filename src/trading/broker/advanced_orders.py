@@ -41,6 +41,20 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _bracket_leg_ids(order) -> Dict[str, Optional[str]]:
+    """IDs of a submitted bracket's stop-loss and take-profit legs (None if not returned)."""
+    leg_ids: Dict[str, Optional[str]] = {"stop_order_id": None, "take_profit_order_id": None}
+    for leg in getattr(order, "legs", None) or []:
+        # The stop leg (stop or stop-limit) has a stop price; the take-profit leg is a limit
+        key = (
+            "stop_order_id"
+            if getattr(leg, "stop_price", None) is not None
+            else "take_profit_order_id"
+        )
+        leg_ids[key] = str(leg.id)
+    return leg_ids
+
+
 class AdvancedOrdersMixin:
     """
     Mixin providing advanced order functionality.
@@ -296,6 +310,7 @@ class AdvancedOrdersMixin:
                 "status_detail": str(order.status),
                 "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
                 "mode": self.client.mode,
+                **_bracket_leg_ids(order),
             }
 
         except Exception as e:

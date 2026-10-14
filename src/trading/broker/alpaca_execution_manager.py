@@ -564,13 +564,14 @@ class AlpacaExecutionManager(ExecutionManager):
                 # Re-raise if not an off-hours issue
                 raise
 
-        # Extract order IDs
+        # Extract order IDs: the bracket's real leg IDs (a SELL exit has no legs)
         entry_order_id = order_data.get("order_id")
-        stop_order_id = f"{entry_order_id}_stop" if entry_order_id else None
-        target_order_id = f"{entry_order_id}_target" if entry_order_id else None
+        stop_order_id = order_data.get("stop_order_id")
+        target_order_id = order_data.get("take_profit_order_id")
 
         # Issue #344: Include order type and entry price in message
         order_type_str = "LIMIT" if is_limit_order else "MARKET"
+        order_kind = "bracket order" if side == "buy" else "order"
         entry_info = f"@ ${entry_price:.2f}" if is_limit_order else "(market)"
 
         result = OrderResult(
@@ -582,7 +583,7 @@ class AlpacaExecutionManager(ExecutionManager):
             quantity=quantity,
             filled_price=None,
             message=(
-                f"{order_type_str} bracket order placed: "
+                f"{order_type_str} {order_kind} placed: "
                 f"{signal} {quantity} {ticker} {entry_info}"
             ),
         )
