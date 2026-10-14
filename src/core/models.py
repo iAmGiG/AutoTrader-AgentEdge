@@ -137,6 +137,7 @@ class RiskAssessment:
     warnings: List[str] = field(default_factory=list)
     buying_power_available: float = 0.0
     existing_position_qty: int = 0  # If already holding this ticker
+    block_reasons: List[str] = field(default_factory=list)  # Why approved is False
 
     # Metadata
     timestamp: datetime = field(default_factory=get_datetime_now)
@@ -176,6 +177,9 @@ class TradeSuggestion:
 
     # Issue #474: Store indicators for HOLD signal overrides (current_price needed)
     indicators: Dict[str, Any] = field(default_factory=dict)
+
+    # Set when the risk check refuses this trade; it can't be confirmed or executed
+    risk_block_reasons: List[str] = field(default_factory=list)
 
 
 @dataclass

@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 
 from src.cli.commands import CommandRegistry
-from src.cli.commands.account_commands import get_account_commands
+from src.cli.commands.account_commands import confirm_live_switch, get_account_commands
 from src.cli.commands.timeframe_commands import get_timeframe_commands
 from src.cli.handlers import TradeHandler
 
@@ -71,6 +71,20 @@ logger = logging.getLogger(__name__)
 
 # Global ticker completer instance (from extracted module)
 _ticker_completer = get_ticker_completer()
+
+
+def _switch_account_id(user_input: str) -> Optional[str]:
+    """Account ID from a typed switch command, e.g. "switch to account paper_main"."""
+    input_lower = user_input.lower()
+    for phrase in ["switch to", "use account", "change to", "switch account", "use"]:
+        if phrase in input_lower:
+            # Take the first word after the phrase, skipping "account" in "switch to account"
+            words = user_input[input_lower.find(phrase) + len(phrase) :].split()
+            if words and words[0].lower() == "account":
+                words = words[1:]
+            if words:
+                return words[0]
+    return None
 
 
 class CLISession:
@@ -396,6 +410,7 @@ class CLISession:
                     "list account",
                     "show accounts",  # Plural = list accounts
                     "switch account",
+                    "switch to account",
                     "use account",
                     "change account",
                     "current account",
@@ -872,21 +887,13 @@ class CLISession:
             self.account_commands.list_accounts(verbose=verbose)
 
         elif any(phrase in input_lower for phrase in ["switch", "use", "change"]):
-            # Extract account ID from input
-            # Try to find account ID after key phrases
-            account_id = None
-            for phrase in ["switch to", "use account", "change to", "switch account", "use"]:
-                if phrase in input_lower:
-                    # Get text after the phrase
-                    idx = input_lower.find(phrase)
-                    remaining = user_input[idx + len(phrase) :].strip()
-                    # Take first word as account ID
-                    if remaining:
-                        account_id = remaining.split()[0].strip()
-                        break
+            account_id = _switch_account_id(user_input)
 
             if account_id:
-                result = self.account_commands.switch_account(account_id)
+                # Typed by the user, so a live account can be confirmed at a prompt
+                result = self.account_commands.switch_account(
+                    account_id, confirm_live=confirm_live_switch
+                )
                 if result["status"] == "success":
                     # Update orchestrator if needed
                     print("\n💡 Tip: Restart trading assistant to use new account for trades")

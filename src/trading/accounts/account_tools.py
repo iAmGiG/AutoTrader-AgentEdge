@@ -10,7 +10,7 @@ Issue #401: Multi-Account Portfolio Management
 import logging
 from typing import Any, Dict, List, Optional
 
-from .account_manager import get_account_manager
+from .account_manager import get_account_manager, needs_live_confirmation
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,10 @@ def get_active_account_info() -> Optional[Dict[str, Any]]:
 
 def switch_active_account(account_id: str) -> Dict[str, Any]:
     """
-    Switch to a different trading account.
+    Switch to a different paper trading account.
+
+    Agents can't switch to live accounts; the user does that in the CLI with a
+    typed confirmation.
 
     Args:
         account_id: ID of account to switch to
@@ -92,6 +95,16 @@ def switch_active_account(account_id: str) -> Dict[str, Any]:
         ...     print(f"Switched to {result['account_id']}")
     """
     manager = get_account_manager()
+
+    if needs_live_confirmation(manager, account_id):
+        return {
+            "success": False,
+            "account_id": account_id,
+            "message": (
+                f"Refused: {account_id} is not a confirmed paper account. Live accounts "
+                "can only be switched to by the user in the CLI."
+            ),
+        }
 
     if manager.set_active_account(account_id):
         active = manager.get_active_account()
@@ -113,7 +126,7 @@ def switch_active_account(account_id: str) -> Dict[str, Any]:
 
 def rotate_account() -> Dict[str, Any]:
     """
-    Rotate to the next available trading account.
+    Rotate to the next available paper trading account.
 
     Returns:
         Dict with result status and new account info
@@ -254,13 +267,13 @@ ACCOUNT_TOOLS = [
         "type": "function",
         "function": {
             "name": "switch_active_account",
-            "description": "Switch to a different trading account by ID",
+            "description": "Switch to a different paper trading account by ID (live accounts are refused)",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "account_id": {
                         "type": "string",
-                        "description": "The ID of the account to switch to (e.g., 'paper_main', 'live_trading')",
+                        "description": "The ID of the paper account to switch to (e.g., 'paper_main')",
                     }
                 },
                 "required": ["account_id"],
@@ -271,7 +284,7 @@ ACCOUNT_TOOLS = [
         "type": "function",
         "function": {
             "name": "rotate_account",
-            "description": "Rotate to the next available trading account (e.g. for load balancing)",
+            "description": "Rotate to the next available paper trading account (e.g. for load balancing)",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },

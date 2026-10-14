@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING, Optional
 from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 
 from src.cli.utils.error_utils import sanitize_error_message
-from src.cli.utils.input_parser import BUY_INDICATORS, SELL_INDICATORS, detect_user_intent
+from src.cli.utils.input_parser import (
+    BUY_INDICATORS,
+    SELL_INDICATORS,
+    detect_user_intent,
+)
 from src.cli.utils.suggestion_display import (
     calc_pct,
     display_position_context,
@@ -107,22 +111,13 @@ class TradeHandler:
             is_review_only = parsed_request.action == "review"
 
             # Get confirmation
-            if is_review_only:
-                print("\n📊 Analysis complete. No trade execution requested.")
-                decision.approved = False
-            elif self.autonomy_mode == "confirm":
-                decision.approved = self._get_confirmation()
-            else:
-                decision.approved = True
-                print(MSG.AUTO_EXECUTING)
+            decision.approved = self._get_approval(decision, is_review_only)
 
             # Execute if approved
             if decision.approved:
                 result = await self.orchestrator.execute_decision(decision)
                 display_result(result)
                 self._update_local_state_after_trade(decision, result)
-            elif not is_review_only:
-                print(MSG.TRADE_CANCELLED)
 
         except (ValueError, OSError, RuntimeError, AttributeError) as e:
             sanitized_msg = sanitize_error_message(e)
@@ -256,6 +251,35 @@ class TradeHandler:
                 f"   💡 Tip: You can be specific next time, e.g., 'buy {suggestion.ticker}' or 'analyze {suggestion.ticker}'"
             )
             return None
+
+    def _get_approval(self, decision, is_review_only: bool) -> bool:
+        """
+        Whether to execute the trade.
+
+        Review-only requests and trades the risk check refused are never approved (the
+        orchestrator refuses the latter too). Otherwise ask, or approve in auto mode.
+        """
+        refused = bool(decision.suggestion.risk_block_reasons)
+        if is_review_only:
+            print("\n📊 Analysis complete. No trade execution requested.")
+        if refused:
+            self._show_risk_refusal(decision.suggestion)
+        if is_review_only or refused:
+            return False
+
+        if self.autonomy_mode != "confirm":
+            print(MSG.AUTO_EXECUTING)
+            return True
+        if self._get_confirmation():
+            return True
+        print(MSG.TRADE_CANCELLED)
+        return False
+
+    def _show_risk_refusal(self, suggestion) -> None:
+        """Show why the risk check refused a trade."""
+        print(f"\n{MSG.EMOJI['error']} Trade refused by risk check - it can't be placed:")
+        for reason in suggestion.risk_block_reasons:
+            print(f"   • {reason}")
 
     def _show_cannot_sell_message(self, ticker: str) -> None:
         """Show message when user wants to sell but has no position."""

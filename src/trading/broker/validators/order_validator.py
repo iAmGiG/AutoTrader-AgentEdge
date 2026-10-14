@@ -73,6 +73,11 @@ class OrderValidator:
         # Basic parameter validation
         self._validate_parameters(symbol, qty, side)
 
+        # Exits and protective stops only shrink a held long position, so the limits on
+        # new risk (size, value, daily count) must not block them
+        if side.lower() == "sell" and self._sells_from_held_position(symbol, qty):
+            return True
+
         # Risk limit checks
         self._validate_order_size(qty)
         self._validate_max_order_value(symbol, qty, price)
@@ -98,6 +103,19 @@ class OrderValidator:
 
         if side.lower() not in ["buy", "sell"]:
             raise ValueError(f"Side must be 'buy' or 'sell', got {side}")
+
+    def _sells_from_held_position(self, symbol: str, qty: int) -> bool:
+        """True when a long position of at least ``qty`` shares is known to be held."""
+        if not self.position_provider:
+            return False
+
+        try:
+            positions = self.position_provider()
+            position = next((p for p in positions if p["symbol"] == symbol), None)
+            return position is not None and float(position["qty"]) >= qty
+        except Exception as e:
+            logger.warning(f"Could not confirm held position for {symbol}: {e}")
+            return False
 
     def _validate_order_size(self, qty: int):
         """Validate order quantity against max order size limit."""

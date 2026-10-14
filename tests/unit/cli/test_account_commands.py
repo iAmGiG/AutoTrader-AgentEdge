@@ -86,8 +86,7 @@ class TestAccountCommands:
                 with patch("src.cli.commands.account_commands.get_symbol", return_value="*"):
                     # Reset singleton
                     import src.cli.commands.account_commands as acc_module
-                    from src.cli.commands.account_commands import \
-                        AccountCommands
+                    from src.cli.commands.account_commands import AccountCommands
 
                     acc_module._account_commands = None
 
@@ -201,6 +200,42 @@ class TestSwitchAccount(TestAccountCommands):
         result = account_commands.switch_account("uninitialized")
 
         assert result["status"] == "error"
+
+    @staticmethod
+    def _live_account():
+        account = MagicMock()
+        account.info.account_type.value = "live"
+        account.info.portfolio_value = 5000.0
+        return account
+
+    def test_switch_to_live_refused_without_confirmation(
+        self, account_commands, mock_account_manager
+    ):
+        """Agent tools pass no confirmation, so a live account is refused."""
+        mock_account_manager.get_account.return_value = self._live_account()
+
+        result = account_commands.switch_account("live_main")
+
+        assert result["status"] == "refused"
+        mock_account_manager.set_active_account.assert_not_called()
+
+    def test_switch_to_live_needs_typed_confirmation(self, account_commands, mock_account_manager):
+        """The typed CLI command can switch to live once the user confirms."""
+        live = self._live_account()
+        mock_account_manager.get_account.return_value = live
+        mock_account_manager.get_active_account.return_value = live
+        mock_account_manager.set_active_account.return_value = True
+
+        declined = account_commands.switch_account("live_main", confirm_live=lambda _id: False)
+        assert declined["status"] == "refused"
+        mock_account_manager.set_active_account.assert_not_called()
+
+        confirmed = account_commands.switch_account("live_main", confirm_live=lambda _id: True)
+        assert confirmed["status"] == "success"
+        assert confirmed["account_type"] == "live"
+        mock_account_manager.set_active_account.assert_called_once_with(
+            "live_main", allow_live=True
+        )
 
 
 class TestShowCurrentAccount(TestAccountCommands):

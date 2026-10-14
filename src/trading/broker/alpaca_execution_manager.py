@@ -553,7 +553,9 @@ class AlpacaExecutionManager(ExecutionManager):
             # Use extracted BracketOrderValidator
             is_bracket_error = BracketOrderValidator.is_bracket_validation_error(error_data)
 
-            if not market_open and is_bracket_error:
+            # Only a bracket entry falls back: the fallback is a plain market BUY, so
+            # retrying a failed SELL that way would add to the position instead of exiting
+            if side == "buy" and not market_open and is_bracket_error:
                 # Fallback to simple market order
                 return await self._handle_bracket_fallback(
                     ticker, quantity, stop_loss, take_profit, e, error_data
@@ -604,6 +606,8 @@ class AlpacaExecutionManager(ExecutionManager):
     ) -> OrderResult:
         """
         Handle fallback to simple market order when bracket fails off-hours.
+
+        Places a market BUY, so it is only for failed bracket entries, never exits.
 
         Args:
             ticker: Stock symbol
