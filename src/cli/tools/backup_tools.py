@@ -297,6 +297,11 @@ def export_table(
     source = _db_file(None, db_path)
     if not source.exists():
         return f"{get_symbol('ERROR')} Database not found: {db_path}"
+    if output_path and Path(output_path).exists():
+        return (
+            f"{get_symbol('ERROR')} Export failed: {output_path} already exists; "
+            "exports never overwrite files"
+        )
 
     try:
         conn = sqlite3.connect(str(source))

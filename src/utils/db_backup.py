@@ -350,12 +350,22 @@ class DBBackupManager:
         Args:
             db_name: Database name
             table_name: Table to export
-            output_path: Output file path (auto-generated if None)
+            output_path: Output file path (auto-generated if None). An existing file is
+                never overwritten; the export fails instead.
 
         Returns:
             ExportResult with export details
         """
         try:
+            if output_path is not None and Path(output_path).exists():
+                return ExportResult(
+                    success=False,
+                    table_name=table_name,
+                    output_path=None,
+                    row_count=0,
+                    message=f"{output_path} already exists; exports never overwrite files",
+                )
+
             db_path = self._get_db_path(db_name)
             if not db_path.exists():
                 return ExportResult(
@@ -560,11 +570,13 @@ class DBBackupManager:
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT name FROM sqlite_master
                 WHERE type='table' AND name NOT LIKE 'sqlite_%'
                 ORDER BY name
-                """)
+                """
+            )
             tables = []
 
             for (table_name,) in cursor.fetchall():
@@ -609,10 +621,12 @@ class DBBackupManager:
 
             # Auto-detect history tables if not specified
             if tables is None:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT name FROM sqlite_master
                     WHERE type='table' AND name LIKE '%_history'
-                    """)
+                    """
+                )
                 tables = [row[0] for row in cursor.fetchall()]
 
             for table_name in tables:
@@ -701,12 +715,14 @@ class DBMigrator:
 
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS schema_version (
                 version INTEGER PRIMARY KEY,
                 applied_at TEXT NOT NULL
             )
-            """)
+            """
+        )
         conn.commit()
         conn.close()
 

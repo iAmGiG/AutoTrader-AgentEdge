@@ -167,6 +167,18 @@ def test_exports_do_not_overwrite(project):
     assert len(list(manager.export_dir.glob("t_*.json"))) == 2
 
 
+def test_export_to_an_existing_file_is_refused(project):
+    # The agent tool takes a free-form path; it must not be able to clobber a file
+    tmp_path, _ = project
+    target = tmp_path / "notes.txt"
+    target.write_text("keep me")
+
+    result = bt.export_table("t", output_path=str(target))
+
+    assert "already exists" in result
+    assert target.read_text() == "keep me"
+
+
 def test_default_manager_uses_isolated_state_dir(isolated_state_dir):
     manager = DBBackupManager()
     assert manager.backup_dir == isolated_state_dir / "backups"
