@@ -525,15 +525,28 @@ class CostEfficientTradeCycle:
         so they shouldn't make the routine retry.
 
         Returns:
-            Report lines (equity and day P&L, new fills, the day's realized P&L)
+            Report lines (equity and day P&L, fills since the previous run, the day's
+            realized P&L)
         """
         try:
+            records = self.daily_records
             market_date = market_today()
-            self.daily_records.record_account(market_date, routine, broker_state["account"])
-            self.daily_records.record_positions(market_date, routine, broker_state["positions"])
+            fetched_at = broker_state.get("fetched_at")
+            positions = broker_state["positions"]
+            # Symbols held now or at the previous run: their closed orders are fetched
+            # per symbol too, so an old bracket whose leg fills today (its parent long
+            # past the latest 100 closed orders) is still found
+            symbols = sorted(set(positions) | set(records.last_symbols()))
+
+            records.record_account(market_date, routine, broker_state["account"], fetched_at)
+            records.record_positions(market_date, routine, positions, fetched_at)
             closed = self.account_monitor.get_orders(status="closed", limit=100)
-            new_fills = self.daily_records.record_fills(closed)
-            return self.daily_records.summary_lines(market_date, new_fills)
+            if symbols:
+                closed += self.account_monitor.get_orders(
+                    status="closed", limit=500, symbols=symbols
+                )
+            records.record_fills(closed)
+            return records.summary_lines(market_date, routine)
         except Exception as e:
             logger.warning(f"Daily records not saved: {e}", exc_info=True)
             return ["", f"⚠️ Daily records not saved: {e}"]

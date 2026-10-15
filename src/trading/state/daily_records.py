@@ -6,20 +6,26 @@ and every order filled since the last run, in state/user.db. From these, the day
 (equity against the previous close) and the realized P&L of each sale (average cost, as
 Alpaca reports ``avg_entry_price``) can be reviewed later.
 
-Timestamps are UTC ISO strings; ``market_date`` is the ET trading day.
+A routine run is one account_daily row; its ``recorded_at`` is when the broker state was
+fetched, and its position_daily rows are the positions at that moment (a symbol absent
+from a run was not held). Timestamps are UTC ISO strings; ``market_date`` is the ET
+trading day.
 """
 
 import logging
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 from zoneinfo import ZoneInfo
 
 from src.utils.state_paths import get_user_db_path
 
 logger = logging.getLogger(__name__)
 
-MARKET_TIMEZONE = ZoneInfo("America/New_York")
+MARKET_TIMEZONE = ZoneInfo("America/New_York")  # trading days are ET dates
+
+QTY_EPSILON = 1e-9  # fractional-share rounding
 
 
 def _utc_now() -> str:
@@ -36,18 +42,31 @@ def _market_date(timestamp: str) -> str:
     return _parse(timestamp).astimezone(MARKET_TIMEZONE).date().isoformat()
 
 
-def _filled_orders(orders: Iterable[Dict[str, Any]]) -> Iterable[Dict[str, Any]]:
-    """Orders and bracket legs with a fill, each with its parent's id (None at top level)."""
+def _day_pnl(equity: Optional[float], last_equity: Optional[float]) -> Optional[float]:
+    """Equity change since the previous close; None without both values."""
+    if equity is None or not last_equity:
+        return None
+    return equity - last_equity
+
+
+def _filled_orders(orders: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Orders and bracket legs with a fill, once each, with the parent's id for a leg.
+
+    A leg can appear both nested under its parent and at top level (get_orders() keeps
+    ID-only legs it attaches); the nested copy, which knows its parent, wins.
+    """
+    found: Dict[str, Dict[str, Any]] = {}
     for order in orders:
-        for item, parent_id in [(order, None)] + [
-            (leg, order.get("id")) for leg in order.get("legs") or []
-        ]:
-            if (
-                (item.get("filled_qty") or 0) > 0
-                and item.get("filled_at")
-                and item.get("filled_avg_price")
-            ):
-                yield {**item, "parent_order_id": parent_id}
+        items = [(order, None)] + [(leg, order.get("id")) for leg in order.get("legs") or []]
+        for item, parent_id in items:
+            filled = (item.get("filled_qty") or 0) > 0
+            if not (filled and item.get("filled_at") and item.get("filled_avg_price")):
+                continue
+            known = found.get(item["id"])
+            if known is None or (parent_id and not known["parent_order_id"]):
+                found[item["id"]] = {**item, "parent_order_id": parent_id}
+    return list(found.values())
 
 
 class DailyRecords:
@@ -97,15 +116,32 @@ class DailyRecords:
             """
             )
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """A connection that commits on success and is always closed."""
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     # ------------------------------------------------------------------ recording
 
-    def record_account(self, market_date: str, routine: str, account: Dict[str, Any]) -> None:
-        """Store the account at a routine run; a re-run of the routine replaces it."""
+    def record_account(
+        self,
+        market_date: str,
+        routine: str,
+        account: Dict[str, Any],
+        recorded_at: Optional[str] = None,
+    ) -> None:
+        """
+        Store the account at a routine run; a re-run of the routine replaces it.
+
+        Args:
+            recorded_at: When the broker state was fetched (UTC ISO; default now)
+        """
         with self._connect() as conn:
             conn.execute(
                 """
@@ -117,7 +153,7 @@ class DailyRecords:
                 (
                     market_date,
                     routine,
-                    _utc_now(),
+                    recorded_at or _utc_now(),
                     account.get("equity"),
                     account.get("last_equity"),
                     account.get("cash"),
@@ -127,13 +163,20 @@ class DailyRecords:
             )
 
     def record_positions(
-        self, market_date: str, routine: str, positions: Dict[str, Dict[str, Any]]
+        self,
+        market_date: str,
+        routine: str,
+        positions: Dict[str, Dict[str, Any]],
+        recorded_at: Optional[str] = None,
     ) -> None:
         """
         Store positions (BrokerStateCache.fetch() shape: symbol -> quantity, entry_price,
         current_price, unrealized_pl); a re-run of the routine replaces them.
+
+        Args:
+            recorded_at: When the broker state was fetched (UTC ISO; default now)
         """
-        now = _utc_now()
+        recorded_at = recorded_at or _utc_now()
         with self._connect() as conn:
             conn.execute(
                 "DELETE FROM position_daily WHERE market_date = ? AND routine = ?",
@@ -151,7 +194,7 @@ class DailyRecords:
                         market_date,
                         routine,
                         symbol,
-                        now,
+                        recorded_at,
                         position["quantity"],
                         position["entry_price"],
                         position.get("current_price"),
@@ -169,10 +212,9 @@ class DailyRecords:
         Returns:
             The fills not recorded before (or grown since), oldest first
         """
-        fills = list(_filled_orders(orders))
         new = []
         with self._connect() as conn:
-            for fill in fills:
+            for fill in _filled_orders(orders):
                 known = conn.execute(
                     "SELECT filled_qty FROM fills WHERE order_id = ?", (fill["id"],)
                 ).fetchone()
@@ -204,39 +246,54 @@ class DailyRecords:
 
     # ------------------------------------------------------------------ queries
 
+    def _runs(self) -> List[sqlite3.Row]:
+        """Every routine run (market_date, routine, recorded_at), oldest first."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT market_date, routine, recorded_at FROM account_daily"
+            ).fetchall()
+        return sorted(rows, key=lambda r: _parse(r["recorded_at"]))
+
+    def last_symbols(self) -> List[str]:
+        """Symbols held at the latest recorded run."""
+        runs = self._runs()
+        if not runs:
+            return []
+        latest = runs[-1]
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT symbol FROM position_daily WHERE market_date = ? AND routine = ?",
+                (latest["market_date"], latest["routine"]),
+            ).fetchall()
+        return sorted(row["symbol"] for row in rows)
+
     def account_on(self, market_date: str) -> Optional[Dict[str, Any]]:
         """The day's latest account record (evening if it ran), or None."""
+        runs = [r for r in self._runs() if r["market_date"] == market_date]
+        if not runs:
+            return None
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT * FROM account_daily WHERE market_date = ? ORDER BY recorded_at DESC LIMIT 1",
-                (market_date,),
+                "SELECT * FROM account_daily WHERE market_date = ? AND routine = ?",
+                (market_date, runs[-1]["routine"]),
             ).fetchone()
-        return dict(row) if row else None
+        return dict(row)
 
     def equity_series(self) -> List[Dict[str, Any]]:
         """Each recorded day's latest equity and its change from the previous close."""
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT a.market_date, a.routine, a.equity, a.last_equity
-                FROM account_daily a
-                WHERE a.recorded_at = (
-                    SELECT max(recorded_at) FROM account_daily b WHERE b.market_date = a.market_date
-                )
-                ORDER BY a.market_date
-            """
-            ).fetchall()
-        return [
-            {
-                **dict(row),
-                "day_pnl": (
-                    row["equity"] - row["last_equity"]
-                    if row["equity"] is not None and row["last_equity"] is not None
-                    else None
-                ),
-            }
-            for row in rows
-        ]
+        series = []
+        for market_date in sorted({r["market_date"] for r in self._runs()}):
+            account = self.account_on(market_date)
+            series.append(
+                {
+                    "market_date": market_date,
+                    "routine": account["routine"],
+                    "equity": account["equity"],
+                    "last_equity": account["last_equity"],
+                    "day_pnl": _day_pnl(account["equity"], account["last_equity"]),
+                }
+            )
+        return series
 
     def fills_on(self, market_date: str) -> List[Dict[str, Any]]:
         with self._connect() as conn:
@@ -245,30 +302,47 @@ class DailyRecords:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def fills_after(self, after: Optional[str]) -> List[Dict[str, Any]]:
+        """Fills after a time (UTC ISO), oldest first; all fills if None."""
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM fills").fetchall()
+        fills = [dict(row) for row in rows]
+        if after is not None:
+            cutoff = _parse(after)
+            fills = [f for f in fills if _parse(f["filled_at"]) > cutoff]
+        return sorted(fills, key=lambda f: _parse(f["filled_at"]))
+
     def _cost_basis(self, symbol: str, before: str) -> Optional[float]:
         """
-        Average cost of a long position just before a fill: the latest recorded position,
-        then the buys and sells filled since, on the average-cost method. None if unknown.
+        Average cost of a long position just before a fill.
+
+        Starts from the latest routine run before the fill (the symbol's recorded
+        position, or flat if the run didn't hold it) and replays the fills since on the
+        average-cost method. None if no run came before, or if the fills don't add up
+        (a sale larger than the holding means some fills are missing).
         """
         cutoff = _parse(before)
+        runs = [r for r in self._runs() if _parse(r["recorded_at"]) < cutoff]
+        if not runs:
+            return None
+        run = runs[-1]
+        since = _parse(run["recorded_at"])
         with self._connect() as conn:
-            positions = conn.execute(
-                "SELECT recorded_at, quantity, avg_entry_price FROM position_daily WHERE symbol = ?",
-                (symbol,),
-            ).fetchall()
+            position = conn.execute(
+                """
+                SELECT quantity, avg_entry_price FROM position_daily
+                WHERE market_date = ? AND routine = ? AND symbol = ?
+                """,
+                (run["market_date"], run["routine"], symbol),
+            ).fetchone()
             fills = conn.execute(
                 "SELECT side, filled_qty, filled_avg_price, filled_at FROM fills WHERE symbol = ?",
                 (symbol,),
             ).fetchall()
 
-        earlier = [p for p in positions if _parse(p["recorded_at"]) < cutoff]
-        start = max(earlier, key=lambda p: _parse(p["recorded_at"]), default=None)
-        since = _parse(start["recorded_at"]) if start else None
-        qty = start["quantity"] if start else 0.0
-        cost = start["avg_entry_price"] if start else 0.0
+        qty, cost = (position["quantity"], position["avg_entry_price"]) if position else (0.0, 0.0)
         for fill in sorted(fills, key=lambda f: _parse(f["filled_at"])):
-            at = _parse(fill["filled_at"])
-            if at >= cutoff or (since is not None and at <= since):
+            if not since < _parse(fill["filled_at"]) < cutoff:
                 continue
             if fill["side"] == "buy":
                 total = qty + fill["filled_qty"]
@@ -276,7 +350,11 @@ class DailyRecords:
                 qty = total
             else:
                 qty -= fill["filled_qty"]
-        return cost if qty > 0 else None
+                if qty < -QTY_EPSILON:
+                    return None
+                if qty <= QTY_EPSILON:
+                    qty, cost = 0.0, 0.0  # flat: the next buy starts a new basis
+        return cost if qty > QTY_EPSILON else None
 
     def realized_on(self, market_date: str) -> List[Dict[str, Any]]:
         """
@@ -307,27 +385,45 @@ class DailyRecords:
             )
         return realized
 
-    def summary_lines(self, market_date: str, new_fills: List[Dict[str, Any]]) -> List[str]:
-        """Report lines: equity and day P&L, new fills, and the day's realized P&L."""
+    def _previous_run_at(self, market_date: str, routine: str) -> Optional[str]:
+        """When the run before this one fetched its state (any other routine run)."""
+        this = [
+            r for r in self._runs() if (r["market_date"], r["routine"]) == (market_date, routine)
+        ]
+        others = [
+            r for r in self._runs() if (r["market_date"], r["routine"]) != (market_date, routine)
+        ]
+        if this:
+            this_at = _parse(this[0]["recorded_at"])
+            others = [r for r in others if _parse(r["recorded_at"]) < this_at]
+        return others[-1]["recorded_at"] if others else None
+
+    def summary_lines(self, market_date: str, routine: str) -> List[str]:
+        """
+        Report lines for a routine run: equity and day P&L, the fills since the previous
+        run (the same on a retry of this run), and the day's realized P&L.
+        """
         lines = ["", "## Daily Records", ""]
         account = self.account_on(market_date)
         if account and account["equity"] is not None:
-            day = (
-                f" (day P&L {account['equity'] - account['last_equity']:+,.2f} vs the previous close)"
-                if account["last_equity"]
-                else ""
-            )
+            pnl = _day_pnl(account["equity"], account["last_equity"])
+            day = f" (day P&L {pnl:+,.2f} vs the previous close)" if pnl is not None else ""
             lines.append(f"- Equity ${account['equity']:,.2f}{day}")
-        if new_fills:
-            lines.append(f"- New fills since the last run: {len(new_fills)}")
-            for fill in new_fills:
+
+        previous = self._previous_run_at(market_date, routine)
+        fills = self.fills_after(previous) if previous else self.fills_on(market_date)
+        if fills:
+            since = "the previous run" if previous else "the start of the day"
+            lines.append(f"- Fills since {since}: {len(fills)}")
+            for fill in fills:
                 lines.append(
-                    f"  - {fill['symbol']} {str(fill['side']).lower()} {fill['filled_qty']:g} "
-                    f"@ ${float(fill['filled_avg_price']):,.2f} ({fill.get('order_type') or '?'}, "
-                    f"{_market_date(fill['filled_at'])})"
+                    f"  - {fill['symbol']} {fill['side']} {fill['filled_qty']:g} "
+                    f"@ ${fill['filled_avg_price']:,.2f} ({fill['order_type'] or '?'}, "
+                    f"{fill['market_date']})"
                 )
         else:
-            lines.append("- No new fills since the last run")
+            lines.append("- No fills since the previous run")
+
         sales = self.realized_on(market_date)
         if sales:
             known = [s["pnl"] for s in sales if s["pnl"] is not None]

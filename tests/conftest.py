@@ -75,6 +75,19 @@ class MockAccount:
 
 
 # =============================================================================
+# Test Safety
+# =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def no_broker_snapshot_cache(monkeypatch):
+    """Keep BrokerStateCache from writing snapshots to the real .cache/trading_data.db."""
+    from src.trading.state import broker_state_cache
+
+    monkeypatch.setattr(broker_state_cache, "_unified_cache", False)
+
+
+# =============================================================================
 # Broker Client Fixtures
 # =============================================================================
 

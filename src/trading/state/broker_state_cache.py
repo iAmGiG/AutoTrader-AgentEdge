@@ -12,7 +12,8 @@ When use_persistent_cache=True, broker state snapshots are stored for:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from time import monotonic
 from typing import Any, Callable, Dict, List, Optional
 
 from src.utils.date_utils import get_datetime_now, now_iso
@@ -21,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 # Lazy-loaded persistent cache to avoid circular imports
 _unified_cache = None
+
+SNAPSHOT_DAYS_KEPT = 90
+_SNAPSHOT_CLEANUP_EVERY = 24 * 3600  # seconds
+_last_snapshot_cleanup: Optional[float] = None
 
 
 def _get_unified_cache():
@@ -139,6 +144,7 @@ class BrokerStateCache:
                     "last_equity": float(account.get("last_equity", 0)),  # previous close
                 },
                 "timestamp": now_iso(),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),  # for records
             }
 
             # Process positions
@@ -361,6 +367,16 @@ class BrokerStateCache:
             logger.debug(
                 f"Stored to persistent cache: {len(positions)} positions, " f"{len(orders)} orders"
             )
+
+            # Snapshots are written on every fetch; keep SNAPSHOT_DAYS_KEPT days of them
+            global _last_snapshot_cleanup
+            now = monotonic()
+            if (
+                _last_snapshot_cleanup is None
+                or now - _last_snapshot_cleanup > _SNAPSHOT_CLEANUP_EVERY
+            ):
+                _last_snapshot_cleanup = now
+                unified_cache.cleanup_old_snapshots(days_to_keep=SNAPSHOT_DAYS_KEPT)
 
         except Exception as e:
             # Don't fail the main operation if persistent cache fails
