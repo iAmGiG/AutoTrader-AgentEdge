@@ -178,7 +178,9 @@ def fit(panel: pd.DataFrame, y: str) -> dict:
 
 def collect_symbol(bt, conn, sym: str) -> list:
     """Measured expiry and placebo rows for one symbol."""
-    px = bt.fetch_equity_prices([sym], START, END).set_index("trading_date")["close"]
+    # Raw prices: they are compared with option strikes
+    raw = bt.fetch_equity_prices([sym], START, END, adjust_splits=False)
+    px = raw.set_index("trading_date")["close"]
     px = px[~px.index.duplicated()].astype(float)
     if len(px) < 500:
         return []

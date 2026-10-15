@@ -16,6 +16,7 @@ import pandas as pd
 import psycopg2
 
 from src.backtesting.gex_overlay import GEXOverlay
+from src.backtesting.price_adjustments import load_splits, split_adjust
 from src.backtesting.results import BacktestResults
 
 DB_PARAMS = {"host": "localhost", "port": 5432, "user": "cregan1", "database": "gex_options"}
@@ -60,13 +61,17 @@ class ResearchBacktester:
             self._conn.close()
 
     def fetch_equity_prices(
-        self, symbols: List[str], start_date: str, end_date: str
+        self, symbols: List[str], start_date: str, end_date: str, adjust_splits: bool = True
     ) -> pd.DataFrame:
         """Fetch daily OHLCV from equity_prices_daily.
 
+        The table stores raw prices, so by default they are back-adjusted for splits
+        (gex.corporate_events) to the scale at the end of the window; otherwise a split
+        reads as a one-day move of the split ratio. Pass ``adjust_splits=False`` for raw
+        prices, e.g. to compare with option strikes.
+
         Returns:
             DataFrame with columns: trading_date, symbol, open, high, low, close, volume
-            Pivoted so each symbol's close is a column.
         """
         if end_date > LAST_VALIDATED_DATE:
             print(f"  WARNING: end_date {end_date} clamped to {LAST_VALIDATED_DATE} (vendor break)")
@@ -82,6 +87,8 @@ class ResearchBacktester:
         """
         df = pd.read_sql_query(query, conn, params=(*symbols, start_date, end_date))
         df["trading_date"] = pd.to_datetime(df["trading_date"])
+        if adjust_splits:
+            df = split_adjust(df, load_splits(conn, symbols, end_date))
         return df
 
     def get_close_prices(self, symbols: List[str], start_date: str, end_date: str) -> pd.DataFrame:
