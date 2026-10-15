@@ -249,10 +249,18 @@ class SchedulerCLI:
             return
 
         try:
-            if routine_type == "morning":
-                report = self.scheduler.trading_cycle.morning_routine()
-            else:
-                report = self.scheduler.trading_cycle.evening_routine()
+            # The scheduler's lock: a test run never overlaps the daemon, cron or a retry
+            with self.scheduler.run_lock() as acquired:
+                if not acquired:
+                    print(
+                        f"{get_emoji('warning', '⚠️')} A scheduled run is in progress; "
+                        "try again in a few minutes"
+                    )
+                    return
+                if routine_type == "morning":
+                    report = self.scheduler.trading_cycle.morning_routine()
+                else:
+                    report = self.scheduler.trading_cycle.evening_routine()
 
             print(
                 f"\n{get_emoji('check_green', '✅')} {routine_type.capitalize()} routine completed"

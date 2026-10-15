@@ -527,6 +527,36 @@ class SchedulerStateManager:
             logger.error(f"Failed to check if routine run today: {e}")
             return False
 
+    def was_routine_finished_today(
+        self, routine_type: str, market_date: Optional[str] = None
+    ) -> bool:
+        """
+        Check if a routine completed, or failed after its retries, on a trading day.
+
+        The scheduler uses this so a routine that ran out of retries isn't started again
+        later in the same window; a manual run can still retry it.
+
+        Args:
+            routine_type: Type of routine (morning, evening)
+            market_date: Trading day to check (YYYY-MM-DD, ET; default today in ET)
+        """
+        try:
+            conn = self._get_connection()
+            row = conn.execute(
+                """
+                SELECT COUNT(*) FROM scheduler_history
+                WHERE routine_type = ?
+                AND coalesce(market_date, date(started_at)) = ?
+                AND status IN ('completed', 'failed')
+            """,
+                (routine_type, market_date or market_today()),
+            ).fetchone()
+            conn.close()
+            return row[0] > 0
+        except Exception as e:
+            logger.error(f"Failed to check if routine finished today: {e}")
+            return False
+
     def get_stats(self, days: int = 7) -> Dict[str, Any]:
         """
         Get execution statistics.

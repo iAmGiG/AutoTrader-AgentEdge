@@ -32,7 +32,7 @@ from zoneinfo import ZoneInfo
 from .scheduler_state import SchedulerStateManager, get_scheduler_state_manager
 from .trading_cycle import CostEfficientTradeCycle, RoutineType
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
-from src.utils.market_hours import get_market_hours_for_date
+from src.utils.market_hours import DEFAULT_MARKET_CLOSE, get_market_hours_for_date
 from src.utils.state_paths import get_state_dir
 
 try:
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 dt_time = datetime_module.time  # time of day (the time module is imported as time)
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "enabled": True,
+    "enabled": False,  # without a readable config file, nothing runs until enabled
     "market_timezone": "America/New_York",
     "morning_routine_time": "09:20:00",
     "evening_routine_time": "15:50:00",
@@ -66,7 +66,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "dry_run": False,
 }
 
-# A task runs if the check happens within this long of its scheduled time
+# A task runs if a check happens within this long after its scheduled time
 RUN_WINDOW = timedelta(minutes=5)
 
 
@@ -161,18 +161,22 @@ def configure_scheduler_logging(level: int = logging.INFO) -> Path:
     """
     log_path = get_state_dir() / "scheduler.log"
     root = logging.getLogger()
-    root.setLevel(level)
-    already = any(
+    if root.level == logging.NOTSET or root.level > level:  # never raise a lower level
+        root.setLevel(level)
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    if not any(
         isinstance(h, RotatingFileHandler) and h.baseFilename == os.path.abspath(log_path)
         for h in root.handlers
-    )
-    if not already:
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    ):
         file_handler = RotatingFileHandler(
             log_path, maxBytes=5_000_000, backupCount=5, encoding="utf-8"
         )
         file_handler.setFormatter(formatter)
         root.addHandler(file_handler)
+    if not any(
+        isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+        for h in root.handlers
+    ):
         # stdout, so a daemon's stderr holds only crashes (see DaemonManager.start)
         console = logging.StreamHandler(sys.stdout)
         console.setFormatter(formatter)
@@ -368,6 +372,11 @@ class DailyScheduler:
 
             try:
                 logger.info("Executing %s (attempt %d/%d)", task.name, attempt, max_attempts)
+                # Each attempt starts from fresh broker state: a retry within the cache's
+                # TTL would otherwise re-place stops that the failed attempt already placed
+                invalidate = getattr(self.trading_cycle, "invalidate_broker_cache", None)
+                if callable(invalidate):
+                    invalidate()
 
                 # Execute the appropriate routine; failures raise RoutineError, including
                 # protective stops that couldn't be checked, placed or renewed
@@ -441,11 +450,26 @@ class DailyScheduler:
         """Save enable flags (enabled / morning / evening) to state/user.db."""
         return save_flags(self.config, self.state_manager, **flags)
 
+    def scheduled_at(self, task: ScheduledTask, day) -> Optional[datetime]:
+        """
+        When a task runs on a day, in the market timezone; None if the market is closed.
+
+        On an early close the evening routine moves back as far as the close does
+        (15:50 becomes 12:50 for a 13:00 close), so it still runs before the close.
+        """
+        _, close, trading_day = get_market_hours_for_date(day)
+        if not trading_day:
+            return None
+        when = datetime.combine(day, task.scheduled_time, tzinfo=ZoneInfo(task.timezone))
+        if task.routine_type == RoutineType.EVENING and close < DEFAULT_MARKET_CLOSE:
+            when -= datetime.combine(day, DEFAULT_MARKET_CLOSE) - datetime.combine(day, close)
+        return when
+
     def should_run_task(self, task: ScheduledTask, now: Optional[datetime] = None) -> bool:
         """
-        Check if a task should run now: the scheduler and the routine are enabled, it's
-        within 5 minutes of the routine's time in the market timezone, the market is open
-        that day, and the routine hasn't completed for that day yet.
+        Check if a task should run now: the scheduler and the routine are enabled, the
+        market is open that day, it's at most 5 minutes past the routine's time in the
+        market timezone, and the routine hasn't completed or failed that day.
 
         Args:
             task: The scheduled task to check
@@ -460,17 +484,15 @@ class DailyScheduler:
             return False
 
         now = now or datetime.now(ZoneInfo(task.timezone))
-        scheduled = datetime.combine(now.date(), task.scheduled_time, tzinfo=now.tzinfo)
-        if abs(now - scheduled) > RUN_WINDOW:
-            return False
-
-        _, _, trading_day = get_market_hours_for_date(now.date())
-        if not trading_day:
+        scheduled = self.scheduled_at(task, now.date())
+        if scheduled is None:
             logger.debug("Skipping %s: %s is not a trading day", task.name, now.date())
             return False
+        if not timedelta(0) <= now - scheduled <= RUN_WINDOW:
+            return False
 
-        if self.state_manager.was_routine_run_today(routine_type, now.date().isoformat()):
-            logger.debug("Task %s already completed today (from DB)", task.name)
+        if self.state_manager.was_routine_finished_today(routine_type, now.date().isoformat()):
+            logger.debug("Task %s already completed or failed today (from DB)", task.name)
             return False
 
         return True
@@ -488,11 +510,9 @@ class DailyScheduler:
         now = now or self._market_now()
         for offset in range(15):  # covers any run of holidays and weekends
             day = (now + timedelta(days=offset)).date()
-            if not get_market_hours_for_date(day)[2]:
-                continue
-            for task in sorted(tasks, key=lambda t: t.scheduled_time):
-                when = datetime.combine(day, task.scheduled_time, tzinfo=now.tzinfo)
-                done = self.state_manager.was_routine_run_today(
+            runs = [(self.scheduled_at(task, day), task) for task in tasks]
+            for when, task in sorted((r for r in runs if r[0] is not None), key=lambda r: r[0]):
+                done = self.state_manager.was_routine_finished_today(
                     task.name.replace("_routine", ""), day.isoformat()
                 )
                 if when + RUN_WINDOW >= now and not done:
@@ -500,7 +520,7 @@ class DailyScheduler:
         return None
 
     @contextmanager
-    def _run_lock(self):
+    def run_lock(self):
         """
         Exclusive lock while routines run, so a daemon, a cron run and a manual run (or
         two cron runs during a long retry) never run them at the same time.
@@ -530,19 +550,24 @@ class DailyScheduler:
         self._log_execution_summary(log_entry)
         return log_entry
 
-    def run_scheduled_tasks(self):
+    def run_scheduled_tasks(self) -> List[ExecutionLog]:
         """
         Run any tasks that are due now.
         This should be called periodically (e.g., every minute).
+
+        Returns:
+            Log entries of the tasks run (none if another run holds the lock)
         """
-        with self._run_lock() as acquired:
+        ran: List[ExecutionLog] = []
+        with self.run_lock() as acquired:
             if not acquired:
                 logger.info("Another scheduler run is in progress; skipping this check")
-                return
+                return ran
             for task in self.tasks:
                 if self.should_run_task(task):
                     logger.info("🚀 Starting scheduled task: %s", task.name)
-                    self._run_task(task)
+                    ran.append(self._run_task(task))
+        return ran
 
     def _log_execution_summary(self, log_entry: ExecutionLog):
         """Log execution summary for monitoring"""
@@ -632,7 +657,7 @@ class DailyScheduler:
                 return
 
             # A manual run ignores the schedule and calendar, but not another run
-            with self._run_lock() as acquired:
+            with self.run_lock() as acquired:
                 if not acquired:
                     logger.error("Another scheduler run is in progress; not running %s", task_name)
                     return

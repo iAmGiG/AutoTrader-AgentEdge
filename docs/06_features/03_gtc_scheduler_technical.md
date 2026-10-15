@@ -290,7 +290,7 @@ python -m pytest tests/unit/trading/test_daily_scheduler.py -v
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `enabled` | `true` | Master enable/disable (default until flags are saved from the CLI) |
+| `enabled` | `false` | Master enable/disable (default until flags are saved from the CLI) |
 | `morning_routine_enabled` | `true` | Morning routine enable (same precedence) |
 | `evening_routine_enabled` | `true` | Evening routine enable (same precedence) |
 | `market_timezone` | `America/New_York` | Timezone of the routine times, independent of the host |
@@ -326,11 +326,12 @@ python -m src.trading.scheduling.daily_scheduler --mode once --task morning_rout
 
 ### Tasks not executing
 
-1. Check the day: routines run on NYSE trading days only, at ET times (the host timezone doesn't matter)
+1. Check the day and time: routines run on NYSE trading days only, at their ET time or up to 5 minutes after (the host timezone doesn't matter). On early closes the evening routine moves back with the close.
 2. Verify schedule: `cat config_defaults/scheduler_config.yaml`
 3. Check if already executed: Review `state/scheduler_execution_log.json`
 4. Verify enabled: `/scheduler` in the CLI shows the flags in force (saved flags override the config file)
 5. Check for an overlapping run: only one run at a time holds `state/scheduler.lock`
+6. Check for an earlier failure: a routine that failed after its retries waits for the next trading day (run it manually to retry)
 
 ### API errors
 

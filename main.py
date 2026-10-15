@@ -248,10 +248,11 @@ def _run_interactive_cli(account_id: str = None) -> None:
         sys.exit(1)
 
 
-def _run_due_mode() -> None:
-    """Run any scheduled routine that is due now, then exit (for cron)."""
+def _run_due_mode() -> int:
+    """Run any scheduled routine that is due now (for cron). Returns the exit code."""
     configure_scheduler_logging()
-    DailyScheduler().run_scheduled_tasks()
+    ran = DailyScheduler().run_scheduled_tasks()
+    return 1 if any(entry.status == "failed" for entry in ran) else 0
 
 
 def _run_daemon_mode() -> None:
@@ -332,12 +333,11 @@ def main():
             safe_print(f"{get_symbol('ERROR')} Error listing accounts: {e}")
             sys.exit(1)
 
+    if args.run_due:  # before --account, which would start the interactive CLI
+        sys.exit(_run_due_mode())
+
     if args.account and not args.daemon:
         _run_interactive_cli(account_id=args.account)
-
-    if args.run_due:
-        _run_due_mode()
-        sys.exit(0)
 
     if args.daemon:
         _run_daemon_mode()

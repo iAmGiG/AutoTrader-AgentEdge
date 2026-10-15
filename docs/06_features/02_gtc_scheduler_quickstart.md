@@ -4,7 +4,8 @@
 
 Automated "set it and forget it" daily trading system that:
 
-- Runs twice daily (9:20 AM and 3:50 PM ET, whatever the host's timezone), on NYSE trading days only
+- Runs twice daily (9:20 AM and 3:50 PM ET, whatever the host's timezone), on NYSE trading days only;
+  on early-close days the evening routine moves back with the close (12:50 PM for a 1 PM close)
 - Automatically adjusts stops based on profit levels
 - Places GTC orders that broker manages
 - Retries failed operations automatically
@@ -153,7 +154,8 @@ If all retries fail, you get:
 - System continues and tries again next scheduled time
 
 A routine also counts as failed (and is retried) when a protective stop couldn't be checked,
-placed or renewed. Its report is still written.
+placed or renewed. Its report is still written. A routine that fails after its retries isn't
+started again that day; run it manually once the cause is fixed.
 
 ## Stopping/Pausing
 

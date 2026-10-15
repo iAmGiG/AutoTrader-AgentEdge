@@ -12,6 +12,7 @@ from src.trading.scheduling import daily_scheduler, scheduler_state
 from src.trading.scheduling.daily_scheduler import (
     DailyScheduler,
     configure_scheduler_logging,
+    load_scheduler_config,
 )
 from src.trading.scheduling.scheduler_state import SchedulerStateManager
 from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle, RoutineError
@@ -75,6 +76,21 @@ def test_routines_run_on_trading_days_only(make_scheduler):
     assert not scheduler.should_run_task(morning, now=_et(2026, 10, 17, 9, 21))  # Saturday
     assert not scheduler.should_run_task(morning, now=_et(2026, 11, 26, 9, 21))  # Thanksgiving
     assert not scheduler.should_run_task(morning, now=_et(2026, 10, 15, 9, 26))  # past window
+    assert not scheduler.should_run_task(morning, now=_et(2026, 10, 15, 9, 16))  # not yet
+
+
+def test_evening_routine_moves_back_on_an_early_close(make_scheduler):
+    scheduler = make_scheduler(evening_routine_time="15:50:00")
+    evening = _task(scheduler, "evening_routine")
+
+    # 2026-11-27, the day after Thanksgiving, closes at 13:00
+    assert scheduler.should_run_task(evening, now=_et(2026, 11, 27, 12, 51))
+    assert not scheduler.should_run_task(evening, now=_et(2026, 11, 27, 15, 51))
+    assert scheduler.should_run_task(evening, now=_et(2026, 11, 30, 15, 51))  # normal day
+
+
+def test_without_a_config_file_nothing_is_enabled(tmp_path):
+    assert load_scheduler_config(str(tmp_path / "missing.yaml"))["enabled"] is False
 
 
 def test_disabled_routine_is_skipped(make_scheduler):
@@ -123,17 +139,28 @@ def test_a_completed_routine_counts_for_its_market_date(make_scheduler):
     assert scheduler.should_run_task(morning, now=_et(2026, 10, 16, 9, 20))
 
 
-def test_failures_are_retried_then_recorded_as_failed(make_scheduler):
+def test_failures_are_retried_on_fresh_broker_state_then_recorded_as_failed(make_scheduler):
     scheduler = make_scheduler(max_retries=2, retry_delay_seconds=1)
     scheduler.trading_cycle.morning_routine.side_effect = RoutineError("broker down")
 
     log = scheduler._execute_task_with_retry(_task(scheduler, "morning_routine"))
 
     assert scheduler.trading_cycle.morning_routine.call_count == 3
+    assert scheduler.trading_cycle.invalidate_broker_cache.call_count == 3
     scheduler.trading_cycle.morning_routine.assert_called_with(raise_errors=True)
     assert log.status == "failed"
     assert scheduler.state_manager.get_last_execution("morning").status == "failed"
     assert not scheduler.state_manager.was_routine_run_today("morning")
+
+
+def test_a_routine_out_of_retries_is_not_started_again_that_day(make_scheduler):
+    scheduler = make_scheduler()
+    morning = _task(scheduler, "morning_routine")
+    run_id = scheduler.state_manager.record_execution_start("morning", market_date="2026-10-15")
+    scheduler.state_manager.record_execution_complete(run_id, status="failed")
+
+    assert not scheduler.should_run_task(morning, now=_et(2026, 10, 15, 9, 24))
+    assert scheduler.should_run_task(morning, now=_et(2026, 10, 16, 9, 24))
 
 
 def test_a_success_records_the_routines_own_report(make_scheduler):
@@ -142,6 +169,16 @@ def test_a_success_records_the_routines_own_report(make_scheduler):
     log = scheduler._execute_task_with_retry(_task(scheduler, "morning_routine"))
 
     assert (log.status, log.report_path) == ("completed", "reports/daily/x.md")
+
+
+def test_scheduled_runs_report_what_ran(make_scheduler):
+    scheduler = make_scheduler()
+    scheduler.should_run_task = lambda task: task.name == "morning_routine"
+    scheduler.trading_cycle.morning_routine.side_effect = RoutineError("broker down")
+
+    ran = scheduler.run_scheduled_tasks()  # main.py --run-due exits 1 on a failure
+
+    assert [(entry.task_name, entry.status) for entry in ran] == [("morning_routine", "failed")]
 
 
 def _bare_cycle(tmp_path, stop_discrepancies=()):
@@ -249,9 +286,15 @@ def restore_root_logging():
 
 
 def test_daemon_logging_goes_to_the_state_dir_once(restore_root_logging):
+    root = logging.getLogger()
+    root.handlers[:] = [logging.StreamHandler()]  # e.g. from an earlier basicConfig
+    root.setLevel(logging.DEBUG)
+
     path = configure_scheduler_logging()
     configure_scheduler_logging()  # a second call adds nothing
     logging.getLogger("scheduler-test").info("routine check")
 
     assert path == get_state_dir() / "scheduler.log"
     assert path.read_text().count("routine check") == 1
+    assert len(root.handlers) == 2  # the existing console handler, plus the file
+    assert root.level == logging.DEBUG  # not raised to INFO
