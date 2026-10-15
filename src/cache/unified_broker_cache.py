@@ -75,8 +75,7 @@ class UnifiedBrokerCache:
         """Create broker cache tables if they don't exist."""
         with sqlite3.connect(self.db_path) as conn:
             # Main broker state cache table
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS broker_state_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_id TEXT NOT NULL,
@@ -86,18 +85,14 @@ class UnifiedBrokerCache:
                     expires_at TEXT NOT NULL,
                     UNIQUE(account_id, state_type)
                 )
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_broker_state_lookup
                 ON broker_state_cache(account_id, state_type)
-            """
-            )
+            """)
 
             # Position snapshots for historical tracking
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS position_snapshots (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_id TEXT NOT NULL,
@@ -114,18 +109,14 @@ class UnifiedBrokerCache:
                     trailing_stop_pct REAL,
                     source TEXT DEFAULT 'alpaca'
                 )
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_position_snapshots
                 ON position_snapshots(account_id, symbol, snapshot_time)
-            """
-            )
+            """)
 
             # Order snapshots for historical tracking
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS order_snapshots (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_id TEXT NOT NULL,
@@ -143,18 +134,14 @@ class UnifiedBrokerCache:
                     filled_at TEXT,
                     source TEXT DEFAULT 'alpaca'
                 )
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_order_snapshots
                 ON order_snapshots(account_id, order_id, snapshot_time)
-            """
-            )
+            """)
 
             # Display audit log
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS display_audit_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     display_time TEXT NOT NULL,
@@ -163,14 +150,11 @@ class UnifiedBrokerCache:
                     cache_source TEXT,
                     cache_age_seconds REAL
                 )
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_audit_time
                 ON display_audit_log(display_time)
-            """
-            )
+            """)
 
             conn.commit()
 

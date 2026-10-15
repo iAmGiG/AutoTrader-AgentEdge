@@ -75,8 +75,7 @@ class DailyRecords:
     def __init__(self, db_path: Optional[str] = None):
         self._db_path = db_path or get_user_db_path()
         with self._connect() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS account_daily (
                     market_date TEXT NOT NULL,
                     routine TEXT NOT NULL,
@@ -113,8 +112,7 @@ class DailyRecords:
                     recorded_at TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS idx_fills_symbol_time ON fills(symbol, filled_at);
-            """
-            )
+            """)
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
