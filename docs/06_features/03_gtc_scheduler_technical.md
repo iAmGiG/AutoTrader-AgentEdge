@@ -248,6 +248,8 @@ Success rate: 100.0%
 - **Scheduler log**: `state/scheduler.log` (rotated at 5 MB, five kept; written by the daemon and cron runs)
 - **Daemon crashes**: `state/scheduler-daemon.err`
 - **Execution log**: `state/scheduler_execution_log.json` and `scheduler_history` in `state/user.db`
+- **Daily records**: `account_daily`, `position_daily` and `fills` in `state/user.db` (see `src/trading/state/daily_records.py`)
+- **Broker snapshots**: `position_snapshots` and `order_snapshots` in `.cache/trading_data.db`
 - **Morning reports**: `reports/daily/*_morning.md`
 - **Evening reports**: `reports/daily/*_evening.md`
 - **systemd logs**: `journalctl -u autogen-trading-scheduler`

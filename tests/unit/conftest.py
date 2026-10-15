@@ -33,6 +33,14 @@ def offline_market_calendar(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_broker_snapshot_cache(monkeypatch):
+    """Keep BrokerStateCache from writing snapshots to the real .cache/trading_data.db."""
+    from src.trading.state import broker_state_cache
+
+    monkeypatch.setattr(broker_state_cache, "_unified_cache", False)
+
+
+@pytest.fixture(autouse=True)
 def fresh_ranked_voter_manager(monkeypatch):
     """Drop the shared RankedVoterManager so it can't keep an earlier test's state dir."""
     from src.core import ranked_voter_config

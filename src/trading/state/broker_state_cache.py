@@ -28,12 +28,13 @@ def _get_unified_cache():
     global _unified_cache
     if _unified_cache is None:
         try:
-            from src.data_sources.cache.unified_broker_cache import unified_broker_cache
+            from src.cache.unified_broker_cache import unified_broker_cache
 
             _unified_cache = unified_broker_cache
             logger.debug("UnifiedBrokerCache loaded for persistent storage")
-        except ImportError:
-            logger.debug("UnifiedBrokerCache not available, using in-memory only")
+        except ImportError as e:
+            # Not debug: a wrong import path here silently stopped all snapshots once
+            logger.warning(f"UnifiedBrokerCache not available, using in-memory only: {e}")
             _unified_cache = False
     return _unified_cache if _unified_cache else None
 
@@ -134,6 +135,8 @@ class BrokerStateCache:
                     "buying_power": float(account.get("buying_power", 0)),
                     "portfolio_value": float(account.get("portfolio_value", 0)),
                     "cash": float(account.get("cash", 0)),
+                    "equity": float(account.get("equity", 0)),
+                    "last_equity": float(account.get("last_equity", 0)),  # previous close
                 },
                 "timestamp": now_iso(),
             }

@@ -33,7 +33,9 @@ from src.trading.broker.alpaca_trading_client import (
 )
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
+from src.trading.scheduling.scheduler_state import market_today
 from src.trading.state.broker_state_cache import BrokerStateCache
+from src.trading.state.daily_records import DailyRecords
 from src.trading.state.local_state_manager import LocalStateManager
 from src.trading.state.state_reconciler import (
     Discrepancy,
@@ -189,6 +191,7 @@ class CostEfficientTradeCycle:
 
         self.report_generator = ReportGenerator()
         self.last_report_path: Optional[str] = None  # report of the latest routine
+        self._daily_records: Optional[DailyRecords] = None
 
         logger.info("CostEfficientTradeCycle initialized with extracted components")
 
@@ -503,6 +506,48 @@ class CostEfficientTradeCycle:
             logger.error(f"GTT check failed: {e}")
             return []
 
+    # -------------------------------------------------------------------------
+    # Daily records - Issue #574
+    # -------------------------------------------------------------------------
+
+    @property
+    def daily_records(self) -> DailyRecords:
+        """Account, position and fill records in state/user.db (created on first use)."""
+        if self._daily_records is None:
+            self._daily_records = DailyRecords()
+        return self._daily_records
+
+    def record_daily(self, routine: str, broker_state: Dict[str, Any]) -> List[str]:
+        """
+        Record the account, the positions and any orders filled since the last run.
+
+        Errors are logged and reported, never raised: the records don't protect positions,
+        so they shouldn't make the routine retry.
+
+        Returns:
+            Report lines (equity and day P&L, new fills, the day's realized P&L)
+        """
+        try:
+            market_date = market_today()
+            self.daily_records.record_account(market_date, routine, broker_state["account"])
+            self.daily_records.record_positions(market_date, routine, broker_state["positions"])
+            closed = self.account_monitor.get_orders(status="closed", limit=100)
+            new_fills = self.daily_records.record_fills(closed)
+            return self.daily_records.summary_lines(market_date, new_fills)
+        except Exception as e:
+            logger.warning(f"Daily records not saved: {e}", exc_info=True)
+            return ["", f"⚠️ Daily records not saved: {e}"]
+
+    def _append_report_sections(
+        self, report: str, gtt_results: List[Any], record_lines: List[str]
+    ) -> str:
+        """The routine report with its GTT results and daily records, where there are any."""
+        if gtt_results:
+            report += "\n" + "\n".join(self._format_gtt_results_for_report(gtt_results))
+        if record_lines:
+            report += "\n" + "\n".join(record_lines)
+        return report
+
     def _format_gtt_results_for_report(self, gtt_results: List[Any]) -> List[str]:
         """Format GTT results for inclusion in routine report."""
         if not gtt_results:
@@ -547,6 +592,9 @@ class CostEfficientTradeCycle:
         try:
             # Step 1: Single API call to get all positions/orders
             broker_state = self.fetch_broker_state()
+
+            # Step 1.5: Daily records - account, positions, new fills (Issue #574)
+            record_lines = self.record_daily("morning", broker_state)
 
             # Step 2: Reconcile with local JSON (no API calls)
             discrepancies = self.reconcile_state(broker_state)
@@ -595,10 +643,7 @@ class CostEfficientTradeCycle:
                 modification_results,
             )
 
-            # Append GTT results to report if any
-            if gtt_results:
-                gtt_lines = self._format_gtt_results_for_report(gtt_results)
-                report += "\n" + "\n".join(gtt_lines)
+            report = self._append_report_sections(report, gtt_results, record_lines)
 
             # Save report to file
             report_file = self._get_report_file_path("morning")
@@ -632,6 +677,7 @@ class CostEfficientTradeCycle:
         try:
             # Similar structure to morning, but focus on EOD analysis
             broker_state = self.fetch_broker_state()
+            record_lines = self.record_daily("evening", broker_state)  # Issue #574
             discrepancies = self.reconcile_state(broker_state)
 
             # Re-place missing stops, renew aging GTC ones (Issue #586)
@@ -658,10 +704,7 @@ class CostEfficientTradeCycle:
                 RoutineType.EVENING, broker_state, discrepancies, [], alerts
             )
 
-            # Append GTT results to report if any
-            if gtt_results:
-                gtt_lines = self._format_gtt_results_for_report(gtt_results)
-                report += "\n" + "\n".join(gtt_lines)
+            report = self._append_report_sections(report, gtt_results, record_lines)
 
             # Save report to file
             report_file = self._get_report_file_path("evening")

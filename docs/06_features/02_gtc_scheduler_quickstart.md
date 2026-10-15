@@ -120,23 +120,37 @@ cat reports/daily/$(ls -t reports/daily/ | head -1)
 
 1. ✅ Fetch all positions from broker (1 API call)
 2. ✅ Fetch all open orders (1 API call)
-3. ✅ Reconcile any discrepancies
-4. ✅ Calculate stop adjustments based on profit:
+3. ✅ Record the account, positions and any orders filled since the last run (daily records)
+4. ✅ Reconcile any discrepancies, and re-place missing or expiring stops
+5. ✅ Calculate stop adjustments based on profit:
    - Under 2% profit: No adjustment
    - 2-4% profit: Move to breakeven
    - 4-6% profit: Lock in 25% of gains
    - Over 6% profit: Trail at 50% of gains
-5. ✅ Batch modify stops if needed (1 API call)
-6. ✅ Generate morning report
-7. ✅ Total: 3-5 API calls, 10-30 seconds
+6. ✅ Batch modify stops if needed (1 API call)
+7. ✅ Generate morning report
+8. ✅ Total: 4-6 API calls, 10-30 seconds
 
 ### Evening Routine (3:50 PM ET)
 
 1. ✅ Review end-of-day positions
-2. ✅ Reconcile with broker
-3. ✅ Generate evening report
-4. ✅ Prepare for next trading day
-5. ✅ Total: 3 API calls, 10-20 seconds
+2. ✅ Record the account (equity and day P&L), positions and new fills (daily records)
+3. ✅ Reconcile with broker, and re-place missing or expiring stops
+4. ✅ Generate evening report
+5. ✅ Prepare for next trading day
+6. ✅ Total: 4 API calls, 10-20 seconds
+
+### Daily Records
+
+Each routine stores, in `state/user.db`:
+
+- `account_daily`: equity, the previous close's equity (`last_equity`), cash and buying power
+- `position_daily`: each position's quantity and average cost
+- `fills`: every filled order and bracket leg (stop or target), by ET trading day
+
+The report's **Daily Records** section shows the equity and day P&L, the fills since the last
+run, and the day's realized P&L (average cost; a sale of a position bought before records began
+is flagged as having an unknown cost basis).
 
 ## Error Handling
 
