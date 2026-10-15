@@ -19,7 +19,7 @@ Automated "set it and forget it" daily trading system with:
 
 ### Components
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                   Daily Scheduler                        │
 │  • Task scheduling and execution                        │
@@ -46,7 +46,7 @@ Automated "set it and forget it" daily trading system with:
 
 ### File Structure
 
-```
+```text
 src/trading/
 ├── daily_scheduler.py          # Main scheduler with retry logic
 ├── automated_trading.py        # VoterAgent integration
@@ -145,19 +145,22 @@ for attempt in range(1, max_attempts + 1):
 ### Quick Start
 
 ```bash
-# Test mode - run morning routine once
-python src/trading/daily_scheduler.py --mode once --task morning_routine
+# Run the morning routine now
+python -m src.trading.scheduling.daily_scheduler --mode once --task morning_routine
 
 # View status
-python src/trading/daily_scheduler.py --mode status
+python -m src.trading.scheduling.daily_scheduler --mode status
 
 # Run as daemon (development)
-python src/trading/daily_scheduler.py --mode daemon --interval 60
+python main.py --daemon
+
+# Run whatever is due now, then exit (what cron runs every 5 minutes)
+python main.py --run-due
 ```
 
 ### Production Deployment
 
-**Option 1: systemd (Recommended for Linux servers)**
+#### Option 1: systemd (Recommended for Linux servers)
 
 ```bash
 # Install service
@@ -173,7 +176,7 @@ sudo journalctl -u autogen-trading-scheduler -f
 sudo systemctl status autogen-trading-scheduler
 ```
 
-**Option 2: crontab (Alternative)**
+#### Option 2: crontab (Alternative)
 
 ```bash
 # Setup cron jobs
@@ -216,12 +219,12 @@ python src/trading/automated_trading.py --mode paper --watchlist SPY TQQQ QQQ
 
 ```bash
 # Generate status report
-python src/trading/daily_scheduler.py --mode status
+python -m src.trading.scheduling.daily_scheduler --mode status
 ```
 
 Output:
 
-```
+```text
 # Daily Scheduler Status Report
 Generated: 2025-01-15 16:00:00
 
@@ -242,24 +245,19 @@ Success rate: 100.0%
 
 ### Log Files
 
-- **Scheduler log**: `state/scheduler.log`
-- **Execution log**: `state/scheduler_execution_log.json`
+- **Scheduler log**: `state/scheduler.log` (rotated at 5 MB, five kept; written by the daemon and cron runs)
+- **Daemon crashes**: `state/scheduler-daemon.err`
+- **Execution log**: `state/scheduler_execution_log.json` and `scheduler_history` in `state/user.db`
 - **Morning reports**: `reports/daily/*_morning.md`
 - **Evening reports**: `reports/daily/*_evening.md`
 - **systemd logs**: `journalctl -u autogen-trading-scheduler`
-- **Cron logs**: `logs/cron-morning.log`, `logs/cron-evening.log`
+- **Cron output**: `logs/cron-scheduler.log`
 
 ## Testing
 
 ```bash
 # Run tests
-python tests/test_daily_scheduler.py
-
-# Test individual components
-python -m pytest tests/test_daily_scheduler.py::TestDailyScheduler::test_execute_task_retry -v
-
-# Integration test
-python src/trading/daily_scheduler.py --mode test
+python -m pytest tests/unit/trading/test_daily_scheduler.py -v
 ```
 
 ## Performance
@@ -292,13 +290,15 @@ python src/trading/daily_scheduler.py --mode test
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `enabled` | `true` | Master enable/disable |
-| `market_timezone` | `America/New_York` | ET timezone for market hours |
+| `enabled` | `true` | Master enable/disable (default until flags are saved from the CLI) |
+| `morning_routine_enabled` | `true` | Morning routine enable (same precedence) |
+| `evening_routine_enabled` | `true` | Evening routine enable (same precedence) |
+| `market_timezone` | `America/New_York` | Timezone of the routine times, independent of the host |
 | `morning_routine_time` | `09:20:00` | Morning execution time |
 | `evening_routine_time` | `15:50:00` | Evening execution time |
 | `max_retries` | `3` | Maximum retry attempts |
 | `retry_delay_seconds` | `60` | Base retry delay |
-| `timeout_seconds` | `300` | Max routine execution time |
+| `timeout_seconds` | `300` | Not enforced yet |
 
 ### systemd Service
 
@@ -307,7 +307,7 @@ python src/trading/daily_scheduler.py --mode test
 | `Restart` | `on-failure` | Auto-restart on crashes |
 | `RestartSec` | `30` | Wait 30s before restart |
 | `CPUQuota` | `50%` | Limit CPU usage |
-| `MemoryLimit` | `1G` | Limit memory usage |
+| `MemoryMax` | `1G` | Limit memory usage |
 
 ## Troubleshooting
 
@@ -318,18 +318,19 @@ python src/trading/daily_scheduler.py --mode test
 sudo journalctl -u autogen-trading-scheduler -n 50
 
 # Verify configuration
-python src/trading/daily_scheduler.py --mode status
+python -m src.trading.scheduling.daily_scheduler --mode status
 
 # Test manually
-python src/trading/daily_scheduler.py --mode once --task morning_routine
+python -m src.trading.scheduling.daily_scheduler --mode once --task morning_routine
 ```
 
 ### Tasks not executing
 
-1. Check timezone: `timedatectl`
-2. Verify schedule: `cat config_defaults/scheduler_config.json`
+1. Check the day: routines run on NYSE trading days only, at ET times (the host timezone doesn't matter)
+2. Verify schedule: `cat config_defaults/scheduler_config.yaml`
 3. Check if already executed: Review `state/scheduler_execution_log.json`
-4. Verify enabled: `"enabled": true` in config
+4. Verify enabled: `/scheduler` in the CLI shows the flags in force (saved flags override the config file)
+5. Check for an overlapping run: only one run at a time holds `state/scheduler.lock`
 
 ### API errors
 

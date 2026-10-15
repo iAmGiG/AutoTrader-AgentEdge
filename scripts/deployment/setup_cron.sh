@@ -7,10 +7,9 @@ set -e
 echo "=== AutoGen Trading Scheduler - Crontab Setup ==="
 echo ""
 
-# Configuration
-PROJECT_ROOT="$HOME/AutoGen-TradingSystem"
-PYTHON_BIN="$HOME/anaconda3/envs/RH2MAS/bin/python"
-SCHEDULER_SCRIPT="$PROJECT_ROOT/src/trading/daily_scheduler.py"
+# Configuration (edit for your install)
+PROJECT_ROOT="$HOME/AutoTrader-AgentEdge"
+PYTHON_BIN="$HOME/miniconda3/envs/AutoGex/bin/python"
 LOG_DIR="$PROJECT_ROOT/logs"
 
 # Check if project exists
@@ -29,17 +28,16 @@ fi
 # Create log directory
 mkdir -p "$LOG_DIR"
 
-# Create crontab entries
-CRON_MORNING="20 9 * * 1-5 cd $PROJECT_ROOT && $PYTHON_BIN $SCHEDULER_SCRIPT --mode once --task morning_routine >> $LOG_DIR/cron-morning.log 2>&1"
-CRON_EVENING="50 15 * * 1-5 cd $PROJECT_ROOT && $PYTHON_BIN $SCHEDULER_SCRIPT --mode once --task evening_routine >> $LOG_DIR/cron-evening.log 2>&1"
+# One entry every 5 minutes: the scheduler itself decides what is due, in ET whatever
+# the host timezone, on NYSE trading days only, within 5 minutes of each routine's time
+# (config_defaults/scheduler_config.yaml), once per day. A lock in state/ stops a run
+# from overlapping a long retry, the daemon, or a manual run.
+CRON_DUE="*/5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due >> $LOG_DIR/cron-scheduler.log 2>&1"
 
-echo "Crontab entries to be added:"
+echo "Crontab entry to be added:"
 echo ""
-echo "# AutoGen Trading System - Morning Routine (9:20 AM ET, Mon-Fri)"
-echo "$CRON_MORNING"
-echo ""
-echo "# AutoGen Trading System - Evening Routine (3:50 PM ET, Mon-Fri)"
-echo "$CRON_EVENING"
+echo "# OptionsCommander - scheduler check (routines run when due)"
+echo "$CRON_DUE"
 echo ""
 
 # Ask for confirmation
@@ -54,17 +52,16 @@ fi
 crontab -l > "$PROJECT_ROOT/crontab.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
 
 # Add entries to crontab
-(crontab -l 2>/dev/null || true; echo ""; echo "# AutoGen Trading System - Morning Routine (9:20 AM ET, Mon-Fri)"; echo "$CRON_MORNING"; echo ""; echo "# AutoGen Trading System - Evening Routine (3:50 PM ET, Mon-Fri)"; echo "$CRON_EVENING") | crontab -
+(crontab -l 2>/dev/null || true; echo ""; echo "# OptionsCommander - scheduler check (routines run when due)"; echo "$CRON_DUE") | crontab -
 
 echo ""
-echo "✅ Crontab entries added successfully!"
+echo "✅ Crontab entry added successfully!"
 echo ""
 echo "View crontab: crontab -l"
-echo "Remove entries: crontab -e  (then delete the AutoGen lines)"
+echo "Remove entry: crontab -e  (then delete the OptionsCommander lines)"
 echo "Logs:"
-echo "  Morning: $LOG_DIR/cron-morning.log"
-echo "  Evening: $LOG_DIR/cron-evening.log"
+echo "  Scheduler: $PROJECT_ROOT/state/scheduler.log (rotated)"
+echo "  Cron output: $LOG_DIR/cron-scheduler.log"
 echo ""
-echo "IMPORTANT: Make sure your system timezone is set to ET (America/New_York)"
-echo "Check with: timedatectl | grep 'Time zone'"
-echo "Set with:   sudo timedatectl set-timezone America/New_York"
+echo "Routines only run once the scheduler is enabled (CLI: /scheduler, or the setup wizard)."
+echo "Don't also run the systemd service: either works, and the lock only prevents overlap."

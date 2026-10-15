@@ -138,7 +138,7 @@
 
 ### Files Verified
 
-- `src/trading/daily_scheduler.py` - Main scheduler (520 lines)
+- `src/trading/scheduling/daily_scheduler.py` - Main scheduler
 - `src/trading/automated_trading.py` - VoterAgent integration (428 lines)
 - `config_defaults/scheduler_config.json` - Configuration
 - `docs/features/issue_287_gtc_daily_execution.md` - Technical docs (377 lines)

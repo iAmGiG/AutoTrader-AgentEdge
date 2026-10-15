@@ -17,7 +17,7 @@ fi
 SERVICE_NAME="autogen-trading-scheduler"
 SERVICE_FILE="$SERVICE_NAME.service"
 SYSTEMD_PATH="/etc/systemd/system/$SERVICE_FILE"
-PROJECT_ROOT="/home/trader/AutoGen-TradingSystem"
+PROJECT_ROOT="/home/trader/AutoTrader-AgentEdge"  # must match the .service file
 USER="trader"
 GROUP="trader"
 
@@ -46,11 +46,13 @@ echo "Creating directories..."
 mkdir -p "$PROJECT_ROOT/logs"
 mkdir -p "$PROJECT_ROOT/state"
 mkdir -p "$PROJECT_ROOT/reports/daily"
+mkdir -p "$PROJECT_ROOT/.cache"
 
 # Set ownership
 chown -R $USER:$GROUP "$PROJECT_ROOT/logs"
 chown -R $USER:$GROUP "$PROJECT_ROOT/state"
 chown -R $USER:$GROUP "$PROJECT_ROOT/reports"
+chown -R $USER:$GROUP "$PROJECT_ROOT/.cache"
 
 # Copy service file
 echo "Installing systemd service..."
@@ -75,8 +77,10 @@ echo "  Logs:    sudo journalctl -u $SERVICE_NAME -f"
 echo "  Disable: sudo systemctl disable $SERVICE_NAME"
 echo ""
 echo "Log files:"
-echo "  Stdout:  $PROJECT_ROOT/logs/scheduler-stdout.log"
-echo "  Stderr:  $PROJECT_ROOT/logs/scheduler-stderr.log"
+echo "  Scheduler log: $PROJECT_ROOT/state/scheduler.log (rotated)"
+echo "  Crashes:       $PROJECT_ROOT/state/scheduler-daemon.err"
+echo ""
+echo "The scheduler only runs routines once enabled (CLI: /scheduler, or the setup wizard)."
 echo ""
 echo "To start the scheduler now, run:"
 echo "  sudo systemctl start $SERVICE_NAME"

@@ -6,15 +6,13 @@ Extracted from scheduler_cli.py (Issue #440).
 """
 
 import logging
-from datetime import time as dt_time
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-import pytz
-
 from .daemon_manager import SchedulerDaemonManager
 from .message_loader import get_emoji, get_messages
-from src.utils.date_utils import add_days, get_datetime_now
+from src.utils.state_paths import get_state_dir
 
 if TYPE_CHECKING:
     from src.trading.scheduling.daily_scheduler import DailyScheduler
@@ -55,7 +53,7 @@ class SchedulerMonitor:
 
         # Check daemon status
         daemon_running = self.daemon_manager.is_running()
-        enabled = self.scheduler.config.get("enabled", False)
+        enabled = self.scheduler.effective_settings()["enabled"]
 
         # Config status
         config_emoji = get_emoji("green_circle", "🟢") if enabled else get_emoji("red_circle", "🔴")
@@ -254,30 +252,18 @@ class SchedulerMonitor:
         print("=" * 70)
 
         try:
-            et = pytz.timezone("US/Eastern")
-            now = get_datetime_now(et)
+            # Trading days only, per-routine flags honoured (DailyScheduler.next_run)
+            now = self.scheduler._market_now()
+            upcoming = self.scheduler.next_run(now)
+            if upcoming is None:
+                print(
+                    f"\n{get_emoji('info', 'ℹ️')} Nothing scheduled: scheduler or routines disabled"
+                )
+                return
+            task, next_run = upcoming
+            next_task = task.name.replace("_", " ").title()
 
-            morning_time = dt_time.fromisoformat(self.scheduler.config["morning_routine_time"])
-            evening_time = dt_time.fromisoformat(self.scheduler.config["evening_routine_time"])
-
-            morning_today = now.replace(
-                hour=morning_time.hour, minute=morning_time.minute, second=0, microsecond=0
-            )
-            evening_today = now.replace(
-                hour=evening_time.hour, minute=evening_time.minute, second=0, microsecond=0
-            )
-
-            if now.time() < morning_time:
-                next_run = morning_today
-                next_task = "Morning Routine"
-            elif now.time() < evening_time:
-                next_run = evening_today
-                next_task = "Evening Routine"
-            else:
-                next_run = add_days(morning_today, 1)
-                next_task = "Morning Routine (tomorrow)"
-
-            time_until = next_run - now
+            time_until = max(next_run - now, timedelta(0))
             hours = int(time_until.total_seconds() // 3600)
             minutes = int((time_until.total_seconds() % 3600) // 60)
 
@@ -300,6 +286,7 @@ class SchedulerMonitor:
         print("=" * 70)
 
         log_paths = [
+            get_state_dir() / "scheduler.log",
             Path("logs/scheduler.log"),
             Path("logs/autotrader.log"),
             Path("state/scheduler_history.json"),

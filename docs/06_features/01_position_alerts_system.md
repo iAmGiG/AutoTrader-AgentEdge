@@ -54,9 +54,8 @@ Deployment options:
 # Option A: systemd daemon (runs continuously)
 sudo systemctl start autogen-trading-scheduler
 
-# Option B: crontab (scheduled runs)
-20 9 * * 1-5 /path/to/python src/trading/daily_scheduler.py --mode once --task morning_routine
-50 15 * * 1-5 /path/to/python src/trading/daily_scheduler.py --mode once --task evening_routine
+# Option B: crontab (the scheduler decides what is due, in ET, on trading days)
+*/5 * * * * cd /path/to/repo && /path/to/python main.py --run-due
 ```
 
 #### Example Usage (Programmatic)
@@ -96,7 +95,7 @@ for alert in alerts:
 
 **1. Console Output (Real-time):**
 
-```
+```text
 📊 Checking Position Alerts...
    🔔 2 Alert(s) Generated:
       ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
@@ -105,7 +104,7 @@ for alert in alerts:
 
 **2. Log Files (Persistent):**
 
-```
+```text
 # logs/trading.log
 2025-01-10 09:30:00 WARNING ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
 2025-01-10 09:30:00 INFO 📊 SPY stop adjusted: $448.00 → $450.00
@@ -151,7 +150,7 @@ The progressive stop adjustment system now includes detailed logging at every st
 
 #### Example Log Output
 
-```
+```text
 INFO: TQQQ: Stop adjustment recommended - Move to breakeven (3.2% profit)
 DEBUG: TQQQ: Found stop order ID abc123
 INFO: TQQQ: Creating stop adjustment - $47.50 → $50.00 (+$2.50, +5.3%)
@@ -194,7 +193,7 @@ Total Alerts: 2 (🚨 0 Critical, ⚠️ 2 Warning, 📊 0 Info)
 
 The main trading interface now displays alerts during the position monitoring cycle:
 
-```
+```text
 📊 Checking Position Alerts...
    🔔 2 Alert(s) Generated:
       ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
@@ -270,7 +269,7 @@ Test coverage:
 
 ### Step-by-Step Process
 
-```
+```text
 1. Trigger Event
    ├─> Manual: python main.py paper-trade SYMBOL
    └─> Auto: Daily scheduler at 9:20 AM / 3:50 PM ET (with Issue #287)
@@ -327,7 +326,7 @@ Test coverage:
 
 **Problem:** Stock price fluctuates near threshold
 
-```
+```text
 09:30:00 - Price: $53.85 (1.85% from TP) → ⚠️ Alert sent
 09:30:30 - Price: $53.80 (1.95% from TP) → ⏭️ Skipped (cooldown)
 09:31:00 - Price: $53.90 (1.75% from TP) → ⏭️ Skipped (cooldown)

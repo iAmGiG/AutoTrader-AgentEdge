@@ -4,7 +4,7 @@
 
 Automated "set it and forget it" daily trading system that:
 
-- Runs twice daily (9:20 AM and 3:50 PM ET)
+- Runs twice daily (9:20 AM and 3:50 PM ET, whatever the host's timezone), on NYSE trading days only
 - Automatically adjusts stops based on profit levels
 - Places GTC orders that broker manages
 - Retries failed operations automatically
@@ -21,13 +21,13 @@ cd ~/AutoTrader-AgentEdge
 # Activate environment
 conda activate AutoTrader
 
-# Test morning routine (dry run)
-python src/trading/daily_scheduler.py --mode once --task morning_routine
+# Run the morning routine now (it manages stops on the paper account)
+python -m src.trading.scheduling.daily_scheduler --mode once --task morning_routine
 ```
 
 Expected output:
 
-```
+```text
 ✅ morning_routine completed successfully
 Task: morning_routine | Status: completed | Duration: 12.3s | Attempt: 1 | API Calls: 3
 ```
@@ -36,8 +36,12 @@ Task: morning_routine | Status: completed | Duration: 12.3s | Attempt: 1 | API C
 
 ```bash
 # View configuration
-cat config_defaults/scheduler_config.json
+cat config_defaults/scheduler_config.yaml
 ```
+
+The file's `enabled`, `morning_routine_enabled` and `evening_routine_enabled` are defaults. Once the
+scheduler is enabled or disabled from the CLI (`/scheduler`), the config editor or the setup wizard,
+those saved flags (in `state/user.db`) take precedence. Times always come from the file.
 
 Edit if needed:
 
@@ -52,7 +56,7 @@ Edit if needed:
 
 ### 3. Choose Deployment Method
 
-**Option A: systemd (Recommended for servers)**
+#### Option A: systemd (Recommended for servers)
 
 ```bash
 # Install as service
@@ -68,24 +72,24 @@ sudo systemctl status autogen-trading-scheduler
 sudo journalctl -u autogen-trading-scheduler -f
 ```
 
-**Option B: crontab (Simple alternative)**
+#### Option B: crontab (Simple alternative)
 
 ```bash
-# Setup cron jobs
+# Setup cron (one entry every 5 minutes; the scheduler decides what is due)
 ./scripts/deployment/setup_cron.sh
 
 # Verify
 crontab -l
 
 # View logs
-tail -f logs/cron-morning.log
+tail -f state/scheduler.log
 ```
 
-**Option C: Manual (For testing)**
+#### Option C: Manual (For testing)
 
 ```bash
 # Run as daemon in terminal
-python src/trading/daily_scheduler.py --mode daemon --interval 60
+python main.py --daemon
 ```
 
 ### 4. Monitor Execution
@@ -93,7 +97,7 @@ python src/trading/daily_scheduler.py --mode daemon --interval 60
 **View status report:**
 
 ```bash
-python src/trading/daily_scheduler.py --mode status
+python -m src.trading.scheduling.daily_scheduler --mode status
 ```
 
 **Check execution log:**
@@ -145,20 +149,18 @@ The system automatically handles:
 If all retries fail, you get:
 
 - Detailed error log in `state/scheduler.log`
-- Failed execution entry in `state/scheduler_execution_log.json`
+- Failed execution entry in `state/scheduler_execution_log.json` and `state/user.db`
 - System continues and tries again next scheduled time
+
+A routine also counts as failed (and is retried) when a protective stop couldn't be checked,
+placed or renewed. Its report is still written.
 
 ## Stopping/Pausing
 
 **Temporary pause (keep service running):**
 
-```bash
-# Edit config
-nano config_defaults/scheduler_config.json
-# Set: "enabled": false
-
-# Service will continue but skip executions
-```
+In the CLI, `/scheduler` can disable the scheduler or a single routine. The service keeps
+running but skips executions.
 
 **Stop service:**
 
@@ -167,7 +169,7 @@ nano config_defaults/scheduler_config.json
 sudo systemctl stop autogen-trading-scheduler
 
 # cron
-crontab -e  # Delete the AutoGen lines
+crontab -e  # Delete the OptionsCommander lines
 
 # daemon
 Ctrl+C in terminal
@@ -198,11 +200,9 @@ sudo journalctl -u autogen-trading-scheduler -n 50
 **Tasks not executing:**
 
 ```bash
-# Verify timezone
-timedatectl
-
-# Should show: America/New_York
-# If not: sudo timedatectl set-timezone America/New_York
+# Times are ET whatever the host timezone, and routines skip weekends and NYSE holidays.
+# Check that the scheduler and the routine are enabled
+python -m src.trading.scheduling.daily_scheduler --mode status
 
 # Check if already ran today
 cat state/scheduler_execution_log.json | jq '.[-5:]'
@@ -212,13 +212,13 @@ cat state/scheduler_execution_log.json | jq '.[-5:]'
 
 ```bash
 # Morning routine
-python src/trading/daily_scheduler.py --mode once --task morning_routine
+python -m src.trading.scheduling.daily_scheduler --mode once --task morning_routine
 
 # Evening routine
-python src/trading/daily_scheduler.py --mode once --task evening_routine
+python -m src.trading.scheduling.daily_scheduler --mode once --task evening_routine
 
-# Both
-python src/trading/daily_scheduler.py --mode once
+# Whatever is due now (what cron runs)
+python main.py --run-due
 ```
 
 ## Next Steps
@@ -226,7 +226,7 @@ python src/trading/daily_scheduler.py --mode once
 1. **Monitor for 1 week**: Let it run and review daily reports
 2. **Verify stop adjustments**: Check that stops move correctly
 3. **Review execution log**: Ensure 100% success rate
-4. **Customize schedule**: Adjust times in `scheduler_config.json` if needed
+4. **Customize schedule**: Adjust times in `scheduler_config.yaml` if needed
 5. **Integrate with VoterAgent**: Use `automated_trading.py` for signal generation
 
 ## Advanced Usage
@@ -271,9 +271,9 @@ Edit `config_defaults/scheduler_config.json`:
 ## Documentation
 
 - **Full documentation**: `docs/features/issue_287_gtc_daily_execution.md`
-- **Trading cycle details**: `src/trading/trading_cycle.py`
-- **Scheduler implementation**: `src/trading/daily_scheduler.py`
-- **Tests**: `tests/test_daily_scheduler.py`
+- **Trading cycle details**: `src/trading/scheduling/trading_cycle.py`
+- **Scheduler implementation**: `src/trading/scheduling/daily_scheduler.py`
+- **Tests**: `tests/unit/trading/test_daily_scheduler.py`
 
 ## Support
 
@@ -285,6 +285,6 @@ Issues or questions:
 
 ---
 
-**You're now running automated daily trading! 🚀**
+You're now running automated daily trading! 🚀
 
 Monitor the logs, review the reports, and let the system handle the routine work while you focus on strategy.

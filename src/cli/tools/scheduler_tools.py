@@ -17,7 +17,6 @@ from typing import Any, Dict, Optional
 
 from autogen_core.tools import FunctionTool
 
-from src.utils.date_utils import add_days, combine_date_time, get_datetime_now, parse_time_string
 from src.utils.safe_print import get_symbol
 
 logger = logging.getLogger(__name__)
@@ -43,6 +42,20 @@ def _get_scheduler():
         return None
 
 
+def load_scheduler_config():
+    """Scheduler config file settings (light: no trading clients)."""
+    from src.trading.scheduling.daily_scheduler import load_scheduler_config as load
+
+    return load()
+
+
+def save_flags(config, state_manager, **flags):
+    """Save enable flags to state/user.db (see daily_scheduler.save_flags)."""
+    from src.trading.scheduling.daily_scheduler import save_flags as save
+
+    return save(config, state_manager, **flags)
+
+
 def _get_state_manager():
     """Get SchedulerStateManager instance for SQLite-backed state."""
     try:
@@ -66,7 +79,8 @@ def get_scheduler_status() -> Dict[str, Any]:
     Returns:
         Dict with:
         - status: "success" or "error"
-        - enabled: Whether scheduler is enabled
+        - enabled: Whether scheduler is enabled (saved state, else the config file)
+        - morning_enabled / evening_enabled: Whether each routine is enabled
         - morning_time: Morning routine time (e.g., "09:20")
         - evening_time: Evening routine time (e.g., "15:50")
         - max_retries: Maximum retry attempts
@@ -78,10 +92,14 @@ def get_scheduler_status() -> Dict[str, Any]:
             return {"status": "not_initialized", "message": "Scheduler not available"}
 
         config = scheduler.config
+        flags = scheduler.effective_settings()
 
         return {
             "status": "success",
-            "enabled": config.get("enabled", False),
+            "enabled": flags["enabled"],
+            "morning_enabled": flags["morning"],
+            "evening_enabled": flags["evening"],
+            "flags_source": flags["source"],
             "morning_time": config.get("morning_routine_time", "09:20:00")[:5],
             "evening_time": config.get("evening_routine_time", "15:50:00")[:5],
             "max_retries": config.get("max_retries", 3),
@@ -156,7 +174,7 @@ def get_execution_history(days: int = 7, limit: int = 10) -> Dict[str, Any]:
 
 def get_next_scheduled_run() -> Dict[str, Any]:
     """
-    Calculate the next scheduled routine run time.
+    Calculate the next scheduled routine run time (trading days only, enabled routines).
 
     Returns:
         Dict with:
@@ -171,41 +189,18 @@ def get_next_scheduled_run() -> Dict[str, Any]:
         if not scheduler:
             return {"status": "not_initialized", "message": "Scheduler not available"}
 
-        config = scheduler.config
-        if not config.get("enabled", False):
+        if not scheduler.effective_settings()["enabled"]:
             return {"status": "disabled", "message": "Scheduler is disabled"}
 
-        morning_str = config.get("morning_routine_time", "09:20:00")
-        evening_str = config.get("evening_routine_time", "15:50:00")
+        now = scheduler._market_now()
+        upcoming = scheduler.next_run(now)
+        if upcoming is None:
+            return {"status": "disabled", "message": "No routine is enabled"}
+        task, next_datetime = upcoming
+        next_routine = task.name.replace("_routine", "")
+        next_time_of_day = task.scheduled_time
 
-        morning_time = parse_time_string(morning_str)
-        evening_time = parse_time_string(evening_str)
-
-        if not morning_time or not evening_time:
-            return {"status": "error", "error": "Invalid time configuration"}
-
-        # Use date_utils for timezone-aware current time
-        now = get_datetime_now(tz="America/New_York")
-        current_time = now.time()
-
-        # Determine next routine
-        if current_time < morning_time:
-            next_routine = "morning"
-            next_time_of_day = morning_time
-            next_date = now.date()
-        elif current_time < evening_time:
-            next_routine = "evening"
-            next_time_of_day = evening_time
-            next_date = now.date()
-        else:
-            next_routine = "morning"
-            next_time_of_day = morning_time
-            # Add one day using date_utils
-            next_date = add_days(now, 1).date()
-
-        next_datetime = combine_date_time(next_date, next_time_of_day)
-        time_diff = next_datetime - now.replace(tzinfo=None)
-        total_minutes = int(time_diff.total_seconds() / 60)
+        total_minutes = max(int((next_datetime - now).total_seconds() // 60), 0)
         hours, minutes = divmod(total_minutes, 60)
 
         time_until = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
@@ -290,7 +285,7 @@ def enable_scheduler(enabled: bool = True) -> Dict[str, Any]:
         if not mgr:
             return {"status": "error", "message": "Scheduler state manager not available"}
 
-        success = mgr.set_enabled(enabled)
+        success = save_flags(load_scheduler_config(), mgr, enabled=enabled)
         if success:
             state = "enabled" if enabled else "disabled"
             return {
@@ -325,10 +320,8 @@ def set_routine_enabled(routine: str, enabled: bool) -> Dict[str, Any]:
         if routine_lower not in ("morning", "evening"):
             return {"status": "error", "message": "Routine must be 'morning' or 'evening'"}
 
-        if routine_lower == "morning":
-            success = mgr.set_morning_enabled(enabled)
-        else:
-            success = mgr.set_evening_enabled(enabled)
+        # Other flags keep their effective values (the config file's, until saved)
+        success = save_flags(load_scheduler_config(), mgr, **{routine_lower: enabled})
 
         if success:
             state = "enabled" if enabled else "disabled"

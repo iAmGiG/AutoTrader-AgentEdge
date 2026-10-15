@@ -133,21 +133,27 @@ class SchedulerDaemonManager:
 
         try:
             python_exe = sys.executable
+            # The daemon logs to state/scheduler.log itself; stderr keeps crashes that
+            # happen before (or outside) logging, which were lost to /dev/null before
+            from src.utils.state_paths import get_state_dir
 
-            if os.name == "nt":  # Windows
-                subprocess.Popen(
-                    [python_exe, str(self.main_script), "--daemon"],
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            else:  # Unix/Linux/Mac
-                subprocess.Popen(
-                    [python_exe, str(self.main_script), "--daemon"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
+            err_path = get_state_dir() / "scheduler-daemon.err"
+            with open(err_path, "ab") as err:
+                if os.name == "nt":  # Windows
+                    subprocess.Popen(
+                        [python_exe, str(self.main_script), "--daemon"],
+                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                        | subprocess.DETACHED_PROCESS,
+                        stdout=subprocess.DEVNULL,
+                        stderr=err,
+                    )
+                else:  # Unix/Linux/Mac
+                    subprocess.Popen(
+                        [python_exe, str(self.main_script), "--daemon"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=err,
+                        start_new_session=True,
+                    )
 
             # Wait and verify
             time.sleep(2)

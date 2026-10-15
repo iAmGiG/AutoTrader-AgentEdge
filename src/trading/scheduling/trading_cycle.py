@@ -18,7 +18,7 @@ Refactored in #439 to use extracted components:
 import logging
 import os
 from dataclasses import asdict
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 from config_defaults.trading_config import TradingConfig
 
 from src.market_data.alpaca_market_data import AlpacaMarketData
-from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import (
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+)
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.state.broker_state_cache import BrokerStateCache
@@ -59,10 +62,39 @@ except ImportError:
 __all__ = [
     "CostEfficientTradeCycle",
     "Discrepancy",
+    "RoutineError",
     "StopAdjustment",
     "PositionAlertSummary",
     "RoutineType",
 ]
+
+# Discrepancy types of protective-stop repairs (StopRepair.kind)
+STOP_REPAIR_TYPES = ("MISSING_STOP", "STOP_EXPIRING")
+
+
+class RoutineError(RuntimeError):
+    """A routine failed, so the scheduler should record the failure and retry."""
+
+
+def stop_failures(discrepancies: List[Discrepancy]) -> List[Discrepancy]:
+    """
+    Protective-stop steps that failed: the check itself, or a stop that wasn't placed or
+    renewed. Cases left for human review are not failures, since a retry can't fix them.
+    """
+    return [
+        d
+        for d in discrepancies
+        if d.type == "STOP_CHECK_FAILED"
+        or (d.type in STOP_REPAIR_TYPES and (d.details or {}).get("error"))
+    ]
+
+
+def _check_stops_secured(discrepancies: List[Discrepancy]) -> None:
+    """Raise RoutineError if any protective stop couldn't be checked, placed or renewed."""
+    failures = stop_failures(discrepancies)
+    if failures:
+        symbols = ", ".join(sorted({d.symbol for d in failures}))
+        raise RoutineError(f"protective stops not secured ({symbols})")
 
 
 class CostEfficientTradeCycle:
@@ -156,6 +188,7 @@ class CostEfficientTradeCycle:
         )
 
         self.report_generator = ReportGenerator()
+        self.last_report_path: Optional[str] = None  # report of the latest routine
 
         logger.info("CostEfficientTradeCycle initialized with extracted components")
 
@@ -499,10 +532,15 @@ class CostEfficientTradeCycle:
     # Trading routines
     # -------------------------------------------------------------------------
 
-    def morning_routine(self) -> str:
+    def morning_routine(self, raise_errors: bool = False) -> str:
         """
         Run once at 9:20 AM ET - before market open.
         Minimal API calls, maximum insight.
+
+        Args:
+            raise_errors: Raise RoutineError on failure, including protective stops that
+                couldn't be checked, placed or renewed (the report is still saved), instead
+                of returning an error message. The scheduler uses this to retry.
         """
         logger.info("Starting morning routine...")
 
@@ -567,19 +605,27 @@ class CostEfficientTradeCycle:
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, "w", encoding="utf-8") as f:
                 f.write(report)
+            self.last_report_path = report_file
 
             logger.info(f"Morning routine complete. Report saved to {report_file}")
+            if raise_errors:
+                _check_stops_secured(discrepancies)
             return report
 
         except Exception as e:
             error_msg = f"Morning routine failed: {e}"
             logger.error(error_msg)
+            if raise_errors:
+                raise RoutineError(error_msg) from e
             return f"❌ {error_msg}"
 
-    def evening_routine(self) -> str:
+    def evening_routine(self, raise_errors: bool = False) -> str:
         """
         Run once at 3:50 PM ET - before market close.
         Focus on EOD position review and preparation for next day.
+
+        Args:
+            raise_errors: As for morning_routine()
         """
         logger.info("Starting evening routine...")
 
@@ -622,19 +668,27 @@ class CostEfficientTradeCycle:
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, "w", encoding="utf-8") as f:
                 f.write(report)
+            self.last_report_path = report_file
 
             logger.info(f"Evening routine complete. Report saved to {report_file}")
+            if raise_errors:
+                _check_stops_secured(discrepancies)
             return report
 
         except Exception as e:
             error_msg = f"Evening routine failed: {e}"
             logger.error(error_msg)
+            if raise_errors:
+                raise RoutineError(error_msg) from e
             return f"❌ {error_msg}"
 
-    def recover_from_crash(self) -> str:
+    def recover_from_crash(self, raise_errors: bool = False) -> str:
         """
         Rebuild state from broker, minimal API calls.
         Use when system restarts or local state is corrupted.
+
+        Args:
+            raise_errors: Raise RoutineError on failure instead of returning a message
         """
         logger.info("Starting crash recovery...")
 
@@ -694,6 +748,7 @@ class CostEfficientTradeCycle:
             os.makedirs(os.path.dirname(report_file), exist_ok=True)
             with open(report_file, "w", encoding="utf-8") as f:
                 f.write(report)
+            self.last_report_path = report_file
 
             logger.info(f"Crash recovery complete. Report saved to {report_file}")
             return report
@@ -701,6 +756,8 @@ class CostEfficientTradeCycle:
         except Exception as e:
             error_msg = f"Crash recovery failed: {e}"
             logger.error(error_msg)
+            if raise_errors:
+                raise RoutineError(error_msg) from e
             return f"❌ {error_msg}"
 
     def _get_report_file_path(self, routine_type: str) -> str:

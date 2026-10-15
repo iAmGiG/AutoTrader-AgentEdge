@@ -14,31 +14,170 @@ Issue #478: State persistence via SQLite (state/user.db)
 
 import argparse
 import asyncio
+import datetime as datetime_module
 import json
 import logging
 import os
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from datetime import time as dt_time
 from enum import Enum
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
-from .scheduler_state import get_scheduler_state_manager
+from .scheduler_state import SchedulerStateManager, get_scheduler_state_manager
 from .trading_cycle import CostEfficientTradeCycle, RoutineType
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
+from src.utils.market_hours import get_market_hours_for_date
+from src.utils.state_paths import get_state_dir
 
 try:
     import yaml
 except ImportError:
     yaml = None
 
+try:
+    import fcntl
+except ImportError:  # Windows: no run lock
+    fcntl = None
+
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 logger = logging.getLogger(__name__)
+
+dt_time = datetime_module.time  # time of day (the time module is imported as time)
+
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "enabled": True,
+    "market_timezone": "America/New_York",
+    "morning_routine_time": "09:20:00",
+    "evening_routine_time": "15:50:00",
+    "morning_routine_enabled": True,
+    "evening_routine_enabled": True,
+    "max_retries": 3,
+    "retry_delay_seconds": 60,
+    "timeout_seconds": 300,
+    "enable_notifications": False,
+    "dry_run": False,
+}
+
+# A task runs if the check happens within this long of its scheduled time
+RUN_WINDOW = timedelta(minutes=5)
+
+
+def load_scheduler_config(config_file: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Scheduler settings: DEFAULT_CONFIG updated from the config file (YAML or JSON).
+
+    Args:
+        config_file: Path; default config_defaults/scheduler_config.yaml (or .json)
+    """
+    if config_file is None:
+        yaml_file = "config_defaults/scheduler_config.yaml"
+        json_file = "config_defaults/scheduler_config.json"
+        config_file = (
+            json_file if not os.path.exists(yaml_file) and os.path.exists(json_file) else yaml_file
+        )
+
+    config = dict(DEFAULT_CONFIG)
+    if not os.path.exists(config_file):
+        logger.info("Scheduler config %s not found. Using defaults.", config_file)
+        return config
+    try:
+        with open(config_file, "r") as f:
+            if config_file.endswith((".yaml", ".yml")):
+                if yaml is None:
+                    raise ImportError("PyYAML not installed. Install with: pip install pyyaml")
+                user_config = yaml.safe_load(f)
+            else:
+                user_config = json.load(f)
+        config.update(user_config or {})
+        logger.info("Loaded scheduler config from %s", config_file)
+    except Exception as e:
+        logger.warning("Failed to load config from %s: %s. Using defaults.", config_file, e)
+    return config
+
+
+def effective_flags(config: Dict[str, Any], state_manager: SchedulerStateManager) -> Dict[str, Any]:
+    """
+    Whether the scheduler and each routine are enabled.
+
+    Flags saved in state/user.db (by the CLI, the config editor or the setup wizard)
+    win. Until any are saved, the config file's flags apply. Routine times always come
+    from the config file.
+
+    Returns:
+        {"enabled", "morning", "evening": bool, "source": "saved state" | "config"}
+    """
+    if state_manager.has_saved_state():
+        state = state_manager.get_state()
+        return {
+            "enabled": state.enabled,
+            "morning": state.morning_enabled,
+            "evening": state.evening_enabled,
+            "source": "saved state",
+        }
+    return {
+        "enabled": bool(config.get("enabled", False)),
+        "morning": bool(config.get("morning_routine_enabled", True)),
+        "evening": bool(config.get("evening_routine_enabled", True)),
+        "source": "config",
+    }
+
+
+def save_flags(
+    config: Dict[str, Any],
+    state_manager: SchedulerStateManager,
+    enabled: Optional[bool] = None,
+    morning: Optional[bool] = None,
+    evening: Optional[bool] = None,
+) -> bool:
+    """
+    Save enable flags to state/user.db; flags not given keep their effective value.
+
+    Returns:
+        True if saved
+    """
+    current = effective_flags(config, state_manager)
+    state = state_manager.get_state()
+    state.enabled = current["enabled"] if enabled is None else enabled
+    state.morning_enabled = current["morning"] if morning is None else morning
+    state.evening_enabled = current["evening"] if evening is None else evening
+    return state_manager.save_state(state)
+
+
+def configure_scheduler_logging(level: int = logging.INFO) -> Path:
+    """
+    Log to stdout and to scheduler.log in the state directory (rotated at 5 MB, five
+    kept), so a background daemon leaves a record. Safe to call more than once.
+
+    Returns:
+        The log file path
+    """
+    log_path = get_state_dir() / "scheduler.log"
+    root = logging.getLogger()
+    root.setLevel(level)
+    already = any(
+        isinstance(h, RotatingFileHandler) and h.baseFilename == os.path.abspath(log_path)
+        for h in root.handlers
+    )
+    if not already:
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        file_handler = RotatingFileHandler(
+            log_path, maxBytes=5_000_000, backupCount=5, encoding="utf-8"
+        )
+        file_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
+        # stdout, so a daemon's stderr holds only crashes (see DaemonManager.start)
+        console = logging.StreamHandler(sys.stdout)
+        console.setFormatter(formatter)
+        root.addHandler(console)
+    return log_path
 
 
 class ScheduleStatus(Enum):
@@ -91,7 +230,7 @@ class DailyScheduler:
     - Minimal API calls (3-5 per routine)
     """
 
-    def __init__(self, config_file: str = None, trading_cycle=None):
+    def __init__(self, config_file: str = None, trading_cycle=None, state_manager=None):
         """
         Initialize the daily scheduler.
 
@@ -99,6 +238,7 @@ class DailyScheduler:
             config_file: Path to scheduler configuration file (YAML or JSON)
             trading_cycle: Optional CostEfficientTradeCycle instance to reuse
                 (reduces client instantiation)
+            state_manager: Optional SchedulerStateManager (default: the shared one)
         """
         # Load paths configuration
         paths_config_file = "config_defaults/paths_config.yaml"
@@ -115,33 +255,19 @@ class DailyScheduler:
                 "log_files": {"scheduler": "state/scheduler.log"},
             }
 
-        if config_file is None:
-            # Try YAML first, fallback to JSON
-            yaml_file = "config_defaults/scheduler_config.yaml"
-            json_file = "config_defaults/scheduler_config.json"
-            if os.path.exists(yaml_file):
-                config_file = yaml_file
-            elif os.path.exists(json_file):
-                config_file = json_file
-            else:
-                config_file = yaml_file  # Default to YAML
-
-        self.config = self._load_config(config_file)
-        # Reuse provided trading_cycle or create new one
-        self.trading_cycle = (
-            trading_cycle if trading_cycle is not None else CostEfficientTradeCycle()
-        )
+        self.config = load_scheduler_config(config_file)
+        # Reuse provided trading_cycle, else create one when a routine first needs it
+        self._trading_cycle = trading_cycle
         self.execution_log: List[ExecutionLog] = []
 
-        # Get log file path from config
+        # Execution log file name from config, kept in the state directory
         log_file_path = self.paths.get("state_files", {}).get(
             "scheduler_log", "state/scheduler_execution_log.json"
         )
-        self.log_file = Path(log_file_path)
-        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+        self.log_file = get_state_dir() / Path(log_file_path).name
 
         # Initialize state manager for SQLite persistence (#478)
-        self.state_manager = get_scheduler_state_manager()
+        self.state_manager = state_manager or get_scheduler_state_manager()
 
         # Define scheduled tasks
         self.tasks = self._create_default_tasks()
@@ -151,47 +277,16 @@ class DailyScheduler:
 
         logger.info("DailyScheduler initialized with %d tasks", len(self.tasks))
 
-    def _load_config(self, config_file: str) -> Dict[str, Any]:
-        """Load scheduler configuration or create defaults"""
-        default_config = {
-            "enabled": True,
-            "market_timezone": "America/New_York",
-            "morning_routine_time": "09:20:00",
-            "evening_routine_time": "15:50:00",
-            "max_retries": 3,
-            "retry_delay_seconds": 60,
-            "timeout_seconds": 300,
-            "enable_notifications": False,
-            "dry_run": False,
-        }
+    @property
+    def trading_cycle(self) -> CostEfficientTradeCycle:
+        """The trading cycle, created on first use: a check with nothing due needs none."""
+        if self._trading_cycle is None:
+            self._trading_cycle = CostEfficientTradeCycle()
+        return self._trading_cycle
 
-        if os.path.exists(config_file):
-            try:
-                with open(config_file, "r") as f:
-                    if config_file.endswith(".yaml") or config_file.endswith(".yml"):
-                        if yaml is None:
-                            raise ImportError(
-                                "PyYAML not installed. Install with: pip install pyyaml"
-                            )
-                        user_config = yaml.safe_load(f)
-                    else:
-                        user_config = json.load(f)
-                    default_config.update(user_config)
-                    logger.info("Loaded scheduler config from %s", config_file)
-            except Exception as e:
-                logger.warning("Failed to load config from %s: %s. Using defaults.", config_file, e)
-        else:
-            logger.info("Config file not found. Using default configuration.")
-            # Save default config
-            try:
-                os.makedirs(os.path.dirname(config_file), exist_ok=True)
-                with open(config_file, "w") as f:
-                    json.dump(default_config, f, indent=2)
-                logger.info("Saved default config to %s", config_file)
-            except Exception as e:
-                logger.warning("Failed to save default config: %s", e)
-
-        return default_config
+    @trading_cycle.setter
+    def trading_cycle(self, value: CostEfficientTradeCycle) -> None:
+        self._trading_cycle = value
 
     def _create_default_tasks(self) -> List[ScheduledTask]:
         """Create default morning and evening tasks"""
@@ -261,9 +356,12 @@ class DailyScheduler:
         max_attempts = task.retry_count + 1  # Initial attempt + retries
         base_delay = task.retry_delay_seconds
 
-        # Record execution start in SQLite (#478)
+        # Record execution start in SQLite (#478), under the trading day it runs for
         routine_type = task.name.replace("_routine", "")
-        execution_id = self.state_manager.record_execution_start(routine_type, attempt=1)
+        market_date = self._market_now().date().isoformat()
+        execution_id = self.state_manager.record_execution_start(
+            routine_type, attempt=1, market_date=market_date
+        )
 
         for attempt in range(1, max_attempts + 1):
             log_entry.attempt = attempt
@@ -271,13 +369,14 @@ class DailyScheduler:
             try:
                 logger.info("Executing %s (attempt %d/%d)", task.name, attempt, max_attempts)
 
-                # Execute the appropriate routine
+                # Execute the appropriate routine; failures raise RoutineError, including
+                # protective stops that couldn't be checked, placed or renewed
                 if task.routine_type == RoutineType.MORNING:
-                    _ = self.trading_cycle.morning_routine()  # pylint: disable=unused-variable
+                    self.trading_cycle.morning_routine(raise_errors=True)
                 elif task.routine_type == RoutineType.EVENING:
-                    _ = self.trading_cycle.evening_routine()  # pylint: disable=unused-variable
+                    self.trading_cycle.evening_routine(raise_errors=True)
                 elif task.routine_type == RoutineType.RECOVERY:
-                    _ = self.trading_cycle.recover_from_crash()  # pylint: disable=unused-variable
+                    self.trading_cycle.recover_from_crash(raise_errors=True)
                 else:
                     raise ValueError(f"Unknown routine type: {task.routine_type}")
 
@@ -286,21 +385,7 @@ class DailyScheduler:
                 log_entry.actual_end_time = now_iso()
                 log_entry.api_calls_used = 3  # Typical API calls per routine
 
-                # Extract report path from report if available
-                # Report path is typically mentioned in the trading_cycle output
-                # Use human-readable format: 2025-11-11_morning.md
-                # (or _2.md, _3.md for multiple runs)
-                now = get_datetime_now()
-                date_str = now.strftime("%Y-%m-%d")
-                base_path = f"reports/daily/{date_str}_{routine_type}"
-
-                # Check if file exists and find the right counter
-                report_path = f"{base_path}.md"
-                counter = 1
-                while os.path.exists(report_path):
-                    counter += 1
-                    report_path = f"{base_path}_{counter}.md"
-
+                report_path = getattr(self.trading_cycle, "last_report_path", None)
                 log_entry.report_path = report_path
 
                 # Record completion in SQLite (#478)
@@ -344,58 +429,120 @@ class DailyScheduler:
 
         return log_entry
 
-    def should_run_task(self, task: ScheduledTask) -> bool:
+    def _market_now(self) -> datetime:
+        """Current time in the market timezone (ET by default), whatever the host's."""
+        return datetime.now(ZoneInfo(self.config["market_timezone"]))
+
+    def effective_settings(self) -> Dict[str, Any]:
+        """Enable flags in force (see effective_flags())."""
+        return effective_flags(self.config, self.state_manager)
+
+    def save_flags(self, **flags: Optional[bool]) -> bool:
+        """Save enable flags (enabled / morning / evening) to state/user.db."""
+        return save_flags(self.config, self.state_manager, **flags)
+
+    def should_run_task(self, task: ScheduledTask, now: Optional[datetime] = None) -> bool:
         """
-        Check if a task should run now.
+        Check if a task should run now: the scheduler and the routine are enabled, it's
+        within 5 minutes of the routine's time in the market timezone, the market is open
+        that day, and the routine hasn't completed for that day yet.
 
         Args:
             task: The scheduled task to check
+            now: Current time (default: now in the task's timezone)
 
         Returns:
             True if the task should run now
         """
-        # Check enabled state from SQLite first, fallback to config
-        if not self.state_manager.is_enabled() and not self.config.get("enabled", True):
-            return False
-
-        now = get_datetime_now()
-        current_time = now.time()
-
-        # Check if we're within the scheduled time window (± 5 minutes)
-        scheduled_dt = datetime.combine(now.date(), task.scheduled_time)
-        window_start = (scheduled_dt - timedelta(minutes=5)).time()
-        window_end = (scheduled_dt + timedelta(minutes=5)).time()
-
-        # Check if current time is in window
-        if window_start > current_time or current_time > window_end:
-            return False
-
-        # Check if already executed today (SQLite-backed)
         routine_type = task.name.replace("_routine", "")
-        if self.state_manager.was_routine_run_today(routine_type):
+        settings = self.effective_settings()
+        if not settings["enabled"] or not settings.get(routine_type, True):
+            return False
+
+        now = now or datetime.now(ZoneInfo(task.timezone))
+        scheduled = datetime.combine(now.date(), task.scheduled_time, tzinfo=now.tzinfo)
+        if abs(now - scheduled) > RUN_WINDOW:
+            return False
+
+        _, _, trading_day = get_market_hours_for_date(now.date())
+        if not trading_day:
+            logger.debug("Skipping %s: %s is not a trading day", task.name, now.date())
+            return False
+
+        if self.state_manager.was_routine_run_today(routine_type, now.date().isoformat()):
             logger.debug("Task %s already completed today (from DB)", task.name)
             return False
 
         return True
+
+    def next_run(self, now: Optional[datetime] = None) -> Optional[Tuple[ScheduledTask, datetime]]:
+        """
+        The next enabled routine on a trading day and when it runs (market timezone), or
+        None if the scheduler or every routine is disabled.
+        """
+        settings = self.effective_settings()
+        tasks = [t for t in self.tasks if settings.get(t.name.replace("_routine", ""), True)]
+        if not settings["enabled"] or not tasks:
+            return None
+
+        now = now or self._market_now()
+        for offset in range(15):  # covers any run of holidays and weekends
+            day = (now + timedelta(days=offset)).date()
+            if not get_market_hours_for_date(day)[2]:
+                continue
+            for task in sorted(tasks, key=lambda t: t.scheduled_time):
+                when = datetime.combine(day, task.scheduled_time, tzinfo=now.tzinfo)
+                done = self.state_manager.was_routine_run_today(
+                    task.name.replace("_routine", ""), day.isoformat()
+                )
+                if when + RUN_WINDOW >= now and not done:
+                    return task, when
+        return None
+
+    @contextmanager
+    def _run_lock(self):
+        """
+        Exclusive lock while routines run, so a daemon, a cron run and a manual run (or
+        two cron runs during a long retry) never run them at the same time.
+
+        Yields:
+            True if acquired, False if another process holds it
+        """
+        if fcntl is None:
+            yield True
+            return
+        with open(get_state_dir() / "scheduler.lock", "a") as handle:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                yield False
+                return
+            try:
+                yield True
+            finally:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+
+    def _run_task(self, task: ScheduledTask) -> ExecutionLog:
+        """Execute a task with retries, then log and save the result."""
+        log_entry = self._execute_task_with_retry(task)
+        self.execution_log.append(log_entry)
+        self._save_execution_log()
+        self._log_execution_summary(log_entry)
+        return log_entry
 
     def run_scheduled_tasks(self):
         """
         Run any tasks that are due now.
         This should be called periodically (e.g., every minute).
         """
-        for task in self.tasks:
-            if self.should_run_task(task):
-                logger.info("🚀 Starting scheduled task: %s", task.name)
-
-                # Execute task with retry
-                log_entry = self._execute_task_with_retry(task)
-
-                # Save log entry
-                self.execution_log.append(log_entry)
-                self._save_execution_log()
-
-                # Generate summary
-                self._log_execution_summary(log_entry)
+        with self._run_lock() as acquired:
+            if not acquired:
+                logger.info("Another scheduler run is in progress; skipping this check")
+                return
+            for task in self.tasks:
+                if self.should_run_task(task):
+                    logger.info("🚀 Starting scheduled task: %s", task.name)
+                    self._run_task(task)
 
     def _log_execution_summary(self, log_entry: ExecutionLog):
         """Log execution summary for monitoring"""
@@ -434,9 +581,21 @@ class DailyScheduler:
         logger.info(
             "🤖 Starting DailyScheduler daemon (check interval: %ds)", check_interval_seconds
         )
-        logger.info("Scheduled tasks:")
+        settings = self.effective_settings()
+        logger.info(
+            "Scheduler %s (%s); trading days only, times in %s",
+            "enabled" if settings["enabled"] else "DISABLED",
+            settings["source"],
+            self.config["market_timezone"],
+        )
         for task in self.tasks:
-            logger.info("  - %s at %s ET", task.name, task.scheduled_time.strftime("%H:%M:%S"))
+            routine_on = settings.get(task.name.replace("_routine", ""), True)
+            logger.info(
+                "  - %s at %s%s",
+                task.name,
+                task.scheduled_time.strftime("%H:%M:%S"),
+                "" if routine_on else " (disabled)",
+            )
 
         try:
             while True:
@@ -472,11 +631,13 @@ class DailyScheduler:
                 logger.error("Task not found: %s", task_name)
                 return
 
-            logger.info("Running task once: %s", task_name)
-            log_entry = self._execute_task_with_retry(task)
-            self.execution_log.append(log_entry)
-            self._save_execution_log()
-            self._log_execution_summary(log_entry)
+            # A manual run ignores the schedule and calendar, but not another run
+            with self._run_lock() as acquired:
+                if not acquired:
+                    logger.error("Another scheduler run is in progress; not running %s", task_name)
+                    return
+                logger.info("Running task once: %s", task_name)
+                self._run_task(task)
         else:
             # Run all pending tasks
             logger.info("Running all scheduled tasks once")
@@ -542,7 +703,7 @@ class DailyScheduler:
                 f"Morning routine: {self.config['morning_routine_time']} ET",
                 f"Evening routine: {self.config['evening_routine_time']} ET",
                 f"Max retries: {self.config['max_retries']}",
-                f"Enabled: {self.config['enabled']}",
+                f"Enabled: {self.effective_settings()['enabled']}",
                 "",
             ]
         )
@@ -570,12 +731,7 @@ def main():
 
     args = parser.parse_args()
 
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler("state/scheduler.log"), logging.StreamHandler()],
-    )
+    configure_scheduler_logging()
 
     # Create scheduler
     scheduler = DailyScheduler()
