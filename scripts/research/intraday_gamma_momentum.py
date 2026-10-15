@@ -218,7 +218,11 @@ def main():
     try:
         snaps = load_snapshots(bt._get_connection())
         first = str(pd.to_datetime(snaps["date"]).min().date() - datetime.timedelta(days=10))
-        daily = bt.fetch_equity_prices(sorted(snaps["symbol"].unique()), first, END)
+        # Raw closes, to match the raw snapshot prices (a split day is dropped by the
+        # MAX_ABS_BPS filter)
+        daily = bt.fetch_equity_prices(
+            sorted(snaps["symbol"].unique()), first, END, adjust_splits=False
+        )
     finally:
         bt.close()
     snaps = add_official_closes(snaps, daily)

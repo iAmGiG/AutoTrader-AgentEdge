@@ -17,7 +17,7 @@ Re-run on 2008 to 2026-10-09 with the regime lagged one day, a fixed backtester 
 | ------- | ------ | -------- |
 | MACD+RSI performs better in bullish gamma (#531) | 🛑 STOP | Same-day look-ahead; lag 1 SPY 0.81 vs 0.81 Sharpe (p=0.25) |
 | GEX overlays for dispersion, delta neutral, pairs (#544-#546) | 🛑 STOP | None significant after backtester fix; none survives correction |
-| Negative GEX goes with higher next-day variance (40 symbols) | ✅ DONE (descriptive) | About +8% variance beyond HAR and leverage controls, in high-VIX markets only; no out-of-sample forecast gain |
+| Negative GEX goes with higher next-day variance (40 symbols) | ✅ DONE (descriptive) | About +7% variance beyond HAR and leverage controls, in high-VIX markets only; no out-of-sample forecast gain |
 
 The Dec 2025 notes below are kept for history.
 

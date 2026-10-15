@@ -33,13 +33,13 @@ GEX re-validation on 2008 to 2026-10-09 (#576). Full write-up: [02_gex_research/
 | Hypothesis | Issue | Status | Evidence |
 | ------------ | ------- | -------- | ---------- |
 | MACD+RSI performs better in bullish gamma | #531 | 🛑 STOP | Same-day regime look-ahead; lag 1 SPY 0.81 vs 0.81 Sharpe (p=0.25) |
-| GEX overlay improves dispersion trading | #545 | 🛑 STOP | +0.108 was a backtester artifact; fixed +0.085 (p=0.10) |
+| GEX overlay improves dispersion trading | #545 | 🛑 STOP | +0.108 was a backtester artifact; fixed and split-adjusted +0.061 (p=0.36) |
 | GEX overlay improves delta neutral / pairs | #544, #546 | 🛑 STOP | Null in every window after fixes |
 | Bearish regime VaR 4.3x bullish | #543 | 🛑 STOP | 2.1x at lag 1; regime makes 99% VaR breach too often |
 | GEX sign switches intraday momentum / reversal | #530 | 🛑 STOP | Pooled interaction p=0.067, wrong sign; timing strategy -0.5 bps/day |
-| Negative GEX goes with higher next-day variance | #576 | ✅ DONE | 40 symbols: +8% beyond HAR and leverage, high-VIX only; descriptive, no out-of-sample forecast gain |
+| Negative GEX goes with higher next-day variance | #576 | ✅ DONE | 40 symbols: +7% beyond HAR and leverage, high-VIX only; descriptive, no out-of-sample forecast gain |
 
-**Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay or intraday effect survives multiple-testing correction (227 tests).
+**Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay or intraday effect survives multiple-testing correction (237 tests).
 
 ---
 
