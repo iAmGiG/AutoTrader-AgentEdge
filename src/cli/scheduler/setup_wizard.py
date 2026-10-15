@@ -133,9 +133,7 @@ class SchedulerSetupWizard:
 
         if confirm in ["yes", "y"]:
             from src.trading.scheduling.daily_scheduler import save_flags
-            from src.trading.scheduling.scheduler_state import (
-                get_scheduler_state_manager,
-            )
+            from src.trading.scheduling.scheduler_state import get_scheduler_state_manager
 
             saved = self.config_editor.save(config) and save_flags(
                 config,
