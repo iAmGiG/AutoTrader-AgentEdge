@@ -7,16 +7,17 @@ reproduced as closely as daily bars allow:
 - Signal: the live ``VoterAgent.evaluate_ranked_voting`` (MACD 13/34/8 histogram beyond
   +/-0.1, RSI 14 at 30/70) on a 90-calendar-day window, as RealVoterStrategy fetches.
 - Timing: the signal for day *d* uses bars through *d - 1*, as a pre-market routine
-  would; trades fill at day *d*'s open. The window is rescaled to day *d - 1*'s raw
-  price level, because the MACD threshold is in dollars and live data is not
-  back-adjusted for later splits.
+  would; trades fill at day *d*'s open. The window is rescaled to the split level of
+  day *d*, because the MACD threshold is in dollars and live bars are split-adjusted
+  only up to the fetch (on a split day, they are already at the new level).
 - Entries: a BUY with no position opens one at the open. Size is a share of the
   previous close's equity (the mode's risk_per_trade) in whole shares at the previous
   close, rounded at the raw price of the day as live orders are (so a slot smaller than
-  one share is skipped). Blocked beyond 10 positions, 80% exposure or available cash
-  (SimpleRiskManager defaults). The decision is made before the open, so the position
-  count and exposure include positions that exit later that day, and a symbol held at
-  the start of the day is not bought again until the next day.
+  one share is skipped). Blocked beyond 10 positions, 80% exposure or the cash held at
+  the start of the day (SimpleRiskManager defaults). The decision is made before the
+  open, so the position count, exposure and cash include positions that exit later
+  that day, and a symbol held at the start of the day is not bought again until the
+  next day.
 - Exits: a SELL signal closes the position at the open. Otherwise the market bracket
   (stop -5%, target +8% from the fill, AlpacaExecutionManager defaults) is checked on
   the day's range. A gap through either level fills at the open, and a day that
@@ -61,7 +62,8 @@ def compute_signals(
     Signal for each symbol on each of its trading days in [start, end].
 
     The window holds the closes strictly before the day, within ``lookback_days``
-    calendar days, rescaled so the last close equals that day's raw close.
+    calendar days, rescaled to that day's split level (its raw / adjusted ratio, which
+    depends only on the split calendar).
 
     Returns:
         DataFrame indexed by (date, symbol) with ``action`` and ``position_size``
@@ -69,7 +71,7 @@ def compute_signals(
     rows = []
     for symbol, series in closes.items():
         dates = series.index
-        raw = raw_closes[symbol].reindex(dates)
+        ratio = (raw_closes[symbol].reindex(dates) / series).ffill().fillna(1.0)
         days = dates[(dates >= pd.Timestamp(start)) & (dates <= pd.Timestamp(end))]
         for day in days:
             end_i = dates.searchsorted(day)  # first index at or after `day`
@@ -77,7 +79,7 @@ def compute_signals(
                 continue
             start_i = dates.searchsorted(day - pd.Timedelta(days=lookback_days))
             window = series.iloc[start_i:end_i]
-            scale = raw.iloc[end_i - 1] / series.iloc[end_i - 1]
+            scale = ratio.iloc[end_i]
             result = signal_fn(symbol, pd.DataFrame({"Close": window * scale}))
             rows.append(
                 (day, symbol, result.get("action", "HOLD"), result.get("position_size", 0.0))
@@ -124,20 +126,34 @@ def simulate(  # noqa: C901
     action = signals["action"].to_dict()
     size = signals["position_size"].to_dict()
     calendar = sorted(signals.index.get_level_values("date").unique())
+    # Prior closes from before the first signal day (the warm-up), for first-day sizing
     last_close: Dict[str, float] = {}
+    for symbol, frame in prices.items():
+        before = frame["close"][frame.index < calendar[0]] if calendar else frame["close"][:0]
+        if len(before):
+            last_close[symbol] = float(before.iloc[-1])
     cash = rules.initial_capital
     equity_prev = cash
     positions: Dict[str, dict] = {}
     trades: List[dict] = []
     equity = {}
-    blocked = {"in_position": 0, "max_positions": 0, "under_one_share": 0, "exposure": 0, "cash": 0}
+    blocked = {
+        "in_position": 0,
+        "max_positions": 0,
+        "no_prior_close": 0,
+        "under_one_share": 0,
+        "exposure": 0,
+        "cash": 0,
+    }
     # raw shares per adjusted share on each day (the later splits' combined factor)
     share_scale = {
-        s: (raw_closes[s].reindex(prices[s].index) / prices[s]["close"]).ffill().to_dict()
+        s: (raw_closes[s].reindex(prices[s].index) / prices[s]["close"])
+        .ffill()
+        .fillna(1.0)
+        .to_dict()
         for s in (raw_closes or {})
         if s in prices
     }
-    last_scale: Dict[str, float] = {}
 
     def bar_on(symbol, day):
         frame = prices[symbol]
@@ -165,6 +181,7 @@ def simulate(  # noqa: C901
         bars = {sym: bar_on(sym, day) for sym in prices}
         # Book as the pre-market decision sees it: exits at or after the open come later
         book = {s: p["qty"] * last_close.get(s, p["entry_price"]) for s, p in positions.items()}
+        buying_power = cash
 
         # Exits at the open on SELL signals, then bracket triggers through the day
         for symbol in list(positions):
@@ -192,8 +209,9 @@ def simulate(  # noqa: C901
                 break
             prev_close = last_close.get(symbol)
             if not prev_close:
+                blocked["no_prior_close"] += 1
                 continue
-            scale = last_scale.get(symbol, 1.0)
+            scale = share_scale.get(symbol, {}).get(day, 1.0)  # the day's split level
             qty = int(rules.position_pct * equity_prev / (prev_close * scale)) * scale
             if qty <= 0:
                 blocked["under_one_share"] += 1
@@ -203,9 +221,10 @@ def simulate(  # noqa: C901
                 continue
             bar = bars[symbol]
             fill = bar.open * (1 + cost)
-            if qty * fill > cash:
+            if qty * fill > buying_power:
                 blocked["cash"] += 1
                 continue
+            buying_power -= qty * fill
             cash -= qty * fill
             held_value += qty * prev_close
             n_held += 1
@@ -225,8 +244,6 @@ def simulate(  # noqa: C901
         for symbol, bar in bars.items():
             if bar is not None:
                 last_close[symbol] = float(bar.close)
-                scale = share_scale.get(symbol, {}).get(day, 1.0)
-                last_scale[symbol] = scale if scale > 0 else 1.0  # NaN: no raw close yet
         equity_prev = cash + sum(p["qty"] * last_close[s] for s, p in positions.items())
         equity[day] = equity_prev
 

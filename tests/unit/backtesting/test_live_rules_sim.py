@@ -45,7 +45,7 @@ def _run(prices, actions, **rules):
     return simulate(prices, _signals(actions), LiveRules(**rules))
 
 
-def test_signal_uses_only_prior_bars_at_the_prior_raw_scale():
+def test_signal_uses_only_prior_bars_at_the_decision_days_split_level():
     seen = {}
 
     def spy_fn(symbol, window):
@@ -53,11 +53,13 @@ def test_signal_uses_only_prior_bars_at_the_prior_raw_scale():
         return {"action": "HOLD", "position_size": 0.0}
 
     closes = pd.Series([10.0, 11.0, 12.0, 13.0], index=DAYS[:4])
-    raw = closes * 4  # e.g. a later 4-for-1 split: raw prices were 4x the adjusted ones
+    # a 4-for-1 split on DAYS[2]: raw prices before it were 4x the adjusted ones
+    raw = closes * pd.Series([4.0, 4.0, 1.0, 1.0], index=DAYS[:4])
     compute_signals({"AAA": closes}, {"AAA": raw}, spy_fn, str(DAYS[1].date()), str(DAYS[3].date()))
 
-    # decision on day i sees closes through day i-1, scaled to that day's raw level
-    assert seen == {DAYS[0]: 40.0, DAYS[1]: 44.0, DAYS[2]: 48.0}
+    # decision on day i sees closes through day i-1, at day i's split level (live bars
+    # are adjusted as of the fetch, so the split day's window is at the new level)
+    assert seen == {DAYS[0]: 40.0, DAYS[1]: 11.0, DAYS[2]: 12.0}
 
 
 def test_buy_fills_at_open_and_sell_signal_exits_at_next_open():
@@ -131,6 +133,26 @@ def test_whole_shares_are_counted_at_the_raw_price():
     assert list(trades["symbol"]) == ["BBB"]
     assert trades.iloc[0].qty == 5 * 4  # 5 raw shares at $400 = 20 adjusted shares
     assert trades.attrs["blocked"]["under_one_share"] == 1
+
+
+def test_first_signal_day_sizes_on_the_warm_up_close():
+    signals = _signals({(1, "AAA"): "BUY"})
+    signals = signals[signals.index.get_level_values("date") >= DAYS[1]]
+    prices = {"AAA": _bars([50.0, 100.0, 100.0]), "BBB": _bars([100.0] * 3)}
+    _, trades = simulate(prices, signals, LiveRules())
+
+    assert trades.iloc[0].qty == int(0.02 * 100_000 / 50.0)  # DAYS[0] is warm-up only
+
+
+def test_entries_only_spend_the_cash_held_at_the_start_of_the_day():
+    aaa = _bars([100.0, 100.0, 100.0, 100.0], lows=[99.0, 99.0, 94.0, 99.0])
+    actions = {(1, "AAA"): "BUY", (2, "BBB"): "BUY"}
+    rules = {"position_pct": 0.6, "max_exposure_pct": 2.0}
+    _, trades = _run({"AAA": aaa}, actions, **rules)
+
+    # AAA's stop proceeds arrive intraday on day 2, after BBB's order at the open
+    assert list(trades["symbol"]) == ["AAA"]
+    assert trades.attrs["blocked"]["cash"] == 1
 
 
 def test_exposure_cap_blocks_an_entry():

@@ -57,7 +57,8 @@ RESULTS_DIR = Path("docs/08_research/03_strategy_research/results")
 
 
 def watchlist_symbols() -> list:
-    cfg = yaml.safe_load(open("config_defaults/scanner_config.yaml"))
+    with open("config_defaults/scanner_config.yaml") as f:
+        cfg = yaml.safe_load(f)
     groups = cfg["default_watchlist"].values()
     return [s for group in groups if isinstance(group, list) for s in group if isinstance(s, str)]
 
@@ -92,22 +93,24 @@ def live_signal_fn():
 
 
 def trade_stats(trades: pd.DataFrame, start=None, end=None) -> dict:
+    """Closed-trade statistics by entry date; positions still open are only counted."""
     t = trades
     if start is not None:
         t = t[t["entry_date"] >= pd.Timestamp(start)]
     if end is not None:
         t = t[t["entry_date"] <= pd.Timestamp(end)]
-    if t.empty:
-        return {"n_trades": 0}
     closed = t[t["reason"] != "open"]
+    if closed.empty:
+        return {"n_trades": 0, "n_open_at_end": int(len(t))}
     held = (pd.to_datetime(closed["exit_date"]) - pd.to_datetime(closed["entry_date"])).dt.days
     return {
-        "n_trades": int(len(t)),
-        "win_rate_pct": round(float((t["return"] > 0).mean() * 100), 1),
-        "mean_return_pct": round(float(t["return"].mean() * 100), 3),
-        "median_return_pct": round(float(t["return"].median() * 100), 3),
-        "mean_hold_days": round(float(held.mean()), 1) if len(held) else None,
-        "exit_reasons": {k: int(v) for k, v in t["reason"].value_counts().items()},
+        "n_trades": int(len(closed)),
+        "n_open_at_end": int(len(t) - len(closed)),
+        "win_rate_pct": round(float((closed["return"] > 0).mean() * 100), 1),
+        "mean_return_pct": round(float(closed["return"].mean() * 100), 3),
+        "median_return_pct": round(float(closed["return"].median() * 100), 3),
+        "mean_hold_days": round(float(held.mean()), 1),
+        "exit_reasons": {k: int(v) for k, v in closed["reason"].value_counts().items()},
     }
 
 
@@ -136,11 +139,12 @@ def benchmarks(prices: dict, calendar: pd.DatetimeIndex) -> dict:
 
 def alpha_vs(equity: pd.Series, bench: pd.Series, start=None, end=None) -> dict:
     """Daily OLS of strategy on benchmark returns: annualized alpha, beta, Newey-West t."""
-    data = pd.concat([equity.pct_change(), bench.pct_change()], axis=1, keys=["s", "b"]).dropna()
-    if start is not None:
+    data = pd.concat([equity, bench], axis=1, keys=["s", "b"])
+    if start is not None:  # sliced before differencing, as in period_stats
         data = data[data.index >= pd.Timestamp(start)]
     if end is not None:
         data = data[data.index <= pd.Timestamp(end)]
+    data = data.pct_change().dropna()
     fit = sm.OLS(data["s"], sm.add_constant(data["b"])).fit(cov_type="HAC", cov_kwds={"maxlags": 5})
     return {
         "alpha_ann_pct": round(float(fit.params["const"] * 252 * 100), 3),
@@ -172,8 +176,10 @@ def exposure_series(equity: pd.Series, trades: pd.DataFrame, prices: dict) -> pd
     """Share of equity invested at each close."""
     invested = pd.Series(0.0, index=equity.index)
     for t in trades.itertuples(index=False):
-        end = t.exit_date if t.exit_date is not None else equity.index[-1]
-        days = equity.index[(equity.index >= t.entry_date) & (equity.index < end)]
+        held = equity.index >= t.entry_date
+        if pd.notna(t.exit_date):  # NaT: still open at the end
+            held &= equity.index < t.exit_date
+        days = equity.index[held]
         closes = prices[t.symbol]["close"].reindex(days).ffill()
         invested.loc[days] += t.qty * closes.to_numpy()
     return invested / equity

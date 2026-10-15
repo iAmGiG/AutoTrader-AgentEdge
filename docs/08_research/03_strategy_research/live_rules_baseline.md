@@ -11,7 +11,7 @@
 This backtests the rules the live CLI trades with, timed the way a pre-market routine would trade them. It replaces the 0.856 Sharpe claim (experiment 293). That figure was in-sample on AAPL in 2024, used MACD 12/26/9, filled at the close that produced the signal, and had no costs.
 
 - **At 5 bps a side**, Sharpe is 0.69 over 2009 to 2026-10-09 and 0.71 out-of-sample (2020 onward). The out-of-sample 95% interval includes zero.
-- **The Sharpe comes from holding a small slice of a universe whose equal-weight portfolio returned 29% a year.** Positions average 11% of equity in moderate mode and 5% in conservative mode. Regressed on equal-weight buy-and-hold of the same 19 symbols, the strategy's alpha is +0.11% a year (t = 0.19) over the full period and +0.37% (t = 0.34) out-of-sample. Beta is 0.067.
+- **The Sharpe comes from holding a small slice of a universe whose equal-weight portfolio returned 29% a year.** Positions average 11% of equity in moderate mode and 5% in conservative mode. Regressed on equal-weight buy-and-hold of the same 19 symbols, the strategy's alpha is +0.11% a year (t = 0.19) over the full period and +0.34% (t = 0.32) out-of-sample. Beta is 0.067.
 - **Holding 7% of the universe and the rest in cash would have done better.** Rebalanced daily, that position has the universe's Sharpe of 1.12, against 0.69 for the strategy. On this evidence the signal's timing adds risk and costs, not return.
 - **Breakeven cost is about 6 bps a side** over the full period, and about 8 bps out-of-sample. Alpha is negative in both modes at 10 bps.
 
@@ -22,10 +22,10 @@ This backtests the rules the live CLI trades with, timed the way a pre-market ro
 | Part | Live source | Simulation |
 | ---- | ----------- | ---------- |
 | Signal | `RealVoterStrategy` calls `VoterAgent.evaluate_ranked_voting` | The same call, on a 90-calendar-day close window |
-| Indicators | MACD 13/34/8, histogram beyond ±0.1 (dollars); RSI 14 at 30/70 | Unchanged; the window is rescaled to the prior day's raw price level, since the threshold is in dollars |
+| Indicators | MACD 13/34/8, histogram beyond ±0.1 (dollars); RSI 14 at 30/70, on bars split-adjusted as of the fetch | Unchanged; the window is rescaled to the decision day's split level, since the threshold is in dollars |
 | Timing | Pre-market decision | Bars through day d-1; fills at day d's open |
 | Size | `SimpleRiskManager`: risk_per_trade × equity, whole shares (signal strength ignored) | 2% (moderate) or 1% (conservative) of the prior close's equity, whole shares at the raw price |
-| Limits | 10 positions, 80% exposure, buying power | The same, counted before the open (positions that exit later that day still count) |
+| Limits | 10 positions, 80% exposure, buying power | The same, counted before the open: positions that exit later that day still count, and their proceeds can't fund that day's entries |
 | Exits | Market bracket, stop -5% / target +8% (GTC, renewed by #587) | SELL signal at the open; otherwise the bracket on the day's range. Gaps fill at the open, and a day that touches both counts as the stop |
 | Costs | None modelled live | 0, 5 and 10 bps per side on every fill |
 
@@ -40,12 +40,12 @@ This backtests the rules the live CLI trades with, timed the way a pre-market ro
 
 | Scenario | Full Sharpe | 2009-2019 | 2020 on | CAGR | Max DD | Alpha vs EW, full / 2020 on (t) |
 | -------- | ----------- | --------- | ------- | ---- | ------ | ------------------------------- |
-| Moderate, 0 bps | 0.84 [0.36, 1.30] | 0.82 [0.28, 1.42] | 0.86 [0.08, 1.66] | 2.4% | -6.5% | +0.55% (0.96) / +0.91% (0.84) |
-| Moderate, 5 bps | 0.69 [0.20, 1.15] | 0.67 [0.13, 1.27] | 0.71 [-0.07, 1.50] | 2.0% | -7.1% | +0.11% (0.19) / +0.37% (0.34) |
-| Moderate, 10 bps | 0.52 [0.04, 0.99] | 0.53 [-0.01, 1.13] | 0.51 [-0.27, 1.31] | 1.5% | -7.7% | -0.37% (-0.64) / -0.30% (-0.27) |
-| Conservative, 0 bps | 0.81 [0.33, 1.27] | 0.80 [0.26, 1.40] | 0.82 [0.04, 1.61] | 1.1% | -3.2% | +0.23% (0.84) / +0.37% (0.72) |
-| Conservative, 5 bps | 0.67 [0.19, 1.13] | 0.67 [0.12, 1.28] | 0.68 [-0.10, 1.47] | 0.9% | -3.4% | +0.05% (0.17) / +0.14% (0.28) |
-| Conservative, 10 bps | 0.53 [0.05, 0.99] | 0.53 [-0.02, 1.14] | 0.52 [-0.26, 1.31] | 0.7% | -3.6% | -0.16% (-0.57) / -0.11% (-0.20) |
+| Moderate, 0 bps | 0.84 [0.36, 1.29] | 0.82 [0.28, 1.42] | 0.87 [0.09, 1.66] | 2.4% | -6.3% | +0.55% (0.96) / +0.89% (0.82) |
+| Moderate, 5 bps | 0.69 [0.20, 1.15] | 0.67 [0.13, 1.27] | 0.71 [-0.07, 1.50] | 2.0% | -6.9% | +0.11% (0.19) / +0.34% (0.32) |
+| Moderate, 10 bps | 0.52 [0.03, 0.98] | 0.53 [-0.02, 1.13] | 0.51 [-0.27, 1.31] | 1.5% | -7.5% | -0.38% (-0.65) / -0.32% (-0.29) |
+| Conservative, 0 bps | 0.81 [0.33, 1.27] | 0.80 [0.25, 1.40] | 0.84 [0.06, 1.63] | 1.1% | -3.1% | +0.24% (0.88) / +0.40% (0.76) |
+| Conservative, 5 bps | 0.68 [0.20, 1.14] | 0.67 [0.12, 1.28] | 0.70 [-0.08, 1.50] | 1.0% | -3.3% | +0.06% (0.21) / +0.17% (0.32) |
+| Conservative, 10 bps | 0.53 [0.05, 0.99] | 0.52 [-0.03, 1.14] | 0.54 [-0.24, 1.33] | 0.7% | -3.5% | -0.15% (-0.55) / -0.09% (-0.17) |
 | Equal-weight buy-and-hold | 1.12 [0.69, 1.62] | 1.24 [0.67, 1.83] | 1.01 [0.30, 1.81] | 28.6% | -47.0% | |
 | SPY buy-and-hold | 0.76 [0.32, 1.26] | 0.78 [0.24, 1.35] | 0.75 [0.07, 1.54] | 12.7% | -34.1% | |
 
@@ -55,15 +55,15 @@ Alpha is the annualized intercept of a daily regression on equal-weight returns,
 
 | | 2009 to 2026-10-09 | 2020 on |
 | - | ------------------ | ------- |
-| Trades | 4,117 | 1,980 (1.2 per trading day) |
-| Win rate | 44.2% | 43.1% |
-| Mean / median trade | +0.45% / -1.09% | +0.43% / -1.23% |
+| Closed trades | 4,111 | 1,972 (1.2 per trading day) |
+| Win rate | 44.2% | 43.0% |
+| Mean / median trade | +0.46% / -1.10% | +0.43% / -1.26% |
 | Mean hold | 8.8 days | 7.2 days |
-| Exits: signal / stop / target | 1,426 / 1,447 / 1,234 | 632 / 718 / 620 |
+| Exits: signal / stop / target | 1,427 / 1,447 / 1,237 | 633 / 718 / 621 |
 
-Gap fills are counted with their stop or target. Ten positions were still open at the end.
+Gap fills are counted with their stop or target. The ten positions still open at the end are left out.
 
-The signal fires often: of 76,974 symbol-days, 28% were BUY and 34% SELL. The 10-position cap blocked about 3,050 BUY signals that weren't already held. The simulation breaks ties alphabetically; the stage B entry step will need its own rule. A slot smaller than one share blocked 164 entries at 2% and 541 at 1%. These are AMZN and GOOGL before their 2022 splits, plus NFLX and TSLA at 1%.
+The signal fires often: of 76,974 symbol-days, 28% were BUY and 34% SELL. The 10-position cap blocked about 3,050 BUY signals that weren't already held. The simulation breaks ties alphabetically; the stage B entry step will need its own rule. A slot smaller than one share blocked 164 entries at 2% and 540 at 1%. These are AMZN and GOOGL before their 2022 splits, plus NFLX and TSLA at 1%.
 
 ## What This Means for the Paper Run
 

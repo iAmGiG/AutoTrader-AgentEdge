@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-15T01:28:15.213765'
+run_timestamp: '2026-10-15T01:40:29.071134'
 issue: '#574'
 description: Live CLI rules backtested with live timing (replaces the 0.856 Sharpe
   claim)
@@ -59,487 +59,493 @@ universe:
 missing_symbols:
 - CRM
 signal_counts:
-  HOLD: 29407
+  HOLD: 29405
   SELL: 25875
-  BUY: 21692
+  BUY: 21694
 scenarios:
   moderate_0bps:
     full:
       sharpe: 0.838
-      cagr_pct: 2.432
-      vol_pct: 2.922
-      max_drawdown_pct: -6.463
+      cagr_pct: 2.43
+      vol_pct: 2.92
+      max_drawdown_pct: -6.333
       n_days: 4469
       sharpe_ci95:
-      - 0.357
-      - 1.297
+      - 0.358
+      - 1.293
     in_sample_2009_2019:
-      sharpe: 0.82
-      cagr_pct: 2.102
-      vol_pct: 2.582
-      max_drawdown_pct: -4.579
+      sharpe: 0.819
+      cagr_pct: 2.101
+      vol_pct: 2.583
+      max_drawdown_pct: -4.574
       n_days: 2767
       sharpe_ci95:
-      - 0.279
-      - 1.417
+      - 0.28
+      - 1.42
     out_of_sample_2020_on:
-      sharpe: 0.865
-      cagr_pct: 2.92
-      vol_pct: 3.402
-      max_drawdown_pct: -6.463
+      sharpe: 0.866
+      cagr_pct: 2.918
+      vol_pct: 3.397
+      max_drawdown_pct: -6.333
       n_days: 1701
       sharpe_ci95:
-      - 0.082
-      - 1.664
+      - 0.091
+      - 1.662
     alpha_vs_equal_weight:
       full:
-        alpha_ann_pct: 0.55
+        alpha_ann_pct: 0.549
         alpha_t: 0.96
         alpha_p: 0.336
         beta: 0.067
         r2: 0.335
       in_sample_2009_2019:
-        alpha_ann_pct: 0.355
-        alpha_t: 0.56
-        alpha_p: 0.576
+        alpha_ann_pct: 0.35
+        alpha_t: 0.55
+        alpha_p: 0.581
         beta: 0.064
-        r2: 0.305
+        r2: 0.306
       out_of_sample_2020_on:
-        alpha_ann_pct: 0.909
-        alpha_t: 0.84
-        alpha_p: 0.401
+        alpha_ann_pct: 0.886
+        alpha_t: 0.82
+        alpha_p: 0.412
         beta: 0.069
-        r2: 0.363
-    mean_exposure_pct: 10.71
+        r2: 0.362
+    mean_exposure_pct: 10.74
     trades_full:
-      n_trades: 4117
+      n_trades: 4111
+      n_open_at_end: 10
       win_rate_pct: 44.7
-      mean_return_pct: 0.558
-      median_return_pct: -0.984
+      mean_return_pct: 0.561
+      median_return_pct: -1.002
       mean_hold_days: 8.8
       exit_reasons:
-        signal: 1429
-        stop: 1198
-        target: 1006
-        stop_gap: 246
-        target_gap: 228
-        open: 10
+        signal: 1430
+        stop: 1197
+        target: 1008
+        stop_gap: 247
+        target_gap: 229
     trades_out_of_sample:
-      n_trades: 1980
-      win_rate_pct: 43.6
+      n_trades: 1972
+      n_open_at_end: 10
+      win_rate_pct: 43.5
       mean_return_pct: 0.533
-      median_return_pct: -1.091
+      median_return_pct: -1.147
       mean_hold_days: 7.2
       exit_reasons:
-        signal: 635
+        signal: 636
         stop: 601
-        target: 508
+        target: 509
         stop_gap: 114
         target_gap: 112
-        open: 10
     buys_not_taken:
-      in_position: 14357
-      max_positions: 3066
-      under_one_share: 147
+      in_position: 14359
+      max_positions: 3069
+      no_prior_close: 0
+      under_one_share: 145
       exposure: 0
       cash: 0
   moderate_5bps:
     full:
       sharpe: 0.687
-      cagr_pct: 1.977
+      cagr_pct: 1.978
       vol_pct: 2.917
-      max_drawdown_pct: -7.063
+      max_drawdown_pct: -6.928
       n_days: 4469
       sharpe_ci95:
-      - 0.202
+      - 0.205
       - 1.148
     in_sample_2009_2019:
-      sharpe: 0.671
-      cagr_pct: 1.71
-      vol_pct: 2.58
-      max_drawdown_pct: -4.819
+      sharpe: 0.673
+      cagr_pct: 1.716
+      vol_pct: 2.582
+      max_drawdown_pct: -4.82
       n_days: 2767
       sharpe_ci95:
-      - 0.129
-      - 1.27
+      - 0.128
+      - 1.272
     out_of_sample_2020_on:
-      sharpe: 0.707
-      cagr_pct: 2.363
-      vol_pct: 3.394
-      max_drawdown_pct: -7.063
+      sharpe: 0.706
+      cagr_pct: 2.356
+      vol_pct: 3.39
+      max_drawdown_pct: -6.928
       n_days: 1701
       sharpe_ci95:
-      - -0.075
-      - 1.497
+      - -0.072
+      - 1.502
     alpha_vs_equal_weight:
       full:
-        alpha_ann_pct: 0.108
+        alpha_ann_pct: 0.109
         alpha_t: 0.19
-        alpha_p: 0.85
+        alpha_p: 0.848
         beta: 0.067
         r2: 0.334
       in_sample_2009_2019:
-        alpha_ann_pct: -0.029
+        alpha_ann_pct: -0.026
         alpha_t: -0.04
-        alpha_p: 0.964
+        alpha_p: 0.967
         beta: 0.064
         r2: 0.305
       out_of_sample_2020_on:
-        alpha_ann_pct: 0.37
-        alpha_t: 0.34
-        alpha_p: 0.733
+        alpha_ann_pct: 0.342
+        alpha_t: 0.32
+        alpha_p: 0.752
         beta: 0.069
-        r2: 0.363
-    mean_exposure_pct: 10.68
+        r2: 0.362
+    mean_exposure_pct: 10.71
     trades_full:
-      n_trades: 4117
+      n_trades: 4111
+      n_open_at_end: 10
       win_rate_pct: 44.2
-      mean_return_pct: 0.454
-      median_return_pct: -1.085
+      mean_return_pct: 0.457
+      median_return_pct: -1.102
       mean_hold_days: 8.8
       exit_reasons:
-        signal: 1426
-        stop: 1200
-        target: 1006
-        stop_gap: 247
-        target_gap: 228
-        open: 10
+        signal: 1427
+        stop: 1199
+        target: 1008
+        stop_gap: 248
+        target_gap: 229
     trades_out_of_sample:
-      n_trades: 1980
-      win_rate_pct: 43.1
-      mean_return_pct: 0.426
-      median_return_pct: -1.225
+      n_trades: 1972
+      n_open_at_end: 10
+      win_rate_pct: 43.0
+      mean_return_pct: 0.425
+      median_return_pct: -1.264
       mean_hold_days: 7.2
       exit_reasons:
-        signal: 632
+        signal: 633
         stop: 603
-        target: 508
+        target: 509
         stop_gap: 115
         target_gap: 112
-        open: 10
     buys_not_taken:
-      in_position: 14351
-      max_positions: 3055
+      in_position: 14352
+      max_positions: 3057
+      no_prior_close: 0
       under_one_share: 164
       exposure: 0
       cash: 0
   moderate_10bps:
     full:
-      sharpe: 0.523
-      cagr_pct: 1.493
-      vol_pct: 2.92
-      max_drawdown_pct: -7.652
+      sharpe: 0.522
+      cagr_pct: 1.49
+      vol_pct: 2.921
+      max_drawdown_pct: -7.521
       n_days: 4469
       sharpe_ci95:
-      - 0.035
-      - 0.988
+      - 0.034
+      - 0.981
     in_sample_2009_2019:
-      sharpe: 0.531
-      cagr_pct: 1.344
-      vol_pct: 2.581
-      max_drawdown_pct: -5.015
+      sharpe: 0.526
+      cagr_pct: 1.334
+      vol_pct: 2.585
+      max_drawdown_pct: -5.005
       n_days: 2767
       sharpe_ci95:
-      - -0.009
-      - 1.129
+      - -0.017
+      - 1.127
     out_of_sample_2020_on:
-      sharpe: 0.51
-      cagr_pct: 1.686
-      vol_pct: 3.399
-      max_drawdown_pct: -7.652
+      sharpe: 0.513
+      cagr_pct: 1.694
+      vol_pct: 3.398
+      max_drawdown_pct: -7.521
       n_days: 1701
       sharpe_ci95:
-      - -0.27
-      - 1.31
+      - -0.267
+      - 1.315
     alpha_vs_equal_weight:
       full:
-        alpha_ann_pct: -0.37
-        alpha_t: -0.64
-        alpha_p: 0.521
+        alpha_ann_pct: -0.375
+        alpha_t: -0.65
+        alpha_p: 0.515
         beta: 0.067
-        r2: 0.334
+        r2: 0.335
       in_sample_2009_2019:
-        alpha_ann_pct: -0.39
-        alpha_t: -0.61
-        alpha_p: 0.541
-        beta: 0.064
-        r2: 0.305
+        alpha_ann_pct: -0.405
+        alpha_t: -0.63
+        alpha_p: 0.527
+        beta: 0.065
+        r2: 0.306
       out_of_sample_2020_on:
-        alpha_ann_pct: -0.296
-        alpha_t: -0.27
-        alpha_p: 0.787
+        alpha_ann_pct: -0.315
+        alpha_t: -0.29
+        alpha_p: 0.773
         beta: 0.069
-        r2: 0.363
-    mean_exposure_pct: 10.67
+        r2: 0.362
+    mean_exposure_pct: 10.7
     trades_full:
-      n_trades: 4118
+      n_trades: 4112
+      n_open_at_end: 10
       win_rate_pct: 43.7
-      mean_return_pct: 0.351
-      median_return_pct: -1.184
-      mean_hold_days: 8.8
+      mean_return_pct: 0.354
+      median_return_pct: -1.203
+      mean_hold_days: 8.7
       exit_reasons:
-        signal: 1426
-        stop: 1201
-        target: 1006
-        stop_gap: 247
-        target_gap: 228
-        open: 10
+        signal: 1427
+        stop: 1200
+        target: 1008
+        stop_gap: 248
+        target_gap: 229
     trades_out_of_sample:
-      n_trades: 1981
-      win_rate_pct: 42.5
-      mean_return_pct: 0.32
-      median_return_pct: -1.328
+      n_trades: 1973
+      n_open_at_end: 10
+      win_rate_pct: 42.4
+      mean_return_pct: 0.319
+      median_return_pct: -1.364
       mean_hold_days: 7.2
       exit_reasons:
-        signal: 632
+        signal: 633
         stop: 604
-        target: 508
+        target: 509
         stop_gap: 115
         target_gap: 112
-        open: 10
     buys_not_taken:
-      in_position: 14351
-      max_positions: 3047
+      in_position: 14352
+      max_positions: 3049
+      no_prior_close: 0
       under_one_share: 171
       exposure: 0
       cash: 0
   conservative_0bps:
     full:
-      sharpe: 0.805
-      cagr_pct: 1.13
-      vol_pct: 1.41
-      max_drawdown_pct: -3.215
+      sharpe: 0.813
+      cagr_pct: 1.142
+      vol_pct: 1.411
+      max_drawdown_pct: -3.148
       n_days: 4469
       sharpe_ci95:
-      - 0.326
-      - 1.267
+      - 0.328
+      - 1.275
     in_sample_2009_2019:
-      sharpe: 0.798
-      cagr_pct: 0.995
+      sharpe: 0.797
+      cagr_pct: 0.994
       vol_pct: 1.252
-      max_drawdown_pct: -2.2
+      max_drawdown_pct: -2.194
       n_days: 2767
       sharpe_ci95:
-      - 0.255
+      - 0.254
       - 1.396
     out_of_sample_2020_on:
-      sharpe: 0.818
-      cagr_pct: 1.33
-      vol_pct: 1.636
-      max_drawdown_pct: -3.215
+      sharpe: 0.837
+      cagr_pct: 1.362
+      vol_pct: 1.637
+      max_drawdown_pct: -3.148
       n_days: 1701
       sharpe_ci95:
-      - 0.043
-      - 1.61
+      - 0.061
+      - 1.629
     alpha_vs_equal_weight:
       full:
-        alpha_ann_pct: 0.233
-        alpha_t: 0.84
-        alpha_p: 0.4
+        alpha_ann_pct: 0.244
+        alpha_t: 0.88
+        alpha_p: 0.378
         beta: 0.032
         r2: 0.324
       in_sample_2009_2019:
-        alpha_ann_pct: 0.157
-        alpha_t: 0.51
-        alpha_p: 0.613
+        alpha_ann_pct: 0.156
+        alpha_t: 0.5
+        alpha_p: 0.616
         beta: 0.031
         r2: 0.296
       out_of_sample_2020_on:
-        alpha_ann_pct: 0.374
-        alpha_t: 0.72
-        alpha_p: 0.472
+        alpha_ann_pct: 0.395
+        alpha_t: 0.76
+        alpha_p: 0.448
         beta: 0.033
-        r2: 0.351
-    mean_exposure_pct: 5.07
+        r2: 0.35
+    mean_exposure_pct: 5.08
     trades_full:
-      n_trades: 4090
+      n_trades: 4085
+      n_open_at_end: 10
       win_rate_pct: 44.6
-      mean_return_pct: 0.541
-      median_return_pct: -1.015
+      mean_return_pct: 0.547
+      median_return_pct: -1.026
       mean_hold_days: 8.7
       exit_reasons:
-        signal: 1383
-        stop: 1216
-        target: 1007
-        stop_gap: 245
-        target_gap: 229
-        open: 10
+        signal: 1384
+        stop: 1215
+        target: 1010
+        stop_gap: 246
+        target_gap: 230
     trades_out_of_sample:
-      n_trades: 1982
-      win_rate_pct: 43.3
-      mean_return_pct: 0.497
-      median_return_pct: -1.189
+      n_trades: 1975
+      n_open_at_end: 10
+      win_rate_pct: 43.2
+      mean_return_pct: 0.501
+      median_return_pct: -1.278
       mean_hold_days: 7.1
       exit_reasons:
-        signal: 621
+        signal: 622
         stop: 617
-        target: 506
+        target: 508
         target_gap: 115
         stop_gap: 113
-        open: 10
     buys_not_taken:
-      in_position: 14231
-      max_positions: 2873
+      in_position: 14232
+      max_positions: 2874
+      no_prior_close: 0
       under_one_share: 493
       exposure: 0
       cash: 0
   conservative_5bps:
     full:
-      sharpe: 0.672
-      cagr_pct: 0.941
-      vol_pct: 1.411
-      max_drawdown_pct: -3.393
+      sharpe: 0.681
+      cagr_pct: 0.954
+      vol_pct: 1.412
+      max_drawdown_pct: -3.32
       n_days: 4469
       sharpe_ci95:
-      - 0.194
-      - 1.132
+      - 0.201
+      - 1.139
     in_sample_2009_2019:
-      sharpe: 0.67
+      sharpe: 0.669
       cagr_pct: 0.832
-      vol_pct: 1.25
-      max_drawdown_pct: -2.298
+      vol_pct: 1.252
+      max_drawdown_pct: -2.29
       n_days: 2767
       sharpe_ci95:
-      - 0.121
-      - 1.277
+      - 0.12
+      - 1.28
     out_of_sample_2020_on:
-      sharpe: 0.676
-      cagr_pct: 1.098
-      vol_pct: 1.64
-      max_drawdown_pct: -3.393
+      sharpe: 0.696
+      cagr_pct: 1.131
+      vol_pct: 1.639
+      max_drawdown_pct: -3.32
       n_days: 1701
       sharpe_ci95:
-      - -0.098
-      - 1.471
+      - -0.083
+      - 1.498
     alpha_vs_equal_weight:
       full:
-        alpha_ann_pct: 0.047
-        alpha_t: 0.17
-        alpha_p: 0.866
+        alpha_ann_pct: 0.059
+        alpha_t: 0.21
+        alpha_p: 0.832
         beta: 0.032
         r2: 0.323
       in_sample_2009_2019:
-        alpha_ann_pct: -0.003
+        alpha_ann_pct: -0.004
         alpha_t: -0.01
-        alpha_p: 0.993
+        alpha_p: 0.99
         beta: 0.031
         r2: 0.296
       out_of_sample_2020_on:
-        alpha_ann_pct: 0.145
-        alpha_t: 0.28
-        alpha_p: 0.781
+        alpha_ann_pct: 0.167
+        alpha_t: 0.32
+        alpha_p: 0.749
         beta: 0.033
         r2: 0.349
-    mean_exposure_pct: 5.05
+    mean_exposure_pct: 5.06
     trades_full:
-      n_trades: 4093
+      n_trades: 4089
+      n_open_at_end: 10
       win_rate_pct: 44.3
-      mean_return_pct: 0.449
-      median_return_pct: -1.106
+      mean_return_pct: 0.456
+      median_return_pct: -1.113
       mean_hold_days: 8.7
       exit_reasons:
-        signal: 1380
-        stop: 1219
-        target: 1011
-        stop_gap: 244
-        target_gap: 229
-        open: 10
+        signal: 1381
+        stop: 1218
+        target: 1015
+        stop_gap: 245
+        target_gap: 230
     trades_out_of_sample:
-      n_trades: 1983
-      win_rate_pct: 43.0
-      mean_return_pct: 0.408
-      median_return_pct: -1.287
+      n_trades: 1977
+      n_open_at_end: 10
+      win_rate_pct: 42.9
+      mean_return_pct: 0.415
+      median_return_pct: -1.374
       mean_hold_days: 7.1
       exit_reasons:
+        signal: 620
         stop: 619
-        signal: 619
-        target: 508
+        target: 511
         target_gap: 115
         stop_gap: 112
-        open: 10
     buys_not_taken:
-      in_position: 14187
-      max_positions: 2866
-      under_one_share: 541
+      in_position: 14188
+      max_positions: 2867
+      no_prior_close: 0
+      under_one_share: 540
       exposure: 0
       cash: 0
   conservative_10bps:
     full:
-      sharpe: 0.526
-      cagr_pct: 0.733
+      sharpe: 0.53
+      cagr_pct: 0.738
       vol_pct: 1.41
-      max_drawdown_pct: -3.578
+      max_drawdown_pct: -3.486
       n_days: 4469
       sharpe_ci95:
-      - 0.049
-      - 0.986
+      - 0.051
+      - 0.987
     in_sample_2009_2019:
-      sharpe: 0.528
-      cagr_pct: 0.652
-      vol_pct: 1.247
-      max_drawdown_pct: -2.417
+      sharpe: 0.521
+      cagr_pct: 0.645
+      vol_pct: 1.249
+      max_drawdown_pct: -2.418
       n_days: 2767
       sharpe_ci95:
-      - -0.018
-      - 1.138
+      - -0.027
+      - 1.135
     out_of_sample_2020_on:
-      sharpe: 0.522
-      cagr_pct: 0.844
-      vol_pct: 1.64
-      max_drawdown_pct: -3.578
+      sharpe: 0.539
+      cagr_pct: 0.871
+      vol_pct: 1.639
+      max_drawdown_pct: -3.486
       n_days: 1701
       sharpe_ci95:
-      - -0.262
-      - 1.314
+      - -0.244
+      - 1.33
     alpha_vs_equal_weight:
       full:
-        alpha_ann_pct: -0.157
-        alpha_t: -0.57
-        alpha_p: 0.571
+        alpha_ann_pct: -0.153
+        alpha_t: -0.55
+        alpha_p: 0.583
         beta: 0.032
         r2: 0.322
       in_sample_2009_2019:
-        alpha_ann_pct: -0.178
-        alpha_t: -0.57
-        alpha_p: 0.569
+        alpha_ann_pct: -0.187
+        alpha_t: -0.6
+        alpha_p: 0.549
         beta: 0.031
         r2: 0.295
       out_of_sample_2020_on:
-        alpha_ann_pct: -0.107
-        alpha_t: -0.2
-        alpha_p: 0.838
-        beta: 0.033
+        alpha_ann_pct: -0.09
+        alpha_t: -0.17
+        alpha_p: 0.863
+        beta: 0.032
         r2: 0.348
-    mean_exposure_pct: 5.03
+    mean_exposure_pct: 5.04
     trades_full:
-      n_trades: 4094
+      n_trades: 4089
+      n_open_at_end: 10
       win_rate_pct: 43.8
-      mean_return_pct: 0.352
-      median_return_pct: -1.203
+      mean_return_pct: 0.357
+      median_return_pct: -1.211
       mean_hold_days: 8.7
       exit_reasons:
-        signal: 1378
-        stop: 1219
-        target: 1013
-        stop_gap: 245
-        target_gap: 229
-        open: 10
+        signal: 1379
+        stop: 1218
+        target: 1016
+        stop_gap: 246
+        target_gap: 230
     trades_out_of_sample:
-      n_trades: 1985
+      n_trades: 1978
+      n_open_at_end: 10
       win_rate_pct: 42.5
-      mean_return_pct: 0.316
-      median_return_pct: -1.382
+      mean_return_pct: 0.319
+      median_return_pct: -1.459
       mean_hold_days: 7.1
       exit_reasons:
+        signal: 620
         stop: 619
-        signal: 619
-        target: 510
+        target: 512
         target_gap: 115
         stop_gap: 112
-        open: 10
     buys_not_taken:
-      in_position: 14163
-      max_positions: 2849
+      in_position: 14164
+      max_positions: 2850
+      no_prior_close: 0
       under_one_share: 581
       exposure: 0
       cash: 0
