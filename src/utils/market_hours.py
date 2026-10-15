@@ -11,8 +11,9 @@ Issue #437: Enhanced with extended_hours support and validation utilities.
 import logging
 import os
 from datetime import date, datetime, time, timedelta
+from functools import lru_cache
 from time import monotonic
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, Optional, Set, Tuple
 
 import pytz
 
@@ -153,12 +154,33 @@ def _easter(year: int) -> date:
     return date(year, month, day + 1)
 
 
-def nyse_holidays(year: int) -> Set[date]:
+# Past one-off NYSE full-day closures, which no holiday rule predicts. Future ones are only
+# known to the Alpaca calendar, or to the extra closures in config_defaults/market_hours.yaml.
+NYSE_SPECIAL_CLOSURES: FrozenSet[date] = frozenset(
+    date.fromisoformat(day)
+    for day in (
+        "2001-09-11",  # September 11 attacks (closed through 09-14)
+        "2001-09-12",
+        "2001-09-13",
+        "2001-09-14",
+        "2004-06-11",  # national day of mourning, President Reagan
+        "2007-01-02",  # national day of mourning, President Ford
+        "2012-10-29",  # Hurricane Sandy
+        "2012-10-30",
+        "2018-12-05",  # national day of mourning, President G.H.W. Bush
+        "2025-01-09",  # national day of mourning, President Carter
+    )
+)
+
+
+@lru_cache(maxsize=None)
+def nyse_holidays(year: int) -> FrozenSet[date]:
     """
     Regular NYSE full-day holidays for a year, by rule.
 
-    One-off closures (e.g. a national day of mourning) aren't predictable; only the
-    Alpaca calendar or the YAML extra closures know them.
+    One-off closures (e.g. a national day of mourning) aren't predictable; past ones are
+    in NYSE_SPECIAL_CLOSURES, and only the Alpaca calendar or the YAML extra closures
+    know future ones.
     """
     holidays = {
         _nth_weekday(year, 1, 0, 3),  # Martin Luther King Jr. Day
@@ -175,7 +197,7 @@ def nyse_holidays(year: int) -> Set[date]:
         holidays.add(_observed(new_year))
     if year >= 2022:
         holidays.add(_observed(date(year, 6, 19)))  # Juneteenth
-    return holidays
+    return frozenset(holidays)
 
 
 def nyse_early_closes(year: int) -> Set[date]:
@@ -192,12 +214,29 @@ def _extra_closures() -> Set[str]:
     holidays = _load_market_config().get("holidays", {})
     if not holidays.get("enabled", False):
         return set()
-    return set(holidays.get("fixed_holidays", []) + holidays.get("observed_holidays", []))
+    days = (holidays.get("fixed_holidays") or []) + (holidays.get("observed_holidays") or [])
+    return {str(day) for day in days}  # YAML loads an unquoted date as a date object
+
+
+def nyse_closures(start: date, end: date) -> Set[date]:
+    """Weekday NYSE closures between two dates: holidays by rule and configured one-offs."""
+    closed = {d for year in range(start.year, end.year + 1) for d in nyse_holidays(year)}
+    closed |= NYSE_SPECIAL_CLOSURES | {date.fromisoformat(d) for d in _extra_closures()}
+    return {d for d in closed if start <= d <= end and d.weekday() < 5}
+
+
+def is_nyse_trading_day(day: date) -> bool:
+    """
+    Whether NYSE trades on a day, by its rules (offline and deterministic, for dates in
+    research and validation; get_market_hours_for_date() asks the Alpaca calendar).
+    """
+    return _rule_based_hours(day)[2]
 
 
 def _rule_based_hours(day: date) -> Tuple[time, time, bool]:
     """Market hours by NYSE rules, for when the Alpaca calendar is unavailable."""
-    if day.weekday() >= 5 or day in nyse_holidays(day.year) or day.isoformat() in _extra_closures():
+    closed = day in nyse_holidays(day.year) or day in NYSE_SPECIAL_CLOSURES
+    if day.weekday() >= 5 or closed or day.isoformat() in _extra_closures():
         return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False
     if day in nyse_early_closes(day.year):
         return DEFAULT_MARKET_OPEN, EARLY_MARKET_CLOSE, True

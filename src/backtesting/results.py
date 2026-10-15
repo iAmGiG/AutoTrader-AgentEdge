@@ -103,7 +103,7 @@ def calculate_metrics(returns: pd.Series) -> Dict[str, float]:
     Calculate performance metrics from returns series.
 
     Directly copied from experiment_293_macd_vs_voting.py (lines 172-213).
-    Proven to calculate correct Sharpe ratio (0.856 on AAPL 2024).
+    Reproduces experiment 293's Sharpe ratio (0.856, in-sample on AAPL 2024).
 
     Args:
         returns: Pandas Series of daily returns

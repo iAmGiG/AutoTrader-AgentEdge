@@ -2,7 +2,7 @@
 
 **Status**: Production-Ready Multi-Agent Trading Platform
 **Foundation**: Microsoft AutoGen Framework
-**Validated Performance**: 0.856 Sharpe Ratio, 51.4% Win Rate
+**Backtested Performance**: Sharpe 0.69 at 5 bps a side with the live rules, no edge over buy-and-hold ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 
 ## What Is This System?
 
@@ -29,9 +29,9 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 
 **VoterAgent** - Production-ready MACD+RSI voting with proven performance:
 
-- Validated Sharpe Ratio: 0.856
-- Win Rate: 51.4%
-- Max Drawdown: -10.10%
+- Backtested Sharpe Ratio: 0.69 at 5 bps a side (live rules, 2009 to 2026-10-09)
+- Win Rate: 44.2%
+- Max Drawdown: -6.9%
 - Configuration: Fibonacci MACD (13/34/8) + RSI(14)
 
 **Position Manager** - Unified position and account tracking:
@@ -133,6 +133,8 @@ The 2-way voting strategy (MACD + RSI) validated as superior to single indicator
 | **Max Drawdown** | -10.58% | **-10.10%** | **Voting** |
 | **Win Rate** | 31.9% | **51.4%** | **Voting** |
 | **Volatility** | 16.58% | **15.30%** | **Voting** |
+
+> **Superseded (Oct 2026, #574):** these are experiment 293's in-sample results (AAPL 2024, MACD 12/26/9, filled at the signal's own close, no costs). Backtested with the live rules and timing on the 19-symbol watchlist from 2009, MACD+RSI voting has a Sharpe of 0.69 at 5 bps a side and no alpha over buy-and-hold of the same symbols; see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md).
 
 ### Extended Period Performance (2024-2025)
 

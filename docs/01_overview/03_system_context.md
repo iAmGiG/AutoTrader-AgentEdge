@@ -32,7 +32,7 @@
 ### Development Priorities (Reality Check)
 
 1. **Keep It Simple** - Complex systems failed (17.7% win rate, -1.260 Sharpe)
-2. **Use What Works** - MACD+RSI voting = 0.856 Sharpe, 51.4% win rate
+2. **Use What Works** - MACD+RSI voting is the live signal; its backtest shows no edge over buy-and-hold ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 3. **Fixed Exit Rules** - No adaptive/complex exit strategies
 4. **Test Reality** - Validate on 2024-2025 data with simple rules only
 

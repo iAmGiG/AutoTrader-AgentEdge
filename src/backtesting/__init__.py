@@ -2,7 +2,7 @@
 In-House Backtesting Framework
 
 Lightweight backtesting engine built around validated VoterAgent logic.
-Refactored from experiment_293_macd_vs_voting.py (0.856 Sharpe validated).
+Refactored from experiment_293_macd_vs_voting.py (reproduces its 0.856 in-sample Sharpe).
 """
 
 from .backtest_engine import BacktestEngine

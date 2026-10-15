@@ -77,7 +77,7 @@ Location: `src/autogen_agents/voter_agent.py`
 - **MACD Signal Generation**: Optimized 13/34/8 Fibonacci parameters
 - **RSI Momentum Analysis**: 14-period with 30/70 thresholds
 - **Consensus Voting**: Strong signals when both indicators agree
-- **Validated Performance**: 0.856 Sharpe ratio over 2024-2025
+- **Backtested Performance**: with the live rules and timing, Sharpe 0.69 at 5 bps a side (2009 to 2026-10-09), and no alpha over buy-and-hold of the same symbols; see the [live-rules baseline](docs/08_research/03_strategy_research/live_rules_baseline.md). The earlier 0.856 was in-sample on AAPL 2024.
 
 ### LLM-Based Intent Classification
 

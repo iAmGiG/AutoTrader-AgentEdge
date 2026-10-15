@@ -380,7 +380,7 @@ CREATE TABLE gex_vs_technicals (
    - MACD: Fibonacci parameters (13/34/8)
    - RSI: 14-period, 30/70 thresholds
    - Voting: Both agree = strong signal, one signals = weak, disagree = hold
-   - **Baseline**: Current VoterAgent approach (0.856 Sharpe validated on AAPL)
+   - **Baseline**: Current VoterAgent approach (0.856 Sharpe in-sample on AAPL; with the live rules, 0.69 at 5 bps and no edge, see [live-rules baseline](../03_strategy_research/live_rules_baseline.md))
 
 2. **GEX-ONLY**
    - Signal from gamma exposure regime transitions

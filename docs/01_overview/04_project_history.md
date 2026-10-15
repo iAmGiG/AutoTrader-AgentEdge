@@ -1,5 +1,7 @@
 # AutoTrader Project History & Evolution
 
+> **Note (Oct 2026, #574):** the 0.856 Sharpe below is experiment 293's in-sample result and is superseded. With the live rules and timing, MACD+RSI voting has no edge over buy-and-hold; see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md).
+
 ## Project Evolution
 
 **AutoTrader** evolved from a research framework (RH2MAS) into a production-ready trading platform. This document chronicles the key decisions, experiments, and architectural shifts that shaped the current system.

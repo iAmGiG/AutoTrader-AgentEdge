@@ -8,7 +8,8 @@ Design Philosophy:
 - Reuses existing VoterAgent without modification
 - Integrates with TradingCacheManager for data
 - Zero learning curve - same logic as experiment_293
-- Validates by matching 0.856 Sharpe on AAPL 2024
+- Checked by reproducing experiment 293 (0.856 Sharpe, in-sample on AAPL 2024; the live
+  rules are backtested in src/backtesting/live_rules_sim.py, #574)
 """
 
 import json
@@ -32,7 +33,7 @@ class BacktestEngine:
     Lightweight backtesting engine for VoterAgent strategies.
 
     Refactored from experiment_293 simulate_trading() function (lines 216-298).
-    Proven to calculate correct metrics (0.856 Sharpe on AAPL 2024).
+    Reproduces experiment 293's metrics (0.856 Sharpe, in-sample on AAPL 2024).
 
     Usage:
         ```python

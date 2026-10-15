@@ -11,7 +11,7 @@ AutoGen-TradingSystem/
 ├── src/                              # Core implementation
 │   ├── autogen_agents/              # AutoGen multi-agent system
 │   │   ├── base_agent.py            # Base AutoGen agent foundation
-│   │   ├── voter_agent.py           # ✅ PRODUCTION (0.856 Sharpe)
+│   │   ├── voter_agent.py           # ✅ PRODUCTION (the live signal)
 │   │   ├── scanner_agent.py         # 🚧 In development
 │   │   ├── risk_agent.py            # 🚧 In development
 │   │   ├── executor_agent.py        # 🚧 In development
@@ -129,7 +129,7 @@ AutoGen-TradingSystem/
 **Files**:
 
 - `base_agent.py`: Foundation class extending AutoGen AssistantAgent
-- `voter_agent.py`: Production MACD+RSI voting agent (0.856 Sharpe)
+- `voter_agent.py`: Production MACD+RSI voting agent
 - `scanner_agent.py`: Market scanning (in development)
 - `risk_agent.py`: Risk management (in development)
 - `executor_agent.py`: Trade execution (in development)
@@ -254,9 +254,9 @@ python main.py analysis                 # Generate analysis reports
 
 **Performance**:
 
-- Sharpe Ratio: 0.856
-- Win Rate: 51.4%
-- Max Drawdown: -10.10%
+- Sharpe Ratio: 0.69 at 5 bps a side, live rules, 2009 to 2026-10-09 (no edge over buy-and-hold; [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
+- Win Rate: 44.2%
+- Max Drawdown: -6.9%
 
 ### src/trading/alpaca_trading_client.py
 

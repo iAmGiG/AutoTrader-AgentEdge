@@ -59,7 +59,7 @@ BIGGUNZ triple-consensus (RSI7 + Stochastic + MACD 12/26/9) shows **marginal imp
 
 1. **Simpler**: Two indicators vs three
 2. **Better for leveraged ETFs**: Our focus includes TQQQ, SOXL
-3. **Validated baseline**: 0.856 Sharpe on daily AAPL already proven
+3. **Validated baseline**: 0.856 Sharpe on daily AAPL (in-sample; superseded by the [live-rules baseline](live_rules_baseline.md))
 4. **Marginal gain not worth complexity**: +0.046 Sharpe doesn't justify adding Stochastic
 
 ### Future Consideration

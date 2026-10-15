@@ -57,7 +57,7 @@ class TimeframeConfig:
 
 **Features:**
 
-- Default timeframe set to "1d" (validated best Sharpe ratio: 0.856)
+- Default timeframe set to "1d" (the only backtested timeframe)
 - 10 enabled timeframes by default (1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M)
 - Validation methods for both individual timeframes and complete configuration
 - Easy to customize: enable/disable timeframes, change default
@@ -122,7 +122,7 @@ Natural language command routing:
 
 ### Data Flow
 
-```
+```text
 User Input (Natural Language)
     ↓
 CLI Intent Classification (_classify_intent)
@@ -190,7 +190,7 @@ strategy_parameters:
 
 **Output:**
 
-```
+```text
 📊 Available Timeframes:
 ==================================================
   '1m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w', '1M'
@@ -216,7 +216,7 @@ strategy_parameters:
 
 **Output:**
 
-```
+```text
 ✅ Timeframe changed to 1h
 ```
 
@@ -230,10 +230,10 @@ strategy_parameters:
 
 **Output:**
 
-```
+```text
 📍 Current Timeframe
 ==================================================
-  1d: 1 day - VALIDATED DEFAULT - best Sharpe (0.856)
+  1d: 1 day - DEFAULT - the backtested timeframe
 ```
 
 #### Get Recommendations
@@ -246,7 +246,7 @@ strategy_parameters:
 
 **Output:**
 
-```
+```text
 📈 Timeframe Recommendations
 ==================================================
 
@@ -375,7 +375,7 @@ if tf_config.validate():
 
 ### 2. **Default is Validated**
 
-- `1d` (daily) is the default and has been validated with 0.856 Sharpe ratio
+- `1d` (daily) is the default and the only timeframe backtested (see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 - Use custom timeframes only if backtesting proves better results
 - Don't arbitrarily change without testing
 
@@ -528,7 +528,7 @@ Different timeframes are cached separately:
 
 ### "Invalid timeframe" Error
 
-```
+```text
 ❌ Invalid timeframe '99h'. Valid options: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M
 ```
 

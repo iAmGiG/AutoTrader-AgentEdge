@@ -2,7 +2,7 @@
 
 ## AutoGen Agent Architecture
 
-- **VoterAgent** = Production-ready MACD+RSI voting agent (0.856 Sharpe validated)
+- **VoterAgent** = MACD+RSI voting agent, the live signal (no backtested edge; see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 - **ScannerAgent** = Market scanning and opportunity identification (in development)
 - **RiskAgent** = Risk management and position sizing (in development)
 - **ExecutorAgent** = Trade execution and order management (minimal implementation)
@@ -65,6 +65,6 @@
 
 ### Agent Development Status
 
-- **✅ PRODUCTION READY** = VoterAgent (0.856 Sharpe validated)
+- **✅ PRODUCTION READY** = VoterAgent (runs on the paper account)
 - **🚧 IN DEVELOPMENT** = Scanner, Risk, Executor, Trading Orchestrator agents
 - **❌ DEPRECATED** = V0-V4 sentiment framework (complex, unproven ROI)

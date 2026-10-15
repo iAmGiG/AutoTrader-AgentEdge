@@ -171,7 +171,7 @@ print(f"Signal: {result['action']} on {result['timeframe']} timeframe")
 
 - `1m, 5m, 15m, 30m` - Scalping/day trading
 - `1h, 2h, 4h` - Intraday swing trading
-- `1d` - Daily swing/position trading (validated default, 0.856 Sharpe)
+- `1d` - Daily swing/position trading (default, the backtested timeframe)
 - `1w, 1M` - Position/long-term trading
 
 ### Trading Modes Configuration (Issue #400)

@@ -94,7 +94,7 @@ class TestTimeframeCommands:
         }
         manager.get_timeframe_info.return_value = {
             "timeframe": "1d",
-            "description": "1 day - VALIDATED DEFAULT, best Sharpe (0.856), position trading",
+            "description": "1 day - DEFAULT, the backtested timeframe, position trading",
             "current": True,
         }
         manager.get_available_timeframes.return_value = {
@@ -386,7 +386,9 @@ class TestSingletonPattern(TestTimeframeCommands):
             return_value=mock_timeframe_manager,
         ):
             from src.cli.commands.timeframe_commands import (
-                TimeframeCommands, get_timeframe_commands)
+                TimeframeCommands,
+                get_timeframe_commands,
+            )
 
             # Reset singleton
             TimeframeCommands._instance = None

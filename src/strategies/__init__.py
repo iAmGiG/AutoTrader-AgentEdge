@@ -3,7 +3,7 @@ Trading strategy implementations.
 
 Available strategies:
 - VoterStrategy: MACD+RSI voting stub (MVP testing)
-- RealVoterStrategy: Production MACD+RSI voting (0.856 Sharpe)
+- RealVoterStrategy: Production MACD+RSI voting
 - OptionsStrategy: Options analysis (future #330)
 - MultiAgentStrategy: Multi-agent coordination (future #331)
 """

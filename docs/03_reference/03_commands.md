@@ -61,7 +61,7 @@ python main.py --daemon            # Background scheduler mode
 # Supported timeframes:
 # - 1m, 5m, 15m, 30m (scalping/day trading)
 # - 1h, 2h, 4h (intraday swing trading)
-# - 1d (daily swing/position trading - validated with 0.856 Sharpe)
+# - 1d (daily swing/position trading - the backtested timeframe)
 # - 1w, 1M (position/long-term trading)
 ```
 
@@ -130,7 +130,7 @@ Many commands support short aliases for faster typing:
 ### AutoGen Agent Testing (Production System) ✅
 
 ```bash
-# VoterAgent (production-ready with 0.856 Sharpe validation)
+# VoterAgent (MACD+RSI voting)
 python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent: Production Ready')"
 
 # Multi-agent development testing
@@ -149,7 +149,7 @@ python -m unittest discover tests
 
 ```bash
 # Validation complete - results archived in docs/archived/experiments/experiment_293_validation/
-# Key findings: MACD+RSI voting (0.856 Sharpe) > single MACD (0.841 Sharpe)
+# Key findings (in-sample, superseded by #574): MACD+RSI voting (0.856 Sharpe) > single MACD (0.841 Sharpe)
 # VoterAgent now production-ready based on validated results
 ```
 

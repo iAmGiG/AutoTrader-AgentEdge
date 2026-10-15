@@ -140,7 +140,7 @@ class VoterAgent:
 
 | Metric | Target | Why It Matters |
 |--------|--------|---|
-| **Sharpe Ratio** | ≥0.856 | Maintain current performance baseline |
+| **Sharpe Ratio** | > 0.69 | Beat the live-rules baseline (5 bps a side, #574) |
 | **Win Rate** | ≥55% | Profitable majority of trades |
 | **GEX Precision** | ≥70% | Most GEX signals are profitable |
 | **Max Drawdown** | ≤20% | Risk stays acceptable |

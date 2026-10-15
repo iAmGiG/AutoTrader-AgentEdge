@@ -19,7 +19,7 @@ src/
 │   └── risk_calculator.py          # Risk assessment functions
 │
 ├── autogen_agents/            # Microsoft AutoGen Agent Implementations
-│   ├── voter_agent.py              # Production-ready MACD+RSI voting agent (0.856 Sharpe)
+│   ├── voter_agent.py              # MACD+RSI voting agent (the live signal)
 │   ├── base_agent.py               # Base AutoGen agent with tool integration
 │   ├── scanner_agent.py            # Market scanning agent (in development)
 │   ├── risk_agent.py               # Risk management agent (in development)
@@ -87,7 +87,7 @@ src/
 
 **Components**:
 
-- **VoterAgent**: ✅ Production-ready MACD+RSI voting logic (validated: 0.856 Sharpe)
+- **VoterAgent**: ✅ MACD+RSI voting logic (backtest: no edge over buy-and-hold, [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 - **BaseAgent**: ✅ Foundation class with tool integration and message handling
 - **ScannerAgent**: 🚧 Market opportunity identification (in development)
 - **RiskAgent**: 🚧 Portfolio risk management (in development)
@@ -415,7 +415,7 @@ order = manager.submit_market_order("AAPL", 10, "buy")
 
 ### ✅ AutoGen Agent System Foundation
 
-- VoterAgent with validated MACD+RSI logic (0.856 Sharpe)
+- VoterAgent with MACD+RSI voting logic
 - BaseAgent foundation with tool integration
 - Configuration system for dynamic parameter adjustment
 - Message handling and agent communication framework

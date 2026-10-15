@@ -5,7 +5,7 @@
 
 version: "2.0"
 title: "AUTOGEN-TRADER CLI"
-subtitle: "Production-Ready MACD+RSI Voting (0.856 Sharpe Ratio)"
+subtitle: "MACD+RSI Voting - Paper Trading"
 
 quick_start:
   - command: "python main.py"
@@ -101,7 +101,7 @@ interactive_commands:
         description: "Exit CLI"
 
 features:
-  - "VoterAgent (MACD+RSI) - 0.856 Sharpe, production-validated"
+  - "VoterAgent (MACD+RSI voting) - backtest: no edge over buy-and-hold (#574)"
   - "Trading Modes - Conservative/Moderate/Aggressive via natural language"
   - "Configuration System - YAML-based strategy parameters"
   - "Timeframe Support - Trade on 1m to 1M timeframes"
