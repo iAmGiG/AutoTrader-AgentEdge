@@ -74,6 +74,47 @@ __all__ = [
 STOP_REPAIR_TYPES = ("MISSING_STOP", "STOP_EXPIRING")
 
 
+def _within_free_shares(triggered: List[Any], broker_state: Dict[str, Any]) -> List[Any]:
+    """
+    Keep GTT sell orders within the shares free to sell: the long position less what
+    open sell orders (such as the broker stop) already hold.
+
+    A sell trigger with no free shares is skipped this run (the broker's own order covers
+    those shares, and Alpaca would refuse the sell); it stays active. A larger one is cut
+    to the free shares, so a trigger saved for a bigger position can't sell more than is
+    held or open a short.
+    """
+    kept = []
+    for trigger in triggered:
+        config = trigger.action_config or {}
+        is_sell = str(config.get("side", "buy")).lower() == "sell"
+        if trigger.action_type != "place_order" or not is_sell:
+            kept.append(trigger)
+            continue
+
+        position = broker_state.get("positions", {}).get(trigger.symbol) or {}
+        long_qty = (
+            0 if "short" in str(position.get("side", "")).lower() else position.get("quantity", 0)
+        )
+        held_by_orders = sum(
+            int(order.get("quantity") or 0)
+            for order in broker_state.get("orders", {}).get(trigger.symbol, [])
+            if "sell" in str(order.get("side", "")).lower()
+        )
+        free = int(long_qty) - held_by_orders
+        if free <= 0:
+            logger.info(
+                f"GTT {trigger.id} ({trigger.symbol} sell) not executed: no free shares "
+                f"({long_qty} held, {held_by_orders} in open sell orders)"
+            )
+            continue
+        if int(config.get("qty", 1)) > free:
+            logger.info(f"GTT {trigger.id} ({trigger.symbol} sell) cut to the {free} free shares")
+            trigger.action_config = {**config, "qty": free}
+        kept.append(trigger)
+    return kept
+
+
 class RoutineError(RuntimeError):
     """A routine failed, so the scheduler should record the failure and retry."""
 
@@ -506,7 +547,7 @@ class CostEfficientTradeCycle:
 
             # Evaluate triggers
             evaluator = get_trigger_evaluator()
-            triggered = evaluator.evaluate_triggers_batch(prices)
+            triggered = _within_free_shares(evaluator.evaluate_triggers_batch(prices), broker_state)
 
             if not triggered:
                 logger.debug("No GTT triggers fired")
