@@ -16,6 +16,7 @@ See [../README.md](../README.md) for consolidated research status (STOP/DONE/CON
 | Weekly KAMA | #467 | 🔄 CONTINUE | Avg Sharpe ~0.75, outperforms weekly MACD |
 | MACD+RSI Voting | #519 | ✅ DONE | 44% pass rate, integrated in VoterAgent |
 | Ready-Aim-Fire (RAF) | #460 | 🔄 CONTINUE | Outperforms VoterAgent (0.553 Sharpe), 80% win rate |
+| Live-rules baseline (Oct 2026) | #574 | 🛑 STOP | Live rules at live timing: Sharpe 0.69 at 5 bps, no alpha over buy-and-hold of the same symbols |
 
 ---
 
@@ -27,6 +28,7 @@ See [../README.md](../README.md) for consolidated research status (STOP/DONE/CON
 | [raf_research.md](raf_research.md) | #460 | Ready-Aim-Fire Multi-Stochastic | 🔄 CONTINUE |
 | [weekly_kama_research.md](weekly_kama_research.md) | #467 | Weekly KAMA MA Crossover | 🔄 CONTINUE |
 | [methodology_validation_summary.md](methodology_validation_summary.md) | #523, #495 | Methodology fixes and validation | ✅ DONE |
+| [live_rules_baseline.md](live_rules_baseline.md) | #574 | Baseline of the live CLI rules for paper validation | ✅ Complete |
 
 ## Results
 
@@ -42,6 +44,7 @@ Experimental results are stored as YAML files in the [results/](results/) folder
 | [weekly_kama_results.yaml](results/weekly_kama_results.yaml) | #467 | 🔄 CONTINUE | Weekly KAMA - promising results |
 | [biggunz_results.yaml](results/biggunz_results.yaml) | #461 | Archived | BIGGUNZ signal results |
 | [raf_results.yaml](results/raf_results.yaml) | #460 | 🔄 CONTINUE | RAF signal results - Outperforms VoterAgent |
+| [live_rules_baseline.yaml](results/live_rules_baseline.yaml) | #574 | 🛑 STOP | Live CLI rules, 2009 to 2026-10-09, two modes, three cost levels |
 
 ## Key Findings (Dec 2025)
 
