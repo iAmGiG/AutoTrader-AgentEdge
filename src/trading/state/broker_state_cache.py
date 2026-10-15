@@ -157,6 +157,12 @@ class BrokerStateCache:
                     "current_price": float(pos["market_value"]) / abs(int(pos["qty"])),
                     "unrealized_pl": float(pos["unrealized_pl"]),
                     "side": pos["side"],  # long/short
+                    # Shares not held by open orders, as Alpaca counts them (None if unknown)
+                    "qty_available": (
+                        int(float(pos["qty_available"]))
+                        if pos.get("qty_available") is not None
+                        else None
+                    ),
                 }
 
             # Process orders (group by symbol)
