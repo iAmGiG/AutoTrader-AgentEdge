@@ -239,7 +239,7 @@ def get_routine_description(routine: str = "both") -> Dict[str, Any]:
             "actions": [
                 "Fetch current broker state (positions, orders)",
                 "Reconcile with local state",
-                "Check for overnight fills",
+                "Record account, positions and new fills (daily records)",
                 "Generate morning report",
                 "Update trailing stops if applicable",
             ],
@@ -249,7 +249,7 @@ def get_routine_description(routine: str = "both") -> Dict[str, Any]:
             "time": "15:50 ET",
             "actions": [
                 "Fetch end-of-day broker state",
-                "Record daily P&L snapshot",
+                "Record account equity and day P&L, positions and new fills",
                 "Check for position alerts",
                 "Generate evening report",
                 "Prepare for next trading day",

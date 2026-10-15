@@ -192,6 +192,7 @@ def _bare_cycle(tmp_path, stop_discrepancies=()):
     cycle.local_state_manager = Mock(state={})
     cycle.generate_routine_report = Mock(return_value="report")
     cycle._get_report_file_path = Mock(return_value=str(tmp_path / "report.md"))
+    cycle.record_daily = Mock(return_value=[])
     cycle.last_report_path = None
     return cycle
 

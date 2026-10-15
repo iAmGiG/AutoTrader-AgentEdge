@@ -26,6 +26,14 @@ from src.utils.date_utils import get_datetime_now, now_iso
 logger = logging.getLogger(__name__)
 
 
+def _current_price(position: Dict) -> float:
+    """A position's price: given, or market value per share (get_positions() has no price)."""
+    if position.get("current_price"):
+        return float(position["current_price"])
+    qty = float(position.get("qty", 0) or 0)
+    return abs(float(position.get("market_value", 0) or 0) / qty) if qty else 0.0
+
+
 class UnifiedBrokerCache:
     """
     Database-first broker state caching.
@@ -67,7 +75,8 @@ class UnifiedBrokerCache:
         """Create broker cache tables if they don't exist."""
         with sqlite3.connect(self.db_path) as conn:
             # Main broker state cache table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS broker_state_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_id TEXT NOT NULL,
@@ -77,14 +86,18 @@ class UnifiedBrokerCache:
                     expires_at TEXT NOT NULL,
                     UNIQUE(account_id, state_type)
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_broker_state_lookup
                 ON broker_state_cache(account_id, state_type)
-            """)
+            """
+            )
 
             # Position snapshots for historical tracking
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS position_snapshots (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_id TEXT NOT NULL,
@@ -101,14 +114,18 @@ class UnifiedBrokerCache:
                     trailing_stop_pct REAL,
                     source TEXT DEFAULT 'alpaca'
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_position_snapshots
                 ON position_snapshots(account_id, symbol, snapshot_time)
-            """)
+            """
+            )
 
             # Order snapshots for historical tracking
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS order_snapshots (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     account_id TEXT NOT NULL,
@@ -126,14 +143,18 @@ class UnifiedBrokerCache:
                     filled_at TEXT,
                     source TEXT DEFAULT 'alpaca'
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_order_snapshots
                 ON order_snapshots(account_id, order_id, snapshot_time)
-            """)
+            """
+            )
 
             # Display audit log
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS display_audit_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     display_time TEXT NOT NULL,
@@ -142,11 +163,14 @@ class UnifiedBrokerCache:
                     cache_source TEXT,
                     cache_age_seconds REAL
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_time
                 ON display_audit_log(display_time)
-            """)
+            """
+            )
 
             conn.commit()
 
@@ -445,7 +469,7 @@ class UnifiedBrokerCache:
                                 snapshot_time,
                                 float(pos.get("qty", 0)),
                                 float(pos.get("avg_entry_price", 0)),
-                                float(pos.get("current_price", 0)),
+                                _current_price(pos),
                                 float(pos.get("market_value", 0)),
                                 float(pos.get("unrealized_pl", 0)),
                                 float(pos.get("unrealized_plpc", 0)),
@@ -497,7 +521,7 @@ class UnifiedBrokerCache:
                                 order.get("symbol", ""),
                                 snapshot_time,
                                 order.get("side", ""),
-                                order.get("type", ""),
+                                order.get("order_type") or order.get("type", ""),
                                 float(order.get("qty", 0)),
                                 float(order.get("filled_qty", 0)),
                                 order.get("limit_price"),
