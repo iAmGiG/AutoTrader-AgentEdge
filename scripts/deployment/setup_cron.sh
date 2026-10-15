@@ -10,7 +10,6 @@ echo ""
 # Configuration (edit for your install)
 PROJECT_ROOT="$HOME/AutoTrader-AgentEdge"
 PYTHON_BIN="$HOME/miniconda3/envs/AutoGex/bin/python"
-LOG_DIR="$PROJECT_ROOT/logs"
 
 # Check if project exists
 if [ ! -d "$PROJECT_ROOT" ]; then
@@ -25,8 +24,8 @@ if [ ! -f "$PYTHON_BIN" ]; then
     exit 1
 fi
 
-# Create log directory
-mkdir -p "$LOG_DIR"
+# Create the state directory (logs go there)
+mkdir -p "$PROJECT_ROOT/state"
 
 # One entry every 5 minutes: the scheduler itself decides what is due, in ET whatever
 # the host timezone, on NYSE trading days only, within 5 minutes of each routine's time

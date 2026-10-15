@@ -325,6 +325,10 @@ class CostEfficientTradeCycle:
 
                 if result.get("status") == "submitted":
                     results["modifications"] += 1
+                    # Recorded only now: a refused raise is computed again next run
+                    self._remember_stop(
+                        adjustment.symbol, adjustment.new_stop, result.get("order_id")
+                    )
                     entry_price = (
                         self.local_state_manager.state.get("positions", {})
                         .get(adjustment.symbol, {})
@@ -426,7 +430,7 @@ class CostEfficientTradeCycle:
             verb = "renewed" if repair.replaces_order_id else "placed"
             if ok:
                 logger.info(f"{repair.symbol}: stop {verb} at ${repair.stop_price:.2f}")
-                self._remember_stop(repair.symbol, repair.stop_price)
+                self._remember_stop(repair.symbol, repair.stop_price, result.get("order_id"))
             else:
                 logger.error(
                     f"{repair.symbol}: stop not {verb}: {result.get('message', 'unknown error')}"
@@ -452,18 +456,20 @@ class CostEfficientTradeCycle:
             self.broker_cache.invalidate()
         return discrepancies
 
-    def _remember_stop(self, symbol: str, stop_price: float) -> None:
+    def _remember_stop(self, symbol: str, stop_price: float, order_id: Optional[str]) -> None:
         """
-        Record a placed or renewed stop in local state and the trailing-stop manager, so
-        the routine's adjustment step starts from it instead of the old level.
+        Record a stop the broker accepted (placed, renewed or raised) in local state and
+        the trailing-stop manager, with its order id (a replace creates a new order).
         """
         position = self.local_state_manager.state.get("positions", {}).get(symbol)
         if position is not None:
             position["stop_price"] = stop_price
-        manager = getattr(self, "trailing_stop_manager", None)
+        manager = self.trailing_stop_manager
         stop_state = manager.stop_states.get(symbol) if manager is not None else None
         if stop_state is not None:
             stop_state.current_stop = stop_price
+            if order_id:
+                stop_state.stop_order_id = order_id
 
     # -------------------------------------------------------------------------
     # GTT (Good-Till-Triggered) Integration - Issue #340
