@@ -102,12 +102,8 @@ class SchedulerSetupWizard:
                 else:
                     print(f"   {get_emoji('warning', '⚠️')} Invalid format, using default 3:50 PM")
 
-        # Disable routines if not selected
-        if not enable_morning:
-            config["morning_routine_enabled"] = False
-        if not enable_evening:
-            config["evening_routine_enabled"] = False
-
+        config["morning_routine_enabled"] = enable_morning
+        config["evening_routine_enabled"] = enable_evening
         config["enabled"] = True
 
         # Step 3: Summary and save
@@ -136,7 +132,19 @@ class SchedulerSetupWizard:
         confirm = input("\nSave this configuration? [yes/no]: ").strip().lower()
 
         if confirm in ["yes", "y"]:
-            if self.config_editor.save(config):
+            from src.trading.scheduling.daily_scheduler import save_flags
+            from src.trading.scheduling.scheduler_state import (
+                get_scheduler_state_manager,
+            )
+
+            saved = self.config_editor.save(config) and save_flags(
+                config,
+                get_scheduler_state_manager(),
+                enabled=True,
+                morning=enable_morning,
+                evening=enable_evening,
+            )
+            if saved:
                 print(f"\n{get_emoji('check_green', '✅')} Configuration saved!")
 
                 # Offer to start daemon

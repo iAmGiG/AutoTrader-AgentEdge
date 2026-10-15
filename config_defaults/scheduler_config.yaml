@@ -1,10 +1,15 @@
+# Daily scheduler (src/trading/scheduling/daily_scheduler.py)
+# Times are in market_timezone whatever the host's timezone; routines run on NYSE trading
+# days only. The enable flags below are defaults: flags saved from the CLI (/scheduler),
+# the config editor or the setup wizard (in state/user.db) take precedence.
 enabled: false
 market_timezone: America/New_York
-morning_routine_time: '10:45:00'
+morning_routine_time: '09:20:00'
 evening_routine_time: '15:50:00'
+morning_routine_enabled: true
+evening_routine_enabled: true
 max_retries: 3
 retry_delay_seconds: 60
 timeout_seconds: 300
 enable_notifications: false
 dry_run: false
-evening_routine_enabled: false

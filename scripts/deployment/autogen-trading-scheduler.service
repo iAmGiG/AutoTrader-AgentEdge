@@ -1,18 +1,21 @@
 [Unit]
-Description=AutoGen Trading System - Daily GTC Order Scheduler
-After=network.target
-Documentation=https://github.com/iAmGiG/AutoGen-TradingSystem
+Description=OptionsCommander - daily routine scheduler (paper account)
+Documentation=https://github.com/iAmGiG/AutoTrader-AgentEdge
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=trader
 Group=trader
-WorkingDirectory=/home/trader/AutoGen-TradingSystem
-Environment="PATH=/home/trader/anaconda3/envs/RH2MAS/bin:/usr/local/bin:/usr/bin"
-Environment="PYTHONPATH=/home/trader/AutoGen-TradingSystem"
+# Edit the project path (here and below) and the python path for your install
+WorkingDirectory=/home/trader/AutoTrader-AgentEdge
+Environment="PYTHONPATH=/home/trader/AutoTrader-AgentEdge"
 
-# Main scheduler daemon
-ExecStart=/home/trader/anaconda3/envs/RH2MAS/bin/python -u src/trading/daily_scheduler.py --mode daemon --interval 60
+# The same entry point as the CLI scheduler's "start", so the CLI sees it as running.
+# Routine times are in ET whatever the host timezone, on NYSE trading days only, and a
+# lock in state/ keeps it from overlapping with a cron or manual run.
+ExecStart=/home/trader/miniconda3/envs/AutoGex/bin/python -u main.py --daemon
 
 # Restart policy
 Restart=on-failure
@@ -20,21 +23,21 @@ RestartSec=30
 StartLimitBurst=5
 StartLimitIntervalSec=600
 
-# Logging
-StandardOutput=append:/home/trader/AutoGen-TradingSystem/logs/scheduler-stdout.log
-StandardError=append:/home/trader/AutoGen-TradingSystem/logs/scheduler-stderr.log
-SyslogIdentifier=autogen-scheduler
+# Logging: the daemon writes state/scheduler.log itself (rotated); stderr keeps crashes
+StandardOutput=null
+StandardError=append:/home/trader/AutoTrader-AgentEdge/state/scheduler-daemon.err
+SyslogIdentifier=optionscommander-scheduler
 
 # Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/trader/AutoGen-TradingSystem/state /home/trader/AutoGen-TradingSystem/reports /home/trader/AutoGen-TradingSystem/logs
+ReadWritePaths=/home/trader/AutoTrader-AgentEdge/state /home/trader/AutoTrader-AgentEdge/reports /home/trader/AutoTrader-AgentEdge/logs /home/trader/AutoTrader-AgentEdge/.cache
 
 # Resource limits
 CPUQuota=50%
-MemoryLimit=1G
+MemoryMax=1G
 
 # Graceful shutdown
 TimeoutStopSec=30

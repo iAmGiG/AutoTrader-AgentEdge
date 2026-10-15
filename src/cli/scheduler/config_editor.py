@@ -14,7 +14,12 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 import yaml
 
 from .message_loader import get_emoji
-from src.trading.scheduling.daily_scheduler import DailyScheduler
+from src.trading.scheduling.daily_scheduler import (
+    DailyScheduler,
+    effective_flags,
+    save_flags,
+)
+from src.trading.scheduling.scheduler_state import get_scheduler_state_manager
 
 if TYPE_CHECKING:
     pass
@@ -156,9 +161,11 @@ class SchedulerConfigEditor:
         print("=" * 70)
 
         config = self.load()
+        state_manager = get_scheduler_state_manager()
+        enabled_choice = None  # saved to state/user.db only if changed here
 
         print("\nCurrent settings:")
-        print(f"  1. Enabled: {config.get('enabled', True)}")
+        print(f"  1. Enabled: {effective_flags(config, state_manager)['enabled']}")
         print(f"  2. Morning routine: {config.get('morning_routine_time', '09:20:00')}")
         print(f"  3. Evening routine: {config.get('evening_routine_time', '15:50:00')}")
         print(f"  4. Max retries: {config.get('max_retries', 3)}")
@@ -174,6 +181,8 @@ class SchedulerConfigEditor:
                 return None
             elif choice == "0":
                 if self.save(config):
+                    if enabled_choice is not None:
+                        save_flags(config, state_manager, enabled=enabled_choice)
                     print(f"{get_emoji('check_green', '✅')} Configuration saved!")
 
                     if scheduler:
@@ -193,7 +202,8 @@ class SchedulerConfigEditor:
 
             elif choice == "1":
                 value = input("Enable scheduler? (yes/no): ").strip().lower()
-                config["enabled"] = value in ["yes", "y", "true"]
+                enabled_choice = value in ["yes", "y", "true"]
+                config["enabled"] = enabled_choice
 
             elif choice == "2":
                 value = input("Morning routine time (HH:MM:SS): ").strip()
@@ -240,13 +250,13 @@ class SchedulerConfigEditor:
         config = self.load()
         config["enabled"] = enabled
 
-        if self.save(config):
+        if self.save(config) and save_flags(config, get_scheduler_state_manager(), enabled=enabled):
             status = "enabled" if enabled else "disabled"
             emoji = get_emoji("check_green", "✅") if enabled else get_emoji("cross_red", "❌")
             print(f"\n{emoji} Scheduler {status}")
 
             if scheduler:
-                scheduler.config["enabled"] = enabled
+                scheduler.config["enabled"] = enabled  # the saved flag above is what counts
 
             return True
 

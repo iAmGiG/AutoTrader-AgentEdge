@@ -15,12 +15,21 @@ Uses the same state/user.db as trading_modes.py for consistency.
 import logging
 import sqlite3
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 from src.utils.date_utils import get_datetime_now, now_iso
 from src.utils.state_paths import get_user_db_path
 
 logger = logging.getLogger(__name__)
+
+MARKET_TIMEZONE = "America/New_York"
+
+
+def market_today() -> str:
+    """Today's date in the market's timezone (ET), whatever the host's timezone."""
+    return datetime.now(ZoneInfo(MARKET_TIMEZONE)).date().isoformat()
 
 
 @dataclass
@@ -85,7 +94,8 @@ class SchedulerStateManager:
             cursor = conn.cursor()
 
             # Scheduler state table (single row for current state)
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS scheduler_state (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     enabled BOOLEAN DEFAULT FALSE,
@@ -98,10 +108,12 @@ class SchedulerStateManager:
                     timeout_seconds INTEGER DEFAULT 300,
                     updated_at TEXT
                 )
-            """)
+            """
+            )
 
             # Scheduler execution history (replaces JSON log)
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS scheduler_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     routine_type TEXT NOT NULL,
@@ -113,13 +125,21 @@ class SchedulerStateManager:
                     report_path TEXT,
                     api_calls_used INTEGER DEFAULT 0
                 )
-            """)
+            """
+            )
+
+            # The trading day a run belongs to (ET); started_at is host-local time
+            columns = {row[1] for row in cursor.execute("PRAGMA table_info(scheduler_history)")}
+            if "market_date" not in columns:
+                cursor.execute("ALTER TABLE scheduler_history ADD COLUMN market_date TEXT")
 
             # Create index for faster queries
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_scheduler_history_routine_date
                 ON scheduler_history(routine_type, started_at)
-            """)
+            """
+            )
 
             conn.commit()
             conn.close()
@@ -213,6 +233,17 @@ class SchedulerStateManager:
             logger.error(f"Failed to save scheduler state: {e}")
             return False
 
+    def has_saved_state(self) -> bool:
+        """True once a state row has been saved (e.g. by the CLI); defaults apply until then."""
+        try:
+            conn = self._get_connection()
+            row = conn.execute("SELECT 1 FROM scheduler_state WHERE id = 1").fetchone()
+            conn.close()
+            return row is not None
+        except Exception as e:
+            logger.error(f"Failed to read scheduler state: {e}")
+            return False
+
     def set_enabled(self, enabled: bool) -> bool:
         """
         Enable or disable the scheduler.
@@ -283,13 +314,16 @@ class SchedulerStateManager:
     # Execution History
     # =========================================================================
 
-    def record_execution_start(self, routine_type: str, attempt: int = 1) -> int:
+    def record_execution_start(
+        self, routine_type: str, attempt: int = 1, market_date: Optional[str] = None
+    ) -> int:
         """
         Record the start of a scheduler execution.
 
         Args:
             routine_type: Type of routine (morning, evening, recovery)
             attempt: Attempt number (1 = first attempt)
+            market_date: Trading day the run is for (YYYY-MM-DD, ET; default today in ET)
 
         Returns:
             Execution ID for later updates
@@ -300,10 +334,10 @@ class SchedulerStateManager:
             cursor.execute(
                 """
                 INSERT INTO scheduler_history
-                (routine_type, started_at, status, attempt)
-                VALUES (?, ?, 'running', ?)
+                (routine_type, started_at, status, attempt, market_date)
+                VALUES (?, ?, 'running', ?, ?)
             """,
-                (routine_type, now_iso(), attempt),
+                (routine_type, now_iso(), attempt, market_date or market_today()),
             )
             execution_id = cursor.lastrowid
             conn.commit()
@@ -459,12 +493,13 @@ class SchedulerStateManager:
             logger.error(f"Failed to get last execution: {e}")
             return None
 
-    def was_routine_run_today(self, routine_type: str) -> bool:
+    def was_routine_run_today(self, routine_type: str, market_date: Optional[str] = None) -> bool:
         """
         Check if a routine was successfully run today.
 
         Args:
             routine_type: Type of routine (morning, evening)
+            market_date: Trading day to check (YYYY-MM-DD, ET; default today in ET)
 
         Returns:
             True if routine completed successfully today
@@ -473,13 +508,14 @@ class SchedulerStateManager:
             conn = self._get_connection()
             cursor = conn.cursor()
 
-            today = get_datetime_now().strftime("%Y-%m-%d")
+            today = market_date or market_today()
 
+            # Rows from before market_date was recorded fall back to their host-local date
             cursor.execute(
                 """
                 SELECT COUNT(*) FROM scheduler_history
                 WHERE routine_type = ?
-                AND date(started_at) = ?
+                AND coalesce(market_date, date(started_at)) = ?
                 AND status = 'completed'
             """,
                 (routine_type, today),
@@ -489,6 +525,36 @@ class SchedulerStateManager:
             return count > 0
         except Exception as e:
             logger.error(f"Failed to check if routine run today: {e}")
+            return False
+
+    def was_routine_finished_today(
+        self, routine_type: str, market_date: Optional[str] = None
+    ) -> bool:
+        """
+        Check if a routine completed, or failed after its retries, on a trading day.
+
+        The scheduler uses this so a routine that ran out of retries isn't started again
+        later in the same window; a manual run can still retry it.
+
+        Args:
+            routine_type: Type of routine (morning, evening)
+            market_date: Trading day to check (YYYY-MM-DD, ET; default today in ET)
+        """
+        try:
+            conn = self._get_connection()
+            row = conn.execute(
+                """
+                SELECT COUNT(*) FROM scheduler_history
+                WHERE routine_type = ?
+                AND coalesce(market_date, date(started_at)) = ?
+                AND status IN ('completed', 'failed')
+            """,
+                (routine_type, market_date or market_today()),
+            ).fetchone()
+            conn.close()
+            return row[0] > 0
+        except Exception as e:
+            logger.error(f"Failed to check if routine finished today: {e}")
             return False
 
     def get_stats(self, days: int = 7) -> Dict[str, Any]:

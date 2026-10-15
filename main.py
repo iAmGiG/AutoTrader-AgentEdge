@@ -7,6 +7,7 @@ Usage:
     python main.py                           # Launch interactive trading assistant
     python main.py --help                    # Show all commands
     python main.py --daemon                  # Run automated scheduler
+    python main.py --run-due                 # Run any routine due now, then exit (cron)
 
 In CLI, use natural language for trading modes:
     > buy SPY aggressively
@@ -27,7 +28,10 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 # Import all trading system components at startup for efficiency
 from src.trading.accounts.account_manager import get_account_manager
-from src.trading.scheduling.daily_scheduler import DailyScheduler
+from src.trading.scheduling.daily_scheduler import (
+    DailyScheduler,
+    configure_scheduler_logging,
+)
 from src.utils.safe_print import get_symbol, safe_print
 
 
@@ -244,6 +248,13 @@ def _run_interactive_cli(account_id: str = None) -> None:
         sys.exit(1)
 
 
+def _run_due_mode() -> int:
+    """Run any scheduled routine that is due now (for cron). Returns the exit code."""
+    configure_scheduler_logging()
+    ran = DailyScheduler().run_scheduled_tasks()
+    return 1 if any(entry.status == "failed" for entry in ran) else 0
+
+
 def _run_daemon_mode() -> None:
     """Run scheduler in daemon mode."""
     safe_print(f"{get_symbol('ROBOT')} Starting Daily Scheduler Daemon...")
@@ -251,6 +262,8 @@ def _run_daemon_mode() -> None:
     print()
 
     try:
+        log_path = configure_scheduler_logging()
+        print(f"   Logging to {log_path}")
         scheduler = DailyScheduler()
         asyncio.run(scheduler.run_daemon(check_interval_seconds=60))
         sys.exit(0)
@@ -272,6 +285,11 @@ def _create_argument_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--daemon", action="store_true", help="Run daily scheduler in background (daemon mode)"
+    )
+    parser.add_argument(
+        "--run-due",
+        action="store_true",
+        help="Run any scheduled routine that is due now, then exit (for cron)",
     )
     parser.add_argument(
         "--account",
@@ -314,6 +332,9 @@ def main():
         except (ImportError, ValueError, RuntimeError) as e:
             safe_print(f"{get_symbol('ERROR')} Error listing accounts: {e}")
             sys.exit(1)
+
+    if args.run_due:  # before --account, which would start the interactive CLI
+        sys.exit(_run_due_mode())
 
     if args.account and not args.daemon:
         _run_interactive_cli(account_id=args.account)

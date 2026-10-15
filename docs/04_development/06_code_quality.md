@@ -86,7 +86,7 @@ git commit --no-verify
 - [main.py](../../main.py) - CLI imports, generate_summary, asyncio
 - [alpaca_trading_client.py](../../src/data_sources/sources/market/alpaca_trading_client.py) - APIError, OrderStatus
 - [alpaca_market_data.py](../../src/data_sources/sources/market/alpaca_market_data.py) - is_market_hours
-- [daily_scheduler.py](../../src/trading/daily_scheduler.py) - argparse, datetime consolidation
+- [daily_scheduler.py](../../src/trading/scheduling/daily_scheduler.py) - argparse, datetime consolidation
 - [trading_pipeline.py](../../src/trading/trading_pipeline.py) - Path, pytz, AlpacaMarketData
 - [trailing_stop_manager.py](../../src/trading/trailing_stop_manager.py) - get_current_price
 - [unified_price_fetcher.py](../../src/trading/unified_price_fetcher.py) - Import order fixes
