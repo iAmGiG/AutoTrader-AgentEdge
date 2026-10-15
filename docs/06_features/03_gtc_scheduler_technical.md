@@ -253,7 +253,7 @@ Success rate: 100.0%
 - **Morning reports**: `reports/daily/*_morning.md`
 - **Evening reports**: `reports/daily/*_evening.md`
 - **systemd logs**: `journalctl -u autogen-trading-scheduler`
-- **Cron output**: `logs/cron-scheduler.log`
+- **Cron errors**: `state/scheduler-cron.err` (cron's stdout repeats `state/scheduler.log`, so it is dropped)
 
 ## Testing
 

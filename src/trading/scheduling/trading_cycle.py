@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 from config_defaults.trading_config import TradingConfig
 
 from src.market_data.alpaca_market_data import AlpacaMarketData
-from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import (
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+)
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.scheduling.scheduler_state import market_today
@@ -322,6 +325,10 @@ class CostEfficientTradeCycle:
 
                 if result.get("status") == "submitted":
                     results["modifications"] += 1
+                    # Recorded only now: a refused raise is computed again next run
+                    self._remember_stop(
+                        adjustment.symbol, adjustment.new_stop, result.get("order_id")
+                    )
                     entry_price = (
                         self.local_state_manager.state.get("positions", {})
                         .get(adjustment.symbol, {})
@@ -423,6 +430,7 @@ class CostEfficientTradeCycle:
             verb = "renewed" if repair.replaces_order_id else "placed"
             if ok:
                 logger.info(f"{repair.symbol}: stop {verb} at ${repair.stop_price:.2f}")
+                self._remember_stop(repair.symbol, repair.stop_price, result.get("order_id"))
             else:
                 logger.error(
                     f"{repair.symbol}: stop not {verb}: {result.get('message', 'unknown error')}"
@@ -447,6 +455,21 @@ class CostEfficientTradeCycle:
         if any(d.action == "AUTO_FIXED" for d in discrepancies):
             self.broker_cache.invalidate()
         return discrepancies
+
+    def _remember_stop(self, symbol: str, stop_price: float, order_id: Optional[str]) -> None:
+        """
+        Record a stop the broker accepted (placed, renewed or raised) in local state and
+        the trailing-stop manager, with its order id (a replace creates a new order).
+        """
+        position = self.local_state_manager.state.get("positions", {}).get(symbol)
+        if position is not None:
+            position["stop_price"] = stop_price
+        manager = self.trailing_stop_manager
+        stop_state = manager.stop_states.get(symbol) if manager is not None else None
+        if stop_state is not None:
+            stop_state.current_stop = stop_price
+            if order_id:
+                stop_state.stop_order_id = order_id
 
     # -------------------------------------------------------------------------
     # GTT (Good-Till-Triggered) Integration - Issue #340

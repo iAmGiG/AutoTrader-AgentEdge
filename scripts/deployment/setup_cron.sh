@@ -10,7 +10,6 @@ echo ""
 # Configuration (edit for your install)
 PROJECT_ROOT="$HOME/AutoTrader-AgentEdge"
 PYTHON_BIN="$HOME/miniconda3/envs/AutoGex/bin/python"
-LOG_DIR="$PROJECT_ROOT/logs"
 
 # Check if project exists
 if [ ! -d "$PROJECT_ROOT" ]; then
@@ -25,14 +24,21 @@ if [ ! -f "$PYTHON_BIN" ]; then
     exit 1
 fi
 
-# Create log directory
-mkdir -p "$LOG_DIR"
+# Create the state directory (logs go there)
+mkdir -p "$PROJECT_ROOT/state"
 
 # One entry every 5 minutes: the scheduler itself decides what is due, in ET whatever
 # the host timezone, on NYSE trading days only, within 5 minutes of each routine's time
 # (config_defaults/scheduler_config.yaml), once per day. A lock in state/ stops a run
 # from overlapping a long retry, the daemon, or a manual run.
-CRON_DUE="*/5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due >> $LOG_DIR/cron-scheduler.log 2>&1"
+# stdout duplicates state/scheduler.log (rotated), so only errors are kept
+CRON_DUE="*/5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due > /dev/null 2>> $PROJECT_ROOT/state/scheduler-cron.err"
+
+if crontab -l 2>/dev/null | grep -q "main.py --run-due"; then
+    echo "A scheduler entry (main.py --run-due) is already in the crontab:"
+    crontab -l | grep "main.py --run-due"
+    exit 0
+fi
 
 echo "Crontab entry to be added:"
 echo ""
@@ -61,7 +67,7 @@ echo "View crontab: crontab -l"
 echo "Remove entry: crontab -e  (then delete the OptionsCommander lines)"
 echo "Logs:"
 echo "  Scheduler: $PROJECT_ROOT/state/scheduler.log (rotated)"
-echo "  Cron output: $LOG_DIR/cron-scheduler.log"
+echo "  Cron errors: $PROJECT_ROOT/state/scheduler-cron.err"
 echo ""
 echo "Routines only run once the scheduler is enabled (CLI: /scheduler, or the setup wizard)."
 echo "Don't also run the systemd service: either works, and the lock only prevents overlap."
