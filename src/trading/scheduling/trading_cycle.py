@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 from config_defaults.trading_config import TradingConfig
 
 from src.market_data.alpaca_market_data import AlpacaMarketData
-from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import (
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+)
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.scheduling.scheduler_state import market_today
@@ -423,6 +426,7 @@ class CostEfficientTradeCycle:
             verb = "renewed" if repair.replaces_order_id else "placed"
             if ok:
                 logger.info(f"{repair.symbol}: stop {verb} at ${repair.stop_price:.2f}")
+                self._remember_stop(repair.symbol, repair.stop_price)
             else:
                 logger.error(
                     f"{repair.symbol}: stop not {verb}: {result.get('message', 'unknown error')}"
@@ -447,6 +451,19 @@ class CostEfficientTradeCycle:
         if any(d.action == "AUTO_FIXED" for d in discrepancies):
             self.broker_cache.invalidate()
         return discrepancies
+
+    def _remember_stop(self, symbol: str, stop_price: float) -> None:
+        """
+        Record a placed or renewed stop in local state and the trailing-stop manager, so
+        the routine's adjustment step starts from it instead of the old level.
+        """
+        position = self.local_state_manager.state.get("positions", {}).get(symbol)
+        if position is not None:
+            position["stop_price"] = stop_price
+        manager = getattr(self, "trailing_stop_manager", None)
+        stop_state = manager.stop_states.get(symbol) if manager is not None else None
+        if stop_state is not None:
+            stop_state.current_stop = stop_price
 
     # -------------------------------------------------------------------------
     # GTT (Good-Till-Triggered) Integration - Issue #340

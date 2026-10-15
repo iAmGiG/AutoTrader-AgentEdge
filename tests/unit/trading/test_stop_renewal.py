@@ -7,13 +7,17 @@ nearing 90 days is renewed. All broker calls are mocked; no orders are placed.
 """
 
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
 from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
-from src.trading.state.state_reconciler import (StateReconciler,
-                                                StopAdjustment, StopRepair)
+from src.trading.state.state_reconciler import (
+    StateReconciler,
+    StopAdjustment,
+    StopRepair,
+)
 
 NOW = datetime(2026, 10, 14, 13, 0, tzinfo=timezone.utc)
 
@@ -288,3 +292,74 @@ def test_morning_routine_adjusts_stops_against_fresh_broker_state(monkeypatch, t
 
     cycle.fetch_broker_state.assert_called_with(force_refresh=True)
     cycle.calculate_stop_adjustments.assert_called_once_with(fresh)
+
+
+class _Trail:
+    """Trailing-stop manager stub: its rules put the stop at ``level``."""
+
+    def __init__(self, level):
+        self.level = level
+        self.stop_states = {}
+
+    def register_position(self, symbol, entry_price, initial_stop, quantity, stop_order_id=None):
+        self.stop_states[symbol] = SimpleNamespace(current_stop=initial_stop)
+
+    def calculate_new_stop(self, symbol, current_price):
+        return self.level
+
+
+def _trailing_reconciler(level):
+    reconciler = _reconciler()
+    reconciler.trailing_stop_manager = _Trail(level)
+    return reconciler
+
+
+class TestStopsAtTheTrailingLevel:
+    """A re-placed or renewed stop goes straight to the trailing level (#574 follow-up).
+
+    Orders placed outside market hours stay 'accepted' and can't be replaced until the
+    open, so placing at the old level and then raising it failed (2026-10-14).
+    """
+
+    def test_a_missing_stop_is_placed_at_the_trailing_level(self):
+        _, repairs = _trailing_reconciler(739.21).check_protective_stops(_broker(), _local(), NOW)
+
+        assert repairs[0].stop_price == 739.21
+        assert "trailing level (last stop $627.00)" in repairs[0].reason
+
+    @pytest.mark.parametrize(
+        "level", [None, 600.0, 780.0]
+    )  # none, below the saved stop, above the price
+    def test_otherwise_the_last_known_stop_is_used(self, level):
+        _, repairs = _trailing_reconciler(level).check_protective_stops(_broker(), _local(), NOW)
+
+        assert repairs[0].stop_price == 627.0
+
+    def test_an_aging_stop_is_renewed_at_the_trailing_level(self):
+        orders = [_stop_order(85)]
+        _, repairs = _trailing_reconciler(739.21).check_protective_stops(
+            _broker(orders=orders), _local(), NOW
+        )
+
+        assert (repairs[0].kind, repairs[0].stop_price) == ("STOP_EXPIRING", 739.21)
+        assert repairs[0].replaces_order_id == "sl-1"
+
+    def test_the_placed_stop_is_what_the_adjustment_step_starts_from(self):
+        om = MagicMock()
+        om.place_stop_order.return_value = {"status": "submitted", "order_id": "new-sl"}
+        cycle = _cycle(om)
+        cycle.reconciler = _trailing_reconciler(739.21)
+        cycle.trailing_stop_manager = cycle.reconciler.trailing_stop_manager
+
+        cycle.check_and_repair_stops(_broker())
+        refreshed = _broker(orders=[{**_stop_order(0, order_id="new-sl"), "stop_price": 739.21}])
+        adjustments, _ = cycle.reconciler.calculate_stop_adjustments(
+            refreshed, cycle.local_state_manager.state
+        )
+
+        om.place_stop_order.assert_called_once_with(
+            symbol="SPY", qty=14, side="sell", stop_price=739.21, time_in_force="gtc"
+        )
+        assert cycle.local_state_manager.state["positions"]["SPY"]["stop_price"] == 739.21
+        assert cycle.trailing_stop_manager.stop_states["SPY"].current_stop == 739.21
+        assert adjustments == []  # nothing left to modify (it would fail while 'accepted')

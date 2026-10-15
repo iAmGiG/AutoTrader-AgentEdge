@@ -444,7 +444,10 @@ class StateReconciler:
         Alpaca cancels GTC orders 90 days after creation, bracket legs included, so a
         position's stop can lapse without notice. A missing stop is re-placed at the
         last known stop (local state, else entry minus the configured stop loss); a GTC
-        stop older than STOP_RENEW_AFTER_DAYS is renewed.
+        stop older than STOP_RENEW_AFTER_DAYS is renewed. Either is raised to the
+        trailing-stop level when that is higher (and below the price): an order placed
+        outside market hours can't be modified until the open, so the routine's later
+        adjustment step couldn't raise it.
 
         Reported for a human instead of repaired:
         - no usable stop level below the current price (that stop would trigger at once);
@@ -478,13 +481,22 @@ class StateReconciler:
             stops = [order for order in sells if order.get("stop_price")]
             needs_review.extend(self._aging_targets(symbol, sells, now))
 
+            current_price = float(broker_pos.get("current_price") or 0)
             if stops:
                 renewals, reviews = self._stop_renewals(symbol, stops, quantity, now)
+                for renewal in renewals:
+                    trailing = self._trailing_level(
+                        symbol, positions, renewal.stop_price, current_price
+                    )
+                    if trailing is not None:
+                        renewal.reason += (
+                            f"; raised to the trailing level from ${renewal.stop_price:.2f}"
+                        )
+                        renewal.stop_price = trailing
                 repairs.extend(renewals)
                 needs_review.extend(reviews)
                 continue
 
-            current_price = float(broker_pos.get("current_price") or 0)
             stop_price = self._last_known_stop(symbol, positions, broker_pos)
             details = {
                 "quantity": quantity,
@@ -496,13 +508,18 @@ class StateReconciler:
             elif sells:
                 details["reason"] = "shares are held by open sell orders, so a stop can't be added"
             else:
+                reason = "no live stop order (GTC stops lapse after 90 days)"
+                trailing = self._trailing_level(symbol, positions, stop_price, current_price)
+                if trailing is not None:
+                    reason += f"; placed at the trailing level (last stop ${stop_price:.2f})"
+                    stop_price = trailing
                 repairs.append(
                     StopRepair(
                         kind="MISSING_STOP",
                         symbol=symbol,
                         quantity=quantity,
                         stop_price=stop_price,
-                        reason="no live stop order (GTC stops lapse after 90 days)",
+                        reason=reason,
                     )
                 )
                 continue
@@ -588,6 +605,38 @@ class StateReconciler:
                 )
             )
         return notices
+
+    def _trailing_level(
+        self,
+        symbol: str,
+        positions: Dict[str, Any],
+        base_stop: Optional[float],
+        current_price: float,
+    ) -> Optional[float]:
+        """
+        The trailing-stop level for a position now, if it is above base_stop and below
+        the price; else None.
+
+        Uses the inputs calculate_stop_adjustments() uses (the local position's entry
+        price), so a stop placed at this level isn't adjusted again in the same routine.
+        """
+        local = positions.get(symbol)
+        manager = self.trailing_stop_manager
+        if manager is None or not local or base_stop is None or not current_price:
+            return None
+        entry_price = float(local.get("entry_price") or 0)
+        if not entry_price:
+            return None
+        if symbol not in manager.stop_states:
+            manager.register_position(
+                symbol=symbol,
+                entry_price=entry_price,
+                initial_stop=base_stop,
+                quantity=int(local.get("quantity") or 0),
+                stop_order_id=None,
+            )
+        level = manager.calculate_new_stop(symbol, current_price)
+        return round(level, 2) if level is not None and base_stop < level < current_price else None
 
     def _last_known_stop(
         self, symbol: str, positions: Dict[str, Any], broker_pos: Dict[str, Any]

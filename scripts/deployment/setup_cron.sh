@@ -32,7 +32,8 @@ mkdir -p "$LOG_DIR"
 # the host timezone, on NYSE trading days only, within 5 minutes of each routine's time
 # (config_defaults/scheduler_config.yaml), once per day. A lock in state/ stops a run
 # from overlapping a long retry, the daemon, or a manual run.
-CRON_DUE="*/5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due >> $LOG_DIR/cron-scheduler.log 2>&1"
+# stdout duplicates state/scheduler.log (rotated), so only errors are kept
+CRON_DUE="*/5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due > /dev/null 2>> $PROJECT_ROOT/state/scheduler-cron.err"
 
 echo "Crontab entry to be added:"
 echo ""
@@ -61,7 +62,7 @@ echo "View crontab: crontab -l"
 echo "Remove entry: crontab -e  (then delete the OptionsCommander lines)"
 echo "Logs:"
 echo "  Scheduler: $PROJECT_ROOT/state/scheduler.log (rotated)"
-echo "  Cron output: $LOG_DIR/cron-scheduler.log"
+echo "  Cron errors: $PROJECT_ROOT/state/scheduler-cron.err"
 echo ""
 echo "Routines only run once the scheduler is enabled (CLI: /scheduler, or the setup wizard)."
 echo "Don't also run the systemd service: either works, and the lock only prevents overlap."
