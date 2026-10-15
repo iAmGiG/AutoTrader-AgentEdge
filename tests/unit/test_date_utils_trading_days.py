@@ -36,10 +36,44 @@ def test_adding_business_days_steps_over_holidays():
     assert add_business_days("2026-01-02", -1) == "2025-12-31"  # back over New Year's Day
 
 
-def test_a_start_on_a_closed_day_counts_from_the_next_trading_day():
-    # As pd.bdate_range did before holidays were added
-    assert add_business_days("2026-10-17", 0) == "2026-10-19"
-    assert add_business_days("2026-10-17", 1) == "2026-10-20"
+def test_from_a_closed_day_the_next_trading_day_is_one_day_on():
+    assert next_business_day("2026-10-17") == "2026-10-19"  # Saturday -> Monday
+    assert next_business_day("2026-11-26") == "2026-11-27"  # Thanksgiving -> Friday
+    assert add_business_days("2026-11-26", -1) == "2026-11-25"
+    assert add_business_days("2026-10-17", 0) == "2026-10-19"  # rolls forward
+
+
+@pytest.mark.parametrize("day", ["2012-10-29", "2012-10-30", "2018-12-05", "2025-01-09"])
+def test_past_one_off_closures_are_not_trading_days(day):
+    assert is_business_day(day) is False
+    assert day not in date_range_trading_days("2012-10-01", "2025-01-31")
+
+
+@pytest.fixture
+def fresh_offsets():
+    """Business-day offsets are cached by year span; don't reuse ones built with other closures."""
+    from src.utils import date_utils
+
+    date_utils._nyse_business_day.cache_clear()
+    yield
+    date_utils._nyse_business_day.cache_clear()
+
+
+def test_configured_closures_may_be_unquoted_yaml_dates(monkeypatch, fresh_offsets):
+    from src.utils import market_hours
+
+    config = {"holidays": {"enabled": True, "fixed_holidays": [date(2026, 10, 16)]}}
+    monkeypatch.setattr(market_hours, "_load_market_config", lambda: config)
+
+    assert is_business_day("2026-10-16") is False
+    assert "2026-10-16" not in date_range_trading_days("2026-10-15", "2026-10-19")
+
+
+def test_a_long_step_still_counts_only_trading_days():
+    assert (
+        add_business_days("2026-01-02", 252)
+        == date_range_trading_days("2026-01-02", "2027-01-10")[252]
+    )
 
 
 def test_trading_day_ranges_leave_out_holidays():

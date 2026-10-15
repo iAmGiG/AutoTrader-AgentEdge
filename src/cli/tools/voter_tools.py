@@ -42,7 +42,10 @@ def show_voter_config() -> str:
         'Voter Configuration
         MACD: 13/34/8 (Fibonacci)
         RSI: 14 [30/70]
-        Backtest (live rules, #574): Sharpe 0.69, no edge'
+        ...
+        Backtest of the Live Rules (2009 to 2026-10-09, 5 bps a side)
+          Sharpe Ratio:  0.69
+          ...'
     """
     config = TradingConfig()
     macd = config.get_macd_config()
@@ -259,12 +262,15 @@ def get_voter_parameters() -> Dict[str, Any]:
             "weak_signal_boost": 0.10,
             "min_data_points": 42,
         },
-        "performance": {  # backtest of the live rules (#574)
+        "performance": {  # backtest of the live rules (#574), 5 bps a side
             "sharpe_ratio": 0.69,
-            "alpha_vs_buy_and_hold": 0.0011,
+            "sharpe_ratio_2020_on": 0.71,
+            "sharpe_ci95_2020_on": [-0.07, 1.50],
+            "alpha_vs_buy_and_hold": 0.0011,  # per year, t = 0.19
             "win_rate": 0.442,
             "max_drawdown": -0.069,
-            "validation_period": "2009-01-02 to 2026-10-09",
+            "backtest_period": "2009-01-02 to 2026-10-09",
+            "edge": "none over buy-and-hold of the same symbols",
         },
     }
 

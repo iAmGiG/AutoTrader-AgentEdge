@@ -116,8 +116,9 @@ class MACDIndicator(BaseIndicator):
     """
     MACD Indicator - Moving Average Convergence Divergence
 
-    Validated parameters: 13/34/8 (Fibonacci optimized)
-    Backtested with RSI voting in experiment 293 (in-sample) and the live-rules baseline (#574).
+    Live parameters: 13/34/8 (Fibonacci)
+    The live configuration; backtested with RSI voting in the live-rules baseline (#574). Experiment
+    293 used MACD 12/26/9.
     """
 
     def __init__(self, name: str = "MACD", params: Optional[Dict[str, Any]] = None):
@@ -193,8 +194,8 @@ class RSIIndicator(BaseIndicator):
     """
     RSI Indicator - Relative Strength Index
 
-    Validated parameters: 14-period, 30/70 thresholds
-    Backtested with MACD voting in experiment 293 (in-sample) and the live-rules baseline (#574).
+    Live parameters: 14-period, 30/70 thresholds
+    The live configuration; backtested with MACD 13/34/8 voting in the live-rules baseline (#574).
     """
 
     def __init__(self, name: str = "RSI", params: Optional[Dict[str, Any]] = None):

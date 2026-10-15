@@ -101,6 +101,8 @@ backtested_performance:
     test_period: "2009-01-02 to 2026-10-09, 19-symbol watchlist"
     note: "No edge over buy-and-hold of the same symbols"
 
+# Experiment 293 (in-sample AAPL 2024, no costs), kept for the record: not comparable with the above
+experiment_293_in_sample:
   complex_percentile:
     sharpe_ratio: -1.260
     win_rate: 0.177

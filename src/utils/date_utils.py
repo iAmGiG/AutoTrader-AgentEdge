@@ -3,6 +3,7 @@ Utilities for dynamic date handling in data tools.
 """
 
 import datetime
+import functools
 import os
 import re
 
@@ -424,17 +425,22 @@ def today_str() -> str:
     return datetime.datetime.now().strftime("%Y-%m-%d")
 
 
-def _nyse_business_day(start: datetime.date, end: datetime.date):
-    """A pandas business-day offset that skips NYSE holidays between two dates."""
+@functools.lru_cache(maxsize=64)
+def _nyse_business_day(first_year: int, last_year: int):
+    """A pandas business-day offset that skips NYSE closures in a span of years."""
     # Imported here: market_hours imports this module
     from src.utils.market_hours import nyse_closures
 
-    return pd.offsets.CustomBusinessDay(holidays=sorted(nyse_closures(start, end)))
+    closures = nyse_closures(datetime.date(first_year, 1, 1), datetime.date(last_year, 12, 31))
+    return pd.offsets.CustomBusinessDay(holidays=sorted(closures))
 
 
 def add_business_days(date_str, days) -> str:
     """
-    Add NYSE trading days (weekdays that aren't market holidays) to a date string.
+    Add NYSE trading days (weekdays that aren't market closures) to a date string.
+
+    The first trading day after a Saturday or a holiday is one day on; adding 0 to a
+    closed day gives the next trading day.
 
     Args:
         date_str: Date in YYYY-MM-DD format
@@ -443,14 +449,11 @@ def add_business_days(date_str, days) -> str:
     Returns:
         New date in YYYY-MM-DD format
     """
-    dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
-    margin = datetime.timedelta(days=2 * abs(days) + 10)  # covers the holidays in between
-    offset = _nyse_business_day((dt - margin).date(), (dt + margin).date())
-
-    # As pd.bdate_range does, a start on a closed day counts from the next trading day
-    if days >= 0:
-        return pd.date_range(start=dt, periods=days + 1, freq=offset)[-1].strftime("%Y-%m-%d")
-    return pd.date_range(end=dt, periods=abs(days) + 1, freq=offset)[0].strftime("%Y-%m-%d")
+    dt = pd.Timestamp(datetime.datetime.strptime(date_str, "%Y-%m-%d"))
+    span = abs(days) // 250 + 1  # years either side (about 252 trading days a year)
+    offset = _nyse_business_day(dt.year - span, dt.year + span)
+    result = offset.rollforward(dt) if days == 0 else dt + days * offset
+    return result.strftime("%Y-%m-%d")
 
 
 def parse_date_string(date_str) -> datetime.datetime:
@@ -499,8 +502,8 @@ def date_range_trading_days(start_date, end_date) -> list:
     start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
-    # Weekdays that aren't NYSE holidays
-    offset = _nyse_business_day(start_dt.date(), end_dt.date())
+    # Weekdays that aren't NYSE closures
+    offset = _nyse_business_day(start_dt.year, end_dt.year)
     trading_days = pd.date_range(start=start_dt, end=end_dt, freq=offset)
 
     return [dt.strftime("%Y-%m-%d") for dt in trading_days]
