@@ -18,7 +18,7 @@ strategies:
     results_file: results/dispersion_expanded_lag1.yaml
     signal: src/backtesting/signals/dispersion_signal.py
     runner: scripts/research/dispersion_gex.py
-    status: "STOP — fixed backtester: +0.085 Sharpe, p=0.10; earlier +0.108 was a backtester artifact"
+    status: "STOP — fixed backtester, split-adjusted prices: +0.061 Sharpe, p=0.36; earlier +0.108 was a backtester artifact"
 
   delta_neutral:
     issue: "#544"
@@ -68,7 +68,7 @@ extended_research:
     issue: "#576"
     results_file: results/gex_vol_panel_lag1.yaml
     runner: scripts/research/gex_vol_panel.py
-    status: "40 symbols: negative GEX +8% next-day variance beyond HAR + leverage, high-VIX and high |GEX|/ADV only (t=5.5, 4.8); no OOS forecast gain"
+    status: "40 symbols: negative GEX +7% next-day variance beyond HAR + leverage, high-VIX and high |GEX|/ADV only (t=5.2, 4.5); no OOS forecast gain"
 
   macd_rsi_regime:
     issue: "#531"
@@ -81,7 +81,7 @@ extended_research:
     issue: "#576"
     results_file: results/multiple_testing_audit.yaml
     runner: scripts/research/multiple_testing_audit.py
-    status: "237 lag-1 tests: 37 Holm, 74 BH; no trading overlay or intraday effect survives"
+    status: "237 lag-1 tests: 33 Holm, 67 BH (split-adjusted); no trading overlay or intraday effect survives"
 
   intraday_gex_validation:
     issue: "#530"

@@ -19,7 +19,14 @@ With both fixed, and 237 tests corrected for multiple testing:
 - **No GEX trading overlay survives.** This covers MACD+RSI regime filtering, dispersion, delta neutral and pairs.
 - **No intraday effect.** GEX sign does not switch intraday momentum and reversal (Barbon-Buraschi design, 2026 snapshots).
 - **Expiry pinning is real but tiny.** When dealers are long expiring gamma, monthly-expiry closes land about 0.7 bps closer to a strike (BH only).
-- **One finding survives, and it is descriptive.** Across 40 symbols, negative dealer gamma on the previous day goes with about 8% higher next-day variance, after controlling for trailing variance and the leverage effect. The effect is concentrated in stressed markets (VIX above its 2008-2019 median of 16.6) and is about zero in calm markets. It is stable across 2008-2019 and 2020-2026, and it sits in names where |GEX| is large relative to dollar volume. It does **not** improve out-of-sample variance forecasts beyond HAR, leverage and VIX.
+- **One finding survives, and it is descriptive.** Across 40 symbols, negative dealer gamma on the previous day goes with about 7% higher next-day variance, after controlling for trailing variance and the leverage effect. The effect is concentrated in stressed markets (VIX above its 2008-2019 median of 16.6) and is about zero in calm markets. It is stable across 2008-2019 and 2020-2026, and it sits in names where |GEX| is large relative to dollar volume. It does **not** improve out-of-sample variance forecasts beyond HAR, leverage and VIX.
+
+**Correction, 2026-10-15: split-adjusted prices.** `equity_prices_daily` stores raw prices, so each split read as a one-day move of the split ratio. Two published studies included split days, and both were re-run on split-adjusted prices:
+
+- **Dispersion:** the 2025-12-05 XLE and XLK splits fall in its window. The overlay gain drops from +0.085 (p = 0.10) to +0.061 (p = 0.36), and the baseline strategy's Sharpe from 0.10 to 0.00.
+- **The 40-symbol panel:** its leverage controls are recomputed. The volatility finding stands at slightly smaller size.
+
+The audit now has 33 Holm and 67 BH rejections, against 37 and 74 before. Studies on SPY, QQQ and IWM are unchanged, because those have no splits in the data.
 
 ---
 
@@ -32,6 +39,7 @@ With both fixed, and 237 tests corrected for multiple testing:
 | Window, lag and output options; Newey-West tests | `src/backtesting/research_cli.py`, all GEX runners | 8a2dbdc |
 | `run_daily_signal_strategy`: P&L = direction × size × day's change, exits before booking; dispersion and delta-neutral signals decide on the previous close | `src/backtesting/research_backtester.py`, `src/backtesting/signals/` | 8469709 |
 | Pairs positions marked to market daily | `src/backtesting/research_backtester.py` | 4139e39 |
+| Prices split-adjusted on load from `gex.corporate_events`; expiry pinning and the intraday study opt out (strikes, raw snapshots) | `src/backtesting/price_adjustments.py`, `src/backtesting/research_backtester.py` | 2026-10-15 |
 
 **Backtester convention** (`run_daily_signal_strategy`): the signal for row *i* uses information through day *i − 1*; `daily_pnl_pct` is the long-side change of the traded quantity on day *i*. MACD+RSI already followed this and is unchanged (SPY Sharpe 0.561 before and after).
 
@@ -41,6 +49,7 @@ Unit tests: `tests/unit/backtesting/test_gex_overlay_lag.py`, `tests/unit/backte
 
 ## Data notes
 
+- **Raw prices.** `equity_prices_daily` is not split-adjusted: `adjusted_close` equals `close`, and `daily_return` is raw. A split reads as a one-day move of the split ratio (AAPL 2020-08-31 −74%, XLK and XLE 2025-12-05 −50%). `fetch_equity_prices` back-adjusts from `gex.corporate_events`, whose dates match the price jump for 131 of the 133 splits inside the history.
 - **Vendor break.** Alpha Vantage supplied options through 2026-10-09 and Cboe delayed quotes from 2026-10-12, with a GEX level break. All runs stop at 2026-10-09.
 - **Regime labels are almost SPY-only.** `regime` is a fixed $1B threshold on `total_gex` (neutral = \|GEX\| < $1B). SPY has real variety; QQQ only after 2020; most other symbols are labelled almost 100% neutral. XLK and XLF have essentially no bullish or bearish days. The 40-symbol panel therefore uses scale-free measures (sign and 252-day percentile of `total_gex`).
 - **0DTE omitted.** Stored equity GEX omits same-day-expiry contracts (gex-database-infrastructure Issue #74).
@@ -64,12 +73,12 @@ Lags 2 and 5 give two scattered p < 0.05 results with the wrong sign, which is c
 
 | Overlay | Old reported gain | Fixed gain | Paired NW t, p |
 |---|---|---|---|
-| Dispersion (#545) | +0.108 | +0.085 | 1.63, 0.10 |
+| Dispersion (#545) | +0.108 | +0.061 | 0.93, 0.36 |
 | Delta neutral (#544) | +0.012 | −0.037 | −1.00, 0.32 |
 | Pairs SPY/IWM (#546) | −0.100 | −0.018 | −0.16, 0.87 |
 | Pairs QQQ/SPY (#546) | −0.016 | +0.016 | 0.38, 0.70 |
 
-None is significant, and none survives correction. The original 2020-2023 windows (6 to 20 trades) are also null.
+None is significant, and none survives correction. The dispersion row is on split-adjusted prices: before the correction it read +0.085 (p = 0.10), because the 2025-12-05 XLE and XLK splits looked like a −50% day. The original 2020-2023 windows (6 to 20 trades) are also null.
 
 **Transaction costs (#541):** pairs breaks even at 7.5 bps (was 5.9 bps before daily mark-to-market). Dispersion never breaks even. Delta neutral is positive at all cost levels, but on only 8 trades.
 
@@ -87,26 +96,26 @@ The model is a log-HAR on Parkinson variance with leverage controls: the lagged 
 | Pooled, negative-GEX dummy | Coefficient (log variance) | t |
 |---|---|---|
 | HAR | +0.101 | 5.8 |
-| + leverage | +0.077 | 5.0 |
-| + leverage + VIX: calm markets | +0.016 | 1.0 |
-| extra when VIX > 16.6 | +0.073 | 5.5 |
-| + leverage, 2008-2019 only | +0.066 | 4.1 |
-| + leverage, 2020-2026 only | +0.117 | 5.5 |
+| + leverage | +0.067 | 4.5 |
+| + leverage + VIX: calm markets | +0.012 | 0.7 |
+| extra when VIX > 16.6 | +0.070 | 5.2 |
+| + leverage, 2008-2019 only | +0.057 | 3.5 |
+| + leverage, 2020-2026 only | +0.105 | 5.1 |
 
-The 252-day GEX percentile gives the same picture with the opposite sign (higher GEX, lower variance): −0.117 (t = −4.6) with leverage controls.
+The 252-day GEX percentile gives the same picture with the opposite sign (higher GEX, lower variance): −0.101 (t = −4.1) with leverage controls.
 
-**Per symbol, with leverage controls:** 80% of symbols have the expected sign. 17 of 40 are significant with the expected sign and 2 with the wrong sign.
+**Per symbol, with leverage controls:** 75% of symbols have the expected sign. 15 of 40 are significant with the expected sign and 2 with the wrong sign.
 
 **Liquidity split** (pooled, HAR + leverage + VIX). Both flags are lagged and set against that day's cross-sectional median.
 
 | Split | Negative-GEX effect, other names | Interaction | Effect in flagged names |
 |---|---|---|---|
-| Illiquid (low 20-day dollar volume) | +0.084 (t = 3.8) | −0.052 (p = 0.05) | +0.033 (t = 2.2) |
-| High hedging impact (\|GEX\| / dollar volume) | +0.009 (t = 0.8) | +0.102 (p < 0.001) | +0.111 (t = 4.8) |
+| Illiquid (low 20-day dollar volume) | +0.077 (t = 3.4) | −0.050 (p = 0.06) | +0.027 (t = 1.8) |
+| High hedging impact (\|GEX\| / dollar volume) | +0.002 (t = 0.2) | +0.102 (p < 0.001) | +0.105 (t = 4.5) |
 
-Liquidity alone does not amplify the effect; in this all-large-cap universe it is weaker in the less liquid names, against Barbon-Buraschi. What matters is gamma size relative to liquidity: the effect is entirely in high-impact names, where dealer hedging flows are large compared with normal trading. Both high-impact tests survive Holm. Out of sample (fit 2008-2019, forecast 2020+), adding the high-impact mechanism still gives no QLIKE gain: DM t = −0.55 on all rows and −0.79 on high-impact rows alone.
+Liquidity alone does not amplify the effect; in this all-large-cap universe it is weaker in the less liquid names, against Barbon-Buraschi. What matters is gamma size relative to liquidity: the effect is entirely in high-impact names, where dealer hedging flows are large compared with normal trading. Both high-impact tests survive Holm. Out of sample (fit 2008-2019, forecast 2020+), adding the high-impact mechanism still gives no QLIKE gain: DM t = 0.14 on all rows and −1.14 on high-impact rows alone.
 
-**Out of sample:** there is no gain. Per symbol, QLIKE improves for 40% of symbols; without leverage controls it was 70%, so the per-symbol gain was mostly the leverage effect. Pooled (fit 2008-2019, forecast 2020+, all 40 symbols): QLIKE goes from 1.53989 to 1.53984 (DM t = 0.14, p = 0.89).
+**Out of sample:** there is no gain. Per symbol, QLIKE improves for 40% of symbols; without leverage controls it was 70%, so the per-symbol gain was mostly the leverage effect. Pooled (fit 2008-2019, forecast 2020+, all 40 symbols): QLIKE goes from 1.54023 to 1.54006 (DM t = 0.74, p = 0.46).
 
 ### #530 intraday momentum and reversal by GEX sign (`intraday_gamma_momentum.py`)
 
@@ -130,7 +139,7 @@ The test follows Ni, Pearson & Poteshman (2005), using 54 symbols and 221 monthl
 | Nearest-strike distance (spacing units) | +0.0005 (t = 0.1) | −0.0073 (p = 0.12) | −0.0069 (t = −2.6) |
 | log distance to max-OI strike | +0.036 (t = 1.2) | −0.093 (p = 0.015) | −0.057 (t = −2.1) |
 
-Unconditional clustering is negligible (mean distance 0.248 on expiry vs 0.252 on placebo days). When dealers are long expiring gamma (63% of expiries), closes land closer to strikes, which is consistent with hedge-rebalancing pinning. The effect is about 0.007 of a strike spacing, roughly 0.7 bps at the median spacing of 99 bps. Two of four tests survive BH, none survive Holm, and none clear t > 3. **Real but economically tiny.**
+Unconditional clustering is negligible (mean distance 0.248 on expiry vs 0.252 on placebo days). When dealers are long expiring gamma (63% of expiries), closes land closer to strikes, which is consistent with hedge-rebalancing pinning. The effect is about 0.007 of a strike spacing, roughly 0.7 bps at the median spacing of 99 bps. One of four tests survives BH (the nearest-strike effect when dealers are long gamma), none survive Holm, and none clear t > 3. **Real but economically tiny.**
 
 ---
 
@@ -145,22 +154,22 @@ Unconditional clustering is negligible (mean distance 0.248 on expiry vs 0.252 o
 | HAR regime term, SPY/QQQ/IWM, in-sample | 24 | 14 | 20 |
 | HAR out-of-sample forecasts | 12 | 0 | 3 |
 | VaR tick-loss comparison | 4 | 0 | 0 |
-| Panel per symbol, in-sample | 80 | 17 | 34 |
-| Panel per symbol, out-of-sample | 80 | 1 | 10 |
+| Panel per symbol, in-sample | 80 | 13 | 29 |
+| Panel per symbol, out-of-sample | 80 | 1 | 9 |
 | Panel pooled, in-sample | 4 | 3 | 3 |
 | Panel pooled, out-of-sample | 2 | 0 | 0 |
 | Intraday momentum × GEX, timing strategy | 10 | 0 | 0 |
-| Expiry-day pinning | 4 | 0 | 2 |
+| Expiry-day pinning | 4 | 0 | 1 |
 | Panel liquidity split | 4 | 2 | 2 |
 | Panel impact out-of-sample | 2 | 0 | 0 |
-| **Total** | **237** | **37** | **74** |
+| **Total** | **237** | **33** | **67** |
 
 ---
 
 ## What this means for the project
 
 - **Trading.** Do not use the GEX regime as a filter or sizing overlay for VoterAgent, dispersion, delta-neutral or pairs strategies.
-- **Risk.** A RiskAgent could treat negative GEX in a high-VIX market as a descriptive warning flag (about 8% more next-day variance). It is not a forecasting input, since it adds nothing out of sample beyond trailing variance, recent returns and VIX. Do not use it to tighten VaR on positive-GEX days: that made 99% VaR breach too often.
+- **Risk.** A RiskAgent could treat negative GEX in a high-VIX market as a descriptive warning flag (about 7% more next-day variance). It is not a forecasting input, since it adds nothing out of sample beyond trailing variance, recent returns and VIX. Do not use it to tighten VaR on positive-GEX days: that made 99% VaR breach too often.
 - **Still untested.** Real option P&L for dispersion and delta neutral. See [literature_and_methods.md](literature_and_methods.md).
 
 ---
