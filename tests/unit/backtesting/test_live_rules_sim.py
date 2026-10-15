@@ -4,13 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.backtesting.live_rules_sim import (
-    LiveRules,
-    compute_signals,
-    performance,
-    sharpe_ci,
-    simulate,
-)
+from src.backtesting.live_rules_sim import (LiveRules, compute_signals,
+                                            performance, sharpe_ci, simulate)
 
 DAYS = pd.bdate_range("2024-01-01", periods=6)
 
