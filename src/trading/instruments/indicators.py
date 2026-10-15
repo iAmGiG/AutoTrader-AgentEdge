@@ -25,7 +25,7 @@ def calculate_macd(
         timeframe: Analysis timeframe (Issue #365). This is informational for logging/debugging
                    Actual timeframe aggregation should be done before calling this function.
                    Supported values: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M
-                   Default "1d" is validated and has 0.856 Sharpe ratio.
+                   Default "1d" is the timeframe the live rules were backtested on.
 
     Returns:
         Dictionary containing:
@@ -71,7 +71,7 @@ def calculate_rsi(
         timeframe: Analysis timeframe (Issue #365). This is informational for logging/debugging
                    Actual timeframe aggregation should be done before calling this function.
                    Supported values: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M
-                   Default "1d" is validated and has 0.856 Sharpe ratio.
+                   Default "1d" is the timeframe the live rules were backtested on.
 
     Returns:
         Dictionary containing:

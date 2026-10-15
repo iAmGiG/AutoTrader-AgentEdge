@@ -195,6 +195,21 @@ def _extra_closures() -> Set[str]:
     return set(holidays.get("fixed_holidays", []) + holidays.get("observed_holidays", []))
 
 
+def nyse_closures(start: date, end: date) -> Set[date]:
+    """Weekday NYSE closures between two dates: holidays by rule and configured one-offs."""
+    closed = {d for year in range(start.year, end.year + 1) for d in nyse_holidays(year)}
+    closed |= {date.fromisoformat(d) for d in _extra_closures()}
+    return {d for d in closed if start <= d <= end and d.weekday() < 5}
+
+
+def is_nyse_trading_day(day: date) -> bool:
+    """
+    Whether NYSE trades on a day, by its rules (offline and deterministic, for dates in
+    research and validation; get_market_hours_for_date() asks the Alpaca calendar).
+    """
+    return _rule_based_hours(day)[2]
+
+
 def _rule_based_hours(day: date) -> Tuple[time, time, bool]:
     """Market hours by NYSE rules, for when the Alpaca calendar is unavailable."""
     if day.weekday() >= 5 or day in nyse_holidays(day.year) or day.isoformat() in _extra_closures():

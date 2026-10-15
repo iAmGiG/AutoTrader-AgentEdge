@@ -8,7 +8,7 @@
 
 ## Overview
 
-The CLI Trade Assistant is a conversational trading interface that allows users to request trade analysis using natural language. The system uses OpenAI's GPT models for parsing user input and the production VoterAgent (0.856 Sharpe ratio) for MACD+RSI technical analysis.
+The CLI Trade Assistant is a conversational trading interface that allows users to request trade analysis using natural language. The system uses OpenAI's GPT models for parsing user input and the production VoterAgent for MACD+RSI technical analysis.
 
 ### Key Features
 
@@ -26,7 +26,7 @@ The CLI Trade Assistant is a conversational trading interface that allows users 
 
 The implementation follows a clean plugin architecture with dependency injection:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                   CLI Presentation Layer                 │
 │              (Interactive REPL with commands)             │
@@ -109,7 +109,7 @@ llm_service = OpenAIService(
 
 **RealVoterStrategy** - Production MACD+RSI analysis:
 
-- Wraps validated VoterAgent (0.856 Sharpe ratio)
+- Wraps the production VoterAgent
 - Fetches real market data (Alpaca, Polygon, Alpha Vantage)
 - MACD(13/34/8) + RSI(14) with Fibonacci parameters
 - Voting logic: Strong consensus, weak signal, conflict detection
@@ -176,7 +176,7 @@ else:
 
 **Display Format**:
 
-```
+```text
 ======================================================================
 📊 SPY @ $670.97
 ======================================================================
@@ -234,7 +234,7 @@ python main.py trade-assist
 
 **Example Session**:
 
-```
+```text
 > is SPY at 600 a good entry?
 
 [System fetches market data, analyzes with MACD+RSI]
@@ -284,25 +284,25 @@ Continue? [yes/no]: yes
 
 ### Real OpenAI API Tests (3/3 passing)
 
-**Test 1: Review Query**
+#### Test 1: Review Query
 
-```
+```text
 Input: "is SPY at 600 a good entry?"
 ✅ Parsed: SPY, review action, $600 price
 ✅ Generated: Entry/stop/target, 8 shares, 75% confidence
 ```
 
-**Test 2: Buy Order**
+#### Test 2: Buy Order
 
-```
+```text
 Input: "buy 10 AAPL at 200"
 ✅ Parsed: AAPL, buy action, 10 shares, $200 price
 ✅ Executed: Bracket order with stub (entry/stop/target IDs)
 ```
 
-**Test 3: Sell Order**
+#### Test 3: Sell Order
 
-```
+```text
 Input: "sell 5 TSLA"
 ✅ Parsed: TSLA, sell action, 5 shares
 ✅ Generated: Full suggestion with analysis
@@ -310,9 +310,9 @@ Input: "sell 5 TSLA"
 
 ### Real VoterAgent Tests (3/3 passing)
 
-**Test 1: SPY Analysis**
+#### Test 1: SPY Analysis
 
-```
+```text
 Market Data: Fetched 60 days from Alpaca
 Signal: SELL (65% confidence)
 MACD Histogram: -1.195184 (bearish)
@@ -321,9 +321,9 @@ Verdict: Weak sell signal from MACD
 Current Price: $670.97
 ```
 
-**Test 2: AAPL Analysis**
+#### Test 2: AAPL Analysis
 
-```
+```text
 Market Data: Fetched 60 days from Alpaca
 Signal: BUY (65% confidence)
 MACD Histogram: 0.111064 (bullish)
@@ -332,9 +332,9 @@ Verdict: Weak buy signal from MACD
 Current Price: $258.45
 ```
 
-**Test 3: Stub vs Real Comparison**
+#### Test 3: Stub vs Real Comparison
 
-```
+```text
 Stub VoterStrategy:
   Signal: BUY (75% confidence)
   Reasoning: "MACD: BUY (bullish crossover) [MVP STUB]"
@@ -436,19 +436,19 @@ rsi_params = {
 
 ### Medium Priority
 
-3. **YAML Configuration** (2 hours)
+1. **YAML Configuration** (2 hours)
    - Replace hardcoded factory with YAML-based DI
    - Allow component swapping via config files
    - orchestrator_config.yaml for plugin selection
    - llm_config.yaml for provider settings
 
-4. **Rich Formatting** (2-3 hours)
+2. **Rich Formatting** (2-3 hours)
    - Add colors and tables via `rich` library
    - Better visual presentation
    - Progress indicators
    - Syntax highlighting
 
-5. **Options Analysis (#330)** (5-7 hours)
+3. **Options Analysis (#330)** (5-7 hours)
    - OptionsStrategy plugin for calls/puts
    - Greeks calculation (Delta, Gamma, Theta, Vega)
    - Implied volatility analysis
@@ -456,13 +456,13 @@ rsi_params = {
 
 ### Low Priority
 
-6. **Multi-Agent Debate (#331)** (7-10 hours)
+1. **Multi-Agent Debate (#331)** (7-10 hours)
    - Implement agent coordination patterns
    - Sequential, group chat, voting modes
    - Consensus building with dissenting opinions
    - Integration with event bus (#316)
 
-7. **Autonomy Expansion (#332)** (3-5 hours)
+2. **Autonomy Expansion (#332)** (3-5 hours)
    - Per-ticker whitelists
    - Conditional auto-execute rules
    - Risk-based autonomy levels
@@ -525,7 +525,7 @@ rsi_params = {
 The CLI Trade Assistant (#308) delivers a production-ready human-in-loop trading interface with:
 
 ✅ Natural language understanding (OpenAI gpt-4o-mini + o4-mini)
-✅ Real technical analysis (VoterAgent with 0.856 Sharpe ratio)
+✅ Real technical analysis (VoterAgent MACD+RSI voting)
 ✅ Portfolio risk management (5% default position sizing)
 ✅ Interactive confirmation workflow (confirm/auto modes)
 ✅ Plugin architecture (easy to extend and test)

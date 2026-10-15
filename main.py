@@ -192,7 +192,7 @@ def trade_assist(account_id: str = None):
             f"   - Default Mode: {mode_params.mode.value} (say 'aggressive' or 'conservative' to change)"
         )
         print("   - LLM Parser: gpt-4o-mini")
-        print("   - Strategy: RealVoterAgent (MACD+RSI, 0.856 Sharpe)")
+        print("   - Strategy: RealVoterAgent (MACD+RSI voting)")
 
         if active_account_info:
             print(f"   - Account: {active_account_info.alias or account_id} ({alpaca_mode})")

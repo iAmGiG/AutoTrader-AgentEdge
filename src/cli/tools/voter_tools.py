@@ -42,7 +42,7 @@ def show_voter_config() -> str:
         'Voter Configuration
         MACD: 13/34/8 (Fibonacci)
         RSI: 14 [30/70]
-        Validated Sharpe: 0.856'
+        Backtest (live rules, #574): Sharpe 0.69, no edge'
     """
     config = TradingConfig()
     macd = config.get_macd_config()
@@ -73,12 +73,12 @@ def show_voter_config() -> str:
     output += "  Min Data Points:   42\n"
     output += "-" * 50 + "\n"
 
-    # Validated performance
-    output += "Validated Performance (2024-2025)\n"
-    output += "  Sharpe Ratio:  0.856\n"
-    output += "  Total Return:  36.6%\n"
-    output += "  Win Rate:      51.4%\n"
-    output += "  Max Drawdown:  -10.10%\n"
+    # Backtest of the live rules (#574; docs/08_research/03_strategy_research/live_rules_baseline.md)
+    output += "Backtest of the Live Rules (2009 to 2026-10-09, 5 bps a side)\n"
+    output += "  Sharpe Ratio:  0.69\n"
+    output += "  Alpha vs buy-and-hold of the same symbols: +0.11%/yr (t = 0.19), no edge\n"
+    output += "  Win Rate:      44.2%\n"
+    output += "  Max Drawdown:  -6.9%\n"
 
     return output
 
@@ -259,12 +259,12 @@ def get_voter_parameters() -> Dict[str, Any]:
             "weak_signal_boost": 0.10,
             "min_data_points": 42,
         },
-        "performance": {
-            "sharpe_ratio": 0.856,
-            "total_return": 0.366,
-            "win_rate": 0.514,
-            "max_drawdown": -0.101,
-            "validation_period": "2024-2025",
+        "performance": {  # backtest of the live rules (#574)
+            "sharpe_ratio": 0.69,
+            "alpha_vs_buy_and_hold": 0.0011,
+            "win_rate": 0.442,
+            "max_drawdown": -0.069,
+            "validation_period": "2009-01-02 to 2026-10-09",
         },
     }
 
@@ -298,7 +298,7 @@ def compare_with_traditional() -> str:
     output += "Fibonacci Advantages:\n"
     output += "  Better trend detection in tech stocks\n"
     output += "  Fewer false signals in choppy markets\n"
-    output += "  Validated 0.856 Sharpe (2024-2025)\n\n"
+    output += "  Used by the live CLI (backtest: no edge over buy-and-hold, #574)\n\n"
 
     output += "Traditional Use Cases:\n"
     output += "  Broader market indices\n"

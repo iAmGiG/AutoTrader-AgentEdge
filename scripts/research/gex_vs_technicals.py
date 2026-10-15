@@ -126,7 +126,7 @@ def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
 def generate_technical_signals(df: pd.DataFrame) -> pd.Series:
     """
     Generate trading signals from MACD + RSI voting.
-    Based on validated VoterAgent logic (0.856 Sharpe on AAPL 2024).
+    Based on the VoterAgent voting logic (experiment 293).
     """
     prices = df["underlying_price"]
 
@@ -434,7 +434,8 @@ def save_results_to_db(results: Dict[str, Any]) -> None:
     cursor = conn.cursor()
 
     # Create table if not exists
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS gex_vs_technicals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             run_timestamp TEXT NOT NULL,
@@ -459,7 +460,8 @@ def save_results_to_db(results: Dict[str, Any]) -> None:
             winner TEXT,
             gex_improvement REAL
         )
-    """)
+    """
+    )
 
     # Extract strategy results
     tech = results["results"].get("TECHNICALS (MACD+RSI)", {})

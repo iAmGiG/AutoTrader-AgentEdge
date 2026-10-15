@@ -424,29 +424,33 @@ def today_str() -> str:
     return datetime.datetime.now().strftime("%Y-%m-%d")
 
 
+def _nyse_business_day(start: datetime.date, end: datetime.date):
+    """A pandas business-day offset that skips NYSE holidays between two dates."""
+    # Imported here: market_hours imports this module
+    from src.utils.market_hours import nyse_closures
+
+    return pd.offsets.CustomBusinessDay(holidays=sorted(nyse_closures(start, end)))
+
+
 def add_business_days(date_str, days) -> str:
     """
-    Add business days to a date string.
+    Add NYSE trading days (weekdays that aren't market holidays) to a date string.
 
     Args:
         date_str: Date in YYYY-MM-DD format
-        days: Number of business days to add (can be negative)
+        days: Number of trading days to add (can be negative)
 
     Returns:
         New date in YYYY-MM-DD format
     """
-    # Convert to datetime
     dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+    margin = datetime.timedelta(days=2 * abs(days) + 10)  # covers the holidays in between
+    offset = _nyse_business_day((dt - margin).date(), (dt + margin).date())
 
-    # Add business days using pandas
-    result_dt = pd.bdate_range(start=dt, periods=abs(days) + 1, freq="B")
-
+    # As pd.bdate_range does, a start on a closed day counts from the next trading day
     if days >= 0:
-        return result_dt[-1].strftime("%Y-%m-%d")
-    else:
-        # For negative days, go backwards
-        result_dt = pd.bdate_range(end=dt, periods=abs(days) + 1, freq="B")
-        return result_dt[0].strftime("%Y-%m-%d")
+        return pd.date_range(start=dt, periods=days + 1, freq=offset)[-1].strftime("%Y-%m-%d")
+    return pd.date_range(end=dt, periods=abs(days) + 1, freq=offset)[0].strftime("%Y-%m-%d")
 
 
 def parse_date_string(date_str) -> datetime.datetime:
@@ -495,8 +499,9 @@ def date_range_trading_days(start_date, end_date) -> list:
     start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
-    # Generate business days
-    trading_days = pd.bdate_range(start=start_dt, end=end_dt, freq="B")
+    # Weekdays that aren't NYSE holidays
+    offset = _nyse_business_day(start_dt.date(), end_dt.date())
+    trading_days = pd.date_range(start=start_dt, end=end_dt, freq=offset)
 
     return [dt.strftime("%Y-%m-%d") for dt in trading_days]
 
@@ -559,7 +564,8 @@ def is_opex_week(date) -> bool:
 
 def is_business_day(date_str) -> bool:
     """
-    Check if a date is a business day (Monday-Friday, excluding holidays).
+    Check if a date is a business day: an NYSE trading day (Monday-Friday, excluding
+    market holidays and configured one-off closures).
 
     Args:
         date_str: Date in YYYY-MM-DD format
@@ -567,15 +573,10 @@ def is_business_day(date_str) -> bool:
     Returns:
         True if it's a business day, False otherwise
     """
-    dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+    # Imported here: market_hours imports this module
+    from src.utils.market_hours import is_nyse_trading_day
 
-    # Check if it's a weekday
-    if dt.weekday() >= 5:  # Saturday = 5, Sunday = 6
-        return False
-
-    # Check against US market holidays (basic check)
-    # This could be enhanced with a proper holiday calendar
-    return True
+    return is_nyse_trading_day(datetime.datetime.strptime(date_str, "%Y-%m-%d").date())
 
 
 def is_valid_trading_date(date_str: str, allow_future: bool = False) -> bool:

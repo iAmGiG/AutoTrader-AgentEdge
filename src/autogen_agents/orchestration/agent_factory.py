@@ -147,7 +147,7 @@ class AgentFactory:
             AgentType.VOTER: AgentConfig(
                 agent_type=AgentType.VOTER,
                 name="voter_agent",
-                description="MACD+RSI voting decision agent (0.856 Sharpe validated)",
+                description="MACD+RSI voting decision agent",
                 model_name="gpt-4o-mini",
                 temperature=0.2,
                 extra_config={

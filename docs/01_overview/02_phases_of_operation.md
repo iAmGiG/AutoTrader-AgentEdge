@@ -63,7 +63,7 @@ Multi-provider data normalization
 ```bash
 VoterAgent processes market data
   ↓
-MACD+RSI voting logic (0.856 Sharpe ratio)
+MACD+RSI voting logic
   ↓
 Signal generation with confidence scoring
 ```
@@ -106,7 +106,7 @@ Signal generation with confidence scoring
 
 ### Validated Performance
 
-- **Sharpe Ratio**: 0.856 (vs 0.841 for MACD-only)
+- **Sharpe Ratio**: 0.856 (vs 0.841 for MACD-only) in experiment 293, in-sample; superseded by the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md) (0.69 at 5 bps, no edge over buy-and-hold)
 - **Win Rate**: 51.4% (vs 31.9% for MACD-only)
 - **Max Drawdown**: -10.10% (vs -10.58% for MACD-only)
 - **Volatility**: 15.30% (lower than single indicator)

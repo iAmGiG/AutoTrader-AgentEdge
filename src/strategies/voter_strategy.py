@@ -23,11 +23,10 @@ class VoterStrategy(StrategyAnalyzer):
     MVP STUB: Simplified version for testing architecture.
     Returns placeholder analysis until market data service is integrated.
 
-    Production Performance (2024-2025 validated):
-    - Sharpe Ratio: 0.856
-    - Total Return: 36.6%
-    - Win Rate: 51.4%
-    - Max Drawdown: -10.10%
+    Backtest of the live rules (#574, 2009 to 2026-10-09, 5 bps a side):
+    - Sharpe Ratio: 0.69, no alpha over buy-and-hold of the same symbols
+    - Win Rate: 44.2%
+    - Max Drawdown: -6.9%
     """
 
     def __init__(

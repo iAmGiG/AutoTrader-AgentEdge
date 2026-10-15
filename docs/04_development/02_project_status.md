@@ -365,7 +365,7 @@ This engine checks SL/TP triggers intraday rather than assuming positions are he
 - **Completed**:
   - Core interfaces, models, orchestrator
   - LLMParser with OpenAI gpt-4o-mini + o4-mini
-  - RealVoterStrategy with production VoterAgent (0.856 Sharpe)
+  - RealVoterStrategy with production VoterAgent
   - SimpleRiskManager with portfolio % calculations
   - AlpacaExecutionManager with bracket order support
   - CLI presentation layer with interactive REPL
@@ -530,7 +530,7 @@ See [Code Quality Guide](06_code_quality.md) for detailed tracking and standards
 
 #### 1. Pure Math Over LLM Sentiment
 
-- MACD+RSI voting: 0.856 Sharpe (validated)
+- MACD+RSI voting: 0.856 Sharpe in experiment 293 (in-sample; superseded by #574)
 - LLM sentiment: ~60% accuracy (deprecated)
 - **Decision**: VoterAgent uses pure calculations, no LLM
 
@@ -618,9 +618,9 @@ python main.py test-voter
 
 ### Technical Excellence
 
-- [x] Sharpe ratio > 0.7 (achieved 0.856)
-- [x] Win rate > 50% (achieved 51.4%)
-- [x] Max drawdown < 15% (achieved 10.10%)
+- [ ] Sharpe ratio > 0.7 (experiment 293's 0.856 was in-sample; the live rules give 0.69 at 5 bps, #574)
+- [ ] Win rate > 50% (44.2% with the live rules)
+- [x] Max drawdown < 15% (6.9% with the live rules)
 - [x] API efficiency > 80% reduction (achieved 90%)
 - [x] Core test coverage 80%+ (313 tests passing - #408 ✅ CLOSED)
 
@@ -661,7 +661,7 @@ python main.py test-voter
 
 **Current Approach**:
 
-- VoterAgent: Pure MACD+RSI → 0.856 Sharpe (proven)
+- VoterAgent: Pure MACD+RSI (no backtested edge over buy-and-hold, #574)
 - Human-in-loop: Humans make final decisions
 - Cost-efficient: 90% fewer API calls
 
@@ -1281,7 +1281,7 @@ src/cli/
 **Issue #425 - Backtesting Framework** (✅ COMPLETE)
 
 - In-house framework refactored from validated experiment_293
-- Validated: 0.856 Sharpe on AAPL 2024
+- Reproduces experiment 293 (0.856 Sharpe, in-sample on AAPL 2024)
 - CLI integration ready
 - Research paper structure (LaTeX) prepared
 

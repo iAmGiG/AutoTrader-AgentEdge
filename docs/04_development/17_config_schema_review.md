@@ -55,7 +55,7 @@ indicators:
       signal: 8         # Fibonacci optimized
       threshold: 0.1    # Histogram threshold
     required_periods: 42
-    validated: true     # Production validated (0.856 Sharpe)
+    validated: true     # Backtested (live-rules baseline, #574)
 
   RSI:
     description: "Relative Strength Index"
@@ -113,7 +113,7 @@ voting:
 ```yaml
 presets:
   default:
-    description: "Validated MACD+RSI voting (0.856 Sharpe)"
+    description: "MACD+RSI voting (the live CLI default)"
     active_voters: 2
     ranking:
       - {name: MACD, rank: 1, role: active}

@@ -1,6 +1,8 @@
 # Voting Strategy Validation Results
 
-**Status**: ✅ **VALIDATED** - Experiment #293 proves voting superiority over single indicators
+**Status**: Superseded (Oct 2026). Experiment #293's results below are in-sample.
+
+> **Superseded (Oct 2026, #574):** these are experiment 293's in-sample results (AAPL 2024, MACD 12/26/9, filled at the signal's own close, no costs). Backtested with the live rules and timing on the 19-symbol watchlist from 2009, MACD+RSI voting has a Sharpe of 0.69 at 5 bps a side and no alpha over buy-and-hold of the same symbols; see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md).
 
 ## Executive Summary
 

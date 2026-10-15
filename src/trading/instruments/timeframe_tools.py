@@ -263,7 +263,7 @@ class TimeframeManager:
             "8h": "8 hours - Fibonacci, overnight/session analysis",
             "13h": "13 hours - Fibonacci, multi-day short-term",
             # Day/Week/Month
-            "1d": "1 day - VALIDATED DEFAULT, best Sharpe (0.856), position trading",
+            "1d": "1 day - DEFAULT, the backtested timeframe, position trading",
             "1w": "1 week - intermediate-term, major trends",
             "1M": "1 month - long-term positioning, institutional moves",
         }

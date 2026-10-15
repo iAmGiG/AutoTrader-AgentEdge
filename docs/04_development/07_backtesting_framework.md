@@ -289,7 +289,7 @@ python scripts/populate_historical_cache.py --symbols AAPL --type stock
 
 - Moskowitz et al. (2012) - "Time series momentum"
 - Refactored from `tests/archived/experiments/experiment_293_macd_vs_voting.py`
-- VoterAgent validation: 0.856 Sharpe (AAPL 2024)
+- Reproduces experiment 293: 0.856 Sharpe (in-sample, AAPL 2024). For the live rules, see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md)
 
 ---
 

@@ -58,7 +58,7 @@ This document defines the separation between **presets** (static, read-only defa
 # voters_config.yaml
 presets:
   default:
-    description: "Validated MACD+RSI voting (0.856 Sharpe)"
+    description: "MACD+RSI voting (the live CLI default)"
     active_voters: 2
     ranking:
       - {name: MACD, rank: 1, role: active}
@@ -257,7 +257,7 @@ Users can always return to known-good configuration:
 ```text
 User: /voter reset
 → Profile deactivated
-→ Using preset: default (MACD+RSI validated 0.856 Sharpe)
+→ Using preset: default (MACD+RSI voting)
 ```
 
 ### 2. Audit Trail

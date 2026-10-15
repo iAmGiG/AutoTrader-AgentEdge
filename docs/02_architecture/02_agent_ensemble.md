@@ -52,7 +52,7 @@ Market Data ────────┼─ Bollinger Signal ───┼──�
 ### 1. VoterAgent (Production-Ready) ✅
 
 **Status**: Validated and operational
-**Performance**: 0.856 Sharpe ratio, 51.4% win rate
+**Performance**: Sharpe 0.69 at 5 bps a side with the live rules, no edge over buy-and-hold ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 
 **Responsibilities**:
 
@@ -95,6 +95,8 @@ class VoterAgent(ConversableAgent):
 | Max Drawdown | -10.58% | **-10.10%** | +4.5% better |
 | Win Rate | 31.9% | **51.4%** | +61% |
 | Volatility | 16.58% | **15.30%** | -7.7% |
+
+> **Superseded (Oct 2026, #574):** these are experiment 293's in-sample results (AAPL 2024, MACD 12/26/9, filled at the signal's own close, no costs). Backtested with the live rules and timing on the 19-symbol watchlist from 2009, MACD+RSI voting has a Sharpe of 0.69 at 5 bps a side and no alpha over buy-and-hold of the same symbols; see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md).
 
 ### 2. BaseAgent (Foundation) ✅
 
@@ -520,7 +522,7 @@ order = order_tool.place_market_order("AAPL", 10, "buy")
 ### Phase 1-2: Complete ✅
 
 - VoterAgent production implementation
-- MACD+RSI validation (0.856 Sharpe)
+- MACD+RSI validation (experiment 293, superseded by #574)
 - BaseAgent foundation
 
 ### Phase 3: In Progress 🚧

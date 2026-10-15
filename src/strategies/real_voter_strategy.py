@@ -1,7 +1,7 @@
 """
 Real VoterStrategy - Wraps the production VoterAgent with MACD+RSI analysis.
 
-This adapter integrates the validated VoterAgent (0.856 Sharpe ratio) into
+This adapter integrates the production VoterAgent into
 the plugin architecture while handling market data fetching.
 """
 
@@ -37,7 +37,7 @@ class RealVoterStrategy(StrategyAnalyzer):
     Production VoterStrategy using real MACD+RSI analysis.
 
     Features:
-    - Validated VoterAgent with 0.856 Sharpe ratio
+    - Production VoterAgent (MACD+RSI voting)
     - Real market data fetching (Alpaca, Polygon, Alpha Vantage)
     - MACD(13/34/8) + RSI(14) voting system
     - Confidence-based position sizing

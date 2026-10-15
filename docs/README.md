@@ -37,7 +37,7 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 
 ### ✅ **AutoGen Multi-Agent System**
 
-- **VoterAgent**: Production-ready MACD+RSI voting with 0.856 Sharpe ratio performance
+- **VoterAgent**: MACD+RSI voting, the live CLI's signal (no backtested edge over buy-and-hold; see the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md))
 - **Agent Architecture**: Microsoft AutoGen framework for agent coordination
 - **Multi-Agent Trading**: Scanner, Risk, Executor, and Orchestrator agents (in development)
 - **Tool Integration**: Market data and trading tools accessible to all agents
@@ -72,7 +72,7 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 
 ### 📊 **Performance & Validation**
 
-1. See [Validation Results](03_reference/01_validation_results.md) for proven performance (0.856 Sharpe)
+1. See the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md) for backtested performance (experiment 293's 0.856 Sharpe is superseded)
 2. Review [Research Foundation](presentations/research_foundation.md) for academic foundation
 3. Check [Troubleshooting](03_reference/04_troubleshooting.md) for common issues
 
@@ -80,7 +80,7 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 
 ### ✅ **Production Components**
 
-- **VoterAgent**: Production-ready AutoGen agent with validated MACD+RSI voting (0.856 Sharpe)
+- **VoterAgent**: AutoGen agent with MACD+RSI voting
 - **CLI Trade Assistant** (#308): Human-in-loop interactive trading interface ✅ NEW
   - Natural language parsing with OpenAI (gpt-4o-mini + o4-mini)
   - Real MACD+RSI analysis with market data fetching
@@ -101,9 +101,9 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 
 ### 📊 **Validated Performance**
 
-- **Sharpe Ratio**: 0.856 (validated backtesting)
-- **Win Rate**: 51.4% (realistic expectations)
-- **Max Drawdown**: -10.10% (controlled risk)
+- **Sharpe Ratio**: 0.69 at 5 bps a side, 2009 to 2026-10-09, live rules and timing ([live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md))
+- **Alpha vs buy-and-hold of the same symbols**: +0.11% a year (t = 0.19), so no edge
+- **Win Rate**: 44.2%; **Max Drawdown**: -6.9% (positions average about 11% of equity)
 - **System Uptime**: 99.9% (robust error handling)
 
 ---
@@ -115,10 +115,10 @@ For academic research and citations informing the system architecture:
 - **[Research Foundation](presentations/research_foundation.md)** - Academic foundation with abstract, introduction, and citations
 - **[Agent Ensemble](02_architecture/02_agent_ensemble.md)** - Evolution from V0-V4 to current multi-agent system
 - **[Voting System](02_architecture/03_voting_system.md)** - Multi-indicator voting architecture
-- **[Validation Results](03_reference/01_validation_results.md)** - Experiment #293 proving voting superiority (0.856 Sharpe)
+- **[Validation Results](03_reference/01_validation_results.md)** - Experiment #293 (in-sample, superseded by the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md))
 
 ---
 
 *Documentation follows professional standards with clear organization, consistent naming, and comprehensive coverage of all AutoGen agents and system components.*
 
-*Last Updated: November 2025 - Production-Ready AutoGen Multi-Agent Trading System*
+Last updated: November 2025. Performance figures corrected October 2026 (#574).

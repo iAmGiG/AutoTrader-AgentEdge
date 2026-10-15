@@ -1141,7 +1141,7 @@ voter_agent:
 
 | Metric | Target | Threshold |
 |--------|--------|-----------|
-| **Sharpe Ratio** | ≥0.856 | Maintain or improve |
+| **Sharpe Ratio** | > 0.69 | Beat the live-rules baseline (5 bps a side, #574) |
 | **Win Rate** | ≥55% | Profitable majority |
 | **GEX Precision** | ≥70% | Accurate signals |
 | **False Positive Rate** | ≤25% | Avoid noise |

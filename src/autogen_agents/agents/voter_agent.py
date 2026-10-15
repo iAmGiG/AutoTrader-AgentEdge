@@ -34,7 +34,7 @@ class VoterAgent(BaseAgent):
 
     Key features:
     - Accepts custom MACD/RSI parameters for testing
-    - Preserves validated logic that achieved 0.856 Sharpe
+    - Preserves the experiment 293 voting logic
     - Can be reconfigured on the fly for A/B testing
     - Not a fixed calculator - truly reusable agent
     """
@@ -517,7 +517,7 @@ Always return results in JSON format with action, confidence, and reasoning."""
 
         logger.info(f"VoterAgent reset to defaults: {self.current_config}")
 
-    def evaluate_ranked_voting(
+    def evaluate_ranked_voting(  # noqa: C901
         self, symbol: str, price_data: pd.DataFrame, return_components: bool = True
     ) -> Dict[str, Any]:
         """
