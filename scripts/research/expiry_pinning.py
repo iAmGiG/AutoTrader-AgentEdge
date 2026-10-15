@@ -181,7 +181,7 @@ def collect_symbol(bt, conn, sym: str) -> list:
     # Raw prices: they are compared with option strikes
     raw = bt.fetch_equity_prices([sym], START, END, adjust_splits=False)
     px = raw.set_index("trading_date")["close"]
-    px = px[~px.index.duplicated()].astype(float)
+    px = px[~px.index.duplicated()].astype(float)  # the table has some duplicate dates
     if len(px) < 500:
         return []
     events = event_days(px.index)

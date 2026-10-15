@@ -30,9 +30,11 @@ def test_split_day_is_not_a_fake_move(bt, symbol, start, end, split_day):
     assert abs(adjusted.pct_change().loc[split_day]) < 0.1
 
 
-def test_split_after_the_window_is_not_applied(bt):
-    # AAPL's 2020-08-31 split is after this window: prices stay at their raw scale
-    adjusted = bt.get_close_prices(["AAPL"], "2020-08-03", "2020-08-28")["AAPL"]
-    raw = bt.fetch_equity_prices(["AAPL"], "2020-08-03", "2020-08-28", adjust_splits=False)
+def test_a_date_has_the_same_price_in_every_window(bt):
+    # Adjusted to one anchor date, so a window ending before AAPL's 2020-08-31 split
+    # gives the same prices as one spanning it
+    before = bt.get_close_prices(["AAPL"], "2020-08-03", "2020-08-28")["AAPL"]
+    spanning = bt.get_close_prices(["AAPL"], "2020-08-03", "2020-09-30")["AAPL"]
 
-    assert adjusted.iloc[-1] == pytest.approx(float(raw["close"].iloc[-1]))
+    assert before.loc["2020-08-28"] == pytest.approx(spanning.loc["2020-08-28"])
+    assert before.loc["2020-08-28"] < 200  # 499.23 raw, split-adjusted

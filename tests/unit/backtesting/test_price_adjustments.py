@@ -53,20 +53,32 @@ def test_reverse_split_and_other_symbols_untouched():
 
 
 def test_multiple_splits_compound():
-    raw = _prices("NVDA", [400.0, 100.0, 1000.0 / 4 / 10 * 4, 10.0], start="2024-06-05")
-    splits = _splits(("NVDA", "2024-06-06", 4.0), ("NVDA", "2024-06-10", 10.0))
+    # 4-for-1 on day 2, then 10-for-1 on day 4: raw closes 400, 400, 100, 100, 10, 10
+    raw = _prices("NVDA", [400.0, 400.0, 100.0, 100.0, 10.0, 10.0], start="2024-06-03")
+    splits = _splits(("NVDA", "2024-06-05", 4.0), ("NVDA", "2024-06-07", 10.0))
 
     adjusted = split_adjust(raw, splits)
 
-    assert adjusted["close"].iloc[0] == pytest.approx(400.0 / 40)
-    assert adjusted["close"].iloc[1] == pytest.approx(100.0 / 10)
+    assert list(adjusted["close"]) == pytest.approx([10.0] * 6)
+    assert list(adjusted["volume"]) == pytest.approx([40000.0] * 2 + [10000.0] * 2 + [1000.0] * 2)
 
 
-def test_no_splits_returns_an_equal_copy():
-    raw = _prices("SPY", [1.0, 2.0, 3.0])
+def test_suspect_split_day_is_logged(caplog):
+    # A 1-for-6 reverse split on a day the stock also fell 37% (RIOT 2012-06-20)
+    raw = _prices("RIOT", [1.0, 1.0, 6.0 * 0.63], start="2012-06-18")
+
+    with caplog.at_level("WARNING"):
+        split_adjust(raw, _splits(("RIOT", "2012-06-20", 1 / 6)))
+
+    assert "RIOT split on 2012-06-20" in caplog.text
+
+
+def test_no_splits_returns_a_float_copy():
+    raw = _prices("SPY", [1.0, 2.0, 3.0]).astype({"volume": "int64"})
 
     adjusted = split_adjust(raw, _splits())
 
     assert adjusted is not raw
-    pd.testing.assert_frame_equal(adjusted, raw)
+    assert list(adjusted["close"]) == [1.0, 2.0, 3.0]
+    assert adjusted["volume"].dtype == float  # same dtype with or without splits
     assert np.isfinite(adjusted["close"]).all()

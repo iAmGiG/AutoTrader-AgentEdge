@@ -39,7 +39,7 @@ The audit now has 33 Holm and 67 BH rejections, against 37 and 74 before. Studie
 | Window, lag and output options; Newey-West tests | `src/backtesting/research_cli.py`, all GEX runners | 8a2dbdc |
 | `run_daily_signal_strategy`: P&L = direction × size × day's change, exits before booking; dispersion and delta-neutral signals decide on the previous close | `src/backtesting/research_backtester.py`, `src/backtesting/signals/` | 8469709 |
 | Pairs positions marked to market daily | `src/backtesting/research_backtester.py` | 4139e39 |
-| Prices split-adjusted on load from `gex.corporate_events`; expiry pinning and the intraday study opt out (strikes, raw snapshots) | `src/backtesting/price_adjustments.py`, `src/backtesting/research_backtester.py` | 2026-10-15 |
+| Prices split-adjusted on load from `gex.corporate_events`; expiry pinning and the intraday study opt out (strikes, raw snapshots) | `src/backtesting/price_adjustments.py`, `src/backtesting/research_backtester.py` | e4ffb5b |
 
 **Backtester convention** (`run_daily_signal_strategy`): the signal for row *i* uses information through day *i − 1*; `daily_pnl_pct` is the long-side change of the traded quantity on day *i*. MACD+RSI already followed this and is unchanged (SPY Sharpe 0.561 before and after).
 

@@ -66,9 +66,9 @@ class ResearchBacktester:
         """Fetch daily OHLCV from equity_prices_daily.
 
         The table stores raw prices, so by default they are back-adjusted for splits
-        (gex.corporate_events) to the scale at the end of the window; otherwise a split
-        reads as a one-day move of the split ratio. Pass ``adjust_splits=False`` for raw
-        prices, e.g. to compare with option strikes.
+        (gex.corporate_events) to the scale at LAST_VALIDATED_DATE, the same for every
+        window; otherwise a split reads as a one-day move of the split ratio. Pass
+        ``adjust_splits=False`` for raw prices, e.g. to compare with option strikes.
 
         Returns:
             DataFrame with columns: trading_date, symbol, open, high, low, close, volume
@@ -88,12 +88,15 @@ class ResearchBacktester:
         df = pd.read_sql_query(query, conn, params=(*symbols, start_date, end_date))
         df["trading_date"] = pd.to_datetime(df["trading_date"])
         if adjust_splits:
-            df = split_adjust(df, load_splits(conn, symbols, end_date))
+            splits = load_splits(conn, symbols, start_date, LAST_VALIDATED_DATE)
+            df = split_adjust(df, splits)
         return df
 
-    def get_close_prices(self, symbols: List[str], start_date: str, end_date: str) -> pd.DataFrame:
-        """Get pivoted close prices (columns = symbols, index = dates)."""
-        raw = self.fetch_equity_prices(symbols, start_date, end_date)
+    def get_close_prices(
+        self, symbols: List[str], start_date: str, end_date: str, adjust_splits: bool = True
+    ) -> pd.DataFrame:
+        """Get pivoted close prices (columns = symbols, index = dates), split-adjusted."""
+        raw = self.fetch_equity_prices(symbols, start_date, end_date, adjust_splits)
         pivot = raw.pivot(index="trading_date", columns="symbol", values="close")
         return pivot.dropna()
 

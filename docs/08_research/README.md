@@ -39,7 +39,7 @@ GEX re-validation on 2008 to 2026-10-09 (#576). Full write-up: [02_gex_research/
 | GEX sign switches intraday momentum / reversal | #530 | 🛑 STOP | Pooled interaction p=0.067, wrong sign; timing strategy -0.5 bps/day |
 | Negative GEX goes with higher next-day variance | #576 | ✅ DONE | 40 symbols: +7% beyond HAR and leverage, high-VIX only; descriptive, no out-of-sample forecast gain |
 
-**Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay or intraday effect survives multiple-testing correction (227 tests).
+**Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay or intraday effect survives multiple-testing correction (237 tests).
 
 ---
 
