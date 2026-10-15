@@ -34,6 +34,12 @@ mkdir -p "$PROJECT_ROOT/state"
 # stdout duplicates state/scheduler.log (rotated), so only errors are kept
 CRON_DUE="*/5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due > /dev/null 2>> $PROJECT_ROOT/state/scheduler-cron.err"
 
+if crontab -l 2>/dev/null | grep -q "main.py --run-due"; then
+    echo "A scheduler entry (main.py --run-due) is already in the crontab:"
+    crontab -l | grep "main.py --run-due"
+    exit 0
+fi
+
 echo "Crontab entry to be added:"
 echo ""
 echo "# OptionsCommander - scheduler check (routines run when due)"

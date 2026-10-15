@@ -5,6 +5,7 @@ Extracted from trading_cycle.py as part of #439 refactoring.
 Handles state reconciliation, stop adjustments, and position alerts.
 """
 
+import copy
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -22,6 +23,30 @@ STOP_RENEW_AFTER_DAYS = 80
 # A trailing stop is kept at least this far below the price: off-hours the price is the
 # last trade, and a stop just under it could fire on any small gap at the open
 MIN_STOP_GAP = 0.01
+
+# Alpaca can't replace an order in these states (orders placed off-hours stay "accepted"
+# until the open), so raising one waits for a later run
+NOT_REPLACEABLE = ("accepted", "pending_new", "pending_replace", "pending_cancel")
+
+
+def _protective_stops(orders: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """A position's live sell stops (stop or stop-limit; trailing stops trail themselves)."""
+    return [
+        order
+        for order in orders
+        if "sell" in str(order.get("side", "")).lower()
+        and order.get("stop_price")
+        and "trailing" not in str(order.get("type", "")).lower()
+    ]
+
+
+def _stop_reason(entry_price: float, current_price: float, new_stop: float) -> str:
+    """Why a stop moves to new_stop, from the level itself (whatever rule or clamp set it)."""
+    profit = (current_price - entry_price) / entry_price
+    if new_stop <= entry_price + 0.01:
+        return f"Move to breakeven ({profit:.1%} profit)"
+    locked = (new_stop - entry_price) / (current_price - entry_price)
+    return f"Lock {locked:.0%} of gains ({profit:.1%} profit)"
 
 
 @dataclass
@@ -350,48 +375,49 @@ class StateReconciler:
             if symbol not in positions:
                 continue  # Skip unknown positions
 
-            stop_order = next(
-                (
-                    order
-                    for order in broker_state.get("orders", {}).get(symbol, [])
-                    if order["type"] in ["stop", "stop_loss"]
-                    and order["side"] == "sell"
-                    and order.get("stop_price")
-                ),
-                None,
-            )
-            if stop_order is None:
+            stops = _protective_stops(broker_state.get("orders", {}).get(symbol, []))
+            if not stops:
                 continue  # no live stop: check_protective_stops() re-places it
 
-            current_stop = float(stop_order["stop_price"])
+            # Every stop on the position is raised to one level, from the lowest
+            lowest = min(stops, key=lambda order: float(order["stop_price"]))
             current_price = broker_pos["current_price"]
             new_stop = self._trailing_level(
-                symbol, positions, current_stop, int(broker_pos.get("quantity", 0)), current_price
+                symbol,
+                positions,
+                float(lowest["stop_price"]),
+                int(broker_pos.get("quantity", 0)),
+                current_price,
+                adopt_order_id=lowest["id"],
             )
             if new_stop is None:
                 continue
 
             entry_price = float(positions[symbol].get("entry_price") or 0)
-            profit_percent = (current_price - entry_price) / entry_price
-            if profit_percent < 0.04:
-                reason = f"Move to breakeven ({profit_percent:.1%} profit)"
-            elif profit_percent < 0.06:
-                reason = f"Lock 25% gains ({profit_percent:.1%} profit)"
-            else:
-                reason = f"Trail 50% gains ({profit_percent:.1%} profit)"
-            logger.info(
-                f"{symbol}: Stop adjustment - ${current_stop:.2f} → ${new_stop:.2f} ({reason})"
-            )
-            adjustments.append(
-                StopAdjustment(
-                    symbol=symbol,
-                    order_id=stop_order["id"],
-                    current_stop=current_stop,
-                    new_stop=new_stop,
-                    reason=reason,
-                    profit_percent=profit_percent,
+            reason = _stop_reason(entry_price, current_price, new_stop)
+            for order in stops:
+                current_stop = float(order["stop_price"])
+                if new_stop <= current_stop + 0.01:
+                    continue
+                if str(order.get("status", "")).lower() in NOT_REPLACEABLE:
+                    logger.info(
+                        f"{symbol}: raise to ${new_stop:.2f} waits - order {order['id']} is "
+                        f"{order.get('status')} (replaceable once the market opens)"
+                    )
+                    continue
+                logger.info(
+                    f"{symbol}: Stop adjustment - ${current_stop:.2f} → ${new_stop:.2f} ({reason})"
                 )
-            )
+                adjustments.append(
+                    StopAdjustment(
+                        symbol=symbol,
+                        order_id=order["id"],
+                        current_stop=current_stop,
+                        new_stop=new_stop,
+                        reason=reason,
+                        profit_percent=(current_price - entry_price) / entry_price,
+                    )
+                )
 
         logger.info(f"Found {len(adjustments)} stop adjustments needed")
         return adjustments, local_state
@@ -450,7 +476,7 @@ class StateReconciler:
                 renewals, reviews = self._stop_renewals(symbol, stops, quantity, now)
                 for renewal in renewals:
                     trailing = self._trailing_level(
-                        symbol, positions, renewal.stop_price, renewal.quantity, current_price
+                        symbol, positions, renewal.stop_price, quantity, current_price
                     )
                     if trailing is not None:
                         renewal.reason += (
@@ -579,15 +605,17 @@ class StateReconciler:
         actual_stop: Optional[float],
         quantity: int,
         current_price: float,
+        adopt_order_id: Optional[str] = None,
     ) -> Optional[float]:
         """
         Where the trailing-stop rules put a position's stop now, if that is above
-        actual_stop; else None. Used both to raise live stops and to place or renew
-        stops at the right level.
+        actual_stop; else None. The level is kept MIN_STOP_GAP below the price.
 
-        The trailing manager's stop is first set to actual_stop (the broker's, or the one
-        about to be placed), so a stop it recorded but the broker never accepted can't
-        hide the raise. The level is kept MIN_STOP_GAP below the price.
+        With adopt_order_id (a live broker stop), the trailing manager adopts that stop
+        and order as its own first, so a stop it recorded but the broker never accepted
+        can't hide the raise. Without it (a stop about to be placed or renewed), the
+        level is worked out on a copy and the manager is left as it was: the routine
+        records the stop once the broker accepts it.
         """
         local = positions.get(symbol)
         manager = self.trailing_stop_manager
@@ -596,16 +624,32 @@ class StateReconciler:
         entry_price = float(local.get("entry_price") or 0)
         if not entry_price:
             return None
-        if symbol not in manager.stop_states:
+
+        original = manager.stop_states.get(symbol)
+        if original is None:
             manager.register_position(
                 symbol=symbol,
                 entry_price=entry_price,
                 initial_stop=actual_stop,
                 quantity=quantity,
-                stop_order_id=None,
+                stop_order_id=adopt_order_id,
             )
-        manager.stop_states[symbol].current_stop = actual_stop
-        level = manager.calculate_new_stop(symbol, current_price)
+        elif adopt_order_id is None:
+            manager.stop_states[symbol] = copy.deepcopy(original)
+        state = manager.stop_states[symbol]
+        state.current_stop = actual_stop
+        if adopt_order_id is not None:
+            state.stop_order_id = adopt_order_id
+
+        try:
+            level = manager.calculate_new_stop(symbol, current_price)
+        finally:
+            if adopt_order_id is None:  # leave the manager as it was
+                if original is None:
+                    manager.stop_states.pop(symbol, None)
+                else:
+                    manager.stop_states[symbol] = original
+
         if level is None:
             return None
         level = round(min(level, current_price * (1 - MIN_STOP_GAP)), 2)

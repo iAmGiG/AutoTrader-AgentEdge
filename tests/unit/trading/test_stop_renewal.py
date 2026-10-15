@@ -381,9 +381,27 @@ class TestStopsAtTheTrailingLevel:
             symbol="SPY", qty=14, side="sell", stop_price=739.21, time_in_force="gtc"
         )
         assert cycle.local_state_manager.state["positions"]["SPY"]["stop_price"] == 739.21
-        assert cycle.trailing_stop_manager.stop_states["SPY"].current_stop == 739.21
-        assert cycle.trailing_stop_manager.stop_states["SPY"].stop_order_id == "new-sl"
         assert adjustments == []  # nothing left to modify (it would fail while 'accepted')
+        # the manager takes the stop from the broker, with its order
+        state = cycle.trailing_stop_manager.stop_states["SPY"]
+        assert (state.current_stop, state.stop_order_id) == (739.21, "new-sl")
+
+    def test_working_out_a_repair_leaves_the_manager_unchanged(self):
+        reconciler = _trailing_reconciler(739.21)
+        reconciler.trailing_stop_manager.register_position("SPY", 657.6, 700.0, 14, "sl-old")
+
+        reconciler.check_protective_stops(_broker(), _local(), NOW)
+
+        state = reconciler.trailing_stop_manager.stop_states["SPY"]
+        assert (state.current_stop, state.stop_order_id) == (700.0, "sl-old")
+        assert "QQQ" not in reconciler.trailing_stop_manager.stop_states
+
+    def test_a_new_position_is_not_registered_until_its_stop_is_live(self):
+        reconciler = _trailing_reconciler(739.21)
+
+        reconciler.check_protective_stops(_broker(), _local(), NOW)
+
+        assert reconciler.trailing_stop_manager.stop_states == {}
 
 
 class TestRaisingLiveStops:
@@ -419,6 +437,37 @@ class TestRaisingLiveStops:
         assert cycle.local_state_manager.state["positions"]["SPY"]["stop_price"] == 624.72
         assert cycle.trailing_stop_manager.stop_states["SPY"].current_stop == 624.72
         assert cycle.calculate_stop_adjustments(live)  # so the next run tries again
+
+    def test_stop_limit_orders_and_every_stop_on_the_position_are_raised(self):
+        om = MagicMock()
+        cycle = self._cycle(om, local_stop=620.0)
+        legs = [
+            {**_stop_order(0, order_id="sl-a"), "stop_price": 620.0, "quantity": 7},
+            {**_stop_order(0, order_id="sl-b"), "type": "stop_limit", "stop_price": 624.72},
+        ]
+
+        adjustments = cycle.calculate_stop_adjustments(_broker(orders=legs))
+
+        assert [(a.order_id, a.current_stop, a.new_stop) for a in adjustments] == [
+            ("sl-a", 620.0, 739.21),
+            ("sl-b", 624.72, 739.21),
+        ]
+
+    def test_an_order_not_yet_replaceable_waits_for_a_later_run(self):
+        cycle = self._cycle(MagicMock(), local_stop=624.72)
+        accepted = {**_stop_order(0), "stop_price": 624.72, "status": "accepted"}
+
+        adjustments = cycle.calculate_stop_adjustments(_broker(orders=[accepted]))
+
+        assert adjustments == []  # Alpaca refuses to replace it until the open
+
+    def test_the_reason_describes_the_level_chosen(self):
+        cycle = self._cycle(MagicMock(), local_stop=624.72)
+        live = _broker(orders=[{**_stop_order(0), "stop_price": 624.72}])
+
+        (adjustment,) = cycle.calculate_stop_adjustments(live)
+
+        assert adjustment.reason == "Lock 73% of gains (17.0% profit)"  # entry 657.6, price 769.2
 
     def test_an_accepted_raise_is_recorded_with_the_new_order_id(self):
         om = MagicMock()
