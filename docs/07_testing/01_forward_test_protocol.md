@@ -198,6 +198,8 @@ test_manager.close_trade(
 | **Max Drawdown** | <15% | <10.1% (match backtest) |
 | **Sharpe Ratio** | >0.5 | 0.856 (match backtest) |
 
+> **Superseded (Oct 2026, #574):** the "match backtest" targets above come from experiment 293, which doesn't describe the live rules. The [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md) expects about 35 trades in 30 trading days and a win rate near 43%. Over 30 days a Sharpe ratio has a standard error of about 2.9, so the paper run is judged on fidelity to a replay of the same rules (#574 stage C), not on performance.
+
 ### Operational Requirements
 
 | Metric | Minimum |

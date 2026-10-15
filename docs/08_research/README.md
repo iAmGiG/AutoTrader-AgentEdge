@@ -41,6 +41,8 @@ GEX re-validation on 2008 to 2026-10-09 (#576). Full write-up: [02_gex_research/
 
 **Key insight**: the regime label is computed from end-of-day options data, so it must be lagged one day. With that and a corrected backtester, no GEX trading overlay or intraday effect survives multiple-testing correction (237 tests).
 
+**Live trading rules (#574 stage A)**: [03_strategy_research/live_rules_baseline.md](03_strategy_research/live_rules_baseline.md) backtests the rules the CLI trades with, at live timing, on the 19-symbol watchlist. At 5 bps a side the Sharpe is 0.69 (0.71 from 2020, interval includes zero), and alpha against buy-and-hold of the same symbols is +0.11% a year (t = 0.19). This replaces the 0.856 Sharpe of experiment 293.
+
 ---
 
 ## Research Summary (Dec 2025)
@@ -82,8 +84,8 @@ Findings that show **promise**. Some integrated into production, others warrant 
 
 | Finding | Issue | Status | Action |
 | --------- | ------- | -------- | -------- |
-| MACD+RSI voting more robust than TSMOM | #519 | ✅ DONE | Integrated in VoterAgent (0.856 Sharpe) |
-| VoterAgent validated | Exp 293 | ✅ DONE | Production ready, no changes needed |
+| MACD+RSI voting more robust than TSMOM | #519 | ✅ DONE | Integrated in VoterAgent. The 0.856 Sharpe is superseded: no edge over buy-and-hold at live timing (#574) |
+| VoterAgent validated | Exp 293 | 🛑 STOP | In-sample, same-close fills, no costs; superseded by the [live-rules baseline](03_strategy_research/live_rules_baseline.md) |
 | Ready-Aim-Fire (RAF) outperforms VoterAgent | #460, #532 | 🔄 CONTINUE | 0.553 Sharpe, 80% win rate - integration planned |
 | Weekly KAMA outperforms weekly MACD | #467 | 🔄 CONTINUE | Consider TrendFilterAgent implementation |
 | Path-dependent simulation reveals wick risk | #528 | 🔄 CONTINUE | Apply framework to all strategies |
