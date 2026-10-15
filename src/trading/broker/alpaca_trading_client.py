@@ -334,6 +334,8 @@ class AlpacaAccountMonitor:
                     "unrealized_plpc": float(pos.unrealized_plpc) if pos.unrealized_plpc else 0.0,
                     "cost_basis": float(pos.cost_basis) if pos.cost_basis else 0.0,
                     "change_today": float(pos.change_today) if pos.change_today else 0.0,
+                    # Shares not held by open orders (bracket/OCO legs counted once)
+                    "qty_available": _float_or_none(getattr(pos, "qty_available", None)),
                 }
                 for pos in positions
             ]

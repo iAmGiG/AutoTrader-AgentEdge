@@ -18,7 +18,7 @@ Refactored in #439 to use extracted components:
 import logging
 import os
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -49,7 +49,7 @@ from src.utils.date_utils import get_datetime_now
 
 # GTT (Good-Till-Triggered) integration - Issue #340
 try:
-    from src.trading.gtt.action_executor import get_action_executor
+    from src.trading.gtt.action_executor import ActionResult, get_action_executor
     from src.trading.gtt.trailing_stop_bridge import (
         restore_trailing_stops_from_gtt,
         sync_all_trailing_stops,
@@ -74,17 +74,44 @@ __all__ = [
 STOP_REPAIR_TYPES = ("MISSING_STOP", "STOP_EXPIRING")
 
 
-def _within_free_shares(triggered: List[Any], broker_state: Dict[str, Any]) -> List[Any]:
+def _free_shares(symbol: str, broker_state: Dict[str, Any]) -> int:
     """
-    Keep GTT sell orders within the shares free to sell: the long position less what
-    open sell orders (such as the broker stop) already hold.
+    Shares of a long position not held by open orders: Alpaca's qty_available, which
+    counts a bracket's or OCO's legs once and only the unfilled part of a partial fill.
+    Without it, the position less every open sell order (it may count OCO legs twice,
+    so it errs toward selling less, never more).
+    """
+    position = broker_state.get("positions", {}).get(symbol) or {}
+    if not position or "short" in str(position.get("side", "")).lower():
+        return 0
+    if position.get("qty_available") is not None:
+        return int(position["qty_available"])
+    held_by_orders = sum(
+        int(order.get("quantity") or 0)
+        for order in broker_state.get("orders", {}).get(symbol, [])
+        if "sell" in str(order.get("side", "")).lower()
+    )
+    return int(position.get("quantity", 0)) - held_by_orders
 
-    A sell trigger with no free shares is skipped this run (the broker's own order covers
-    those shares, and Alpaca would refuse the sell); it stays active. A larger one is cut
-    to the free shares, so a trigger saved for a bigger position can't sell more than is
-    held or open a short.
+
+def _within_free_shares(
+    triggered: List[Any], broker_state: Dict[str, Any]
+) -> Tuple[List[Any], List[Tuple[Any, str]]]:
     """
-    kept = []
+    Keep GTT sell orders within the shares free to sell (see _free_shares), sharing
+    them among a symbol's sell triggers in the same run.
+
+    A sell trigger with no free shares is skipped this run (open orders, such as the
+    broker stop, hold them, and Alpaca would refuse the sell); it stays active. A larger
+    one is cut to the free shares, so it can't sell more than is held or open a short.
+    A trigger with an unusable quantity is skipped on its own.
+
+    Returns:
+        (triggers to execute, [(skipped trigger, reason)])
+    """
+    kept: List[Any] = []
+    skipped: List[Tuple[Any, str]] = []
+    free_left: Dict[str, int] = {}
     for trigger in triggered:
         config = trigger.action_config or {}
         is_sell = str(config.get("side", "buy")).lower() == "sell"
@@ -92,27 +119,27 @@ def _within_free_shares(triggered: List[Any], broker_state: Dict[str, Any]) -> L
             kept.append(trigger)
             continue
 
-        position = broker_state.get("positions", {}).get(trigger.symbol) or {}
-        long_qty = (
-            0 if "short" in str(position.get("side", "")).lower() else position.get("quantity", 0)
-        )
-        held_by_orders = sum(
-            int(order.get("quantity") or 0)
-            for order in broker_state.get("orders", {}).get(trigger.symbol, [])
-            if "sell" in str(order.get("side", "")).lower()
-        )
-        free = int(long_qty) - held_by_orders
-        if free <= 0:
-            logger.info(
-                f"GTT {trigger.id} ({trigger.symbol} sell) not executed: no free shares "
-                f"({long_qty} held, {held_by_orders} in open sell orders)"
-            )
+        try:
+            qty = int(float(config.get("qty")))
+        except (TypeError, ValueError):
+            qty = 0
+        if qty <= 0:
+            skipped.append((trigger, f"not executed: unusable quantity {config.get('qty')!r}"))
             continue
-        if int(config.get("qty", 1)) > free:
+
+        if trigger.symbol not in free_left:
+            free_left[trigger.symbol] = _free_shares(trigger.symbol, broker_state)
+        free = free_left[trigger.symbol]
+        if free <= 0:
+            skipped.append((trigger, "not executed: no free shares (open sell orders hold them)"))
+            continue
+        if qty > free:
             logger.info(f"GTT {trigger.id} ({trigger.symbol} sell) cut to the {free} free shares")
-            trigger.action_config = {**config, "qty": free}
+            trigger.action_config = {**config, "qty": free, "quantity": free}
+            qty = free
+        free_left[trigger.symbol] -= qty
         kept.append(trigger)
-    return kept
+    return kept, skipped
 
 
 class RoutineError(RuntimeError):
@@ -545,23 +572,37 @@ class CostEfficientTradeCycle:
                 logger.debug("No prices available for GTT check")
                 return []
 
-            # Evaluate triggers
+            # Evaluate triggers; sells are kept within the shares free to sell
             evaluator = get_trigger_evaluator()
-            triggered = _within_free_shares(evaluator.evaluate_triggers_batch(prices), broker_state)
+            triggered, skipped = _within_free_shares(
+                evaluator.evaluate_triggers_batch(prices), broker_state
+            )
+            results = []
+            for trigger, reason in skipped:
+                logger.info(f"GTT {trigger.id} ({trigger.symbol}) {reason}")
+                results.append(
+                    ActionResult(
+                        trigger_id=trigger.id,
+                        success=False,
+                        action_type=trigger.action_type,
+                        message=f"{trigger.symbol} sell {reason}",
+                        details={"symbol": trigger.symbol, "skipped": True},
+                    )
+                )
 
             if not triggered:
-                logger.debug("No GTT triggers fired")
-                return []
+                logger.debug("No GTT triggers to execute")
+                return results
 
             # Execute actions for triggered GTTs
             executor = get_action_executor()
-            results = executor.execute_triggers_batch(triggered, prices)
+            executed = executor.execute_triggers_batch(triggered, prices)
 
             # Log summary
-            success_count = sum(1 for r in results if r.success)
+            success_count = sum(1 for r in executed if r.success)
             logger.info(f"GTT: {len(triggered)} triggers fired, {success_count} actions executed")
 
-            return results
+            return results + executed
 
         except Exception as e:
             logger.error(f"GTT check failed: {e}")
@@ -755,7 +796,11 @@ class CostEfficientTradeCycle:
             discrepancies = self.reconcile_state(broker_state)
 
             # Re-place missing stops, renew aging GTC ones (Issue #586)
-            discrepancies.extend(self.check_and_repair_stops(broker_state))
+            stop_discrepancies = self.check_and_repair_stops(broker_state)
+            discrepancies.extend(stop_discrepancies)
+            if any(d.action == "AUTO_FIXED" for d in stop_discrepancies):
+                # Later steps (the GTT check counts shares held by stops) see the new stops
+                broker_state = self.fetch_broker_state(force_refresh=True)
 
             # Check for position alerts
             alerts = self.check_position_alerts(broker_state)
