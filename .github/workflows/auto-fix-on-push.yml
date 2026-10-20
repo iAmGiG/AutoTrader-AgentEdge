@@ -27,22 +27,19 @@ jobs:
         python-version: '3.12'
         cache: 'pip'
 
-    - name: Install formatting tools
-      # Same ruff as .pre-commit-config.yaml and pyproject.toml: an unpinned (or different)
-      # formatter re-formats what pre-commit just formatted (#603)
+    # Ruff runs through pre-commit: the version comes from .pre-commit-config.yaml (the
+    # same as local commits, so nothing is re-formatted, #603), and pre-commit passes
+    # tracked files, including the force-added ones under the gitignored tests/
+    - name: Install pre-commit
       run: |
         python -m pip install --upgrade pip
-        pip install ruff==0.17.1
+        pip install pre-commit==4.7.0
 
-    # Tracked files are listed explicitly: ruff skips gitignored paths (tests/ is
-    # gitignored, its tracked files force-added) when it searches directories
     - name: Run Ruff auto-fixes (lint, import order)
-      run: |
-        git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' 'config_defaults/*.py' main.py | xargs -0 ruff check --fix || true
+      run: pre-commit run ruff-check --all-files || true
 
     - name: Run Ruff formatter
-      run: |
-        git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' 'config_defaults/*.py' main.py | xargs -0 ruff format || true
+      run: pre-commit run ruff-format --all-files || true
 
     - name: Check for changes
       id: verify_diff

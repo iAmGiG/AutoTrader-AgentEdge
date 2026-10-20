@@ -117,9 +117,9 @@ Defines which auto-fixes run locally:
 - **check-yaml/json**: Validates config files
 - **bandit**: Security vulnerability scanning
 
-The ruff `rev` here, the `ruff==` pin in `pyproject.toml` and the pins in the lint and auto-fix
-workflows must match. A different formatter version re-formats what the others produced.
-The hooks need pre-commit 3.2 or newer.
+The workflows run ruff through these hooks, so the `rev` here is the version CI uses. Keep the
+`ruff==` pin in `pyproject.toml` and `requirements-dev.txt` equal to it for manual runs. The
+hooks need pre-commit 3.2 or newer.
 
 ### `.markdownlint.json`
 
@@ -149,7 +149,8 @@ Tool configuration:
 **Triggers**: Push to `main`, `development`, `feature/**`
 **Actions**:
 
-- Runs `ruff check --fix` and `ruff format` (pinned ruff) on Python files
+- Runs the `ruff-check` and `ruff-format` pre-commit hooks on all tracked files (the version
+  pinned in `.pre-commit-config.yaml`)
 - Auto-commits and pushes fixes if changes detected
 **Time**: ~2-3 minutes
 
@@ -159,7 +160,7 @@ Tool configuration:
 **Actions**:
 
 - Non-blocking checks (warnings only)
-- Runs ruff, pylint, `ruff format --check`, mypy
+- Runs the ruff hooks through pre-commit (lint, format check), pylint, mypy
 - Security scanning with bandit
 - Code complexity analysis with radon
 **Time**: ~3-5 minutes
@@ -176,7 +177,7 @@ echo "new code" >> src/new_file.py
 
 # Commit (pre-commit auto-fixes run)
 git commit -am "feat: Add new feature"
-# [INFO] ruff (legacy alias)......................................Passed
+# [INFO] ruff check...............................................Passed
 # [INFO] ruff format..............................................Passed
 
 # Push

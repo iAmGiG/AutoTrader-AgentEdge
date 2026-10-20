@@ -77,8 +77,8 @@ max_line_length = 100
 
 [tool.ruff]
 # Ruff lints, sorts imports (rule I) and formats (`ruff format`, Black-compatible); it
-# replaced black and isort (#603). Pin the same ruff version in .pre-commit-config.yaml
-# and the lint and auto-fix workflows, or each run re-formats the others' output.
+# replaced black and isort (#603). CI runs it through pre-commit, so the version is the
+# rev in .pre-commit-config.yaml; keep the dev pin below equal to it.
 line-length = 100
 target-version = "py312"
 # *.md: ruff 0.16+ would also format Python code blocks inside Markdown
@@ -94,14 +94,11 @@ select = ["E", "F", "I", "W", "C", "N"]
 known-local-folder = ["src", "config"]
 
 [tool.ruff.lint.per-file-ignores]
-# Utilities that need sys.path manipulation before imports
-"scripts/utilities/cache_manager.py" = ["E402"]
-# Deprecated research scripts (v0-v4 analysis, old config demos)
-"scripts/research/**/*.py" = ["I001", "E402", "E501"]
 # Line length handled by formatters and GitHub CI
 "*" = ["E501"]
-# Top-level scripts set up sys.path before their imports (isort skipped them)
-"scripts/*.py" = ["I001", "E402"]
+# Scripts set up sys.path before their imports, so import order isn't enforced there
+# (E402 is ignored everywhere). The glob's * also matches "/": all of scripts/.
+"scripts/*.py" = ["I001"]
 # Issue #414: TrailingStopManager has justified complexity for profit zone logic
 "src/trading/orders/trailing_stop_manager.py" = ["C901"]
 
