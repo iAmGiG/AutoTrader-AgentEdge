@@ -9,8 +9,9 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
-from src.utils.date_utils import get_datetime_now
+from src.utils.date_utils import DEFAULT_TIMEZONE, get_datetime_now
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +148,10 @@ class ReportGenerator:
         Returns:
             Formatted markdown report string
         """
-        now = get_datetime_now()
+        now = get_datetime_now(ZoneInfo(DEFAULT_TIMEZONE))  # ET, as the file name's date
         report_lines = [
-            f"# {routine_type.value.title()} Trading Report - {now.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"# {routine_type.value.title()} Trading Report - "
+            f"{now.strftime('%Y-%m-%d %H:%M:%S')} ET",
             "",
         ]
 
@@ -196,9 +198,7 @@ class ReportGenerator:
         if discrepancies:
             report_lines.extend(["## Discrepancies Found"])
             for disc in discrepancies:
-                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(
-                    disc.severity, "ℹ️"
-                )
+                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(disc.severity, "ℹ️")
                 report_lines.append(f"{severity_emoji} {disc.type}: {disc.symbol}")
 
                 if disc.type == "UNKNOWN_POSITION":
@@ -259,7 +259,7 @@ class ReportGenerator:
         report_lines.extend(
             [
                 "---",
-                f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S')}",
+                f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S')} ET",
                 f"Next {next_routine} routine: {next_time}",
                 "Cost: ~3-5 API calls total",
                 "",

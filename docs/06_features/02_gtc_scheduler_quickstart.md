@@ -136,9 +136,11 @@ cat reports/daily/$(ls -t reports/daily/ | head -1)
 1. ✅ Review end-of-day positions
 2. ✅ Record the account (equity and day P&L), positions and new fills (daily records)
 3. ✅ Reconcile with broker, and re-place missing or expiring stops
-4. ✅ Generate evening report
-5. ✅ Prepare for next trading day
-6. ✅ Total: 4 API calls, 10-20 seconds
+4. ✅ Raise stops on the day's gains while the market is open, as the morning routine
+   does, so an overnight gap can't take them before the next morning run
+5. ✅ Generate evening report
+6. ✅ Prepare for next trading day
+7. ✅ Total: 4-6 API calls, 10-20 seconds
 
 ### Daily Records
 

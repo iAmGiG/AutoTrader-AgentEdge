@@ -38,7 +38,7 @@ You must start the daemon process for automatic execution.
 
 **Example (config enabled, daemon NOT running):**
 
-```
+```text
 Scheduler> status
 
 ⏰ Scheduler Status
@@ -68,7 +68,7 @@ Scheduler> status
 
 **Example (config enabled, daemon RUNNING):**
 
-```
+```text
 Scheduler> status
 
 ⏰ Scheduler Status
@@ -95,7 +95,7 @@ View execution history (last 20 runs, 7 days)
 
 **Example:**
 
-```
+```text
 Scheduler> history
 
 📜 Execution History
@@ -116,7 +116,7 @@ Calculate and show next scheduled run with countdown
 
 **Example:**
 
-```
+```text
 Scheduler> next
 
 🔮 Next Scheduled Run
@@ -136,7 +136,7 @@ Display current scheduler configuration file contents
 
 **Example:**
 
-```
+```text
 Scheduler> config
 
 ⚙️  Scheduler Configuration
@@ -165,7 +165,7 @@ Interactive configuration editor
 
 **Example Session:**
 
-```
+```text
 Scheduler> edit
 
 📝 Scheduler Configuration Editor
@@ -195,7 +195,7 @@ Edit setting (1-5, 0 to save, q to cancel): 0
 
 Enable scheduler (sets `enabled: true` in config)
 
-```
+```text
 Scheduler> enable
 ✅ Scheduler enabled
 ```
@@ -204,7 +204,7 @@ Scheduler> enable
 
 Disable scheduler (sets `enabled: false` in config)
 
-```
+```text
 Scheduler> disable
 ❌ Scheduler disabled
 ```
@@ -213,11 +213,12 @@ Scheduler> disable
 
 #### `test morning`
 
-Test morning routine without waiting for scheduled time
+Run the morning routine now instead of waiting for its scheduled time. It is the real
+routine, run against the broker: it can place, renew and raise stops.
 
 **Example:**
 
-```
+```text
 Scheduler> test morning
 
 🧪 Testing morning routine...
@@ -247,9 +248,10 @@ Full report saved to: reports/daily/
 
 #### `test evening`
 
-Test evening routine immediately
+Run the evening routine now. As with `test morning`, it acts on the broker: it can
+place and renew stops, and raises them only while the market is open.
 
-```
+```text
 Scheduler> test evening
 
 🧪 Testing evening routine...
@@ -284,7 +286,7 @@ Reports are saved to `reports/daily/` with human-readable filenames:
 
 2. **Active Positions Table**
 
-   ```
+   ```text
    | Symbol | Entry | Current | Stop | Target | P&L | Action |
    |--------|-------|---------|------|--------|-----|--------|
    | META   | $628  | $625    | $597 | $678   | -$24 | No change |
@@ -385,7 +387,7 @@ Scheduler> enable
 
 1. **Always test after editing config**
 
-   ```
+   ```text
    Scheduler> edit
    # Make changes
    Scheduler> test morning
@@ -394,14 +396,14 @@ Scheduler> enable
 
 2. **Check history before troubleshooting**
 
-   ```
+   ```text
    Scheduler> history
    # Look for patterns in failures
    ```
 
 3. **Use dry run mode for testing**
 
-   ```
+   ```text
    Scheduler> edit
    # Set dry_run: true
    Scheduler> test morning
@@ -411,7 +413,7 @@ Scheduler> enable
 
 4. **Monitor next run before leaving**
 
-   ```
+   ```text
    Scheduler> next
    # Confirm expected time before exiting
    ```
@@ -427,7 +429,7 @@ The scheduler CLI is fully integrated:
 
 **Workflow:**
 
-```
+```text
 Main CLI> /schedule
 # Enter scheduler mode
 Scheduler> edit
@@ -460,7 +462,7 @@ Main CLI> show portfolio
 
 **Example Report**:
 
-```
+```text
 | Symbol | Entry | Current | Stop | Target | P&L | Action |
 | META | $628.07 | $627.00 | $0.00 | $634.19 | $-9 | No change |
 | SPY | $657.60 | $683.00 | $0.00 | $712.80 | +$356 | No change |
@@ -510,7 +512,7 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
 
 **Report Example**:
 
-```
+```text
 | Symbol | Entry | Current | Stop | Target | P&L | Action |
 | META | $628.07 | $627.00 | $609.00 | $634.19 | $-9 | No change |
 | SPY | $657.60 | $683.00 | $627.00 | $712.80 | +$356 | No change |

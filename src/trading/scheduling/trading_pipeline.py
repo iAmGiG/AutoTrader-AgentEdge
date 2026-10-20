@@ -30,6 +30,7 @@ import pytz
 
 from src.market_data.alpaca_market_data import AlpacaMarketData
 from src.trading.positions.position_manager import PositionManager
+from src.trading.scheduling.scheduler_state import market_today
 from src.trading.utils.unified_price_fetcher import get_current_price
 from src.utils.date_utils import get_datetime_now, subtract_days
 
@@ -575,7 +576,7 @@ class TradingPipeline:
                 logger.error(f"EOD reconciliation failed: {e}")
 
         # Generate report path
-        date_str = get_datetime_now().strftime("%Y-%m-%d")
+        date_str = market_today()  # the ET date, as the routine reports
         report_dir = Path("reports/daily")
         report_dir.mkdir(parents=True, exist_ok=True)
         report_path = report_dir / f"{date_str}_pipeline.md"
