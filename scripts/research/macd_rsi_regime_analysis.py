@@ -160,7 +160,7 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:  # noqa: C901
         }
         print(
             f"    {regime}: {len(rets)} days, Sharpe={sharpe:.3f}, "
-            f"signal_Sharpe={sig_sharpe:.3f}, win={float((s > 0).mean())*100:.1f}%"
+            f"signal_Sharpe={sig_sharpe:.3f}, win={float((s > 0).mean()) * 100:.1f}%"
         )
 
     # Welch's t-test: bullish vs bearish returns
@@ -257,9 +257,9 @@ def run(symbols, start, end, warmup_start, lag, output_name):
         return
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  SUMMARY: MACD+RSI Sharpe by Regime")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for r in results:
         sd = r.get("sharpe_diff_bull_minus_bear", 0)
         print(f"  {r['symbol']}: Sharpe diff (bullish - bearish) = {sd:+.3f}")

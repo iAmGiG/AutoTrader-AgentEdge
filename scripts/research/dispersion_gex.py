@@ -61,11 +61,11 @@ def run_dispersion_experiment(  # noqa: C901
     test_end: str,
 ) -> dict:
     """Run baseline and GEX-enhanced dispersion backtest."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Dispersion: {INDEX} vs {COMPONENTS}")
     print(f"  Fit:  {fit_start} → {fit_end}")
     print(f"  Test: {test_start} → {test_end}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # 1. Fetch all equity prices
     fit_prices = bt.get_close_prices(ALL_SYMBOLS, fit_start, fit_end)
@@ -176,7 +176,7 @@ def run_dispersion_experiment(  # noqa: C901
 
     print("\n  Regime distribution (test period):")
     for r, c in regime_counts.items():
-        print(f"    {r}: {c} days ({c/len(test_prices)*100:.1f}%)")
+        print(f"    {r}: {c} days ({c / len(test_prices) * 100:.1f}%)")
 
     sharpe_diff = gex_results.sharpe_ratio - baseline_results.sharpe_ratio
     print(f"\n  Sharpe improvement: {sharpe_diff:+.3f}")

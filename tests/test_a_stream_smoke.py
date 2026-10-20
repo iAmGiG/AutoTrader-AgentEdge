@@ -414,9 +414,9 @@ class TestCLIIntegrationConcepts:
             if value is not None:
                 # Convert numpy types if needed - plan should already be clean
                 actual_value = value.item() if hasattr(value, "item") else value
-                assert isinstance(
-                    actual_value, (str, int, float, bool, list, dict)
-                ), f"Key '{key}' has non-serializable type: {type(value)}"
+                assert isinstance(actual_value, (str, int, float, bool, list, dict)), (
+                    f"Key '{key}' has non-serializable type: {type(value)}"
+                )
 
     def test_trailing_stop_summary_is_dict(
         self, mock_order_manager, trailing_stop_module, trading_config_module

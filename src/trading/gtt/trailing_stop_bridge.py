@@ -111,7 +111,7 @@ def sync_trailing_stop_to_gtt(
         action_config=action_config,
         expiration_days=expiration_days,
         max_triggers=1,  # Fire once (sells the position)
-        notes=f"Multi-day trailing stop: {trail_pct*100:.1f}% from peak",
+        notes=f"Multi-day trailing stop: {trail_pct * 100:.1f}% from peak",
     )
 
     if trigger:

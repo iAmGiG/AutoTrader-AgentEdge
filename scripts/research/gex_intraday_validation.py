@@ -148,7 +148,7 @@ def analyze_symbol(bt: ResearchBacktester, symbol: str) -> dict:
         }
         print(
             f"    Q{q} (z={q_data['prior_gex_zscore'].mean():.2f}): "
-            f"mean={mean_ret*100:.4f}%, Sharpe={sharpe:.3f}, n={n}"
+            f"mean={mean_ret * 100:.4f}%, Sharpe={sharpe:.3f}, n={n}"
         )
 
     # Monotonicity test: Spearman correlation of quintile number vs mean return
@@ -210,9 +210,9 @@ def main():
         return
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for r in results:
         ls = r.get("long_short_spread_pct", 0)
         mt = r.get("monotonicity_test", {})

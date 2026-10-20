@@ -121,8 +121,7 @@ class AccountCommands:
         live = needs_live_confirmation(self.manager, account_id)
         if live and not (confirm_live and confirm_live(account_id)):
             safe_print(
-                f"{get_symbol('ERROR')} Not switched: {account_id} is not a confirmed "
-                "paper account"
+                f"{get_symbol('ERROR')} Not switched: {account_id} is not a confirmed paper account"
             )
             print("   Live accounts need a typed confirmation: switch to account <ID>")
             return {"status": "refused", "account_id": account_id}

@@ -12,12 +12,14 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
-from src.autogen_agents.orchestration.agent_factory import (AgentConfig,
-                                                            AgentInstance,
-                                                            AgentType,
-                                                            create_agent,
-                                                            create_voter,
-                                                            get_agent_factory)
+from src.autogen_agents.orchestration.agent_factory import (
+    AgentConfig,
+    AgentInstance,
+    AgentType,
+    create_agent,
+    create_voter,
+    get_agent_factory,
+)
 
 
 class TestAgentType(unittest.TestCase):

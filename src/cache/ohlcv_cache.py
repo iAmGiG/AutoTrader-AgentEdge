@@ -313,9 +313,7 @@ class OHLCVCacheManager(BaseSQLiteCache):
                         conditions.append("source = ?")
                         params.append(source)
 
-                    query = (
-                        f"DELETE FROM market_cache WHERE {' AND '.join(conditions)}"  # nosec B608
-                    )
+                    query = f"DELETE FROM market_cache WHERE {' AND '.join(conditions)}"  # nosec B608
 
                     cursor = conn.execute(query, params)
                     deleted = cursor.rowcount

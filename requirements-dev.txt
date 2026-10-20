@@ -2,9 +2,7 @@
 # Install with: pip install -r requirements-dev.txt
 
 # Linting and formatting
-ruff>=0.1.15              # Fast Python linter (replaces flake8, isort, pyupgrade)
-black>=24.1.1             # Code formatter
-isort>=5.13.2             # Import sorting (used in pre-commit)
+ruff==0.17.1              # Linter, import sorter and formatter (replaces black and isort, #603)
 pylint>=3.0.0             # Comprehensive linter
 mypy>=1.8.0               # Static type checker
 docformatter>=1.7.5       # Docstring formatter
@@ -20,7 +18,7 @@ radon>=6.0.1              # Complexity analysis
 vulture>=2.10             # Dead code finder
 
 # Pre-commit hooks
-pre-commit>=3.6.0         # Git hooks framework
+pre-commit>=3.2.0         # Git hooks framework (the hook versions need 3.2+)
 
 # Testing
 pytest>=7.4.0             # Testing framework

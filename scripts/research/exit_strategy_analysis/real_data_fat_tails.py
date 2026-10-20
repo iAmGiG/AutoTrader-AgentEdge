@@ -218,9 +218,9 @@ def main():
     bt.close()
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  SUMMARY: Optimal Strategy by Period")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for period_name, data in results.items():
         strategies = data.get("exit_strategies", {})
         best = None

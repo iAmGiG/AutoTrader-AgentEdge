@@ -209,7 +209,7 @@ class TradingOrchestrator:
                 await self.session_store.save_execution(decision.user_id, decision, result)
 
             logger.info(
-                f"Execution complete: {result.success}, " f"entry_order={result.entry_order_id}"
+                f"Execution complete: {result.success}, entry_order={result.entry_order_id}"
             )
 
             return result

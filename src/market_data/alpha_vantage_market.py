@@ -136,9 +136,7 @@ class AlphaVantageMarketTool:
 
             # Convert values to numeric
             for col in df.columns:
-                df[col] = pd.to_numeric(
-                    df[col]
-                )  # pylint: disable=unsupported-assignment-operation,unsubscriptable-object
+                df[col] = pd.to_numeric(df[col])  # pylint: disable=unsupported-assignment-operation,unsubscriptable-object
 
             # Apply date filters using processed dates
             df = df[df.index >= processed_start]  # pylint: disable=unsubscriptable-object
@@ -255,9 +253,7 @@ class AlphaVantageMarketTool:
 
             # Convert values to numeric
             for col in df.columns:
-                df[col] = pd.to_numeric(
-                    df[col]
-                )  # pylint: disable=unsupported-assignment-operation,unsubscriptable-object
+                df[col] = pd.to_numeric(df[col])  # pylint: disable=unsupported-assignment-operation,unsubscriptable-object
 
             # Sort by date (newest first)
             df = df.sort_index(ascending=False)

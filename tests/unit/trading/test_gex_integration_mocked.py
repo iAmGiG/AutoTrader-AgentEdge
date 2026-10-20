@@ -126,8 +126,7 @@ class TestRegimeClassifierUnit:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        from gex_db_infrastructure.validation.regime_classifier import \
-            RegimeClassifier
+        from gex_db_infrastructure.validation.regime_classifier import RegimeClassifier
 
         self.classifier = RegimeClassifier(
             persistence_threshold=0.70,

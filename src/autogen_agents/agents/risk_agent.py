@@ -382,8 +382,7 @@ class RiskAgent(BaseAgent):
         """Check if we have sufficient buying power."""
         if position_value > buying_power:
             blocking_issues.append(
-                f"Insufficient buying power: need ${position_value:,.2f}, "
-                f"have ${buying_power:,.2f}"
+                f"Insufficient buying power: need ${position_value:,.2f}, have ${buying_power:,.2f}"
             )
         elif position_value > buying_power * 0.9:
             warnings.append(

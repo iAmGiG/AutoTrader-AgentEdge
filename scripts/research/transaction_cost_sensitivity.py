@@ -210,9 +210,9 @@ def main():
     all_results["pairs_trading"] = {"results": pairs, "breakeven_bps": find_breakeven(pairs)}
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  BREAKEVEN COSTS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for strat, data in all_results.items():
         be = data["breakeven_bps"]
         print(f"    {strat}: {be} bps")

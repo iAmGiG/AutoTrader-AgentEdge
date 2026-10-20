@@ -277,7 +277,7 @@ class BaseAgent(AssistantAgent, ABC):
             + [
                 AssistantMessage(
                     content=(
-                        "Summarize these findings in a final answer. " "Do NOT call any more tools."
+                        "Summarize these findings in a final answer. Do NOT call any more tools."
                     ),
                     source="assistant",
                 )

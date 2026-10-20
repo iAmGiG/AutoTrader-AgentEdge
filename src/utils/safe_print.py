@@ -33,7 +33,11 @@ def _supports_utf8() -> bool:
         if IS_WINDOWS:
             try:
                 result = subprocess.run(
-                    ["chcp"], capture_output=True, text=True, shell=True, check=False  # nosec B602
+                    ["chcp"],
+                    capture_output=True,
+                    text=True,
+                    shell=True,
+                    check=False,  # nosec B602
                 )
                 return "65001" in result.stdout
             except OSError:

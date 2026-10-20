@@ -49,10 +49,10 @@ OUTPUT_NAME = "var_cvar_results.yaml"
 
 def run_var_cvar_analysis(bt: ResearchBacktester) -> dict:
     """Run VaR vs CVaR analysis stratified by GEX regime."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  VaR vs CVaR — GEX Regime Stratification (#543)")
     print(f"  Period: {START} → {END}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     overlay = bt.get_gex_overlay()
     results_by_symbol = {}
@@ -154,9 +154,9 @@ def main():
         return
 
     # Key findings
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  KEY FINDINGS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     for sym, data in results.items():
         regimes = data.get("by_regime", {})

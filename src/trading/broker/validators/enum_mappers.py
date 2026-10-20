@@ -46,8 +46,7 @@ def map_time_in_force(time_in_force: str) -> Optional:
     normalized = time_in_force.lower().strip()
     if normalized not in tif_map:
         raise ValueError(
-            f"Invalid time_in_force '{time_in_force}'. "
-            f"Valid values: {', '.join(tif_map.keys())}"
+            f"Invalid time_in_force '{time_in_force}'. Valid values: {', '.join(tif_map.keys())}"
         )
 
     return tif_map[normalized]

@@ -60,9 +60,9 @@ class TestDispersionCorrelation:
         stats = signal.fit(returns, INDEX, COMPONENTS)
 
         # Equity ETFs should show moderate-to-high correlation
-        assert (
-            stats["mean_correlation"] > 0.2
-        ), f"Expected positive mean correlation, got {stats['mean_correlation']:.3f}"
+        assert stats["mean_correlation"] > 0.2, (
+            f"Expected positive mean correlation, got {stats['mean_correlation']:.3f}"
+        )
         assert stats["n_obs"] > 400, f"Expected 400+ observations, got {stats['n_obs']}"
 
 

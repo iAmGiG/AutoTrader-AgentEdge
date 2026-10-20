@@ -84,7 +84,7 @@ class PositionAlert:
         elif self.alert_type == AlertType.STOP_ADJUSTED:
             old_stop = self.details.get("old_stop", 0)
             new_stop = self.details.get("new_stop", 0)
-            return f"{emoji} {self.ticker} stop adjusted: " f"${old_stop:.2f} → ${new_stop:.2f}"
+            return f"{emoji} {self.ticker} stop adjusted: ${old_stop:.2f} → ${new_stop:.2f}"
 
         elif self.alert_type == AlertType.PROFIT_TARGET_REACHED:
             profit_pct = self.details.get("profit_pct", 0)

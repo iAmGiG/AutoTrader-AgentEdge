@@ -10,7 +10,7 @@ Formerly RH2MAS (Reflective Hybrid Head Multi-Agent System). The GitHub reposito
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
 [![Alpaca](https://img.shields.io/badge/Broker-Alpaca-yellow.svg)](https://github.com/alpacahq/alpaca-py)
-[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Code Style](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
@@ -246,7 +246,7 @@ python -m pytest tests/ -v
 
 # Code quality
 ruff check src/
-black --check src/
+ruff format --check src/
 
 # VoterAgent validation
 python -c "from src.autogen_agents.agents.voter_agent import VoterAgent; print('OK')"

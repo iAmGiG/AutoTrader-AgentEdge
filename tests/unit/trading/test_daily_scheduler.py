@@ -10,10 +10,12 @@ import pytest
 
 from src.trading.scheduling import daily_scheduler, scheduler_state
 from src.trading.scheduling.daily_scheduler import (
-    DailyScheduler, configure_scheduler_logging, load_scheduler_config)
+    DailyScheduler,
+    configure_scheduler_logging,
+    load_scheduler_config,
+)
 from src.trading.scheduling.scheduler_state import SchedulerStateManager
-from src.trading.scheduling.trading_cycle import (CostEfficientTradeCycle,
-                                                  RoutineError)
+from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle, RoutineError
 from src.trading.state.state_reconciler import Discrepancy
 from src.utils.state_paths import get_state_dir
 

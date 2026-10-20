@@ -9,8 +9,7 @@ import pytest
 
 # Skip entire module - V0 sentiment agent was deprecated
 pytest.skip(
-    "V0SentimentAgent was deprecated (see src/deprecated/v0_v4_agents/). "
-    "Tests kept for reference.",
+    "V0SentimentAgent was deprecated (see src/deprecated/v0_v4_agents/). Tests kept for reference.",
     allow_module_level=True,
 )
 
@@ -122,13 +121,13 @@ def test_direct_llm_processing():
     prompt = f"""
     Please analyze this financial data and provide a missesian interpretation:
 
-    Ticker: {sample_data['ticker']}
-    Sentiment Score: {sample_data['sentiment_score']}
-    Number of Articles: {sample_data['article_count']}
+    Ticker: {sample_data["ticker"]}
+    Sentiment Score: {sample_data["sentiment_score"]}
+    Number of Articles: {sample_data["article_count"]}
     Sample Headlines:
-    - {sample_data['headlines'][0]}
-    - {sample_data['headlines'][1]}
-    - {sample_data['headlines'][2]}
+    - {sample_data["headlines"][0]}
+    - {sample_data["headlines"][1]}
+    - {sample_data["headlines"][2]}
     """
 
     print("Sending the following prompt to the LLM:")

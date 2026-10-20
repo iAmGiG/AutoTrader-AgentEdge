@@ -84,7 +84,7 @@ class ScheduledPipelineRunner:
         self.dry_run = dry_run
 
         # Track last execution dates to avoid duplicate runs
-        self.last_execution = {t: None for t in scheduled_times}
+        self.last_execution = dict.fromkeys(scheduled_times)
 
         logger.info("ScheduledPipelineRunner initialized")
         logger.info(f"Schedule times (ET): {[t.strftime('%H:%M') for t in scheduled_times]}")

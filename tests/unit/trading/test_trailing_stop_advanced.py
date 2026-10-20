@@ -14,8 +14,7 @@ from unittest.mock import MagicMock
 
 from config_defaults.trading_config import ClimbRate, TrailingStopConfig
 
-from src.trading.orders.trailing_stop_manager import (StopState,
-                                                      TrailingStopManager)
+from src.trading.orders.trailing_stop_manager import StopState, TrailingStopManager
 
 
 class TestClimbRate(unittest.TestCase):

@@ -16,9 +16,8 @@ This document tracks ongoing code quality improvements, linting standards, and t
 
 **Tools in Use**:
 
-- **Ruff** - Fast Python linter (primary)
-- **Black** - Code formatter
-- **isort** - Import sorting
+- **Ruff** - Linter, import sorter (rule I) and Black-compatible formatter (`ruff format`);
+  it replaced black and isort (#603). One pinned version everywhere.
 - **Pylint** - Static analysis (secondary)
 - **MyPy** - Type checking (optional)
 - **Bandit** - Security scanning
@@ -50,9 +49,8 @@ Automatically run on every commit:
 
 ```yaml
 # .pre-commit-config.yaml
-- Black (formatting)
-- isort (import sorting)
-- Ruff (linting with auto-fix)
+- ruff-check (linting with auto-fix, including import order)
+- ruff-format (formatting)
 - Trailing whitespace removal
 - End-of-file fixer
 - Bandit (security scanning)
@@ -352,9 +350,13 @@ python main.py test-voter  # Should work regardless
 1. **Format Code**:
 
    ```bash
-   black src/ scripts/ tests/
-   isort src/ scripts/ tests/
+   pre-commit run ruff-check --all-files    # lint, import order (rule I)
+   pre-commit run ruff-format --all-files   # format
    ```
+
+   Run ruff through pre-commit: it uses the pinned version and passes tracked files.
+   Plain `ruff format tests/` skips most tests, because `tests/` is gitignored (its tracked
+   files are force-added) and ruff skips gitignored paths when it walks directories.
 
 2. **Run Linters**:
 
@@ -478,17 +480,15 @@ ruff check src/trading/position_manager.py
 ruff check src/ --select E,F,I
 ```
 
-### Black (Formatter)
+### Ruff Format (Formatter)
 
 ```bash
-# Format all files
-black src/ scripts/ tests/
+# Format all tracked files (the pinned ruff, tests included)
+pre-commit run ruff-format --all-files
 
-# Check without modifying
-black src/ --check
-
-# Show diff
-black src/ --diff
+# One directory outside tests/: check without modifying, or show the diff
+ruff format --check src/
+ruff format --diff src/
 ```
 
 ### MyPy (Type Checker)

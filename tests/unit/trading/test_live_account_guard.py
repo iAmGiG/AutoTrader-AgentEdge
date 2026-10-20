@@ -7,8 +7,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import src.trading.accounts.account_tools as account_tools
-from src.trading.accounts.account_manager import (AccountManager, AccountType,
-                                                  needs_live_confirmation)
+from src.trading.accounts.account_manager import (
+    AccountManager,
+    AccountType,
+    needs_live_confirmation,
+)
 
 
 def _managed(account_type=None, enabled=True):

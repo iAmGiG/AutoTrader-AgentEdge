@@ -313,9 +313,9 @@ class GEXCalculator:
             "bearish_days": row["bearish_days"],
             "neutral_days": row["neutral_days"],
             "regime_distribution": {
-                "bullish": f"{100*row['bullish_days']/row['days']:.1f}%",
-                "bearish": f"{100*row['bearish_days']/row['days']:.1f}%",
-                "neutral": f"{100*row['neutral_days']/row['days']:.1f}%",
+                "bullish": f"{100 * row['bullish_days'] / row['days']:.1f}%",
+                "bearish": f"{100 * row['bearish_days'] / row['days']:.1f}%",
+                "neutral": f"{100 * row['neutral_days'] / row['days']:.1f}%",
             },
             "avg_data_quality": row["avg_quality_score"],
         }

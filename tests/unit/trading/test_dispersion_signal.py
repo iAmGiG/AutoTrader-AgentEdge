@@ -169,9 +169,9 @@ class TestSignalGeneration:
         valid_actions = {"BUY", "SELL", "HOLD", "EXIT"}
         for i in range(200, len(prices), 20):
             result = signal.generate_signal(prices, i)
-            assert (
-                result["action"] in valid_actions
-            ), f"Invalid action at idx {i}: {result['action']}"
+            assert result["action"] in valid_actions, (
+                f"Invalid action at idx {i}: {result['action']}"
+            )
 
     def test_confidence_bounded(self, signal, correlated_returns):
         """Confidence should be between 0 and 1."""

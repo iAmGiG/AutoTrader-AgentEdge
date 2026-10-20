@@ -371,7 +371,7 @@ class BrokerStateCache:
                 unified_cache.store_order_snapshot(self.account_id, orders)
 
             logger.debug(
-                f"Stored to persistent cache: {len(positions)} positions, " f"{len(orders)} orders"
+                f"Stored to persistent cache: {len(positions)} positions, {len(orders)} orders"
             )
 
             # Snapshots are written on every fetch; keep SNAPSHOT_DAYS_KEPT days of them

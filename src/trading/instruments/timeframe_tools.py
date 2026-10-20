@@ -417,7 +417,7 @@ def get_timeframe_recommendations() -> Dict[str, any]:
             "fibonacci": {
                 "timeframes": available["fibonacci"],
                 "description": (
-                    "Natural market cycles aligned with Fibonacci sequence " "(2,3,5,8,13,21,34,55)"
+                    "Natural market cycles aligned with Fibonacci sequence (2,3,5,8,13,21,34,55)"
                 ),
                 "risk_level": "Varies - for backtesting/research",
             },
@@ -453,7 +453,7 @@ TIMEFRAME_TOOLS = [
                     "timeframe": {
                         "type": "string",
                         "description": (
-                            "Timeframe to activate: " "1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M"
+                            "Timeframe to activate: 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M"
                         ),
                     }
                 },

@@ -59,11 +59,11 @@ def run_delta_neutral_experiment(  # noqa: C901
     test_end: str,
 ) -> dict:
     """Run baseline and GEX-enhanced delta neutral backtest."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Delta Neutral: {symbol}")
     print(f"  Fit:  {fit_start} → {fit_end}")
     print(f"  Test: {test_start} → {test_end}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     conn = bt._get_connection()
 
@@ -178,7 +178,7 @@ def run_delta_neutral_experiment(  # noqa: C901
 
     print("\n  Regime distribution (test period):")
     for r, c in regime_counts.items():
-        print(f"    {r}: {c} days ({c/len(test_prices)*100:.1f}%)")
+        print(f"    {r}: {c} days ({c / len(test_prices) * 100:.1f}%)")
 
     sharpe_diff = gex_results.sharpe_ratio - baseline_results.sharpe_ratio
     print(f"\n  Sharpe improvement: {sharpe_diff:+.3f}")

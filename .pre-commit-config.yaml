@@ -1,10 +1,10 @@
 # Pre-commit hooks for automatic code quality
-# Install: pip install pre-commit && pre-commit install
+# Install: pip install "pre-commit>=3.2" && pre-commit install
 # Bypass: git commit --no-verify (if needed)
 # Run manually: pre-commit run --all-files
 
 repos:
-  # Markdown linting with auto-fix
+  # Markdown linting with auto-fix (newer revs need Node 22+; this host has Node 18)
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.12.1
     hooks:
@@ -12,32 +12,21 @@ repos:
         args: ['--fix']
         files: \.md$
 
-  # Python code formatting (black)
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
-    hooks:
-      - id: black
-        files: \.py$
-
-  # Python import sorting
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ['--profile', 'black']
-        files: \.py$
-
-  # Ruff - Fast Python linter with auto-fix
+  # Ruff: lint with auto-fix (including import order, rule I), then format.
+  # Replaces black and isort (#603); keep rev equal to the ruff pin in pyproject.toml
+  # and the lint / auto-fix workflows.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.15
+    rev: v0.17.1
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
+        files: \.py$
+      - id: ruff-format
         files: \.py$
 
   # General file checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         exclude: \.md$  # Markdown sometimes needs trailing spaces
@@ -53,7 +42,7 @@ repos:
 
   # Security scanning (runs fast, non-blocking)
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.6
+    rev: 1.9.4
     hooks:
       - id: bandit
         args: [-lll, --recursive]  # Only report high severity
@@ -61,6 +50,7 @@ repos:
         exclude: ^(tests/|deprecated/|src/deprecated/)
 
 # Configuration
+minimum_pre_commit_version: "3.2.0"
 default_language_version:
   python: python3
 

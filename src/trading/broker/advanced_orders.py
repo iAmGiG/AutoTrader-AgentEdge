@@ -512,7 +512,7 @@ class AdvancedOrdersMixin:
             if not orders:
                 return {
                     "status": "success",
-                    "message": f'No open orders found{" for " + symbol if symbol else ""}',
+                    "message": f"No open orders found{' for ' + symbol if symbol else ''}",
                     "cancelled_orders": [],
                     "mode": self.client.mode,
                 }

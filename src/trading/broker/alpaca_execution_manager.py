@@ -381,15 +381,14 @@ class AlpacaExecutionManager(ExecutionManager):
         # If no position, reject SELL to prevent short selling
         if not has_position:
             log_msg = (
-                f"SELL signal rejected for {ticker} - no position held " "(prevents short selling)"
+                f"SELL signal rejected for {ticker} - no position held (prevents short selling)"
             )
             logger.warning(log_msg)
             user_msg = (
                 _MSG.get("execution.sell_no_position", ticker=ticker)
                 if MESSAGE_LOADER_AVAILABLE
                 else (
-                    f"SELL signal rejected: No position in {ticker}. "
-                    "Short selling not supported."
+                    f"SELL signal rejected: No position in {ticker}. Short selling not supported."
                 )
             )
             return {
@@ -436,7 +435,7 @@ class AlpacaExecutionManager(ExecutionManager):
             }
 
         logger.info(
-            f"SELL signal approved - have {position_qty} shares of {ticker}, " f"selling {quantity}"
+            f"SELL signal approved - have {position_qty} shares of {ticker}, selling {quantity}"
         )
         return {"success": True}
 
@@ -557,8 +556,7 @@ class AlpacaExecutionManager(ExecutionManager):
             quantity=quantity,
             filled_price=None,
             message=(
-                f"{order_type_str} {order_kind} placed: "
-                f"{signal} {quantity} {ticker} {entry_info}"
+                f"{order_type_str} {order_kind} placed: {signal} {quantity} {ticker} {entry_info}"
             ),
         )
 
