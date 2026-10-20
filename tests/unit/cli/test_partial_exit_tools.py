@@ -14,11 +14,13 @@ import pytest
 
 import src.cli.tools.partial_exit_tools as tools
 from src.cli.commands.slash_commands import _partial_handle_modify
-from src.trading.orders.partial_exit_manager import (ExitTarget,
-                                                     PartialExitManager,
-                                                     PartialExitState,
-                                                     default_state_file,
-                                                     load_partial_exit_manager)
+from src.trading.orders.partial_exit_manager import (
+    ExitTarget,
+    PartialExitManager,
+    PartialExitState,
+    default_state_file,
+    load_partial_exit_manager,
+)
 
 
 def _save_plan(order_id=None, filled=False):

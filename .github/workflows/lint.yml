@@ -31,7 +31,7 @@ jobs:
 
     - name: Run Ruff (fast linter)
       run: |
-        ruff check src/ tests/ scripts/ --output-format=github
+        git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' | xargs -0 ruff check --output-format=github
       continue-on-error: true
 
     - name: Run Pylint (errors only)
@@ -41,7 +41,7 @@ jobs:
 
     - name: Check code formatting with Ruff
       run: |
-        ruff format --check src/ tests/ scripts/ config_defaults/ main.py
+        git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' 'config_defaults/*.py' main.py | xargs -0 ruff format --check
       continue-on-error: true
 
     - name: Run type checking with mypy

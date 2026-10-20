@@ -97,9 +97,9 @@ class TestDeltaNeutralBacktest:
         vol_regime = vol_data.loc[sample_date, "regime"] if sample_date in vol_data.index else None
 
         if vol_regime is not None and overlay_regime is not None:
-            assert (
-                overlay_regime == vol_regime
-            ), f"Regime mismatch: overlay={overlay_regime}, vol_data={vol_regime}"
+            assert overlay_regime == vol_regime, (
+                f"Regime mismatch: overlay={overlay_regime}, vol_data={vol_regime}"
+            )
 
     def test_returns_series_finite(self):
         """All returns should be finite numbers."""

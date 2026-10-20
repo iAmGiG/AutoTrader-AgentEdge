@@ -74,9 +74,9 @@ class TestCointegration:
         """Synthetic cointegrated pair should pass Engle-Granger test."""
         a, b = cointegrated_pair
         result = signal.fit(a, b)
-        assert result[
-            "is_cointegrated"
-        ], f"Expected cointegration, got p={result['coint_pvalue']:.4f}"
+        assert result["is_cointegrated"], (
+            f"Expected cointegration, got p={result['coint_pvalue']:.4f}"
+        )
         assert result["coint_pvalue"] < 0.05
 
     def test_noncointegrated_pair_rejected(self, signal, noncointegrated_pair):
@@ -290,6 +290,6 @@ class TestSignalGeneration:
         valid_actions = {"BUY", "SELL", "HOLD", "EXIT"}
         for i in range(60, len(prices), 20):
             result = signal.generate_signal(prices, i)
-            assert (
-                result["action"] in valid_actions
-            ), f"Invalid action at idx {i}: {result['action']}"
+            assert result["action"] in valid_actions, (
+                f"Invalid action at idx {i}: {result['action']}"
+            )

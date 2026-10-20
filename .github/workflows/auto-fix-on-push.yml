@@ -34,13 +34,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install ruff==0.17.1
 
+    # Tracked files are listed explicitly: ruff skips gitignored paths (tests/ is
+    # gitignored, its tracked files force-added) when it searches directories
     - name: Run Ruff auto-fixes (lint, import order)
       run: |
-        ruff check src/ tests/ scripts/ config_defaults/ main.py --fix || true
+        git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' 'config_defaults/*.py' main.py | xargs -0 ruff check --fix || true
 
     - name: Run Ruff formatter
       run: |
-        ruff format src/ tests/ scripts/ config_defaults/ main.py || true
+        git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' 'config_defaults/*.py' main.py | xargs -0 ruff format || true
 
     - name: Check for changes
       id: verify_diff

@@ -4,8 +4,12 @@ from datetime import date
 
 import pytest
 
-from src.utils.date_utils import (add_business_days, date_range_trading_days,
-                                  is_business_day, next_business_day)
+from src.utils.date_utils import (
+    add_business_days,
+    date_range_trading_days,
+    is_business_day,
+    next_business_day,
+)
 from src.utils.market_hours import is_nyse_trading_day, nyse_closures
 
 

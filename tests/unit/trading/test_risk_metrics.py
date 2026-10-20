@@ -9,12 +9,14 @@ import pandas as pd
 import pytest
 from scipy import stats
 
-from src.backtesting.risk_metrics import (calculate_all_risk_metrics,
-                                          calculate_cornish_fisher_var,
-                                          calculate_cvar,
-                                          calculate_es_var_ratio,
-                                          calculate_parametric_var,
-                                          calculate_var)
+from src.backtesting.risk_metrics import (
+    calculate_all_risk_metrics,
+    calculate_cornish_fisher_var,
+    calculate_cvar,
+    calculate_es_var_ratio,
+    calculate_parametric_var,
+    calculate_var,
+)
 
 # =============================================================================
 # Fixtures
