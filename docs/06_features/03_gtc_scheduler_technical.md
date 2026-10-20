@@ -14,7 +14,7 @@ Automated "set it and forget it" daily routines for open positions (they don't o
 - **Error Handling**: Comprehensive exception management and recovery
 - **GTC Stops**: Protective stops held by the broker, raised to their trailing level, re-placed when
   missing and renewed before Alpaca's 90-day GTC limit
-- **Minimal API Calls**: one broker snapshot (3 calls) per routine, plus one call per stop placed or moved
+- **Minimal API Calls**: a broker snapshot (3 calls) and 1-2 closed-order fetches per routine, a fresh snapshot after a stop is placed or renewed or a GTT order goes out, and one call per stop placed, renewed or raised
 
 ## Architecture
 
@@ -57,7 +57,7 @@ src/trading/
 │   ├── state_reconciler.py    # Broker-as-truth reconcile, stop checks and raises
 │   └── daily_records.py       # account_daily, position_daily, fills
 └── orders/
-    ├── order_manager.py       # GTC order management (Issue #313)
+    ├── order_manager.py       # Order lifecycle for the CLI (the routines use AlpacaOrderManager in broker/)
     └── trailing_stop_manager.py  # Trailing-stop levels
 
 config_defaults/
@@ -81,7 +81,7 @@ tests/unit/trading/
 1. Fetch broker state (positions, open orders with bracket legs, account)
 2. Daily records (account, positions, new fills)
 3. Reconcile local state with the broker
-4. Re-place missing stops and renew aging GTC stops, at the trailing level when higher (refetch if any were placed)
+4. Re-place missing stops and renew aging GTC stops, at the trailing level when higher (refetch if any were placed or renewed)
 5. Position alerts
 6. GTT triggers, with sells capped at the shares free to sell (`qty_available`); refetch if a GTT order or cancel went out
 7. Raise stops to their trailing level; the broker's stop is the truth, levels stay at least 1% below the price, and orders Alpaca can't replace yet are skipped
@@ -90,7 +90,7 @@ tests/unit/trading/
 
 **Evening Routine (3:50 PM ET)**:
 
-- The same steps; stops are raised only while the market is open (run after the close, the raise waits for the morning)
+- The same steps; stops are raised only while the market is open (run after the close, the raise waits for the morning), and only the morning routine saves the discrepancy list to local state
 - Report: `reports/daily/<ET date>_evening.md`
 
 The trailing levels are listed in the [quick start](02_gtc_scheduler_quickstart.md#trailing-stop-levels). Take-profit orders are not re-placed: a bracket's GTC take-profit lapses at 90 days, and the position then exits by its trailing stop.
@@ -346,7 +346,7 @@ python -m src.trading.scheduling.daily_scheduler --mode once --task morning_rout
 1. Check the day and time: routines run on NYSE trading days only, at their ET time or up to 5 minutes after (the host timezone doesn't matter). On early closes the evening routine moves back with the close.
 2. Verify schedule: `cat config_defaults/scheduler_config.yaml`
 3. Check if already executed: Review `state/scheduler_execution_log.json`
-4. Verify enabled: `status` in the CLI's `/schedule` mode shows the flags in force (saved flags override the config file)
+4. Verify enabled: `status` in the CLI's `/schedule` mode shows the overall flag in force (a saved flag overrides the config file); `next` reflects the per-routine flags
 5. Check for an overlapping run: only one run at a time holds `state/scheduler.lock`
 6. Check for an earlier failure: a routine that failed after its retries waits for the next trading day (run it manually to retry)
 

@@ -94,7 +94,7 @@ Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/A
 ### 📊 **Performance & Validation**
 
 1. See the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md) for backtested performance (experiment 293's 0.856 Sharpe is superseded)
-2. Review the [research summary](08_research/README.md) for what was tested and stopped
+2. Review the [research summary](08_research/README.md) for what was tested and stopped, and the archived [research foundation](archived/presentations/research_foundation.md) for the academic background
 3. Check [Troubleshooting](03_reference/04_troubleshooting.md) for common issues
 
 ## Current Status
@@ -133,6 +133,7 @@ Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/A
 
 For academic research and citations informing the system architecture:
 
+- **[Research Foundation](archived/presentations/research_foundation.md)** (archived) - Academic foundation with abstract, introduction, and citations
 - **[Research Documentation](08_research/README.md)** - Research status, methods and results
 - **[Agent Ensemble](02_architecture/02_agent_ensemble.md)** - Evolution from V0-V4 to current multi-agent system
 - **[Voting System](02_architecture/03_voting_system.md)** - Multi-indicator voting architecture

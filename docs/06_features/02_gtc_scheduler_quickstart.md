@@ -3,14 +3,15 @@
 ## What is it?
 
 Automated "set it and forget it" daily routines for open positions. They don't generate signals
-or open trades (apart from GTT orders you set up). They:
+or open new positions (GTT triggers are checked only for symbols you hold, so a GTT order you set
+up on one of them can still fire). They:
 
 - Run twice daily (9:20 AM and 3:50 PM ET, whatever the host's timezone), on NYSE trading days only;
   on early-close days the evening routine moves back with the close (12:50 PM for a 1 PM close)
 - Raise stops as profit grows (see [Trailing Stop Levels](#trailing-stop-levels))
 - Re-place missing stops and renew GTC stops before Alpaca's 90-day limit
 - Retry failed runs automatically
-- Use a few API calls per routine: one broker snapshot (3 calls), plus one per stop placed or moved
+- Use a few API calls per routine: a broker snapshot (3 calls) and 1-2 closed-order fetches for the daily records, a fresh snapshot after a stop is placed or renewed or a GTT order goes out, and one call per stop placed, renewed or raised
 
 ## 5-Minute Setup
 
@@ -80,8 +81,10 @@ manual run.
 #### Option B: systemd (Alternative, runs the daemon)
 
 ```bash
-# Edit WorkingDirectory and ExecStart in scripts/deployment/autogen-trading-scheduler.service
-# (and PROJECT_ROOT in install_scheduler.sh) to match your install, then:
+# Edit the install paths, User and Group in scripts/deployment/autogen-trading-scheduler.service
+# (WorkingDirectory, ExecStart, Environment=PYTHONPATH, StandardError, ReadWritePaths; with
+# ProtectSystem=strict a ReadWritePaths entry that doesn't exist stops the unit from starting)
+# and PROJECT_ROOT, USER and GROUP in install_scheduler.sh, then:
 sudo scripts/deployment/install_scheduler.sh
 
 # Start service
@@ -140,10 +143,14 @@ cat reports/daily/$(ls -t reports/daily/ | head -1)
 
 ### Evening Routine (3:50 PM ET)
 
-The same steps, with one difference: stops are raised only while the market is open, so an overnight
-gap can't take the day's gains before the next morning run. Run by hand after the close, the raise is
-left to the morning (thin after-hours prints shouldn't set the stop). The report is
-`reports/daily/<ET date>_evening.md`; a second run the same day adds `_2`.
+The same steps, with two differences:
+
+- Stops are raised only while the market is open, so an overnight gap can't take the day's gains
+  before the next morning run. Run by hand after the close, the raise is left to the morning (thin
+  after-hours prints shouldn't set the stop).
+- The discrepancy list isn't saved to local state (only the morning routine saves it).
+
+The report is `reports/daily/<ET date>_evening.md`; a second run the same day adds `_2`.
 
 ### Trailing Stop Levels
 

@@ -265,7 +265,7 @@ python scripts/runs/backtest.py --all-versions --symbol AAPL --year 2024
 python scripts/analysis/generate_results_summary.py --advanced
 ```
 
-**Note**: V0-V4 framework deprecated in favor of the MACD+RSI voting approach. Archived in `src/deprecated/v0_v4_agents/` and `docs/archived/v0_v4_deprecated/`.
+**Note**: V0-V4 framework deprecated in favor of the MACD+RSI voting approach. Its code is not in the repository.
 
 ## Troubleshooting Commands
 

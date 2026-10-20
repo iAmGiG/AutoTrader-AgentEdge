@@ -50,7 +50,7 @@ Tested five iterations of the trading system with increasing complexity:
 
 - Full analysis: `docs/archived/v0_v4_deprecated/` (not in the repository)
 - Detailed report: `V0-V4_Framework_Results.md` (not in the repository)
-- Raw backtest data: Preserved in `reports/archived/v0_v4_deprecated/`
+- Raw backtest data: not in the repository
 
 ---
 

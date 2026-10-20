@@ -46,8 +46,12 @@ python main.py
 **Automatic Triggering (Daily Scheduler, Issue #287):**
 Alerts run automatically in each routine:
 
-- **9:20 AM ET** - Morning routine checks all positions
-- **3:50 PM ET** - Evening routine checks all positions
+- **9:20 AM ET** - Morning routine checks positions
+- **3:50 PM ET** - Evening routine checks positions
+
+Only positions with an entry, a stop and a target price are checked
+(`StateReconciler.check_position_alerts`). A position whose take-profit order lapsed exits by its
+trailing stop and gets no alerts.
 
 Deployment options:
 
@@ -306,7 +310,7 @@ Test coverage:
 6. Alert Storage & Display
    ├─> Add to position.alert_history[]
    ├─> Log to console (INFO/WARNING/CRITICAL level)
-   ├─> Write to state/scheduler.log
+   ├─> Write to state/scheduler.log (scheduler runs)
    └─> Include in daily report markdown
 
 7. Continue Trading Cycle

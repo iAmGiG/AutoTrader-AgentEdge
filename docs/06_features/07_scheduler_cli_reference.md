@@ -27,7 +27,7 @@ python -m src.cli.scheduler_cli
 
 Show detailed scheduler status including:
 
-- **Config status** (enabled/disabled in config file)
+- **Config status** (the overall flag in force: a saved flag, else the config file)
 - **Service status** (`CRON` when this checkout's `main.py --run-due` entry is in the crontab, `RUNNING` when the daemon runs, else `NOT RUNNING`)
 - Configuration summary (times, retries, timezone)
 - Today's execution count
