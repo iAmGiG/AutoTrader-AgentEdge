@@ -35,11 +35,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install pre-commit==4.7.0
 
+    # Installing the hooks may fail (network, rate limit): that fails the job. The hook
+    # runs themselves exit non-zero whenever they change a file, hence `|| true` there.
+    - name: Install the ruff hooks
+      run: pre-commit install-hooks
+
     - name: Run Ruff auto-fixes (lint, import order)
-      run: pre-commit run ruff-check --all-files || true
+      run: git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' 'config_defaults/*.py' main.py | xargs -0 pre-commit run ruff-check --files || true
 
     - name: Run Ruff formatter
-      run: pre-commit run ruff-format --all-files || true
+      run: git ls-files -z -- 'src/*.py' 'tests/*.py' 'scripts/*.py' 'config_defaults/*.py' main.py | xargs -0 pre-commit run ruff-format --files || true
 
     - name: Check for changes
       id: verify_diff
