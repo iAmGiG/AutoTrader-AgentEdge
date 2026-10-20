@@ -74,7 +74,7 @@ max_line_length = 100
 line-length = 100
 target-version = "py312"
 # *.md: ruff 0.16+ would also format Python code blocks inside Markdown
-exclude = [".git", "__pycache__", ".venv", ".cache", "reports", "*.md"]
+extend-exclude = [".cache", "reports", "*.md"]  # on top of ruff's defaults (venv, build, ...)
 
 [tool.ruff.lint]
 # E402: module level import not at top of file
@@ -88,9 +88,11 @@ known-local-folder = ["src", "config"]
 [tool.ruff.lint.per-file-ignores]
 # Line length handled by formatters and GitHub CI
 "*" = ["E501"]
-# Scripts set up sys.path before their imports, so import order isn't enforced there
-# (E402 is ignored everywhere). The glob's * also matches "/": all of scripts/.
-"scripts/*.py" = ["I001"]
+# Scripts that set up sys.path before their imports: import order isn't enforced there
+# (E402 is ignored everywhere). Ruff's * also matches "/", so top-level scripts are named.
+"scripts/research/**/*.py" = ["I001"]
+"scripts/populate_historical_cache.py" = ["I001"]
+"scripts/verify_free_data_access.py" = ["I001"]
 # Issue #414: TrailingStopManager has justified complexity for profit zone logic
 "src/trading/orders/trailing_stop_manager.py" = ["C901"]
 

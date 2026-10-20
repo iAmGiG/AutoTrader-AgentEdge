@@ -149,8 +149,9 @@ Tool configuration:
 **Triggers**: Push to `main`, `development`, `feature/**`
 **Actions**:
 
-- Runs the `ruff-check` and `ruff-format` pre-commit hooks on all tracked files (the version
-  pinned in `.pre-commit-config.yaml`)
+- Runs the `ruff-check` and `ruff-format` pre-commit hooks (the version pinned in
+  `.pre-commit-config.yaml`) on the tracked Python files in `src/`, `tests/`, `scripts/`,
+  `config_defaults/` and `main.py`
 - Auto-commits and pushes fixes if changes detected
 **Time**: ~2-3 minutes
 
@@ -160,7 +161,7 @@ Tool configuration:
 **Actions**:
 
 - Non-blocking checks (warnings only)
-- Runs the ruff hooks through pre-commit (lint, format check), pylint, mypy
+- Runs ruff (the pinned version; findings as PR annotations), the `ruff-format` check, pylint, mypy
 - Security scanning with bandit
 - Code complexity analysis with radon
 **Time**: ~3-5 minutes
