@@ -18,6 +18,11 @@ GTT provides persistent price triggers that stay active across sessions (days/we
 - OCO (One-Cancels-Other) groups for dual breakout/breakdown
 - Sell orders capped at the shares free to sell (Alpaca's `qty_available`, #595)
 
+**Role next to broker stops (decided 2026-10-20):** a broker sell stop holds a position's shares, so
+a GTT sell for them is skipped while that stop is live. For the trailing stops, the GTT layer is
+kept as persistence: it saves the trailing state (highest price, current stop) between runs, and it
+can sell only a position that has no live broker stop.
+
 ---
 
 ## Architecture
