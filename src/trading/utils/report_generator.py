@@ -185,10 +185,12 @@ class ReportGenerator:
             for summary in summaries:
                 pl_sign = "+" if summary.unrealized_pl >= 0 else ""
                 pl_str = f"{pl_sign}${summary.unrealized_pl:.0f} ({summary.unrealized_percent:.1%})"
+                # No target order: the position exits by its trailing stop
+                target = f"${summary.target_price:.2f}" if summary.target_price else "none"
                 report_lines.append(
                     f"| {summary.symbol} | ${summary.entry_price:.2f} | "
                     f"${summary.current_price:.2f} | ${summary.stop_price:.2f} | "
-                    f"${summary.target_price:.2f} | {pl_str} | {summary.stop_action} |"
+                    f"{target} | {pl_str} | {summary.stop_action} |"
                 )
             report_lines.append("")
         else:
@@ -198,9 +200,7 @@ class ReportGenerator:
         if discrepancies:
             report_lines.extend(["## Discrepancies Found"])
             for disc in discrepancies:
-                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(
-                    disc.severity, "ℹ️"
-                )
+                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(disc.severity, "ℹ️")
                 report_lines.append(f"{severity_emoji} {disc.type}: {disc.symbol}")
 
                 if disc.type == "UNKNOWN_POSITION":
@@ -263,11 +263,9 @@ class ReportGenerator:
                 "---",
                 f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S')} ET",
                 f"Next {next_routine} routine: {next_time}",
-                "Cost: ~3-5 API calls total",
                 "",
-                "**Note**: Stop prices calculated from entry price "
-                "(Alpaca hides bracket order stop-loss legs from API).",
-                "Verify stop orders exist on Alpaca dashboard. See Issue #355.",
+                "**Note**: Stops are synced from the broker's open stop orders each run. A",
+                "position without a live stop gets one re-placed (see Discrepancies).",
             ]
         )
 

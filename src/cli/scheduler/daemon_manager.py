@@ -96,6 +96,27 @@ class SchedulerDaemonManager:
 
         return False
 
+    def cron_entry(self) -> Optional[str]:
+        """
+        The crontab line that runs `main.py --run-due` from this checkout, if any.
+
+        Cron runs the scheduler without a daemon (scripts/deployment/setup_cron.sh).
+        """
+        try:
+            result = subprocess.run(  # nosec B603 B607 - fixed command, no shell
+                ["crontab", "-l"], capture_output=True, text=True, timeout=5
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if result.returncode != 0:  # no crontab for this user
+            return None
+        root = str(self.main_script.resolve().parent)
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "main.py --run-due" in line and root in line:
+                return line
+        return None
+
     def get_pid(self) -> Optional[int]:
         """
         Get the daemon PID if running.

@@ -51,8 +51,9 @@ class SchedulerMonitor:
             print(f"{get_emoji('cross_red', '❌')} Scheduler not initialized")
             return
 
-        # Check daemon status
+        # Check daemon status (or cron, which runs `main.py --run-due` without a daemon)
         daemon_running = self.daemon_manager.is_running()
+        cron_running = not daemon_running and self.daemon_manager.cron_entry() is not None
         enabled = self.scheduler.effective_settings()["enabled"]
 
         # Config status
@@ -62,15 +63,21 @@ class SchedulerMonitor:
         # Daemon/service status
         if daemon_running:
             print(f"{get_emoji('check_green', '✅')} Service: RUNNING (automatic execution active)")
+        elif cron_running:
+            print(
+                f"{get_emoji('check_green', '✅')} Service: CRON "
+                "(main.py --run-due every 5 minutes runs routines when due)"
+            )
+            if not enabled:
+                print("   The scheduler is disabled, so cron runs no routines until 'enable'.")
         else:
             print(f"{get_emoji('cross_red', '❌')} Service: NOT RUNNING (no automatic execution)")
             if enabled:
-                print(f"\n{get_emoji('light', '💡')} Config is enabled but daemon is not running.")
-                print("   To start automatic execution:")
-                print("   1. Exit this CLI")
-                print("   2. Run: python main.py --daemon")
-                print("   3. Scheduler will run automatically at scheduled times")
-                print("\n   Or use 'test morning/evening' to run manually now")
+                print(f"\n{get_emoji('light', '💡')} Config is enabled but nothing runs it.")
+                print("   To start automatic execution, exit this CLI and either:")
+                print("   - add the cron entry: ./scripts/deployment/setup_cron.sh (recommended)")
+                print("   - or run the daemon: python main.py --daemon")
+                print("\n   Or use 'test morning/evening' to run now (acts on the broker)")
 
         # Configuration details
         print(f"\n{get_emoji('gear', '⚙️')} Configuration:")
@@ -93,8 +100,8 @@ class SchedulerMonitor:
                 print(f"   {status} {entry.task_name} - {entry.status}")
         else:
             print(f"\n{get_emoji('clipboard', '📋')} No executions today")
-            if enabled and not daemon_running:
-                print("   (Daemon not running - no automatic executions)")
+            if enabled and not (daemon_running or cron_running):
+                print("   (Neither cron nor the daemon is running - no automatic executions)")
 
     def show_config(self, config_file: str = None) -> None:
         """

@@ -28,7 +28,7 @@ python -m src.cli.scheduler_cli
 Show detailed scheduler status including:
 
 - **Config status** (enabled/disabled in config file)
-- **Service status** (daemon actually running or not)
+- **Service status** (`CRON` when this checkout's `main.py --run-due` entry is in the crontab, `RUNNING` when the daemon runs, else `NOT RUNNING`)
 - Configuration summary (times, retries, timezone)
 - Today's execution count
 - Recent execution results
@@ -37,10 +37,14 @@ Show detailed scheduler status including:
 Automatic execution needs the cron entry (recommended, see the
 [quick start](02_gtc_scheduler_quickstart.md#option-a-crontab-recommended)) or the daemon.
 
-**Note:** the `Service` line only detects the daemon. Under cron it shows `NOT RUNNING`
-even while routines run on schedule; check `history`, `logs` or `crontab -l` instead.
+**Example (config enabled, under cron):**
 
-**Example (config enabled, daemon NOT running):**
+```text
+🟢 Config: ENABLED
+✅ Service: CRON (main.py --run-due every 5 minutes runs routines when due)
+```
+
+**Example (config enabled, neither cron nor daemon):**
 
 ```text
 Scheduler> status
@@ -51,13 +55,12 @@ Scheduler> status
 🟢 Config: ENABLED
 ❌ Service: NOT RUNNING (no automatic execution)
 
-💡 Config is enabled but daemon is not running.
-   To start automatic execution:
-   1. Exit this CLI
-   2. Run: python main.py --daemon
-   3. Scheduler will run automatically at scheduled times
+💡 Config is enabled but nothing runs it.
+   To start automatic execution, exit this CLI and either:
+   - add the cron entry: ./scripts/deployment/setup_cron.sh (recommended)
+   - or run the daemon: python main.py --daemon
 
-   Or use 'test morning/evening' to run manually now
+   Or use 'test morning/evening' to run now (acts on the broker)
 
 ⚙️  Configuration:
    Morning: 09:20:00 ET
@@ -67,7 +70,7 @@ Scheduler> status
    Dry Run: False
 
 📋 No executions today
-   (Daemon not running - no automatic executions)
+   (Neither cron nor the daemon is running - no automatic executions)
 ```
 
 **Example (config enabled, daemon RUNNING):**
@@ -454,7 +457,6 @@ Main CLI> show portfolio
 
 ## Limitations
 
-- `status` detects the daemon only, not the cron entry
 - systemd or cron setup is done outside the CLI (`scripts/deployment/`)
 - Execution history limited to 7 days (configurable in future)
 
@@ -570,13 +572,12 @@ python main.py --daemon
 The `status` command shows both:
 
 - **Config status** (the flags in force: saved flags, else the YAML file)
-- **Service status** (whether the daemon is running; under cron this reads `NOT RUNNING`)
+- **Service status** (`CRON`, `RUNNING` for the daemon, or `NOT RUNNING`)
 
 ## Future Enhancements
 
 See pending issues for:
 
-- Cron-aware service status
 - Self-terminating background processes
 - Real-time execution monitoring
 - Custom routine scheduling

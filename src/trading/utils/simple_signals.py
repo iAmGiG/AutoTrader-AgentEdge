@@ -2,8 +2,8 @@
 """
 Simple Signal Generation
 
-Simplified threshold-based signals for production trading.
-Focuses on proven MACD+RSI voting without complex agent architecture.
+Simplified threshold-based signals for the CLI's trading rules.
+MACD+RSI voting without the agent architecture (no backtested edge: #574 stage A).
 """
 
 import logging
@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 class SimpleSignalGenerator:
     """
-    Simple signal generator using proven MACD+RSI thresholds.
+    Simple signal generator using MACD+RSI thresholds.
 
-    This is the simplified version recommended for production use.
+    This is the simplified version the CLI uses.
     No complex agent architecture - just threshold-based decisions.
     """
 
@@ -39,7 +39,7 @@ class SimpleSignalGenerator:
         consensus_boost: Optional[float] = None,
     ):
         """
-        Initialize with validated parameters from config system.
+        Initialize with the parameters from the config system.
 
         Args:
             config: TradingConfig instance (loads defaults if None)
@@ -69,7 +69,9 @@ class SimpleSignalGenerator:
         )
         logger.info(f"  Thresholds: MACD {self.macd_threshold}, consensus {self.consensus_boost}")
 
-    def evaluate_signal(self, price_data: pd.DataFrame, symbol: str = "UNKNOWN") -> Dict[str, Any]:
+    def evaluate_signal(  # noqa: C901
+        self, price_data: pd.DataFrame, symbol: str = "UNKNOWN"
+    ) -> Dict[str, Any]:
         """
         Generate trading signal using simple thresholds.
 
@@ -229,7 +231,7 @@ class SimpleSignalGenerator:
 
 def get_simple_signal(price_data: pd.DataFrame, symbol: str = "UNKNOWN") -> Dict[str, Any]:
     """
-    Get a simple trading signal using default validated parameters.
+    Get a simple trading signal using the default parameters.
 
     Args:
         price_data: DataFrame with OHLCV data

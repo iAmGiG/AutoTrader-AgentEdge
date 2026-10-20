@@ -13,8 +13,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
-from src.trading.state.state_reconciler import (StateReconciler,
-                                                StopAdjustment, StopRepair)
+from src.trading.state.state_reconciler import (
+    StateReconciler,
+    StopAdjustment,
+    StopRepair,
+)
 
 NOW = datetime(2026, 10, 14, 13, 0, tzinfo=timezone.utc)
 
@@ -545,3 +548,18 @@ class TestEveningStopRaise:
         cycle.fetch_broker_state.assert_not_called()
         assert cycle._after_gtt_actions(before, [sold]) is after
         cycle.fetch_broker_state.assert_called_once_with(force_refresh=True)
+
+
+def test_report_footer_describes_broker_synced_stops_and_no_target():
+    from src.trading.utils.report_generator import ReportGenerator, RoutineType
+
+    broker_state = _broker(orders=[{**_stop_order(0), "stop_price": 744.34}])
+    broker_state["account"] = {}
+    report = ReportGenerator().generate_routine_report(
+        RoutineType.EVENING, broker_state, _local(744.34), [], [], []
+    )
+
+    assert "Alpaca hides" not in report and "calculated from entry" not in report
+    assert "synced from the broker's open stop orders" in report
+    spy_row = next(line for line in report.splitlines() if line.startswith("| SPY |"))
+    assert "| none |" in spy_row  # trailing-stop exit, no take-profit order
