@@ -59,9 +59,8 @@ GitHub Actions will:
 git commit -m "your message"
 # ↓
 # Auto-fixes run automatically:
-# ✓ Black formatting (Python, line length 100)
-# ✓ isort (import sorting)
-# ✓ Ruff auto-fixes
+# ✓ Ruff lint auto-fixes, including import order (rule I)
+# ✓ Ruff formatting (Black-compatible, line length 100)
 # ✓ Markdown linting
 # ✓ Whitespace cleanup
 # ✓ Bandit security scan
@@ -111,14 +110,16 @@ git pull  # Pull the auto-fix commit
 
 Defines which auto-fixes run locally:
 
-- **ruff**: Fast Python linter with auto-fix
-- **black**: Python code formatting (line length 100)
-- **isort**: Import sorting (compatible with black)
-- **mypy**: Static type checking
+- **ruff-check**: linter with auto-fix, including import order (rule I); replaces isort (#603)
+- **ruff-format**: Black-compatible formatter (line length 100); replaces black (#603)
 - **trailing-whitespace**: Removes trailing spaces
 - **end-of-file-fixer**: Ensures newline at EOF
 - **check-yaml/json**: Validates config files
 - **bandit**: Security vulnerability scanning
+
+The ruff `rev` here, the `ruff==` pin in `pyproject.toml` and the pins in the lint and auto-fix
+workflows must match. A different formatter version re-formats what the others produced.
+The hooks need pre-commit 3.2 or newer.
 
 ### `.markdownlint.json`
 
@@ -133,9 +134,8 @@ Markdown rules:
 
 Tool configuration:
 
-- **Black**: Line length 100, Python 3.10 target
-- **isort**: Compatible with black, recognizes src/ and config/
-- **Ruff**: Modern linter, line length 100
+- **Ruff**: lint rules, import order (`[tool.ruff.lint.isort]`, `src` and `config` as local
+  folders) and formatting; line length 100, Python 3.12 target; Markdown is excluded
 - **pytest**: Test configuration, coverage settings
 - **mypy**: Type checking rules
 - **bandit**: Security scanning exclusions
@@ -149,7 +149,7 @@ Tool configuration:
 **Triggers**: Push to `main`, `development`, `feature/**`
 **Actions**:
 
-- Runs black, isort, ruff on Python files
+- Runs `ruff check --fix` and `ruff format` (pinned ruff) on Python files
 - Auto-commits and pushes fixes if changes detected
 **Time**: ~2-3 minutes
 
@@ -159,7 +159,7 @@ Tool configuration:
 **Actions**:
 
 - Non-blocking checks (warnings only)
-- Runs ruff, pylint, black --check, mypy
+- Runs ruff, pylint, `ruff format --check`, mypy
 - Security scanning with bandit
 - Code complexity analysis with radon
 **Time**: ~3-5 minutes
@@ -176,9 +176,8 @@ echo "new code" >> src/new_file.py
 
 # Commit (pre-commit auto-fixes run)
 git commit -am "feat: Add new feature"
-# [INFO] ruff.....................................................Passed
-# [INFO] black....................................................Passed
-# [INFO] isort....................................................Passed
+# [INFO] ruff (legacy alias)......................................Passed
+# [INFO] ruff format..............................................Passed
 
 # Push
 git push
@@ -193,15 +192,15 @@ echo "x=1" >> src/bad_format.py
 
 # Commit triggers auto-fix
 git commit -am "feat: Add feature"
-# [INFO] black....................................................Failed
-# - hook id: black
+# [INFO] ruff format..............................................Failed
+# - hook id: ruff-format
 # - files were modified by this hook
-# reformatted src/bad_format.py
+# 1 file reformatted
 
 # Files auto-fixed and staged
 # Commit again (now passes)
 git commit -am "feat: Add feature"
-# [INFO] black....................................................Passed
+# [INFO] ruff format..............................................Passed
 
 git push
 ```
@@ -242,10 +241,10 @@ pre-commit run --all-files
 Edit `.pre-commit-config.yaml` and comment out:
 
 ```yaml
-#  - repo: https://github.com/psf/black
-#    rev: 24.1.1
+#  - repo: https://github.com/DavidAnson/markdownlint-cli2
+#    rev: v0.12.1
 #    hooks:
-#      - id: black
+#      - id: markdownlint-cli2
 ```
 
 ### Check What Will Run
@@ -334,11 +333,11 @@ pre-commit run --all-files
 ### Run Specific Hook Only
 
 ```bash
-# Only run black
-pre-commit run black --all-files
+# Only run the formatter
+pre-commit run ruff-format --all-files
 
-# Only run ruff
-pre-commit run ruff --all-files
+# Only run the linter
+pre-commit run ruff-check --all-files
 
 # Only run security scan
 pre-commit run bandit --all-files
@@ -362,11 +361,8 @@ Edit `.pre-commit-config.yaml`:
 Edit `pyproject.toml`:
 
 ```toml
-[tool.black]
-line-length = 120  # Change from 100 to 120
-
 [tool.ruff]
-line-length = 120
+line-length = 120  # Change from 100 to 120 (lint and format)
 ```
 
 ---
@@ -375,17 +371,18 @@ line-length = 120
 
 ### AutoTrader Conda Environment
 
-Always activate the AutoTrader environment before running tools:
+Use the `OptionsCommander` conda environment (`conda activate` is broken on the main host, so
+call its Python directly):
 
 ```bash
-conda activate AutoTrader
-pip install -e ".[dev]"  # Installs project + dev dependencies from pyproject.toml
-pre-commit install
+PY=~/miniconda3/envs/OptionsCommander/bin/python
+$PY -m pip install -e ".[dev]"  # project + dev dependencies from pyproject.toml
+$PY -m pre_commit install       # the git hook then runs this env's pre-commit (3.2+)
 ```
 
 ### Config Files Location
 
-Trading configuration files in `config_defaults/` are formatted by black/isort:
+Trading configuration files in `config_defaults/` are formatted by ruff:
 
 - `trading_config.py`
 - `market_hours.yaml`

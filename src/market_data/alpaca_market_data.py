@@ -362,7 +362,8 @@ class AlpacaMarketData:
         """
         try:
             request = StockLatestQuoteRequest(
-                symbol_or_symbols=symbol, feed="iex"  # Use IEX for paper accounts
+                symbol_or_symbols=symbol,
+                feed="iex",  # Use IEX for paper accounts
             )
             quote_response = self.client.get_stock_latest_quote(request)
 
@@ -396,7 +397,8 @@ class AlpacaMarketData:
         """
         try:
             request = StockLatestTradeRequest(
-                symbol_or_symbols=symbol, feed="iex"  # Use IEX for paper accounts
+                symbol_or_symbols=symbol,
+                feed="iex",  # Use IEX for paper accounts
             )
             trade_response = self.client.get_stock_latest_trade(request)
 
@@ -428,7 +430,8 @@ class AlpacaMarketData:
         """
         try:
             request = StockSnapshotRequest(
-                symbol_or_symbols=symbols, feed="iex"  # Use IEX for paper accounts
+                symbol_or_symbols=symbols,
+                feed="iex",  # Use IEX for paper accounts
             )
             snapshots = self.client.get_stock_snapshot(request)
 

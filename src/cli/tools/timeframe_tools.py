@@ -218,7 +218,7 @@ def list_multi_timeframe_presets() -> str:
 
         # Format timeframes with weights
         tf_str = ", ".join(
-            [f"{tf} ({int(weight*100)}%)" for tf, weight in config["timeframes"].items()]
+            [f"{tf} ({int(weight * 100)}%)" for tf, weight in config["timeframes"].items()]
         )
         output += f"   Timeframes: {tf_str}\n"
         output += f"   Style: {config['style']}\n\n"
@@ -261,7 +261,7 @@ def set_multi_timeframe_preset(preset: str) -> str:
     _current_mode["preset"] = preset
 
     tf_str = ", ".join(
-        [f"{tf} ({int(weight*100)}%)" for tf, weight in config["timeframes"].items()]
+        [f"{tf} ({int(weight * 100)}%)" for tf, weight in config["timeframes"].items()]
     )
 
     output = f"{get_symbol('SUCCESS')} Switched to multi-timeframe: {preset}\n"
@@ -335,7 +335,7 @@ def show_timeframe_mode() -> str:
         output += "-" * 50 + "\n"
         output += "  Timeframe Weights:\n"
         for tf, weight in config.get("timeframes", {}).items():
-            output += f"    {tf}: {int(weight*100)}%\n"
+            output += f"    {tf}: {int(weight * 100)}%\n"
     else:
         current_tf = _tf_commands.manager.get_current_timeframe()
         output += "  Mode: Single timeframe\n"

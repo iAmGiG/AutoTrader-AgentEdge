@@ -180,7 +180,7 @@ def print_report(results):
     print("WIN RATE ANALYSIS")
     print("-" * 40)
     print(f"GEX wins: {win_analysis['gex_wins']}/{win_analysis['total_tests']}")
-    print(f"Win rate: {win_analysis['win_rate']*100:.1f}%")
+    print(f"Win rate: {win_analysis['win_rate'] * 100:.1f}%")
     print(f"Binomial test p-value: {win_analysis['binomial_p_value']:.4f}")
     print()
 

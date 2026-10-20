@@ -490,8 +490,7 @@ class TrailingStopManager:
             state.last_update_time = now_iso()
 
             logger.warning(
-                f"{symbol}: Stop updated locally (no order ID): "
-                f"${old_stop:.2f} -> ${new_stop:.2f}"
+                f"{symbol}: Stop updated locally (no order ID): ${old_stop:.2f} -> ${new_stop:.2f}"
             )
 
             return {

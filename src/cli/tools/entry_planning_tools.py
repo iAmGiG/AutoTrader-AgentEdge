@@ -101,7 +101,7 @@ def get_entry_plan(
         output += "-" * 50 + "\n"
         output += f"  Risk: ${risk:.2f} ({risk_pct:.1f}%)\n"
         output += f"  Reward: ${reward:.2f} ({reward_pct:.1f}%)\n"
-        output += f"  R:R Ratio: 1:{reward/risk:.1f}\n"
+        output += f"  R:R Ratio: 1:{reward / risk:.1f}\n"
 
         return output
 

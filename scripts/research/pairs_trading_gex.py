@@ -62,11 +62,11 @@ def run_pair_experiment(
     test_end: str,
 ) -> dict:
     """Run baseline and GEX-enhanced backtest for one pair."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Pair: {sym_a} / {sym_b}")
     print(f"  Fit:  {fit_start} → {fit_end}")
     print(f"  Test: {test_start} → {test_end}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # 1. Fetch prices
     symbols = [sym_a, sym_b]
@@ -147,7 +147,7 @@ def run_pair_experiment(
 
     print("\n  Regime distribution (test period):")
     for r, c in regime_counts.items():
-        print(f"    {r}: {c} days ({c/len(test_prices)*100:.1f}%)")
+        print(f"    {r}: {c} days ({c / len(test_prices) * 100:.1f}%)")
 
     # 6. Improvement
     sharpe_diff = gex_results.sharpe_ratio - baseline_results.sharpe_ratio
@@ -275,11 +275,11 @@ def main():
     print(f"\n  Results saved to {yaml_path}")
 
     # Summary table
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  {'Pair':<12} {'Base Sharpe':>12} {'GEX Sharpe':>12} {'Δ Sharpe':>10}")
-    print(f"  {'-'*46}")
+    print(f"  {'-' * 46}")
     for r in all_results:
         print(
             f"  {r['pair']:<12} "

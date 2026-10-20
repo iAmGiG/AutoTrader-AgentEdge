@@ -240,7 +240,7 @@ class UnifiedOptionsDataTool:
             metadata["note"] = "Polygon options require paid subscription"
 
             self.logger.warning(
-                "Polygon options data requires paid subscription. " "Falling back to next provider."
+                "Polygon options data requires paid subscription. Falling back to next provider."
             )
             return None, None, metadata
 
@@ -267,7 +267,7 @@ class UnifiedOptionsDataTool:
         }
 
         self.logger.info(
-            "Alpha Vantage options fetcher not yet implemented. " "Falling back to next provider."
+            "Alpha Vantage options fetcher not yet implemented. Falling back to next provider."
         )
         return None, None, metadata
 
@@ -304,7 +304,8 @@ class UnifiedOptionsDataTool:
             # Fetch options chain for the trading date
             # Note: Alpaca options API requires specific date format
             _request = OptionChainRequest(  # noqa: F841 (placeholder for future use)
-                underlying_symbol=symbol, feed="opra"  # Options Price Reporting Authority feed
+                underlying_symbol=symbol,
+                feed="opra",  # Options Price Reporting Authority feed
             )
 
             # This is a placeholder - actual Alpaca options API usage may vary
@@ -312,7 +313,7 @@ class UnifiedOptionsDataTool:
             metadata["note"] = "Alpaca options API implementation pending verification"
 
             self.logger.info(
-                "Alpaca options fetcher pending API verification. " "Falling back to next provider."
+                "Alpaca options fetcher pending API verification. Falling back to next provider."
             )
             return None, None, metadata
 

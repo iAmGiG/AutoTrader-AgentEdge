@@ -264,8 +264,7 @@ class SimpleRiskManager(RiskManager):
         # Check buying power
         if trade_value > buying_power:
             reason = (
-                f"Insufficient buying power: need ${trade_value:,.2f}, "
-                f"have ${buying_power:,.2f}"
+                f"Insufficient buying power: need ${trade_value:,.2f}, have ${buying_power:,.2f}"
             )
             warnings.append(f"⚠️  {reason}")
             block_reasons.append(reason)

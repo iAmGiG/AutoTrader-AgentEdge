@@ -47,9 +47,7 @@ gex = [
 ]
 dev = [
     # Linting and formatting
-    "ruff>=0.1.15",
-    "black>=24.1.1",
-    "isort>=5.13.2",
+    "ruff==0.17.1",  # same version as .pre-commit-config.yaml and the workflows
     "pylint>=3.0.0",
     "mypy>=1.8.0",
     "docformatter>=1.7.5",
@@ -77,31 +75,14 @@ dev = [
 ignore = ["E402"]  # module level import not at top of file
 max_line_length = 100
 
-[tool.isort]
-# Skip scripts directory to preserve sys.path setup
-skip_glob = ["scripts/*.py"]
-known_local_folder = ["src", "config"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-
-[tool.black]
-# Black configuration
-line-length = 100
-target-version = ['py312']
-exclude = '''
-/(
-    \.git
-  | \.venv
-  | \.cache
-  | __pycache__
-  | reports
-)/
-'''
-
 [tool.ruff]
-# Ruff configuration
+# Ruff lints, sorts imports (rule I) and formats (`ruff format`, Black-compatible); it
+# replaced black and isort (#603). Pin the same ruff version in .pre-commit-config.yaml
+# and the lint and auto-fix workflows, or each run re-formats the others' output.
 line-length = 100
 target-version = "py312"
-exclude = [".git", "__pycache__", ".venv", ".cache", "reports"]
+# *.md: ruff 0.16+ would also format Python code blocks inside Markdown
+exclude = [".git", "__pycache__", ".venv", ".cache", "reports", "*.md"]
 
 [tool.ruff.lint]
 # E402: module level import not at top of file
@@ -119,8 +100,10 @@ known-local-folder = ["src", "config"]
 "scripts/research/**/*.py" = ["I001", "E402", "E501"]
 # Line length handled by formatters and GitHub CI
 "*" = ["E501"]
+# Top-level scripts set up sys.path before their imports (isort skipped them)
+"scripts/*.py" = ["I001", "E402"]
 # Issue #414: TrailingStopManager has justified complexity for profit zone logic
-"src/trading/trailing_stop_manager.py" = ["C901"]
+"src/trading/orders/trailing_stop_manager.py" = ["C901"]
 
 [tool.pycodestyle]
 # For tools that read from pyproject.toml

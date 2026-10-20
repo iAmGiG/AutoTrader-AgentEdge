@@ -16,9 +16,8 @@ This document tracks ongoing code quality improvements, linting standards, and t
 
 **Tools in Use**:
 
-- **Ruff** - Fast Python linter (primary)
-- **Black** - Code formatter
-- **isort** - Import sorting
+- **Ruff** - Linter, import sorter (rule I) and Black-compatible formatter (`ruff format`);
+  it replaced black and isort (#603). One pinned version everywhere.
 - **Pylint** - Static analysis (secondary)
 - **MyPy** - Type checking (optional)
 - **Bandit** - Security scanning
@@ -50,9 +49,8 @@ Automatically run on every commit:
 
 ```yaml
 # .pre-commit-config.yaml
-- Black (formatting)
-- isort (import sorting)
-- Ruff (linting with auto-fix)
+- ruff-check (linting with auto-fix, including import order)
+- ruff-format (formatting)
 - Trailing whitespace removal
 - End-of-file fixer
 - Bandit (security scanning)
@@ -352,8 +350,8 @@ python main.py test-voter  # Should work regardless
 1. **Format Code**:
 
    ```bash
-   black src/ scripts/ tests/
-   isort src/ scripts/ tests/
+   ruff check --select I --fix src/ scripts/ tests/   # import order
+   ruff format src/ scripts/ tests/
    ```
 
 2. **Run Linters**:
@@ -478,17 +476,17 @@ ruff check src/trading/position_manager.py
 ruff check src/ --select E,F,I
 ```
 
-### Black (Formatter)
+### Ruff Format (Formatter)
 
 ```bash
 # Format all files
-black src/ scripts/ tests/
+ruff format src/ scripts/ tests/
 
 # Check without modifying
-black src/ --check
+ruff format --check src/
 
 # Show diff
-black src/ --diff
+ruff format --diff src/
 ```
 
 ### MyPy (Type Checker)

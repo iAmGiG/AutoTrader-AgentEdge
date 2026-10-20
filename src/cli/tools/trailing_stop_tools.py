@@ -55,15 +55,15 @@ def show_trailing_stop_config() -> str:
 
     # Get gain lock percentages
     gain_locks = ClimbRate.get_gain_locks(config.climb_rate)
-    output += f"  Gain Locks: {gain_locks[1]*100:.0f}% / {gain_locks[2]*100:.0f}% / {gain_locks[3]*100:.0f}%\n"
+    output += f"  Gain Locks: {gain_locks[1] * 100:.0f}% / {gain_locks[2] * 100:.0f}% / {gain_locks[3] * 100:.0f}%\n"
     output += "-" * 50 + "\n"
 
     # Progressive thresholds
     output += f"{get_symbol('INFO')} Profit Zone Thresholds\n"
-    output += f"  Profit Zone Start: {config.profit_zone_start_pct*100:.1f}%\n"
-    output += f"  Breakeven Trigger: {config.progressive_breakeven_pct*100:.1f}%\n"
-    output += f"  Lock 25% Trigger:  {config.progressive_lock_25_pct*100:.1f}%\n"
-    output += f"  Trail 50% Trigger: {config.progressive_trail_50_pct*100:.1f}%\n"
+    output += f"  Profit Zone Start: {config.profit_zone_start_pct * 100:.1f}%\n"
+    output += f"  Breakeven Trigger: {config.progressive_breakeven_pct * 100:.1f}%\n"
+    output += f"  Lock 25% Trigger:  {config.progressive_lock_25_pct * 100:.1f}%\n"
+    output += f"  Trail 50% Trigger: {config.progressive_trail_50_pct * 100:.1f}%\n"
     output += "-" * 50 + "\n"
 
     # Volatility settings
@@ -139,9 +139,9 @@ def explain_climb_rate(rate: str = "medium") -> str:
     output += f"  Style: {desc['style']}\n"
     output += "-" * 50 + "\n"
     output += "  Gain Lock Schedule:\n"
-    output += f"    Zone 1 (+2-4%): Lock {gain_locks[1]*100:.0f}% of gains\n"
-    output += f"    Zone 2 (+4-6%): Lock {gain_locks[2]*100:.0f}% of gains\n"
-    output += f"    Zone 3 (+6%+):  Lock {gain_locks[3]*100:.0f}% of gains\n"
+    output += f"    Zone 1 (+2-4%): Lock {gain_locks[1] * 100:.0f}% of gains\n"
+    output += f"    Zone 2 (+4-6%): Lock {gain_locks[2] * 100:.0f}% of gains\n"
+    output += f"    Zone 3 (+6%+):  Lock {gain_locks[3] * 100:.0f}% of gains\n"
     output += "-" * 50 + "\n"
     output += f"  Best For: {desc['best_for']}\n"
     output += f"  Trade-off: {desc['risk']}\n"
@@ -186,7 +186,7 @@ def compare_climb_rates() -> str:
     ]
 
     for zone_name, idx in zones:
-        output += f"{zone_name:<20} {slow[idx]*100:>9.0f}% {medium[idx]*100:>9.0f}% {fast[idx]*100:>9.0f}%\n"
+        output += f"{zone_name:<20} {slow[idx] * 100:>9.0f}% {medium[idx] * 100:>9.0f}% {fast[idx] * 100:>9.0f}%\n"
 
     output += "-" * 60 + "\n"
     output += "\n"
@@ -256,12 +256,12 @@ def calculate_stop_example(
         zone = "Zone 2 (4-6%)"
         lock_pct = gain_locks[1]
         new_stop = entry_price + (gain * lock_pct)
-        explanation = f"Lock {lock_pct*100:.0f}% of gains"
+        explanation = f"Lock {lock_pct * 100:.0f}% of gains"
     else:
         zone = "Zone 3 (6%+)"
         lock_pct = gain_locks[2] if profit_pct < 10.0 else gain_locks[3]
         new_stop = entry_price + (gain * lock_pct)
-        explanation = f"Lock {lock_pct*100:.0f}% of gains"
+        explanation = f"Lock {lock_pct * 100:.0f}% of gains"
 
     output += f"  Profit Zone: {zone}\n"
     output += f"  New Stop:    ${new_stop:.2f}\n"

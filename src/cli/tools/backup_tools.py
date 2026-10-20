@@ -537,7 +537,7 @@ show_backup_info_tool = FunctionTool(
 cleanup_old_backups_tool = FunctionTool(
     cleanup_old_backups,
     description=(
-        "Clean up backups older than specified days to free disk space. " "Default is 30 days."
+        "Clean up backups older than specified days to free disk space. Default is 30 days."
     ),
 )
 

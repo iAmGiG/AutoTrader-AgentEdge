@@ -158,7 +158,7 @@ python -m unittest discover tests
 ```bash
 # Lint and format code
 ruff check src/ scripts/ tests/
-black src/ scripts/ tests/
+ruff format src/ scripts/ tests/
 
 # Type checking (if available)
 mypy src/ --ignore-missing-imports

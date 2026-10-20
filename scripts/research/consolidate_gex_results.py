@@ -172,7 +172,7 @@ def generate_report(results: list) -> str:
     lines.extend(
         [
             f"1. **GEX-ONLY beats technicals in {total_gex_wins}/{total_tests} tests** "
-            f"({total_gex_wins/total_tests*100:.0f}% win rate)",
+            f"({total_gex_wins / total_tests * 100:.0f}% win rate)",
             f"2. **Average Sharpe improvement**: {avg_improvement:+.3f}",
             "3. **Leveraged ETFs show larger GEX advantage** - TQQQ shows +1.019 Sharpe "
             "improvement",
@@ -275,7 +275,7 @@ def main():
         symbol = r["symbol"]
         tech = r["results"].get("TECHNICALS (MACD+RSI)", {}).get("sharpe_ratio", 0) or 0
         gex = r["results"].get("GEX-ONLY", {}).get("sharpe_ratio", 0) or 0
-        print(f"{symbol}: Tech={tech:.3f}, GEX={gex:.3f}, diff={gex-tech:+.3f}")
+        print(f"{symbol}: Tech={tech:.3f}, GEX={gex:.3f}, diff={gex - tech:+.3f}")
 
     return 0
 

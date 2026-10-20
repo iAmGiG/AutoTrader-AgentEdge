@@ -541,12 +541,16 @@ def show_position_orders(ticker: str) -> str:  # noqa: C901
             emoji = (
                 get_symbol("RED")
                 if otype == "stop"
-                else get_symbol("GREEN") if otype == "limit" else get_symbol("INFO")
+                else get_symbol("GREEN")
+                if otype == "limit"
+                else get_symbol("INFO")
             )
             label = (
                 "STOP LOSS"
                 if otype == "stop"
-                else "TAKE PROFIT" if otype == "limit" else otype.upper()
+                else "TAKE PROFIT"
+                if otype == "limit"
+                else otype.upper()
             )
             lines.append(f"   {emoji} {label}: ${price:.2f}")
     local_state = result.get("local_state", {})

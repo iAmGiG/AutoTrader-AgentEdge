@@ -16,33 +16,31 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: '3.12'
         cache: 'pip'
 
     - name: Install formatting tools
+      # Same ruff as .pre-commit-config.yaml and pyproject.toml: an unpinned (or different)
+      # formatter re-formats what pre-commit just formatted (#603)
       run: |
         python -m pip install --upgrade pip
-        pip install black isort ruff
+        pip install ruff==0.17.1
 
-    - name: Run Black formatter
+    - name: Run Ruff auto-fixes (lint, import order)
       run: |
-        black src/ tests/ scripts/ config_defaults/ || true
+        ruff check src/ tests/ scripts/ config_defaults/ main.py --fix || true
 
-    - name: Run isort import sorter
+    - name: Run Ruff formatter
       run: |
-        isort src/ tests/ scripts/ config_defaults/ || true
-
-    - name: Run Ruff auto-fixes
-      run: |
-        ruff check src/ tests/ scripts/ config_defaults/ --fix || true
+        ruff format src/ tests/ scripts/ config_defaults/ main.py || true
 
     - name: Check for changes
       id: verify_diff
@@ -59,7 +57,7 @@ jobs:
 
     - name: Push changes
       if: steps.verify_diff.outputs.changed == 'true'
-      uses: ad-m/github-push-action@master
+      uses: ad-m/github-push-action@881a6320fdb16eb5318c5054f31c218aec2b324c # v1.3.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         branch: ${{ github.ref }}

@@ -136,9 +136,8 @@ All code must follow standards documented in:
 
 Pre-commit hooks enforce:
 
-- Black formatting
-- Ruff linting
-- isort import ordering
+- Ruff formatting (`ruff format`, Black-compatible)
+- Ruff linting, including import order (rule I)
 - Trailing whitespace removal
 - Security scanning (Bandit)
 

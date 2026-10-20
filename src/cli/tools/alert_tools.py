@@ -309,7 +309,9 @@ def show_alerts() -> str:
         emoji = (
             get_symbol("RED")
             if severity == "CRITICAL"
-            else get_symbol("YELLOW") if severity == "WARNING" else get_symbol("INFO")
+            else get_symbol("YELLOW")
+            if severity == "WARNING"
+            else get_symbol("INFO")
         )
         lines.append(
             f"{emoji} {alert.get('ticker', '?')}: {alert.get('alert_type', 'unknown')} @ ${alert.get('current_price', 0):.2f}"
