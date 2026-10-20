@@ -16,6 +16,7 @@ GEX overlay (#546): In GEX-enhanced mode, only trade when the regime supports
 mean-reversion (bullish_gamma). Reduce size in bearish/neutral regimes.
 """
 
+import inspect
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -23,6 +24,22 @@ import pandas as pd
 from statsmodels.regression.linear_model import OLS
 from statsmodels.tools import add_constant
 from statsmodels.tsa.stattools import adfuller, coint
+
+# statsmodels 0.15 warns that adfuller will return a result object instead of a tuple;
+# ask for the tuple where that option exists (0.14 has no such argument)
+ADF_TUPLE_KWARGS = (
+    {"result_object": False} if "result_object" in inspect.signature(adfuller).parameters else {}
+)
+
+
+def adf_pvalue(series, **kwargs) -> float:
+    """
+    ADF test p-value, from a tuple result (statsmodels 0.14, or 0.15 with
+    result_object=False) or a result object (once statsmodels always returns one).
+    """
+    result = adfuller(series, **ADF_TUPLE_KWARGS, **kwargs)
+    pvalue = getattr(result, "pvalue", None)
+    return float(result[1] if pvalue is None else pvalue)
 
 
 class PairsTradingSignal:
@@ -94,8 +111,7 @@ class PairsTradingSignal:
         self.coint_pvalue = float(pvalue)
 
         # ADF test on spread
-        adf_result = adfuller(spread, maxlag=10, autolag="AIC")
-        self.adf_pvalue = float(adf_result[1])
+        self.adf_pvalue = adf_pvalue(spread, maxlag=10, autolag="AIC")
 
         # Half-life of mean reversion (O-U process)
         self.half_life_days = self._estimate_half_life(spread)

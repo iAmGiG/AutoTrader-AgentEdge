@@ -691,29 +691,27 @@ def calculate_days_to_expiration(expiration_dates, trade_dates):
     Returns:
         pandas Series or int: Days to expiration for each option contract
     """
-    # Convert to pandas datetime if not already
-    if not isinstance(expiration_dates, pd.Series):
-        expiration_dates = pd.to_datetime(expiration_dates)
-    if not isinstance(trade_dates, pd.Series):
-        trade_dates = pd.to_datetime(trade_dates)
+    expiration_dates = _as_datetimes(expiration_dates)
+    trade_dates = _as_datetimes(trade_dates)
 
-    # Handle parsing if needed
-    if isinstance(expiration_dates, pd.Series) and expiration_dates.dtype == "object":
-        expiration_dates = expiration_dates.apply(
-            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x
-        )
-        expiration_dates = pd.to_datetime(expiration_dates)
+    days_diff = expiration_dates - trade_dates
+    if isinstance(days_diff, pd.Series):
+        return days_diff.dt.days
+    return days_diff.days  # single dates: a Timedelta
 
-    if isinstance(trade_dates, pd.Series) and trade_dates.dtype == "object":
-        trade_dates = trade_dates.apply(
-            lambda x: parse_date_string(str(x)) if isinstance(x, str) else x
-        )
-        trade_dates = pd.to_datetime(trade_dates)
 
-    # Calculate the difference in days
-    days_diff = (expiration_dates - trade_dates).dt.days
-
-    return days_diff
+def _as_datetimes(dates):
+    """
+    A Series as datetime64 (strings parsed, whether object dtype or pandas 3's str
+    dtype), or a single date as a Timestamp.
+    """
+    if not isinstance(dates, pd.Series):
+        return pd.to_datetime(dates)
+    if pd.api.types.is_datetime64_any_dtype(dates):
+        return dates
+    return pd.to_datetime(
+        dates.apply(lambda x: parse_date_string(str(x)) if isinstance(x, str) else x)
+    )
 
 
 # === US FORMAT DISPLAY HELPERS (Issue #403) ===
