@@ -53,25 +53,30 @@ class MACDRSISignal:
         self.rsi_oversold = rsi_oversold
         self.rsi_overbought = rsi_overbought
         self._signals_cache: Optional[pd.Series] = None
-        self._prices_id: Optional[int] = None
+        # A copy of the prices the cache was computed from. The cache is reused only for
+        # equal prices: pandas 3 returns a new Series for each prices[col], a freed
+        # object's id can be reused by different data, and a frame can be edited in place.
+        self._cache_prices: Optional[pd.Series] = None
 
-    def _compute_signals(self, prices: pd.Series) -> pd.Series:
+    def _compute_signals(self, prices: pd.DataFrame, symbol: str) -> pd.Series:
         """Compute shifted consensus signal series (cached).
 
         Returns a boolean Series where True = bullish consensus,
         shifted by 1 to prevent look-ahead bias.
         """
-        prices_id = id(prices)
-        if self._signals_cache is not None and self._prices_id == prices_id:
+        price_series = prices[symbol]
+        if self._cache_prices is not None and price_series.equals(self._cache_prices):
             return self._signals_cache
 
-        macd_data = calculate_macd(prices, self.fast, self.slow, self.signal_period)
-        rsi_data = calculate_rsi(prices, self.rsi_period, self.rsi_oversold, self.rsi_overbought)
+        macd_data = calculate_macd(price_series, self.fast, self.slow, self.signal_period)
+        rsi_data = calculate_rsi(
+            price_series, self.rsi_period, self.rsi_oversold, self.rsi_overbought
+        )
         voting = calculate_voting_consensus(macd_data, rsi_data)
 
         # shift(1): yesterday's signal drives today's execution
         self._signals_cache = voting["consensus"].shift(1).fillna(False)
-        self._prices_id = prices_id
+        self._cache_prices = price_series.copy()
         return self._signals_cache
 
     def generate_signal(self, prices: pd.DataFrame, idx: int) -> Dict[str, Any]:
@@ -96,7 +101,7 @@ class MACDRSISignal:
                 "reasoning": "Insufficient warmup data",
             }
 
-        consensus = self._compute_signals(price_series)
+        consensus = self._compute_signals(prices, symbol)
 
         # Daily P&L from actual price returns
         daily_pnl_pct = 0.0
