@@ -54,3 +54,22 @@ def test_trailing_stops_skip_symbols_without_a_price():
 
     assert results["SPY"]["status"] == "error"
     manager.update_stop.assert_not_called()
+
+
+def test_importing_needs_no_credentials_and_a_failed_build_is_not_cached(monkeypatch):
+    """The fetcher is built on first use; a failed build raises and is retried later."""
+    monkeypatch.setattr(upf.UnifiedPriceFetcher, "_instance", None)
+    builds = []
+
+    def no_credentials():
+        builds.append(1)
+        raise ValueError("Alpaca API credentials required")
+
+    monkeypatch.setattr(upf, "AlpacaMarketData", no_credentials)
+
+    for _ in range(2):
+        with pytest.raises(ValueError, match="credentials"):
+            upf.get_current_price("SPY")
+        assert upf.UnifiedPriceFetcher._instance is None
+
+    assert len(builds) == 2

@@ -34,8 +34,11 @@ class UnifiedPriceFetcher:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.market_data = AlpacaMarketData()
+            instance = super().__new__(cls)
+            # Cached only once built: a failed build (e.g. no credentials) raises here
+            # and is tried again next time, instead of leaving a fetcher without data
+            instance.market_data = AlpacaMarketData()
+            cls._instance = instance
         return cls._instance
 
     def get_current_price(  # noqa: C901

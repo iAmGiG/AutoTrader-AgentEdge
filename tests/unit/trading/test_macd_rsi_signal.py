@@ -154,3 +154,13 @@ class TestParameters:
 
         assert signal._signals_cache is not first
         assert not signal._signals_cache.equals(first)
+
+    def test_prices_edited_in_place_are_computed_afresh(self, signal, trending_prices):
+        signal.generate_signal(trending_prices, 100)
+        first = signal._signals_cache
+        column = trending_prices.columns[0]
+
+        trending_prices[column] = trending_prices[column].iloc[::-1].to_numpy()
+        signal.generate_signal(trending_prices, 100)
+
+        assert not signal._signals_cache.equals(first)
