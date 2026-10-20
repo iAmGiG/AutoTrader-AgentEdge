@@ -53,7 +53,8 @@ class SchedulerMonitor:
 
         # Check daemon status (or cron, which runs `main.py --run-due` without a daemon)
         daemon_running = self.daemon_manager.is_running()
-        cron_running = not daemon_running and self.daemon_manager.cron_entry() is not None
+        cron_line = self.daemon_manager.cron_entry()
+        cron_running = cron_line is not None
         enabled = self.scheduler.effective_settings()["enabled"]
 
         # Config status
@@ -63,10 +64,15 @@ class SchedulerMonitor:
         # Daemon/service status
         if daemon_running:
             print(f"{get_emoji('check_green', '✅')} Service: RUNNING (automatic execution active)")
+            if cron_running:
+                print(
+                    f"{get_emoji('warning', '⚠️')} A cron entry runs it too; keep only one of them."
+                )
         elif cron_running:
+            schedule = " ".join(cron_line.split()[:5])
             print(
-                f"{get_emoji('check_green', '✅')} Service: CRON "
-                "(main.py --run-due every 5 minutes runs routines when due)"
+                f"{get_emoji('check_green', '✅')} Service: CRON entry installed "
+                f"({schedule}: main.py --run-due runs routines when due)"
             )
             if not enabled:
                 print("   The scheduler is disabled, so cron runs no routines until 'enable'.")

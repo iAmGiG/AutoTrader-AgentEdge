@@ -36,12 +36,36 @@ def test_the_run_due_entry_for_this_checkout_is_found(monkeypatch):
     [
         f"# {ENTRY}\n",  # commented out
         ENTRY.replace(ROOT, "/home/other/checkout") + "\n",  # another checkout
+        ENTRY.replace(ROOT, ROOT + "-old") + "\n",  # a longer path that starts with ours
         f"*/5 * * * * cd {ROOT} && python main.py --daemon\n",  # not the cron entry point
         "",
     ],
 )
 def test_other_lines_are_not_this_checkouts_entry(monkeypatch, crontab):
     assert _manager(monkeypatch, crontab).cron_entry() is None
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        f"*/5 * * * * cd {ROOT}&& python main.py --run-due",
+        f"*/5 * * * * cd {ROOT} && python main.py --account paper --run-due",
+        f"*/5 * * * * python {ROOT}/main.py --run-due",
+    ],
+)
+def test_other_spellings_of_this_checkouts_entry_are_found(monkeypatch, line):
+    assert _manager(monkeypatch, line + "\n").cron_entry() == line
+
+
+def test_a_symlinked_path_to_this_checkout_is_found(monkeypatch, tmp_path):
+    real = tmp_path / "disk" / "checkout"
+    real.mkdir(parents=True)
+    (tmp_path / "home").symlink_to(tmp_path / "disk")
+    line = f"*/5 * * * * cd {tmp_path}/home/checkout && python main.py --run-due"
+    manager = _manager(monkeypatch, line + "\n")
+    manager.main_script = real / "main.py"
+
+    assert manager.cron_entry() == line
 
 
 def test_no_crontab_or_no_crontab_command_means_no_entry(monkeypatch):
@@ -66,7 +90,7 @@ def _status(capsys, daemon=False, cron=None, enabled=True):
 def test_status_reports_cron_as_running(capsys):
     out = _status(capsys, cron=ENTRY)
 
-    assert "Service: CRON" in out
+    assert "Service: CRON entry installed (*/5 * * * *:" in out
     assert "NOT RUNNING" not in out
     assert "no automatic executions" not in out
 
@@ -80,3 +104,18 @@ def test_without_cron_or_daemon_status_suggests_the_cron_setup(capsys):
 
     assert "NOT RUNNING" in out
     assert "setup_cron.sh" in out
+
+
+def test_status_warns_when_cron_and_the_daemon_both_run(capsys):
+    assert "A cron entry runs it too" in _status(capsys, daemon=True, cron=ENTRY)
+
+
+def test_no_daemon_is_started_while_cron_runs_this_checkout(monkeypatch, capsys):
+    manager = _manager(monkeypatch, ENTRY + "\n")
+    monkeypatch.setattr(manager, "is_running", lambda: False)
+    popen = MagicMock()
+    monkeypatch.setattr(daemon_module.subprocess, "Popen", popen)
+
+    assert manager.start() is False
+    popen.assert_not_called()
+    assert "Cron already runs the scheduler" in capsys.readouterr().out

@@ -7,6 +7,7 @@ Extracted from scheduler_cli.py (Issue #440).
 
 import logging
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -100,7 +101,9 @@ class SchedulerDaemonManager:
         """
         The crontab line that runs `main.py --run-due` from this checkout, if any.
 
-        Cron runs the scheduler without a daemon (scripts/deployment/setup_cron.sh).
+        Cron runs the scheduler without a daemon (scripts/deployment/setup_cron.sh). A line
+        counts when one of its paths is this checkout or its main.py, symlinks resolved, so
+        an entry for another checkout (even one under a longer path) doesn't.
         """
         try:
             result = subprocess.run(  # nosec B603 B607 - fixed command, no shell
@@ -110,10 +113,24 @@ class SchedulerDaemonManager:
             return None
         if result.returncode != 0:  # no crontab for this user
             return None
-        root = str(self.main_script.resolve().parent)
+        root = os.path.realpath(self.main_script.absolute().parent)
+        ours = {root, os.path.join(root, "main.py")}
         for line in result.stdout.splitlines():
             line = line.strip()
-            if line and not line.startswith("#") and "main.py --run-due" in line and root in line:
+            if not line or line.startswith("#"):
+                continue
+            try:
+                tokens = shlex.split(line)
+            except ValueError:
+                continue
+            if "--run-due" not in tokens or not any(t.endswith("main.py") for t in tokens):
+                continue
+            paths = {
+                os.path.realpath(os.path.expanduser(t.rstrip("&;|")))
+                for t in tokens
+                if t.startswith(("/", "~"))
+            }
+            if paths & ours:
                 return line
         return None
 
@@ -146,6 +163,12 @@ class SchedulerDaemonManager:
         if self.is_running():
             print(f"{get_emoji('warning', '⚠️')} Scheduler daemon is already running!")
             print("   Use 'stop' to stop it first, or 'status' to check")
+            return False
+
+        if self.cron_entry() is not None:
+            print(f"{get_emoji('warning', '⚠️')} Cron already runs the scheduler for this checkout.")
+            print("   Not starting a daemon as well. To switch, remove the cron entry first")
+            print("   (crontab -e), then start the daemon.")
             return False
 
         if not self.main_script.exists():

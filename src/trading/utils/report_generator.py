@@ -265,7 +265,8 @@ class ReportGenerator:
                 f"Next {next_routine} routine: {next_time}",
                 "",
                 "**Note**: Stops are synced from the broker's open stop orders each run. A",
-                "position without a live stop gets one re-placed (see Discrepancies).",
+                "position without a live stop shows its last known level and is listed under",
+                "Discrepancies (re-placed, or left for review).",
             ]
         )
 

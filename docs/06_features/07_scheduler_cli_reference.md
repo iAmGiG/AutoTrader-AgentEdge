@@ -330,7 +330,7 @@ Reports are saved to `reports/daily/` with human-readable filenames, named by th
 
 5. **Alerts** (both routines)
    - Positions approaching stop loss
-   - Positions approaching take profit
+   - Positions approaching take profit (only positions with a target price)
    - Unusual P&L movements
 
 **Note**: Stop and target prices are extracted from your actual GTC orders on Alpaca (bracket legs included). The routines re-place missing stops but not take-profit orders: a GTC take-profit lapses after Alpaca's 90-day limit, so a position held that long shows no target and exits by its trailing stop.

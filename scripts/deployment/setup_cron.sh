@@ -7,9 +7,9 @@ set -e
 echo "=== AutoGen Trading Scheduler - Crontab Setup ==="
 echo ""
 
-# Configuration (edit for your install)
-PROJECT_ROOT="$HOME/AutoTrader-AgentEdge"
-PYTHON_BIN="$HOME/miniconda3/envs/AutoGex/bin/python"
+# Configuration: this checkout, and the Python to run it (override either from the environment)
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+PYTHON_BIN="${PYTHON_BIN:-$HOME/miniconda3/envs/AutoGex/bin/python}"
 
 # Check if project exists
 if [ ! -d "$PROJECT_ROOT" ]; then
@@ -34,10 +34,18 @@ mkdir -p "$PROJECT_ROOT/state"
 # stdout duplicates state/scheduler.log (rotated), so only errors are kept
 CRON_DUE="*/5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due > /dev/null 2>> $PROJECT_ROOT/state/scheduler-cron.err"
 
-if crontab -l 2>/dev/null | grep -q "main.py --run-due"; then
-    echo "A scheduler entry (main.py --run-due) is already in the crontab:"
-    crontab -l | grep "main.py --run-due"
+EXISTING="$(crontab -l 2>/dev/null | grep -v '^[[:space:]]*#' | grep -e "--run-due" || true)"
+if printf '%s\n' "$EXISTING" | grep -qF "cd $PROJECT_ROOT && "; then
+    echo "This checkout's scheduler entry is already in the crontab:"
+    printf '%s\n' "$EXISTING" | grep -F "cd $PROJECT_ROOT && "
     exit 0
+fi
+if [ -n "$EXISTING" ]; then
+    echo "ERROR: another scheduler entry (main.py --run-due) is in the crontab:"
+    printf '%s\n' "$EXISTING"
+    echo "Two checkouts would both run the routines against the broker. Remove that entry"
+    echo "first (crontab -e) if this checkout should replace it."
+    exit 1
 fi
 
 echo "Crontab entry to be added:"

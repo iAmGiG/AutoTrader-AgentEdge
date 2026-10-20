@@ -131,6 +131,9 @@ technical_indicators:
 
 # Position Management - Trailing Stop Configuration
 # Issue #358: Externalize trailing stop thresholds from trading_cycle.py
+# NOT READ BY CODE, and its tiers are out of date. The stop levels in force are the
+# TrailingStopConfig defaults (config_defaults/trading_config.py); a `trailing_stops:`
+# section in this file overrides them (TradingConfig.get_trailing_stop_config).
 position_management:
   trailing_stop:
     # Profit thresholds and corresponding actions
