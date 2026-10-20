@@ -1,5 +1,7 @@
 # Test Results: Unified Features Integration
 
+> **Historical record (2025-01-10).** Some files named below have since moved or been removed (for example `automated_trading.py` and `docs/features/`); see the [feature index](README.md) for current docs.
+
 **Date:** 2025-01-10
 **Branch:** DocsGroomingAndReview
 **Tester:** Automated test suite
@@ -262,7 +264,7 @@ All features working as designed with no critical issues.
 
 ## Recommendations
 
-### Ready for Production
+### Ready to Merge
 
 ✅ All features tested and functional
 ✅ Documentation comprehensive

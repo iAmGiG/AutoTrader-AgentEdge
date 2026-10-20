@@ -1,5 +1,7 @@
 <!-- markdownlint-disable MD060 -->
-# AutoTrader: Multi-Agent Trading System
+# OptionsCommander: Multi-Agent Trading System
+
+Formerly RH2MAS (Reflective Hybrid Head Multi-Agent System). The GitHub repository is still `iAmGiG/AutoTrader-AgentEdge`.
 
 **Copyright (C) 2024-2025 Chris R. (iAmGiG)** | Licensed under [AGPL-3.0](LICENSE) | See [NOTICE](NOTICE)
 
@@ -20,29 +22,33 @@
 - **Not Financial Advice**: This system does not provide financial, investment, or trading advice
 - **Use at Your Own Risk**: Trading involves substantial risk of loss
 - **No Warranties**: Provided "as-is" without guarantees of accuracy or profitability
-- **Past Performance**: Walk-forward validated results do not guarantee future performance
+- **Past Performance**: Backtested results do not guarantee future performance
 
 ---
 
 ## Overview
 
-**AutoTrader** is a research-driven trading platform featuring a multi-agent AI architecture powered by Microsoft AutoGen. The system implements walk-forward validated strategies with rigorous statistical testing and human oversight for paper/live trading via Alpaca Markets.
+**OptionsCommander** is a research-driven trading platform with a multi-agent AI architecture built on Microsoft AutoGen. It trades a MACD+RSI voting strategy through Alpaca Markets with human oversight, and its research tests strategies out-of-sample, with transaction costs and look-ahead checks.
 
-**Core Philosophy**: Validated momentum + regime filtering + human decision making > curve-fit technical indicators
+**Core Philosophy**: simple rules + human decision making, tested out-of-sample with costs > curve-fit technical indicators
 
-### Key Research Findings (Jan 2026)
+### Key Research Findings (Oct 2026)
 
-Recent rigorous validation experiments with corrected methodology:
+- **Live rules have no edge (#574 stage A)**: the CLI's MACD+RSI rules at live timing, on the 19-symbol watchlist from 2009 to 2026-10-09 at 5 bps a side, have a Sharpe of 0.69 (0.71 from 2020; the 95% interval includes zero), a 44.2% win rate and a -6.9% max drawdown. Alpha against buy-and-hold of the same symbols is +0.11% a year (t = 0.19). See the [live-rules baseline](docs/08_research/03_strategy_research/live_rules_baseline.md). The 30-day paper signal run (stage C) and automated entries are deferred.
+- **GEX research closed (#576)**: with the end-of-day regime lagged one day and a corrected backtester, no GEX trading overlay survives multiple-testing correction. Negative GEX goes with about 7% higher next-day variance in high-VIX markets, but adds no out-of-sample forecast value. See the [re-validation](docs/08_research/02_gex_research/regime_lookahead_revalidation.md).
 
-- **GEX Regime Filtering**: Research contradiction identified - MACD+RSI and academic TSMOM behave differently in GEX regimes. Phase 3B on hold pending resolution. See [project status](docs/04_development/02_project_status.md).
+Earlier findings (Dec 2025 - Jan 2026):
+
 - **Transaction Cost Robustness**: MACD+RSI shows 44% pass rate vs TSMOM's 19% despite 10x higher turnover (#519)
 - **MACD Parameter Stability**: No robustly profitable MACD configs found out-of-sample. Best OOS Sharpe: -0.223 (#518)
 - **Simulation Fidelity Gap**: Path-dependent backtesting engine created to address "wick risk" (#528)
 
-### Strategy Validation Results
+### Strategy Research Results
 
 | Issue | Strategy | Finding | Status |
 |-------|----------|---------|--------|
+| #574 | Live MACD+RSI rules | Sharpe 0.69 at 5 bps; alpha +0.11%/yr (t = 0.19) vs buy-and-hold | No edge (stage A) |
+| #576 | GEX overlays | None survives multiple-testing correction | CLOSED |
 | #516 | TSMOM+GEX Hybrid | Median improvement: **-2.9%** (worse than baseline) | CLOSED |
 | #518 | MACD Stability | OOS Sharpe: -0.223 (least unprofitable) | CLOSED |
 | #519 | Transaction Costs | MACD+RSI: 44% pass rate, TSMOM: 19% | CLOSED |
@@ -51,15 +57,16 @@ Recent rigorous validation experiments with corrected methodology:
 
 **Note**: Past performance does not guarantee future results. Research is ongoing with focus on simulation fidelity improvements.
 
-### Production Status
+### Component Status
 
 | Component | Status |
 |-----------|--------|
-| VoterAgent | Production Ready |
+| VoterAgent | In use (paper account) |
 | CLI Trade Assistant | Complete |
 | Alpaca Integration | Operational |
 | Position Management | Complete |
 | Trading Cycle | Complete |
+| Daily Scheduler | In use (cron, paper account) |
 | SQLite Cache | Complete (90%+ hit rate) |
 | LLM Intent Routing | Complete |
 | ScannerAgent | In Development |
@@ -70,11 +77,11 @@ Recent rigorous validation experiments with corrected methodology:
 
 ## Core Agents
 
-### VoterAgent (Production Ready)
+### VoterAgent (in use on paper)
 
-Location: `src/autogen_agents/voter_agent.py`
+Location: `src/autogen_agents/agents/voter_agent.py`
 
-- **MACD Signal Generation**: Optimized 13/34/8 Fibonacci parameters
+- **MACD Signal Generation**: 13/34/8 Fibonacci periods
 - **RSI Momentum Analysis**: 14-period with 30/70 thresholds
 - **Consensus Voting**: Strong signals when both indicators agree
 - **Backtested Performance**: with the live rules and timing, Sharpe 0.69 at 5 bps a side (2009 to 2026-10-09), and no alpha over buy-and-hold of the same symbols; see the [live-rules baseline](docs/08_research/03_strategy_research/live_rules_baseline.md). The earlier 0.856 was in-sample on AAPL 2024.
@@ -135,15 +142,20 @@ python main.py
 > /help                    # All commands
 ```
 
-### Daemon Mode
+### Scheduled Routines
 
 ```bash
-python main.py --daemon
+# Recommended: a cron entry every 5 minutes runs whatever routine is due
+./scripts/deployment/setup_cron.sh
+# adds: */5 * * * * cd <repo> && <python> main.py --run-due
 
-# Runs twice daily:
-# - Morning: 9:20 AM ET (reconciliation)
-# - Evening: 3:50 PM ET (review)
+# Alternative: a long-running daemon (or the systemd unit in scripts/deployment/)
+python main.py --daemon
 ```
+
+The morning (9:20 AM ET) and evening (3:50 PM ET) routines run on NYSE trading days only. Each fetches broker state, records the account, positions and fills, reconciles, re-places missing or expiring stops, checks alerts and GTT triggers, raises stops to their trailing level (the evening routine only while the market is open), and writes `reports/daily/<ET date>_<routine>.md`. Logs go to `state/scheduler.log`, cron errors to `state/scheduler-cron.err`. The scheduler is off by default (`enabled: false` in `config_defaults/scheduler_config.yaml`); `enable` in the CLI's `/schedule` mode turns it on.
+
+**Exits**: the routines renew and re-place stops but not take-profit orders (an aging one is only flagged in the report). Alpaca cancels GTC orders after 90 days, so a bracket's take-profit leg lapses and a position held that long exits by its trailing stop.
 
 ---
 
@@ -189,12 +201,12 @@ python main.py --daemon
 ## Project Structure
 
 ```text
-AutoTrader-AgentEdge/
+AutoTrader-AgentEdge/       # repository root (project: OptionsCommander)
 ├── src/
 │   ├── autogen_agents/     # AI agents (AutoGen framework)
-│   │   ├── voter_agent.py  # Production MACD+RSI voting
-│   │   ├── base_agent.py   # Base agent class
-│   │   └── ...             # Other agents (in development)
+│   │   ├── agents/         # VoterAgent (MACD+RSI voting); other agents in development
+│   │   ├── core/           # Base agent class
+│   │   └── ...             # Orchestration, tools, workflow
 │   ├── trading/            # Trading infrastructure
 │   │   ├── broker/         # Alpaca integration
 │   │   ├── orders/         # Order management
@@ -220,6 +232,7 @@ AutoTrader-AgentEdge/
 | Design Decisions | [docs/05_decisions/](docs/05_decisions/) |
 | Features | [docs/06_features/](docs/06_features/) |
 | Testing | [docs/07_testing/](docs/07_testing/) |
+| Research | [docs/08_research/](docs/08_research/) |
 
 ---
 
@@ -236,7 +249,7 @@ ruff check src/
 black --check src/
 
 # VoterAgent validation
-python -c "from src.autogen_agents.voter_agent import VoterAgent; print('OK')"
+python -c "from src.autogen_agents.agents.voter_agent import VoterAgent; print('OK')"
 ```
 
 ### Contributing

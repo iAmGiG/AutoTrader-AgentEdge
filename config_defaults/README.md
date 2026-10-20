@@ -1,6 +1,6 @@
 # Configuration System
 
-This directory contains **non-sensitive default configuration files** for the AutoTrader-AgentEdge system.
+This directory contains **non-sensitive default configuration files** for OptionsCommander (formerly RH2MAS; repository `iAmGiG/AutoTrader-AgentEdge`).
 
 ## Directory Structure
 
@@ -11,7 +11,7 @@ This directory contains **non-sensitive default configuration files** for the Au
 
 ### Trading & Strategy Configuration
 
-- **`trading_config.yaml`** - Trading strategy parameters, risk management, and validated performance metrics
+- **`trading_config.yaml`** - Trading strategy parameters, risk management, and backtested performance metrics (reference only)
   - Timeframe specification for technical analysis (Issue #365)
   - MACD/RSI indicator settings
   - Exit strategies (stop loss, take profit)
@@ -115,10 +115,10 @@ from config_defaults.trading_config import TradingConfig
 config = TradingConfig()
 trailing = config.get_trailing_stop_config()
 
-# Progressive thresholds (proven in backtesting)
+# Progressive thresholds (defaults; climb_rate medium locks 25% / 50% / 75% of gains)
 print(f"Breakeven at: {trailing.progressive_breakeven_pct:.0%} profit")  # 2%
 print(f"Lock 25% at: {trailing.progressive_lock_25_pct:.0%} profit")     # 4%
-print(f"Trail 50% at: {trailing.progressive_trail_50_pct:.0%} profit")   # 6%
+print(f"Lock 50% at: {trailing.progressive_trail_50_pct:.0%} profit")    # 6% (75% from 10%)
 
 # Safety settings
 print(f"Rate limit: {trailing.min_update_interval_seconds}s between updates")
@@ -132,9 +132,14 @@ print(f"Never move down: {trailing.never_move_stop_down}")
 | < 2% | Hold | No stop adjustment (avoid whipsaws) |
 | 2-4% | Breakeven | Move stop to entry price (protect capital) |
 | 4-6% | Lock 25% | Stop at entry + 25% of gains |
-| > 6% | Trail 50% | Stop at entry + 50% of gains |
+| 6-10% | Lock 50% | Stop at entry + 50% of gains |
+| 10%+ | Lock 75% | Stop at entry + 75% of gains |
 
-**Configuration in `trading_config.yaml`**:
+Stops only move up, stay at least 1% below the current price, and start from the broker's live stop.
+These are the `TrailingStopConfig` defaults (`climb_rate: medium`; `slow` locks 20/40/60%, `fast`
+33/60/80%; the 10% step is fixed in `trailing_stop_manager.py`).
+
+**Override in `trading_config.yaml`** (it has no `trailing_stops` section, so the defaults apply):
 
 ```yaml
 trailing_stops:
@@ -150,7 +155,7 @@ trailing_stops:
 ### Timeframe Configuration (Issue #365)
 
 ```python
-from src.autogen_agents.voter_agent import VoterAgent
+from src.autogen_agents.agents.voter_agent import VoterAgent
 
 # Default: loads "1d" from config
 voter = VoterAgent(name="daily_voter", use_config_file=True)

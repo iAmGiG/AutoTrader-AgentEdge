@@ -1,7 +1,7 @@
 # Live-Rules Baseline (Paper Validation Stage A)
 
 **Issue**: #574 (stage A)
-**Status**: Complete. No edge over holding the same symbols.
+**Status**: Complete. No edge over holding the same symbols. Stage C (the 30-day paper signal run) and automated entries are deferred.
 **Date**: 2026-10-15
 **Results**: [results/live_rules_baseline.yaml](results/live_rules_baseline.yaml)
 **Code**: `src/backtesting/live_rules_sim.py`, `scripts/research/live_rules_baseline.py`
@@ -26,8 +26,10 @@ This backtests the rules the live CLI trades with, timed the way a pre-market ro
 | Timing | Pre-market decision | Bars through day d-1; fills at day d's open |
 | Size | `SimpleRiskManager`: risk_per_trade × equity, whole shares (signal strength ignored) | 2% (moderate) or 1% (conservative) of the prior close's equity, whole shares at the raw price |
 | Limits | 10 positions, 80% exposure, buying power | The same, counted before the open: positions that exit later that day still count, and their proceeds can't fund that day's entries |
-| Exits | Market bracket, stop -5% / target +8% (GTC, renewed by #587) | SELL signal at the open; otherwise the bracket on the day's range. Gaps fill at the open, and a day that touches both counts as the stop |
+| Exits | Market bracket, stop -5% / target +8% (GTC; #587 renews and re-places stops, not targets) | SELL signal at the open; otherwise the bracket on the day's range. Gaps fill at the open, and a day that touches both counts as the stop |
 | Costs | None modelled live | 0, 5 and 10 bps per side on every fill |
+
+> **Live exits differ (Oct 2026):** the live positions' +8% take-profit legs lapsed at Alpaca's 90-day GTC limit, and nothing re-places them (the routines re-place stops only), so those positions exit only by their trailing stop. The simulation keeps the fixed -5% / +8% bracket.
 
 **Data and periods:**
 
@@ -67,7 +69,7 @@ The signal fires often: of 76,974 symbol-days, 28% were BUY and 34% SELL. The 10
 
 ## What This Means for the Paper Run
 
-The paper run (#574 stage C) should be judged on fidelity, not performance:
+The paper run (#574 stage C, deferred) should be judged on fidelity, not performance:
 
 - **Thirty trading days can't measure a Sharpe of 0.7.** The standard error over 30 days is about 2.9.
 - **Expected activity:** about 35 trades over 30 days, a win rate near 43%, and most exits by stop or by signal. A replay of these rules on the same days gives the exact comparison.
@@ -75,7 +77,7 @@ The paper run (#574 stage C) should be judged on fidelity, not performance:
 
 ## Not Modelled
 
-- **Trailing stops:** the morning routine's trailing-stop adjustments.
+- **Trailing stops:** both routines' trailing-stop raises (morning, and evening while the market is open), and live exits by trailing stop only once a take-profit has lapsed.
 - **Intraday decisions:** the CLI can also trade during the day.
 - **Bar source:** live bars come from IEX, not consolidated data.
 - **Dividends:** they would add a little to both the strategy and the benchmarks.

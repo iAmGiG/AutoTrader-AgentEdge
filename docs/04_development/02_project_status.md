@@ -1,31 +1,32 @@
 # Project Status & Development Roadmap
 
-**Last Updated**: December 2025
-**Version**: v1.0 - Production VoterAgent Ready
+**Last Updated**: October 2026 (status, performance and GEX resolution; the roadmap below is from December 2025)
+**Version**: v1.0 - VoterAgent in use on paper
 **Framework**: Microsoft AutoGen 0.7.x
 
 ## Project Overview
 
-Human-in-loop algorithmic trading platform using Microsoft AutoGen framework with validated pure-math MACD+RSI strategies.
+OptionsCommander (formerly RH2MAS) is a human-in-loop algorithmic trading platform using the Microsoft AutoGen framework with a pure-math MACD+RSI voting strategy. Backtested with the live rules and timing, the strategy has no edge over buy-and-hold of the same symbols (#574).
 
 **Core Philosophy**: Pure mathematical indicators + human oversight > complex LLM sentiment analysis
 
-**Current Status**: Production-ready VoterAgent with multi-agent framework in development
+**Current Status**: VoterAgent and the daily scheduler run on a paper account (scheduler on cron); multi-agent framework in development; automated entries and the 30-day paper signal run (#574 stage C) are deferred
 
 ---
 
 ## Current Status
 
-### ✅ Production Ready (Phase 1 Complete)
+### ✅ In Use (Phase 1 Complete)
 
 | Component | Status | Performance | Notes |
 | ----------- | -------- | ------------- | ------- |
-| **VoterAgent** | ✅ Production | 0.468 OOS Sharpe (QQQ) | Pure MACD+RSI voting. Note: 0.856 Sharpe was from older, less rigorous tests. |
+| **VoterAgent** | ✅ In use (paper) | Sharpe 0.69 at 5 bps, live rules, 2009 to 2026-10-09; no alpha vs buy-and-hold (#574) | Pure MACD+RSI voting. The 0.856 (experiment 293) and 0.468 (QQQ OOS) figures are superseded. |
 | **main.py CLI** | ✅ Functional | All 4 commands working | Fixed Oct 2025 |
 | **Alpaca Integration** | ✅ Validated | Paper trading operational | 35/35 tests passing |
 | **Position Management** | ✅ Complete | Broker-as-truth reconciliation | Real-time tracking |
 | **Order Management** | ✅ Complete | Bracket, stop, trailing orders | Full lifecycle support |
 | **Trading Cycle** | ✅ Optimized | 90% fewer API calls | Cost-efficient batching |
+| **Daily Scheduler** | ✅ In use (cron) | Morning 9:20, evening 3:50 ET | Raises, re-places and renews stops (#586, #596) |
 | **Market Data** | ✅ Complete | Alpaca + Polygon + Alpha Vantage | Multi-source with fallback |
 | **Documentation** | ✅ Complete | Restructured with numbering | Presentation-ready |
 
@@ -54,7 +55,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 
 **Completed Components:**
 
-- [x] VoterAgent with validated MACD+RSI voting (OOS Sharpe 0.468)
+- [x] VoterAgent with MACD+RSI voting (OOS Sharpe 0.468 on QQQ, superseded by #574)
 - [x] Pure math calculations (no LLM dependencies)
 - [x] Alpaca paper trading integration
 - [x] Position and order management
@@ -64,7 +65,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
 - [x] Comprehensive documentation restructure
 - [x] Test coverage (35/35 passing)
 
-**Key Achievement**: Production-ready VoterAgent with validated performance
+**Key Achievement**: VoterAgent running on the paper account
 
 **Critical Bug Fixes**:
 
@@ -216,7 +217,7 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Easier testing and deployment
   - Target: Q1 2026
 
-### Phase 3B: Signal Enhancement: pipeline integration complete, GEX items ⚠️ ON HOLD (Dec 2025)
+### Phase 3B: Signal Enhancement: pipeline integration complete, GEX items 🛑 CLOSED (Oct 2026, #576)
 
 **Completed**:
 
@@ -229,6 +230,8 @@ Human-in-loop algorithmic trading platform using Microsoft AutoGen framework wit
   - Multi-indicator consensus voting via RankedVoterManager
   - RealVoterStrategy uses evaluate_ranked_voting() when >1 voter active
   - Voting mode tracked in analysis results
+
+> **Resolved (Oct 2026, #576):** the #421 finding (MACD+RSI better in positive gamma) was a same-day regime look-ahead, and with the regime lagged one day no GEX trading overlay survives multiple-testing correction. See [regime_lookahead_revalidation.md](../08_research/02_gex_research/regime_lookahead_revalidation.md). The Dec 2025 notes below are kept for history.
 
 #### CRITICAL: GEX Research Contradiction Identified (Dec 2025)
 
@@ -320,17 +323,19 @@ This engine checks SL/TP triggers intraday rather than assuming positions are he
 
 ## Key Metrics
 
-### VoterAgent Performance (Validated 2024-2025)
+### VoterAgent Performance (Live-Rules Baseline, #574 stage A)
 
-| Metric | Value | Benchmark |
+Live rules at live timing, 19-symbol watchlist, 2009 to 2026-10-09, 5 bps a side ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md)):
+
+| Metric | Value | Notes |
 | -------- | ------- | ----------- |
-| **Sharpe Ratio** | 0.468 (OOS, QQQ) | >0.7 = Excellent |
-| **Total Return** | 36.6% | Outperformed SPY |
-| **Win Rate** | 51.4% | >50% target |
-| **Max Drawdown** | -10.10% | <15% acceptable |
+| **Sharpe Ratio** | 0.69 (0.71 from 2020) | The 2020-on 95% interval includes zero |
+| **Alpha vs buy-and-hold** | +0.11% a year (t = 0.19) | Equal-weight buy-and-hold of the same symbols; no edge |
+| **Win Rate** | 44.2% | |
+| **Max Drawdown** | -6.9% | Positions average about 11% of equity |
 | **Strategy** | Pure MACD+RSI | No LLM sentiment |
 
-*Note: The 0.856 Sharpe ratio from older tests has been superseded by more rigorous walk-forward validation results.*
+*Note: The earlier figures (0.856 Sharpe and 51.4% win rate from experiment 293; 0.468 OOS Sharpe on QQQ; 36.6% total return) are superseded.*
 
 ### System Efficiency
 
@@ -501,7 +506,7 @@ See [Code Quality Guide](06_code_quality.md) for detailed tracking and standards
 
 - Assessed Phase 1 core trading logic (5 files)
 - Found 85-90% type coverage already present
-- Determined current coverage is production-ready
+- Determined current coverage is sufficient for now
 - Deferred further work until mypy is available
 - Files: voter_agent.py, position_manager.py, account_manager.py, trailing_stop_manager.py, unified_price_fetcher.py
 
@@ -1028,7 +1033,7 @@ python -m pytest tests/unit/ -v --no-cov
 - Organized project board with priority/size/component fields
 - Simplified #308 to focused MVP scope
 
-### October 2025 - Production Ready
+### October 2025 - CLI and Alpaca Integration Fixed
 
 - Fixed main.py CLI (all 4 commands working)
 - Validated Alpaca integration (35/35 tests passing)
@@ -1298,7 +1303,7 @@ src/cli/
 - Processed 50.88M options records -> 17,835 daily GEX metrics
 - Execution time: ~10 minutes total, ~1,700 records/second
 - Database: 34 symbols x 5+ years of daily GEX regimes
-- Production-ready with multiprocessing parallelization
+- Multiprocessing parallelization
 
 **Issue #421 - TSMOM vs GEX Analysis** (✅ COMPLETE - Dec 18, 2025)
 

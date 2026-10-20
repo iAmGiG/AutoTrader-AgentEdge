@@ -278,7 +278,7 @@ def _run_daemon_mode() -> None:
 def _create_argument_parser() -> argparse.ArgumentParser:
     """Create and configure the argument parser for main()."""
     parser = argparse.ArgumentParser(
-        description="AutoGen Trading System - Production-Ready Multi-Agent Trading Platform",
+        description="OptionsCommander - Multi-Agent Trading Platform (AutoGen)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=_load_cli_help(),
     )

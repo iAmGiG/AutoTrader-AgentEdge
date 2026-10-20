@@ -154,7 +154,7 @@ src/indicators/                       # Create when implementing #277
 - **Week 1**: Basic ensemble voting operational (>3 indicators)
 - **Week 2**: Weighted confidence system improves Sharpe ratio
 - **Week 3**: Market regime adaptation reduces drawdown
-- **Week 4**: Production-ready with order management
+- **Week 4**: Integrated with order management
 
 ### Performance Targets (Research-Based)
 - **Ensemble Accuracy**: 70-90% (vs current ~60% single MACD)

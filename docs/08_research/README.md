@@ -1,8 +1,8 @@
 # Research Documentation
 
-Research documents, experimental results, and validation studies for AutoTrader strategies.
+Research documents, experimental results, and validation studies for OptionsCommander (formerly RH2MAS) strategies.
 
-This companion repository tests practitioner hypotheses and documents what works (and doesn't) to help the main project narrow scope.
+This research tests practitioner hypotheses and documents what works (and doesn't) to help the main project narrow scope.
 
 ## Contents
 
@@ -66,7 +66,7 @@ Hypotheses tested and found **not actionable**. Saves the main project from purs
 
 Similar to GEX, the "Academic TSMOM" tests (#519) may have failed due to implementation gaps relative to the literature (Moskowitz et al., 2012).
 
-| Feature | Academic TSMOM | AutoTrader Implementation |
+| Feature | Academic TSMOM | OptionsCommander Implementation |
 | :--- | :--- | :--- |
 | **Universe** | 58 instruments (Commodities, Bonds, FX, Equities) | Mostly Equity ETFs (SPY, QQQ) |
 | **Sizing** | **Volatility Scaled** (Target 40% Ann. Vol) | Capital Allocation (Equal Weight) |
@@ -91,7 +91,7 @@ Findings that show **promise**. Some integrated into production, others warrant 
 | Path-dependent simulation reveals wick risk | #528 | 🔄 CONTINUE | Apply framework to all strategies |
 | MACD+RSI in positive gamma (short-term) | #531 | 🛑 STOP | Re-validated Oct 2026: look-ahead artifact (see Oct 2026 summary) |
 
-**Conclusion**: VoterAgent work is complete. RAF is the best practitioner strategy tested - consider integration as 3rd voter.
+**Conclusion**: VoterAgent is integrated, but its live rules have no backtested edge over buy-and-hold (#574). RAF is the best practitioner strategy tested - consider integration as 3rd voter.
 
 ---
 
@@ -156,12 +156,12 @@ All research scripts now follow these standards:
 
 ### Untested (Optional Future Research)
 
-- Expiry-day pinning near high-OI strikes
 - Real option P&L for dispersion and delta neutral (current P&L is a toy proxy)
 
 ### Already Complete
 
-- VoterAgent validation (Exp 293)
+- VoterAgent live-rules baseline (#574 stage A): no edge; Exp 293 superseded
+- Expiry-day pinning by dealer gamma (#576): real but tiny, about 0.7 bps (BH only)
 - MACD+RSI voting integration (#519)
 - Methodology corrections (look-ahead, costs)
 

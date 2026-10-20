@@ -1,17 +1,35 @@
 # Testing Documentation
 
-This directory contains testing frameworks, guidelines, and protocols for AutoGen-Trader.
+This directory contains testing frameworks, guidelines, and protocols for OptionsCommander (formerly RH2MAS).
 
 ## Quick Navigation
 
 ### Testing Protocols
 
 1. **[Forward Testing Protocol](01_forward_test_protocol.md)**
-   - 30-day validation framework before live deployment
+   - 30-day validation framework before live deployment (the #574 stage C paper run is deferred)
    - Performance metrics and acceptance criteria
    - How to run forward tests
    - Interpreting results and reports
    - **Use this** to validate new strategies or major changes
+
+---
+
+## ⚠️ Test Safety (Read First)
+
+Tests must never touch real state or place orders (2026-10-13 incident):
+
+- **Never run tests that place orders.** Some local, untracked tests in `tests/` place real paper
+  orders. They skip unless `RUN_PAPER_ORDER_TESTS=1`; don't set it.
+- **Prefer a git worktree** for a full run: it has no untracked local tests. Before a full run in the
+  main checkout, grep untracked tests for unmocked `place_*order(` or `submit_order(` calls.
+- **State stays in a temp dir in unit tests.** State managers resolve `state/user.db` through
+  `src/utils/state_paths.py`, and `$AUTOTRADER_STATE_DIR` overrides it. `tests/unit/conftest.py`
+  sets it to a temporary directory for every unit test; use the same pattern for new tests outside
+  `tests/unit/`.
+- **Module stubs**: `tests/module_sandbox.py` restores `sys.modules` and the `get_config()`
+  singleton after fixtures that install stubs.
+- **CI-safe run**: `python -m pytest tests/ -m "not db" -v` skips the PostgreSQL tests.
 
 ---
 
@@ -30,7 +48,7 @@ python -m pytest tests/unit/ -v
 Run specific test file:
 
 ```bash
-python -m pytest tests/unit/trading/test_trailing_stop_manager.py -v
+python -m pytest tests/unit/trading/test_trailing_stop_advanced.py -v
 ```
 
 Run with coverage:
@@ -49,7 +67,8 @@ Run integration tests:
 python -m pytest tests/integration/ -v
 ```
 
-Integration tests require valid configuration (API keys, etc.)
+Integration tests require valid configuration (API keys, the gex_options PostgreSQL database). Read the
+Test Safety section above before running them.
 
 ### Forward Testing
 
@@ -77,14 +96,11 @@ See [01_forward_test_protocol.md](01_forward_test_protocol.md) for full details.
 Historical validation of strategies:
 
 ```bash
-# Run VoterAgent backtest on historical data
-python tests/experiment_293_macd_vs_voting.py
-
-# Run extended period backtest
-python tests/experiment_extended_period_voting.py
+# Live-rules baseline (#574 stage A; reads the gex_options database read-only)
+python scripts/research/live_rules_baseline.py --help
 ```
 
-See [../03_reference/01_validation_results.md](../03_reference/01_validation_results.md) for historical results.
+See the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md) for current results. Experiment 293 (in-sample, superseded) is archived in `docs/archived/experiments/experiment_293_validation/`; see [../03_reference/01_validation_results.md](../03_reference/01_validation_results.md).
 
 ---
 
@@ -92,20 +108,16 @@ See [../03_reference/01_validation_results.md](../03_reference/01_validation_res
 
 ```text
 tests/
-├── unit/                          # Fast unit tests (< 1s each)
+├── conftest.py                    # Shared mock fixtures (broker, OHLCV, signals, options/GEX)
+├── module_sandbox.py              # Restores sys.modules and get_config() after stubs
+├── unit/                          # Fast unit tests; conftest.py isolates state/
 │   ├── agents/                    # Agent tests
-│   ├── trading/                   # Trading logic tests
-│   ├── execution/                 # Order execution tests
-│   └── risk/                      # Risk management tests
-│
-├── integration/                   # Integration tests (requires setup)
-│   ├── broker/                    # Broker integration tests
+│   ├── backtesting/               # Research backtester tests
+│   ├── cli/                       # CLI tests
 │   ├── data_sources/              # Market data tests
-│   └── cli/                       # CLI integration tests
+│   └── trading/                   # Trading logic, scheduler, stops, GTT
 │
-└── experiment_*.py                # Forward testing scripts
-    ├── experiment_293_macd_vs_voting.py
-    └── experiment_extended_period_voting.py
+└── integration/                   # Integration tests (DB tests auto-skip without PostgreSQL)
 ```
 
 ---
@@ -122,7 +134,7 @@ python -m pytest tests/unit/ -v --tb=short
 ### Full Test Suite
 
 ```bash
-# Run all tests with coverage
+# Run all tests with coverage (in a worktree; see Test Safety above)
 python -m pytest tests/ -v --cov=src --cov-report=html
 ```
 
@@ -133,7 +145,7 @@ python -m pytest tests/ -v --cov=src --cov-report=html
 python -m pytest tests/unit/trading/ -v
 
 # Test a single function
-python -m pytest tests/unit/trading/test_trailing_stop_manager.py::TestTrailingStopManager::test_trailing_stop_adjustment -v
+python -m pytest tests/unit/trading/test_trailing_stop_advanced.py::TestClimbRate::test_medium_climb_rate -v
 ```
 
 ### With Markers

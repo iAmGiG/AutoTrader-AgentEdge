@@ -8,7 +8,7 @@ This document describes the enhancements made to the position management system 
 
 ### 1. Exit Alert System
 
-**Location**: `src/trading_tools/position_tracker.py`
+**Location**: `src/trading/positions/position_tracker.py`
 
 #### New Alert Types
 
@@ -35,33 +35,38 @@ This document describes the enhancements made to the position management system 
 
 **Alert Destination:** Console/terminal output, log files, and daily reports only. No email, SMS, or webhooks in this implementation.
 
-**Manual Triggering (Current Branch Only):**
+**Manual Triggering:**
 
 ```bash
-# Run position check manually - alerts checked once
-python main.py paper-trade SYMBOL
+# Check alerts from the interactive CLI
+python main.py
+> check my alerts
 ```
 
-**Automatic Triggering (With GTC Daily Execution Branch #287):**
-When merged with Issue #287, alerts run automatically:
+**Automatic Triggering (Daily Scheduler, Issue #287):**
+Alerts run automatically in each routine:
 
-- **9:20 AM ET** - Morning routine checks all positions
-- **3:50 PM ET** - Evening routine checks all positions
+- **9:20 AM ET** - Morning routine checks positions
+- **3:50 PM ET** - Evening routine checks positions
+
+Only positions with an entry, a stop and a target price are checked
+(`StateReconciler.check_position_alerts`). A position whose take-profit order lapsed exits by its
+trailing stop and gets no alerts.
 
 Deployment options:
 
 ```bash
-# Option A: systemd daemon (runs continuously)
-sudo systemctl start autogen-trading-scheduler
-
-# Option B: crontab (the scheduler decides what is due, in ET, on trading days)
+# Option A (recommended): crontab (the scheduler decides what is due, in ET, on trading days)
 */5 * * * * cd /path/to/repo && /path/to/python main.py --run-due
+
+# Option B: systemd daemon (runs continuously)
+sudo systemctl start autogen-trading-scheduler
 ```
 
 #### Example Usage (Programmatic)
 
 ```python
-from src.trading_tools.position_tracker import PositionTracker
+from src.trading.positions.position_tracker import PositionTracker
 
 # Initialize tracker with custom cooldown
 tracker = PositionTracker(
@@ -105,7 +110,7 @@ for alert in alerts:
 **2. Log Files (Persistent):**
 
 ```text
-# logs/trading.log
+# state/scheduler.log
 2025-01-10 09:30:00 WARNING ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
 2025-01-10 09:30:00 INFO 📊 SPY stop adjusted: $448.00 → $450.00
 ```
@@ -113,7 +118,7 @@ for alert in alerts:
 **3. Daily Reports (Markdown):**
 
 ```markdown
-# reports/morning_routine_2025-01-10.md
+# reports/daily/2025-01-10_morning.md
 
 ## Position Alerts
 Total Alerts: 2 (🚨 0 Critical, ⚠️ 2 Warning, 📊 0 Info)
@@ -132,15 +137,19 @@ position.last_alert_time = datetime(2025, 1, 10, 9, 30, 0)
 
 ### 2. Dynamic Stop Integration
 
-**Location**: `src/trading/trading_cycle.py`
+**Location**: `src/trading/scheduling/trading_cycle.py`, `src/trading/state/state_reconciler.py`, `src/trading/orders/trailing_stop_manager.py`
 
 #### Enhanced Stop Adjustment Logic
 
-The progressive stop adjustment system now includes detailed logging at every step:
+The progressive stop adjustment system now includes detailed logging at every step. Stops only move up; by profit since entry:
 
-1. **2-4% Profit** → Move stop to breakeven
-2. **4-6% Profit** → Lock in 25% of gains
-3. **6%+ Profit** → Trail at 50% of gains
+1. **Under 2% Profit** → No change
+2. **2-4% Profit** → Move stop to breakeven
+3. **4-6% Profit** → Lock in 25% of gains
+4. **6-10% Profit** → Lock in 50% of gains
+5. **10%+ Profit** → Lock in 75% of gains
+
+The level is capped 1% below the current price and starts from the broker's live stop.
 
 #### Logging Enhancements
 
@@ -151,27 +160,27 @@ The progressive stop adjustment system now includes detailed logging at every st
 #### Example Log Output
 
 ```text
-INFO: TQQQ: Stop adjustment recommended - Move to breakeven (3.2% profit)
-DEBUG: TQQQ: Found stop order ID abc123
-INFO: TQQQ: Creating stop adjustment - $47.50 → $50.00 (+$2.50, +5.3%)
+INFO: TQQQ: Moving stop to breakeven at 3.2% profit
+INFO: TQQQ: Stop adjustment - $47.50 → $50.00 (Move to breakeven (3.2% profit))
+INFO: Found 1 stop adjustments needed
 INFO: [1/1] Modifying TQQQ stop order...
-INFO: ✅ TQQQ: Stop adjusted to $50.00 (locking +$2.50 profit)
+INFO: ✅ TQQQ: Stop adjusted to $50.00 (locking +$0.00 profit)
 INFO: Stop adjustment batch complete: 1/1 successful, 0 errors
 ```
 
 ### 3. Trading Cycle Integration
 
-**Location**: `src/trading/trading_cycle.py`, `main.py`
+**Location**: `src/trading/scheduling/trading_cycle.py`, `main.py`
 
 #### New Workflow Steps
 
 The trading cycle now includes alert checking:
 
-1. Fetch broker state
-2. Reconcile local state
+1. Fetch broker state and record the day (account, positions, fills)
+2. Reconcile local state, and re-place missing or expiring stops
 3. **Check position alerts** ← NEW
-4. Calculate stop adjustments
-5. Execute stop modifications
+4. Check GTT triggers
+5. Raise stops to their trailing level (evening: only while the market is open)
 6. Generate report with alerts
 
 #### Report Format
@@ -214,12 +223,14 @@ tracker = PositionTracker(
 
 ### Stop Adjustment Thresholds
 
-These are hardcoded in the progressive stop logic:
+These are the `TrailingStopConfig` defaults (`config_defaults/trading_config.py`, `climb_rate: medium`); a `trailing_stops` section in `trading_config.yaml` overrides them:
 
 - **Minimum profit for adjustment**: 2%
 - **Breakeven threshold**: 2-4% profit
 - **Lock 25% threshold**: 4-6% profit
-- **Trail 50% threshold**: 6%+ profit
+- **Lock 50% threshold**: 6-10% profit
+- **Lock 75% threshold**: 10%+ profit
+- **Cap**: at least 1% below the current price
 - **Minimum stop movement**: $0.01
 
 ## API Reference
@@ -250,12 +261,10 @@ These are hardcoded in the progressive stop logic:
 
 ## Testing
 
-Test file location: `tests/test_position_alerts.py`
-
-Run tests:
+There is no dedicated tracked test file for the alert system yet. Run the trading unit tests with:
 
 ```bash
-python tests/test_position_alerts.py
+python -m pytest tests/unit/trading/ -v
 ```
 
 Test coverage:
@@ -271,11 +280,10 @@ Test coverage:
 
 ```text
 1. Trigger Event
-   ├─> Manual: python main.py paper-trade SYMBOL
-   └─> Auto: Daily scheduler at 9:20 AM / 3:50 PM ET (with Issue #287)
+   ├─> Manual: "check my alerts" in the CLI
+   └─> Auto: Daily scheduler at 9:20 AM / 3:50 PM ET (Issue #287)
 
 2. Trading Cycle Execution
-   ├─> run_paper_trading_check() OR
    └─> morning_routine() / evening_routine()
 
 3. Broker State Fetch (1 API call)
@@ -302,7 +310,7 @@ Test coverage:
 6. Alert Storage & Display
    ├─> Add to position.alert_history[]
    ├─> Log to console (INFO/WARNING/CRITICAL level)
-   ├─> Write to logs/trading.log
+   ├─> Write to state/scheduler.log (scheduler runs)
    └─> Include in daily report markdown
 
 7. Continue Trading Cycle
@@ -311,12 +319,12 @@ Test coverage:
 
 ### Alert Frequency
 
-**Without GTC Branch:**
+**Manual:**
 
-- Only when manually running `python main.py paper-trade`
+- "check my alerts" in the CLI
 - On-demand basis
 
-**With GTC Branch (Issue #287 merged):**
+**Daily Scheduler (Issue #287):**
 
 - Twice daily automatically (9:20 AM, 3:50 PM ET)
 - Plus manual runs anytime
@@ -372,27 +380,27 @@ Test coverage:
 **For Active Monitoring:**
 
 ```bash
-# Check positions ad-hoc during trading day
-python main.py paper-trade SYMBOL
+# Check alerts ad-hoc during the trading day
+python main.py      # then: check my alerts
 
 # View recent logs
-tail -f logs/trading.log
+tail -f state/scheduler.log
 
 # Check daily reports
-cat reports/morning_routine_$(date +%Y-%m-%d).md
+cat reports/daily/$(TZ=America/New_York date +%Y-%m-%d)_morning.md
 ```
 
 **For Automated Monitoring (with GTC #287):**
 
 ```bash
-# Start daemon
-sudo systemctl start autogen-trading-scheduler
+# Recommended: cron entry (see 02_gtc_scheduler_quickstart.md)
+crontab -l | grep "main.py --run-due"
 
-# Monitor logs in real-time
-sudo journalctl -u autogen-trading-scheduler -f
+# Monitor logs in real-time (cron and daemon runs both write here)
+tail -f state/scheduler.log
 
-# Or check scheduled run logs
-tail -f logs/cron-morning.log
+# Cron errors
+cat state/scheduler-cron.err
 ```
 
 ### Future Enhancements
@@ -421,14 +429,13 @@ Potential improvements for future iterations:
 
 ## Related Files
 
-- `src/trading_tools/position_tracker.py` - Core alert system
-- `src/trading/trading_cycle.py` - Trading cycle integration
-- `src/trading/position_manager.py` - Position management
+- `src/trading/positions/position_tracker.py` - Core alert system
+- `src/trading/scheduling/trading_cycle.py` - Trading cycle integration
+- `src/trading/positions/position_manager.py` - Position management
 - `main.py` - Main trading interface
-- `tests/test_position_alerts.py` - Test suite
 
 ## References
 
 - Issue #306: Position Management Enhancements
 - Issue #321: Dynamic trailing stop logic
-- TODO.md: System development roadmap
+- [Project status](../04_development/02_project_status.md): System development roadmap

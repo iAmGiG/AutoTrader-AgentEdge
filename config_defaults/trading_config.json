@@ -4,7 +4,7 @@
       "fast": 13,
       "slow": 34,
       "signal": 8,
-      "description": "Validated MACD parameters (13/34/8)"
+      "description": "MACD parameters (13/34/8, Fibonacci periods)"
     },
     "rsi": {
       "period": 14,
@@ -47,15 +47,21 @@
     "commission": 0.001,
     "slippage": 0.001
   },
-  "validated_performance": {
+  "backtested_performance": {
+    "description": "Backtest of the live rules (#574 stage A): docs/08_research/03_strategy_research/live_rules_baseline.md. Reference only, not read by code. Experiment 293's 0.856 Sharpe (in-sample on AAPL 2024, filled at the signal's own close, no costs) is superseded.",
     "macd_rsi_voting": {
-      "sharpe_ratio": 0.856,
-      "win_rate": 0.514,
-      "annual_return": 0.1262,
-      "max_drawdown": -0.101,
-      "test_period": "2024 AAPL",
-      "note": "Simple system outperforms complex approaches"
-    },
+      "sharpe_ratio": 0.69,
+      "sharpe_ratio_2020_on": 0.71,
+      "alpha_vs_buy_and_hold": 0.0011,
+      "win_rate": 0.442,
+      "annual_return": 0.020,
+      "max_drawdown": -0.069,
+      "test_period": "2009-01-02 to 2026-10-09, 19-symbol watchlist",
+      "note": "No edge over buy-and-hold of the same symbols (moderate sizing, 5 bps a side)"
+    }
+  },
+  "experiment_293_in_sample": {
+    "description": "Experiment 293 (in-sample AAPL 2024, no costs), kept for the record: not comparable with backtested_performance",
     "complex_percentile": {
       "sharpe_ratio": -1.260,
       "win_rate": 0.177,

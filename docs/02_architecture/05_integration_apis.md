@@ -2,7 +2,7 @@
 
 **Provider**: Alpaca Markets (alpaca.markets)
 **SDK**: Official alpaca-py Python SDK
-**Status**: Production-ready for paper and live trading
+**Status**: Supports paper and live trading (the system runs on paper)
 **Capabilities**: Market data + Order management
 
 ## Overview
@@ -22,9 +22,9 @@ Complete integration with Alpaca Markets providing both market data acquisition 
 
 ### Status
 
-✅ **Production-Ready** (Issue #312 Complete)
+✅ **Complete** (Issue #312)
 
-- **File**: `src/data_sources/sources/market/alpaca_market_data.py`
+- **File**: `src/market_data/alpaca_market_data.py`
 - **Tests**: 3/3 passing
 - **Cache Integration**: >90% API call reduction
 
@@ -149,9 +149,9 @@ count = result['count']     # Number of bars retrieved
 
 ### Status
 
-✅ **Production-Ready** (Issue #313 Complete)
+✅ **Complete** (Issue #313)
 
-- **File**: `src/trading/alpaca_trading_client.py`
+- **File**: `src/trading/broker/alpaca_trading_client.py`
 - **Tests**: 29/29 passing
 - **AutoGen Integration**: `src/trading/alpaca_autogen_tools.py`
 
@@ -466,4 +466,4 @@ class VoterAgent(ConversableAgent):
 
 ---
 
-*Complete Alpaca Markets integration providing market data acquisition and order execution with production-ready safety, validation, and AutoGen agent compatibility.*
+*Complete Alpaca Markets integration providing market data acquisition and order execution with safety checks, validation, and AutoGen agent compatibility.*

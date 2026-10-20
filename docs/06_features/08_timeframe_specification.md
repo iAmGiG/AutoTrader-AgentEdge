@@ -157,7 +157,7 @@ strategy_parameters:
       - "1h"    # 1 hour - medium-term trading
       - "2h"    # 2 hours - medium-term swing
       - "4h"    # 4 hours - swing/position trading
-      - "1d"    # 1 day - VALIDATED DEFAULT
+      - "1d"    # 1 day - DEFAULT (backtested)
       - "1w"    # 1 week - intermediate-term trends
       - "1M"    # 1 month - long-term positioning
 ```
@@ -373,7 +373,7 @@ if tf_config.validate():
 | Position trade (hold weeks) | 1d | Strong signals, less noise |
 | Institutional tracking | 1w, 1M | See major moves |
 
-### 2. **Default is Validated**
+### 2. **Default is Backtested**
 
 - `1d` (daily) is the default and the only timeframe backtested (see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 - Use custom timeframes only if backtesting proves better results
@@ -585,7 +585,7 @@ Issue #365 provides a complete, extensible timeframe system:
 - Comprehensive testing (10+ test classes)
 - Full documentation
 
-**Status:** Ready for production use
-**Default:** 1d (validated best performance)
+**Status:** Implemented
+**Default:** 1d (the only backtested timeframe)
 **Supported:** 1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M
 **Customizable:** Yes, via YAML configuration

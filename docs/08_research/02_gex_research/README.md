@@ -17,6 +17,9 @@ Re-run on 2008 to 2026-10-09 with the regime lagged one day, a fixed backtester 
 | ------- | ------ | -------- |
 | MACD+RSI performs better in bullish gamma (#531) | 🛑 STOP | Same-day look-ahead; lag 1 SPY 0.81 vs 0.81 Sharpe (p=0.25) |
 | GEX overlays for dispersion, delta neutral, pairs (#544-#546) | 🛑 STOP | None significant after backtester fix; none survives correction |
+| GEX sign switches intraday momentum / reversal (#530) | 🛑 STOP | Barbon-Buraschi design on 2026 snapshots: pooled p=0.067, wrong sign |
+| Bearish regime VaR 4.3x bullish (#543) | 🛑 STOP | 2.1x at lag 1 |
+| Expiry-day pinning by dealer gamma | ✅ DONE (descriptive) | Real but tiny: about 0.7 bps closer to a strike when dealers are long expiring gamma (BH only) |
 | Negative GEX goes with higher next-day variance (40 symbols) | ✅ DONE (descriptive) | About +7% variance beyond HAR and leverage controls, in high-VIX markets only; no out-of-sample forecast gain |
 
 The Dec 2025 notes below are kept for history.
@@ -44,6 +47,8 @@ The Dec 2025 notes below are kept for history.
 ---
 
 ## Important Caveat: Practitioner Use Case Not Tested
+
+**Update (Oct 2026):** the intraday case below was later tested in #530, with no effect found (see the Oct 2026 table above). This section is kept as written in Dec 2025.
 
 > **⚠️ FAIRNESS NOTE**: The tests that invalidated GEX (#516-#519) tested **swing trading** (Close→Close+1 overnight holds). Practitioners who use GEX for a living typically use it for **day trading** (Open→Close intraday). These are fundamentally different use cases.
 
@@ -251,7 +256,7 @@ Specifically:
 
 ## Interactive Visualizer
 
-### [GEX Regime Trace Comparator](../../../tools/gex-visualizer/index.html)
+### GEX Regime Trace Comparator
 
 Interactive visualization tool demonstrating GEX methodology differences. See [gex_visualizer_guide.md](gex_visualizer_guide.md) for full documentation.
 
@@ -263,7 +268,7 @@ Interactive visualization tool demonstrating GEX methodology differences. See [g
 - Price history sparkline
 - Terminology glossary
 
-**Location**: `tools/gex-visualizer/index.html`
+**Location**: `tools/gex-visualizer/index.html` (not in this repository)
 
 ---
 

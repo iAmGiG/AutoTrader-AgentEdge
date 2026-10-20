@@ -10,12 +10,12 @@
 AutoGen-TradingSystem/
 ├── src/                              # Core implementation
 │   ├── autogen_agents/              # AutoGen multi-agent system
-│   │   ├── base_agent.py            # Base AutoGen agent foundation
-│   │   ├── voter_agent.py           # ✅ PRODUCTION (the live signal)
-│   │   ├── scanner_agent.py         # 🚧 In development
-│   │   ├── risk_agent.py            # 🚧 In development
-│   │   ├── executor_agent.py        # 🚧 In development
-│   │   └── trading_orchestrator.py  # 🚧 In development
+│   │   ├── core/base_agent.py       # Base AutoGen agent foundation
+│   │   ├── agents/voter_agent.py    # ✅ In use (the live signal)
+│   │   ├── agents/scanner_agent.py  # 🚧 In development
+│   │   ├── agents/risk_agent.py     # 🚧 In development
+│   │   ├── agents/executor_agent.py # 🚧 In development
+│   │   └── orchestration/trading_orchestrator.py  # 🚧 In development
 │   │
 │   ├── execution/                   # Order execution layer
 │   │   └── alpaca_execution_manager.py # AlpacaExecutionManager (plugin architecture)
@@ -128,8 +128,8 @@ AutoGen-TradingSystem/
 
 **Files**:
 
-- `base_agent.py`: Foundation class extending AutoGen AssistantAgent
-- `voter_agent.py`: Production MACD+RSI voting agent
+- `core/base_agent.py`: Foundation class extending AutoGen AssistantAgent
+- `agents/voter_agent.py`: MACD+RSI voting agent, in use on the paper account
 - `scanner_agent.py`: Market scanning (in development)
 - `risk_agent.py`: Risk management (in development)
 - `executor_agent.py`: Trade execution (in development)
@@ -242,9 +242,9 @@ python main.py paper-trade [SYMBOL]    # Full trading cycle check
 python main.py analysis                 # Generate analysis reports
 ```
 
-### src/autogen_agents/voter_agent.py
+### src/autogen_agents/agents/voter_agent.py
 
-**Production-Ready Agent** with validated performance:
+**Agent in use** (backtested performance below):
 
 **Configuration**:
 
@@ -258,7 +258,7 @@ python main.py analysis                 # Generate analysis reports
 - Win Rate: 44.2%
 - Max Drawdown: -6.9%
 
-### src/trading/alpaca_trading_client.py
+### src/trading/broker/alpaca_trading_client.py
 
 **Unified Paper/Live Trading**:
 

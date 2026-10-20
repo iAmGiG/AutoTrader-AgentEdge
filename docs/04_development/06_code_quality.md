@@ -84,13 +84,13 @@ git commit --no-verify
 **Files Updated**:
 
 - [main.py](../../main.py) - CLI imports, generate_summary, asyncio
-- [alpaca_trading_client.py](../../src/data_sources/sources/market/alpaca_trading_client.py) - APIError, OrderStatus
-- [alpaca_market_data.py](../../src/data_sources/sources/market/alpaca_market_data.py) - is_market_hours
+- [alpaca_trading_client.py](../../src/trading/broker/alpaca_trading_client.py) - APIError, OrderStatus
+- [alpaca_market_data.py](../../src/market_data/alpaca_market_data.py) - is_market_hours
 - [daily_scheduler.py](../../src/trading/scheduling/daily_scheduler.py) - argparse, datetime consolidation
-- [trading_pipeline.py](../../src/trading/trading_pipeline.py) - Path, pytz, AlpacaMarketData
-- [trailing_stop_manager.py](../../src/trading/trailing_stop_manager.py) - get_current_price
-- [unified_price_fetcher.py](../../src/trading/unified_price_fetcher.py) - Import order fixes
-- [alpaca_execution_manager.py](../../src/trading/alpaca_execution_manager.py) - json, os, re, yaml
+- [trading_pipeline.py](../../src/trading/scheduling/trading_pipeline.py) - Path, pytz, AlpacaMarketData
+- [trailing_stop_manager.py](../../src/trading/orders/trailing_stop_manager.py) - get_current_price
+- [unified_price_fetcher.py](../../src/trading/utils/unified_price_fetcher.py) - Import order fixes
+- [alpaca_execution_manager.py](../../src/trading/broker/alpaca_execution_manager.py) - json, os, re, yaml
 
 **Benefits**:
 
@@ -170,17 +170,17 @@ def _handle_scheduler_commands(args) -> None
 #### #411 - Add Comprehensive Type Hints ✅ ASSESSED (Nov 29, 2025)
 
 **Status**: ✅ DEFERRED - Phase 1 already 85-90% covered
-**Assessment**: Existing type coverage is production-ready
+**Assessment**: Existing type coverage is sufficient for now
 
 **Phase 1 Assessment - Core Trading Logic**:
 
-- ✅ [voter_agent.py](../../src/autogen_agents/voter_agent.py) - 90% covered (only missing: generate_reply,_fetch_and_evaluate)
-- ✅ [position_manager.py](../../src/trading/position_manager.py) - 95% covered (all public methods typed)
-- ✅ [account_manager.py](../../src/trading/account_manager.py) - 100% covered (full dataclass typing)
-- ✅ [trailing_stop_manager.py](../../src/trading/trailing_stop_manager.py) - 90% covered (core methods typed)
-- ✅ [unified_price_fetcher.py](../../src/trading/unified_price_fetcher.py) - 100% covered (all methods typed)
+- ✅ [voter_agent.py](../../src/autogen_agents/agents/voter_agent.py) - 90% covered (only missing: generate_reply,_fetch_and_evaluate)
+- ✅ [position_manager.py](../../src/trading/positions/position_manager.py) - 95% covered (all public methods typed)
+- ✅ [account_manager.py](../../src/trading/accounts/account_manager.py) - 100% covered (full dataclass typing)
+- ✅ [trailing_stop_manager.py](../../src/trading/orders/trailing_stop_manager.py) - 90% covered (core methods typed)
+- ✅ [unified_price_fetcher.py](../../src/trading/utils/unified_price_fetcher.py) - 100% covered (all methods typed)
 
-**Overall Phase 1 Coverage**: Approximately 85-90% (production-ready)
+**Overall Phase 1 Coverage**: Approximately 85-90%
 
 **Remaining Gaps** (minor, low priority):
 
@@ -301,7 +301,7 @@ python main.py test-voter  # Should work regardless
 | **Import Issues (C0415)** | ✅ Resolved | All inline imports moved to toplevel |
 | **Complexity (C901)** | 🔴 2 violations | main.py functions need refactoring (#409) |
 | **Line Length (E501)** | ✅ Resolved | All 33 violations fixed (Nov 29, 2025) |
-| **Type Coverage** | ✅ Production-Ready | Phase 1: 85-90% covered (#411) |
+| **Type Coverage** | ✅ Phase 1 done | Phase 1: 85-90% covered (#411) |
 | **Scripts Imports** | ✅ Normalized | Active scripts fixed, deprecated excluded (#412) |
 | **Test Coverage** | ✅ 137 passing | Priority 1-2 components (#408) |
 | **Security (Bandit)** | ✅ Passing | Pre-commit hook active |
@@ -319,7 +319,7 @@ python main.py test-voter  # Should work regardless
 
 - Assessed: Phase 1 core trading logic (5 files)
 - Coverage: 85-90% already present
-- Result: Production-ready, deferred further work until mypy available
+- Result: Sufficient for now, deferred further work until mypy available
 
 **November 2025 - Line Length Fixes (#410)**:
 
@@ -507,7 +507,7 @@ mypy src/autogen_agents/voter_agent.py --strict
 
 - [Project Status](02_project_status.md) - Development roadmap
 - [Codebase Structure](01_codebase_structure.md) - File organization
-- [Naming Conventions](../03_reference/05_naming_conventions.md) - Coding standards
+- [Naming Conventions](../03_reference/06_naming_conventions.md) - Coding standards
 - [Known Issues](../03_reference/05_known_issues.md) - Bug tracking
 
 ---

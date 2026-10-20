@@ -24,6 +24,6 @@ Each entry should include:
 
 - **Source**: Link or citation
 - **Summary**: 2-3 sentence overview
-- **Relevance**: How it applies to AutoTrader
+- **Relevance**: How it applies to OptionsCommander
 - **Priority**: Low / Medium / Future
 - **Revisit When**: Trigger condition (e.g., "When building RiskAgent")

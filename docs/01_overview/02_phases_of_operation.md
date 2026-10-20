@@ -58,7 +58,7 @@ Multi-provider data normalization
 
 ## Phase 2: Signal Generation
 
-**Objective**: Generate trading signals using validated MACD+RSI voting strategy
+**Objective**: Generate trading signals using the MACD+RSI voting strategy
 
 ```bash
 VoterAgent processes market data
@@ -70,7 +70,7 @@ Signal generation with confidence scoring
 
 ### Key Components
 
-**VoterAgent** (Production-Ready):
+**VoterAgent** (in use on the paper account):
 
 - Microsoft AutoGen agent implementation
 - MACD+RSI voting coordination
@@ -104,7 +104,7 @@ Signal generation with confidence scoring
 6. **Recommend position size** based on signal strength
 7. **Return structured decision** to orchestrator
 
-### Validated Performance
+### Backtested Performance (experiment 293, superseded)
 
 - **Sharpe Ratio**: 0.856 (vs 0.841 for MACD-only) in experiment 293, in-sample; superseded by the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md) (0.69 at 5 bps, no edge over buy-and-hold)
 - **Win Rate**: 51.4% (vs 31.9% for MACD-only)
@@ -228,6 +228,14 @@ Position tracking and management
 6. **Fill confirmation** triggers state update
 7. **Position tracking** begins
 8. **Stop orders placed** for risk management
+
+### Exits in the Live Loop
+
+Entries go in as brackets (GTC stop-loss and take-profit legs). The daily scheduler's routines raise
+each stop to its trailing level and re-place or renew it, but they don't re-place take-profit orders.
+Alpaca cancels GTC orders after 90 days, so a take-profit leg lapses and the position then exits by its
+trailing stop. The live positions' take-profits have lapsed, so they exit only by trailing stop. See
+[the scheduler quick start](../06_features/02_gtc_scheduler_quickstart.md#exits).
 
 ### Order States
 

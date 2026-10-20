@@ -1,8 +1,8 @@
 # GTT (Good-Till-Triggered) Implementation
 
 **Issue:** #340
-**Status:** Phase 2 Complete
-**Date:** 2025-12-18
+**Status:** Phase 2 Complete; Phase 3 multi-day trailing-stop persistence in use
+**Date:** 2025-12-18 (scheduler integration updated 2026-10-20)
 
 ---
 
@@ -16,6 +16,12 @@ GTT provides persistent price triggers that stay active across sessions (days/we
 - Persist in SQLite across system restarts
 - Support repeating or one-time triggers
 - OCO (One-Cancels-Other) groups for dual breakout/breakdown
+- Sell orders capped at the shares free to sell (Alpaca's `qty_available`, #595)
+
+**Role next to broker stops (decided 2026-10-20):** a broker sell stop holds a position's shares, so
+a GTT sell for them is skipped while that stop is live. For the trailing stops, the GTT layer is
+kept as persistence: it saves the trailing state (highest price, current stop) between runs, and it
+can sell only a position that has no live broker stop.
 
 ---
 
@@ -26,7 +32,8 @@ src/trading/gtt/
 ├── __init__.py           # Module exports
 ├── gtt_manager.py        # SQLite persistence, CRUD operations
 ├── trigger_evaluator.py  # Condition checking logic
-└── action_executor.py    # Execute trigger actions
+├── action_executor.py    # Execute trigger actions
+└── trailing_stop_bridge.py  # Trailing-stop state saved to / restored from GTT (Phase 3)
 
 src/cli/tools/
 └── gtt_tools.py          # FunctionTool wrappers for CLI
@@ -34,7 +41,7 @@ src/cli/tools/
 
 ### Integration Points
 
-- **Scheduler:** `trading_cycle.py` calls `check_gtt_triggers()` in morning/evening routines
+- **Scheduler:** `trading_cycle.py` calls `check_gtt_triggers()` in morning/evening routines, fetches broker state again if a GTT order or cancel went out, then raises stops
 - **CLI:** Tools registered in `src/cli/tools/__init__.py` under `GTT_TOOLS` category
 - **Database:** Uses `state/user.db` (same as alerts_watchlists.py)
 
@@ -135,18 +142,25 @@ show_gtt_summary()
 GTT triggers are checked during morning and evening routines:
 
 ```python
-# In trading_cycle.py
-def morning_routine(self):
-    broker_state = self.fetch_broker_state()
-    discrepancies = self.reconcile_state(broker_state)
-    alerts = self.check_position_alerts(broker_state)
+# In trading_cycle.py (morning_routine; the evening routine is the same,
+# but raises stops only while the market is open)
+broker_state = self.fetch_broker_state()
+record_lines = self.record_daily("morning", broker_state)
+discrepancies = self.reconcile_state(broker_state)
+discrepancies.extend(self.check_and_repair_stops(broker_state))  # refetches if stops were placed
+alerts = self.check_position_alerts(broker_state)
 
-    # GTT check (Step 3.5) - Issue #340
-    gtt_results = self.check_gtt_triggers(broker_state)
+# GTT check (Step 3.5) - Issue #340; sells capped at the shares free to sell
+gtt_results = self.check_gtt_triggers(broker_state)
+broker_state = self._after_gtt_actions(broker_state, gtt_results)  # refetch if orders went out
 
-    adjustments = self.calculate_stop_adjustments(broker_state)
-    # ... rest of routine
+adjustments, modification_results = self.raise_stops(broker_state)
+sync_all_trailing_stops(self.trailing_stop_manager)  # Phase 3 persistence
+# ... save state, write report
 ```
+
+A sell trigger larger than the free shares is cut to them; one with no free shares (the broker stop
+holds them) is skipped that run and stays active. Skips are listed in the report.
 
 ---
 
@@ -228,10 +242,10 @@ Result:
 - [x] Time-of-day conditions (TIME_WINDOW)
 - [x] Volume-based conditions (VOLUME_ABOVE, VOLUME_SPIKE)
 
-### Phase 3 (Planned)
+### Phase 3 (In Progress)
 
 - [ ] Full TrailingStopManager integration
-- [ ] Multi-day trailing stop persistence
+- [x] Multi-day trailing stop persistence (`trailing_stop_bridge.py`: synced after each routine, restored when the trading cycle starts)
 - [ ] Position-linked triggers
 
 ---
@@ -250,5 +264,6 @@ Result:
 - Manager: [gtt_manager.py](../../src/trading/gtt/gtt_manager.py)
 - Evaluator: [trigger_evaluator.py](../../src/trading/gtt/trigger_evaluator.py)
 - Executor: [action_executor.py](../../src/trading/gtt/action_executor.py)
+- Trailing-stop bridge: [trailing_stop_bridge.py](../../src/trading/gtt/trailing_stop_bridge.py)
 - CLI Tools: [gtt_tools.py](../../src/cli/tools/gtt_tools.py)
 - Scheduler: [trading_cycle.py](../../src/trading/scheduling/trading_cycle.py)

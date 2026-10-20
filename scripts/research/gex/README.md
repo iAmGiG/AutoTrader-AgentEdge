@@ -1,6 +1,6 @@
 # GEX Research Pipeline
 
-Production-ready scripts for Gamma Exposure (GEX) research and analysis.
+Scripts for Gamma Exposure (GEX) research and analysis. The trading findings from this pipeline are superseded by the Oct 2026 re-validation (`docs/08_research/02_gex_research/regime_lookahead_revalidation.md`, #576).
 
 ## Quick Start
 
@@ -125,6 +125,6 @@ See `docs/08_research/02_gex_research/gex_pipeline_architecture.md` for detailed
 
 ---
 
-**Status**: ✓ Production Ready
+**Status**: ✓ Complete
 **Last Updated**: 2025-12-18
 **Consolidated**: 4,247 → ~2,000 lines (53% reduction)

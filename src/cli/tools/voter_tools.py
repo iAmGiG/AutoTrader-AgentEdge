@@ -32,7 +32,7 @@ def show_voter_config() -> str:
     Display current VoterAgent configuration.
 
     Shows all MACD and RSI parameters used by the voting strategy,
-    along with voting thresholds and validated performance metrics.
+    along with voting thresholds and backtested performance metrics.
 
     Returns:
         Formatted string with configuration details
@@ -173,8 +173,8 @@ def explain_macd_params() -> str:
 
     output += "Why Fibonacci?\n"
     output += "-" * 50 + "\n"
-    output += "  Validated across 7 tech stocks (2024-2025)\n"
-    output += "  Outperformed traditional 12/26/9\n"
+    output += "  Chosen from tests on 7 tech stocks (2024-2025)\n"
+    output += "  Beat 12/26/9 there; no MACD setting was robust out-of-sample (#518)\n"
     output += "  Better alignment with market cycles\n"
 
     return output
@@ -449,7 +449,7 @@ def list_voter_presets() -> str:
     Example:
         >>> list_voter_presets()
         'Available Presets:
-           default: Validated MACD+RSI voting
+           default: MACD+RSI voting
            macd_primary: MACD-focused with RSI confirmation'
     """
     return get_voter_commands().list_presets()
@@ -544,7 +544,7 @@ show_voter_config_tool = FunctionTool(
     show_voter_config,
     description=(
         "Display current VoterAgent configuration including MACD parameters, "
-        "RSI settings, voting thresholds, and validated performance metrics."
+        "RSI settings, voting thresholds, and backtested performance metrics."
     ),
 )
 

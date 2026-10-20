@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The 2-way voting strategy (MACD + RSI) has been validated as superior to single indicator approaches across multiple risk-adjusted metrics.
+In experiment #293 (in-sample), the 2-way voting strategy (MACD + RSI) beat single indicator approaches on several risk-adjusted metrics.
 
 **Key Result**: Voting achieved 0.856 Sharpe ratio vs 0.841 for single MACD, with better drawdown control and higher win rates.
 
@@ -103,7 +103,7 @@ Lower drawdown and volatility demonstrate superior risk control, critical for lo
 
 - **MACD-only**: Voting wins on risk metrics
 - **RSI-only**: Not tested directly, but expected similar pattern
-- **Moving Averages**: Not tested, but voting approach validated
+- **Moving Averages**: Not tested
 
 ### vs Complex Systems ❌  
 
@@ -122,18 +122,17 @@ Lower drawdown and volatility demonstrate superior risk control, critical for lo
 
 ### ❌ **Fibonacci Regime Experiment Closed**
 
-Issues #297-#301 (Fibonacci regime detection) were closed after analysis showed the approach was too complex and not additive to the validated voting strategy.
+Issues #297-#301 (Fibonacci regime detection) were closed after analysis showed the approach was too complex and not additive to the voting strategy.
 
 ## Next Steps
 
-1. **Maintain Foundation**: Keep validated voting system as baseline - proven effective
+1. **Maintain Foundation**: Keep the voting system as the baseline to compare against
 2. **Focus on Simplicity**: Avoid complex enhancements that don't meaningfully improve performance
-3. **Preserve Risk Management**: Continue leveraging voting's strength in volatile market conditions
-4. **Production Ready**: System is stable and validated for real trading implementation
+3. **Re-test at live timing**: Done in #574 stage A; the live rules show no edge over buy-and-hold of the same symbols ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 
 ---
 
-Validation complete - Simple voting strategy proven effective and production-ready.
+Experiment #293 complete; its in-sample result is superseded by the live-rules baseline.
 
 **Files**:
 

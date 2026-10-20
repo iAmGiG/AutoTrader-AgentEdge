@@ -1,12 +1,12 @@
-# AutoTrader-AgentEdge Overview
+# OptionsCommander Overview
 
-**Status**: Production-Ready Multi-Agent Trading Platform
+**Status**: Multi-agent trading platform; VoterAgent runs on a paper account
 **Foundation**: Microsoft AutoGen Framework
 **Backtested Performance**: Sharpe 0.69 at 5 bps a side with the live rules, no edge over buy-and-hold ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 
 ## What Is This System?
 
-AutoTrader-AgentEdge is a professional algorithmic trading platform built on Microsoft's AutoGen multi-agent framework. The system employs ensemble voting methodologies backed by academic research to achieve superior risk-adjusted returns compared to single-indicator strategies.
+OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`) is an algorithmic trading platform built on Microsoft's AutoGen multi-agent framework. It uses ensemble voting (MACD+RSI), an approach motivated by academic research; backtested with the live rules and timing, it has no edge over buy-and-hold of the same symbols (#574).
 
 ### Core Purpose
 
@@ -25,9 +25,9 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 
 ## System Capabilities
 
-### ✅ Production Components
+### ✅ Components in Use
 
-**VoterAgent** - Production-ready MACD+RSI voting with proven performance:
+**VoterAgent** - MACD+RSI voting, in use on the paper account (no backtested edge over buy-and-hold):
 
 - Backtested Sharpe Ratio: 0.69 at 5 bps a side (live rules, 2009 to 2026-10-09)
 - Win Rate: 44.2%
@@ -121,11 +121,11 @@ Clean architectural boundaries:
 3. **Production Safety**: Multi-level confirmations, comprehensive validation
 4. **Agent-Ready Design**: AutoGen tool wrappers for all functionality
 
-## Validated Performance
+## Backtested Performance
 
 ### Experiment #293 Results
 
-The 2-way voting strategy (MACD + RSI) validated as superior to single indicators:
+In experiment 293, the 2-way voting strategy (MACD + RSI) beat single indicators:
 
 | Metric | MACD-Only | Voting (MACD+RSI) | Winner |
 |--------|-----------|-------------------|--------|
@@ -138,6 +138,8 @@ The 2-way voting strategy (MACD + RSI) validated as superior to single indicator
 
 ### Extended Period Performance (2024-2025)
 
+An earlier test, also superseded by the live-rules baseline:
+
 - **Period**: 417 trading days
 - **Sharpe Ratio**: 0.771
 - **Total Return**: +36.6%
@@ -146,7 +148,6 @@ The 2-way voting strategy (MACD + RSI) validated as superior to single indicator
 ### System Reliability
 
 - **Test Coverage**: 35/35 tests passing
-- **System Uptime**: 99.9% (robust error handling)
 - **Cache Performance**: >90% API call reduction
 - **Error Recovery**: Comprehensive validation and recovery
 
@@ -166,7 +167,7 @@ The system architecture is grounded in peer-reviewed research:
 - Hierarchical Multi-Agent Trading with Dynamic Strategy Selection (2023)
 - FINSABER: LLM Trading Behavior Analysis (2024)
 
-See [research_foundation.md](../presentations/research_foundation.md) for detailed citations and implementation impact.
+See the [research documentation](../08_research/README.md) for what this project tested and stopped.
 
 ## Technology Stack
 
@@ -197,8 +198,8 @@ See [research_foundation.md](../presentations/research_foundation.md) for detail
 ### Phase 1-2: Complete ✅
 
 - Core voting architecture implemented
-- MACD+RSI validation successful
-- Production-ready single-agent system
+- MACD+RSI implemented and tested (no edge at live timing, #574)
+- Single-agent system (VoterAgent) in use on paper
 
 ### Phase 3: In Progress 🚧
 
@@ -219,8 +220,8 @@ For detailed information about specific aspects of the system:
 - **How It Works**: See `02_phases_of_operation.md` for operational flow
 - **Why It Exists**: See `03_system_context.md` for development philosophy
 - **Technical Design**: See `../02_architecture/` for detailed architecture
-- **Proven Results**: See `../03_reference/01_validation_results.md` for performance data
+- **Backtested Results**: See `../08_research/03_strategy_research/live_rules_baseline.md` (experiment 293 in `../03_reference/01_validation_results.md` is superseded)
 
 ---
 
-*Production-ready AutoGen multi-agent trading platform with research-validated ensemble voting methodology and comprehensive safety controls.*
+*AutoGen multi-agent trading platform with ensemble voting and safety controls.*
