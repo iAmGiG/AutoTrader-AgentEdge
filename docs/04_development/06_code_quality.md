@@ -350,9 +350,13 @@ python main.py test-voter  # Should work regardless
 1. **Format Code**:
 
    ```bash
-   ruff check --select I --fix src/ scripts/ tests/   # import order
-   ruff format src/ scripts/ tests/
+   pre-commit run ruff-check --all-files    # lint, import order (rule I)
+   pre-commit run ruff-format --all-files   # format
    ```
+
+   Run ruff through pre-commit: it uses the pinned version and passes tracked files.
+   Plain `ruff format tests/` skips most tests, because `tests/` is gitignored (its tracked
+   files are force-added) and ruff skips gitignored paths when it walks directories.
 
 2. **Run Linters**:
 
@@ -479,13 +483,11 @@ ruff check src/ --select E,F,I
 ### Ruff Format (Formatter)
 
 ```bash
-# Format all files
-ruff format src/ scripts/ tests/
+# Format all tracked files (the pinned ruff, tests included)
+pre-commit run ruff-format --all-files
 
-# Check without modifying
+# One directory outside tests/: check without modifying, or show the diff
 ruff format --check src/
-
-# Show diff
 ruff format --diff src/
 ```
 

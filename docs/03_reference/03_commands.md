@@ -157,8 +157,8 @@ python -m unittest discover tests
 
 ```bash
 # Lint and format code
-ruff check src/ scripts/ tests/
-ruff format src/ scripts/ tests/
+pre-commit run ruff-check --all-files    # lint (tracked files, pinned ruff)
+pre-commit run ruff-format --all-files   # format
 
 # Type checking (if available)
 mypy src/ --ignore-missing-imports
