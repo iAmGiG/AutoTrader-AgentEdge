@@ -32,6 +32,16 @@ ADF_TUPLE_KWARGS = (
 )
 
 
+def adf_pvalue(series, **kwargs) -> float:
+    """
+    ADF test p-value, from a tuple result (statsmodels 0.14, or 0.15 with
+    result_object=False) or a result object (once statsmodels always returns one).
+    """
+    result = adfuller(series, **ADF_TUPLE_KWARGS, **kwargs)
+    pvalue = getattr(result, "pvalue", None)
+    return float(result[1] if pvalue is None else pvalue)
+
+
 class PairsTradingSignal:
     """Cointegration-based pairs trading signal generator.
 
@@ -101,8 +111,7 @@ class PairsTradingSignal:
         self.coint_pvalue = float(pvalue)
 
         # ADF test on spread
-        adf_result = adfuller(spread, maxlag=10, autolag="AIC", **ADF_TUPLE_KWARGS)
-        self.adf_pvalue = float(adf_result[1])
+        self.adf_pvalue = adf_pvalue(spread, maxlag=10, autolag="AIC")
 
         # Half-life of mean reversion (O-U process)
         self.half_life_days = self._estimate_half_life(spread)
