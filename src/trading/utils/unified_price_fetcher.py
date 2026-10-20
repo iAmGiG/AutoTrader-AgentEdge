@@ -34,8 +34,11 @@ class UnifiedPriceFetcher:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.market_data = AlpacaMarketData()
+            instance = super().__new__(cls)
+            # Cached only once built: a failed build (e.g. no credentials) raises here
+            # and is tried again next time, instead of leaving a fetcher without data
+            instance.market_data = AlpacaMarketData()
+            cls._instance = instance
         return cls._instance
 
     def get_current_price(  # noqa: C901
@@ -144,15 +147,12 @@ class UnifiedPriceFetcher:
             self._cache.clear()
 
 
-# Singleton instance
-price_fetcher = UnifiedPriceFetcher()
-
-
 def get_current_price(symbol: str) -> Optional[float]:
     """
     Convenience function for getting current price (None when unavailable).
 
     This is the function that should be imported and used
-    throughout the trading system.
+    throughout the trading system. The singleton (and its Alpaca client) is built on
+    first use, not at import, so importing src.trading needs no credentials.
     """
-    return price_fetcher.get_current_price(symbol)
+    return UnifiedPriceFetcher().get_current_price(symbol)

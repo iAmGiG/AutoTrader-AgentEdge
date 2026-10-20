@@ -1,10 +1,14 @@
-name: RH2MAS CI
+name: OptionsCommander CI
+
+# Runs the test suite on every push and PR to the working branches. No secrets are
+# passed, so no test can reach the broker or place an order. DB tests (marker "db")
+# need the private gex package and PostgreSQL, so they run locally only.
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, development ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
 
 jobs:
   test:
@@ -12,8 +16,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Run tests
-      run: python -m pytest tests/
+        cache: pip
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e . pytest pytest-cov pytest-mock
+    - name: Run tests (no database, no broker credentials)
+      run: python -m pytest tests/ -m "not db" --no-cov -q
