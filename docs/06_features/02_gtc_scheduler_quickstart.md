@@ -2,14 +2,15 @@
 
 ## What is it?
 
-Automated "set it and forget it" daily trading system that:
+Automated "set it and forget it" daily routines for open positions. They don't generate signals
+or open trades (apart from GTT orders you set up). They:
 
-- Runs twice daily (9:20 AM and 3:50 PM ET, whatever the host's timezone), on NYSE trading days only;
+- Run twice daily (9:20 AM and 3:50 PM ET, whatever the host's timezone), on NYSE trading days only;
   on early-close days the evening routine moves back with the close (12:50 PM for a 1 PM close)
-- Automatically adjusts stops based on profit levels
-- Places GTC orders that broker manages
-- Retries failed operations automatically
-- Uses only 3-5 API calls per routine (90% cost savings)
+- Raise stops as profit grows (see [Trailing Stop Levels](#trailing-stop-levels))
+- Re-place missing stops and renew GTC stops before Alpaca's 90-day limit
+- Retry failed runs automatically
+- Use a few API calls per routine: one broker snapshot (3 calls), plus one per stop placed or moved
 
 ## 5-Minute Setup
 
@@ -41,26 +42,46 @@ cat config_defaults/scheduler_config.yaml
 ```
 
 The file's `enabled`, `morning_routine_enabled` and `evening_routine_enabled` are defaults. Once the
-scheduler is enabled or disabled from the CLI (`/scheduler`), the config editor or the setup wizard,
-those saved flags (in `state/user.db`) take precedence. Times always come from the file.
+scheduler is enabled or disabled from the CLI (`/schedule`, then `enable` or `disable`), the config
+editor or the setup wizard, those saved flags (in `state/user.db`) take precedence. Times always come
+from the file.
 
 Edit if needed:
 
-```json
-{
-  "enabled": true,
-  "morning_routine_time": "09:20:00",  # Adjust timing if needed
-  "evening_routine_time": "15:50:00",
-  "max_retries": 3
-}
+```yaml
+enabled: false                    # default only; flags saved from the CLI take precedence
+morning_routine_time: '09:20:00'  # adjust timing if needed
+evening_routine_time: '15:50:00'
+max_retries: 3
 ```
 
 ### 3. Choose Deployment Method
 
-#### Option A: systemd (Recommended for servers)
+#### Option A: crontab (Recommended)
 
 ```bash
-# Install as service
+# Set PROJECT_ROOT and PYTHON_BIN at the top of the script, then add the entry
+./scripts/deployment/setup_cron.sh
+
+# It adds one entry every 5 minutes; the scheduler decides what is due:
+# */5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due > /dev/null 2>> $PROJECT_ROOT/state/scheduler-cron.err
+
+# Verify
+crontab -l
+
+# View logs
+tail -f state/scheduler.log      # routine log (rotated at 5 MB)
+cat state/scheduler-cron.err     # errors only (cron's stdout repeats the log)
+```
+
+A lock (`state/scheduler.lock`) keeps a cron run from overlapping a long retry, the daemon or a
+manual run.
+
+#### Option B: systemd (Alternative, runs the daemon)
+
+```bash
+# Edit WorkingDirectory and ExecStart in scripts/deployment/autogen-trading-scheduler.service
+# (and PROJECT_ROOT in install_scheduler.sh) to match your install, then:
 sudo scripts/deployment/install_scheduler.sh
 
 # Start service
@@ -70,19 +91,6 @@ sudo systemctl start autogen-trading-scheduler
 sudo systemctl status autogen-trading-scheduler
 
 # View live logs
-sudo journalctl -u autogen-trading-scheduler -f
-```
-
-#### Option B: crontab (Simple alternative)
-
-```bash
-# Setup cron (one entry every 5 minutes; the scheduler decides what is due)
-./scripts/deployment/setup_cron.sh
-
-# Verify
-crontab -l
-
-# View logs
 tail -f state/scheduler.log
 ```
 
@@ -118,29 +126,48 @@ cat reports/daily/$(ls -t reports/daily/ | head -1)
 
 ### Morning Routine (9:20 AM ET)
 
-1. ✅ Fetch all positions from broker (1 API call)
-2. ✅ Fetch all open orders (1 API call)
-3. ✅ Record the account, positions and any orders filled since the last run (daily records)
-4. ✅ Reconcile any discrepancies, and re-place missing or expiring stops
-5. ✅ Calculate stop adjustments based on profit:
-   - Under 2% profit: No adjustment
-   - 2-4% profit: Move to breakeven
-   - 4-6% profit: Lock in 25% of gains
-   - Over 6% profit: Trail at 50% of gains
-6. ✅ Batch modify stops if needed (1 API call)
-7. ✅ Generate morning report
-8. ✅ Total: 4-6 API calls, 10-30 seconds
+1. ✅ Fetch positions, open orders (bracket legs included) and the account from the broker
+2. ✅ Record the account, positions and any orders filled since the last run (daily records)
+3. ✅ Reconcile local state with the broker (the broker is the truth)
+4. ✅ Re-place missing stops and renew GTC stops near Alpaca's 90-day limit, at the trailing level
+   when that is higher; fetch broker state again if any were placed
+5. ✅ Check position alerts
+6. ✅ Check GTT triggers (GTT sell orders are capped at the shares free to sell, Alpaca's
+   `qty_available`); fetch broker state again if a GTT order or cancel went out
+7. ✅ Raise stops to their trailing level (one modify call per stop that moves)
+8. ✅ Sync trailing stops to GTT and save local state
+9. ✅ Write `reports/daily/<ET date>_morning.md`
 
 ### Evening Routine (3:50 PM ET)
 
-1. ✅ Review end-of-day positions
-2. ✅ Record the account (equity and day P&L), positions and new fills (daily records)
-3. ✅ Reconcile with broker, and re-place missing or expiring stops
-4. ✅ Raise stops on the day's gains while the market is open, as the morning routine
-   does, so an overnight gap can't take them before the next morning run
-5. ✅ Generate evening report
-6. ✅ Prepare for next trading day
-7. ✅ Total: 4-6 API calls, 10-20 seconds
+The same steps, with one difference: stops are raised only while the market is open, so an overnight
+gap can't take the day's gains before the next morning run. Run by hand after the close, the raise is
+left to the morning (thin after-hours prints shouldn't set the stop). The report is
+`reports/daily/<ET date>_evening.md`; a second run the same day adds `_2`.
+
+### Trailing Stop Levels
+
+Stops only move up. By profit since entry:
+
+- Under 2%: no change
+- 2-4%: move to breakeven
+- 4-6%: lock 25% of the gain
+- 6-10%: lock 50% of the gain
+- 10% and over: lock 75% of the gain
+
+The level is capped 1% below the current price, and a stop moves only when the new level is above the
+broker's live stop (the broker's stop is the truth, so a raise it refused is worked out again next
+run). Stop orders Alpaca can't replace yet (`accepted` or `pending_*`, e.g. placed after the close)
+are skipped until a later run. These are the defaults (`climb_rate: medium` in `TrailingStopConfig`,
+`config_defaults/trading_config.py`); a `trailing_stops` section in `trading_config.yaml` overrides
+them.
+
+### Exits
+
+The routines renew and re-place stops, not take-profit orders. Alpaca cancels GTC orders after 90
+days, so a bracket's take-profit leg lapses (an aging one is flagged in the report for review) and the
+position then exits by its trailing stop. The live positions' take-profit legs have lapsed, so they
+exit only by trailing stop.
 
 ### Daily Records
 
@@ -177,17 +204,17 @@ started again that day; run it manually once the cause is fixed.
 
 **Temporary pause (keep service running):**
 
-In the CLI, `/scheduler` can disable the scheduler or a single routine. The service keeps
-running but skips executions.
+In the CLI, `/schedule` then `disable` turns the scheduler off (the setup wizard, `setup`, can turn
+off a single routine). Cron keeps running `--run-due`, which then skips the routines.
 
 **Stop service:**
 
 ```bash
-# systemd
-sudo systemctl stop autogen-trading-scheduler
-
 # cron
 crontab -e  # Delete the OptionsCommander lines
+
+# systemd
+sudo systemctl stop autogen-trading-scheduler
 
 # daemon
 Ctrl+C in terminal
@@ -208,11 +235,14 @@ Ctrl+C in terminal
 **Scheduler not running:**
 
 ```bash
-# Check service status
-sudo systemctl status autogen-trading-scheduler
+# cron: is the entry there, and did it log errors?
+crontab -l | grep "main.py --run-due"
+cat state/scheduler-cron.err
+tail -n 50 state/scheduler.log
 
-# View recent errors
-sudo journalctl -u autogen-trading-scheduler -n 50
+# systemd
+sudo systemctl status autogen-trading-scheduler
+cat state/scheduler-daemon.err
 ```
 
 **Tasks not executing:**
@@ -245,34 +275,11 @@ python main.py --run-due
 2. **Verify stop adjustments**: Check that stops move correctly
 3. **Review execution log**: Ensure 100% success rate
 4. **Customize schedule**: Adjust times in `scheduler_config.yaml` if needed
-5. **Integrate with VoterAgent**: Use `automated_trading.py` for signal generation
+
+Automated entries from VoterAgent signals are deferred (#574): the routines manage existing
+positions only.
 
 ## Advanced Usage
-
-### With VoterAgent Integration
-
-```bash
-# Run complete automated trading
-python src/trading/automated_trading.py --mode paper --watchlist SPY TQQQ QQQ
-```
-
-This combines:
-
-- Morning routine (reconcile, adjust stops)
-- VoterAgent signal generation
-- Automated order placement
-- Evening routine (review)
-
-### Custom Watchlist
-
-Edit `config_defaults/scheduler_config.json`:
-
-```json
-{
-  "watchlist": ["AAPL", "MSFT", "GOOGL", "NVDA"],
-  "min_confidence": 0.70
-}
-```
 
 ### Notifications (Future)
 
@@ -288,7 +295,7 @@ Edit `config_defaults/scheduler_config.json`:
 
 ## Documentation
 
-- **Full documentation**: `docs/features/issue_287_gtc_daily_execution.md`
+- **Full documentation**: [03_gtc_scheduler_technical.md](03_gtc_scheduler_technical.md)
 - **Trading cycle details**: `src/trading/scheduling/trading_cycle.py`
 - **Scheduler implementation**: `src/trading/scheduling/daily_scheduler.py`
 - **Tests**: `tests/unit/trading/test_daily_scheduler.py`
@@ -298,11 +305,11 @@ Edit `config_defaults/scheduler_config.json`:
 Issues or questions:
 
 - GitHub Issues: <https://github.com/iAmGiG/AutoTrader-AgentEdge/issues>
-- Documentation: `docs/features/issue_287_gtc_daily_execution.md`
+- Documentation: [03_gtc_scheduler_technical.md](03_gtc_scheduler_technical.md)
 - Examples: `scripts/deployment/`
 
 ---
 
-You're now running automated daily trading! 🚀
+The scheduler now manages stops and daily records on your account. It does not open trades.
 
-Monitor the logs, review the reports, and let the system handle the routine work while you focus on strategy.
+Monitor the logs and review the reports.

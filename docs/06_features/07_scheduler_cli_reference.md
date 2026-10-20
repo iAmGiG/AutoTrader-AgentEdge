@@ -34,7 +34,11 @@ Show detailed scheduler status including:
 - Recent execution results
 
 **IMPORTANT:** "Config: ENABLED" does NOT mean the scheduler is running automatically!
-You must start the daemon process for automatic execution.
+Automatic execution needs the cron entry (recommended, see the
+[quick start](02_gtc_scheduler_quickstart.md#option-a-crontab-recommended)) or the daemon.
+
+**Note:** the `Service` line only detects the daemon. Under cron it shows `NOT RUNNING`
+even while routines run on schedule; check `history`, `logs` or `crontab -l` instead.
 
 **Example (config enabled, daemon NOT running):**
 
@@ -128,6 +132,10 @@ Scheduler> next
    Date: 2025-11-11
 ```
 
+#### `logs`
+
+Show the last lines of `state/scheduler.log` (default 50; `logs 100` for more). Alias: `log`.
+
 ### Configuration Management
 
 #### `config`
@@ -191,9 +199,20 @@ Edit setting (1-5, 0 to save, q to cancel): 0
 
 ### Control Commands
 
+#### `setup`
+
+First-time setup wizard (alias `wizard`): enables the scheduler, sets each routine's time and
+on/off flag, and saves the flags to `state/user.db`. It then offers to start the daemon, which
+isn't needed with the cron entry.
+
+#### `start` / `stop`
+
+Start the daemon (`main.py --daemon`) in the background, or stop it. Not needed with the cron
+entry, which runs `main.py --run-due` every 5 minutes.
+
 #### `enable`
 
-Enable scheduler (sets `enabled: true` in config)
+Enable scheduler (sets `enabled: true` in config and saves the flag to `state/user.db`)
 
 ```text
 Scheduler> enable
@@ -202,7 +221,7 @@ Scheduler> enable
 
 #### `disable`
 
-Disable scheduler (sets `enabled: false` in config)
+Disable scheduler (sets `enabled: false` in config and saves the flag to `state/user.db`)
 
 ```text
 Scheduler> disable
@@ -274,7 +293,7 @@ Full report saved to: reports/daily/
 
 ### Report Details
 
-Reports are saved to `reports/daily/` with human-readable filenames:
+Reports are saved to `reports/daily/` with human-readable filenames, named by the market (ET) date whatever the host's timezone:
 
 - First run: `2025-11-11_morning.md`
 - Multiple runs: `2025-11-11_morning_2.md`, `2025-11-11_morning_3.md`
@@ -302,7 +321,7 @@ Reports are saved to `reports/daily/` with human-readable filenames:
    - Quantity mismatches (auto-fixed)
    - Ghost positions (removed)
 
-4. **Stop Adjustments** (morning only)
+4. **Stop Adjustments** (both routines; the evening routine only while the market is open)
    - Which stops were moved higher
    - New stop prices and modification results
 
@@ -311,7 +330,7 @@ Reports are saved to `reports/daily/` with human-readable filenames:
    - Positions approaching take profit
    - Unusual P&L movements
 
-**Note**: Stop and target prices are extracted from your actual GTC orders on Alpaca, ensuring reports always show current exit levels.
+**Note**: Stop and target prices are extracted from your actual GTC orders on Alpaca (bracket legs included). The routines re-place missing stops but not take-profit orders: a GTC take-profit lapses after Alpaca's 90-day limit, so a position held that long shows no target and exits by its trailing stop.
 
 ### Other Commands
 
@@ -333,16 +352,14 @@ Editable via `edit` command:
 | `morning_routine_time` | time | Morning execution time (ET) | `09:20:00` |
 | `evening_routine_time` | time | Evening execution time (ET) | `15:50:00` |
 | `max_retries` | integer (1-10) | Retry attempts on failure | `3` |
-| `dry_run` | boolean | Test mode (no real orders) | `false` |
+| `dry_run` | boolean | Not enforced yet: routines still act on the broker | `false` |
 
 **Read-only fields** (edit config file directly):
 
 - `market_timezone`: Always `America/New_York`
 - `retry_delay_seconds`: Initial retry delay (exponential backoff)
-- `timeout_seconds`: Max seconds per routine
+- `timeout_seconds`: Max seconds per routine (not enforced yet)
 - `enable_notifications`: Future feature
-- `monitoring`: Alert thresholds
-- `api_limits`: Rate limiting config
 
 ## Use Cases
 
@@ -401,15 +418,10 @@ Scheduler> enable
    # Look for patterns in failures
    ```
 
-3. **Use dry run mode for testing**
+3. **Remember that tests are real runs**
 
-   ```text
-   Scheduler> edit
-   # Set dry_run: true
-   Scheduler> test morning
-   # Verify logic without real orders
-   # Set dry_run: false when ready
-   ```
+   `dry_run` is not enforced yet: `test morning` and `test evening` place, renew and raise
+   stops on the broker, as the scheduled routines do.
 
 4. **Monitor next run before leaving**
 
@@ -442,8 +454,8 @@ Main CLI> show portfolio
 
 ## Limitations
 
-- Cannot start/stop daemon from CLI (use `python main.py --daemon`)
-- Background service management requires system integration
+- `status` detects the daemon only, not the cron entry
+- systemd or cron setup is done outside the CLI (`scripts/deployment/`)
 - Execution history limited to 7 days (configurable in future)
 
 ## Troubleshooting
@@ -467,6 +479,8 @@ Main CLI> show portfolio
 | META | $628.07 | $627.00 | $0.00 | $634.19 | $-9 | No change |
 | SPY | $657.60 | $683.00 | $0.00 | $712.80 | +$356 | No change |
 ```
+
+> **Resolved:** broker state now reads open orders with `nested=True`, so bracket stop-loss legs (including "held" ones) come back under their parent, and the routines check each position's live broker stop and re-place a missing one (#586). The history below is kept for reference.
 
 **Root Cause** (2025-11-11): Alpaca's API does NOT return bracket order legs with status "held" (stop-loss orders).
 
@@ -542,26 +556,27 @@ Since Alpaca hides stop orders from the API, the system uses a **"carbon copy" a
 
 **Problem**: `status` shows `Config: ENABLED` but scheduler not executing automatically.
 
-**Solution**: "Config: ENABLED" means the config file says `enabled: true`, but you must still start the daemon process:
+**Solution**: "Config: ENABLED" means the flags in force say `enabled`, but something still has to
+run the scheduler. Add the cron entry (recommended), or start the daemon:
 
 ```bash
-# Exit scheduler CLI
-Scheduler> exit
+# Recommended: cron entry, every 5 minutes
+./scripts/deployment/setup_cron.sh
 
-# Start daemon in background
+# Alternative: daemon in the background
 python main.py --daemon
 ```
 
-The `status` command now shows both:
+The `status` command shows both:
 
-- **Config status** (what's in the YAML file)
-- **Service status** (whether daemon is actually running)
+- **Config status** (the flags in force: saved flags, else the YAML file)
+- **Service status** (whether the daemon is running; under cron this reads `NOT RUNNING`)
 
 ## Future Enhancements
 
 See pending issues for:
 
-- Background service start/stop from CLI (#350)
+- Cron-aware service status
 - Self-terminating background processes
 - Real-time execution monitoring
 - Custom routine scheduling

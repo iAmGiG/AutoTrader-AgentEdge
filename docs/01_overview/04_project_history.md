@@ -1,10 +1,10 @@
-# AutoTrader Project History & Evolution
+# OptionsCommander Project History & Evolution
 
 > **Note (Oct 2026, #574):** the 0.856 Sharpe below is experiment 293's in-sample result and is superseded. With the live rules and timing, MACD+RSI voting has no edge over buy-and-hold; see the [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md).
 
 ## Project Evolution
 
-**AutoTrader** evolved from a research framework (RH2MAS) into a production-ready trading platform. This document chronicles the key decisions, experiments, and architectural shifts that shaped the current system.
+**OptionsCommander** (formerly RH2MAS, called AutoTrader in earlier docs) evolved from a research framework into a trading platform that runs on a paper account. This document chronicles the key decisions, experiments, and architectural shifts that shaped the current system.
 
 ## Phase 1: Initial Research Framework (Early Development)
 
@@ -48,8 +48,8 @@ Tested five iterations of the trading system with increasing complexity:
 
 ### Archived Results
 
-- Full analysis: [`docs/archived/v0_v4_deprecated/`](../archived/v0_v4_deprecated/)
-- Detailed report: [`V0-V4_Framework_Results.md`](../archived/v0_v4_deprecated/V0-V4_Framework_Results.md)
+- Full analysis: `docs/archived/v0_v4_deprecated/` (not in the repository)
+- Detailed report: `V0-V4_Framework_Results.md` (not in the repository)
 - Raw backtest data: Preserved in `reports/archived/v0_v4_deprecated/`
 
 ---
@@ -87,13 +87,13 @@ Instead of sentiment-weighted signals, implement pure consensus voting:
 ### Market Insights
 
 - **Volatile Markets**: Better performance in high-volatility periods (-14.6% gap vs bull markets)
-- **Fibonacci Parameters**: 13/34/8 optimal across 7 tech stocks tested
+- **Fibonacci Parameters**: 13/34/8, chosen from tests on 7 tech stocks (no robust MACD configuration out-of-sample, #518)
 - **Framework Agnostic**: Pure math, no ML/LLM dependencies, reproducible
 
 ### Architecture
 
-- **File**: [`src/autogen_agents/voter_agent.py`](../src/autogen_agents/voter_agent.py)
-- **Status**: ✅ Production Ready
+- **File**: [`src/autogen_agents/agents/voter_agent.py`](../../src/autogen_agents/agents/voter_agent.py)
+- **Status**: ✅ In use (paper account)
 - **Validation**: [`docs/archived/experiments/experiment_293_validation/`](../archived/experiments/experiment_293_validation/)
 
 ---
@@ -197,7 +197,7 @@ src/
 
 - Breakdown: [Issue #433 Initial Analysis](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/433)
 - Epic: [Issue #436 Code Quality Refactoring](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/436)
-- Progress: [`docs/04_development/02_project_status.md`](04_development/02_project_status.md)
+- Progress: [`docs/04_development/02_project_status.md`](../04_development/02_project_status.md)
 
 ---
 
@@ -214,7 +214,7 @@ Extend the voting system with specialized agents for:
 
 ### Current Status
 
-- VoterAgent: ✅ **PRODUCTION READY** (0.856 Sharpe)
+- VoterAgent: ✅ **In use on paper** (no backtested edge at live timing, #574; the 0.856 Sharpe was in-sample)
 - Others: 🚧 **Placeholder implementations** (scaffolding in place)
 
 ### Architecture
@@ -285,7 +285,7 @@ Built using **Microsoft AutoGen framework** for:
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                   AutoGen Agents (Planned)                   │
-│  ✅ VoterAgent (MACD+RSI) - Production Ready               │
+│  ✅ VoterAgent (MACD+RSI) - In use (paper)                 │
 │  🚧 ScannerAgent, RiskAgent, ExecutorAgent                  │
 │  🚧 TradingOrchestrator (Multi-Agent Coordination)          │
 └─────────────────────────────────────────────────────────────┘
@@ -344,7 +344,7 @@ Built using **Microsoft AutoGen framework** for:
 | 2024-Q4 | VoterAgent validation (#293) | ✅ Completed |
 | 2025-01-02 | GTC daily scheduler (#287) | ✅ Completed |
 | 2025-02-11 | Human-in-loop CLI (#308) | ✅ Completed |
-| 2025-10-23 | main.py production ready (#327) | ✅ Completed |
+| 2025-10-23 | main.py CLI completed (#327) | ✅ Completed |
 | 2025-11-11 | Scheduler CLI + position tracking | ✅ Completed |
 | 2025-12-02 | FunctionTool infrastructure (#455-456) | ✅ Completed |
 | 2025-12-? | Portfolio display tools (#457) | 🚧 In Progress |
@@ -357,8 +357,8 @@ Built using **Microsoft AutoGen framework** for:
 
 ### V0-V4 Sentiment Framework
 
-- Location: [`docs/archived/v0_v4_deprecated/`](../archived/v0_v4_deprecated/)
-- Detailed Results: [`V0-V4_Framework_Results.md`](../archived/v0_v4_deprecated/V0-V4_Framework_Results.md)
+- Location: `docs/archived/v0_v4_deprecated/` (not in the repository)
+- Detailed Results: `V0-V4_Framework_Results.md` (not in the repository)
 
 ### VoterAgent Validation (Experiment #293)
 
@@ -373,7 +373,7 @@ Built using **Microsoft AutoGen framework** for:
 ### Current Development
 
 - Epic: [Issue #433 - Refactor cli_session.py](https://github.com/iAmGiG/AutoGen-TradingSystem/issues/433)
-- Status: [Project Status](04_development/02_project_status.md)
+- Status: [Project Status](../04_development/02_project_status.md)
 
 ---
 

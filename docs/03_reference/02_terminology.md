@@ -65,6 +65,6 @@
 
 ### Agent Development Status
 
-- **✅ PRODUCTION READY** = VoterAgent (runs on the paper account)
+- **✅ IN USE** = VoterAgent (runs on the paper account)
 - **🚧 IN DEVELOPMENT** = Scanner, Risk, Executor, Trading Orchestrator agents
 - **❌ DEPRECATED** = V0-V4 sentiment framework (complex, unproven ROI)

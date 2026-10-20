@@ -1,43 +1,51 @@
 # Feature Documentation - User Manual
 
-This directory contains comprehensive documentation for all integrated features in the AutoGen Trading System. Documents are sequenced like a manual for easy learning.
+This directory contains documentation for the integrated features of OptionsCommander (formerly RH2MAS). Documents are sequenced like a manual for easy learning.
 
 ## 📚 Quick Navigation
 
 ### Getting Started
 
-1. **[Position Alerts System](01_position_alerts_system.md)** (Issue #306)
-   - What it does: Monitor positions and generate alerts
-   - 5 alert types with cooldown and persistence
-   - Integrated into trading cycle and CLI
-   - **Start here** to understand position monitoring
+- **[1. Position Alerts System](01_position_alerts_system.md)** (Issue #306)
+  - What it does: Monitor positions and generate alerts
+  - 5 alert types with cooldown and persistence
+  - Integrated into trading cycle and CLI
+  - **Start here** to understand position monitoring
 
-2. **[GTC Scheduler - Quick Start](02_gtc_scheduler_quickstart.md)** (Issue #287)
-   - **5-minute setup wizard** for daily automation
-   - Three deployment options: daemon, systemd, cron
-   - For users who want to "set it and forget it"
-   - **Read this** to get scheduler running quickly
+- **[2. GTC Scheduler - Quick Start](02_gtc_scheduler_quickstart.md)** (Issue #287)
+  - **5-minute setup wizard** for daily automation
+  - Deployment: cron (recommended), systemd or a daemon
+  - For users who want to "set it and forget it"
+  - **Read this** to get scheduler running quickly
 
 ### Advanced/Technical
 
-3. **[GTC Scheduler - Technical Details](03_gtc_scheduler_technical.md)** (Issue #287)
-   - Deep dive into architecture and design
-   - API efficiency (90% cost savings)
-   - Retry logic and error handling
-   - For developers and advanced users
+- **[3. GTC Scheduler - Technical Details](03_gtc_scheduler_technical.md)** (Issue #287)
+  - Deep dive into architecture and design
+  - API efficiency (90% cost savings)
+  - Retry logic and error handling
+  - For developers and advanced users
 
-4. **[Unified Features Testing](04_unified_features_testing.md)**
-   - Complete test results for all features
-   - 19/19 tests passed (100%)
-   - Integration verification
-   - Performance metrics
+- **[4. Unified Features Testing](04_unified_features_testing.md)**
+  - Test record from 2025-01-10 (19/19 passed then)
+  - Integration verification
+  - Performance metrics
 
-5. **[Interactive CLI Test Plan](05_interactive_cli_test_plan.md)** (Issue #334)
-   - **Live testing guide** with real user prompts
-   - 25+ test cases based on manual testing
-   - Known issues from #334 documented
-   - Bug fixes and improvements needed
-   - **Use this** for live validation testing
+- **[5. Interactive CLI Test Plan](05_interactive_cli_test_plan.md)** (Issue #334)
+  - **Live testing guide** with real user prompts
+  - 25+ test cases based on manual testing
+  - Known issues from #334 documented
+  - Bug fixes and improvements needed
+  - **Use this** for live validation testing
+
+- **[6. CLI Order Display](06_cli_order_display.md)** (Issue #371)
+  - Grouped, hierarchical display of open orders (proposed)
+
+- **[7. Scheduler CLI Reference](07_scheduler_cli_reference.md)**
+  - Commands of the `/schedule` mode: status, history, enable/disable, test runs
+
+- **[8. Timeframe Specification](08_timeframe_specification.md)** (Issue #365)
+  - Multi-timeframe configuration and CLI tools
 
 ---
 
@@ -79,15 +87,18 @@ python main.py
 
 **Key Features:**
 
-- Twice-daily execution (9:20 AM, 3:50 PM ET)
-- 90% API cost savings vs continuous polling
+- Twice-daily execution (9:20 AM, 3:50 PM ET), NYSE trading days only
+- Raises stops to their trailing level, re-places missing or expiring stops
 - Retry logic with exponential backoff
-- Multiple deployment options
+- Runs from cron every 5 minutes (recommended), or as a daemon
 
 **Usage:**
 
 ```bash
-# Background scheduler
+# Recommended: cron entry that runs whatever is due
+./scripts/deployment/setup_cron.sh    # adds */5 * * * * ... main.py --run-due
+
+# Alternative: background daemon
 python main.py --daemon
 
 # Or check status via CLI
@@ -142,8 +153,8 @@ python main.py    # Just works!
 
 **Documentation:**
 
-- Architecture: `docs/architecture/llm_routing_architecture.md`
-- Test Plan: `docs/features/05_interactive_cli_test_plan.md` (Category 7)
+- Architecture: [08_llm_routing_architecture.md](../02_architecture/08_llm_routing_architecture.md)
+- Test Plan: [05_interactive_cli_test_plan.md](05_interactive_cli_test_plan.md) (Category 7)
 - Main README: See main README.md
 
 ---
@@ -166,7 +177,7 @@ python main.py    # Just works!
 
 - Technical details in #3 (Scheduler architecture)
 - Test suite in #4 (All test cases)
-- ADRs in `/architecture_decisions/`
+- ADRs in [docs/05_decisions/](../05_decisions/README.md)
 
 ---
 
@@ -174,7 +185,7 @@ python main.py    # Just works!
 
 All features work together seamlessly:
 
-```
+```text
 Unified CLI (#339)
     ├── Position Alerts (#306)
     │   ├── Alert checking
@@ -189,12 +200,15 @@ Unified CLI (#339)
 
 **Morning Routine Flow:**
 
-1. Scheduler runs at 9:20 AM ET
-2. Fetches broker state (2 API calls)
-3. Checks position alerts
-4. Adjusts stops if needed
-5. Saves state with alert history
-6. Generates daily report
+1. Cron runs `main.py --run-due`; at 9:20 AM ET the morning routine is due
+2. Fetches broker state (positions, orders, account) and records the day
+3. Reconciles, and re-places missing or expiring stops
+4. Checks position alerts and GTT triggers
+5. Raises stops to their trailing level
+6. Saves state with alert history
+7. Writes `reports/daily/<ET date>_morning.md`
+
+The evening routine (3:50 PM ET) runs the same steps; it raises stops only while the market is open.
 
 **User Interaction:**
 
@@ -217,7 +231,7 @@ python main.py
 - **Main README:** `/README.md` - System overview and quick start
 - **Development:** `/docs/04_development/` - Project status and structure
 - **Architecture:** `/docs/02_architecture/` - System design
-- **ADRs:** `/architecture_decisions/` - Architecture decisions
+- **ADRs:** `/docs/05_decisions/` - Architecture decisions
 
 ### Issues
 
@@ -253,7 +267,12 @@ python main.py
 
 ## Version History
 
-**v1.0 - 2025-01-10**
+### v1.1 - 2026-10-20
+
+- Scheduler steps, cron deployment and trailing-stop levels updated (#596)
+- Index covers docs 06-08
+
+### v1.0 - 2025-01-10
 
 - Initial unified feature release
 - Position alerts (#306)

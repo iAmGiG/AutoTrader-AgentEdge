@@ -7,13 +7,14 @@
 
 ## Overview
 
-Automated "set it and forget it" daily trading system with:
+Automated "set it and forget it" daily routines for open positions (they don't open trades) with:
 
-- **Daily Scheduling**: Morning (9:20 AM ET) and evening (3:50 PM ET) routines
+- **Daily Scheduling**: Morning (9:20 AM ET) and evening (3:50 PM ET) routines, NYSE trading days only
 - **Retry Logic**: Exponential backoff with configurable retries
 - **Error Handling**: Comprehensive exception management and recovery
-- **GTC Orders**: Good-Til-Cancelled orders managed by broker
-- **Minimal API Calls**: 3-5 calls per routine for cost efficiency
+- **GTC Stops**: Protective stops held by the broker, raised to their trailing level, re-placed when
+  missing and renewed before Alpaca's 90-day GTC limit
+- **Minimal API Calls**: one broker snapshot (3 calls) per routine, plus one call per stop placed or moved
 
 ## Architecture
 
@@ -48,21 +49,27 @@ Automated "set it and forget it" daily trading system with:
 
 ```text
 src/trading/
-├── daily_scheduler.py          # Main scheduler with retry logic
-├── automated_trading.py        # VoterAgent integration
-├── trading_cycle.py           # Morning/evening routines (Issue #313)
-└── order_manager.py           # GTC order management (Issue #313)
+├── scheduling/
+│   ├── daily_scheduler.py     # Main scheduler with retry logic, run window and lock
+│   ├── scheduler_state.py     # Saved flags and run history (state/user.db)
+│   └── trading_cycle.py       # Morning/evening routines (Issue #313)
+├── state/
+│   ├── state_reconciler.py    # Broker-as-truth reconcile, stop checks and raises
+│   └── daily_records.py       # account_daily, position_daily, fills
+└── orders/
+    ├── order_manager.py       # GTC order management (Issue #313)
+    └── trailing_stop_manager.py  # Trailing-stop levels
 
 config_defaults/
-└── scheduler_config.json      # Scheduling configuration
+└── scheduler_config.yaml      # Scheduling configuration (scheduler_config.json is a fallback)
 
 scripts/deployment/
-├── autogen-trading-scheduler.service  # systemd service
-├── install_scheduler.sh              # systemd installation
-└── setup_cron.sh                     # crontab alternative
+├── setup_cron.sh                     # crontab entry (recommended)
+├── autogen-trading-scheduler.service  # systemd service (alternative)
+└── install_scheduler.sh              # systemd installation
 
-tests/
-└── test_daily_scheduler.py    # Comprehensive tests
+tests/unit/trading/
+└── test_daily_scheduler.py    # Scheduler tests
 ```
 
 ## Features
@@ -71,17 +78,22 @@ tests/
 
 **Morning Routine (9:20 AM ET)**:
 
-- Reconcile positions with broker (single API call)
-- Calculate stop adjustments based on profit levels
-- Batch modify stop orders if needed
-- Generate morning report
+1. Fetch broker state (positions, open orders with bracket legs, account)
+2. Daily records (account, positions, new fills)
+3. Reconcile local state with the broker
+4. Re-place missing stops and renew aging GTC stops, at the trailing level when higher (refetch if any were placed)
+5. Position alerts
+6. GTT triggers, with sells capped at the shares free to sell (`qty_available`); refetch if a GTT order or cancel went out
+7. Raise stops to their trailing level; the broker's stop is the truth, levels stay at least 1% below the price, and orders Alpaca can't replace yet are skipped
+8. Sync trailing stops to GTT, save state
+9. Report: `reports/daily/<ET date>_morning.md`
 
 **Evening Routine (3:50 PM ET)**:
 
-- EOD position review
-- Raise stops on the day's gains before the close (same step as the morning)
-- Prepare for next trading day
-- Generate evening report
+- The same steps; stops are raised only while the market is open (run after the close, the raise waits for the morning)
+- Report: `reports/daily/<ET date>_evening.md`
+
+The trailing levels are listed in the [quick start](02_gtc_scheduler_quickstart.md#trailing-stop-levels). Take-profit orders are not re-placed: a bracket's GTC take-profit lapses at 90 days, and the position then exits by its trailing stop.
 
 ### 2. Comprehensive Retry Logic
 
@@ -125,21 +137,23 @@ for attempt in range(1, max_attempts + 1):
 
 ### 4. Configuration System
 
-`config_defaults/scheduler_config.json`:
+`config_defaults/scheduler_config.yaml`:
 
-```json
-{
-  "enabled": true,
-  "market_timezone": "America/New_York",
-  "morning_routine_time": "09:20:00",
-  "evening_routine_time": "15:50:00",
-  "max_retries": 3,
-  "retry_delay_seconds": 60,
-  "timeout_seconds": 300,
-  "enable_notifications": false,
-  "dry_run": false
-}
+```yaml
+enabled: false
+market_timezone: America/New_York
+morning_routine_time: '09:20:00'
+evening_routine_time: '15:50:00'
+morning_routine_enabled: true
+evening_routine_enabled: true
+max_retries: 3
+retry_delay_seconds: 60
+timeout_seconds: 300
+enable_notifications: false
+dry_run: false
 ```
+
+The enable flags are defaults: flags saved from the CLI, the config editor or the setup wizard (in `state/user.db`) take precedence.
 
 ## Usage
 
@@ -159,44 +173,44 @@ python main.py --daemon
 python main.py --run-due
 ```
 
-### Production Deployment
+### Deployment
 
-#### Option 1: systemd (Recommended for Linux servers)
-
-```bash
-# Install service
-sudo scripts/deployment/install_scheduler.sh
-
-# Start service
-sudo systemctl start autogen-trading-scheduler
-
-# View logs
-sudo journalctl -u autogen-trading-scheduler -f
-
-# Status
-sudo systemctl status autogen-trading-scheduler
-```
-
-#### Option 2: crontab (Alternative)
+#### Option 1: crontab (Recommended)
 
 ```bash
-# Setup cron jobs
+# Set PROJECT_ROOT and PYTHON_BIN at the top of the script, then add the entry
 ./scripts/deployment/setup_cron.sh
+
+# The entry (every 5 minutes; the scheduler decides what is due):
+# */5 * * * * cd $PROJECT_ROOT && $PYTHON_BIN main.py --run-due > /dev/null 2>> $PROJECT_ROOT/state/scheduler-cron.err
 
 # View crontab
 crontab -l
 
 # Logs
-tail -f logs/cron-morning.log
-tail -f logs/cron-evening.log
+tail -f state/scheduler.log
+cat state/scheduler-cron.err
+```
+
+#### Option 2: systemd (Alternative, runs the daemon)
+
+```bash
+# Edit the paths in autogen-trading-scheduler.service and install_scheduler.sh first
+sudo scripts/deployment/install_scheduler.sh
+
+# Start service
+sudo systemctl start autogen-trading-scheduler
+
+# Logs (the service's stdout is discarded)
+tail -f state/scheduler.log
+
+# Status
+sudo systemctl status autogen-trading-scheduler
 ```
 
 ### Integration with VoterAgent
 
-```bash
-# Run complete automated trading cycle
-python src/trading/automated_trading.py --mode paper --watchlist SPY TQQQ QQQ
-```
+Automated entries from VoterAgent signals are deferred (#574): the routines manage existing positions only.
 
 ## Monitoring
 
@@ -211,7 +225,7 @@ python src/trading/automated_trading.py --mode paper --watchlist SPY TQQQ QQQ
   "status": "completed",
   "attempt": 1,
   "error_message": null,
-  "report_path": "reports/daily/20250115_0920_morning.md",
+  "report_path": "reports/daily/2025-01-15_morning.md",
   "api_calls_used": 3
 }
 ```
@@ -253,7 +267,7 @@ Success rate: 100.0%
 - **Broker snapshots**: `position_snapshots` and `order_snapshots` in `.cache/trading_data.db`
 - **Morning reports**: `reports/daily/*_morning.md`
 - **Evening reports**: `reports/daily/*_evening.md`
-- **systemd logs**: `journalctl -u autogen-trading-scheduler`
+- **systemd logs**: `journalctl -u autogen-trading-scheduler` (start and stop only; output goes to `state/scheduler.log`)
 - **Cron errors**: `state/scheduler-cron.err` (cron's stdout repeats `state/scheduler.log`, so it is dropped)
 
 ## Testing
@@ -332,7 +346,7 @@ python -m src.trading.scheduling.daily_scheduler --mode once --task morning_rout
 1. Check the day and time: routines run on NYSE trading days only, at their ET time or up to 5 minutes after (the host timezone doesn't matter). On early closes the evening routine moves back with the close.
 2. Verify schedule: `cat config_defaults/scheduler_config.yaml`
 3. Check if already executed: Review `state/scheduler_execution_log.json`
-4. Verify enabled: `/scheduler` in the CLI shows the flags in force (saved flags override the config file)
+4. Verify enabled: `status` in the CLI's `/schedule` mode shows the flags in force (saved flags override the config file)
 5. Check for an overlapping run: only one run at a time holds `state/scheduler.lock`
 6. Check for an earlier failure: a routine that failed after its retries waits for the next trading day (run it manually to retry)
 
@@ -341,7 +355,7 @@ python -m src.trading.scheduling.daily_scheduler --mode once --task morning_rout
 1. Check credentials: `config/config.json`
 2. Verify API limits: Alpaca dashboard
 3. Review error logs: `state/scheduler.log`
-4. Test connection: `python main.py check-positions`
+4. Test connection: `python main.py`, then `show portfolio`
 
 ### High failure rate
 
@@ -356,7 +370,7 @@ python -m src.trading.scheduling.daily_scheduler --mode once --task morning_rout
 
 - [ ] Email/SMS notifications on failures
 - [ ] Telegram bot integration
-- [ ] Advanced scheduling (skip holidays, market closures)
+- [x] Skip weekends and NYSE holidays; move the evening routine on early closes (done)
 - [ ] Multi-account support
 - [ ] Performance analytics dashboard
 - [ ] Machine learning for optimal execution times
@@ -374,19 +388,18 @@ python -m src.trading.scheduling.daily_scheduler --mode once --task morning_rout
 ✅ **"Set it and forget it" automation**: No manual intervention needed
 ✅ **Reliability**: Comprehensive retry and error handling
 ✅ **Cost-efficient**: 90% fewer API calls
-✅ **Production-ready**: systemd service with monitoring
-✅ **Flexible**: Both daemon and cron deployment options
+✅ **Deployment**: cron entry (recommended), or a systemd service running the daemon
 ✅ **Observable**: Detailed logging and status reports
 
 ## Related Documentation
 
-- [Trading Cycle](../integration/trading_cycle.md) - Morning/evening routine details
-- [Order Management](../integration/alpaca_order_management.md) - GTC order system
-- [systemd Service](../deployment/systemd_setup.md) - Production deployment
-- [Configuration](../reference/configuration.md) - All configuration options
+- [Quick Start](02_gtc_scheduler_quickstart.md) - Setup, routine steps and trailing-stop levels
+- [Scheduler CLI Reference](07_scheduler_cli_reference.md) - `/schedule` commands
+- [Integration APIs](../02_architecture/05_integration_apis.md) - Alpaca orders and GTC handling
+- Routine code: `src/trading/scheduling/trading_cycle.py`; settings: `config_defaults/scheduler_config.yaml`
 
 ---
 
 **Issue #287 Status**: ✅ COMPLETED
-**Last Updated**: 2025-01-15
+**Last Updated**: 2026-10-20
 **Implemented By**: Claude (AutoGen Trading System)

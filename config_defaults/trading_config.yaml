@@ -34,7 +34,7 @@ strategy_parameters:
     fast: 13
     slow: 34
     signal: 8
-    description: "Validated MACD parameters (13/34/8)"
+    description: "MACD parameters (13/34/8, Fibonacci periods)"
     timeframe: null  # null = inherit from strategy_parameters.timeframe
 
   rsi:

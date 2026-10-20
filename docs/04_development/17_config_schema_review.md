@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-All configuration files are **production-ready** with comprehensive structure:
+All configuration files are **in use** with comprehensive structure:
 
 | Config File | Purpose | Status | Notes |
 |-------------|---------|--------|-------|
@@ -617,7 +617,7 @@ CREATE TABLE watchlist_profiles (
 );
 ```
 
-See: [PROFILE_PRESET_ARCHITECTURE.md](./PROFILE_PRESET_ARCHITECTURE.md)
+See: [20_profile_preset_architecture.md](20_profile_preset_architecture.md)
 
 ---
 
@@ -661,7 +661,7 @@ result = builder.check_data_sufficiency("NEWIPO", "2w", available_days=10)
 
 ## See Also
 
-- [CLI_INTEGRATION_STATUS.md](./CLI_INTEGRATION_STATUS.md) - Detailed CLI integration guide
-- [PROFILE_PRESET_ARCHITECTURE.md](./PROFILE_PRESET_ARCHITECTURE.md) - Profile system design
+- [16_cli_integration_status_phase2.md](16_cli_integration_status_phase2.md) - Detailed CLI integration guide (phase 1: [15_cli_integration_status_phase1.md](15_cli_integration_status_phase1.md))
+- [20_profile_preset_architecture.md](20_profile_preset_architecture.md) - Profile system design
 - [09_core_features_gameplan.md](./09_core_features_gameplan.md) - Feature roadmap
 - GitHub Issues: #488, #489, #490, #492, #493

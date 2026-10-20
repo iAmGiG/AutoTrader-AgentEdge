@@ -2,7 +2,7 @@
 
 **Foundation**: Multi-layer separation with clean boundaries
 **Framework**: Microsoft AutoGen for agent coordination
-**Status**: Production-ready infrastructure complete
+**Status**: Infrastructure complete and in use on a paper account
 
 ## Directory Structure
 

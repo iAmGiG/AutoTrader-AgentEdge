@@ -1,6 +1,6 @@
 # Development Documentation
 
-This directory contains guides for developers working on AutoGen-Trader.
+This directory contains guides for developers working on OptionsCommander (formerly RH2MAS).
 
 ## Quick Navigation
 
@@ -52,7 +52,7 @@ This directory contains guides for developers working on AutoGen-Trader.
 - **[Database-First Caching](10_database_first_caching.md)** - SQLite caching architecture
 - **[Config Migration Notes](11_config_migration_notes.md)** - Configuration system changes
 - **[GEX Quick Reference](12_gex_quick_reference.md)** - Gamma exposure analysis guide
-- **[GEX Voter Integration](13_gex_voter_integration_guide.md)** - GEX + VoterAgent integration
+- **[GEX Voter Integration](13_gex_voter_integration_guide.md)** - GEX + VoterAgent integration plan (not pursued: no GEX overlay survived re-validation, #576)
 - **[LLM Consolidation](14_llm_consolidation_analysis.md)** - LLM usage analysis
 
 ### CLI Integration
@@ -73,9 +73,9 @@ This directory contains guides for developers working on AutoGen-Trader.
 
 **For architecture decisions**, see [docs/05_decisions/](../05_decisions/README.md)
 
-**For feature documentation**, see [docs/features/](../features/README.md)
+**For feature documentation**, see [docs/06_features/](../06_features/README.md)
 
-**For testing**, see [docs/testing/](../testing/README.md)
+**For testing**, see [docs/07_testing/](../07_testing/README.md)
 
 ---
 
@@ -87,7 +87,7 @@ This directory contains guides for developers working on AutoGen-Trader.
 2. Check [docs/05_decisions/](../05_decisions/) for relevant architectural patterns
 3. Update [02_project_status.md](02_project_status.md) to track your work
 4. Create tests in `tests/` following existing patterns
-5. Document in `docs/features/` when ready for users
+5. Document in `docs/06_features/` when ready for users
 
 ### Fixing a Bug
 
@@ -152,12 +152,12 @@ Significant design decisions are documented as ADRs. Before making architectural
 
 ## Testing Strategy
 
-See [docs/testing/](../testing/) for:
+See [docs/07_testing/](../07_testing/README.md) for:
 
 - Unit testing guidelines
 - Integration testing approach
 - Forward testing protocol
-- How to run tests
+- How to run tests safely (never run tests that place orders)
 
 ---
 

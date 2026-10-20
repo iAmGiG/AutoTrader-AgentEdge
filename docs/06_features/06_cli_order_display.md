@@ -16,7 +16,7 @@ The `open orders` command displays all pending orders with visual grouping to sh
 
 ### Grouped Display Example
 
-```
+```text
 📊 5 Open Order(s):
 
 ┌─ $SPY Position (3 orders) - LONG
@@ -77,13 +77,13 @@ The `open orders` command displays all pending orders with visual grouping to sh
 
 **LONG Position** (ascending prices):
 
-```
+```text
 Entry → PT1 @ $595 → PT2 @ $600 → SL @ $580
 ```
 
 **SHORT Position** (descending prices):
 
-```
+```text
 Entry → PT1 @ $55 → SL @ $62
 ```
 
@@ -142,7 +142,7 @@ Entry → PT1 @ $55 → SL @ $62
 
 ### Options Example
 
-```
+```text
 ┌─ $SPY Position (3 orders) - LONG CALL
 │  🟢 buy 1 $600C exp 2025-02-21 @ $2.50 - FILLED (abc123)
 │  🎯 PT1: sell 1 @ $3.50 - HELD (def456)
@@ -162,7 +162,7 @@ Entry → PT1 @ $55 → SL @ $62
 
 Orders without clear bracket structure display ungrouped:
 
-```
+```text
 ┌─ $SPY Position (2 orders) - LONG
 │  🟢 buy 10.0 @ market - NEW (abc123)
 │  🛑 SL: sell 10.0 @ $590.00 - HELD (def456)
@@ -175,7 +175,7 @@ Ungrouped Orders:
 
 Show filled quantity vs total quantity:
 
-```
+```text
 │  🟢 buy 7.0/10.0 @ market - PARTIALLY_FILLED (abc123)
 ```
 
@@ -183,7 +183,7 @@ Show filled quantity vs total quantity:
 
 Single symbol with multiple order structures:
 
-```
+```text
 ┌─ $SPY Position (4 orders)
 │  Bracket #1:
 │  🟢 buy 10.0 @ market - FILLED (abc123)
@@ -263,7 +263,7 @@ Single symbol with multiple order structures:
 
 - [Alpaca Integration](../02_architecture/05_integration_apis.md) - Order data structure
 - [CLI Trade Assistant](../04_development/03_cli_trade_assistant.md) - Trading interface architecture
-- [Scheduler CLI Reference](scheduler_cli_reference.md) - Related CLI patterns
+- [Scheduler CLI Reference](07_scheduler_cli_reference.md) - Related CLI patterns
 
 ## Related Issues
 

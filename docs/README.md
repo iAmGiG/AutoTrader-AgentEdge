@@ -1,6 +1,6 @@
-# AutoTrader-AgentEdge Documentation
+# OptionsCommander Documentation
 
-Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based trading platform with proven MACD+RSI voting strategy and comprehensive multi-agent architecture.
+Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`), a Microsoft AutoGen-based trading platform with a MACD+RSI voting strategy and a multi-agent architecture.
 
 ## Documentation Structure
 
@@ -20,18 +20,39 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 
 ### 📚 **03 - Reference** (Lookup & Details)
 
-- **[01. Validation Results](03_reference/01_validation_results.md)** - Proven performance metrics and experiment results
+- **[01. Validation Results](03_reference/01_validation_results.md)** - Experiment #293 results (in-sample, superseded by the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md))
 - **[02. Terminology](03_reference/02_terminology.md)** - Glossary of terms and concepts
 - **[03. Commands](03_reference/03_commands.md)** - CLI commands and scripts reference
 - **[04. Troubleshooting](03_reference/04_troubleshooting.md)** - Common issues and solutions
 - **[05. Known Issues](03_reference/05_known_issues.md)** - Current known limitations and workarounds
-- **[06. Naming Conventions](03_reference/05_naming_conventions.md)** - Code and file naming standards
-- **[07. News Limitations](03_reference/06_news_limitations.md)** - API constraints and considerations
+- **[06. Naming Conventions](03_reference/06_naming_conventions.md)** - Code and file naming standards
+- **[07. News Limitations](03_reference/07_news_limitations.md)** - API constraints and considerations
 
 ### 📂 **04 - Development** (For Contributors)
 
 - **[01. Codebase Structure](04_development/01_codebase_structure.md)** - File organization and component layout
 - **[02. Project Status](04_development/02_project_status.md)** - Current development status, roadmap, and priorities
+- **[All development guides](04_development/README.md)**
+
+### 🧭 **05 - Decisions**
+
+- **[Architecture Decision Records](05_decisions/README.md)** - Code organization, error handling, caching, agent patterns
+
+### 🧰 **06 - Features** (User Manual)
+
+- **[Feature Documentation](06_features/README.md)** - Position alerts, daily scheduler, scheduler CLI, order display
+
+### 🧪 **07 - Testing**
+
+- **[Testing Documentation](07_testing/README.md)** - Test layout, test safety, forward testing protocol
+
+### 🔬 **08 - Research**
+
+- **[Research Documentation](08_research/README.md)** - GEX and strategy research, with STOP/DONE/CONTINUE status
+
+### 🔭 **09 - Future**
+
+- **[Future Reference Library](09_future/README.md)** - Ideas and papers for later phases
 
 ## Key Features
 
@@ -49,10 +70,10 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 - **Error Handling**: Comprehensive error recovery and logging
 - **State Management**: Persistent trade state across restarts and agent coordination
 
-### ✅ **Production Ready**
+### ✅ **Trading Infrastructure**
 
-- **Paper Trading**: Safe testing environment
-- **Live Trading**: Production-ready execution
+- **Paper Trading**: Safe testing environment (the scheduler runs on a paper account)
+- **Live Trading**: Alpaca live accounts are supported
 - **Fill Monitoring**: Automatic order fill detection
 - **Market Hours**: Smart handling of market open/close
 
@@ -73,12 +94,12 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 ### 📊 **Performance & Validation**
 
 1. See the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md) for backtested performance (experiment 293's 0.856 Sharpe is superseded)
-2. Review [Research Foundation](presentations/research_foundation.md) for academic foundation
+2. Review the [research summary](08_research/README.md) for what was tested and stopped
 3. Check [Troubleshooting](03_reference/04_troubleshooting.md) for common issues
 
 ## Current Status
 
-### ✅ **Production Components**
+### ✅ **Components in Use**
 
 - **VoterAgent**: AutoGen agent with MACD+RSI voting
 - **CLI Trade Assistant** (#308): Human-in-loop interactive trading interface ✅ NEW
@@ -86,10 +107,11 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
   - Real MACD+RSI analysis with market data fetching
   - Portfolio % risk management and position sizing
   - Interactive REPL with confirm/auto autonomy modes
-  - Usage: `python main.py trade-assist`
+  - Usage: `python main.py`
 - **Position Manager**: Unified position and account tracking accessible to agents
 - **Order Manager**: Complete order placement and monitoring via AutoGen tools
 - **Trading Cycle**: Comprehensive position monitoring and stop management
+- **Daily Scheduler**: Morning and evening routines run from cron ([quick start](06_features/02_gtc_scheduler_quickstart.md))
 
 ### ✅ **Integration Complete**
 
@@ -99,12 +121,11 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 - **Fill Monitoring**: Automatic state transitions
 - **OpenAI API**: Natural language parsing and tool calling ✅ NEW
 
-### 📊 **Validated Performance**
+### 📊 **Backtested Performance (#574 stage A)**
 
 - **Sharpe Ratio**: 0.69 at 5 bps a side, 2009 to 2026-10-09, live rules and timing ([live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md))
 - **Alpha vs buy-and-hold of the same symbols**: +0.11% a year (t = 0.19), so no edge
 - **Win Rate**: 44.2%; **Max Drawdown**: -6.9% (positions average about 11% of equity)
-- **System Uptime**: 99.9% (robust error handling)
 
 ---
 
@@ -112,7 +133,7 @@ Professional documentation for AutoTrader-AgentEdge - a Microsoft AutoGen-based 
 
 For academic research and citations informing the system architecture:
 
-- **[Research Foundation](presentations/research_foundation.md)** - Academic foundation with abstract, introduction, and citations
+- **[Research Documentation](08_research/README.md)** - Research status, methods and results
 - **[Agent Ensemble](02_architecture/02_agent_ensemble.md)** - Evolution from V0-V4 to current multi-agent system
 - **[Voting System](02_architecture/03_voting_system.md)** - Multi-indicator voting architecture
 - **[Validation Results](03_reference/01_validation_results.md)** - Experiment #293 (in-sample, superseded by the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md))
@@ -121,4 +142,4 @@ For academic research and citations informing the system architecture:
 
 *Documentation follows professional standards with clear organization, consistent naming, and comprehensive coverage of all AutoGen agents and system components.*
 
-Last updated: November 2025. Performance figures corrected October 2026 (#574).
+Last updated: October 2026 (performance figures from #574; scheduler, naming and links corrected).

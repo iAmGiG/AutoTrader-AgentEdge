@@ -1,6 +1,6 @@
 # Daily scheduler (src/trading/scheduling/daily_scheduler.py)
 # Times are in market_timezone whatever the host's timezone; routines run on NYSE trading
-# days only. The enable flags below are defaults: flags saved from the CLI (/scheduler),
+# days only. The enable flags below are defaults: flags saved from the CLI (/schedule),
 # the config editor or the setup wizard (in state/user.db) take precedence.
 enabled: false
 market_timezone: America/New_York

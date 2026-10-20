@@ -8,7 +8,7 @@
 
 ## Methodology
 
-- **Entry System**: Validated MACD(13/34/8) + RSI voting
+- **Entry System**: MACD(13/34/8) + RSI voting
 - **Test Scenarios**: Bull market, bear market, volatile sideways
 - **Analysis**: Expected value calculation, actual backtesting, mathematical verification
 

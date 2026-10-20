@@ -2,7 +2,7 @@
 
 **Foundation**: Microsoft AutoGen Framework
 **Approach**: Democratic voting with specialized agent roles
-**Status**: VoterAgent production-ready, ensemble expansion in development
+**Status**: VoterAgent in use on paper, ensemble expansion in development
 
 ## Evolution from V0-V4 to Ensemble System
 
@@ -49,9 +49,9 @@ Market Data ────────┼─ Bollinger Signal ───┼──�
 
 ## Current Agent Architecture
 
-### 1. VoterAgent (Production-Ready) ✅
+### 1. VoterAgent (In Use) ✅
 
-**Status**: Validated and operational
+**Status**: Operational on the paper account
 **Performance**: Sharpe 0.69 at 5 bps a side with the live rules, no edge over buy-and-hold ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 
 **Responsibilities**:
@@ -81,7 +81,7 @@ class VoterAgent(ConversableAgent):
         return self.voting_logic(macd_signal, rsi_signal)
 ```
 
-**Validated Configuration**:
+**Configuration**:
 
 - **MACD**: Fibonacci periods (13/34/8)
 - **RSI**: 14-period with 30/70 oversold/overbought thresholds
@@ -355,7 +355,7 @@ voter = create_voter(macd_params={"fast": 13, "slow": 34, "signal": 8})
 **Available Agent Types**:
 
 - Multi-ticker market scanning
-- MACD+RSI voting decisions (production-ready)
+- MACD+RSI voting decisions (in use)
 - Portfolio risk management
 - Trade execution coordination
 - Portfolio management (Issue #333)
@@ -494,7 +494,7 @@ order = order_tool.place_market_order("AAPL", 10, "buy")
 **Accuracy**:
 
 - Ensemble methods achieve 70-90% accuracy potential
-- Current MACD+RSI: 51.4% win rate with superior risk metrics
+- Current MACD+RSI: 44.2% win rate with the live rules at 5 bps a side, and no alpha over buy-and-hold ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md); the 51.4% was experiment 293, in-sample)
 
 ## Cache System Integration
 

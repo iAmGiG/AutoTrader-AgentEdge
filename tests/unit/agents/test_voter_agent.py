@@ -5,7 +5,7 @@ Unit tests for VoterAgent.
 Tests MACD+RSI voting logic, parameter configuration, and signal generation.
 Issue #408: Unit Testing and CLI Testing (Pre-Live Trading Validation)
 
-Priority 2 Component - VoterAgent (Production Ready)
+Priority 2 Component - VoterAgent (in use on the paper account)
 Target Coverage: 80%+
 """
 
@@ -213,8 +213,7 @@ class MockableVoterAgent:
     def evaluate_voting(self, symbol, price_data, return_components=False):  # noqa: C901
         """Core MACD+RSI voting logic."""
         # Import here to use actual indicator functions
-        from src.trading.instruments.indicators import (calculate_macd,
-                                                        calculate_rsi)
+        from src.trading.instruments.indicators import calculate_macd, calculate_rsi
 
         try:
             # Validate data sufficiency

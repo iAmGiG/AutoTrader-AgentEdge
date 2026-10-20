@@ -55,7 +55,7 @@ python main.py --daemon            # Background scheduler mode
 ```bash
 # Timeframe management
 > show timeframe                   # Display current trading timeframe
-> set timeframe 1d                 # Change to daily timeframe (validated)
+> set timeframe 1d                 # Change to daily timeframe (the backtested one)
 > set timeframe 1h                 # Change to hourly timeframe (experimental)
 
 # Supported timeframes:
@@ -65,7 +65,7 @@ python main.py --daemon            # Background scheduler mode
 # - 1w, 1M (position/long-term trading)
 ```
 
-⚠️ **Note**: Only 1d timeframe has been validated with production results. Other timeframes are experimental.
+⚠️ **Note**: Only the 1d timeframe has been backtested (with no edge over buy-and-hold, #574). Other timeframes are experimental.
 
 ### Forward Testing Commands (Issue #324)
 
@@ -127,21 +127,21 @@ Many commands support short aliases for faster typing:
 
 ## Current Development Commands
 
-### AutoGen Agent Testing (Production System) ✅
+### AutoGen Agent Testing ✅
 
 ```bash
 # VoterAgent (MACD+RSI voting)
-python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent: Production Ready')"
+python -c "from src.autogen_agents.agents.voter_agent import VoterAgent; print('VoterAgent: OK')"
 
 # Multi-agent development testing
-python -c "from src.autogen_agents.scanner_agent import ScannerAgent; print('ScannerAgent: In Development')"
-python -c "from src.autogen_agents.risk_agent import RiskAgent; print('RiskAgent: In Development')"
-python -c "from src.autogen_agents.executor_agent import ExecutorAgent; print('ExecutorAgent: In Development')"
+python -c "from src.autogen_agents.agents.scanner_agent import ScannerAgent; print('ScannerAgent: In Development')"
+python -c "from src.autogen_agents.agents.risk_agent import RiskAgent; print('RiskAgent: In Development')"
+python -c "from src.autogen_agents.agents.executor_agent import ExecutorAgent; print('ExecutorAgent: In Development')"
 
 # Trading orchestrator coordination
-python -c "from src.autogen_agents.trading_orchestrator import TradingOrchestrator; print('Orchestrator: In Development')"
+python -c "from src.autogen_agents.orchestration.trading_orchestrator import TradingOrchestrator; print('Orchestrator: In Development')"
 
-# All unit tests
+# All unit tests (read the test-safety notes in docs/07_testing/README.md before a full run)
 python -m unittest discover tests
 ```
 
@@ -150,7 +150,7 @@ python -m unittest discover tests
 ```bash
 # Validation complete - results archived in docs/archived/experiments/experiment_293_validation/
 # Key findings (in-sample, superseded by #574): MACD+RSI voting (0.856 Sharpe) > single MACD (0.841 Sharpe)
-# VoterAgent now production-ready based on validated results
+# Live-rules baseline (#574 stage A): no edge over buy-and-hold at live timing
 ```
 
 ### Code Quality & Validation
@@ -265,7 +265,7 @@ python scripts/runs/backtest.py --all-versions --symbol AAPL --year 2024
 python scripts/analysis/generate_results_summary.py --advanced
 ```
 
-**Note**: V0-V4 framework deprecated in favor of validated MACD+RSI voting approach. Archived in `src/deprecated/v0_v4_agents/` and `docs/archived/v0_v4_deprecated/`.
+**Note**: V0-V4 framework deprecated in favor of the MACD+RSI voting approach. Archived in `src/deprecated/v0_v4_agents/` and `docs/archived/v0_v4_deprecated/`.
 
 ## Troubleshooting Commands
 
