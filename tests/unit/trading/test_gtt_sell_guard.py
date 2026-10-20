@@ -120,6 +120,7 @@ def test_the_evening_gtt_check_sees_stops_placed_in_the_same_run(tmp_path):
     cycle.check_and_repair_stops = MagicMock(return_value=[placed])
     cycle.check_position_alerts = MagicMock(return_value=[])
     cycle.check_gtt_triggers = MagicMock(return_value=[])
+    cycle.raise_stops = MagicMock(return_value=([], None))
     cycle.trailing_stop_manager = MagicMock()
     cycle.local_state_manager = MagicMock(state={})
     cycle.generate_routine_report = MagicMock(return_value="report")

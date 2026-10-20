@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 from config_defaults.trading_config import TradingConfig
 
 from src.market_data.alpaca_market_data import AlpacaMarketData
-from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import (
+    AlpacaAccountMonitor,
+    AlpacaOrderManager,
+)
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.scheduling.scheduler_state import market_today
@@ -435,6 +438,19 @@ class CostEfficientTradeCycle:
 
         return results
 
+    def raise_stops(
+        self, broker_state: Dict[str, Any]
+    ) -> Tuple[List[StopAdjustment], Optional[Dict[str, Any]]]:
+        """
+        Raise live stops to their trailing level (a modify call only for stops that move).
+
+        Returns:
+            (adjustments, modification results or None when no stop needed raising)
+        """
+        adjustments = self.calculate_stop_adjustments(broker_state)
+        modification_results = self.batch_modify_orders(adjustments) if adjustments else None
+        return adjustments, modification_results
+
     # -------------------------------------------------------------------------
     # Protective stops - Issue #586
     # -------------------------------------------------------------------------
@@ -724,13 +740,8 @@ class CostEfficientTradeCycle:
             # Step 3.5: Check GTT triggers (no API calls) - Issue #340
             gtt_results = self.check_gtt_triggers(broker_state)
 
-            # Step 4: Calculate stop adjustments needed (no API calls)
-            adjustments = self.calculate_stop_adjustments(broker_state)
-
-            # Step 5: Batch modify stops if needed (single API call)
-            modification_results = None
-            if adjustments:
-                modification_results = self.batch_modify_orders(adjustments)
+            # Steps 4-5: Raise stops to their trailing level
+            adjustments, modification_results = self.raise_stops(broker_state)
 
             # Step 5.5: Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
             if GTT_AVAILABLE:
@@ -779,7 +790,8 @@ class CostEfficientTradeCycle:
     def evening_routine(self, raise_errors: bool = False) -> str:
         """
         Run once at 3:50 PM ET - before market close.
-        Focus on EOD position review and preparation for next day.
+        Focus on EOD position review and preparation for next day. Stops are raised on
+        the day's gains here, before the close, rather than at the next morning run.
 
         Args:
             raise_errors: As for morning_routine()
@@ -805,6 +817,10 @@ class CostEfficientTradeCycle:
             # Check GTT triggers - Issue #340
             gtt_results = self.check_gtt_triggers(broker_state)
 
+            # Raise stops to their trailing level while the market is open, so an
+            # overnight gap can't take the day's gains before the morning run
+            adjustments, modification_results = self.raise_stops(broker_state)
+
             # Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
             if GTT_AVAILABLE:
                 try:
@@ -817,7 +833,12 @@ class CostEfficientTradeCycle:
             self.local_state_manager.save()
 
             report = self.generate_routine_report(
-                RoutineType.EVENING, broker_state, discrepancies, [], alerts
+                RoutineType.EVENING,
+                broker_state,
+                discrepancies,
+                adjustments,
+                alerts,
+                modification_results,
             )
 
             report = self._append_report_sections(report, gtt_results, record_lines)
@@ -920,9 +941,13 @@ class CostEfficientTradeCycle:
             return f"❌ {error_msg}"
 
     def _get_report_file_path(self, routine_type: str) -> str:
-        """Get unique report file path with counter for multiple runs per day."""
-        now = get_datetime_now()
-        date_str = now.strftime("%Y-%m-%d")
+        """
+        Get unique report file path with counter for multiple runs per day.
+
+        Named by the market (ET) date, as the daily records are: an evening run at
+        22:44 ET is that day's, whatever the host's timezone.
+        """
+        date_str = market_today()
 
         template = self.paths.get("report_templates", {}).get(
             "daily_routine", "reports/daily/{date}_{routine_type}.md"

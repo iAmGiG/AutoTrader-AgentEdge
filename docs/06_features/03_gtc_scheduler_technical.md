@@ -31,7 +31,7 @@ Automated "set it and forget it" daily trading system with:
 ┌─────────────────────────────────────────────────────────┐
 │              Trading Cycle (Issue #313)                  │
 │  • Morning routine: reconcile, adjust stops             │
-│  • Evening routine: EOD review                          │
+│  • Evening routine: EOD review, adjust stops            │
 │  • GTC order management                                 │
 └─────────────────┬───────────────────────────────────────┘
                   │
@@ -79,6 +79,7 @@ tests/
 **Evening Routine (3:50 PM ET)**:
 
 - EOD position review
+- Raise stops on the day's gains before the close (same step as the morning)
 - Prepare for next trading day
 - Generate evening report
 

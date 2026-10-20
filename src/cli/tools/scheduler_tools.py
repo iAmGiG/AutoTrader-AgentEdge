@@ -251,6 +251,7 @@ def get_routine_description(routine: str = "both") -> Dict[str, Any]:
                 "Fetch end-of-day broker state",
                 "Record account equity and day P&L, positions and new fills",
                 "Check for position alerts",
+                "Raise trailing stops on the day's gains before the close",
                 "Generate evening report",
                 "Prepare for next trading day",
             ],

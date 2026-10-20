@@ -24,8 +24,9 @@ STOP_RENEW_AFTER_DAYS = 80
 # last trade, and a stop just under it could fire on any small gap at the open
 MIN_STOP_GAP = 0.01
 
-# Alpaca can't replace an order in these states (orders placed off-hours stay "accepted"
-# until the open), so raising one waits for a later run
+# Alpaca can't replace an order in these states (orders placed after the close stay
+# "accepted" for a while; ones placed at 22:44 ET were replaceable by 09:20 ET), so
+# raising one waits for a later run
 NOT_REPLACEABLE = ("accepted", "pending_new", "pending_replace", "pending_cancel")
 
 
@@ -402,7 +403,7 @@ class StateReconciler:
                 if str(order.get("status", "")).lower() in NOT_REPLACEABLE:
                     logger.info(
                         f"{symbol}: raise to ${new_stop:.2f} waits - order {order['id']} is "
-                        f"{order.get('status')} (replaceable once the market opens)"
+                        f"{order.get('status')} (not yet replaceable)"
                     )
                     continue
                 logger.info(
@@ -436,7 +437,7 @@ class StateReconciler:
         last known stop (local state, else entry minus the configured stop loss); a GTC
         stop older than STOP_RENEW_AFTER_DAYS is renewed. Either is raised to the
         trailing-stop level when that is higher (and below the price): an order placed
-        outside market hours can't be modified until the open, so the routine's later
+        outside market hours can't be modified in the same run, so the routine's later
         adjustment step couldn't raise it.
 
         Reported for a human instead of repaired:

@@ -10,10 +10,12 @@ import pytest
 
 from src.trading.scheduling import daily_scheduler, scheduler_state
 from src.trading.scheduling.daily_scheduler import (
-    DailyScheduler, configure_scheduler_logging, load_scheduler_config)
+    DailyScheduler,
+    configure_scheduler_logging,
+    load_scheduler_config,
+)
 from src.trading.scheduling.scheduler_state import SchedulerStateManager
-from src.trading.scheduling.trading_cycle import (CostEfficientTradeCycle,
-                                                  RoutineError)
+from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle, RoutineError
 from src.trading.state.state_reconciler import Discrepancy
 from src.utils.state_paths import get_state_dir
 
@@ -297,3 +299,21 @@ def test_daemon_logging_goes_to_the_state_dir_once(restore_root_logging):
     assert path.read_text().count("routine check") == 1
     assert len(root.handlers) == 2  # the existing console handler, plus the file
     assert root.level == logging.DEBUG  # not raised to INFO
+
+
+def test_reports_are_named_by_the_market_date(monkeypatch, tmp_path):
+    """A run at 22:44 ET is that day's report, though the host (UTC) is already on the next."""
+
+    class _Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 15, 2, 44, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setattr(scheduler_state, "datetime", _Clock)
+    cycle = object.__new__(CostEfficientTradeCycle)
+    template = str(tmp_path / "{date}_{routine_type}.md")
+    cycle.paths = {"report_templates": {"daily_routine": template}}
+
+    assert cycle._get_report_file_path("evening") == str(tmp_path / "2026-10-14_evening.md")
+    (tmp_path / "2026-10-14_evening.md").write_text("first run")
+    assert cycle._get_report_file_path("evening") == str(tmp_path / "2026-10-14_evening_2.md")
