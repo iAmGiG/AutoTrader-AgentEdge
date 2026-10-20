@@ -13,11 +13,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.trading.scheduling.trading_cycle import CostEfficientTradeCycle
-from src.trading.state.state_reconciler import (
-    StateReconciler,
-    StopAdjustment,
-    StopRepair,
-)
+from src.trading.state.state_reconciler import (StateReconciler,
+                                                StopAdjustment, StopRepair)
 
 NOW = datetime(2026, 10, 14, 13, 0, tzinfo=timezone.utc)
 

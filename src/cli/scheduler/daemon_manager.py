@@ -166,7 +166,9 @@ class SchedulerDaemonManager:
             return False
 
         if self.cron_entry() is not None:
-            print(f"{get_emoji('warning', '⚠️')} Cron already runs the scheduler for this checkout.")
+            print(
+                f"{get_emoji('warning', '⚠️')} Cron already runs the scheduler for this checkout."
+            )
             print("   Not starting a daemon as well. To switch, remove the cron entry first")
             print("   (crontab -e), then start the daemon.")
             return False

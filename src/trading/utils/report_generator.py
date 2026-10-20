@@ -200,7 +200,9 @@ class ReportGenerator:
         if discrepancies:
             report_lines.extend(["## Discrepancies Found"])
             for disc in discrepancies:
-                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(disc.severity, "ℹ️")
+                severity_emoji = {"HIGH": "🚨", "MEDIUM": "⚠️", "LOW": "ℹ️"}.get(
+                    disc.severity, "ℹ️"
+                )
                 report_lines.append(f"{severity_emoji} {disc.type}: {disc.symbol}")
 
                 if disc.type == "UNKNOWN_POSITION":
