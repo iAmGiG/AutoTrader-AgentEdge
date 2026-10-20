@@ -172,10 +172,14 @@ class TestSpreadCalculation:
         """Spread of cointegrated pair should be stationary (ADF test)."""
         from statsmodels.tsa.stattools import adfuller
 
+        from src.backtesting.signals.pairs_trading_signal import ADF_TUPLE_KWARGS
+
         a, b = cointegrated_pair
         signal.fit(a, b)
         spread = signal.calculate_spread(a, b)
-        adf_stat, pvalue, *_ = adfuller(spread.dropna(), maxlag=10, autolag="AIC")
+        adf_stat, pvalue, *_ = adfuller(
+            spread.dropna(), maxlag=10, autolag="AIC", **ADF_TUPLE_KWARGS
+        )
         assert pvalue < 0.10, f"Spread should be stationary, ADF p={pvalue:.4f}"
 
     def test_zscore_mean_near_zero(self, signal, cointegrated_pair):

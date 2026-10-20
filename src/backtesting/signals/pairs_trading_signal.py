@@ -16,6 +16,7 @@ GEX overlay (#546): In GEX-enhanced mode, only trade when the regime supports
 mean-reversion (bullish_gamma). Reduce size in bearish/neutral regimes.
 """
 
+import inspect
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -23,6 +24,12 @@ import pandas as pd
 from statsmodels.regression.linear_model import OLS
 from statsmodels.tools import add_constant
 from statsmodels.tsa.stattools import adfuller, coint
+
+# statsmodels 0.15 warns that adfuller will return a result object instead of a tuple;
+# ask for the tuple where that option exists (0.14 has no such argument)
+ADF_TUPLE_KWARGS = (
+    {"result_object": False} if "result_object" in inspect.signature(adfuller).parameters else {}
+)
 
 
 class PairsTradingSignal:
@@ -94,7 +101,7 @@ class PairsTradingSignal:
         self.coint_pvalue = float(pvalue)
 
         # ADF test on spread
-        adf_result = adfuller(spread, maxlag=10, autolag="AIC")
+        adf_result = adfuller(spread, maxlag=10, autolag="AIC", **ADF_TUPLE_KWARGS)
         self.adf_pvalue = float(adf_result[1])
 
         # Half-life of mean reversion (O-U process)

@@ -12,7 +12,7 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Dict, List, Optional, Union
 
-from autogen_agentchat.agents._assistant_agent import AssistantAgent
+from autogen_agentchat.agents import AssistantAgent
 
 # Import the proper AutoGen core components
 from autogen_core.models import (
