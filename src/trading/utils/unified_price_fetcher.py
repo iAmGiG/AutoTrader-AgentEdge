@@ -144,15 +144,12 @@ class UnifiedPriceFetcher:
             self._cache.clear()
 
 
-# Singleton instance
-price_fetcher = UnifiedPriceFetcher()
-
-
 def get_current_price(symbol: str) -> Optional[float]:
     """
     Convenience function for getting current price (None when unavailable).
 
     This is the function that should be imported and used
-    throughout the trading system.
+    throughout the trading system. The singleton (and its Alpaca client) is built on
+    first use, not at import, so importing src.trading needs no credentials.
     """
-    return price_fetcher.get_current_price(symbol)
+    return UnifiedPriceFetcher().get_current_price(symbol)

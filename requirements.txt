@@ -17,7 +17,7 @@ openai>=2.7.0
 tiktoken>=0.12.0
 
 # Data processing
-pandas>=2.2.0
+pandas>=2.2.0,<3
 numpy>=2.0.0
 scipy>=1.14.0
 python-dateutil>=2.9.0
@@ -30,6 +30,10 @@ httpx>=0.28.1
 # Sentiment analysis (for research/deprecated V0-V4 agents)
 nltk>=3.9.0
 scikit-learn>=1.7.0
+statsmodels>=0.14.0
+
+# Research backtester (PostgreSQL)
+psycopg2-binary>=2.9.9
 
 # Utility
 python-dotenv>=1.2.0

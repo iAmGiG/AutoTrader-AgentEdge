@@ -6,9 +6,12 @@ This directory contains automated workflows for the AutoGen-TradingSystem reposi
 
 ### `main.yml` - CI Tests
 
-**Triggers:** Push to `main` branch, Pull requests to `main`
+**Triggers:** Push and pull requests to `main` and `development`
 
-Runs the project's test suite using pytest to ensure code quality.
+Installs the package (`pip install -e .` plus pytest) and runs `pytest tests/ -m "not db"`.
+No secrets are passed, so no test can reach the broker or place an order. The DB tests
+need the private gex package and PostgreSQL, so they run locally only
+(`pytest tests/ -m db`).
 
 ### `check-commit-signatures.yml` - Commit Signature Checker
 
