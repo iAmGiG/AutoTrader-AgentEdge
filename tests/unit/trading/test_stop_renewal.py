@@ -483,14 +483,12 @@ class TestRaisingLiveStops:
         assert (state.current_stop, state.stop_order_id) == (739.21, "sl-2")
 
 
-def test_the_evening_routine_raises_stops_before_the_close(monkeypatch, tmp_path):
-    """The day's gains are locked at 15:50 ET, not left to the next morning run."""
+def _evening_cycle(monkeypatch, tmp_path, om, market_open=True):
     import src.trading.scheduling.trading_cycle as cycle_module
     from src.trading.utils.report_generator import ReportGenerator
 
     monkeypatch.setattr(cycle_module, "GTT_AVAILABLE", False)
-    om = MagicMock()
-    om.modify_order.return_value = {"status": "submitted", "order_id": "sl-2"}
+    monkeypatch.setattr(cycle_module, "is_market_hours", lambda: market_open)
     cycle = _cycle(om)
     cycle.reconciler = _trailing_reconciler(739.21)
     cycle.trailing_stop_manager = cycle.reconciler.trailing_stop_manager
@@ -501,10 +499,52 @@ def test_the_evening_routine_raises_stops_before_the_close(monkeypatch, tmp_path
     cycle.record_daily = MagicMock(return_value=[])
     cycle.check_position_alerts = MagicMock(return_value=[])
     cycle._get_report_file_path = lambda routine: str(tmp_path / f"{routine}.md")
+    return cycle
 
-    report = cycle.evening_routine(raise_errors=True)
 
-    om.modify_order.assert_called_once_with(order_id="sl-1", stop_price=739.21)
-    assert cycle.local_state_manager.state["positions"]["SPY"]["stop_price"] == 739.21
-    assert "| SPY |" in report and "$739.21" in report
-    assert "✅ 1 stops adjusted successfully" in report
+class TestEveningStopRaise:
+    """The day's gains are locked at 15:50 ET, not left to the next morning run."""
+
+    def test_stops_are_raised_before_the_close(self, monkeypatch, tmp_path):
+        om = MagicMock()
+        om.modify_order.return_value = {"status": "submitted", "order_id": "sl-2"}
+        cycle = _evening_cycle(monkeypatch, tmp_path, om)
+
+        report = cycle.evening_routine(raise_errors=True)
+
+        om.modify_order.assert_called_once_with(order_id="sl-1", stop_price=739.21)
+        assert cycle.local_state_manager.state["positions"]["SPY"]["stop_price"] == 739.21
+        assert "| SPY |" in report and "$739.21" in report
+        assert "✅ 1 stops adjusted successfully" in report
+        assert report.splitlines()[0].endswith(" ET")  # times in ET, as the file name
+
+    def test_after_hours_the_raise_is_left_to_the_morning(self, monkeypatch, tmp_path):
+        om = MagicMock()
+        cycle = _evening_cycle(monkeypatch, tmp_path, om, market_open=False)
+
+        cycle.evening_routine(raise_errors=True)
+
+        om.modify_order.assert_not_called()  # thin after-hours prints don't set stops
+
+    def test_a_failed_raise_is_reported_and_the_routine_completes(self, monkeypatch, tmp_path):
+        cycle = _evening_cycle(monkeypatch, tmp_path, MagicMock())
+        trail = cycle.reconciler.trailing_stop_manager
+        trail.calculate_new_stop = MagicMock(side_effect=KeyError("current_price"))
+
+        report = cycle.evening_routine(raise_errors=True)
+
+        assert "Stop raise failed: 'current_price'" in report
+        assert (tmp_path / "evening.md").exists()
+
+    def test_stops_are_raised_from_state_fetched_after_gtt_orders(self):
+        cycle = object.__new__(CostEfficientTradeCycle)
+        before, after = {"positions": {}}, {"positions": {"SPY": {}}}
+        cycle.fetch_broker_state = MagicMock(return_value=after)
+        sold = SimpleNamespace(success=True, action_type="place_order")
+        alert = SimpleNamespace(success=True, action_type="alert")
+        skipped = SimpleNamespace(success=False, action_type="place_order")
+
+        assert cycle._after_gtt_actions(before, [alert, skipped]) is before
+        cycle.fetch_broker_state.assert_not_called()
+        assert cycle._after_gtt_actions(before, [sold]) is after
+        cycle.fetch_broker_state.assert_called_once_with(force_refresh=True)

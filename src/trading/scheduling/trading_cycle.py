@@ -19,6 +19,7 @@ import logging
 import os
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 import yaml
 
@@ -45,7 +46,8 @@ from src.trading.state.state_reconciler import (
     StopRepair,
 )
 from src.trading.utils.report_generator import ReportGenerator, RoutineType
-from src.utils.date_utils import get_datetime_now
+from src.utils.date_utils import DEFAULT_TIMEZONE, get_datetime_now
+from src.utils.market_hours import is_market_hours
 
 # GTT (Good-Till-Triggered) integration - Issue #340
 try:
@@ -444,12 +446,27 @@ class CostEfficientTradeCycle:
         """
         Raise live stops to their trailing level (a modify call only for stops that move).
 
+        Errors are contained and reported: the live stops still protect the positions,
+        and the next run works the raise out again.
+
         Returns:
             (adjustments, modification results or None when no stop needed raising)
         """
-        adjustments = self.calculate_stop_adjustments(broker_state)
+        try:
+            adjustments = self.calculate_stop_adjustments(broker_state)
+        except Exception as e:
+            logger.error(f"Stop raise failed: {e}", exc_info=True)
+            return [], {"success": False, "modifications": 0, "errors": [f"Stop raise failed: {e}"]}
         modification_results = self.batch_modify_orders(adjustments) if adjustments else None
         return adjustments, modification_results
+
+    def _after_gtt_actions(
+        self, broker_state: Dict[str, Any], gtt_results: List[Any]
+    ) -> Dict[str, Any]:
+        """Broker state fetched again if a GTT order or cancel went out (stops are raised next)."""
+        if any(r.success and r.action_type != "alert" for r in gtt_results):
+            return self.fetch_broker_state(force_refresh=True)
+        return broker_state
 
     # -------------------------------------------------------------------------
     # Protective stops - Issue #586
@@ -739,6 +756,7 @@ class CostEfficientTradeCycle:
 
             # Step 3.5: Check GTT triggers (no API calls) - Issue #340
             gtt_results = self.check_gtt_triggers(broker_state)
+            broker_state = self._after_gtt_actions(broker_state, gtt_results)
 
             # Steps 4-5: Raise stops to their trailing level
             adjustments, modification_results = self.raise_stops(broker_state)
@@ -816,10 +834,17 @@ class CostEfficientTradeCycle:
 
             # Check GTT triggers - Issue #340
             gtt_results = self.check_gtt_triggers(broker_state)
+            broker_state = self._after_gtt_actions(broker_state, gtt_results)
 
             # Raise stops to their trailing level while the market is open, so an
-            # overnight gap can't take the day's gains before the morning run
-            adjustments, modification_results = self.raise_stops(broker_state)
+            # overnight gap can't take the day's gains before the morning run. Run
+            # after hours (by hand), the raise is left to the morning: thin
+            # after-hours prints shouldn't set the stop.
+            adjustments, modification_results = [], None
+            if is_market_hours():
+                adjustments, modification_results = self.raise_stops(broker_state)
+            else:
+                logger.info("Market closed: the stop raise is left to the morning routine")
 
             # Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
             if GTT_AVAILABLE:
@@ -897,7 +922,8 @@ class CostEfficientTradeCycle:
 
             # Generate recovery report
             recovery_lines = [
-                f"# Crash Recovery Report - {get_datetime_now().strftime('%Y-%m-%d %H:%M:%S')}",
+                "# Crash Recovery Report - "
+                f"{get_datetime_now(ZoneInfo(DEFAULT_TIMEZONE)).strftime('%Y-%m-%d %H:%M:%S')} ET",
                 "",
                 f"Recovered {len(broker_state['positions'])} positions",
                 f"Recovered {len(broker_state['orders'])} order groups",

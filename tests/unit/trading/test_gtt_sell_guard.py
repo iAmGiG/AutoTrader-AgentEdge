@@ -109,8 +109,11 @@ def test_buys_and_alerts_are_untouched(run_gtt):
     assert executed == [buy, alert]
 
 
-def test_the_evening_gtt_check_sees_stops_placed_in_the_same_run(tmp_path):
+def test_the_evening_gtt_check_sees_stops_placed_in_the_same_run(monkeypatch, tmp_path):
     """After a repair the broker state is fetched again, as the morning routine does."""
+    import src.trading.scheduling.trading_cycle as cycle_module
+
+    monkeypatch.setattr(cycle_module, "is_market_hours", lambda: True)
     before, after = {"positions": {}, "orders": {}}, {"positions": {}, "orders": {"SPY": []}}
     cycle = object.__new__(CostEfficientTradeCycle)
     cycle.fetch_broker_state = MagicMock(side_effect=[before, after])
