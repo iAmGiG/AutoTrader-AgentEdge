@@ -226,6 +226,8 @@ class CostEfficientTradeCycle:
     # Class defaults, so a cycle built without __init__ (tests) has them too
     dry_run = False
     _dry_run_active = False
+    position_tracker = None
+    last_alerts: Tuple[PositionAlertSummary, ...] = ()  # the latest routine's alerts
 
     def __init__(self, state_file: str = None, dry_run: bool = False):
         # Load path configuration from config_defaults/paths_config.yaml
@@ -286,9 +288,10 @@ class CostEfficientTradeCycle:
             position_tracker=self.position_tracker,
         )
 
+        # No alert callback: alerts are checked once per routine, after the stop raise,
+        # against the stops the positions end the run with
         self.broker_cache = BrokerStateCache(
             account_monitor=self.account_monitor,
-            check_alerts_callback=self._check_position_alerts_internal,
             cache_ttl_seconds=60,
             alert_refresh_interval=300,
         )
@@ -322,6 +325,12 @@ class CostEfficientTradeCycle:
         saved_state = copy.deepcopy(self.local_state_manager.state)
         trailing = self.trailing_stop_manager
         saved_stops = copy.deepcopy(trailing.stop_states) if trailing is not None else None
+        tracker = self.position_tracker
+        saved_tracker = (
+            (copy.deepcopy(tracker.positions), tracker.alert_counter)
+            if tracker is not None
+            else None
+        )
         self.order_manager = DryRunOrderManager(real_order_manager)
         self._dry_run_active = True
         try:
@@ -331,6 +340,8 @@ class CostEfficientTradeCycle:
             self.local_state_manager.state = saved_state
             if trailing is not None:
                 trailing.stop_states = saved_stops
+            if tracker is not None:
+                tracker.positions, tracker.alert_counter = saved_tracker
             self._dry_run_active = False
 
     # -------------------------------------------------------------------------
@@ -377,8 +388,8 @@ class CostEfficientTradeCycle:
         return self.broker_cache.get_stats()
 
     def get_current_alerts(self) -> List[Any]:
-        """Get cached alerts (backward compatibility)."""
-        return self.broker_cache.get_current_alerts()
+        """Position alerts at the current broker state (backward compatibility)."""
+        return self.check_position_alerts(self.fetch_broker_state())
 
     def reconcile_state(self, broker_state: Dict[str, Any]) -> List[Discrepancy]:
         """Reconcile state (backward compatibility)."""
@@ -400,9 +411,27 @@ class CostEfficientTradeCycle:
         """Check position alerts (backward compatibility)."""
         return self.reconciler.check_position_alerts(broker_state, self.local_state_manager.state)
 
-    def _check_position_alerts_internal(self, broker_state: Dict[str, Any]) -> List[Any]:
-        """Internal callback for broker cache alert refresh."""
-        return self.reconciler.check_position_alerts(broker_state, self.local_state_manager.state)
+    def _position_alerts(
+        self, broker_state: Dict[str, Any]
+    ) -> Tuple[List[PositionAlertSummary], List[str]]:
+        """
+        The routine's position alerts (#599), checked after the stop raise so they measure
+        the stops the positions end the run with.
+
+        Errors are logged and reported, never raised: alerts don't protect positions, so
+        they shouldn't make the routine retry.
+
+        Returns:
+            (alerts, report lines: a note when the check failed)
+        """
+        try:
+            alerts = self.check_position_alerts(broker_state)
+        except Exception as e:
+            logger.warning(f"Position alerts not checked: {e}", exc_info=True)
+            self.last_alerts = ()
+            return [], ["", f"⚠️ Position alerts not checked: {e}"]
+        self.last_alerts = tuple(alerts)
+        return alerts, []
 
     def generate_position_summaries(
         self, broker_state: Dict[str, Any], adjustments: List[StopAdjustment]
@@ -880,15 +909,15 @@ class CostEfficientTradeCycle:
                 # Later steps (stop adjustments) must see the new stop orders
                 broker_state = self.fetch_broker_state(force_refresh=True)
 
-            # Step 3: Check for position alerts (no API calls)
-            alerts = self.check_position_alerts(broker_state)
-
-            # Step 3.5: Check GTT triggers (no API calls) - Issue #340
+            # Step 3: Check GTT triggers (no API calls) - Issue #340
             gtt_results = self.check_gtt_triggers(broker_state)
             broker_state = self._after_gtt_actions(broker_state, gtt_results)
 
             # Steps 4-5: Raise stops to their trailing level
             adjustments, modification_results = self.raise_stops(broker_state)
+
+            # Step 5.2: Position alerts against the stops after the raise (no API calls)
+            alerts, alert_lines = self._position_alerts(broker_state)
 
             # Step 5.5: Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
             self._sync_trailing_stops_to_gtt()
@@ -908,7 +937,7 @@ class CostEfficientTradeCycle:
                 modification_results,
             )
 
-            report = self._append_report_sections(report, gtt_results, record_lines)
+            report = self._append_report_sections(report, gtt_results, alert_lines + record_lines)
             report, report_file = self._save_report("morning", report)
             logger.info(f"Morning routine complete. Report saved to {report_file}")
             if raise_errors:
@@ -939,9 +968,6 @@ class CostEfficientTradeCycle:
                 # Later steps (the GTT check counts shares held by stops) see the new stops
                 broker_state = self.fetch_broker_state(force_refresh=True)
 
-            # Check for position alerts
-            alerts = self.check_position_alerts(broker_state)
-
             # Check GTT triggers - Issue #340
             gtt_results = self.check_gtt_triggers(broker_state)
             broker_state = self._after_gtt_actions(broker_state, gtt_results)
@@ -955,6 +981,9 @@ class CostEfficientTradeCycle:
                 adjustments, modification_results = self.raise_stops(broker_state)
             else:
                 logger.info("Market closed: the stop raise is left to the morning routine")
+
+            # Position alerts against the stops after the raise
+            alerts, alert_lines = self._position_alerts(broker_state)
 
             # Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
             self._sync_trailing_stops_to_gtt()
@@ -971,7 +1000,7 @@ class CostEfficientTradeCycle:
                 modification_results,
             )
 
-            report = self._append_report_sections(report, gtt_results, record_lines)
+            report = self._append_report_sections(report, gtt_results, alert_lines + record_lines)
             report, report_file = self._save_report("evening", report)
             logger.info(f"Evening routine complete. Report saved to {report_file}")
             if raise_errors:

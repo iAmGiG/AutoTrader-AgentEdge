@@ -12,11 +12,13 @@ This document describes the enhancements made to the position management system 
 
 #### New Alert Types
 
-- `APPROACHING_TAKE_PROFIT` - Price within 2% of take profit target
-- `APPROACHING_STOP_LOSS` - Price within 2% of stop loss level
+Distances are fractions of the current price: the fall (or rise) from here that reaches the level.
+
+- `APPROACHING_STOP_LOSS` - Price within 2% above the stop
+- `LOSS_THRESHOLD_REACHED` - Price at or below the stop while the position is still open (the stop didn't fill)
+- `APPROACHING_TAKE_PROFIT` - Price within 2% below the target (only for positions with a target)
+- `PROFIT_TARGET_REACHED` - Price at or above the target while the position is still open
 - `STOP_ADJUSTED` - Stop loss order has been adjusted
-- `PROFIT_TARGET_REACHED` - Take profit level reached
-- `LOSS_THRESHOLD_REACHED` - Stop loss level reached
 
 #### Alert Severity Levels
 
@@ -26,8 +28,8 @@ This document describes the enhancements made to the position management system 
 
 #### Alert Features
 
-1. **Alert History Tracking** - Each position maintains a complete history of alerts
-2. **Alert Cooldown** - Prevents alert spam with configurable cooldown period (default: 5 minutes)
+1. **Alert History Tracking** - Each position keeps its latest 50 alerts
+2. **Alert Cooldown** - Limits how often an alert is added to the history and logged (default: 5 minutes); every check still reports the current condition
 3. **Formatted Messages** - Human-readable alert messages with emojis for quick scanning
 4. **Alert Summary** - Portfolio-wide alert summaries with counts by severity
 
@@ -49,9 +51,15 @@ Alerts run automatically in each routine:
 - **9:20 AM ET** - Morning routine checks positions
 - **3:50 PM ET** - Evening routine checks positions
 
-Only positions with an entry, a stop and a target price are checked
-(`StateReconciler.check_position_alerts`). A position whose take-profit order lapsed exits by its
-trailing stop and gets no alerts.
+Every open long position with an entry and a stop is checked (#599,
+`StateReconciler.check_position_alerts`), after the stop raise, against the stop it ends the run
+with. Take-profit alerts need a target; the live positions exit by trailing stop only and get stop
+alerts. An alert for a position with no open sell stop says "no live stop order".
+
+The tracker keeps one entry per open position, keyed by its symbol and synced to the live levels each
+run; entries for positions no longer held are dropped. (Before #599, each run saved a new entry under a
+timestamp key that was never looked up, so no alert was ever raised. The first save after the fix copies
+the old state file to `state/backups/cost_efficient_positions.<UTC time>.pre_tracker_prune.json`.)
 
 Deployment options:
 
@@ -75,15 +83,12 @@ tracker = PositionTracker(
     alert_cooldown_seconds=300  # 5 minutes between repeated alerts
 )
 
-# Create position
-position = tracker.create_position(
-    ticker="TQQQ",
-    entry_price=50.0,
-    quantity=100
-)
+# Track a position at its live levels (no target: trailing-stop-only exits)
+position = tracker.sync_position("TQQQ", entry_price=50.0, quantity=100, stop_loss_price=52.0)
 
-# Check for exit conditions/alerts
-result = tracker.check_exit_conditions(position.position_id, current_price=53.5)
+# The current condition, or None: here 52.80 is 1.52% above the stop
+result = tracker.check_exit_conditions(position.position_id, current_price=52.8)
+print(result["severity"], result["message"])  # WARNING ⚠️ TQQQ is 1.52% above its stop $52.00 ...
 
 # Get alert summary
 summary = tracker.get_alert_summary()
@@ -98,42 +103,35 @@ for alert in alerts:
 
 #### Alert Output Locations
 
-**1. Console Output (Real-time):**
-
-```text
-📊 Checking Position Alerts...
-   🔔 2 Alert(s) Generated:
-      ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
-      📊 SPY stop adjusted: $448.00 → $450.00
-```
-
-**2. Log Files (Persistent):**
+**1. Log Files (Persistent):** an alert added to a position's history is logged at its level.
 
 ```text
 # state/scheduler.log
-2025-01-10 09:30:00 WARNING ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
-2025-01-10 09:30:00 INFO 📊 SPY stop adjusted: $448.00 → $450.00
+2026-10-27 13:20:06,180 - src.trading.positions.position_tracker - WARNING - ⚠️ SPY is 0.74% above its stop $744.47 (price $750.00)
 ```
 
-**3. Daily Reports (Markdown):**
+**2. Daily Reports (Markdown):** every alert found by the routine, in its own section.
 
 ```markdown
-# reports/daily/2025-01-10_morning.md
+# reports/daily/2026-10-27_morning.md
 
 ## Position Alerts
-Total Alerts: 2 (🚨 0 Critical, ⚠️ 2 Warning, 📊 0 Info)
+Total Alerts: 1 (0 Critical, 1 Warning, 0 Info)
 
-⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
-📊 SPY stop adjusted: $448.00 → $450.00
+⚠️ SPY is 0.74% above its stop $744.47 (price $750.00)
 ```
 
-**4. In-Memory (During Execution):**
-Each position maintains complete alert history:
+**3. CLI:** "check my alerts" runs the same check against an in-memory reconcile (nothing is saved).
 
-```python
-position.alert_history = [PositionAlert(...), PositionAlert(...)]
-position.last_alert_time = datetime(2025, 1, 10, 9, 30, 0)
+```text
+🔔 Position Alerts (1)
+
+🟡 SPY: near stop @ $750.00
+   • level $744.47, 0.74% away
 ```
+
+**4. Saved State:** each position's alert history (latest 50) is saved with the tracker in
+`state/cost_efficient_positions.json` (`position_tracker_state`).
 
 ### 2. Dynamic Stop Integration
 
@@ -178,10 +176,11 @@ The trading cycle now includes alert checking:
 
 1. Fetch broker state and record the day (account, positions, fills)
 2. Reconcile local state, and re-place missing or expiring stops
-3. **Check position alerts** ← NEW
-4. Check GTT triggers
-5. Raise stops to their trailing level (evening: only while the market is open)
-6. Generate report with alerts
+3. Check GTT triggers
+4. Raise stops to their trailing level (evening: only while the market is open)
+5. **Check position alerts**, against the stops after the raise (#599). Errors here are reported
+   in the report and never fail the routine.
+6. Save local state (with the tracker) and generate the report with alerts
 
 #### Report Format
 
@@ -190,23 +189,23 @@ Reports now include a Position Alerts section:
 ```markdown
 ## Position Alerts
 
-Total Alerts: 2 (🚨 0 Critical, ⚠️ 2 Warning, 📊 0 Info)
+Total Alerts: 2 (1 Critical, 1 Warning, 0 Info)
 
-⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
-⚠️ SPY approaching stop loss! Current: $448.20, Distance: 1.50%
+⚠️ TQQQ is 1.52% above its stop $52.00 (price $52.80)
+🚨 SPY is at or below its stop $744.47 (price $740.00), still open - no live stop order
 ```
 
 ### 4. Main Trading Interface
 
-**Location**: `main.py`
+**Location**: `src/cli/tools/alert_tools.py`
 
-The main trading interface now displays alerts during the position monitoring cycle:
+"check my alerts" in the CLI shows the current alerts (see Alert Output Locations above). A
+breached level reads, for example:
 
 ```text
-📊 Checking Position Alerts...
-   🔔 2 Alert(s) Generated:
-      ⚠️ TQQQ approaching take profit! Current: $53.85, Distance: 1.85%
-      ⚠️ SPY approaching stop loss! Current: $448.20, Distance: 1.50%
+🔴 SPY: stop breached, position still open @ $740.00
+   • level $744.47, 0.60% through it
+   • no live stop order
 ```
 
 ## Configuration
@@ -215,9 +214,10 @@ The main trading interface now displays alerts during the position monitoring cy
 
 ```python
 tracker = PositionTracker(
-    take_profit_pct=0.08,           # 8% take profit
-    stop_loss_pct=0.05,             # 5% stop loss
-    alert_cooldown_seconds=300      # 5 minute cooldown
+    take_profit_pct=0.08,           # 8% take profit (create_position defaults)
+    stop_loss_pct=0.05,             # 5% stop loss (create_position defaults)
+    alert_cooldown_seconds=300,     # 5 minutes between history entries
+    warning_pct=0.02,               # alert within 2% of a level, measured from the price
 )
 ```
 
@@ -239,8 +239,10 @@ These are the `TrailingStopConfig` defaults (`config_defaults/trading_config.py`
 
 #### Methods
 
-- `create_position(ticker, entry_price, quantity)` - Create new position
-- `check_exit_conditions(position_id, current_price)` - Check for exits/alerts
+- `sync_position(ticker, entry_price, quantity, stop_loss_price, take_profit_price=None)` - Create or update the entry for an open position (key: the symbol) with its live levels
+- `prune(open_tickers)` - Drop entries for positions no longer held
+- `create_position(ticker, entry_price, quantity)` - Create a position at the default levels
+- `check_exit_conditions(position_id, current_price)` - The current condition (near or through the stop or target) or None; the cooldown only limits the history
 - `get_all_alerts(since=None)` - Get all alerts (optionally filtered)
 - `get_position_alerts(position_id)` - Get alerts for specific position
 - `get_alert_summary()` - Get portfolio-wide alert summary
@@ -251,7 +253,7 @@ These are the `TrailingStopConfig` defaults (`config_defaults/trading_config.py`
 #### New Methods
 
 - `check_position_alerts(broker_state)` - Check all positions for alerts
-- Returns `List[PositionAlertSummary]`
+- Returns `List[PositionAlertSummary]`; the routines keep the latest run's in `last_alerts`
 
 #### Enhanced Methods
 
@@ -261,18 +263,19 @@ These are the `TrailingStopConfig` defaults (`config_defaults/trading_config.py`
 
 ## Testing
 
-There is no dedicated tracked test file for the alert system yet. Run the trading unit tests with:
-
 ```bash
-python -m pytest tests/unit/trading/ -v
+python -m pytest tests/unit/trading/test_position_alerts.py tests/unit/trading/test_local_state_backup.py tests/unit/cli/test_alert_tools.py -v
 ```
 
-Test coverage:
+Test coverage (#599):
 
-- ✅ Alert creation and formatting
-- ✅ Alert cooldown functionality
-- ✅ Alert summary and history
-- ✅ Position summary with multiple positions
+- ✅ Stop alerts for positions without a target; target alerts only with a target
+- ✅ Distances measured from the price; breaches are CRITICAL and say when no stop order is open
+- ✅ One tracker entry per open position, refreshed every run; old and closed entries dropped
+- ✅ Alerts measured after the stop raise; a failing check is reported, not retried
+- ✅ The cooldown limits history only; the history is capped
+- ✅ The state file backup before the first prune, and atomic saves
+- ✅ The CLI alert tools
 
 ## Alert Execution Flow
 
@@ -289,23 +292,19 @@ Test coverage:
 3. Broker State Fetch (1 API call)
    └─> Get all positions with current prices
 
-4. Alert Check Loop
-   For each position:
-   ├─> Calculate distance to take profit (TP)
-   ├─> Calculate distance to stop loss (SL)
-   ├─> If within 2% of TP:
-   │   └─> Check cooldown → Generate APPROACHING_TP alert
-   ├─> If within 2% of SL:
-   │   └─> Check cooldown → Generate APPROACHING_SL alert
-   ├─> If TP reached:
-   │   └─> Generate PROFIT_TARGET_REACHED alert (CRITICAL)
-   └─> If SL reached:
-       └─> Generate LOSS_THRESHOLD_REACHED alert (CRITICAL)
+4. Alert Check (after the stop raise)
+   For each open long position with an entry and a stop:
+   ├─> Sync the tracker entry to the live stop (and target, if any)
+   ├─> At or below the stop → LOSS_THRESHOLD_REACHED (CRITICAL)
+   ├─> Within 2% above the stop → APPROACHING_SL (WARNING)
+   ├─> With a target: at or above it → PROFIT_TARGET_REACHED (CRITICAL)
+   └─> With a target: within 2% below it → APPROACHING_TP (WARNING)
+   Then drop tracker entries for positions no longer held.
 
-5. Alert Cooldown Check (Anti-Spam)
-   ├─> Has 5+ minutes passed since last alert for this position?
-   ├─> Yes: Create alert, update last_alert_time
-   └─> No: Skip (prevents spam from price fluctuations)
+5. Alert History (Anti-Spam)
+   ├─> Has 5+ minutes passed since the last history entry for this position?
+   ├─> Yes: Add to history, log it, update last_alert_time
+   └─> No: Not added (the routine's report still lists the alert)
 
 6. Alert Storage & Display
    ├─> Add to position.alert_history[]
@@ -335,13 +334,13 @@ Test coverage:
 **Problem:** Stock price fluctuates near threshold
 
 ```text
-09:30:00 - Price: $53.85 (1.85% from TP) → ⚠️ Alert sent
-09:30:30 - Price: $53.80 (1.95% from TP) → ⏭️ Skipped (cooldown)
-09:31:00 - Price: $53.90 (1.75% from TP) → ⏭️ Skipped (cooldown)
-09:35:01 - Price: $53.95 (1.25% from TP) → ⚠️ Alert sent (5 min elapsed)
+09:30:00 - Price: $52.80 (1.52% above the stop) → ⚠️ reported, added to history
+09:30:30 - Price: $52.70 (1.33% above the stop) → ⚠️ reported, not added (cooldown)
+09:35:01 - Price: $52.60 (1.14% above the stop) → ⚠️ reported, added to history (5 min elapsed)
 ```
 
-**Result:** You get updates every 5 minutes max, not every price tick.
+**Result:** Every check reports the current condition; the history and log get at most one entry
+per position every 5 minutes. The routines run twice a day, so for them the cooldown rarely matters.
 
 ## Benefits for Live Trading
 
@@ -416,6 +415,14 @@ Potential improvements for future iterations:
 7. **Alert Dashboard** - Web UI for viewing alert history and current status
 
 ## Changelog
+
+### Issue #599 (Oct 2026)
+
+- Positions without a target get stop alerts; distances are measured from the price
+- Breaches (price through a level with the position still open) are reported as CRITICAL
+- One tracker entry per open position (the old timestamp keys were never looked up, so no alert
+  was raised); stale entries dropped after a one-time backup of the state file
+- Alerts are checked once per routine, after the stop raise; atomic state saves
 
 ### v1.0.0 (Issue #306)
 

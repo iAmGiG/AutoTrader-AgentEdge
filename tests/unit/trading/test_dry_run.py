@@ -15,6 +15,7 @@ import pytest
 
 import src.trading.scheduling.trading_cycle as cycle_module
 from src.trading.orders.dry_run import DRY_RUN_STATUS, DryRunOrderManager
+from src.trading.positions.position_tracker import PositionTracker
 from src.trading.scheduling import daily_scheduler, scheduler_state
 from src.trading.scheduling.daily_scheduler import DailyScheduler
 from src.trading.scheduling.scheduler_state import SchedulerStateManager
@@ -167,6 +168,22 @@ def test_a_dry_run_sends_no_orders_and_saves_nothing(cycle, routine, tmp_path):
     assert "QQQ: would raise stop $691.00 -> $698.77" in report
     assert "dry run: SPY place_order not executed" in report
     assert "Dry run: daily records not saved" in report
+
+
+def test_a_dry_run_leaves_the_position_tracker_as_it_was(cycle):
+    """The real alert check syncs and prunes the tracker; a dry run puts it back (#599)."""
+    tracker = PositionTracker(take_profit_pct=0.08, stop_loss_pct=0.05)
+    tracker.sync_position("AAPL", 230.0, 1, 220.0)  # no longer held: the check drops it
+    tracker.alert_counter = 3
+    before = copy.deepcopy(tracker.to_dict())
+    cycle.position_tracker = tracker
+    cycle.reconciler.position_tracker = tracker
+    del cycle.check_position_alerts  # the real check
+
+    cycle.morning_routine(raise_errors=True, dry_run=True)
+
+    assert [a.symbol for a in cycle.last_alerts] == ["SPY"]  # 744.50 is 0.02% above 744.34
+    assert tracker.to_dict() == before
 
 
 def test_the_same_run_without_dry_run_acts(cycle, tmp_path):

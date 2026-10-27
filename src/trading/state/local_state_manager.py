@@ -5,14 +5,43 @@ Extracted from trading_cycle.py as part of #439 refactoring.
 Handles loading/saving position state including position tracker history.
 """
 
+import contextlib
 import json
 import logging
 import os
+import shutil
+import tempfile
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from src.trading.positions.position_tracker import position_key
 from src.utils.date_utils import now_iso
 
 logger = logging.getLogger(__name__)
+
+
+def _write_json_atomic(path: str, data: Dict[str, Any]) -> None:
+    """Write JSON to a temp file beside path, then rename it over path, so a crash or a
+    full disk mid-write leaves the old file whole."""
+    fd, tmp_path = tempfile.mkstemp(
+        dir=os.path.dirname(path) or ".", prefix=f".{os.path.basename(path)}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
+
+
+def _has_old_tracker_keys(state: Dict[str, Any]) -> bool:
+    """Whether the saved tracker has entries under keys other than position_key(ticker)."""
+    tracked = (state.get("position_tracker_state") or {}).get("positions") or {}
+    return any(key != position_key(str(pos.get("ticker", ""))) for key, pos in tracked.items())
 
 
 class LocalStateManager:
@@ -33,6 +62,8 @@ class LocalStateManager:
         """
         self.state_file = state_file
         self.position_tracker = position_tracker
+        # Set when the file on disk holds tracker entries the next save drops (old keys)
+        self._backup_before_save = False
 
         # Ensure state directory exists
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
@@ -63,6 +94,7 @@ class LocalStateManager:
             try:
                 with open(self.state_file, "r") as f:
                     state = json.load(f)
+                self._backup_before_save = _has_old_tracker_keys(state)
 
                 # Restore position tracker with alert history if available
                 if self.position_tracker and "position_tracker_state" in state:
@@ -83,7 +115,13 @@ class LocalStateManager:
         return {"positions": {}, "last_update": None, "discrepancies": []}
 
     def save(self):
-        """Save local state to JSON including position tracker with alert history."""
+        """
+        Save local state to JSON including position tracker with alert history.
+
+        The write is atomic. The first save after loading a file whose tracker has entries
+        under old keys (which the routines now drop, #599) first copies that file to
+        <state dir>/backups/; if the copy fails, nothing is saved.
+        """
         self._state["last_update"] = now_iso()
 
         # Persist position tracker state (including alert history)
@@ -91,13 +129,28 @@ class LocalStateManager:
             self._state["position_tracker_state"] = self.position_tracker.to_dict()
 
         try:
-            with open(self.state_file, "w") as f:
-                json.dump(self._state, f, indent=2)
+            if self._backup_before_save:
+                self._backup_state_file("pre_tracker_prune")
+                self._backup_before_save = False
+            _write_json_atomic(self.state_file, self._state)
 
             position_count = len(self.position_tracker.positions) if self.position_tracker else 0
             logger.debug(f"Saved local state with {position_count} tracked positions")
         except IOError as e:
             logger.error(f"Failed to save state: {e}")
+
+    def _backup_state_file(self, tag: str) -> Optional[str]:
+        """Copy the state file on disk to <state dir>/backups/<name>.<UTC time>.<tag>.json."""
+        if not os.path.exists(self.state_file):
+            return None
+        backup_dir = os.path.join(os.path.dirname(self.state_file) or ".", "backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        stem = os.path.splitext(os.path.basename(self.state_file))[0]
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        backup = os.path.join(backup_dir, f"{stem}.{stamp}.{tag}.json")
+        shutil.copy2(self.state_file, backup)
+        logger.info(f"Backed up {self.state_file} to {backup} before saving")
+        return backup
 
     def reload(self) -> Dict[str, Any]:
         """Reload state from disk."""

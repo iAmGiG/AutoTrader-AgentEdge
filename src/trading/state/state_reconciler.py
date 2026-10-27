@@ -668,13 +668,19 @@ class StateReconciler:
             return None
         return round(entry_price * (1 - self.config.get_risk_config("stop_loss")), 2)
 
-    def check_position_alerts(  # noqa: C901
+    def check_position_alerts(
         self,
         broker_state: Dict[str, Any],
         local_state: Dict[str, Any],
     ) -> List[PositionAlertSummary]:
         """
-        Check all positions for exit alerts (approaching TP/SL).
+        Alerts for open long positions: near or through the stop, and near or through the
+        target where one exists (#599). A position through a level is still open, so its
+        order didn't fill; details["live_stop"] says whether a sell stop is open for it.
+
+        The tracker keeps one entry per open position, synced to the levels in local
+        state (after reconcile and any raise, the broker's live stop and target); entries
+        for anything else are dropped.
 
         Args:
             broker_state: Current broker state with positions
@@ -689,56 +695,62 @@ class StateReconciler:
 
         alerts = []
         positions = local_state.get("positions", {})
-
         for symbol, broker_pos in broker_state["positions"].items():
-            if symbol not in positions:
-                continue  # Skip unknown positions
-
-            local_pos = positions[symbol]
-            entry_price = float(local_pos.get("entry_price", 0))
-            current_price = broker_pos["current_price"]
-            take_profit_price = local_pos.get("target_price")
-            stop_loss_price = local_pos.get("stop_price")
-
-            if not entry_price or not take_profit_price or not stop_loss_price:
-                continue  # Skip positions without complete data
-
-            # Create or update position in tracker
-            position_id = f"{symbol}_{entry_price}"
             try:
-                if position_id not in self.position_tracker.positions:
-                    # Create position for tracking
-                    self.position_tracker.create_position(
-                        ticker=symbol, entry_price=entry_price, quantity=broker_pos["quantity"]
-                    )
-                    # Manually set TP/SL prices to match configured values
-                    if position_id in self.position_tracker.positions:
-                        position = self.position_tracker.positions[position_id]
-                        position.take_profit_price = take_profit_price
-                        position.stop_loss_price = stop_loss_price
-
-                # Check for exit conditions/alerts
-                exit_check = self.position_tracker.check_exit_conditions(position_id, current_price)
-
-                if exit_check and exit_check.get("recommendation") == "ALERT":
-                    # Get the most recent alert for this position
-                    if position_id in self.position_tracker.positions:
-                        position = self.position_tracker.positions[position_id]
-                        if position.alert_history:
-                            recent_alert = position.alert_history[-1]
-                            alerts.append(
-                                PositionAlertSummary(
-                                    symbol=symbol,
-                                    alert_type=recent_alert.alert_type.value,
-                                    severity=recent_alert.severity,
-                                    message=recent_alert.format_message(),
-                                    timestamp=recent_alert.timestamp.isoformat(),
-                                    current_price=current_price,
-                                    details=recent_alert.details,
-                                )
-                            )
-            except (KeyError, Exception) as e:
-                logger.warning(f"Position tracker error for {symbol}: {e}")
+                alert = self._position_alert(
+                    symbol, broker_pos, positions.get(symbol), broker_state
+                )
+            except Exception as e:  # one position's error doesn't cost the others' alerts
+                logger.warning(f"Position alert check failed for {symbol}: {e}")
+                continue
+            if alert is not None:
+                alerts.append(alert)
+        self.position_tracker.prune(broker_state["positions"])
 
         logger.info(f"Found {len(alerts)} position alerts")
         return alerts
+
+    def _position_alert(
+        self,
+        symbol: str,
+        broker_pos: Dict[str, Any],
+        local_pos: Optional[Dict[str, Any]],
+        broker_state: Dict[str, Any],
+    ) -> Optional[PositionAlertSummary]:
+        """One position's alert, if any (long positions with an entry and a stop)."""
+        if not local_pos or "short" in str(broker_pos.get("side", "")).lower():
+            return None
+        quantity = int(broker_pos.get("quantity", 0))
+        entry_price = float(local_pos.get("entry_price") or 0)
+        stop_price = local_pos.get("stop_price")
+        if quantity <= 0 or not entry_price or not stop_price:
+            return None
+        target_price = local_pos.get("target_price")
+
+        position = self.position_tracker.sync_position(
+            symbol,
+            entry_price,
+            quantity,
+            float(stop_price),
+            float(target_price) if target_price else None,
+        )
+        current_price = float(broker_pos["current_price"])
+        condition = self.position_tracker.check_exit_conditions(position.position_id, current_price)
+        if condition is None:
+            return None
+        details = dict(condition["details"])
+        details["live_stop"] = bool(
+            _protective_stops(broker_state.get("orders", {}).get(symbol, []))
+        )
+        message = condition["message"]
+        if not details["live_stop"]:
+            message += " - no live stop order"
+        return PositionAlertSummary(
+            symbol=symbol,
+            alert_type=condition["alert_type"].value,
+            severity=condition["severity"],
+            message=message,
+            timestamp=now_iso(),
+            current_price=current_price,
+            details=details,
+        )
