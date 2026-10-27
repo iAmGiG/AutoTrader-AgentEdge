@@ -27,7 +27,7 @@ OptionsCommander (formerly RH2MAS) is a human-in-loop algorithmic trading platfo
 | **Order Management** | ✅ Complete | Bracket, stop, trailing orders | Full lifecycle support |
 | **Trading Cycle** | ✅ Optimized | 90% fewer API calls | Cost-efficient batching |
 | **Daily Scheduler** | ✅ In use (cron) | Morning 9:20, evening 3:50 ET | Raises, re-places and renews stops (#586, #596) |
-| **Market Data** | ✅ Complete | Alpaca + Polygon + Alpha Vantage | Multi-source with fallback |
+| **Market Data** | ✅ Complete | Alpaca + Alpha Vantage | Fallback (Polygon removed, #607) |
 | **Documentation** | ✅ Complete | Restructured with numbering | Presentation-ready |
 
 ### 🚧 Phase 2 Agents in Development (Nov 2025)
@@ -61,7 +61,7 @@ OptionsCommander (formerly RH2MAS) is a human-in-loop algorithmic trading platfo
 - [x] Position and order management
 - [x] Cost-efficient trading cycle (90% fewer API calls)
 - [x] main.py CLI interface
-- [x] Market data pipeline (Alpaca, Polygon, Alpha Vantage)
+- [x] Market data pipeline (Alpaca, Alpha Vantage; Polygon removed in Oct 2026)
 - [x] Comprehensive documentation restructure
 - [x] Test coverage (35/35 passing)
 

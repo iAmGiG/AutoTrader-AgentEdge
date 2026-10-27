@@ -22,15 +22,8 @@ except ImportError:
     AlpacaMarketData = None
     logging.warning("Alpaca market data not available")
 
-# Fallback sources (optional)
-try:
-    from .polygon_historical_tool import PolygonHistoricalData
-
-    POLYGON_AVAILABLE = True
-except ImportError:
-    POLYGON_AVAILABLE = False
-    PolygonHistoricalData = None
-
+# Fallback source (optional). Polygon was removed in Oct 2026 (#607): its client is
+# frozen and access ended; data cached from it earlier is still served.
 try:
     from .alpha_vantage_market import AlphaVantageMarketTool
 
@@ -56,12 +49,15 @@ def fetch_unified_market_data(
         symbol: Stock symbol
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
-        source: Data source ("auto", "alpaca", "polygon", "alpha_vantage")
+        source: Data source ("auto", "alpaca", "alpha_vantage")
         timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
     Returns:
         DataFrame with OHLCV data
     """
+    if source == "polygon":
+        raise ValueError("Polygon was removed as a data source (#607); use 'auto' or 'alpaca'")
+
     # Check if requesting current trading day - skip cache during market hours
     from src.utils.date_utils import get_datetime_now
 
@@ -77,21 +73,15 @@ def fetch_unified_market_data(
 
     # Cache miss - fetch from appropriate source
     if source == "auto":
-        # Priority order: Alpaca -> Polygon -> Alpha Vantage
+        # Priority order: Alpaca -> Alpha Vantage
         data = _fetch_from_alpaca(symbol, start_date, end_date, timeframe)
         if data is not None and not data.empty:
             source = "alpaca"
         else:
-            data = _fetch_from_polygon(symbol, start_date, end_date, timeframe)
-            if data is not None and not data.empty:
-                source = "polygon"
-            else:
-                data = _fetch_from_alpha_vantage(symbol, start_date, end_date, timeframe)
-                source = "alpha_vantage"
+            data = _fetch_from_alpha_vantage(symbol, start_date, end_date, timeframe)
+            source = "alpha_vantage"
     elif source == "alpaca":
         data = _fetch_from_alpaca(symbol, start_date, end_date, timeframe)
-    elif source == "polygon":
-        data = _fetch_from_polygon(symbol, start_date, end_date, timeframe)
     elif source == "alpha_vantage":
         data = _fetch_from_alpha_vantage(symbol, start_date, end_date, timeframe)
     else:
@@ -141,24 +131,6 @@ def _fetch_from_alpaca(
         return None
     except Exception as e:
         logger.debug(f"Alpaca fetch failed for {symbol}: {e}")
-        return None
-
-
-def _fetch_from_polygon(
-    symbol: str, start_date: str, end_date: str, timeframe: str = "1Day"
-) -> Optional[pd.DataFrame]:
-    """Fetch from Polygon.io API (fallback source)."""
-    if not POLYGON_AVAILABLE:
-        logger.debug("Polygon not available")
-        return None
-
-    try:
-        polygon_client = PolygonHistoricalData()
-        # Note: Polygon timeframe support may need adjustment
-        data = polygon_client.fetch_historical_prices(symbol, start_date, end_date)
-        return data
-    except Exception as e:
-        logger.warning(f"Polygon fetch failed for {symbol}: {e}")
         return None
 
 

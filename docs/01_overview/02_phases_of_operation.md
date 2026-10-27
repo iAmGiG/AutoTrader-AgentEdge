@@ -38,7 +38,7 @@ Multi-provider data normalization
 - Converts provider-specific formats to unified schema
 - Standardized column names and data types
 - Timezone handling and timestamp conversion
-- Consistent interface across Alpaca, Polygon, Alpha Vantage
+- Consistent interface across Alpaca and Alpha Vantage
 
 ### Data Flow
 
@@ -46,7 +46,7 @@ Multi-provider data normalization
 2. **Cache check**: TradingCacheManager queries SQLite database (~5-10ms)
 3. **Cache hit**: Return cached data (90%+ of requests)
 4. **Cache miss**: Fetch from Alpaca SDK, normalize, cache in SQLite, return
-5. **Multi-provider fallback**: Polygon → Alpha Vantage if needed
+5. **Fallback**: Alpha Vantage if Alpaca has no data
 
 ### Performance Metrics
 
@@ -392,7 +392,7 @@ Order Execution
 ### Error Handling
 
 - **Retry logic**: 3 attempts with exponential backoff
-- **Fallback providers**: Polygon → Alpha Vantage → cached data
+- **Fallback providers**: Alpha Vantage → cached data
 - **Graceful degradation**: Continue with cached data if API unavailable
 
 ---

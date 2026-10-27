@@ -12,8 +12,6 @@ dependencies = [
     "autogen-ext[openai]>=0.7.5",  # OpenAIChatCompletionClient; brings openai, tiktoken
     # Trading APIs
     "alpaca-py>=0.43.2",
-    # Market data sources
-    "polygon-api-client>=1.16.3",
     # Data processing. pandas 3 reproduces every committed research result (checked
     # 2026-10-20 against pandas 2.3) and is the only pandas with Python 3.15 wheels.
     "pandas>=2.2.0,<4",

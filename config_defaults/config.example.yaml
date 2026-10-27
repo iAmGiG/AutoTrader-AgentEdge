@@ -24,7 +24,6 @@ GOOGLE_SEARCH_API_KEY: "your-google-search-api-key"
 GOOGLE_SEARCH_ENGINE_ID: "your-search-engine-id"
 
 # Market Data
-POLYGON_IO: "your-polygon-io-key"
 NASDAQLINK: "your-nasdaq-link"
 
 # Trading Broker (Alpaca)

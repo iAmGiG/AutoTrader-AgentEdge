@@ -20,7 +20,7 @@ LOOKBACK_DAYS = 14  # calendar days fetched before the target date (enough for 5
 def _load_daily_bars(symbol: str, date: str) -> pd.DataFrame:
     """Daily bars up to and including ``date`` via the unified data path.
 
-    Uses cache first, then Alpaca, Polygon and Alpha Vantage (``fetch_unified_market_data``).
+    Uses cache first, then Alpaca and Alpha Vantage (``fetch_unified_market_data``).
     Normalizes column case, drops duplicate dates and excludes bars after ``date``.
     """
     end = pd.Timestamp(date)
@@ -75,7 +75,7 @@ def fetch_market_context_data(
             try:
                 # Bars up to and including the target date (no later bars: no look-ahead)
                 data = _load_daily_bars(symbol, date)
-                data_source = "unified (cache, Alpaca, Polygon, Alpha Vantage)"
+                data_source = "unified (cache, Alpaca, Alpha Vantage)"
 
                 if data.empty:
                     logger.warning(f"No market data available for {symbol} up to {date}")

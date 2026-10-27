@@ -110,14 +110,14 @@ llm_service = OpenAIService(
 **RealVoterStrategy** - Production MACD+RSI analysis:
 
 - Wraps the production VoterAgent
-- Fetches real market data (Alpaca, Polygon, Alpha Vantage)
+- Fetches real market data (Alpaca, Alpha Vantage)
 - MACD(13/34/8) + RSI(14) with Fibonacci parameters
 - Voting logic: Strong consensus, weak signal, conflict detection
 
 **Market Data Fetching**:
 
 - 60-day lookback period (configurable)
-- Multi-source fallback (Alpaca → Polygon → Alpha Vantage)
+- Fallback (Alpaca → Alpha Vantage)
 - Graceful error handling with HOLD signal on failure
 
 **Signal Generation**:

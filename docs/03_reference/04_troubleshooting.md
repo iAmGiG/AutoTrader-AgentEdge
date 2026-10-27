@@ -107,8 +107,7 @@
 ### AutoGen Agent Market Data Sources
 
 - **Primary**: Alpaca Markets (official SDK, real-time and historical)
-- **Secondary**: Polygon.io API (historical data, used by VoterAgent for MACD/RSI)
-- **Tertiary**: Alpha Vantage (fallback, 25 calls/day limit)
+- **Fallback**: Alpha Vantage (25 calls/day limit). Polygon.io was removed in Oct 2026 (#607)
 - **Cache**: TradingCacheManager (SQLite) reduces API calls by 90%+ with 8-10x query performance
 
 ### AutoGen Agent Date/Time Issues
@@ -128,7 +127,6 @@
 
 ### API Rate Limits (Current System)
 
-- **Polygon API**: 5 calls/minute (primary data source for VoterAgent)
 - **Alpaca API**: 200 requests/minute (for live trading integration)
 - **Cache Strategy**: Intelligent caching reduces API usage by 90%+
 - **Solution**: Use cache-first approach in all AutoGen agents

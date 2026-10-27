@@ -11,7 +11,7 @@ AutoTrader integrates multiple data providers with automatic fallback and cachin
 | **Alpaca Markets** | Primary market data + orders | 200 req/min | ✅ Production |
 | **Finnhub** | Stock prices, news | 60 req/min | ✅ Available |
 | **Alpha Vantage** | Fallback prices, options | 75 req/min (freemium) | ✅ Available |
-| **Polygon.io** | Fallback market data | Subscription | ⚠️ Limited |
+| **Polygon.io** | Removed Oct 2026 (#607) | — | ❌ Removed |
 | **FRED** | Macro economic data | Unlimited | ✅ Available |
 | **FMP** (Financial Modeling Prep) | Fundamentals, earnings | 250 req/day | ✅ Available |
 
@@ -184,7 +184,9 @@ prices = data["Time Series (Daily)"]
 
 ## Polygon.io
 
-**Status**: ⚠️ Subscription required
+**Status**: ❌ Removed in Oct 2026 (#607). Its Python client was frozen (Polygon became Massive)
+and access ended; data cached from it earlier is still served from the cache. The notes below
+are kept for reference.
 **Official Docs**: [https://polygon.io/docs](https://polygon.io/docs)
 
 ### Capabilities
@@ -209,7 +211,7 @@ prices = data["Time Series (Daily)"]
 
 ### Current Usage
 
-AutoTrader has Polygon configured as fallback but subscription limits usage.
+None: the fallback after Alpaca is Alpha Vantage.
 
 ---
 

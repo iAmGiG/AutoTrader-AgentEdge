@@ -65,7 +65,7 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 
 - Real-time data via Alpaca SDK
 - Intelligent caching (>90% API call reduction)
-- Multi-provider normalization (Polygon, Alpha Vantage fallbacks)
+- Multi-provider normalization (Alpha Vantage fallback)
 - AutoGen tool wrappers for agent access
 
 **Order Types**:

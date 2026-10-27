@@ -115,7 +115,6 @@ pip install -e .
 Create `config/config.yaml` with API credentials:
 
 ```yaml
-POLYGON_IO: "your_key"           # Required: Market data
 ALPHA_VANTAGE_KEY: "your_key"    # Required: Fallback data
 ALPACA_PAPER_API_KEY: "your_key" # Required: Paper trading
 ALPACA_PAPER_SECRET: "your_key"  # Required: Paper trading

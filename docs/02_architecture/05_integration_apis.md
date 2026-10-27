@@ -58,7 +58,7 @@ Complete integration with Alpaca Markets providing both market data acquisition 
 #### Data Normalization
 
 - Converts SDK data models to consistent schema
-- Unified format across all data providers (Alpaca, Polygon, Alpha Vantage)
+- Unified format across all data providers (Alpaca, Alpha Vantage)
 - Automatic timezone handling and timestamp conversion
 - Standardized column names and data types
 

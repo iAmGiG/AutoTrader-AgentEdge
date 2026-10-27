@@ -38,7 +38,7 @@ class RealVoterStrategy(StrategyAnalyzer):
 
     Features:
     - Production VoterAgent (MACD+RSI voting)
-    - Real market data fetching (Alpaca, Polygon, Alpha Vantage)
+    - Real market data fetching (Alpaca, Alpha Vantage)
     - MACD(13/34/8) + RSI(14) voting system
     - Confidence-based position sizing
     """
