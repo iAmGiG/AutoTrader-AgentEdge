@@ -19,9 +19,11 @@ valid, BH is approximate.
 The #539 exit-rule comparisons (trailing exits against the fixed bracket, in the live-rules
 simulator) are tests of a trading rule, not of a GEX effect, so they are corrected as a family of
 their own and reported under ``exit_rules``; the GEX family's numbers do not change. The same
-tests pooled with the GEX family are reported too. Every paired comparison the runner computed
-is in the family (periods, costs, sizings and the no-signal-exit variant overlap, so Holm stays
-valid and BH is approximate).
+tests pooled with the GEX family are reported too. Every comparison in the runner's
+``paired_tests`` is in the family (periods, costs, sizings and the no-signal-exit variant overlap,
+so Holm stays valid and BH is approximate). The runner's morning-raise sensitivity runs the same
+hypotheses again under another assumption (the open standing in for the morning routine's
+pre-market price), so its comparisons are not tests of their own and stay out of the family.
 
 Usage:
     ~/miniconda3/envs/OptionsCommander/bin/python scripts/research/multiple_testing_audit.py
@@ -363,8 +365,9 @@ def exit_rule_family(exit_rows, gex_rows):
     return {
         "issue": "#539",
         "description": "Trailing exits against the fixed bracket (live-rules simulator)",
-        "family": "every paired comparison in trailing_vs_bracket.json (Newey-West test of the "
-        "mean daily return difference)",
+        "family": "every comparison in paired_tests of trailing_vs_bracket.json (Newey-West test "
+        "of the mean daily return difference); its morning-raise sensitivity repeats the same "
+        "hypotheses under another assumption and is not in the family",
         "dependence_note": "the comparisons share signals and overlap in periods, costs and "
         "sizings; Holm valid, BH approximate",
         "summary": summary,

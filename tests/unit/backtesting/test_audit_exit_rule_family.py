@@ -44,6 +44,34 @@ def test_collector_reads_the_runners_paired_tests(audit, monkeypatch, tmp_path):
     assert rows[0]["source"] == "trailing_vs_bracket.json"
 
 
+def test_collector_leaves_out_the_morning_raise_sensitivity(audit, monkeypatch, tmp_path):
+    path = tmp_path / "trailing_vs_bracket.json"
+    _exit_json(path, [0.5, 0.04, 0.9])
+    data = json.loads(path.read_text())
+    sensitivity_test = {
+        "comparison": "trailing+morning - bracket",
+        "variant": "moderate",
+        "period": "full",
+        "cost_bps": 5.0,
+        "return_test": {"mean_daily_diff": -1e-4, "t_statistic": -2.5, "p_value": 0.01},
+    }
+    data["morning_raise_sensitivity"] = {
+        "paired_tests_vs_bracket": [sensitivity_test],
+        "effect_of_morning_raise": [
+            dict(sensitivity_test, comparison="trailing+morning - trailing")
+        ],
+    }
+    path.write_text(json.dumps(data))
+    monkeypatch.setattr(audit, "STRATEGY_RESULTS_DIR", tmp_path)
+    rows = []
+
+    audit.collect_trailing_exits(rows)
+
+    # only the runner's paired_tests: the sensitivity repeats those hypotheses, it adds none
+    assert [r["p_value"] for r in rows] == [0.5, 0.04, 0.9]
+    assert {r["study"] for r in rows} == {"#539 trailing - bracket (moderate)"}
+
+
 def test_collector_tolerates_a_missing_file(audit, monkeypatch, tmp_path):
     monkeypatch.setattr(audit, "STRATEGY_RESULTS_DIR", tmp_path)
     rows = []

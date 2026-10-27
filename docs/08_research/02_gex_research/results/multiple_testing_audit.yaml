@@ -1,4 +1,4 @@
-run_timestamp: '2026-10-27T16:27:00.716654'
+run_timestamp: '2026-10-27T19:57:45.233549'
 issue: '#576'
 description: Multiple-testing audit of lag-1 GEX hypothesis tests
 methodology:
@@ -2992,8 +2992,9 @@ tests:
 exit_rules:
   issue: '#539'
   description: Trailing exits against the fixed bracket (live-rules simulator)
-  family: every paired comparison in trailing_vs_bracket.json (Newey-West test of the mean daily return
-    difference)
+  family: every comparison in paired_tests of trailing_vs_bracket.json (Newey-West test of the mean daily
+    return difference); its morning-raise sensitivity repeats the same hypotheses under another assumption
+    and is not in the family
   dependence_note: the comparisons share signals and overlap in periods, costs and sizings; Holm valid,
     BH approximate
   summary:

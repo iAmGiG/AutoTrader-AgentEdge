@@ -29,21 +29,35 @@ Exit modes (``LiveRules.exit_mode``, #539). Entries, sizing, limits and SELL-sig
 are the same in all three; only the protective orders differ:
 
 - ``bracket`` (default; the #574 baseline): fixed stop -5% / target +8% from the fill.
-- ``trailing`` (how the live positions exit today, their take-profit legs having lapsed):
-  the -5% stop, raised by the routines' trailing tiers, and no target.
-- ``trailing_target`` (the live state before the 8% legs lapsed): trailing tiers plus
-  the +8% target.
+- ``trailing`` (the legacy positions, whose 8% take-profit legs lapsed at Alpaca's 90-day
+  GTC limit and were not re-placed): the -5% stop, raised by the routines' trailing tiers,
+  and no target.
+- ``trailing_target`` (new CLI entries: they still go out as bracket orders with an 8%
+  take-profit leg, which lives until day 90, longer than the 7-14 day holds simulated):
+  trailing tiers plus the +8% target.
+
+SELL-signal exits are a #574 baseline convention: nothing in the live system sells on a
+signal, so ``signal_exit=False`` is the variant that matches live exits.
 
 The raise is the live one: ``StateReconciler._trailing_level`` on a ``TrailingStopManager``
 built as ``CostEfficientTradeCycle`` builds it (tiers, never down, ``MIN_STOP_GAP`` floor,
 $0.01 rule). On daily bars it is one raise a day from the close, as the evening routine
 (15:50 ET, ten minutes before the close) does it, and a raised stop applies from the next
-session: the day's own range is checked against the stop set the evening before. The
-morning routine raises from about the previous close, which the evening raise has
-already used, so it adds nothing on daily bars. A raised stop that is hit exits as
-``trail`` (``trail_gap`` on a gap), a stop never raised as ``stop`` / ``stop_gap``.
-``signal_exit=False`` switches the SELL-signal exits off, so that positions leave only
-through their stops and targets.
+session: the day's own range is checked against the stop set the evening before. A raised
+stop that is hit exits as ``trail`` (``trail_gap`` on a gap), a stop never raised as
+``stop`` / ``stop_gap``. ``signal_exit=False`` switches the SELL-signal exits off, so that
+positions leave only through their stops and targets.
+
+The morning routine (09:20 ET) raises too, from the broker's price at that time. That is a
+pre-market print, not the previous close, so on a gap day it differs from the price the
+evening raise used and the raise is not redundant. Daily bars have no pre-market price, so
+the default leaves the morning raise out. ``morning_raise=True`` is a sensitivity that
+stands the day's open in for the 09:20 price: stops are raised from the open before the
+day's range is checked, so a gap-up's gain is locked in ahead of the session and a
+reversal can take it. The open is the case in which the gap is fully priced by 09:20; a
+thin pre-market, or none, leaves the price nearer the previous close, where the raise adds
+nothing. The omitted effect runs against the trailing modes (more trail exits, lower
+Sharpe): scripts/research/trailing_vs_bracket.py measures it.
 
 Prices are split-adjusted (ResearchBacktester); dividends are not included.
 """
@@ -73,6 +87,7 @@ class LiveRules:
     initial_capital: float = 100_000.0
     exit_mode: str = "bracket"  # bracket | trailing | trailing_target (module docstring)
     signal_exit: bool = True  # a SELL signal closes the position at the open
+    morning_raise: bool = False  # sensitivity: also raise stops from the open (module docstring)
 
 
 def compute_signals(
@@ -172,7 +187,8 @@ class LiveTrailingStop:
             symbol: Ticker (keys the manager's state; no state is kept between calls)
             entry: Entry price (the open the position filled at)
             stop: The stop in force
-            price: The price the routine sees (the day's close)
+            price: The price the routine sees (the close for the evening routine; the
+                open stands in for the 09:20 pre-market price in the morning sensitivity)
             scale: Raw price per adjusted price on this day (1.0 if prices are raw)
         """
         # The live prices are Python floats, and so is their cent rounding: round(17.555, 2)
@@ -215,6 +231,8 @@ def simulate(  # noqa: C901
     """
     if rules.exit_mode not in EXIT_MODES:
         raise ValueError(f"exit_mode {rules.exit_mode!r} is not one of {EXIT_MODES}")
+    if rules.morning_raise and rules.exit_mode == "bracket":
+        raise ValueError("morning_raise needs a trailing exit mode: the bracket never raises")
     trailing = LiveTrailingStop() if rules.exit_mode != "bracket" else None
     has_target = rules.exit_mode != "trailing"
     cost = rules.cost_bps / 1e4
@@ -274,8 +292,30 @@ def simulate(  # noqa: C901
             }
         )
 
+    def raise_stops(day, bars, price_field):
+        """Each held position's stop moves to its trailing level at the bar's open or close."""
+        for symbol, pos in positions.items():
+            bar = bars[symbol]
+            if bar is None:
+                continue
+            level = trailing.raised_stop(
+                symbol,
+                pos["ref_price"],
+                pos["stop"],
+                float(bar[price_field]),
+                share_scale.get(symbol, {}).get(day, 1.0),
+            )
+            if level is not None:
+                pos["stop"] = level
+                pos["raised"] = True
+
     for day in calendar:
         bars = {sym: bar_on(sym, day) for sym in prices}
+        if trailing is not None and rules.morning_raise:
+            # The morning routine raises before the open, so the day's range meets the raised
+            # stop. The open stands in for the pre-market price; the positions bought at this
+            # open are not there yet
+            raise_stops(day, bars, "open")
         # Book as the pre-market decision sees it: exits at or after the open come later
         book = {s: p["qty"] * last_close.get(s, p["entry_price"]) for s, p in positions.items()}
         buying_power = cash
@@ -343,20 +383,7 @@ def simulate(  # noqa: C901
         if trailing is not None:
             # The evening routine raises each stop from the close; the new stop is first
             # in force on the next session (the day's range was checked against the old one)
-            for symbol, pos in positions.items():
-                bar = bars[symbol]
-                if bar is None:
-                    continue
-                level = trailing.raised_stop(
-                    symbol,
-                    pos["ref_price"],
-                    pos["stop"],
-                    float(bar.close),
-                    share_scale.get(symbol, {}).get(day, 1.0),
-                )
-                if level is not None:
-                    pos["stop"] = level
-                    pos["raised"] = True
+            raise_stops(day, bars, "close")
 
         for symbol, bar in bars.items():
             if bar is not None:

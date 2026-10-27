@@ -232,13 +232,99 @@ def test_routines_build_the_manager_as_the_simulation_does():
 
 def test_voter_tightening_and_support_levels_are_never_set_on_the_live_path():
     hooks = (".update_voter_signal(", ".set_support_resistance(")
-    for folder in ("scheduling", "state", "gtt", "orders", "broker", "positions"):
-        for path in (REPO / "src/trading" / folder).rglob("*.py"):
-            if path.name == "trailing_stop_manager.py":
-                continue
-            text = path.read_text(encoding="utf-8")
-            for hook in hooks:
-                assert hook not in text, f"{path.relative_to(REPO)} calls {hook}"
+    paths = list((REPO / "src").rglob("*.py"))
+    assert len(paths) > 100  # the scan really covers src/
+    for path in paths:
+        if path.name == "trailing_stop_manager.py":
+            continue
+        text = path.read_text(encoding="utf-8")
+        for hook in hooks:
+            assert hook not in text, f"{path.relative_to(REPO)} calls {hook}"
+
+
+# ---------------------------------------------------------------------------
+# The morning routine's raise: a sensitivity, with the open standing in for the 09:20 price
+# ---------------------------------------------------------------------------
+
+GAP_UP = [
+    FLAT,
+    (100.0, 102.0, 99.0, 102.0),  # bought at 100; +2% at the close: the evening raise to 100
+    (107.0, 109.0, 103.0, 108.5),  # gaps up to +7%, dips to 103, closes +8.5%
+    (108.5, 108.6, 108.0, 108.2),
+]
+
+
+def test_the_morning_raise_is_off_unless_asked_for():
+    assert LiveRules().morning_raise is False
+
+    # without it the stop at 100 is not touched on the gap day (low 103), and the evening
+    # raise on that day (50% of the 8.5% gain: 104.25) is not touched on the next
+    assert list(_run(GAP_UP, "trailing")["reason"]) == ["open"]
+
+
+def test_a_morning_raise_from_the_open_meets_the_same_days_range():
+    for mode in ("trailing", "trailing_target"):
+        trade = _run(GAP_UP, mode, morning_raise=True).iloc[0]
+
+        # the gap to 107 puts the stop at 103.5 (50% of the gain) before the session and the
+        # dip to 103 takes it. That is a stop at its level, not a gap fill: the open is 3.4%
+        # above it. (The prior close of 102 would have raised nothing.) In trailing_target the
+        # plain run would have taken the 108 target on this day's high, ahead of the stop
+        assert (trade.exit_date, trade.reason) == (DAYS[2], "trail"), mode
+        assert trade.exit_price == pytest.approx(103.5), mode
+    assert _run(GAP_UP, "trailing_target").iloc[0].reason == "target"
+
+
+def test_the_morning_raise_is_priced_at_the_open_not_the_days_close():
+    # the same day with the open at the prior close: +2% is breakeven, 100, already in force
+    rows = [GAP_UP[0], GAP_UP[1], (102.0, 109.0, 103.0, 108.5), GAP_UP[3]]
+
+    # a raise from the day's close (108.5: stop 104.25) would have met the dip to 103; the open
+    # raises nothing, and the evening raise applies only from the next session
+    assert list(_run(rows, "trailing", morning_raise=True)["reason"]) == ["open"]
+
+
+def test_the_evening_raise_still_follows_the_morning_one():
+    rows = [GAP_UP[0], GAP_UP[1], (107.0, 109.0, 105.0, 108.5), (108.5, 108.6, 104.0, 108.2)]
+
+    trade = _run(rows, "trailing", morning_raise=True).iloc[0]
+
+    # the morning stop is 103.5 and day 2's dip to 105 leaves it; the close at +8.5% lifts it to
+    # 104.25 for day 3, whose dip to 104 would not have met the morning stop
+    assert (trade.exit_date, trade.reason) == (DAYS[3], "trail")
+    assert trade.exit_price == pytest.approx(104.25)
+
+
+@pytest.mark.parametrize("mode", ["trailing", "trailing_target"])
+def test_a_gap_down_through_the_stop_fills_at_the_open_with_or_without_the_morning_raise(mode):
+    rows = [FLAT, (100.0, 107.9, 99.0, 107.5), (101.0, 102.0, 100.0, 101.5)]
+
+    for morning in (False, True):
+        trade = _run(rows, mode, morning_raise=morning).iloc[0]
+        assert (trade.exit_date, trade.reason) == (DAYS[2], "trail_gap")
+        assert trade.exit_price == pytest.approx(101.0)  # a 1% profit at 101 raises nothing
+
+
+def test_a_target_gap_is_the_same_with_the_morning_raise():
+    rows = [FLAT, (100.0, 104.0, 99.0, 104.0), (109.0, 110.0, 108.0, 109.0)]
+
+    for morning in (False, True):
+        trade = _run(rows, "trailing_target", morning_raise=morning).iloc[0]
+        assert (trade.reason, trade.exit_price) == ("target_gap", pytest.approx(109.0))
+
+
+def test_the_morning_raise_needs_a_trailing_mode():
+    with pytest.raises(ValueError, match="morning_raise"):
+        _run([FLAT, FLAT], "bracket", morning_raise=True)
+
+
+def test_the_morning_raise_changes_nothing_else_about_the_run():
+    rows = [FLAT] + [(100.0, 101.0, 99.5, 100.0)] * 4  # never +2%: no raise at any hour
+
+    plain = _run(rows, "trailing", sells=(3,), cost_bps=10)
+    morning = _run(rows, "trailing", sells=(3,), cost_bps=10, morning_raise=True)
+
+    pd.testing.assert_frame_equal(plain, morning)
 
 
 # ---------------------------------------------------------------------------
@@ -356,7 +442,28 @@ def test_bracket_mode_reproduces_the_numbers_of_the_pre_trailing_simulator(
 # ---------------------------------------------------------------------------
 
 
-def _reference_exit(bars, mode):  # noqa: C901
+def _reference_raise(entry, stop, price):
+    """The level the live tiers raise `stop` to at `price`, or None (written from the rules)."""
+    profit = (price - entry) / entry
+    if profit < 0.02:
+        return None
+    gain = price - entry
+    if profit < 0.04:
+        level = entry
+    elif profit < 0.06:
+        level = entry + gain * 0.25
+    elif profit < 0.10:
+        level = entry + gain * 0.50
+    else:
+        level = entry + gain * 0.75
+    level = round(level, 2)
+    if level <= stop:  # never down
+        return None
+    level = round(min(level, price * (1 - 0.01)), 2)
+    return level if level > stop + 0.01 else None
+
+
+def _reference_exit(bars, mode, morning=False):  # noqa: C901
     """Exit (day index, price, reason) of a position bought at day 1's open, or None."""
     entry = bars[1][0]
     stop = entry * (1 - 0.05)
@@ -364,6 +471,10 @@ def _reference_exit(bars, mode):  # noqa: C901
     raised = False
     for i in range(1, len(bars)):
         o, h, lo, c = bars[i]
+        if morning and i > 1 and mode != "bracket":  # before the open; day 1's buy is not held yet
+            level = _reference_raise(entry, stop, o)
+            if level is not None:
+                stop, raised = level, True
         hit = None
         if i > 1 and o <= stop:
             hit = (o, "stop_gap")
@@ -380,23 +491,8 @@ def _reference_exit(bars, mode):  # noqa: C901
             return i, price, reason
         if mode == "bracket":
             continue
-        profit = (c - entry) / entry
-        if profit < 0.02:
-            continue
-        gain = c - entry
-        if profit < 0.04:
-            level = entry
-        elif profit < 0.06:
-            level = entry + gain * 0.25
-        elif profit < 0.10:
-            level = entry + gain * 0.50
-        else:
-            level = entry + gain * 0.75
-        level = round(level, 2)
-        if level <= stop:  # never down
-            continue
-        level = round(min(level, c * (1 - 0.01)), 2)
-        if level > stop + 0.01:
+        level = _reference_raise(entry, stop, c)
+        if level is not None:
             stop, raised = level, True
     return None
 
@@ -428,3 +524,34 @@ def test_simulator_matches_a_reference_model_on_random_paths(mode):
         assert (trade.exit_date, trade.reason) == (DAYS[day], reason), f"seed {seed}"
         assert trade.exit_price == pytest.approx(price), f"seed {seed}"
     assert checked == 60 and exits > 20  # the paths do exercise exits
+
+
+def _random_bars(seed, n=25):
+    rng = np.random.default_rng(seed)
+    close = 100 * np.exp(np.cumsum(rng.normal(0.002, 0.02, n)))
+    open_ = np.r_[100.0, close[:-1]] * (1 + rng.normal(0, 0.01, n))
+    high = np.maximum(open_, close) * (1 + np.abs(rng.normal(0, 0.008, n)))
+    low = np.minimum(open_, close) * (1 - np.abs(rng.normal(0, 0.008, n)))
+    bars = list(zip(open_.round(2), high.round(2), low.round(2), close.round(2)))
+    return [(float(o), float(max(h, o, c)), float(min(lo, o, c)), float(c)) for o, h, lo, c in bars]
+
+
+@pytest.mark.parametrize("mode", ["trailing", "trailing_target"])
+def test_simulator_with_the_morning_raise_matches_a_reference_model_on_random_paths(mode):
+    checked = exits = differs = 0
+    for seed in range(120):
+        bars = _random_bars(seed)
+        trade = _run(bars, mode, morning_raise=True).iloc[0]
+        expected = _reference_exit(bars, mode, morning=True)
+        checked += 1
+        plain = _reference_exit(bars, mode)
+        differs += expected != plain
+        if expected is None:
+            assert trade.reason == "open", f"seed {seed}"
+            continue
+        exits += 1
+        day, price, reason = expected
+        assert (trade.exit_date, trade.reason) == (DAYS[day], reason), f"seed {seed}"
+        assert trade.exit_price == pytest.approx(price), f"seed {seed}"
+    assert checked == 120 and exits > 40
+    assert differs > 5  # the morning raise does change exits on these paths
