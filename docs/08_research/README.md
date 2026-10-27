@@ -43,6 +43,8 @@ GEX re-validation on 2008 to 2026-10-09 (#576). Full write-up: [02_gex_research/
 
 **Live trading rules (#574 stage A)**: [03_strategy_research/live_rules_baseline.md](03_strategy_research/live_rules_baseline.md) backtests the rules the CLI trades with, at live timing, on the 19-symbol watchlist. At 5 bps a side the Sharpe is 0.69 (0.71 from 2020, interval includes zero), and alpha against buy-and-hold of the same symbols is +0.11% a year (t = 0.19). This replaces the 0.856 Sharpe of experiment 293.
 
+**Trailing exits vs the fixed bracket (#539)**: [03_strategy_research/trailing_vs_bracket.md](03_strategy_research/trailing_vs_bracket.md) runs the same signals under the live trailing-stop tiers. At 5 bps the full-period Sharpe is 0.83 (bracket), 0.81 (trailing) and 0.79 (trailing plus the 8% leg); every paired interval includes zero, and the omitted morning raise would lower the trailing modes by about 0.1.
+
 ---
 
 ## Research Summary (Dec 2025)
