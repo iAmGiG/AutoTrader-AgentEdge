@@ -172,6 +172,34 @@ def test_every_check_returns_the_condition_and_the_cooldown_only_limits_history(
     assert len(tracker.positions["SPY"].alert_history) == 1
 
 
+def test_a_new_condition_is_recorded_within_the_cooldown():
+    tracker = _tracker()  # 300 s cooldown
+    tracker.sync_position("SPY", SPY_ENTRY, 14, SPY_STOP)
+
+    tracker.check_exit_conditions("SPY", 750.0)  # near the stop
+    breach = tracker.check_exit_conditions("SPY", 740.0)  # through it, seconds later
+    again = tracker.check_exit_conditions("SPY", 739.0)
+
+    assert breach["alert"] is not None and again["alert"] is None
+    assert [a.alert_type for a in tracker.positions["SPY"].alert_history] == [
+        AlertType.APPROACHING_STOP_LOSS,
+        AlertType.LOSS_THRESHOLD_REACHED,
+    ]
+
+
+def test_the_earlier_return_keys_are_kept():
+    tracker = _tracker()
+    tracker.sync_position("SPY", SPY_ENTRY, 14, SPY_STOP)
+
+    near = tracker.check_exit_conditions("SPY", 750.0)
+    through = tracker.check_exit_conditions("SPY", 740.0)
+
+    assert near["distance_pct"] == near["details"]["distance_pct"]
+    assert near["distance_dollars"] == pytest.approx(750.0 - SPY_STOP)
+    assert through["exit_price"] == 740.0
+    assert through["pnl_pct"] == pytest.approx((740.0 - SPY_ENTRY) / SPY_ENTRY * 100)
+
+
 def test_alert_history_is_capped():
     tracker = PositionTracker(take_profit_pct=0.08, stop_loss_pct=0.05, alert_cooldown_seconds=0)
     tracker.sync_position("SPY", SPY_ENTRY, 14, SPY_STOP)
@@ -276,6 +304,17 @@ def test_old_entries_and_closed_positions_are_dropped():
     closed = _broker()
     del closed["positions"]["QQQ"]  # QQQ sold since
     reconciler.check_position_alerts(closed, _local())
+    assert set(tracker.positions) == {"SPY"}
+
+
+def test_an_entry_is_dropped_when_its_position_is_not_checked():
+    """Open, but without a stop this run: its entry would keep stale levels."""
+    tracker = _tracker()
+    reconciler = _reconciler(tracker)
+    reconciler.check_position_alerts(_broker(), _local())
+
+    reconciler.check_position_alerts(_broker(), _local(qqq_stop=None))
+
     assert set(tracker.positions) == {"SPY"}
 
 

@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import shutil
+import stat
 import tempfile
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -22,20 +23,34 @@ logger = logging.getLogger(__name__)
 
 def _write_json_atomic(path: str, data: Dict[str, Any]) -> None:
     """Write JSON to a temp file beside path, then rename it over path, so a crash or a
-    full disk mid-write leaves the old file whole."""
+    full disk mid-write leaves the old file whole. An existing file keeps its mode."""
+    directory = os.path.dirname(path) or "."
+    try:
+        mode: Optional[int] = stat.S_IMODE(os.stat(path).st_mode)
+    except FileNotFoundError:
+        mode = None
     fd, tmp_path = tempfile.mkstemp(
-        dir=os.path.dirname(path) or ".", prefix=f".{os.path.basename(path)}.", suffix=".tmp"
+        dir=directory, prefix=f".{os.path.basename(path)}.", suffix=".tmp"
     )
     try:
         with os.fdopen(fd, "w") as f:
             json.dump(data, f, indent=2)
             f.flush()
             os.fsync(f.fileno())
+        if mode is not None:
+            os.chmod(tmp_path, mode)
         os.replace(tmp_path, path)
     except BaseException:
         with contextlib.suppress(OSError):
             os.unlink(tmp_path)
         raise
+    # Make the rename itself durable (best effort: not every platform can open a directory)
+    with contextlib.suppress(OSError):
+        dir_fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
 
 
 def _has_old_tracker_keys(state: Dict[str, Any]) -> bool:
@@ -120,7 +135,8 @@ class LocalStateManager:
 
         The write is atomic. The first save after loading a file whose tracker has entries
         under old keys (which the routines now drop, #599) first copies that file to
-        <state dir>/backups/; if the copy fails, nothing is saved.
+        <state dir>/backups/. That copy is best effort: the routines never read those
+        entries, and the state must still be saved.
         """
         self._state["last_update"] = now_iso()
 
@@ -128,10 +144,14 @@ class LocalStateManager:
         if self.position_tracker:
             self._state["position_tracker_state"] = self.position_tracker.to_dict()
 
-        try:
-            if self._backup_before_save:
+        if self._backup_before_save:
+            self._backup_before_save = False
+            try:
                 self._backup_state_file("pre_tracker_prune")
-                self._backup_before_save = False
+            except OSError as e:
+                logger.error(f"State file not backed up before dropping old tracker entries: {e}")
+
+        try:
             _write_json_atomic(self.state_file, self._state)
 
             position_count = len(self.position_tracker.positions) if self.position_tracker else 0

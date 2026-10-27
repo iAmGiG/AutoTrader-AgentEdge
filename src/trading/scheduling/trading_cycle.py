@@ -291,9 +291,7 @@ class CostEfficientTradeCycle:
         # No alert callback: alerts are checked once per routine, after the stop raise,
         # against the stops the positions end the run with
         self.broker_cache = BrokerStateCache(
-            account_monitor=self.account_monitor,
-            cache_ttl_seconds=60,
-            alert_refresh_interval=300,
+            account_monitor=self.account_monitor, cache_ttl_seconds=60
         )
 
         self.reconciler = StateReconciler(

@@ -119,7 +119,9 @@ def check_alerts() -> Dict[str, Any]:
             logger.warning(f"Failed to fetch broker state: {e}")
             return {"status": "error", "error": f"Could not reach the broker: {e}"}
 
-        # The local levels follow the broker's live stops after a reconcile (in memory)
+        # The local levels follow the broker's live stops after a reconcile. This cycle is
+        # the tool's own (_get_trading_cycle builds one per call) and is never saved, so
+        # the reconcile and the tracker sync are discarded with it.
         trading_cycle.reconcile_state(broker_state)
         alerts = trading_cycle.check_position_alerts(broker_state)
         position_tracker = trading_cycle.position_tracker

@@ -74,10 +74,9 @@ def test_no_backup_when_the_tracker_keys_are_current(tmp_path):
     assert _backups(tmp_path) == []
 
 
-def test_a_failed_backup_saves_nothing_and_the_next_save_retries(tmp_path, monkeypatch):
+def test_a_failed_backup_is_logged_and_the_state_is_still_saved(tmp_path, monkeypatch, caplog):
     state_file = tmp_path / "cost_efficient_positions.json"
     state_file.write_text(json.dumps(_state("SPY_20251211_104055")))
-    original = state_file.read_bytes()
     manager, tracker = _manager(state_file)
     tracker.prune([])
 
@@ -87,11 +86,22 @@ def test_a_failed_backup_saves_nothing_and_the_next_save_retries(tmp_path, monke
     with monkeypatch.context() as patch:
         patch.setattr(lsm_module.shutil, "copy2", no_space)
         manager.save()
-    assert state_file.read_bytes() == original
+
+    assert "not backed up" in caplog.text
+    assert json.loads(state_file.read_text())["position_tracker_state"]["positions"] == {}
+    manager.save()  # the file no longer has old keys: no backup is tried again
+    assert _backups(tmp_path) == []
+
+
+def test_a_save_keeps_the_files_mode(tmp_path):
+    state_file = tmp_path / "cost_efficient_positions.json"
+    state_file.write_text(json.dumps(_state("SPY")))
+    state_file.chmod(0o644)
+    manager, _ = _manager(state_file)
 
     manager.save()
-    assert len(_backups(tmp_path)) == 1
-    assert json.loads(state_file.read_text())["position_tracker_state"]["positions"] == {}
+
+    assert state_file.stat().st_mode & 0o777 == 0o644
 
 
 def test_a_failed_rename_leaves_the_old_file_whole(tmp_path, monkeypatch):

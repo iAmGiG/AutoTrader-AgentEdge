@@ -346,8 +346,9 @@ class PositionTracker:
         target if it has one. Distances are fractions of the price, the fall (or rise)
         from here that reaches the level.
 
-        The condition is returned on every call; the cooldown only limits how often one is
-        added to the position's alert history (and logged).
+        The condition is returned on every call. It is added to the position's alert
+        history (and logged) when it differs from the last one recorded, or when the
+        cooldown has passed since then.
 
         Args:
             position_id: Position ID
@@ -356,7 +357,8 @@ class PositionTracker:
         Returns:
             None, or a dict with recommendation ("EXIT" when the price is through a level
             while the position is still open, else "ALERT"), reason, alert_type, severity,
-            message, details, and alert (the history entry this call added, or None)
+            message, details, and alert (the history entry this call added, or None); plus
+            exit_price and pnl_pct for EXIT, distance_pct and distance_dollars for ALERT
         """
         position = self.positions.get(position_id)
         if not position or position.status != "ACTIVE":
@@ -374,9 +376,21 @@ class PositionTracker:
             return None
         # The more severe one; the stop's on a tie
         condition = max(found, key=lambda c: c["severity"] == "CRITICAL")
+        details = condition["details"]
+        # The keys earlier versions returned
+        if condition["recommendation"] == "EXIT":
+            condition.update(exit_price=current_price, pnl_pct=details["profit_pct"])
+        else:
+            condition.update(
+                distance_pct=details["distance_pct"], distance_dollars=details["distance_dollars"]
+            )
 
+        # A new kind of condition (say, near the stop, then through it) is always recorded;
+        # the cooldown only spaces out repeats of the same one
+        history = position.alert_history
+        changed = not history or history[-1].alert_type != condition["alert_type"]
         alert = None
-        if self._should_send_alert(position):
+        if changed or self._should_send_alert(position):
             alert = self._create_alert(
                 position,
                 condition["alert_type"],

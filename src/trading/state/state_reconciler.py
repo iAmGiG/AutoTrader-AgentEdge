@@ -9,7 +9,7 @@ import copy
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.utils.date_utils import get_datetime_now, now_iso
 
@@ -39,6 +39,21 @@ def _protective_stops(orders: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         and order.get("stop_price")
         and "trailing" not in str(order.get("type", "")).lower()
     ]
+
+
+def _alert_levels(
+    broker_pos: Dict[str, Any], local_pos: Optional[Dict[str, Any]]
+) -> Optional[Tuple[float, int, float, Optional[float]]]:
+    """(entry, quantity, stop, target) for a long position with an entry and a stop, else None."""
+    if not local_pos or "short" in str(broker_pos.get("side", "")).lower():
+        return None
+    quantity = int(broker_pos.get("quantity", 0))
+    entry_price = float(local_pos.get("entry_price") or 0)
+    stop_price = local_pos.get("stop_price")
+    if quantity <= 0 or not entry_price or not stop_price:
+        return None
+    target_price = local_pos.get("target_price")
+    return entry_price, quantity, float(stop_price), float(target_price) if target_price else None
 
 
 def _stop_reason(entry_price: float, current_price: float, new_stop: float) -> str:
@@ -678,9 +693,9 @@ class StateReconciler:
         target where one exists (#599). A position through a level is still open, so its
         order didn't fill; details["live_stop"] says whether a sell stop is open for it.
 
-        The tracker keeps one entry per open position, synced to the levels in local
+        The tracker keeps one entry per position checked, synced to the levels in local
         state (after reconcile and any raise, the broker's live stop and target); entries
-        for anything else are dropped.
+        for anything else (closed, short, or without a stop this run) are dropped.
 
         Args:
             broker_state: Current broker state with positions
@@ -694,18 +709,21 @@ class StateReconciler:
             return []
 
         alerts = []
+        checked = []
         positions = local_state.get("positions", {})
         for symbol, broker_pos in broker_state["positions"].items():
             try:
-                alert = self._position_alert(
-                    symbol, broker_pos, positions.get(symbol), broker_state
-                )
+                levels = _alert_levels(broker_pos, positions.get(symbol))
+                if levels is None:
+                    continue
+                checked.append(symbol)
+                alert = self._position_alert(symbol, broker_pos, levels, broker_state)
             except Exception as e:  # one position's error doesn't cost the others' alerts
                 logger.warning(f"Position alert check failed for {symbol}: {e}")
                 continue
             if alert is not None:
                 alerts.append(alert)
-        self.position_tracker.prune(broker_state["positions"])
+        self.position_tracker.prune(checked)
 
         logger.info(f"Found {len(alerts)} position alerts")
         return alerts
@@ -714,26 +732,11 @@ class StateReconciler:
         self,
         symbol: str,
         broker_pos: Dict[str, Any],
-        local_pos: Optional[Dict[str, Any]],
+        levels: Tuple[float, int, float, Optional[float]],
         broker_state: Dict[str, Any],
     ) -> Optional[PositionAlertSummary]:
-        """One position's alert, if any (long positions with an entry and a stop)."""
-        if not local_pos or "short" in str(broker_pos.get("side", "")).lower():
-            return None
-        quantity = int(broker_pos.get("quantity", 0))
-        entry_price = float(local_pos.get("entry_price") or 0)
-        stop_price = local_pos.get("stop_price")
-        if quantity <= 0 or not entry_price or not stop_price:
-            return None
-        target_price = local_pos.get("target_price")
-
-        position = self.position_tracker.sync_position(
-            symbol,
-            entry_price,
-            quantity,
-            float(stop_price),
-            float(target_price) if target_price else None,
-        )
+        """One position's alert, if any, at its (entry, quantity, stop, target) levels."""
+        position = self.position_tracker.sync_position(symbol, *levels)
         current_price = float(broker_pos["current_price"])
         condition = self.position_tracker.check_exit_conditions(position.position_id, current_price)
         if condition is None:
