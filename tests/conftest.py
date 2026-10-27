@@ -87,6 +87,26 @@ def no_broker_snapshot_cache(monkeypatch):
     monkeypatch.setattr(broker_state_cache, "_unified_cache", False)
 
 
+@pytest.fixture(autouse=True)
+def isolated_cache_dir(tmp_path, monkeypatch):
+    """Point the market-data and broker cache at a temp dir (#600).
+
+    The shared cache instances are built on first use; dropping them per test makes
+    each test build its own in its temp dir.
+    """
+    import importlib
+
+    from src.utils.state_paths import CACHE_DIR_ENV
+
+    monkeypatch.setenv(CACHE_DIR_ENV, str(tmp_path / "cache"))
+    for module_name, name in (
+        ("src.cache.cache_adapter", "cache_adapter"),
+        ("src.cache.unified_broker_cache", "unified_broker_cache"),
+    ):
+        shared = getattr(importlib.import_module(module_name), name)
+        monkeypatch.setattr(shared, "_instance", None)
+
+
 # =============================================================================
 # Broker Client Fixtures
 # =============================================================================

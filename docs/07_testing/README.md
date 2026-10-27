@@ -27,6 +27,9 @@ Tests must never touch real state or place orders (2026-10-13 incident):
   `src/utils/state_paths.py`, and `$AUTOTRADER_STATE_DIR` overrides it. `tests/unit/conftest.py`
   sets it to a temporary directory for every unit test; use the same pattern for new tests outside
   `tests/unit/`.
+- **The cache stays in a temp dir in every test.** The market-data and broker cache
+  (`.cache/trading_data.db`) resolves through `src/utils/state_paths.py` too; `tests/conftest.py` sets
+  `$AUTOTRADER_CACHE_DIR` to a temporary directory and drops the shared cache instances for each test.
 - **Module stubs**: `tests/module_sandbox.py` restores `sys.modules` and the `get_config()`
   singleton after fixtures that install stubs.
 - **CI-safe run**: `python -m pytest tests/ -m "not db" -v` skips the PostgreSQL tests.

@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.utils.state_paths import get_state_dir
+from src.utils.state_paths import get_cache_db_path, get_state_dir
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,10 @@ class DBBackupManager:
         # user.db, backups and exports live in the state dir: <project_root>/state for an
         # explicit root, otherwise get_state_dir() (honours $AUTOTRADER_STATE_DIR).
         self.state_dir = self.project_root / "state" if explicit_root else get_state_dir()
+        # The cache likewise: <project_root>/.cache, or get_cache_db_path() ($AUTOTRADER_CACHE_DIR)
+        self.cache_db_path = (
+            self.project_root / DB_PATHS["cache"] if explicit_root else Path(get_cache_db_path())
+        )
         self.backup_dir = self.state_dir / "backups"
         self.export_dir = self.state_dir / "exports"
 
@@ -120,7 +124,7 @@ class DBBackupManager:
             raise ValueError(f"Unknown database: {db_name}. Available: {list(DB_PATHS.keys())}")
         if db_name == "user":
             return self.state_dir / "user.db"
-        return self.project_root / DB_PATHS[db_name]
+        return self.cache_db_path
 
     def _generate_backup_filename(self, db_name: str) -> str:
         """Generate a timestamped backup filename that does not overwrite an existing backup.

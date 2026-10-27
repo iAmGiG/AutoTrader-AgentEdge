@@ -10,6 +10,8 @@ The AutoGen Trading System uses a **SQLite-based cache system** for unified data
 
 **Location**: `src/cache/sqlite_cache.py`
 
+**Database**: `<repo>/.cache/trading_data.db`, or `$AUTOTRADER_CACHE_DIR/trading_data.db` when that is set (`src/utils/state_paths.py`). The shared `cache_adapter` and `unified_broker_cache` open it on first use, so importing the project creates no files (#600).
+
 The primary cache interface providing:
 
 - **High Performance**: 8-10x faster queries (~25ms vs ~200ms)

@@ -13,6 +13,7 @@ from typing import Optional
 
 import pandas as pd
 
+from .lazy import LazyInstance
 from .sqlite_cache import TradingCacheManager
 
 
@@ -221,5 +222,5 @@ class CacheAdapter:
         return self.cache.cleanup_expired()
 
 
-# Global instance for easy access
-cache_adapter = CacheAdapter()
+# Shared instance, built on first use so importing creates no database (#600)
+cache_adapter = LazyInstance(CacheAdapter)
