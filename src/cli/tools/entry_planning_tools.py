@@ -12,7 +12,7 @@ Pattern: Pure function wrappers → FunctionTool → Registry
 """
 
 from datetime import date, timedelta
-from typing import Optional, Tuple
+from typing import Tuple
 
 import pandas as pd
 from agent_framework import FunctionTool
@@ -31,11 +31,20 @@ from src.utils.safe_print import get_symbol
 
 # Fewest completed daily bars the levels and volume averages are worked out from
 MIN_BARS = 20
+# Sessions requested beyond the lookback, for gaps in the vendor's data
+FETCH_SLACK = 10
 
 
-def _daily_bars(symbol: str, lookback_days: int) -> Tuple[Optional[pd.DataFrame], Optional[float]]:
+class _DataError(Exception):
+    """Why a tool can't work out its numbers, worded for the user."""
+
+
+def _completed_bars(
+    symbol: str, lookback_days: int, minimum: int = MIN_BARS
+) -> Tuple[pd.DataFrame, float, str]:
     """
-    The latest lookback_days completed daily bars (capitalized OHLCV) and the latest price.
+    The latest lookback_days completed daily bars (capitalized OHLCV, oldest first), the
+    latest price, and what that price is ("live", or "<date> close").
 
     During the session the last row is today's bar so far, or one made from the last
     trade with volume 0: its close is the latest price, and it is left out of the bars
@@ -44,33 +53,72 @@ def _daily_bars(symbol: str, lookback_days: int) -> Tuple[Optional[pd.DataFrame]
     Args:
         symbol: Stock ticker
         lookback_days: Trading days of completed bars wanted
+        minimum: Fewest completed bars the caller can work from
 
-    Returns:
-        (bars, latest price), or (None, None) when no data came back
+    Raises:
+        _DataError: lookback_days below minimum, no data, or too few completed bars
     """
-    today = market_today()
-    start = add_business_days(today, -(lookback_days + 5))
+    if lookback_days < minimum:
+        raise _DataError(f"lookback_days must be at least {minimum}.")
+    today = date.fromisoformat(market_today())
+    start = add_business_days(today.isoformat(), -(lookback_days + FETCH_SLACK))
     # The request leaves out the end date's own bar, so it runs through tomorrow
-    end = (date.fromisoformat(today) + timedelta(days=1)).isoformat()
+    end = (today + timedelta(days=1)).isoformat()
     ohlcv = fetch_market_data(symbol.upper(), start, end, timeframe="1Day")
     if ohlcv is None or ohlcv.empty:
-        return None, None
+        raise _DataError(
+            f"No daily bars for {symbol}: the data request failed or returned nothing "
+            "(see the log)."
+        )
+
+    ohlcv, dates = _oldest_first(ohlcv)
     latest_price = float(ohlcv["Close"].iloc[-1])
-    if is_market_hours():
-        dates = _bar_dates(ohlcv)
-        if dates is not None:
-            ohlcv = ohlcv[dates < date.fromisoformat(today)]
-    return ohlcv.tail(lookback_days), latest_price
+    latest = dates[-1] if dates is not None else None
+    if latest == today and _session_open():
+        ohlcv = ohlcv[dates < today]
+        as_of = "live"
+    else:
+        as_of = f"{latest} close" if latest else "latest close"
+
+    bars = ohlcv.tail(lookback_days)
+    if len(bars) < minimum:
+        raise _DataError(
+            f"Insufficient data for {symbol}: {len(bars)} completed daily bars, "
+            f"need at least {minimum}."
+        )
+    return bars, latest_price, as_of
 
 
-def _bar_dates(ohlcv: pd.DataFrame):
-    """Each bar's date in ET, or None when the index isn't a datetime index."""
-    index = ohlcv.index
-    if not isinstance(index, pd.DatetimeIndex):
-        return None
-    if index.tz is not None:
-        index = index.tz_convert("America/New_York")
-    return index.date
+def _oldest_first(ohlcv: pd.DataFrame):
+    """
+    The bars oldest first (Alpha Vantage returns them newest first) and each bar's date in
+    ET, from a datetime index or a date or timestamp column; the dates are None without
+    either.
+    """
+    stamps = None
+    if isinstance(ohlcv.index, pd.DatetimeIndex):
+        stamps = ohlcv.index
+    else:
+        for column in ("date", "timestamp"):
+            if column in ohlcv.columns:
+                stamps = pd.DatetimeIndex(pd.to_datetime(ohlcv[column]))
+                break
+    if stamps is None:
+        return ohlcv, None
+    order = stamps.argsort(kind="stable")
+    ohlcv, stamps = ohlcv.iloc[order], stamps[order]
+    if stamps.tz is not None:
+        stamps = stamps.tz_convert("America/New_York")
+    return ohlcv, stamps.date
+
+
+def _session_open() -> bool:
+    """Whether the market is open now; True when the calendar can't say, so a bar dated
+    today is left out rather than taken as complete."""
+    try:
+        return is_market_hours()
+    except Exception:
+        return True
 
 
 # ============================================================================
@@ -109,12 +157,7 @@ def get_entry_plan(
         ATR: $2.15  Quality: STRONG'
     """
     try:
-        if lookback_days < MIN_BARS:
-            return f"{get_symbol('ERROR')} lookback_days must be at least {MIN_BARS}."
-        ohlcv, current_price = _daily_bars(symbol, lookback_days)
-
-        if ohlcv is None or len(ohlcv) < MIN_BARS:
-            return f"{get_symbol('ERROR')} Insufficient data for {symbol}. Need at least 20 days."
+        ohlcv, current_price, as_of = _completed_bars(symbol, lookback_days)
 
         # Generate entry plan
         plan = calculate_entry_plan(
@@ -131,6 +174,7 @@ def get_entry_plan(
         # Format output
         output = f"{get_symbol('INFO')} Entry Plan for {symbol} ({direction.upper()})\n"
         output += "=" * 50 + "\n"
+        output += f"  Price:  ${current_price:.2f} ({as_of})\n"
         output += f"  Entry:  ${plan['entry_price']:.2f}\n"
         output += f"  Stop:   ${plan['stop_loss']:.2f}\n"
         output += f"  Target: ${plan['take_profit']:.2f}\n"
@@ -154,6 +198,8 @@ def get_entry_plan(
 
         return output
 
+    except _DataError as e:
+        return f"{get_symbol('ERROR')} {e}"
     except Exception as e:
         return f"{get_symbol('ERROR')} Error generating entry plan: {str(e)}"
 
@@ -180,18 +226,13 @@ def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
         Range: $13.80'
     """
     try:
-        if lookback_days < MIN_BARS:
-            return f"{get_symbol('ERROR')} lookback_days must be at least {MIN_BARS}."
-        ohlcv, current_price = _daily_bars(symbol, lookback_days)
-
-        if ohlcv is None or len(ohlcv) < MIN_BARS:
-            return f"{get_symbol('ERROR')} Insufficient data for {symbol}. Need at least 20 days."
+        ohlcv, current_price, as_of = _completed_bars(symbol, lookback_days)
 
         levels = find_support_resistance(ohlcv["High"], ohlcv["Low"], lookback=20)
 
         output = f"{get_symbol('CHART')} Support/Resistance for {symbol}\n"
         output += "=" * 40 + "\n"
-        output += f"  Current Price: ${current_price:.2f}\n"
+        output += f"  Current Price: ${current_price:.2f} ({as_of})\n"
         output += "-" * 40 + "\n"
         output += f"  Support:    ${levels['support']:.2f}"
 
@@ -206,6 +247,8 @@ def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
 
         return output
 
+    except _DataError as e:
+        return f"{get_symbol('ERROR')} {e}"
     except Exception as e:
         return f"{get_symbol('ERROR')} Error getting S/R levels: {str(e)}"
 
@@ -232,12 +275,7 @@ def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
         Ratio: 1.37x (Above Average)'
     """
     try:
-        if lookback_days < MIN_BARS:
-            return f"{get_symbol('ERROR')} lookback_days must be at least {MIN_BARS}."
-        ohlcv, _ = _daily_bars(symbol, lookback_days)
-
-        if ohlcv is None or len(ohlcv) < MIN_BARS:
-            return f"{get_symbol('ERROR')} Insufficient data for {symbol}."
+        ohlcv, _, _ = _completed_bars(symbol, lookback_days)
 
         # Completed sessions only: today's volume so far would read as a collapse
         vol_data = calculate_volume_confirmation(ohlcv["Volume"], lookback=20)
@@ -261,6 +299,8 @@ def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
 
         return output
 
+    except _DataError as e:
+        return f"{get_symbol('ERROR')} {e}"
     except Exception as e:
         return f"{get_symbol('ERROR')} Error analyzing volume: {str(e)}"
 
@@ -290,14 +330,7 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
         → Low volatility environment'
     """
     try:
-        if lookback_days < period + 1:
-            return (
-                f"{get_symbol('ERROR')} lookback_days must be at least period + 1 ({period + 1})."
-            )
-        ohlcv, current_price = _daily_bars(symbol, lookback_days)
-
-        if ohlcv is None or len(ohlcv) < period + 1:
-            return f"{get_symbol('ERROR')} Insufficient data for {symbol}."
+        ohlcv, current_price, as_of = _completed_bars(symbol, lookback_days, minimum=period + 1)
 
         atr_series = calculate_atr(ohlcv["High"], ohlcv["Low"], ohlcv["Close"], period=period)
         current_atr = float(atr_series.iloc[-1])
@@ -305,7 +338,7 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
 
         output = f"{get_symbol('INFO')} ATR Analysis for {symbol}\n"
         output += "=" * 40 + "\n"
-        output += f"  Current Price: ${current_price:.2f}\n"
+        output += f"  Current Price: ${current_price:.2f} ({as_of})\n"
         output += f"  ATR ({period}):     ${current_atr:.2f}\n"
         output += f"  ATR as % price: {atr_pct:.2f}%\n"
         output += "-" * 40 + "\n"
@@ -330,6 +363,8 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
 
         return output
 
+    except _DataError as e:
+        return f"{get_symbol('ERROR')} {e}"
     except Exception as e:
         return f"{get_symbol('ERROR')} Error calculating ATR: {str(e)}"
 

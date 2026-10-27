@@ -53,12 +53,17 @@ def fetch(monkeypatch):
     return fake
 
 
+def _atr_of(frame, lookback=60):
+    bars = frame.tail(lookback)
+    return tools.calculate_atr(bars["High"], bars["Low"], bars["Close"]).iloc[-1]
+
+
 def test_the_request_covers_the_lookback_in_trading_days_through_today(fetch):
     tools.get_atr("spy")
 
     symbol, start, end, timeframe = fetch.calls[0]
     assert (symbol, timeframe) == ("SPY", "1Day")
-    assert start == "2026-07-27"  # 65 NYSE trading days before 2026-10-27 (Labor Day closed)
+    assert start == "2026-07-20"  # 60 + 10 NYSE trading days before 2026-10-27 (Labor Day closed)
     assert end == "2026-10-28"  # the end date's own bar isn't returned
 
 
@@ -78,27 +83,25 @@ def test_each_tool_works_again(fetch, tool, heading):
     assert "Error" not in text and "Insufficient" not in text
 
 
-def test_the_current_price_is_the_latest_and_indicators_use_completed_bars(fetch):
+def test_in_session_the_price_is_live_and_indicators_use_completed_bars(fetch):
     text = tools.get_atr("SPY", lookback_days=60)
-    completed = fetch.frame.iloc[:-1].tail(60)
-    atr = tools.calculate_atr(completed["High"], completed["Low"], completed["Close"]).iloc[-1]
 
-    assert f"Current Price: ${fetch.frame['Close'].iloc[-1]:.2f}" in text
-    assert f"ATR (14):     ${atr:.2f}" in text
+    assert f"Current Price: ${fetch.frame['Close'].iloc[-1]:.2f} (live)" in text
+    assert f"ATR (14):     ${_atr_of(fetch.frame.iloc[:-1]):.2f}" in text
 
 
-def test_volume_is_the_last_completed_session_not_todays_zero(fetch):
-    text = tools.get_volume_analysis("SPY")
+def test_before_the_open_the_price_is_the_last_close_and_says_so(fetch, monkeypatch):
+    monkeypatch.setattr(tools, "is_market_hours", lambda: False)
+    fetch.frame = _bars(today_bar=False)
 
-    last_session = int(fetch.frame["Volume"].iloc[-2])
-    assert f"Last Session:   {last_session:,}" in text
-    assert "Last Session:   0" not in text
+    text = tools.get_support_resistance("SPY")
+
+    assert f"Current Price: ${fetch.frame['Close'].iloc[-1]:.2f} (2026-10-26 close)" in text
 
 
 def test_after_the_close_todays_bar_counts(fetch, monkeypatch):
     monkeypatch.setattr(tools, "is_market_hours", lambda: False)
-    fetch.frame = _bars(today_bar=False)
-    final = fetch.frame.copy()
+    final = _bars(today_bar=False)
     last = float(final["Close"].iloc[-1])
     final.loc[pd.Timestamp("2026-10-27 04:00", tz="UTC")] = [
         last,
@@ -109,13 +112,52 @@ def test_after_the_close_todays_bar_counts(fetch, monkeypatch):
     ]
     fetch.frame = final
 
+    assert "Last Session:   3,000,000" in tools.get_volume_analysis("SPY")
+    assert "(2026-10-27 close)" in tools.get_atr("SPY")
+
+
+def test_volume_is_the_last_completed_session_not_todays_zero(fetch):
     text = tools.get_volume_analysis("SPY")
 
-    assert "Last Session:   3,000,000" in text
+    last_session = int(fetch.frame["Volume"].iloc[-2])
+    assert f"Last Session:   {last_session:,}" in text
+    assert "Last Session:   0" not in text
+
+
+def test_bars_newest_first_are_put_in_order(fetch):
+    """Alpha Vantage returns daily bars newest first, on a naive index."""
+    ascending = tools.get_atr("SPY")
+    newest_first = fetch.frame.iloc[::-1].copy()
+    newest_first.index = newest_first.index.tz_convert("America/New_York").tz_localize(None)
+    fetch.frame = newest_first
+
+    assert tools.get_atr("SPY") == ascending
+
+
+def test_a_date_column_works_when_the_index_is_not_dates(fetch):
+    with_column = fetch.frame.reset_index().rename(columns={"timestamp": "date"})
+    fetch.frame = with_column
+
+    bars, price, as_of = tools._completed_bars("SPY", 60)
+
+    assert len(bars) == 60 and as_of == "live"
+    assert bars["Volume"].iloc[-1] > 0  # the synthetic bar was left out
+    assert price == with_column["Close"].iloc[-1]
+
+
+def test_if_the_calendar_fails_todays_bar_is_left_out(fetch, monkeypatch):
+    def unreachable():
+        raise ConnectionError("calendar timeout")
+
+    monkeypatch.setattr(tools, "is_market_hours", unreachable)
+
+    bars, _, as_of = tools._completed_bars("SPY", 60)
+
+    assert bars.index[-1] == pd.Timestamp("2026-10-26 04:00", tz="UTC") and as_of == "live"
 
 
 def test_the_lookback_is_trimmed_to_the_latest_bars(fetch):
-    bars, price = tools._daily_bars("SPY", 60)
+    bars, price, _ = tools._completed_bars("SPY", 60)
 
     assert len(bars) == 60 and price == fetch.frame["Close"].iloc[-1]
     assert bars.index[-1] == pd.Timestamp("2026-10-26 04:00", tz="UTC")
@@ -124,21 +166,23 @@ def test_the_lookback_is_trimmed_to_the_latest_bars(fetch):
 @pytest.mark.parametrize(
     "call, message",
     [
-        (lambda: tools.get_entry_plan("SPY", "buy", lookback_days=10), "at least 20"),
-        (lambda: tools.get_support_resistance("SPY", lookback_days=10), "at least 20"),
-        (lambda: tools.get_volume_analysis("SPY", lookback_days=10), "at least 20"),
-        (lambda: tools.get_atr("SPY", period=30, lookback_days=25), "at least period + 1"),
+        (lambda: tools.get_entry_plan("SPY", "buy", lookback_days=10), "at least 20."),
+        (lambda: tools.get_support_resistance("SPY", lookback_days=10), "at least 20."),
+        (lambda: tools.get_volume_analysis("SPY", lookback_days=10), "at least 20."),
+        (lambda: tools.get_atr("SPY", period=30, lookback_days=25), "at least 31."),
     ],
 )
 def test_too_short_a_lookback_is_explained(fetch, call, message):
-    assert message in call()
+    assert f"lookback_days must be {message}" in call()
     assert fetch.calls == []
 
 
-def test_no_data_or_too_little_is_reported(fetch):
+def test_no_data_and_too_little_data_say_which(fetch):
     fetch.frame = pd.DataFrame()
-    assert "Insufficient data for SPY" in tools.get_support_resistance("SPY")
-    assert "Insufficient data for SPY" in tools.get_atr("SPY")
+    assert "No daily bars for SPY: the data request failed" in tools.get_support_resistance("SPY")
+    assert "No daily bars for SPY" in tools.get_atr("SPY")
 
     fetch.frame = _bars(sessions=15)
-    assert "Insufficient data for SPY" in tools.get_entry_plan("SPY", "buy")
+    assert "Insufficient data for SPY: 15 completed daily bars, need at least 20." in (
+        tools.get_entry_plan("SPY", "buy")
+    )
