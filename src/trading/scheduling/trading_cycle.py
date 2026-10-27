@@ -678,10 +678,8 @@ class CostEfficientTradeCycle:
 
             # Evaluate triggers; sells are kept within the shares free to sell
             evaluator = get_trigger_evaluator()
-            if self._dry_run_active:  # trailing highs are not saved
-                fired = evaluator.evaluate_triggers_batch(prices, persist=False)
-            else:
-                fired = evaluator.evaluate_triggers_batch(prices)
+            # A dry run doesn't save the trailing stops' new highs
+            fired = evaluator.evaluate_triggers_batch(prices, persist=not self._dry_run_active)
             triggered, skipped = _within_free_shares(fired, broker_state)
             results = []
             for trigger, reason in skipped:
@@ -815,10 +813,10 @@ class CostEfficientTradeCycle:
         ]
 
         for result in gtt_results:
-            status = "+" if result.success else "x"
+            details = result.details or {}
+            status = "~" if details.get("dry_run") else "+" if result.success else "x"
             lines.append(f"[{status}] Trigger {result.trigger_id}: {result.message}")
 
-            details = result.details or {}
             if details.get("symbol"):
                 lines.append(f"    Symbol: {details['symbol']}")
             if details.get("current_price"):
@@ -987,15 +985,23 @@ class CostEfficientTradeCycle:
                 raise RoutineError(error_msg) from e
             return f"❌ {error_msg}"
 
-    def recover_from_crash(self, raise_errors: bool = False) -> str:
+    def recover_from_crash(self, raise_errors: bool = False, dry_run: Optional[bool] = None) -> str:
         """
         Rebuild state from broker, minimal API calls.
         Use when system restarts or local state is corrupted.
 
         Args:
             raise_errors: Raise RoutineError on failure instead of returning a message
+            dry_run: Rebuild and report, but save no local state (#601). Default: the
+                cycle's dry_run setting.
         """
-        logger.info("Starting crash recovery...")
+        dry_run = self.dry_run if dry_run is None else dry_run
+        with self._dry_run_mode(dry_run):
+            return self._recover_from_crash(raise_errors)
+
+    def _recover_from_crash(self, raise_errors: bool) -> str:
+        """The crash recovery's steps (see recover_from_crash)."""
+        logger.info("Starting crash recovery%s...", " (dry run)" if self._dry_run_active else "")
 
         try:
             # One API call to get everything
@@ -1018,7 +1024,8 @@ class CostEfficientTradeCycle:
                     },
                 )
 
-            self.local_state_manager.save()
+            if not self._dry_run_active:
+                self.local_state_manager.save()
 
             # Generate recovery report
             recovery_lines = [
@@ -1049,13 +1056,7 @@ class CostEfficientTradeCycle:
 
             report = "\n".join(recovery_lines)
 
-            # Save recovery report
-            report_file = self._get_report_file_path("recovery")
-            os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, "w", encoding="utf-8") as f:
-                f.write(report)
-            self.last_report_path = report_file
-
+            report, report_file = self._save_report("recovery", report)
             logger.info(f"Crash recovery complete. Report saved to {report_file}")
             return report
 

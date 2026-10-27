@@ -242,17 +242,6 @@ def test_the_scheduler_passes_its_dry_run_setting(make_scheduler, dry_run):
     )
 
 
-def test_the_scheduler_builds_its_cycle_with_the_setting(make_scheduler, monkeypatch):
-    built = []
-    monkeypatch.setattr(
-        daily_scheduler, "CostEfficientTradeCycle", lambda **kw: built.append(kw) or Mock()
-    )
-
-    make_scheduler(True).trading_cycle
-
-    assert built == [{"dry_run": True}]
-
-
 def test_timeout_seconds_is_gone(make_scheduler):
     scheduler = make_scheduler(False)
 
@@ -335,3 +324,46 @@ def test_trailing_stop_states_in_memory_are_restored(cycle):
     cycle.morning_routine(dry_run=True)
 
     assert trailing.stop_states["QQQ"].current_stop == 691.0 and "SPY" not in trailing.stop_states
+
+
+def test_a_scheduled_dry_run_is_not_the_days_routine(make_scheduler):
+    scheduler = make_scheduler(True, trading_cycle=Mock(last_report_path="r.md"))
+    morning = next(t for t in scheduler.tasks if t.name == "morning_routine")
+
+    log = scheduler._execute_task_with_retry(morning)
+
+    assert log.status == "dry_run"
+    assert scheduler.state_manager.get_last_execution("morning").status == "dry_run"
+    today = scheduler._market_now().date().isoformat()
+    assert not scheduler.state_manager.was_routine_finished_today("morning", today)
+
+
+def test_crash_recovery_in_a_dry_run_saves_no_state(cycle, tmp_path):
+    cycle.local_state_manager.positions = {}
+    before = copy.deepcopy(cycle.local_state_manager.state)
+
+    report = cycle.recover_from_crash(raise_errors=True, dry_run=True)
+
+    cycle.local_state_manager.save.assert_not_called()
+    assert cycle.local_state_manager.state == before
+    assert report.startswith("> 🧪 **DRY RUN**")
+    assert (tmp_path / "recovery_dry_run.md").exists()
+
+
+def test_gtt_triggers_a_dry_run_held_back_are_marked_not_failed(cycle):
+    report = cycle.morning_routine(dry_run=True)
+
+    assert "[~] Trigger 7: dry run: SPY place_order not executed" in report
+    assert "[x] Trigger 7" not in report
+
+
+def test_only_the_listed_reads_pass(monkeypatch):
+    from src.trading.orders import dry_run
+
+    om = MagicMock()
+    guard = DryRunOrderManager(om)
+
+    assert guard.get_positions() is om.get_positions.return_value
+    assert guard.get_or_create_stop(symbol="SPY")["status"] == DRY_RUN_STATUS  # not a listed read
+    om.get_or_create_stop.assert_not_called()
+    assert "get_orders" in dry_run.READS

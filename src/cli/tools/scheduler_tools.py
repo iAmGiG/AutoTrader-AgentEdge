@@ -495,8 +495,8 @@ def show_scheduler() -> str:
     if history.get("history"):
         lines.extend(["", f"{get_symbol('INFO')} Recent Executions"])
         for entry in history["history"][:3]:
-            status_emoji = (
-                get_symbol("SUCCESS") if entry["status"] == "completed" else get_symbol("ERROR")
+            status_emoji = {"completed": get_symbol("SUCCESS"), "dry_run": "🧪"}.get(
+                entry["status"], get_symbol("ERROR")
             )
             lines.append(f"   {status_emoji} {entry['task_name']}")
 

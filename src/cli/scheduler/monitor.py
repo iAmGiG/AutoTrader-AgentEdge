@@ -106,6 +106,8 @@ class SchedulerMonitor:
                 status = (
                     get_emoji("check_green", "✅")
                     if entry.status == "completed"
+                    else "🧪"
+                    if entry.status == "dry_run"
                     else get_emoji("cross_red", "❌")
                 )
                 print(f"   {status} {entry.task_name} - {entry.status}")
@@ -248,6 +250,8 @@ class SchedulerMonitor:
             status_emoji = (
                 get_emoji("check_green", "✅")
                 if entry.status == "completed"
+                else "🧪"
+                if entry.status == "dry_run"
                 else get_emoji("cross_red", "❌")
             )
             time_str = (

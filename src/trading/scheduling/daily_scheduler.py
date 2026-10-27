@@ -192,6 +192,7 @@ class ScheduleStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     RETRYING = "retrying"
+    DRY_RUN = "dry_run"  # ran without sending orders; not the day's routine (#601)
 
 
 @dataclass
@@ -284,7 +285,7 @@ class DailyScheduler:
     def trading_cycle(self) -> CostEfficientTradeCycle:
         """The trading cycle, created on first use: a check with nothing due needs none."""
         if self._trading_cycle is None:
-            self._trading_cycle = CostEfficientTradeCycle(dry_run=self.dry_run)
+            self._trading_cycle = CostEfficientTradeCycle()
         return self._trading_cycle
 
     @property
@@ -389,12 +390,14 @@ class DailyScheduler:
                 elif task.routine_type == RoutineType.EVENING:
                     self.trading_cycle.evening_routine(raise_errors=True, dry_run=self.dry_run)
                 elif task.routine_type == RoutineType.RECOVERY:
-                    self.trading_cycle.recover_from_crash(raise_errors=True)
+                    self.trading_cycle.recover_from_crash(raise_errors=True, dry_run=self.dry_run)
                 else:
                     raise ValueError(f"Unknown routine type: {task.routine_type}")
 
-                # Success!
-                log_entry.status = ScheduleStatus.COMPLETED.value
+                # Success! A dry run is recorded as such, so it doesn't count as the
+                # day's routine: switched off within the window, the routine still runs
+                status = ScheduleStatus.DRY_RUN if self.dry_run else ScheduleStatus.COMPLETED
+                log_entry.status = status.value
                 log_entry.actual_end_time = now_iso()
                 log_entry.api_calls_used = 3  # Typical API calls per routine
 
@@ -404,12 +407,16 @@ class DailyScheduler:
                 # Record completion in SQLite (#478)
                 self.state_manager.record_execution_complete(
                     execution_id,
-                    status="completed",
+                    status=status.value,
                     report_path=report_path,
                     api_calls_used=log_entry.api_calls_used,
                 )
 
-                logger.info("✅ %s completed successfully", task.name)
+                logger.info(
+                    "✅ %s completed successfully%s",
+                    task.name,
+                    " (dry run)" if self.dry_run else "",
+                )
                 break
 
             except Exception as e:
@@ -585,6 +592,7 @@ class DailyScheduler:
             ScheduleStatus.COMPLETED.value: "✅",
             ScheduleStatus.FAILED.value: "❌",
             ScheduleStatus.RETRYING.value: "🔄",
+            ScheduleStatus.DRY_RUN.value: "🧪",
         }.get(log_entry.status, "⚠️")
 
         logger.info(

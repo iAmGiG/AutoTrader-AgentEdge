@@ -2,10 +2,10 @@
 Dry run for the scheduled routines (#601): broker calls that would change orders are
 logged and not sent.
 
-DryRunOrderManager wraps an order manager. Reads (``get_*`` methods) pass through;
-every other method returns a result with status ``DRY_RUN_STATUS``, which callers treat
-as "not submitted". It blocks by default, so a write method added to the order manager
-later is blocked too.
+DryRunOrderManager wraps an order manager. The reads named in READS pass through; every
+other method returns a result with status ``DRY_RUN_STATUS``, which callers treat as
+"not submitted". It blocks by default, so a method added to the order manager later is
+blocked until it is listed as a read.
 """
 
 import logging
@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 DRY_RUN_STATUS = "dry_run"
 DRY_RUN_MESSAGE = "dry run: not sent"
-_READ_PREFIX = "get_"
+# AlpacaOrderManager's read-only methods
+READS = frozenset({"get_orders", "get_positions", "get_account_status", "get_portfolio_summary"})
 _PLAIN_VALUES = (str, int, float, bool, type(None))
 
 
@@ -31,7 +32,7 @@ class DryRunOrderManager:
             raise AttributeError(name)
         attr = getattr(self._order_manager, name)
         if callable(attr):
-            return attr if name.startswith(_READ_PREFIX) else self._blocked(name)
+            return attr if name in READS else self._blocked(name)
         if isinstance(attr, _PLAIN_VALUES):
             return attr
         # A client or other object would let a caller send orders around the guard

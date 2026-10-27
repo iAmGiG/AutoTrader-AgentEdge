@@ -322,8 +322,8 @@ With `dry_run: true` (or `test morning dry` / `test evening dry` in the schedule
 routine fetches the broker state and works out everything it would do, but:
 
 - **No orders are sent.** The order manager is wrapped in `DryRunOrderManager`
-  (`src/trading/orders/dry_run.py`): its `get_*` reads pass through, and every other call
-  is logged and returns status `dry_run`. Missing or expiring stops are reported as
+  (`src/trading/orders/dry_run.py`): the reads listed in its `READS` pass through, and every
+  other call is logged and returns status `dry_run`. Missing or expiring stops are reported as
   `DRY_RUN_NOT_SENT`, and stop raises as "would raise stop $X -> $Y".
 - **Nothing is saved.** No local state (`state/cost_efficient_positions.json`) and no daily
   records are written. GTT triggers are evaluated without saving trailing highs; those that
@@ -331,8 +331,10 @@ routine fetches the broker state and works out everything it would do, but:
 - **The report is marked.** It starts with a DRY RUN banner and is saved as
   `reports/daily/<date>_<routine>_dry_run.md`.
 
-A scheduled run in dry run counts as that day's routine, so leave `dry_run` off on the live
-loop: while it is on, no stop is placed, renewed or raised. The `status` command says so.
+A scheduled dry run is recorded with status `dry_run` (🧪 in `history`), not `completed`, so
+it doesn't count as the day's routine. Leave `dry_run` off on the live loop: while it is on,
+no stop is placed, renewed or raised. The `status` command says so. Crash recovery in a dry
+run rebuilds the state in memory and reports it, but saves nothing.
 The `timeout_seconds` setting was removed in #601; no routine was ever time-limited.
 
 ### systemd Service
