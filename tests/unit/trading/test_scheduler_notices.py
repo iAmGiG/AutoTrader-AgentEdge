@@ -448,6 +448,20 @@ def test_notices_flow_from_a_real_routine_through_the_scheduler_into_the_next_re
     assert "SPY has no protective stop" in report and "AAPL is at or below its stop" in report
 
 
+def test_a_report_lists_the_latest_ten_open_notices_and_counts_the_rest(bare_cycle, tmp_path):
+    bare_cycle.notice_store = NoticeStore(tmp_path / "notices.json", raise_errors=True)
+    for n in range(1, 13):
+        bare_cycle.notice_store.raise_notice(
+            f"stop_breach:S{n}:2026-10-27", "stop_breach", "CRITICAL", f"S{n} breach"
+        )
+
+    lines = bare_cycle._open_notice_lines()
+
+    listed = [line for line in lines if "breach" in line]
+    assert len(listed) == 10 and "S3 breach" in listed[0] and "S12 breach" in listed[-1]
+    assert lines[-1].startswith("- ... and 2 older ones")
+
+
 # --- Routines that never ran ------------------------------------------------------------
 
 
@@ -508,7 +522,7 @@ def test_no_routine_is_due_on_a_day_without_a_session(make_scheduler, calendar, 
     scheduler.check_routine_outcomes(now=now)
 
     assert _keys(scheduler) == []
-    assert set(calendar) == {now.date()}  # asked about the day itself, not the one before
+    assert calendar == []  # no should_run_task ran first: both days from the NYSE rules
 
 
 def test_a_scheduler_disabled_in_the_config_file_is_not_missed(make_scheduler):
@@ -689,8 +703,7 @@ def test_a_missing_evening_run_is_found_on_the_next_trading_day_once(make_schedu
     [notice] = scheduler.notice_store.all_notices()
     assert notice.key == "routine_missed:evening:2026-10-23"
     assert notice.count == 1
-    assert date(2026, 10, 23) not in calendar  # the past day is read from the NYSE rules
-    assert set(calendar) == {date(2026, 10, 26)}
+    assert calendar == []  # the past day, and today without a should_run_task, from the rules
 
 
 def test_the_previous_trading_day_skips_holidays_and_weekends(make_scheduler):
@@ -745,6 +758,41 @@ def test_the_outcome_check_reuses_the_calendar_lookup_should_run_task_made(
     scheduler.check_routine_outcomes(now=now)
 
     assert calendar == [date(2026, 10, 15)]  # one lookup served both tasks and the check
+
+
+@pytest.mark.parametrize(
+    "now, previous, expected",
+    [
+        (_et(2026, 10, 15, 10, 5), "2026-10-14", ["routine_stuck:morning:2026-10-15"]),  # Thursday
+        (_et(2026, 10, 17, 10, 5), "2026-10-16", []),  # Saturday
+        (_et(2026, 11, 26, 10, 5), "2026-11-25", []),  # Thanksgiving
+    ],
+)
+def test_without_a_calendar_answer_the_check_takes_today_from_the_nyse_rules(
+    make_scheduler, calendar, now, previous, expected
+):
+    """As on a tick that didn't get the lock: should_run_task never asked the calendar."""
+    scheduler = make_scheduler()
+    _both(scheduler, previous)
+    if expected:
+        started = now - timedelta(minutes=45)
+        _record(scheduler, "morning", now.date().isoformat(), "running", started=started)
+
+    scheduler.check_routine_outcomes(now=now)
+
+    assert _keys(scheduler) == expected  # nothing "missed" on a day without a session
+    assert calendar == []
+
+
+def test_a_tick_that_did_not_get_the_lock_makes_no_calendar_call(make_scheduler, calendar):
+    scheduler = make_scheduler()
+
+    with open(get_state_dir() / "scheduler.lock", "a") as other_process:
+        fcntl.flock(other_process, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        scheduler.run_scheduled_tasks()
+        fcntl.flock(other_process, fcntl.LOCK_UN)
+
+    assert calendar == []
 
 
 def test_every_tick_checks_the_outcomes_whether_or_not_it_got_the_lock(make_scheduler):

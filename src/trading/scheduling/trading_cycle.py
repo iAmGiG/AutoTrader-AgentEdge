@@ -78,6 +78,9 @@ STOP_REPAIR_TYPES = ("MISSING_STOP", "STOP_EXPIRING")
 # Discrepancy action of a stop repair a dry run did not send (#601)
 DRY_RUN_ACTION = "DRY_RUN_NOT_SENT"
 
+# Open notices listed in a routine report (the latest); the scheduler CLI's `notices` has all
+REPORT_NOTICES = 10
+
 DRY_RUN_BANNER = (
     "> 🧪 **DRY RUN**: no orders were sent, and local state, daily records and GTT "
     "triggers were not changed. Stop changes below are what the routine would have made.\n\n"
@@ -842,19 +845,24 @@ class CostEfficientTradeCycle:
 
     def _open_notice_lines(self) -> List[str]:
         """
-        Report lines for the notices nobody has acknowledged (resolved ones are marked), or
-        none. Contained: notices never make a routine fail.
+        Report lines for the notices nobody has acknowledged (resolved ones are marked), the
+        latest REPORT_NOTICES of them, or none. Contained: notices never make a routine fail.
         """
         if self.notice_store is None:
             return []
         try:
-            notices = self.notice_store.open_notices()
-            lines = [f"- {notice.line()}" for notice in notices]
+            notices = list(self.notice_store.open_notices())
+            lines = [f"- {notice.line()}" for notice in notices[-REPORT_NOTICES:]]
         except Exception as e:
             logger.warning(f"Open notices not listed in the report: {e}")
             return []
         if not lines:
             return []
+        older = len(notices) - len(lines)
+        if older:
+            lines.append(
+                f"- ... and {older} older ones (`notices` in the scheduler CLI lists them all)"
+            )
         return ["", "## Open Notices", ""] + lines
 
     def _format_gtt_results_for_report(self, gtt_results: List[Any]) -> List[str]:

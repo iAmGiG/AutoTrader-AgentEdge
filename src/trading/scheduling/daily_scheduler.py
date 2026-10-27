@@ -52,6 +52,7 @@ from src.utils.market_hours import (
     DEFAULT_MARKET_CLOSE,
     EARLY_MARKET_CLOSE,
     get_market_hours_for_date,
+    is_nyse_trading_day,
     nyse_early_closes,
 )
 from src.utils.state_paths import get_state_dir
@@ -599,11 +600,13 @@ class DailyScheduler:
             self._hours_memo[day] = get_market_hours_for_date(day)
         return self._hours_memo[day]
 
-    def _nyse_scheduled_at(self, task: ScheduledTask, day: date) -> datetime:
+    def _nyse_scheduled_at(self, task: ScheduledTask, day: date) -> Optional[datetime]:
         """
-        When a task ran on a past trading day, from the NYSE rules alone (no calendar
-        call): scheduled_at() without the one-off closures only the calendar knows.
+        When a task runs on a day, from the NYSE rules alone (no calendar call):
+        scheduled_at() without the one-off closures only the calendar knows.
         """
+        if not is_nyse_trading_day(day):
+            return None
         early = day in nyse_early_closes(day.year)
         return self._run_time(task, day, EARLY_MARKET_CLOSE if early else DEFAULT_MARKET_CLOSE)
 
@@ -817,9 +820,10 @@ class DailyScheduler:
         history: today's once the run window and a grace period have passed, and the
         previous trading day's.
 
-        Cron runs this on every tick, so it makes no broker call and no calendar call
-        beyond the one should_run_task made (the previous day comes from the NYSE
-        rules), and never calls should_run_task. It never raises: a problem here must
+        Cron runs this on every tick, so it makes no broker call and no calendar call of
+        its own: today's time comes from the calendar answer should_run_task got, or from
+        the NYSE rules when the tick didn't get the lock, and the previous day's from the
+        NYSE rules. It never calls should_run_task and never raises: a problem here must
         not stop the tick.
 
         Args:
@@ -864,7 +868,10 @@ class DailyScheduler:
     ) -> None:
         """One routine's notice, or the clearing of its notices, for one trading day."""
         is_today = day == now.date()
-        when = self.scheduled_at(task, day) if is_today else self._nyse_scheduled_at(task, day)
+        if is_today and day in self._hours_memo:
+            when = self.scheduled_at(task, day)  # the calendar answer should_run_task got
+        else:  # the previous day, or a tick that didn't get the lock: no calendar call
+            when = self._nyse_scheduled_at(task, day)
         if when is None or (is_today and now < when + RUN_WINDOW + OUTCOME_GRACE):
             return  # no session today, or the routine isn't overdue yet
         routine = task.name.replace("_routine", "")

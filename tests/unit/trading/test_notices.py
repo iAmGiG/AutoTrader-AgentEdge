@@ -238,6 +238,20 @@ def test_acknowledged_notices_are_dropped_after_30_days_on_the_next_write(store,
     assert fresh.seq == 4  # numbers are not reused
 
 
+def test_resolved_notices_are_dropped_30_days_after_they_resolved_even_if_never_acked(store, clock):
+    for key in ("routine_failed:morning:2026-10-27", "never_resolved:2"):
+        put(store, key)
+    store.resolve("routine_failed:morning:2026-10-27")  # day 0
+    clock.advance(days=29)
+    put(store, "fresh:3")
+    assert len(store.all_notices()) == 3
+
+    clock.advance(days=2)  # day 31
+    put(store, "fresh:4")
+
+    assert {n.key for n in store.all_notices()} == {"never_resolved:2", "fresh:3", "fresh:4"}
+
+
 # --- A broken file ----------------------------------------------------------------------
 
 BROKEN_FILES = [

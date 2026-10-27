@@ -70,7 +70,7 @@ NOTICES_FILE_RESET = "notices_file_reset"
 ROUTINE_KINDS = (ROUTINE_FAILED, ROUTINE_MISSED, ROUTINE_STUCK)
 
 FORMAT_VERSION = 1
-ACK_RETENTION = timedelta(days=30)  # acknowledged notices are dropped after this
+ACK_RETENTION = timedelta(days=30)  # acknowledged or resolved notices are dropped after this
 LOCK_WAIT_SECONDS = 10.0  # a busy lock is waited for this long, then given up
 LOCK_POLL_SECONDS = 0.05
 MAX_TEXT = 300  # characters of a title or detail
@@ -233,12 +233,18 @@ def _upsert(
 
 
 def _prune(state: _State, now: datetime) -> None:
-    """Drop the notices acknowledged more than ACK_RETENTION ago."""
+    """
+    Drop the notices acknowledged, or resolved, more than ACK_RETENTION ago: a loop left
+    unattended doesn't keep every cleared problem open forever.
+    """
     cutoff = now - ACK_RETENTION
     stale = [
         key
         for key, notice in state.notices.items()
-        if notice.acked_at and _parse_stamp(notice.acked_at) < cutoff
+        if any(
+            stamp and _parse_stamp(stamp) < cutoff
+            for stamp in (notice.acked_at, notice.resolved_at)
+        )
     ]
     for key in stale:
         del state.notices[key]

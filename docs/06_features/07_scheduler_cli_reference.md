@@ -374,6 +374,7 @@ Reports are saved to `reports/daily/` with human-readable filenames, named by th
 
 6. **Open Notices** (both routines, when there are any)
    - Number, severity, title and when first seen; resolved ones are marked `resolved`
+   - The latest 10; `notices` in the scheduler CLI lists them all
 
 **Note**: Stop and target prices are extracted from your actual GTC orders on Alpaca (bracket legs included). The routines re-place missing stops but not take-profit orders: a GTC take-profit lapses after Alpaca's 90-day limit, so a position held that long shows no target and exits by its trailing stop.
 

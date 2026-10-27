@@ -312,8 +312,8 @@ How they are found:
 Notices stay open until a person runs `ack` in the scheduler CLI (`notices` lists them, `status`
 shows the latest, each routine report ends with an "Open Notices" section, and
 `get_scheduler_status` carries the count). A resolved notice is marked `resolved` but is not
-acknowledged for you. If its condition returns, it opens again. Acknowledged notices are dropped
-after 30 days. Titles and details are cleaned of API keys, account numbers, ids and equity and
+acknowledged for you. If its condition returns, it opens again. Notices are dropped 30 days after
+they were acknowledged or resolved, and a report lists the latest 10. Titles and details are cleaned of API keys, account numbers, ids and equity and
 cut to 300 characters; the file is replaced whole on every write, under a lock, so a cron run and
 the CLI can use it together.
 
