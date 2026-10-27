@@ -410,6 +410,11 @@ class GTTManager:
             logger.error(f"Failed to update trigger {trigger_id}: {e}")
             return False
 
+    def extend_expiration(self, trigger_id: int, expiration_days: int) -> bool:
+        """Move a trigger's expiration to `expiration_days` from now."""
+        exp = get_datetime_now() + timedelta(days=expiration_days)
+        return self.update_trigger(trigger_id, expiration_date=exp.isoformat())
+
     def delete_trigger(self, trigger_id: int) -> bool:
         """Delete a trigger."""
         try:

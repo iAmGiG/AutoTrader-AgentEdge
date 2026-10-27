@@ -136,7 +136,70 @@ for attempt in range(1, max_attempts + 1):
 - Invalid data → Log and skip
 - Broker discrepancies → Auto-reconcile
 
-### 4. Configuration System
+### 4. Unattended Robustness (#259)
+
+#### Request timeouts
+
+alpaca-py sends its requests without a timeout, so a broker that accepted a connection and
+never answered would hang the cron check, and the run lock with it, until someone killed it.
+`src/utils/http_timeouts.py` gives the three Alpaca clients (trading, market calendar, market
+data) a default of 10 s to connect and 30 s to read for every request that does not pass its
+own; the Alpha Vantage requests pass the same values.
+
+#### Run watchdog
+
+`main.py --run-due` (cron only; the daemon and the interactive CLI are unchanged) arms a
+wall-clock limit before the scheduler runs: `RUN_DUE_TIMEOUT_SECONDS` = 900 s, retries and
+their sleeps included, or `run_due_timeout_seconds` in the scheduler config. When it passes,
+SIGALRM raises `RunDueTimeoutError`, which derives from `BaseException` so that the retry loop
+and the routines' contained steps cannot retry or swallow it. Then:
+
+- A routine in progress is recorded `timed_out` ("timed out after N s") in `scheduler_history`
+  and the execution log, its `routine_failed` notice is raised, and the process exits 1. Unlike
+  `failed`, a timeout does not settle the day: while the catch-up window is open the next tick
+  runs the routine again, up to `MAX_TIMEOUTS_PER_DAY` = 2 timeouts. A run that had already
+  recorded `completed` when the alarm landed keeps that result and raises no failure notice.
+- A timeout anywhere else (the outcome check, say) leaves one `run_due_error` notice and exits 1.
+- The run lock is released as the process ends, and the alarm and the previous handler are
+  restored on the way out. Without `SIGALRM` (Windows) there is no limit.
+
+The 900 s is the real bound on a check: the request timeouts are per read, not per call (a server
+that dribbles bytes, or alpaca-py's own 429/504 retries, can take longer), so a degraded broker
+can use all of it inside the first attempt. When a routine starts, the scheduler logs a warning
+if its retry sleeps alone (60 + 120 + 240 s with the defaults) could pass the limit.
+
+#### Catch-up window
+
+A routine that has no `completed` or `failed` row today (`timed_out` rows do not count) may
+start late, until its *run
+deadline* (`DailyScheduler.run_deadline`), never earlier than 5 minutes after its time:
+
+| Routine | Deadline |
+|---------|----------|
+| Morning | its time + 60 minutes (10:20 ET) |
+| Evening | the close minus 1 minute (15:59 ET; 12:59 ET on a 13:00 early close) |
+
+So the 15:55 tick catches a lost 15:50 tick, and the evening routine still starts before the
+close. A late start is logged at INFO. `scheduler_history` still guarantees one run a day, and
+a dry run keeps the 5-minute window, since it never counts as the day's run. So does a routine
+that was switched on (or the scheduler enabled) after its 5-minute window: enabling it late
+does not start a late run on the paper broker. `next_run` (never earlier than now) and the
+missed-routine notice use the same deadline: a missed morning is reported after 10:25 ET, an
+evening after 16:04 ET, and a miss is excused only if the routine was switched on after the
+deadline.
+
+#### State files and the calendar
+
+The execution log (`state/scheduler_execution_log.json`) and the positions backup are written
+to a temporary file and renamed, so a crash leaves the previous file whole. An empty answer
+from Alpaca's calendar on a day the NYSE rules call a trading day is logged as a WARNING (the
+day is still treated as closed). Syncing an existing GTT trailing-stop trigger moves its
+expiration to 90 days from now, so a trigger synced twice a day never lapses.
+
+The cron path does not import the CLI (`src/cli`, `core.factory`, the agent framework): only
+the interactive and `--account` paths load it.
+
+### 5. Configuration System
 
 `config_defaults/scheduler_config.yaml`:
 
@@ -151,6 +214,7 @@ max_retries: 3
 retry_delay_seconds: 60
 enable_notifications: false
 dry_run: false
+# run_due_timeout_seconds: 900   # wall-clock limit for one cron check (optional)
 ```
 
 The enable flags are defaults: flags saved from the CLI, the config editor or the setup wizard (in `state/user.db`) take precedence.
@@ -280,10 +344,10 @@ again only updates the notice's count and last-seen time.
 
 | Key | Severity | Raised when |
 |-----|----------|-------------|
-| `routine_failed:<routine>:<date>` | CRITICAL | the routine failed after its retries |
-| `routine_missed:<routine>:<date>` | CRITICAL | no run is recorded 10 minutes after the routine's time |
+| `routine_failed:<routine>:<date>` | CRITICAL | the routine failed after its retries, or the cron watchdog cut it off |
+| `routine_missed:<routine>:<date>` | CRITICAL | no run is recorded 5 minutes after the routine's run deadline (see [catch-up window](#catch-up-window)) |
 | `routine_stuck:<routine>:<date>` | CRITICAL | a run started over 30 minutes ago and never finished |
-| `run_due_error:<date>:<Exception>` | CRITICAL | `main.py --run-due` crashed (the traceback still goes to `state/scheduler-cron.err`) |
+| `run_due_error:<date>:<Exception>` | CRITICAL | `main.py --run-due` crashed, or timed out outside a routine (the traceback still goes to `state/scheduler-cron.err`) |
 | `stop_breach:<SYM>:<date>` | CRITICAL | a position is at or below its stop and still open |
 | `target_breach:<SYM>:<date>` | WARNING | a position is at or above its target and still open |
 | `unprotected:<SYM>` | CRITICAL | a position was left without a protective stop (until a run finds it protected) |
@@ -300,10 +364,11 @@ How they are found:
   raises none.
 - **The history, on every cron tick** (`DailyScheduler.check_routine_outcomes()`, run at the end
   of each `run_scheduled_tasks()`, lock or not): for today, once a routine's 5-minute run window
-  and 5 more minutes have passed, and for the previous trading day, a completed or dry-run row
+  and 5 more minutes have passed (a routine with no run at all waits for its run deadline plus 5
+  minutes instead, since it may still start late), and for the previous trading day, a completed or dry-run row
   is fine, a failed row is a failure, a row still `running` after 30 minutes is stuck, and no row
   is a miss. It skips a disabled scheduler or routine, excuses a miss when the routine was
-  switched on only after its window (`morning_enabled_at` / `evening_enabled_at` in
+  switched on only after its run deadline (`morning_enabled_at` / `evening_enabled_at` in
   `scheduler_state`; a save that changes a time or the other routine doesn't count), and makes no broker or calendar call of its own: today's calendar
   lookup is the one `should_run_task` made, and the previous day is read from the NYSE rules (a
   one-off closure that neither the rules nor `config_defaults/market_hours.yaml` list would show

@@ -468,17 +468,21 @@ def test_a_report_lists_the_latest_ten_open_notices_and_counts_the_rest(bare_cyc
 # --- Routines that never ran ------------------------------------------------------------
 
 
-def test_a_routine_with_no_run_is_missed_once_its_window_and_a_grace_period_have_passed(
+def test_a_routine_with_no_run_is_missed_once_its_deadline_and_a_grace_period_have_passed(
     make_scheduler,
 ):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")  # Wednesday
 
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 24))  # Thursday, in the window
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 29, 59))  # window + 5, less a second
+    scheduler.check_routine_outcomes(
+        now=_et(2026, 10, 15, 10, 24)
+    )  # Thursday, before the catch-up deadline
+    scheduler.check_routine_outcomes(
+        now=_et(2026, 10, 15, 10, 24, 59)
+    )  # deadline + 5, less a second
     assert _keys(scheduler) == []
 
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 26))
 
     [notice] = scheduler.notice_store.all_notices()
     assert notice.key == "routine_missed:morning:2026-10-15"
@@ -492,9 +496,9 @@ def test_the_evening_routine_is_missed_after_its_own_time(make_scheduler):
     _both(scheduler, "2026-10-14")
     _record(scheduler, "morning", "2026-10-15")
 
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 15, 59))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 16, 3))
     assert _keys(scheduler) == []
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 16, 1))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 16, 5))
 
     assert _keys(scheduler) == ["routine_missed:evening:2026-10-15"]
 
@@ -504,9 +508,9 @@ def test_an_early_close_moves_the_evening_routine_and_so_its_miss(make_scheduler
     _both(scheduler, "2026-11-25")
     _record(scheduler, "morning", "2026-11-27")  # the day after Thanksgiving closes at 13:00
 
-    scheduler.check_routine_outcomes(now=_et(2026, 11, 27, 12, 59))
+    scheduler.check_routine_outcomes(now=_et(2026, 11, 27, 13, 3))
     assert _keys(scheduler) == []
-    scheduler.check_routine_outcomes(now=_et(2026, 11, 27, 13, 1))  # 12:50 + 5 + 5 = 13:00
+    scheduler.check_routine_outcomes(now=_et(2026, 11, 27, 13, 5))  # the 12:59 deadline + 5 = 13:04
 
     assert _keys(scheduler) == ["routine_missed:evening:2026-11-27"]
 
@@ -558,11 +562,11 @@ def test_only_the_routines_still_enabled_can_be_missed(make_scheduler):
 def test_a_completed_or_dry_run_is_no_miss_and_clears_an_earlier_one(make_scheduler, status):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 26))
     assert _keys(scheduler) == ["routine_missed:morning:2026-10-15"]
 
     _record(scheduler, "morning", "2026-10-15", status)
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 36))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 31))
 
     [notice] = scheduler.notice_store.all_notices()
     assert notice.resolved_at is not None
@@ -582,9 +586,9 @@ def test_a_routine_that_ran_is_not_missed(make_scheduler, status):
 def test_a_scheduler_switched_on_after_the_window_excuses_the_miss(make_scheduler):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")
-    _switched_on(scheduler, _et(2026, 10, 15, 9, 26))  # the 9:20 window ended at 9:25
+    _switched_on(scheduler, _et(2026, 10, 15, 10, 21))  # the catch-up deadline was 10:20
 
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 26))
 
     assert _keys(scheduler) == []
 
@@ -592,9 +596,9 @@ def test_a_scheduler_switched_on_after_the_window_excuses_the_miss(make_schedule
 def test_a_scheduler_switched_on_before_the_window_ended_does_not(make_scheduler):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")
-    _switched_on(scheduler, _et(2026, 10, 15, 9, 24))
+    _switched_on(scheduler, _et(2026, 10, 15, 9, 24))  # inside the 09:25 window
 
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 26))
 
     assert _keys(scheduler) == ["routine_missed:morning:2026-10-15"]
 
@@ -667,7 +671,7 @@ def test_a_database_saved_before_the_stamps_existed_excuses_nothing(make_schedul
             "UPDATE scheduler_state SET morning_enabled_at = NULL, evening_enabled_at = NULL"
         )
 
-    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 26))
 
     assert _keys(scheduler) == ["routine_missed:morning:2026-10-15"]
 
@@ -794,12 +798,12 @@ def test_the_previous_trading_day_skips_holidays_and_weekends(make_scheduler):
 @pytest.mark.parametrize(
     "saved, expected",
     [
-        (_et(2026, 11, 27, 12, 54), ["routine_missed:evening:2026-11-27"]),
-        (_et(2026, 11, 27, 12, 56), []),  # after the early-close evening window (12:50 + 5)
+        (_et(2026, 11, 27, 12, 52), ["routine_missed:evening:2026-11-27"]),
+        (_et(2026, 11, 27, 13, 0), []),  # after the early-close evening window (12:55)
     ],
 )
 def test_the_previous_days_early_close_moves_its_evening_window(make_scheduler, saved, expected):
-    """15:50 + 5 would put the window's end at 15:55, after both of these saves."""
+    """15:50 + 10 would put the deadline at 16:00, after both of these saves."""
     scheduler = make_scheduler()
     _record(scheduler, "morning", "2026-11-27")  # the day after Thanksgiving closes at 13:00
     _switched_on(scheduler, saved)
@@ -962,7 +966,7 @@ def test_a_time_without_a_zone_is_read_as_market_time(make_scheduler):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")
 
-    scheduler.check_routine_outcomes(now=datetime(2026, 10, 15, 9, 31))
+    scheduler.check_routine_outcomes(now=datetime(2026, 10, 15, 10, 26))
 
     assert _keys(scheduler) == ["routine_missed:morning:2026-10-15"]
 
@@ -1018,6 +1022,9 @@ def test_a_crashed_cron_check_leaves_a_notice_and_still_raises(tmp_path):
         import main
 
         class Crashing:
+            def warn_if_retries_exceed(self, limit_seconds):
+                pass
+
             def run_scheduled_tasks(self):
                 raise RuntimeError("tick failed: api_key=abc123")
 

@@ -75,7 +75,9 @@ def test_routines_run_on_trading_days_only(make_scheduler):
     assert scheduler.should_run_task(morning, now=_et(2026, 10, 15, 9, 21))  # Thursday
     assert not scheduler.should_run_task(morning, now=_et(2026, 10, 17, 9, 21))  # Saturday
     assert not scheduler.should_run_task(morning, now=_et(2026, 11, 26, 9, 21))  # Thanksgiving
-    assert not scheduler.should_run_task(morning, now=_et(2026, 10, 15, 9, 26))  # past window
+    assert not scheduler.should_run_task(
+        morning, now=_et(2026, 10, 15, 10, 21)
+    )  # past the catch-up deadline
     assert not scheduler.should_run_task(morning, now=_et(2026, 10, 15, 9, 16))  # not yet
 
 

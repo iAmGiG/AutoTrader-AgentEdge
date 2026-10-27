@@ -246,7 +246,12 @@ isn't needed with the cron entry.
 #### `start` / `stop`
 
 Start the daemon (`main.py --daemon`) in the background, or stop it. Not needed with the cron
-entry, which runs `main.py --run-due` every 5 minutes.
+entry, which runs `main.py --run-due` every 5 minutes. A routine starts within 5 minutes of its
+time; if no tick ran it, it still starts late until its run deadline (morning: 60 minutes
+after its time; evening: a minute before the close), see the
+[catch-up window](03_gtc_scheduler_technical.md#catch-up-window), except that enabling the
+scheduler or a routine after its 5-minute window starts no late run that day. A cron check that runs over
+15 minutes is cut off and leaves a notice.
 
 #### `enable`
 
@@ -404,6 +409,7 @@ Editable via `edit` command:
 
 - `market_timezone`: Always `America/New_York`
 - `retry_delay_seconds`: Initial retry delay (exponential backoff)
+- `run_due_timeout_seconds`: Wall-clock limit for one cron check, retries included (default 900)
 - `enable_notifications`: Not used yet (reserved for email). Local [notices](#notices) are always on
 
 ## Use Cases
