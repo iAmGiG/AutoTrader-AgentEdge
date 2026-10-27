@@ -36,7 +36,7 @@ import pandas as pd
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.data_sources.cache.sqlite_cache import TradingCacheManager
+from src.cache.sqlite_cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
 
 # Set up logging

@@ -24,7 +24,8 @@ import sys
 from pathlib import Path
 
 # Repository root (scripts/utilities/ -> repo), so `src` imports
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
 
 from src.cache import TradingCacheManager
 
@@ -33,6 +34,9 @@ def cmd_stats(args):
     """Show cache statistics."""
     cache = TradingCacheManager(db_path=args.db_path)
     stats = cache.get_stats()
+    if not stats:
+        print(f"\n❌ Could not read cache statistics from {args.db_path} (see the log)")
+        return 1
 
     print("\n" + "=" * 70)
     print("CACHE STATISTICS")
@@ -128,7 +132,7 @@ def cmd_export(args):
 
     if df is None or df.empty:
         print(f"❌ No data found for {args.symbol}")
-        return
+        return 1
 
     output_file = args.output or f"{args.symbol}_{args.start}_{args.end}.json"
 
@@ -156,7 +160,11 @@ def cmd_clear(args):
         # Clear specific symbol
         print(f"\n🗑️  Clearing cache for {args.symbol}...")
         if not args.confirm:
-            response = input(f"   Delete all {args.symbol} data? (y/N): ")
+            if args.start or args.end:
+                scope = f"from {args.start or 'the first date'} to {args.end or 'the last date'}"
+            else:
+                scope = "for all dates"
+            response = input(f"   Delete {args.symbol} data {scope}? (y/N): ")
             if not response.lower().startswith("y"):
                 print("   Cancelled")
                 return
@@ -210,7 +218,7 @@ def cmd_query(args):
 
     if df is None or df.empty:
         print("\n❌ No data found")
-        return
+        return 1
 
     print(f"\n✅ Found {len(df)} days")
     print("\nFirst 5 rows:")
@@ -255,8 +263,8 @@ Examples:
 
     parser.add_argument(
         "--db-path",
-        default=".cache/trading_data.db",
-        help="Path to SQLite database (default: .cache/trading_data.db)",
+        default=str(REPO_ROOT / ".cache" / "trading_data.db"),
+        help="Path to SQLite database (default: the repository's .cache/trading_data.db)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
@@ -324,8 +332,7 @@ Examples:
     }
 
     try:
-        commands[args.command](args)
-        return 0
+        return commands[args.command](args) or 0
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback

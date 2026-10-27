@@ -10,7 +10,7 @@
 ### Basic Usage
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 # Initialize cache
 cache = TradingCacheManager()
@@ -50,7 +50,7 @@ print(f"Database size: {stats['db_size_mb']} MB")
 ### Using CacheAdapter (Backward Compatibility)
 
 ```python
-from src.data_sources.cache import cache_adapter
+from src.cache import cache_adapter
 
 # Get market data (tries cache first, falls back to legacy)
 df = cache_adapter.get_market_data(
@@ -85,7 +85,7 @@ cache_adapter.set_market_data(
 For broker state caching (account, positions, orders) with database-first architecture:
 
 ```python
-from src.data_sources.cache import unified_broker_cache
+from src.cache import unified_broker_cache
 
 # Get cached account (fetches if stale, returns from DB)
 account = unified_broker_cache.get_account(
@@ -460,7 +460,7 @@ df = cache.get(
 ### Data Source Integration
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 class MyDataSource:
     def __init__(self):
@@ -485,7 +485,7 @@ class MyDataSource:
 ### Using CacheAdapter for Backward Compatibility
 
 ```python
-from src.data_sources.cache import cache_adapter
+from src.cache import cache_adapter
 
 # Old code continues to work
 df = cache_adapter.get_market_data("AAPL", "2025-01-01", "2025-01-31")
@@ -575,47 +575,47 @@ mv .cache/trading_data.db .cache/trading_data.db.corrupt
 ### View Statistics
 
 ```bash
-python scripts/cache_manager.py stats
+python scripts/utilities/cache_manager.py stats
 ```
 
 ### Cleanup Expired Entries
 
 ```bash
-python scripts/cache_manager.py cleanup
+python scripts/utilities/cache_manager.py cleanup
 ```
 
 ### Optimize Database
 
 ```bash
-python scripts/cache_manager.py vacuum
+python scripts/utilities/cache_manager.py vacuum
 ```
 
 ### List Cached Symbols
 
 ```bash
-python scripts/cache_manager.py symbols
+python scripts/utilities/cache_manager.py symbols
 ```
 
 ### Export Data
 
 ```bash
-python scripts/cache_manager.py export SPY --start 2025-01-01 --end 2025-12-31
+python scripts/utilities/cache_manager.py export SPY --start 2025-01-01 --end 2025-12-31
 ```
 
 ### Query Cache
 
 ```bash
-python scripts/cache_manager.py query SPY --start 2025-10-01 --end 2025-10-31
+python scripts/utilities/cache_manager.py query SPY --start 2025-10-01 --end 2025-10-31
 ```
 
 ### Clear Cache
 
 ```bash
 # Clear specific symbol
-python scripts/cache_manager.py clear --symbol SPY --confirm
+python scripts/utilities/cache_manager.py clear --symbol SPY --confirm
 
-# Clear all data (dangerous!)
-python scripts/cache_manager.py clear --all --confirm
+# Clear all data (dangerous!): no --symbol means everything
+python scripts/utilities/cache_manager.py clear --confirm
 ```
 
 ---
@@ -657,13 +657,13 @@ cache.set_market_data(symbol, start, end, source, df)
 df = cache.get_market_data(symbol, start, end, source)
 
 # After (TradingCacheManager)
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 cache = TradingCacheManager()
 cache.set(symbol, df, source=source)
 df = cache.get(symbol, start, end, source=source)
 
 # Or use CacheAdapter (no code changes)
-from src.data_sources.cache import cache_adapter
+from src.cache import cache_adapter
 df = cache_adapter.get_market_data(symbol, start, end, source)
 ```
 
@@ -672,7 +672,7 @@ df = cache_adapter.get_market_data(symbol, start, end, source)
 **Pattern for data source integration:**
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 class AlpacaMarketData:
     def __init__(self, cache_manager: Optional[TradingCacheManager] = None):
@@ -690,30 +690,9 @@ class AlpacaMarketData:
 
 **Important:** Drop 'symbol' and 'source' columns before caching (stored as metadata).
 
-### Step 4: Rollback Plan (If Needed)
+### Step 4: Rollback
 
-If you need to rollback to the old system:
-
-```bash
-# 1. Restore JSON files from backup
-cp -r .cache/backup_TIMESTAMP/* .cache/
-
-# 2. Remove SQLite database
-mv .cache/trading_data.db .cache/trading_data.db.backup
-
-# 3. Update git to previous commit
-git log --oneline  # Find commit before migration
-git checkout <commit-hash>
-```
-
-**Temporary rollback in code:**
-
-```python
-# Switch back temporarily (will show deprecation warnings)
-from src.data_sources.cache import UnifiedCacheManager
-cache = UnifiedCacheManager()
-# Use old API...
-```
+No longer possible: the file-based `UnifiedCacheManager` has been removed, and `cache_adapter` keeps its old API on top of the SQLite cache.
 
 ---
 
@@ -722,11 +701,7 @@ cache = UnifiedCacheManager()
 ### Run Tests
 
 ```bash
-# Basic tests (5 tests)
-python scripts/test_cache_migration.py
-
-# Advanced tests (24 tests)
-python scripts/test_cache_advanced.py
+pytest tests/unit/data_sources/test_sqlite_cache.py tests/unit/test_cache_manager_script.py
 ```
 
 ### Test Coverage
@@ -735,11 +710,9 @@ python scripts/test_cache_advanced.py
 - Edge cases (empty data, duplicates, date handling)
 - Expiration logic (TTL, cleanup)
 - Multi-asset support
-- Performance benchmarks
-- Concurrent access (thread safety)
 - Cache management operations
-
-**All 29/29 tests passing** ✅
+- Concurrent writes (thread safety)
+- The admin CLI (`scripts/utilities/cache_manager.py`) against a temporary database
 
 ---
 
@@ -779,7 +752,7 @@ The cache system supports storing and retrieving data across multiple timeframes
 ### Multi-Timeframe Analysis Example
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 cache = TradingCacheManager()
 
@@ -835,7 +808,7 @@ The cache database includes additional tables for analytics and future features:
 ### Raw Options Chain Storage
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 cache = TradingCacheManager()
 

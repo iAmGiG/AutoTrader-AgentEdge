@@ -483,72 +483,13 @@ If queries become slow:
 
 ### Test Coverage
 
-- **Basic Tests**: `scripts/test_cache_migration.py` (5 tests)
-- **Advanced Tests**: `scripts/test_cache_advanced.py` (24 tests)
-- **Total**: 29/29 tests passing (100% pass rate)
-
-Test categories:
-
-- Basic operations (set/get/filtering)
-- Edge cases (empty data, duplicates, date handling)
-- Expiration logic (TTL, cleanup)
-- Multi-asset support
-- Performance benchmarks
-- Concurrent access (thread safety)
-- Cache management operations
+- `tests/unit/data_sources/test_sqlite_cache.py`: basic operations, edge cases (empty data, duplicates, dates), expiration, multi-asset support, cache management, concurrent writes
+- `tests/unit/test_cache_manager_script.py`: the admin CLI against a temporary database
 
 ### Run Tests
 
 ```bash
-# Basic tests
-python scripts/test_cache_migration.py
-
-# Advanced tests (comprehensive)
-python scripts/test_cache_advanced.py
-
-# Both test suites
-python scripts/test_cache_migration.py && python scripts/test_cache_advanced.py
-```
-
-## Legacy System (Deprecated)
-
-### UnifiedCacheManager (File-Based)
-
-**Status**: Deprecated in November 2025 and since removed (it was `src/data_sources/cache/unified_cache.py`). `cache_adapter` keeps its API on top of the SQLite cache.
-
-What it was:
-
-- 📁 Stored data as JSON files in `.cache/market_data/`
-
-**Why deprecated:**
-
-- No concurrent access safety
-- Slower queries (200ms+ vs 25ms)
-- File fragmentation issues
-- Not futures-ready
-- Manual cache cleanup required
-
-## Best Practices
-
-1. **Always use TradingCacheManager** for new code
-2. **Specify asset_type** explicitly for options/futures
-3. **Run periodic cleanup** (`cache.cleanup_expired()` weekly)
-4. **Monitor database size** and vacuum when >1GB
-5. **Use source filtering** to distinguish data from different providers
-6. **Leverage smart expiration** - let the cache handle TTL automatically
-7. **Enable WAL mode** for high-concurrency scenarios (see Performance Tuning)
-
-## Performance Tuning
-
-For high-frequency trading or heavy concurrent access:
-
-```python
-import sqlite3
-
-# Enable WAL (Write-Ahead Logging) mode for better concurrency
-with sqlite3.connect('.cache/trading_data.db') as conn:
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=10000")  # 10 second timeout
+pytest tests/unit/data_sources/test_sqlite_cache.py tests/unit/test_cache_manager_script.py
 ```
 
 ## Future Enhancements

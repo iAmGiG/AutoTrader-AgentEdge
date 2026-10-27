@@ -14,11 +14,13 @@ import pytest
 
 from src.cache import TradingCacheManager
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "utilities" / "cache_manager.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = REPO_ROOT / "scripts" / "utilities" / "cache_manager.py"
 
 
 @pytest.fixture
-def cache_manager():
+def cache_manager(monkeypatch):
+    monkeypatch.setattr(sys, "path", list(sys.path))  # the script prepends the repo root
     spec = importlib.util.spec_from_file_location("cache_manager_script", SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -48,52 +50,55 @@ def _run(cache_manager, monkeypatch, *argv):
     return cache_manager.main()
 
 
-def test_stats_symbols_and_query_read_the_cache(cache_manager, db_path, monkeypatch, capsys):
+def test_stats_reads_the_cache(cache_manager, db_path, monkeypatch, capsys):
     assert _run(cache_manager, monkeypatch, "--db-path", db_path, "stats") == 0
-    assert _run(cache_manager, monkeypatch, "--db-path", db_path, "symbols") == 0
-    assert (
-        _run(
-            cache_manager,
-            monkeypatch,
-            "--db-path",
-            db_path,
-            "query",
-            "SPY",
-            "--start",
-            "2026-10-20",
-            "--end",
-            "2026-10-22",
-        )
-        == 0
-    )
 
     out = capsys.readouterr().out
     assert "Total entries: 3" in out
-    assert "SPY" in out
-    assert "Found 3 days" in out
+    assert "Unique symbols: 1" in out
+
+
+def test_symbols_lists_the_cached_symbols(cache_manager, db_path, monkeypatch, capsys):
+    assert _run(cache_manager, monkeypatch, "--db-path", db_path, "symbols") == 0
+
+    out = capsys.readouterr().out
+    assert "Total: 1" in out and "SPY" in out
+
+
+def test_query_finds_the_bars(cache_manager, db_path, monkeypatch, capsys):
+    argv = ["--db-path", db_path, "query", "SPY", "--start", "2026-10-20", "--end", "2026-10-22"]
+
+    assert _run(cache_manager, monkeypatch, *argv) == 0
+
+    assert "Found 3 days" in capsys.readouterr().out
 
 
 def test_export_writes_the_rows(cache_manager, db_path, monkeypatch, tmp_path):
     output = tmp_path / "spy.json"
+    argv = ["--db-path", db_path, "export", "SPY", "--start", "2026-10-20", "--end", "2026-10-22"]
 
-    assert (
-        _run(
-            cache_manager,
-            monkeypatch,
-            "--db-path",
-            db_path,
-            "export",
-            "SPY",
-            "--start",
-            "2026-10-20",
-            "--end",
-            "2026-10-22",
-            "--output",
-            str(output),
-        )
-        == 0
-    )
+    assert _run(cache_manager, monkeypatch, *argv, "--output", str(output)) == 0
 
     exported = json.loads(output.read_text())
     assert exported["symbol"] == "SPY"
     assert [row["close"] for row in exported["data"]] == [741.2, 744.47, 743.9]
+
+
+def test_no_data_is_a_failed_export(cache_manager, db_path, monkeypatch, tmp_path):
+    output = tmp_path / "none.json"
+    argv = ["--db-path", db_path, "export", "SPY", "--start", "2030-01-01", "--end", "2030-01-31"]
+
+    assert _run(cache_manager, monkeypatch, *argv, "--output", str(output)) == 1
+    assert not output.exists()
+
+
+def test_the_default_database_is_the_repositorys_cache(cache_manager, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        cache_manager, "cmd_stats", lambda args: seen.setdefault("db", args.db_path)
+    )
+    monkeypatch.chdir("/")
+
+    _run(cache_manager, monkeypatch, "stats")
+
+    assert Path(seen["db"]) == REPO_ROOT / ".cache" / "trading_data.db"
