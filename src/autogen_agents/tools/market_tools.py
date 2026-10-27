@@ -13,7 +13,7 @@ import os
 import sys
 
 # Third-party imports
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.market_data.market_context_tool import market_context_tool
 

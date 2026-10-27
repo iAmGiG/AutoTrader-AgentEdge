@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List
 
 import pandas as pd
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.market_data.unified_market_tool import fetch_unified_market_data
 from src.utils.agent_utils import load_agent_config
@@ -271,9 +271,11 @@ of individual stock decisions."""
         return default_desc
 
 
-# Create the FunctionTool for AutoGen
+# The agents' FunctionTool (Microsoft Agent Framework, #606)
 market_context_tool = FunctionTool(
-    fetch_market_context_data, description=_get_market_context_description()
+    func=fetch_market_context_data,
+    name="fetch_market_context_data",
+    description=_get_market_context_description(),
 )
 
 # Set agent type compatibility

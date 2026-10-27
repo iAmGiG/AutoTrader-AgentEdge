@@ -5,13 +5,9 @@ description = "Multi-agent AI trading platform powered by AgentEdge architecture
 authors = [{name = "iAmGiG"}]
 requires-python = ">=3.12"
 dependencies = [
-    # Core AutoGen 0.7.x framework. 0.7.5 is AutoGen's last release (archived); the
-    # successor is Microsoft Agent Framework.
-    "autogen-agentchat>=0.7.5",
-    "autogen-core>=0.7.5",
-    "autogen-ext[openai]>=0.7.5",  # OpenAIChatCompletionClient; brings openai, tiktoken
-    # Microsoft Agent Framework, AutoGen's successor (#606): the CLI tools use its FunctionTool
+    # Microsoft Agent Framework (#606; replaced AutoGen): agents, tools, OpenAI client
     "agent-framework-core>=1.23,<2",
+    "agent-framework-openai>=1.17,<2",  # brings openai
     # Trading APIs
     "alpaca-py>=0.43.2",
     # Data processing. pandas 3 reproduces every committed research result (checked

@@ -1,36 +1,24 @@
 # base_agent.py
 """
-Base module defining an abstract agent class that all specialized agents inherit from.
-This implementation is designed for AutoGen 0.7.x and provides common functionality
-for all agents in the system.
+Base class for the trading agents, on Microsoft Agent Framework (#606; it was AutoGen).
+
+An agent's own work (voting, scanning, risk checks) is plain Python. For free-text
+requests, process_with_tools() runs an Agent Framework Agent with the agent's tools:
+the model may call tools for up to max_tool_rounds round trips, then must answer in
+text. The OpenAI client is created on first use, so an agent that never calls the LLM
+needs no API key.
 """
 
-# Import standard Python libraries
 import asyncio
 import os
 import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Dict, List, Optional, Union
 
-from autogen_agentchat.agents import AssistantAgent
+import openai
+from agent_framework import Agent, FunctionInvocationConfiguration
+from agent_framework.openai import OpenAIChatCompletionClient
 
-# Import the proper AutoGen core components
-from autogen_core.models import (
-    AssistantMessage,
-    FunctionExecutionResult,
-    FunctionExecutionResultMessage,
-)
-from autogen_ext.models.openai import OpenAIChatCompletionClient
-
-# Import tool dictionary and extracted utilities (same folder)
-from .message_processor import build_message_sequence, extract_content
-from .tool_executor import (
-    execute_tool_async,
-    format_tool_result,
-    log_tool_call,
-    log_tool_result,
-    parse_tool_arguments,
-)
 from src.autogen_agents.tools import ALL_TOOLS
 
 # Import utils and config
@@ -58,14 +46,16 @@ DEFAULT_LLM_CONFIG = {
     "top_p": 0.95,  # Focus on more likely tokens
 }
 
+# Model round trips in which tools may be called before the model must answer in text
+DEFAULT_MAX_TOOL_ROUNDS = 2
 
-class BaseAgent(AssistantAgent, ABC):
+
+class BaseAgent(ABC):
     """
-    Abstract base class for AutoGen-based agents.
-    Encapsulates common functionalities such as:
-      - Configuration handling via AutoGen's AgentConfig
-      - Memory system access for knowledge retrieval
-      - Tool registration and usage
+    Abstract base class for the trading agents.
+
+    Provides the agent's name and tools, LLM conversations with tool calling
+    (process_with_tools), an optional memory system and logging.
     """
 
     def __init__(
@@ -80,72 +70,66 @@ class BaseAgent(AssistantAgent, ABC):
         Initialize the agent with tools, memory system, and LLM configuration.
 
         :param name: Unique name/identifier for this agent.
-        :param tools: List of tools the agent can use.
+        :param tools: List of tools (Agent Framework FunctionTools) the agent can use.
         :param memory_system: Optional memory interface for knowledge storage and retrieval.
         :param llm_config: Optional dictionary containing LLM settings (temperature, etc).
-        :param use_dual_models: If True, uses separate models for tool calling (4o-mini) and reasoning (o3-mini).
-                                Default False - most agents use pure calculations without LLM calls.
+        :param use_dual_models: If True, use the tool-calling model (OPENAI_TOOL_MODEL)
+            instead of the default one. Default False - most agents use pure
+            calculations without LLM calls.
         """
-        # 1. Merge default LLM config with any provided config
+        self._name = name
+        self.description = f"{name} agent"
+
         llm_params = DEFAULT_LLM_CONFIG.copy()
         if llm_config:
             llm_params.update(llm_config)
+        self.llm_config = llm_params
 
-        # 2. Create the LLM client instance for function calling
+        self.tools: List[Any] = [tool for tool in (ALL_TOOLS if tools is None else tools) if tool]
+        self._tools_dict = {tool.name: tool for tool in self.tools}
+
+        self.memory_system = memory_system
+        self.use_dual_models = use_dual_models
+        self.max_tool_rounds = DEFAULT_MAX_TOOL_ROUNDS
+        self._model_client: Optional[OpenAIChatCompletionClient] = None
+
+    @property
+    def name(self) -> str:
+        """The agent's name (read-only)."""
+        return self._name
+
+    @property
+    def model_client(self) -> OpenAIChatCompletionClient:
+        """The OpenAI chat client, created on first use (needs an API key then)."""
+        if self._model_client is None:
+            self._model_client = self._create_model_client()
+        return self._model_client
+
+    def _create_model_client(self) -> OpenAIChatCompletionClient:
         if not open_ai_key:
             raise ValueError(
-                "OpenAI API key not found. Set the OPEN_AI_KEY environment variable or update your Codex config."
+                "OpenAI API key not found. Set the OPEN_AI_KEY environment variable or "
+                "add OPEN_AI_KEY to config/config.json."
             )
-
-        # Select model based on dual model configuration
-        selected_model = tool_model_name if use_dual_models else model_name
-
-        client_config = {
-            "model": selected_model,
-            "api_key": open_ai_key,
-            # LLM parameters
-            "temperature": llm_params.get("temperature", 0.2),
-            "max_tokens": llm_params.get("max_tokens", 4096),
-            "top_p": llm_params.get("top_p", 0.95),
-            # API settings
-            "timeout": llm_params.get("timeout", 120),
-            "max_retries": llm_params.get("max_retries", 3),
-        }
-
-        model_client_instance = OpenAIChatCompletionClient(**client_config)
-
-        # 3. Set up tools
-        if tools is None:
-            tools = ALL_TOOLS
-
-        # 4. Call the parent constructor
-        super().__init__(
-            name=name,
-            model_client=model_client_instance,
-            tools=tools,
-            description=f"{name} agent",
-            reflect_on_tool_use=True,
-            tool_call_summary_format="{result}",
+        async_client = openai.AsyncOpenAI(
+            api_key=open_ai_key,
+            timeout=self.llm_config.get("timeout", 120),
+            max_retries=self.llm_config.get("max_retries", 3),
+        )
+        return OpenAIChatCompletionClient(
+            model=tool_model_name if self.use_dual_models else model_name,
+            async_client=async_client,
+            function_invocation_configuration=FunctionInvocationConfiguration(
+                max_iterations=self.max_tool_rounds
+            ),
         )
 
-        # 5. Store tools in a local dict for direct access
-        self._tools_dict = {tool.name: tool for tool in tools}
-
-        # 6. Set up memory system
-        self.memory_system = memory_system
-
-        # 7. Store the LLM configuration and model client
-        self.llm_config = llm_params
-        self.model_client = model_client_instance
-
-        # 8. Create optional reasoning model client (o3-mini for enhanced reasoning)
-        self.use_dual_models = use_dual_models
-        if use_dual_models:
-            reasoning_config = client_config.copy()
-            reasoning_config["model"] = prompt_model_name
-            self.reasoning_model_client = OpenAIChatCompletionClient(**reasoning_config)
-        else:
-            self.reasoning_model_client = None
+    def _chat_options(self) -> Dict[str, Any]:
+        return {
+            "temperature": self.llm_config.get("temperature", 0.2),
+            "max_tokens": self.llm_config.get("max_tokens", 4096),
+            "top_p": self.llm_config.get("top_p", 0.95),
+        }
 
     def log(self, message: str) -> None:
         """
@@ -160,167 +144,6 @@ class BaseAgent(AssistantAgent, ABC):
             print(f"[{self.name}] {message}")
 
     #############################
-    # Message Building and Processing
-    #############################
-
-    def _build_message_sequence(
-        self, prompt: str, system_prompt: Optional[str] = None
-    ) -> List[Any]:
-        """Build a sequence of messages for the conversation with the LLM."""
-        return build_message_sequence(prompt, system_prompt)
-
-    def _extract_content(self, response: Any) -> str:
-        """Extract the content from a response object."""
-        return extract_content(response)
-
-    def _parse_tool_arguments(self, tool_args: Any) -> Dict[str, Any]:
-        """Parse tool arguments into a dictionary format."""
-        return parse_tool_arguments(tool_args, self.name)
-
-    #############################
-    # Tool Execution
-    #############################
-
-    async def _execute_tool(self, tool_name: str, tool_args: Any) -> Any:
-        """
-        Core method to execute a tool with the given arguments.
-
-        :param tool_name: The name of the tool to execute.
-        :param tool_args: The arguments for the tool.
-        :return: The result of the tool execution.
-        """
-        # Get the actual tool from the tools dict
-        tool = self._tools_dict.get(tool_name)
-        if not tool:
-            raise ValueError(f"Tool not found: {tool_name}")
-
-        # Parse the tool arguments in a clean way
-        parsed_args = self._parse_tool_arguments(tool_args)
-
-        try:
-            # Call the tool and get result
-            tool_result = await self._execute_tool_async(tool, tool_name, parsed_args)
-
-            # Log and process result
-            self._log_tool_result(tool_result)
-            processed_result = self.process_tool_result(tool_name, tool_result, parsed_args)
-            return processed_result
-        except Exception as e:
-            traceback.print_exc()
-            self.log(f"Error executing tool {tool_name}: {str(e)}")
-            return f"Error executing {tool_name}: {str(e)}"
-
-    async def _execute_tool_async(self, tool, tool_name: str, tool_args: Dict[str, Any]) -> Any:
-        """Execute a tool asynchronously using the extracted tool executor."""
-        return await execute_tool_async(tool, tool_name, tool_args, self.name)
-
-    def _log_tool_call(self, tool_name: str, tool_args: Any) -> None:
-        """Log information about a tool call."""
-        log_tool_call(tool_name, tool_args)
-
-    def _log_tool_result(self, tool_result: Any) -> None:
-        """Log information about a tool execution result."""
-        log_tool_result(tool_result, self.name)
-
-    def _format_tool_result(
-        self, result: Any, tool_name: str, tool_id: str
-    ) -> FunctionExecutionResult:
-        """Format a tool result for use in the conversation."""
-        return format_tool_result(result, tool_name, tool_id, self.name)
-
-    #############################
-    # Core Conversation Methods
-    #############################
-
-    async def _run_tool_conversation(self, messages: List[Any]) -> Any:
-        """
-        Run a conversation that may involve tool calls, but bail out after
-        `self.max_tool_rounds` (default 2).  The final turn is a plain-text
-        summary request with *no* tools supplied, so the model cannot call
-        another function.
-        """
-        max_rounds = getattr(self, "max_tool_rounds", 2)
-        rounds = 0
-        conversation = list(messages)
-        tools_list = list(self._tools_dict.values())
-
-        while True:
-            rounds += 1
-            self.log(f"Calling LLM (tool round {rounds})...")
-            response = await self.model_client.create(
-                messages=conversation,
-                tools=tools_list,
-            )
-
-            # ── If the model wants to call tools ──────────────────────
-            if hasattr(response, "content") and isinstance(response.content, list):
-                if rounds >= max_rounds:
-                    self.log(
-                        f"{self.name}: reached max_tool_rounds={max_rounds}; "
-                        "stopping further tool calls."
-                    )
-                    break
-
-                # record the tool call then execute it
-                tool_calls = response.content
-                conversation.append(AssistantMessage(content=tool_calls, source="assistant"))
-                tool_results = await self._process_tool_calls(tool_calls)
-                conversation.append(FunctionExecutionResultMessage(content=tool_results))
-                continue  # go to next round
-
-            # ── No tool call → return assistant answer ─────────────
-            return response
-
-        # ── Ask for a text-only summary (no tools param!) ─────────────
-        summary = await self.model_client.create(
-            messages=conversation
-            + [
-                AssistantMessage(
-                    content=(
-                        "Summarize these findings in a final answer. Do NOT call any more tools."
-                    ),
-                    source="assistant",
-                )
-            ]
-        )
-        return summary
-
-    async def _process_tool_calls(self, tool_calls: List[Any]) -> List[FunctionExecutionResult]:
-        """
-        Process a list of tool calls and return their results.
-
-        :param tool_calls: A list of tool call objects from the LLM.
-        :return: A list of function execution results.
-        """
-        tool_results = []
-        for tool_call in tool_calls:
-            tool_name = tool_call.name
-            tool_args = tool_call.arguments
-            tool_id = tool_call.id
-
-            # Log the tool call
-            self._log_tool_call(tool_name, tool_args)
-
-            try:
-                # Execute the tool and get the result
-                tool_result = await self._execute_tool(tool_name, tool_args)
-
-                # Format the result for the LLM
-                formatted_result = self._format_tool_result(tool_result, tool_name, tool_id)
-                tool_results.append(formatted_result)
-            except Exception as e:
-                # Handle tool execution errors
-                error_message = f"Error executing {tool_name}: {str(e)}"
-                print(error_message)
-                tool_results.append(
-                    FunctionExecutionResult(
-                        content=error_message, call_id=tool_id, is_error=True, name=tool_name
-                    )
-                )
-
-        return tool_results
-
-    #############################
     # Public API Methods
     #############################
 
@@ -329,29 +152,19 @@ class BaseAgent(AssistantAgent, ABC):
     ) -> Union[str, Awaitable[str]]:
         """
         Process a prompt with the LLM, supporting tool calling.
-        This method provides the core tool calling functionality that specific agents can build upon.
+
+        Inside a running event loop this returns a coroutine to await; otherwise it
+        runs the conversation and returns the text.
 
         :param prompt: The user prompt to process.
         :param system_prompt: Optional system prompt to provide context.
         :return: The LLM's response or a coroutine to be awaited.
         """
         try:
-            messages = self._build_message_sequence(prompt, system_prompt)
-            try:
-                asyncio.get_running_loop()
-                in_loop = True
-            except RuntimeError:
-                in_loop = False
-
-            if in_loop:
-                return self.process_with_tools_async(prompt, system_prompt)
-            else:
-                response = asyncio.run(self._run_tool_conversation(messages))
-                return self._extract_content(response)
-        except Exception as e:
-            error_details = traceback.format_exc()
-            print(f"Error details: {error_details}")
-            return f"Error processing with LLM: {str(e)}"
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.process_with_tools_async(prompt, system_prompt))
+        return self.process_with_tools_async(prompt, system_prompt)
 
     async def process_with_tools_async(
         self, prompt: str, system_prompt: Optional[str] = None
@@ -361,29 +174,22 @@ class BaseAgent(AssistantAgent, ABC):
 
         :param prompt: The user prompt to process.
         :param system_prompt: Optional system prompt to provide context.
-        :return: The LLM's response.
+        :return: The LLM's response text, or an error message.
         """
         try:
-            messages = self._build_message_sequence(prompt, system_prompt)
-            response = await self._run_tool_conversation(messages)
-            return self._extract_content(response)
+            agent = Agent(
+                client=self.model_client,
+                instructions=system_prompt,
+                name=self.name,
+                tools=self.tools,
+                default_options=self._chat_options(),
+            )
+            response = await agent.run(prompt)
+            return response.text
         except Exception as e:
             error_details = traceback.format_exc()
             print(f"Error details: {error_details}")
             return f"Error processing with LLM: {str(e)}"
-
-    def process_tool_result(self, tool_name: str, result: Any, tool_args: Any) -> Any:
-        """
-        Process tool results before passing them back to the LLM.
-        This is a hook for subclasses to override and add custom processing.
-
-        :param tool_name: The name of the tool that was called.
-        :param result: The raw result from the tool.
-        :param tool_args: The arguments that were passed to the tool.
-        :return: The processed result.
-        """
-        # Base implementation just returns the result without processing
-        return result
 
     #############################
     # Memory Management Methods
@@ -430,11 +236,10 @@ class BaseAgent(AssistantAgent, ABC):
     @abstractmethod
     def generate_reply(self, messages, context=None) -> str:
         """
-        AutoGen's required method for handling incoming messages.
-        Must be implemented by all subclasses.
+        Handle incoming messages. Must be implemented by all subclasses.
 
         :param messages: List of messages in the conversation.
-        :param context: Optional context from AutoGen.
+        :param context: Optional context.
         :return: The agent's response.
         """
         pass

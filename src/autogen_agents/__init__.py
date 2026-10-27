@@ -1,8 +1,9 @@
 """
-AutoGen Agents Package - Multi-agent trading system components.
+Agents package - Multi-agent trading system components, on Microsoft Agent Framework
+(#606; the package name is from its AutoGen days).
 
 Organized Structure:
-- core/: Base infrastructure (BaseAgent, tool execution, message processing)
+- core/: Base infrastructure (BaseAgent)
 - agents/: Specialized trading agents (VoterAgent, ScannerAgent, RiskAgent, ExecutorAgent)
 - orchestration/: Multi-agent coordination (TradingOrchestrator, AgentBus, AgentFactory)
 - workflow/: Workflow state management and reporting
@@ -25,16 +26,7 @@ from .agents import (
 )
 
 # Core infrastructure
-from .core import (
-    BaseAgent,
-    build_message_sequence,
-    execute_tool_async,
-    extract_content,
-    format_tool_result,
-    log_tool_call,
-    log_tool_result,
-    parse_tool_arguments,
-)
+from .core import BaseAgent
 
 # Orchestration components
 from .orchestration import (
@@ -69,13 +61,6 @@ from .workflow import WorkflowPhase, WorkflowReporter, WorkflowState, WorkflowSt
 __all__ = [
     # Core Infrastructure
     "BaseAgent",
-    "build_message_sequence",
-    "extract_content",
-    "execute_tool_async",
-    "format_tool_result",
-    "log_tool_call",
-    "log_tool_result",
-    "parse_tool_arguments",
     # Specialized Agents
     "VoterAgent",
     "create_voter_agent",
