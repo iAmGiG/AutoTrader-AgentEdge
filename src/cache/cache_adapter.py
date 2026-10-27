@@ -13,7 +13,9 @@ from typing import Optional
 
 import pandas as pd
 
+from .lazy import LazyInstance
 from .sqlite_cache import TradingCacheManager
+from src.utils.state_paths import get_cache_dir
 
 
 class CacheAdapter:
@@ -30,7 +32,8 @@ class CacheAdapter:
 
     def __init__(self):
         self.cache = TradingCacheManager()  # SQLite-based cache
-        self.legacy_locations = [Path(".cache/polygon/prices"), Path(".cache/market_data")]
+        cache_dir = get_cache_dir()
+        self.legacy_locations = [cache_dir / "polygon" / "prices", cache_dir / "market_data"]
 
     def get_market_data(
         self,
@@ -221,5 +224,5 @@ class CacheAdapter:
         return self.cache.cleanup_expired()
 
 
-# Global instance for easy access
-cache_adapter = CacheAdapter()
+# Shared instance, built on first use so importing creates no database (#600)
+cache_adapter = LazyInstance(CacheAdapter)

@@ -6,16 +6,23 @@ SQLite-based market data caching for the AutoGen Trading System.
 
 **For comprehensive documentation, see:**
 
-- **[Cache System Architecture](../../../docs/02_architecture/04_cache_system.md)** - Full technical documentation
-- **[Developer Guide](../../../docs/04_development/cache_developer_guide.md)** - API reference and examples
-- **[Migration Guide](../../../CACHE_MIGRATION.md)** - Migrating from file-based cache
+- **[Cache System Architecture](../../docs/02_architecture/04_cache_system.md)** - Full technical documentation
+- **[Developer Guide](../../docs/04_development/04_cache_developer_guide.md)** - API reference and examples
 
 ## Components
 
-- **`sqlite_cache.py`** - TradingCacheManager (production SQLite backend)
-- **`cache_adapter.py`** - Backward-compatible abstraction layer
-- **`unified_cache.py`** - Deprecated file-based cache (legacy)
-- **`market_data_cache.py`** - Deprecated legacy cache (legacy)
+- **`sqlite_cache.py`** - `TradingCacheManager` (the SQLite market-data cache)
+- **`cache_adapter.py`** - `cache_adapter`, the shared market-data interface the tools use
+- **`unified_broker_cache.py`** - `unified_broker_cache`, broker state and position/order snapshots
+- **`base_cache.py`, `ohlcv_cache.py`, `options_cache.py`, `trade_cache.py`** - per-domain parts (#438)
+- **`lazy.py`** - `LazyInstance`: the shared instances are built on first use (#600)
+
+## Location
+
+The database is `<repo>/.cache/trading_data.db`; `$AUTOTRADER_CACHE_DIR` moves it (see
+`src/utils/state_paths.py`). Importing the package creates nothing: `cache_adapter` and
+`unified_broker_cache` open the database on first use. The test suite points
+`$AUTOTRADER_CACHE_DIR` at a temporary directory for every test (`tests/conftest.py`).
 
 ## Quick Start
 

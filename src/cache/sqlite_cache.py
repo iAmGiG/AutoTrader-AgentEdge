@@ -20,6 +20,7 @@ import pandas as pd
 from src.cache.options_cache import OptionsCacheMixin
 from src.cache.trade_cache import TradeCacheMixin
 from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
+from src.utils.state_paths import get_cache_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +42,15 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
         >>> cache.set("SPY", market_data_df, source="alpaca")
     """
 
-    def __init__(self, db_path: str = ".cache/trading_data.db"):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Initialize SQLite cache.
 
         Args:
-            db_path: Path to SQLite database file
+            db_path: Path to SQLite database file (default: the cache dir's
+                trading_data.db, see src/utils/state_paths.py)
         """
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path or get_cache_db_path())
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.logger = logging.getLogger(self.__class__.__name__)
         self._write_lock = threading.Lock()  # Serialize write operations

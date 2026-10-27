@@ -21,7 +21,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from src.cache.lazy import LazyInstance
 from src.utils.date_utils import get_datetime_now, now_iso
+from src.utils.state_paths import get_cache_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +60,15 @@ class UnifiedBrokerCache:
         "default": 60,
     }
 
-    def __init__(self, db_path: str = ".cache/trading_data.db"):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Initialize unified broker cache.
 
         Args:
-            db_path: Path to SQLite database file
+            db_path: Path to SQLite database file (default: the cache dir's
+                trading_data.db, see src/utils/state_paths.py)
         """
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path or get_cache_db_path())
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._write_lock = threading.Lock()
         self._init_tables()
@@ -644,5 +647,5 @@ class UnifiedBrokerCache:
                 return 0
 
 
-# Global instance for easy access
-unified_broker_cache = UnifiedBrokerCache()
+# Shared instance, built on first use so importing creates no database (#600)
+unified_broker_cache = LazyInstance(UnifiedBrokerCache)

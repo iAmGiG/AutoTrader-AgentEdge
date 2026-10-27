@@ -93,6 +93,7 @@ def test_no_data_is_a_failed_export(cache_manager, db_path, monkeypatch, tmp_pat
 
 
 def test_the_default_database_is_the_repositorys_cache(cache_manager, monkeypatch):
+    monkeypatch.delenv("AUTOTRADER_CACHE_DIR")  # the conftest points it at a temp dir
     seen = {}
     monkeypatch.setattr(
         cache_manager, "cmd_stats", lambda args: seen.setdefault("db", args.db_path)
@@ -102,3 +103,15 @@ def test_the_default_database_is_the_repositorys_cache(cache_manager, monkeypatc
     _run(cache_manager, monkeypatch, "stats")
 
     assert Path(seen["db"]) == REPO_ROOT / ".cache" / "trading_data.db"
+
+
+def test_the_default_database_follows_the_cache_dir(cache_manager, monkeypatch, tmp_path):
+    monkeypatch.setenv("AUTOTRADER_CACHE_DIR", str(tmp_path / "elsewhere"))
+    seen = {}
+    monkeypatch.setattr(
+        cache_manager, "cmd_stats", lambda args: seen.setdefault("db", args.db_path)
+    )
+
+    _run(cache_manager, monkeypatch, "stats")
+
+    assert Path(seen["db"]) == tmp_path / "elsewhere" / "trading_data.db"

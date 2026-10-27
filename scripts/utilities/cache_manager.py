@@ -28,6 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.cache import TradingCacheManager
+from src.utils.state_paths import get_cache_db_path
 
 
 def cmd_stats(args):
@@ -263,8 +264,9 @@ Examples:
 
     parser.add_argument(
         "--db-path",
-        default=str(REPO_ROOT / ".cache" / "trading_data.db"),
-        help="Path to SQLite database (default: the repository's .cache/trading_data.db)",
+        default=get_cache_db_path(),
+        help="Path to SQLite database (default: $AUTOTRADER_CACHE_DIR/trading_data.db, "
+        "else the repository's .cache/trading_data.db)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")

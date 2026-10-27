@@ -8,12 +8,12 @@ Contains raw options chain storage and retrieval methods.
 import json
 import logging
 import sqlite3
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 import pandas as pd
 
 from src.utils.date_utils import now_iso
+from src.utils.state_paths import get_cache_dir
 
 logger = logging.getLogger(__name__)
 
@@ -222,9 +222,10 @@ class OptionsCacheMixin:
     ) -> Optional[pd.DataFrame]:
         """Fallback to file cache for raw options data (deprecated)."""
         try:
+            legacy_dir = get_cache_dir() / "options" / symbol.upper()
             file_cache_paths = [
-                Path(f".cache/options/{symbol.upper()}/{trading_date}.pickle"),
-                Path(f".cache/options/{symbol.upper()}/{trading_date}.json"),
+                legacy_dir / f"{trading_date}.pickle",
+                legacy_dir / f"{trading_date}.json",
             ]
 
             for cache_path in file_cache_paths:
