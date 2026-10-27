@@ -847,7 +847,7 @@ class DailyScheduler:
             settings = self.effective_settings()
             if not settings["enabled"]:
                 return
-            saved_at = self._flags_saved_at()
+            enabled_at = self._routines_enabled_at()
             runs = self.state_manager.executions_on([day.isoformat() for day in days])
         except Exception as e:
             self._note_state_db_error(now, e)
@@ -855,7 +855,7 @@ class DailyScheduler:
         for task in self.tasks:
             if settings.get(task.name.replace("_routine", ""), True):
                 for day in days:
-                    self._check_day(task, day, runs, saved_at, now)
+                    self._check_day(task, day, runs, enabled_at.get(task.name), now)
         self.notice_store.resolve(f"{STATE_DB_ERROR}:{today}")
 
     def _check_day(
@@ -863,10 +863,13 @@ class DailyScheduler:
         task: ScheduledTask,
         day: date,
         runs: Dict[Tuple[str, str], List[SchedulerExecution]],
-        saved_at: Optional[datetime],
+        enabled_at: Optional[datetime],
         now: datetime,
     ) -> None:
-        """One routine's notice, or the clearing of its notices, for one trading day."""
+        """
+        One routine's notice, or the clearing of its notices, for one trading day. A miss is
+        excused when the routine was switched on (enabled_at) only after its window.
+        """
         is_today = day == now.date()
         if is_today and day in self._hours_memo:
             when = self.scheduled_at(task, day)  # the calendar answer should_run_task got
@@ -892,7 +895,7 @@ class DailyScheduler:
             self._ensure_notice(
                 ROUTINE_STUCK, routine, market_date, "started and never finished", detail
             )
-        elif outcome is RunOutcome.MISSED and not (saved_at and saved_at > when + RUN_WINDOW):
+        elif outcome is RunOutcome.MISSED and not (enabled_at and enabled_at > when + RUN_WINDOW):
             detail = (
                 f"No run is recorded for the {when:%H:%M} ET {routine} routine on {market_date}. "
                 "Is cron running? See state/scheduler.log and state/scheduler-cron.err."
@@ -925,12 +928,17 @@ class DailyScheduler:
             update_existing=False,
         )
 
-    def _flags_saved_at(self) -> Optional[datetime]:
-        """When the enable flags were last saved (state/user.db); None while the config file's apply."""
+    def _routines_enabled_at(self) -> Dict[str, datetime]:
+        """
+        When each routine was last switched on, by task name (state/user.db). Saves that
+        change nothing else (a time, the other routine) don't count; empty while the config
+        file's flags apply, or for a database saved before the stamps existed.
+        """
         if not self.state_manager.has_saved_state():
-            return None
-        stamp = self.state_manager.get_state().updated_at
-        return _local_time(stamp) if stamp else None
+            return {}
+        state = self.state_manager.get_state()
+        stamps = {f"{r}_routine": getattr(state, f"{r}_enabled_at") for r in ("morning", "evening")}
+        return {name: _local_time(stamp) for name, stamp in stamps.items() if stamp}
 
     def _note_state_db_error(self, now: datetime, error: Exception) -> None:
         """A notice that the scheduler's saved flags or history can't be read."""

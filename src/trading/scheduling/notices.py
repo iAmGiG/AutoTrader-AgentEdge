@@ -82,7 +82,8 @@ MAX_TEXT = 300  # characters of a title or detail
 # keys, and any other run of 32 or more letters, digits, "_" or "-".
 _REDACTED = "[redacted]"
 _SECRET_NAME = (
-    r"[\w-]*(?:password|passwd|secret|token|key|equity|buying_power|portfolio_value|cash)"
+    r"[\w-]*(?:password|passwd|secret|token|key|equity|buying_power|portfolio_value|cash"
+    r"|account_number|account_id)"
 )
 _REDACTIONS = (
     (re.compile(r"(?i)\bbearer\s+[\w.~+/=-]+"), f"Bearer {_REDACTED}"),
@@ -94,12 +95,16 @@ _REDACTIONS = (
     (re.compile(r"(?<![A-Za-z0-9])PA[A-Z0-9]{8,}(?![A-Za-z0-9])"), _REDACTED),
     (re.compile(r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b"), _REDACTED),
     (re.compile(r"\bsk-[\w-]{8,}"), _REDACTED),
+    # An account number in free text ("account 123456789", "account no. 12345678")
+    (re.compile(r"(?i)\b(account(?:\s+(?:number|no\.?|id))?)\s*#?\s*\d{6,}"), rf"\1 {_REDACTED}"),
     (re.compile(r"(?<![\w-])[A-Za-z0-9_-]{32,}(?![\w-])"), _REDACTED),
 )
 
 
-# What reading the notices file can raise: no access, not JSON, or not a notices file
-_UNREADABLE = (OSError, ValueError, TypeError, KeyError, AttributeError)
+# What a broken notices file raises when parsed: not JSON (or not text), or not a notices
+# file. An OSError (no access, an I/O error) is not one: the file may be fine, so it is never
+# set aside; the error reaches the caller (logged by _contained) and the next run tries again.
+_UNREADABLE = (ValueError, TypeError, KeyError, AttributeError)
 
 
 def sanitize(text: Any) -> str:
@@ -116,6 +121,11 @@ def sanitize(text: Any) -> str:
 def utc_now() -> datetime:
     """The current time, timezone-aware in UTC."""
     return datetime.now(timezone.utc)
+
+
+def is_notice_number(text: str) -> bool:
+    """Whether text is a notice number: ASCII digits only (not "²" or full-width digits)."""
+    return bool(re.fullmatch(r"[0-9]+", text.strip()))
 
 
 def routine_key(kind: str, routine: str, market_date: str) -> str:
@@ -234,17 +244,20 @@ def _upsert(
 
 def _prune(state: _State, now: datetime) -> None:
     """
-    Drop the notices acknowledged, or resolved, more than ACK_RETENTION ago: a loop left
-    unattended doesn't keep every cleared problem open forever.
+    Drop the notices acknowledged, or resolved, more than ACK_RETENTION ago and not seen
+    since: a loop left unattended doesn't keep every cleared problem forever, and an
+    acknowledged condition that keeps coming back stays acknowledged.
     """
     cutoff = now - ACK_RETENTION
+
+    def old(stamp: Optional[str]) -> bool:
+        return bool(stamp) and _parse_stamp(stamp) < cutoff
+
     stale = [
         key
         for key, notice in state.notices.items()
-        if any(
-            stamp and _parse_stamp(stamp) < cutoff
-            for stamp in (notice.acked_at, notice.resolved_at)
-        )
+        if (old(notice.acked_at) or old(notice.resolved_at))
+        and (not notice.last_seen or old(notice.last_seen))
     ]
     for key in stale:
         del state.notices[key]
@@ -398,7 +411,7 @@ class NoticeStore:
         Returns:
             How many were acknowledged (0 for a number that is unknown or already done)
         """
-        if isinstance(target, str) and target.strip().isdigit():
+        if isinstance(target, str) and is_notice_number(target):
             target = int(target)
         elif target != "all" and not isinstance(target, int):
             raise ValueError(f"cannot acknowledge {target!r}: a notice number or 'all'")
@@ -419,14 +432,18 @@ class NoticeStore:
     # Reading
     # -------------------------------------------------------------------------
 
-    @_contained(list)
+    # The readers are not contained: an empty list must mean "no notices", never "couldn't
+    # read them". Their callers (status, notices, the report, the agent's count) catch.
+
     def open_notices(self) -> List[Notice]:
-        """The notices nobody has acknowledged (cleared ones included), oldest first."""
+        """
+        The notices nobody has acknowledged (cleared ones included), oldest first. Raises
+        OSError if the file can't be read (a broken file is set aside and reset instead).
+        """
         return [n for n in self._read().notices.values() if n.acked_at is None]
 
-    @_contained(list)
     def all_notices(self) -> List[Notice]:
-        """Every saved notice, acknowledged ones too, oldest first."""
+        """Every saved notice, acknowledged ones too, oldest first (raises as open_notices)."""
         return list(self._read().notices.values())
 
     def _read(self) -> _State:

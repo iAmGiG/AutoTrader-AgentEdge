@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Optional
 
 from .daemon_manager import SchedulerDaemonManager
 from .message_loader import get_emoji, get_messages
+from src.trading.scheduling.notices import NoticeStore
 from src.utils.state_paths import get_state_dir
 
 if TYPE_CHECKING:
@@ -124,7 +125,8 @@ class SchedulerMonitor:
     def _show_open_notices(self) -> None:
         """The notices nobody has acknowledged (the latest few), or that there are none."""
         try:
-            notices = list(self.scheduler.notice_store.open_notices())
+            store = getattr(self.scheduler, "notice_store", None) or NoticeStore()
+            notices = list(store.open_notices())
             lines = [notice.line() for notice in notices[-STATUS_NOTICES:]]
         except Exception as e:
             print(f"\n{get_emoji('warning', '⚠️')} Open notices unavailable: {e}")

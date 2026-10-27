@@ -98,12 +98,15 @@ def _record(scheduler, routine, day, status="completed", started=None):
     return run_id
 
 
-def _flags_saved(scheduler, when):
-    """Save the enable flags (as the CLI does), stamped with the given time."""
+def _switched_on(scheduler, when):
+    """Switch the scheduler on (as the CLI does), with both routines stamped as on since `when`."""
     scheduler.save_flags(enabled=True)
     stamp = when.astimezone().replace(tzinfo=None).isoformat()
     with sqlite3.connect(scheduler.state_manager._db_path) as conn:
-        conn.execute("UPDATE scheduler_state SET updated_at = ?", (stamp,))
+        conn.execute(
+            "UPDATE scheduler_state SET morning_enabled_at = ?, evening_enabled_at = ?",
+            (stamp, stamp),
+        )
 
 
 def _both(scheduler, day):
@@ -576,20 +579,93 @@ def test_a_routine_that_ran_is_not_missed(make_scheduler, status):
     assert _keys(scheduler) == []
 
 
-def test_flags_saved_after_the_window_excuse_the_miss(make_scheduler):
+def test_a_scheduler_switched_on_after_the_window_excuses_the_miss(make_scheduler):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")
-    _flags_saved(scheduler, _et(2026, 10, 15, 9, 26))  # the 9:20 window ended at 9:25
+    _switched_on(scheduler, _et(2026, 10, 15, 9, 26))  # the 9:20 window ended at 9:25
 
     scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
 
     assert _keys(scheduler) == []
 
 
-def test_flags_saved_before_the_window_ended_do_not(make_scheduler):
+def test_a_scheduler_switched_on_before_the_window_ended_does_not(make_scheduler):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")
-    _flags_saved(scheduler, _et(2026, 10, 15, 9, 24))
+    _switched_on(scheduler, _et(2026, 10, 15, 9, 24))
+
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
+
+    assert _keys(scheduler) == ["routine_missed:morning:2026-10-15"]
+
+
+def test_only_a_save_that_switches_a_routine_on_stamps_it(make_scheduler, monkeypatch):
+    scheduler = make_scheduler()
+    clock = iter(f"2026-10-15T{hour}:00:00" for hour in ("08", "10", "11", "12", "13"))
+    monkeypatch.setattr(scheduler_state, "now_iso", lambda: next(clock))
+
+    scheduler.save_flags(enabled=True, morning=True, evening=False)  # 08:00 morning on
+    scheduler.save_flags(enabled=True, morning=True, evening=False)  # 10:00 nothing switched
+    scheduler.save_flags(evening=True)  # 11:00 evening on
+    state = scheduler.state_manager.get_state()
+    assert (state.morning_enabled_at, state.evening_enabled_at) == (
+        "2026-10-15T08:00:00",
+        "2026-10-15T11:00:00",
+    )
+
+    scheduler.save_flags(enabled=False)  # 12:00
+    scheduler.save_flags(enabled=True)  # 13:00 off and on again: both switched on
+    state = scheduler.state_manager.get_state()
+    assert state.morning_enabled_at == state.evening_enabled_at == "2026-10-15T13:00:00"
+
+
+def test_a_save_that_switches_nothing_on_does_not_excuse_a_miss(make_scheduler):
+    """Switching the evening on at 10:30 says nothing about the morning's 09:20 run."""
+    scheduler = make_scheduler()
+    _both(scheduler, "2026-10-14")
+    _switched_on(scheduler, _et(2026, 10, 14, 8, 0))
+    with sqlite3.connect(scheduler.state_manager._db_path) as conn:
+        conn.execute(
+            "UPDATE scheduler_state SET evening_enabled_at = ?",
+            (_et(2026, 10, 15, 10, 30).astimezone().replace(tzinfo=None).isoformat(),),
+        )
+
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 35))
+
+    assert _keys(scheduler) == ["routine_missed:morning:2026-10-15"]
+
+
+def test_an_older_database_gains_the_stamp_columns_and_keeps_its_flags(tmp_path):
+    """The live state/user.db's row: made before #601 (timeout_seconds), saved on 10-15."""
+    db = tmp_path / "user.db"
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "CREATE TABLE scheduler_state (id INTEGER PRIMARY KEY CHECK (id = 1), "
+            "enabled BOOLEAN DEFAULT FALSE, morning_enabled BOOLEAN DEFAULT TRUE, "
+            "evening_enabled BOOLEAN DEFAULT FALSE, morning_time TEXT DEFAULT '09:20:00', "
+            "evening_time TEXT DEFAULT '15:50:00', max_retries INTEGER DEFAULT 3, "
+            "retry_delay_seconds INTEGER DEFAULT 60, timeout_seconds INTEGER DEFAULT 300, "
+            "updated_at TEXT)"
+        )
+        conn.execute(
+            "INSERT INTO scheduler_state VALUES "
+            "(1, 1, 1, 1, '09:20:00', '15:50:00', 3, 60, 300, '2026-10-15T03:23:26.987347')"
+        )
+
+    state = SchedulerStateManager(str(db)).get_state()
+
+    assert (state.enabled, state.morning_enabled, state.evening_enabled) == (True, True, True)
+    assert (state.morning_enabled_at, state.evening_enabled_at) == (None, None)
+
+
+def test_a_database_saved_before_the_stamps_existed_excuses_nothing(make_scheduler):
+    scheduler = make_scheduler()
+    _both(scheduler, "2026-10-14")
+    scheduler.save_flags(enabled=True)
+    with sqlite3.connect(scheduler.state_manager._db_path) as conn:
+        conn.execute(
+            "UPDATE scheduler_state SET morning_enabled_at = NULL, evening_enabled_at = NULL"
+        )
 
     scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 9, 31))
 
@@ -726,7 +802,7 @@ def test_the_previous_days_early_close_moves_its_evening_window(make_scheduler, 
     """15:50 + 5 would put the window's end at 15:55, after both of these saves."""
     scheduler = make_scheduler()
     _record(scheduler, "morning", "2026-11-27")  # the day after Thanksgiving closes at 13:00
-    _flags_saved(scheduler, saved)
+    _switched_on(scheduler, saved)
 
     scheduler.check_routine_outcomes(now=_et(2026, 11, 30, 8, 0))  # the Monday after
 

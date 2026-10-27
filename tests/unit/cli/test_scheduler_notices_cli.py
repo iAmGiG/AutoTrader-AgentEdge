@@ -126,6 +126,24 @@ def test_status_still_prints_when_the_notices_cannot_be_read(capsys):
     assert "Service: CRON entry installed" in out  # the rest of the status is there
 
 
+def test_status_without_a_scheduler_reads_the_notices_file(capsys, store, monkeypatch):
+    _seed(store)
+    monkeypatch.setattr("src.cli.scheduler.monitor.NoticeStore", lambda: store)
+    monitor = SchedulerMonitor(None)
+    monitor._show_open_notices()
+
+    assert "Open notices: 3" in capsys.readouterr().out
+
+
+def test_notices_says_when_the_file_cannot_be_read(capsys):
+    cli = SchedulerCLI()
+    cli._notice_store = Mock(open_notices=Mock(side_effect=OSError("disk")))
+
+    _run(cli, "notices")
+
+    assert "Notices unavailable: disk" in capsys.readouterr().out
+
+
 def test_status_survives_a_notice_it_cannot_format(capsys):
     broken = Mock(open_notices=Mock(return_value=[object()]))
 
@@ -226,7 +244,7 @@ def test_ack_all_acknowledges_every_open_notice(capsys, store):
     assert store.open_notices() == [] and len(store.all_notices()) == 3
 
 
-@pytest.mark.parametrize("command", ["ack", "ack soon", "ack 1 2", "ack -1"])
+@pytest.mark.parametrize("command", ["ack", "ack soon", "ack 1 2", "ack -1", "ack ²"])
 def test_ack_wants_a_number_or_all(capsys, store, command):
     _seed(store)
     cli = SchedulerCLI()

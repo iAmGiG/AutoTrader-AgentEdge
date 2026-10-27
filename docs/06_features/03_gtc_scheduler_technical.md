@@ -302,8 +302,9 @@ How they are found:
   of each `run_scheduled_tasks()`, lock or not): for today, once a routine's 5-minute run window
   and 5 more minutes have passed, and for the previous trading day, a completed or dry-run row
   is fine, a failed row is a failure, a row still `running` after 30 minutes is stuck, and no row
-  is a miss. It skips a disabled scheduler or routine, excuses a miss when the flags were saved
-  after the routine's window, and makes no broker or calendar call of its own: today's calendar
+  is a miss. It skips a disabled scheduler or routine, excuses a miss when the routine was
+  switched on only after its window (`morning_enabled_at` / `evening_enabled_at` in
+  `scheduler_state`; a save that changes a time or the other routine doesn't count), and makes no broker or calendar call of its own: today's calendar
   lookup is the one `should_run_task` made, and the previous day is read from the NYSE rules (a
   one-off closure that neither the rules nor `config_defaults/market_hours.yaml` list would show
   as a miss the next day). An unreadable history is a `state_db_error` notice; the check never
@@ -313,7 +314,9 @@ Notices stay open until a person runs `ack` in the scheduler CLI (`notices` list
 shows the latest, each routine report ends with an "Open Notices" section, and
 `get_scheduler_status` carries the count). A resolved notice is marked `resolved` but is not
 acknowledged for you. If its condition returns, it opens again. Notices are dropped 30 days after
-they were acknowledged or resolved, and a report lists the latest 10. Titles and details are cleaned of API keys, account numbers, ids and equity and
+they were acknowledged or resolved, unless the condition was seen again since, and a report
+lists the latest 10. A notices file that can't be read (no access, an I/O error) is left alone
+and reported as unavailable; only a broken one is set aside. Titles and details are cleaned of API keys, account numbers, ids and equity and
 cut to 300 characters; the file is replaced whole on every write, under a lock, so a cron run and
 the CLI can use it together.
 

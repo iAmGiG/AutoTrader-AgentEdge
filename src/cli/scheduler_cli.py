@@ -26,7 +26,7 @@ from .scheduler import (
 )
 from .scheduler.message_loader import get_messages
 from src.trading.scheduling.daily_scheduler import DailyScheduler
-from src.trading.scheduling.notices import NoticeStore
+from src.trading.scheduling.notices import NoticeStore, is_notice_number
 
 logger = logging.getLogger(__name__)
 
@@ -296,7 +296,11 @@ class SchedulerCLI:
         if which not in ("", "all"):
             print("Usage: notices [all]")
             return
-        notices = self.notice_store.all_notices() if which else self.notice_store.open_notices()
+        try:
+            notices = self.notice_store.all_notices() if which else self.notice_store.open_notices()
+        except Exception as e:
+            print(f"{get_emoji('warning', '⚠️')} Notices unavailable: {e}")
+            return
         print(f"\n{get_emoji('warning', '⚠️')} Notices" + (" (all)" if which else " (open)"))
         print("=" * 70)
         if not notices:
@@ -312,7 +316,7 @@ class SchedulerCLI:
 
     def _ack_notice(self, target: str):
         """Acknowledge a notice by its number, or every open one with 'all'."""
-        if target != "all" and not target.isdigit():
+        if target != "all" and not is_notice_number(target):
             print("Usage: ack <number|all>")
             return
         count = self.notice_store.ack(target)

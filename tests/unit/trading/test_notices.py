@@ -252,6 +252,17 @@ def test_resolved_notices_are_dropped_30_days_after_they_resolved_even_if_never_
     assert {n.key for n in store.all_notices()} == {"never_resolved:2", "fresh:3", "fresh:4"}
 
 
+def test_an_acknowledged_condition_that_keeps_coming_back_is_kept_past_30_days(store, clock):
+    put(store, "unprotected:SPY")
+    store.ack(1)  # day 0
+    for _ in range(4):
+        clock.advance(days=10)
+        put(store, "unprotected:SPY")  # still unprotected on days 10, 20, 30 and 40
+
+    [notice] = store.all_notices()
+    assert (notice.seq, notice.count) == (1, 5) and notice.acked_at is not None
+
+
 # --- A broken file ----------------------------------------------------------------------
 
 BROKEN_FILES = [
@@ -355,10 +366,42 @@ def test_every_method_logs_its_errors_instead_of_raising(tmp_path, caplog):
     assert quiet.resolve_kinds("morning", "2026-10-27") == 0
     assert quiet.resolve_cleared("unprotected") == 0
     assert quiet.ack("all") == 0
-    assert (quiet.open_notices(), quiet.all_notices()) == ([], [])
     assert "Notices: raise_notice failed" in caplog.text
+    with pytest.raises(OSError):  # a reader never answers "none" for a file it can't read
+        quiet.open_notices()
     with pytest.raises(OSError):
         NoticeStore(path, raise_errors=True).raise_notice(FAILED, "routine_failed", CRITICAL, "t")
+
+
+def test_a_file_that_cannot_be_read_is_left_where_it_is(store, monkeypatch, caplog):
+    """No access or an I/O error is not a broken file: nothing is set aside or reset."""
+    put(store)
+    saved = store.path.read_text()
+    real_read = type(store.path).read_text
+
+    def no_access(path, *args, **kwargs):
+        if path == store.path:
+            raise PermissionError(13, "Permission denied")
+        return real_read(path, *args, **kwargs)
+
+    monkeypatch.setattr(type(store.path), "read_text", no_access)
+    quiet = NoticeStore(store.path)
+
+    assert quiet.raise_notice("stop_breach:SPY:2026-10-27", "stop_breach", CRITICAL, "t") is None
+    with pytest.raises(PermissionError):
+        quiet.open_notices()
+    monkeypatch.undo()
+    assert store.path.read_text() == saved
+    assert not list(store.path.parent.glob("notices.json.corrupt-*"))
+    assert "Notices: raise_notice failed" in caplog.text
+
+
+@pytest.mark.parametrize("text", ["²", "１", "1²"])
+def test_ack_refuses_digits_that_are_not_ascii(store, text):
+    put(store)
+
+    with pytest.raises(ValueError, match="notice number or 'all'"):
+        store.ack(text)
 
 
 def test_ack_refuses_what_is_neither_a_number_nor_all(store):
@@ -397,6 +440,9 @@ def test_an_unknown_severity_is_kept_as_a_warning(store):
         ('{"api_key": "abc123", "status": 403}', "abc123"),
         ("equity: 123456.78 below the minimum", "123456.78"),
         ("Authorization: Bearer eyJhbGciOi.payload.sig", "eyJhbGciOi"),
+        ("account_number: 123456789 is restricted", "123456789"),
+        ("account 123456789 is restricted", "123456789"),
+        ("Account no. 98765432 not found", "98765432"),
     ],
 )
 def test_sanitize_removes_credentials_account_numbers_and_equity(raw, leaked):
