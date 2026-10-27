@@ -419,7 +419,7 @@ msg = AgentMessage(
 **Market Data Tool**:
 
 ```python
-from src.data_sources.sources.market.alpaca_market_data import create_alpaca_market_data_tool
+from src.market_data.alpaca_market_data import create_alpaca_market_data_tool
 
 market_data_tool = create_alpaca_market_data_tool()
 

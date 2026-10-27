@@ -8,7 +8,7 @@ The AutoGen Trading System uses a **SQLite-based cache system** for unified data
 
 ### TradingCacheManager (Current - SQLite Backend)
 
-**Location**: `src/data_sources/cache/sqlite_cache.py`
+**Location**: `src/cache/sqlite_cache.py`
 
 The primary cache interface providing:
 
@@ -132,7 +132,7 @@ See [trade_history_database.md](trade_history_database.md) for complete trade hi
 ### Basic Operations
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 cache = TradingCacheManager()
 
@@ -164,7 +164,7 @@ print(f"Database size: {stats['db_size_mb']} MB")
 During market hours (9:30 AM - 4:00 PM ET), the system automatically detects when today's daily bar is incomplete and falls back to live prices:
 
 ```python
-from src.data_sources.sources.market.unified_market_tool import fetch_unified_market_data
+from src.market_data.unified_market_tool import fetch_unified_market_data
 
 # Automatically handles live prices during market hours
 # - Cache bypass for current trading day
@@ -194,7 +194,7 @@ is_open, status = get_market_status()
 ### Backward Compatible Interface
 
 ```python
-from src.data_sources.cache import cache_adapter
+from src.cache import cache_adapter
 
 # Old API still works (uses SQLite under the hood)
 df = cache_adapter.get_market_data("SPY", "2025-01-01", "2025-01-31", source="alpaca")
@@ -324,26 +324,26 @@ self.cache.set(symbol, df, source="alpaca")
 
 ### Cache Manager CLI
 
-**Location**: `scripts/cache_manager.py`
+**Location**: `scripts/utilities/cache_manager.py`
 
 ```bash
 # View statistics
-python scripts/cache_manager.py stats
+python scripts/utilities/cache_manager.py stats
 
 # Cleanup expired entries
-python scripts/cache_manager.py cleanup
+python scripts/utilities/cache_manager.py cleanup
 
 # Optimize database
-python scripts/cache_manager.py vacuum
+python scripts/utilities/cache_manager.py vacuum
 
 # List cached symbols
-python scripts/cache_manager.py symbols
+python scripts/utilities/cache_manager.py symbols
 
 # Export data to JSON
-python scripts/cache_manager.py export SPY --start 2025-01-01 --end 2025-12-31
+python scripts/utilities/cache_manager.py export SPY --start 2025-01-01 --end 2025-12-31
 
 # Query cache data
-python scripts/cache_manager.py query SPY --start 2025-10-01 --end 2025-10-31
+python scripts/utilities/cache_manager.py query SPY --start 2025-10-01 --end 2025-10-31
 ```
 
 ### Legacy File Cleanup
@@ -397,7 +397,7 @@ df = cache.get_market_data(symbol, start, end, source)
 **After (TradingCacheManager)**:
 
 ```python
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 cache = TradingCacheManager()
 cache.set(symbol, df, source=source)
 df = cache.get(symbol, start, end, source=source)
@@ -406,7 +406,7 @@ df = cache.get(symbol, start, end, source=source)
 **Or use CacheAdapter (no code changes)**:
 
 ```python
-from src.data_sources.cache import cache_adapter
+from src.cache import cache_adapter
 # Same API as before, automatically uses SQLite
 df = cache_adapter.get_market_data(symbol, start, end, source)
 ```
@@ -514,15 +514,11 @@ python scripts/test_cache_migration.py && python scripts/test_cache_advanced.py
 
 ### UnifiedCacheManager (File-Based)
 
-**Status**: Deprecated as of November 2025
-**Location**: `src/data_sources/cache/unified_cache.py`
+**Status**: Deprecated in November 2025 and since removed (it was `src/data_sources/cache/unified_cache.py`). `cache_adapter` keeps its API on top of the SQLite cache.
 
-The old file-based cache is deprecated but maintained for backward compatibility:
+What it was:
 
-- ⚠️ Deprecation warnings shown when used
-- 📁 Stores data as JSON files in `.cache/market_data/`
-- 🔄 CacheAdapter provides automatic fallback during migration
-- 📅 Planned removal: Q2 2025
+- 📁 Stored data as JSON files in `.cache/market_data/`
 
 **Why deprecated:**
 
@@ -568,9 +564,8 @@ Planned improvements:
 
 ## Documentation
 
-- **Implementation**: `src/data_sources/cache/README.md` (comprehensive guide)
-- **Migration**: `CACHE_MIGRATION.md` (developer migration guide)
-- **Testing**: `scripts/test_cache_advanced.py` (test examples)
+- **Implementation**: `src/cache/README.md` (comprehensive guide)
+- **Admin CLI**: `scripts/utilities/cache_manager.py` (stats, cleanup, vacuum, symbols, export, query, clear)
 - **Issue**: #336 (implementation details and discussion)
 
 ## Related Issues

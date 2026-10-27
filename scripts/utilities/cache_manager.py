@@ -10,12 +10,12 @@ Provides administrative commands for managing the SQLite cache:
 - Clear cache
 
 Usage:
-    python scripts/cache_manager.py stats
-    python scripts/cache_manager.py cleanup
-    python scripts/cache_manager.py vacuum
-    python scripts/cache_manager.py symbols
-    python scripts/cache_manager.py export SPY --start 2025-01-01 --end 2025-12-31
-    python scripts/cache_manager.py clear --confirm
+    python scripts/utilities/cache_manager.py stats
+    python scripts/utilities/cache_manager.py cleanup
+    python scripts/utilities/cache_manager.py vacuum
+    python scripts/utilities/cache_manager.py symbols
+    python scripts/utilities/cache_manager.py export SPY --start 2025-01-01 --end 2025-12-31
+    python scripts/utilities/cache_manager.py clear --confirm
 """
 
 import argparse
@@ -23,10 +23,10 @@ import json
 import sys
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Repository root (scripts/utilities/ -> repo), so `src` imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from src.data_sources.cache import TradingCacheManager
+from src.cache import TradingCacheManager
 
 
 def cmd_stats(args):
