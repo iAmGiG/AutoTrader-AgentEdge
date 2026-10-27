@@ -17,7 +17,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.utils.safe_print import get_symbol
 

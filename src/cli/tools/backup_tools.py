@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.utils.date_utils import format_for_filename, get_datetime_now
 from src.utils.safe_print import get_symbol
@@ -497,7 +497,8 @@ def get_backup_params() -> Dict[str, Any]:
 # ============================================================================
 
 backup_database_tool = FunctionTool(
-    backup_database,
+    func=backup_database,
+    name="backup_database",
     description=(
         "Create a backup of a database ('user' = state/user.db, default; 'cache'). "
         "Backups are stored with timestamps in state/backups/."
@@ -505,12 +506,14 @@ backup_database_tool = FunctionTool(
 )
 
 list_backups_tool = FunctionTool(
-    list_backups,
+    func=list_backups,
+    name="list_backups",
     description=("List all available database backups with their dates and sizes."),
 )
 
 restore_backup_tool = FunctionTool(
-    restore_backup,
+    func=restore_backup,
+    name="restore_backup",
     description=(
         "Restore a database from a backup file listed by list_backups. The database is "
         "chosen from the backup name; the current one is backed up first. "
@@ -519,7 +522,8 @@ restore_backup_tool = FunctionTool(
 )
 
 export_table_tool = FunctionTool(
-    export_table,
+    func=export_table,
+    name="export_table",
     description=(
         "Export a database table to JSON for backup or analysis. "
         "Specify table name and optional output path."
@@ -527,7 +531,8 @@ export_table_tool = FunctionTool(
 )
 
 show_backup_info_tool = FunctionTool(
-    show_backup_info,
+    func=show_backup_info,
+    name="show_backup_info",
     description=(
         "Show backup system information including database sizes, "
         "backup counts, and latest backup details."
@@ -535,14 +540,16 @@ show_backup_info_tool = FunctionTool(
 )
 
 cleanup_old_backups_tool = FunctionTool(
-    cleanup_old_backups,
+    func=cleanup_old_backups,
+    name="cleanup_old_backups",
     description=(
         "Clean up backups older than specified days to free disk space. Default is 30 days."
     ),
 )
 
 get_backup_params_tool = FunctionTool(
-    get_backup_params,
+    func=get_backup_params,
+    name="get_backup_params",
     description=("Get backup configuration and status as structured data for agents."),
 )
 

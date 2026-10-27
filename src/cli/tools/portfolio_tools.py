@@ -19,7 +19,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, List, Optional
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from config_defaults.message_loader import CLIMessages as MSG  # noqa: N814
 from config_defaults.message_loader import get_pl_emoji

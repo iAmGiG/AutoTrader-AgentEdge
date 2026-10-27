@@ -19,7 +19,7 @@ This module provides FunctionTool wrappers for that functionality.
 import logging
 from typing import Dict
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.cli.commands.account_commands import get_account_commands
 

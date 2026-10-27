@@ -14,7 +14,7 @@ Pattern: Pure function wrappers -> FunctionTool -> Registry
 import logging
 from typing import List
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 logger = logging.getLogger(__name__)
 
@@ -264,32 +264,38 @@ def modify_exit_target(symbol: str, target_number: int, new_price: float) -> str
 # =============================================================================
 
 show_all_partial_exits_tool = FunctionTool(
-    show_all_partial_exits,
+    func=show_all_partial_exits,
+    name="show_all_partial_exits",
     description=("Show all registered partial exit plans with target details."),
 )
 
 show_partial_exit_plan_tool = FunctionTool(
-    show_partial_exit_plan,
+    func=show_partial_exit_plan,
+    name="show_partial_exit_plan",
     description=("Show partial exit plan for a specific symbol with all target details."),
 )
 
 show_exit_targets_tool = FunctionTool(
-    show_exit_targets,
+    func=show_exit_targets,
+    name="show_exit_targets",
     description=("Show exit target levels and types for a position."),
 )
 
 list_active_exits_tool = FunctionTool(
-    list_active_exits,
+    func=list_active_exits,
+    name="list_active_exits",
     description=("List only active (unfilled) exit targets across all positions."),
 )
 
 get_exit_summary_tool = FunctionTool(
-    get_exit_summary,
+    func=get_exit_summary,
+    name="get_exit_summary",
     description=("Get summary statistics of all partial exit positions."),
 )
 
 modify_exit_target_tool = FunctionTool(
-    modify_exit_target,
+    func=modify_exit_target,
+    name="modify_exit_target",
     description=("Modify the exit price of a partial exit target."),
 )
 

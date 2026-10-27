@@ -11,7 +11,7 @@ Original Implementation: src/trading/instruments/entry_planning.py
 Pattern: Pure function wrappers → FunctionTool → Registry
 """
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.trading.instruments.entry_planning import (
     calculate_atr,
@@ -290,7 +290,8 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
 # ============================================================================
 
 get_entry_plan_tool = FunctionTool(
-    get_entry_plan,
+    func=get_entry_plan,
+    name="get_entry_plan",
     description=(
         "Generate an entry plan for a stock with ATR-based stops, "
         "support/resistance levels, and volume confirmation. "
@@ -299,7 +300,8 @@ get_entry_plan_tool = FunctionTool(
 )
 
 get_support_resistance_tool = FunctionTool(
-    get_support_resistance,
+    func=get_support_resistance,
+    name="get_support_resistance",
     description=(
         "Show support and resistance levels for a stock based on recent "
         "price action. Useful for identifying entry zones and stop placement."
@@ -307,7 +309,8 @@ get_support_resistance_tool = FunctionTool(
 )
 
 get_volume_analysis_tool = FunctionTool(
-    get_volume_analysis,
+    func=get_volume_analysis,
+    name="get_volume_analysis",
     description=(
         "Analyze volume patterns to determine if there's sufficient "
         "conviction for a trade entry. Compares current vs average volume."
@@ -315,7 +318,8 @@ get_volume_analysis_tool = FunctionTool(
 )
 
 get_atr_tool = FunctionTool(
-    get_atr,
+    func=get_atr,
+    name="get_atr",
     description=(
         "Get Average True Range (ATR) for a stock to assess volatility "
         "and determine appropriate stop loss distances."

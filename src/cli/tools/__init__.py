@@ -6,8 +6,9 @@ Issue #455: Create FunctionTool infrastructure with registry.
 Issue #457: Portfolio and account display tools extraction (Phase 1C).
 Issue #458: Order, scheduler, and alert tools extraction (Phase 1D).
 
-This module contains all CLI command implementations as FunctionTool objects,
-following the same pattern as src/data_sources/tools.py and base_agent.py.
+This module contains all CLI command implementations as FunctionTool objects
+(Microsoft Agent Framework's, since #606; they were AutoGen's). The CLI calls the
+functions directly; the tool objects carry the name, description and schema for agents.
 
 Architecture Benefits:
 - Type hints auto-generate schemas
@@ -20,7 +21,7 @@ Architecture Benefits:
 import logging
 from typing import Dict, List, Optional
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 logger = logging.getLogger(__name__)
 

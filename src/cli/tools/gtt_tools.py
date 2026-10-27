@@ -12,7 +12,7 @@ Pattern: Pure function wrappers -> FunctionTool -> Registry
 import logging
 from typing import Any, Dict, List, Optional
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 logger = logging.getLogger(__name__)
 

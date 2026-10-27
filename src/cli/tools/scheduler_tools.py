@@ -15,7 +15,7 @@ These tools handle:
 import logging
 from typing import Any, Dict, Optional
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.utils.safe_print import get_symbol
 

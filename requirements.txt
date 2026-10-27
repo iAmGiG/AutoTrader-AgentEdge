@@ -6,6 +6,9 @@ autogen-agentchat>=0.7.5
 autogen-core>=0.7.5
 autogen-ext[openai]>=0.7.5  # OpenAIChatCompletionClient; brings openai, tiktoken
 
+# Microsoft Agent Framework, AutoGen's successor (#606): the CLI tools use its FunctionTool
+agent-framework-core>=1.23,<2
+
 # Trading APIs
 alpaca-py>=0.43.2
 

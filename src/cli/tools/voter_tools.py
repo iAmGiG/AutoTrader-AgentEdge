@@ -16,7 +16,7 @@ Pattern: Pure function wrappers → FunctionTool → Registry
 
 from typing import Any, Dict, Literal
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from config_defaults.trading_config import TradingConfig
 
@@ -541,7 +541,8 @@ def set_voter_role(name: Literal["MACD", "RSI"], role: Literal["active", "review
 # ============================================================================
 
 show_voter_config_tool = FunctionTool(
-    show_voter_config,
+    func=show_voter_config,
+    name="show_voter_config",
     description=(
         "Display current VoterAgent configuration including MACD parameters, "
         "RSI settings, voting thresholds, and backtested performance metrics."
@@ -549,7 +550,8 @@ show_voter_config_tool = FunctionTool(
 )
 
 explain_voting_logic_tool = FunctionTool(
-    explain_voting_logic,
+    func=explain_voting_logic,
+    name="explain_voting_logic",
     description=(
         "Explain how the MACD+RSI voting strategy works, including signal types "
         "(STRONG, WEAK, CONFLICT, NEUTRAL) and position sizing rules."
@@ -557,7 +559,8 @@ explain_voting_logic_tool = FunctionTool(
 )
 
 explain_macd_params_tool = FunctionTool(
-    explain_macd_params,
+    func=explain_macd_params,
+    name="explain_macd_params",
     description=(
         "Explain MACD parameters and why Fibonacci values (13/34/8) "
         "are used instead of traditional (12/26/9)."
@@ -565,7 +568,8 @@ explain_macd_params_tool = FunctionTool(
 )
 
 explain_rsi_params_tool = FunctionTool(
-    explain_rsi_params,
+    func=explain_rsi_params,
+    name="explain_rsi_params",
     description=(
         "Explain RSI parameters including period, oversold/overbought thresholds, "
         "and how they generate trading signals."
@@ -573,7 +577,8 @@ explain_rsi_params_tool = FunctionTool(
 )
 
 get_voter_parameters_tool = FunctionTool(
-    get_voter_parameters,
+    func=get_voter_parameters,
+    name="get_voter_parameters",
     description=(
         "Get VoterAgent parameters as structured data for programmatic use "
         "by other agents. Returns dict with MACD, RSI, and threshold settings."
@@ -581,7 +586,8 @@ get_voter_parameters_tool = FunctionTool(
 )
 
 compare_with_traditional_tool = FunctionTool(
-    compare_with_traditional,
+    func=compare_with_traditional,
+    name="compare_with_traditional",
     description=(
         "Compare Fibonacci MACD parameters (13/34/8) with traditional (12/26/9). "
         "Shows parameter differences and use case recommendations."
@@ -589,7 +595,8 @@ compare_with_traditional_tool = FunctionTool(
 )
 
 show_signal_interpretation_tool = FunctionTool(
-    show_signal_interpretation,
+    func=show_signal_interpretation,
+    name="show_signal_interpretation",
     description=(
         "Show how to interpret a specific voter signal type (STRONG, WEAK, "
         "CONFLICT, NEUTRAL) with position sizing and risk guidance."
@@ -598,7 +605,8 @@ show_signal_interpretation_tool = FunctionTool(
 
 # Ranked Voting Management Tools (Issue #488)
 list_voters_tool = FunctionTool(
-    list_voters,
+    func=list_voters,
+    name="list_voters",
     description=(
         "List all voters with their rankings and roles. Shows active voters "
         "(participate in decisions) and review voters (shown but don't vote)."
@@ -606,7 +614,8 @@ list_voters_tool = FunctionTool(
 )
 
 show_voting_info_tool = FunctionTool(
-    show_voting_info,
+    func=show_voting_info,
+    name="show_voting_info",
     description=(
         "Show current voting configuration including consensus mode, "
         "confidence adjustments, and position sizing rules."
@@ -614,7 +623,8 @@ show_voting_info_tool = FunctionTool(
 )
 
 list_voter_presets_tool = FunctionTool(
-    list_voter_presets,
+    func=list_voter_presets,
+    name="list_voter_presets",
     description=(
         "List available voter presets with descriptions. Presets define "
         "different voter ranking configurations for various trading styles."
@@ -622,7 +632,8 @@ list_voter_presets_tool = FunctionTool(
 )
 
 apply_voter_preset_tool = FunctionTool(
-    apply_voter_preset,
+    func=apply_voter_preset,
+    name="apply_voter_preset",
     description=(
         "Apply a voter preset configuration. Available presets: default, "
         "macd_primary, rsi_primary. Changes persist across sessions."
@@ -630,7 +641,8 @@ apply_voter_preset_tool = FunctionTool(
 )
 
 promote_voter_tool = FunctionTool(
-    promote_voter,
+    func=promote_voter,
+    name="promote_voter",
     description=(
         "Promote a voter one rank higher in the ranking. "
         "Higher-ranked voters have more influence on decisions."
@@ -638,7 +650,8 @@ promote_voter_tool = FunctionTool(
 )
 
 demote_voter_tool = FunctionTool(
-    demote_voter,
+    func=demote_voter,
+    name="demote_voter",
     description=(
         "Demote a voter one rank lower in the ranking. "
         "Lower-ranked voters have less influence on decisions."
@@ -646,7 +659,8 @@ demote_voter_tool = FunctionTool(
 )
 
 set_voter_role_tool = FunctionTool(
-    set_voter_role,
+    func=set_voter_role,
+    name="set_voter_role",
     description=(
         "Change a voter's role to 'active' (participates in decisions) "
         "or 'review' (shown for reference but doesn't vote)."
