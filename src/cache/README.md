@@ -43,23 +43,19 @@ df = cache.get("AAPL", "2025-01-01", "2025-01-31", source="alpaca")
 
 ```bash
 # View cache statistics
-python scripts/cache_manager.py stats
+python scripts/utilities/cache_manager.py stats
 
 # Cleanup expired entries
-python scripts/cache_manager.py cleanup
+python scripts/utilities/cache_manager.py cleanup
 
 # See all commands
-python scripts/cache_manager.py --help
+python scripts/utilities/cache_manager.py --help
 ```
 
 ## Testing
 
 ```bash
-# Run basic tests
-python scripts/test_cache_migration.py
-
-# Run comprehensive tests
-python scripts/test_cache_advanced.py
+pytest tests/unit/data_sources/test_sqlite_cache.py tests/unit/test_cache_manager_script.py
 ```
 
 ## Migration
