@@ -25,6 +25,40 @@ reproduced as closely as daily bars allow:
   touches both counts as the stop (the conservative reading).
 - Costs: ``cost_bps`` per side on every fill.
 
+Exit modes (``LiveRules.exit_mode``, #539). Entries, sizing, limits and SELL-signal exits
+are the same in all three; only the protective orders differ:
+
+- ``bracket`` (default; the #574 baseline): fixed stop -5% / target +8% from the fill.
+- ``trailing`` (the legacy positions, whose 8% take-profit legs lapsed at Alpaca's 90-day
+  GTC limit and were not re-placed): the -5% stop, raised by the routines' trailing tiers,
+  and no target.
+- ``trailing_target`` (new CLI entries: they still go out as bracket orders with an 8%
+  take-profit leg, which lives until day 90, longer than the 7-14 day holds simulated):
+  trailing tiers plus the +8% target.
+
+SELL-signal exits are a #574 baseline convention: nothing in the live system sells on a
+signal, so ``signal_exit=False`` is the variant that matches live exits.
+
+The raise is the live one: ``StateReconciler._trailing_level`` on a ``TrailingStopManager``
+built as ``CostEfficientTradeCycle`` builds it (tiers, never down, ``MIN_STOP_GAP`` floor,
+$0.01 rule). On daily bars it is one raise a day from the close, as the evening routine
+(15:50 ET, ten minutes before the close) does it, and a raised stop applies from the next
+session: the day's own range is checked against the stop set the evening before. A raised
+stop that is hit exits as ``trail`` (``trail_gap`` on a gap), a stop never raised as
+``stop`` / ``stop_gap``. ``signal_exit=False`` switches the SELL-signal exits off, so that
+positions leave only through their stops and targets.
+
+The morning routine (09:20 ET) raises too, from the broker's price at that time. That is a
+pre-market print, not the previous close, so on a gap day it differs from the price the
+evening raise used and the raise is not redundant. Daily bars have no pre-market price, so
+the default leaves the morning raise out. ``morning_raise=True`` is a sensitivity that
+stands the day's open in for the 09:20 price: stops are raised from the open before the
+day's range is checked, so a gap-up's gain is locked in ahead of the session and a
+reversal can take it. The open is the case in which the gap is fully priced by 09:20; a
+thin pre-market, or none, leaves the price nearer the previous close, where the raise adds
+nothing. The omitted effect runs against the trailing modes (more trail exits, lower
+Sharpe): scripts/research/trailing_vs_bracket.py measures it.
+
 Prices are split-adjusted (ResearchBacktester); dividends are not included.
 """
 
@@ -36,19 +70,24 @@ import pandas as pd
 
 SignalFn = Callable[[str, pd.DataFrame], dict]
 
+EXIT_MODES = ("bracket", "trailing", "trailing_target")
+
 
 @dataclass
 class LiveRules:
-    """Sizing, limits, brackets and costs of the live path."""
+    """Sizing, limits, exits and costs of the live path."""
 
     position_pct: float = 0.02  # notional per position, share of equity (risk_per_trade)
     max_positions: int = 10  # SimpleRiskManager risk.max_positions default
     max_exposure_pct: float = 0.80  # SimpleRiskManager risk.max_exposure_pct default
-    stop_pct: float = 0.05  # market-bracket stop below the fill
+    stop_pct: float = 0.05  # market-bracket stop below the fill (the initial stop)
     target_pct: float = 0.08  # market-bracket target above the fill
     cost_bps: float = 0.0  # per side, every fill
     lookback_days: int = 90  # RealVoterStrategy lookback (calendar days)
     initial_capital: float = 100_000.0
+    exit_mode: str = "bracket"  # bracket | trailing | trailing_target (module docstring)
+    signal_exit: bool = True  # a SELL signal closes the position at the open
+    morning_raise: bool = False  # sensitivity: also raise stops from the open (module docstring)
 
 
 def compute_signals(
@@ -103,6 +142,73 @@ def _bracket_exit(bar, stop: float, target: float, gap: bool) -> Tuple[Optional[
     return None, ""
 
 
+class LiveTrailingStop:
+    """
+    The live routines' stop raise (#539), applied to simulated positions.
+
+    It calls the live code, not a copy of it: ``StateReconciler._trailing_level`` (the
+    function the morning and evening routines raise stops with) on a
+    ``TrailingStopManager`` built as ``CostEfficientTradeCycle`` builds it: no broker, no
+    ATR fetcher, the stock ``TradingConfig``. The live tiers then apply as they are
+    (climb rate medium: under 2% profit no change, 2-4% breakeven, 4-6% lock 25% of the
+    gain, 6-10% lock 50%, 10% and up lock 75%; never down; at least ``MIN_STOP_GAP``
+    below the price; a raise needs more than $0.01). The manager's other adjustments
+    (ATR, voter tightening, support/resistance) are off or unset on the live path, so
+    they stay inert here.
+
+    Simulated prices are split-adjusted, but the live rules round to the cent on the
+    price the broker shows, so each call hands the live code the day's raw prices
+    (adjusted x ``scale``) and scales the answer back.
+    """
+
+    def __init__(self, trailing_config=None):
+        """``trailing_config`` replaces the live TrailingStopConfig (tests only)."""
+        # Imported here: the default bracket mode needs none of the trading package
+        from config_defaults.trading_config import TradingConfig
+
+        from src.trading.orders.trailing_stop_manager import TrailingStopManager
+        from src.trading.state.state_reconciler import StateReconciler
+
+        config = TradingConfig()
+        self.manager = TrailingStopManager(
+            order_manager=None, config=config, trailing_config=trailing_config
+        )
+        self.reconciler = StateReconciler(
+            config=config, trailing_stop_manager=self.manager, position_tracker=None
+        )
+
+    def raised_stop(
+        self, symbol: str, entry: float, stop: float, price: float, scale: float = 1.0
+    ) -> Optional[float]:
+        """
+        The level the live routines would raise a position's stop to, or None to leave it.
+
+        Args:
+            symbol: Ticker (keys the manager's state; no state is kept between calls)
+            entry: Entry price (the open the position filled at)
+            stop: The stop in force
+            price: The price the routine sees (the close for the evening routine; the
+                open stands in for the 09:20 pre-market price in the morning sensitivity)
+            scale: Raw price per adjusted price on this day (1.0 if prices are raw)
+        """
+        # The live prices are Python floats, and so is their cent rounding: round(17.555, 2)
+        # is 17.55 for the double just under it, where a numpy float rounds it to 17.56
+        entry, stop, price, scale = float(entry), float(stop), float(price), float(scale)
+        self.manager.stop_states.pop(symbol, None)  # each call registers the position afresh
+        try:
+            level = self.reconciler._trailing_level(
+                symbol,
+                {symbol: {"entry_price": entry * scale}},
+                stop * scale,
+                1,
+                price * scale,
+                adopt_order_id=symbol,
+            )
+        finally:
+            self.manager.stop_states.pop(symbol, None)
+        return None if level is None else level / scale
+
+
 def simulate(  # noqa: C901
     prices: Dict[str, pd.DataFrame],
     signals: pd.DataFrame,
@@ -115,7 +221,7 @@ def simulate(  # noqa: C901
     Args:
         prices: Per symbol, split-adjusted daily bars (open/high/low/close), date index
         signals: From compute_signals()
-        rules: Sizing, limits, brackets and costs
+        rules: Sizing, limits, exits (``exit_mode``) and costs
         raw_closes: Per symbol, unadjusted closes; whole shares are counted at this
             price level. Without them, at the adjusted level.
 
@@ -123,6 +229,12 @@ def simulate(  # noqa: C901
         (equity at each close, trades with entry/exit dates, prices, reason and return).
         ``trades.attrs["blocked"]`` counts BUY signals not taken, by reason.
     """
+    if rules.exit_mode not in EXIT_MODES:
+        raise ValueError(f"exit_mode {rules.exit_mode!r} is not one of {EXIT_MODES}")
+    if rules.morning_raise and rules.exit_mode == "bracket":
+        raise ValueError("morning_raise needs a trailing exit mode: the bracket never raises")
+    trailing = LiveTrailingStop() if rules.exit_mode != "bracket" else None
+    has_target = rules.exit_mode != "trailing"
     cost = rules.cost_bps / 1e4
     action = signals["action"].to_dict()
     size = signals["position_size"].to_dict()
@@ -163,6 +275,8 @@ def simulate(  # noqa: C901
     def close_position(symbol, day, price, reason):
         nonlocal cash
         pos = positions.pop(symbol)
+        if pos["raised"] and reason in ("stop", "stop_gap"):
+            reason = "trail" if reason == "stop" else "trail_gap"  # a raised stop
         fill = price * (1 - cost)
         cash += pos["qty"] * fill
         trades.append(
@@ -178,8 +292,30 @@ def simulate(  # noqa: C901
             }
         )
 
+    def raise_stops(day, bars, price_field):
+        """Each held position's stop moves to its trailing level at the bar's open or close."""
+        for symbol, pos in positions.items():
+            bar = bars[symbol]
+            if bar is None:
+                continue
+            level = trailing.raised_stop(
+                symbol,
+                pos["ref_price"],
+                pos["stop"],
+                float(bar[price_field]),
+                share_scale.get(symbol, {}).get(day, 1.0),
+            )
+            if level is not None:
+                pos["stop"] = level
+                pos["raised"] = True
+
     for day in calendar:
         bars = {sym: bar_on(sym, day) for sym in prices}
+        if trailing is not None and rules.morning_raise:
+            # The morning routine raises before the open, so the day's range meets the raised
+            # stop. The open stands in for the pre-market price; the positions bought at this
+            # open are not there yet
+            raise_stops(day, bars, "open")
         # Book as the pre-market decision sees it: exits at or after the open come later
         book = {s: p["qty"] * last_close.get(s, p["entry_price"]) for s, p in positions.items()}
         buying_power = cash
@@ -189,7 +325,7 @@ def simulate(  # noqa: C901
             bar = bars[symbol]
             if bar is None:
                 continue
-            if action.get((day, symbol)) == "SELL":
+            if rules.signal_exit and action.get((day, symbol)) == "SELL":
                 close_position(symbol, day, bar.open, "signal")
                 continue
             pos = positions[symbol]
@@ -233,14 +369,21 @@ def simulate(  # noqa: C901
                 "qty": qty,
                 "entry_price": fill,
                 "entry_date": day,
+                "ref_price": bar.open,  # the stop and the trailing tiers start from the fill
                 "stop": bar.open * (1 - rules.stop_pct),
-                "target": bar.open * (1 + rules.target_pct),
+                "target": bar.open * (1 + rules.target_pct) if has_target else float("inf"),
+                "raised": False,
             }
             price, reason = _bracket_exit(
                 bar, positions[symbol]["stop"], positions[symbol]["target"], gap=False
             )
             if price is not None:
                 close_position(symbol, day, price, reason)
+
+        if trailing is not None:
+            # The evening routine raises each stop from the close; the new stop is first
+            # in force on the next session (the day's range was checked against the old one)
+            raise_stops(day, bars, "close")
 
         for symbol, bar in bars.items():
             if bar is not None:
@@ -300,3 +443,64 @@ def sharpe_ci(
     sharpes = np.sqrt(252) * samples.mean(axis=1) / samples.std(axis=1, ddof=1)
     low, high = np.percentile(sharpes, [2.5, 97.5])
     return float(low), float(high)
+
+
+def paired_sharpe_diff_ci(
+    returns_a: pd.Series, returns_b: pd.Series, block: int = 20, reps: int = 2000, seed: int = 0
+) -> dict:
+    """
+    Sharpe(a) - Sharpe(b) with a paired 95% circular block-bootstrap interval (#539).
+
+    Both strategies trade the same signals on the same days, so every replication
+    resamples the same blocks of days from both return series: what they share (the
+    market, most entries) cancels in the difference. Blocks, replications and seed are
+    those of ``sharpe_ci``, so when both series cover the same days (as the runner's
+    equity curves do) each Sharpe's own interval is drawn from the same days.
+
+    Args:
+        returns_a, returns_b: Daily returns indexed by date; only dates in both are used
+
+    Returns:
+        ``diff`` (observed Sharpe difference), ``ci95`` ([low, high]), ``p_value`` (two-sided
+        bootstrap, twice the smaller share of replications on one side of zero, at least
+        1 / reps) and ``n_days``; plus ``dropped_reps`` when a replication had no finite
+        difference (a resample with zero variance), which is left out rather than counted.
+    """
+    both = pd.concat([returns_a, returns_b], axis=1).dropna().to_numpy()
+    n = len(both)
+    if n < 2 * block:
+        return {
+            "diff": float("nan"),
+            "ci95": [float("nan")] * 2,
+            "p_value": float("nan"),
+            "n_days": n,
+        }
+    a, b = both[:, 0], both[:, 1]
+    rng = np.random.default_rng(seed)
+    starts = rng.integers(0, n, size=(reps, int(np.ceil(n / block))))
+    picks = ((starts[:, :, None] + np.arange(block)) % n).reshape(reps, -1)[:, :n]
+
+    def sharpe(samples):
+        return np.sqrt(252) * samples.mean(axis=-1) / samples.std(axis=-1, ddof=1)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        diffs = sharpe(a[picks]) - sharpe(b[picks])
+    finite = diffs[np.isfinite(diffs)]
+    if not len(finite):
+        return {
+            "diff": float("nan"),
+            "ci95": [float("nan")] * 2,
+            "p_value": float("nan"),
+            "n_days": n,
+        }
+    low, high = np.percentile(finite, [2.5, 97.5])
+    shares = (float((finite <= 0).mean()), float((finite >= 0).mean()))
+    result = {
+        "diff": float(sharpe(a) - sharpe(b)),
+        "ci95": [float(low), float(high)],
+        "p_value": min(max(2 * min(shares), 1 / len(finite)), 1.0),
+        "n_days": n,
+    }
+    if len(finite) < reps:
+        result["dropped_reps"] = reps - len(finite)
+    return result

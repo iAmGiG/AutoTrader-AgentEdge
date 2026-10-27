@@ -16,11 +16,22 @@ model, not GEX), cointegration tests, and files without ``regime_lag_days: 1``.
 Full-sample and half-sample tests overlap, so the family has dependent tests; Holm stays
 valid, BH is approximate.
 
+The #539 exit-rule comparisons (trailing exits against the fixed bracket, in the live-rules
+simulator) are tests of a trading rule, not of a GEX effect, so they are corrected as a family of
+their own and reported under ``exit_rules``; the GEX family's numbers do not change. The same
+tests pooled with the GEX family are reported too. Every comparison in the runner's
+``paired_tests`` is in the family (periods, costs, sizings and the no-signal-exit variant overlap,
+so Holm stays valid and BH is approximate). The runner's morning-raise sensitivity runs the same
+hypotheses again under another assumption (the open standing in for the morning routine's
+pre-market price), so its comparisons are not tests of their own and stay out of the family.
+
 Usage:
-    ~/miniconda3/envs/AutoGex/bin/python scripts/research/multiple_testing_audit.py
+    ~/miniconda3/envs/OptionsCommander/bin/python scripts/research/multiple_testing_audit.py
 """
 
 import datetime
+import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -28,6 +39,7 @@ import yaml
 from statsmodels.stats.multitest import multipletests
 
 RESULTS_DIR = Path("docs/08_research/02_gex_research/results")
+STRATEGY_RESULTS_DIR = Path("docs/08_research/03_strategy_research/results")
 ALPHA = 0.05
 T_HURDLE = 3.0
 
@@ -276,21 +288,37 @@ def collect_pinning(rows):
             )
 
 
-def main():
-    print("=" * 60)
-    print("  MULTIPLE-TESTING AUDIT, LAG-1 GEX TESTS (#576)")
-    print("=" * 60)
-    rows = []
-    collect_macd(rows)
-    collect_overlays(rows)
-    collect_volatility(rows)
-    collect_panel(rows)
-    collect_intraday(rows)
-    collect_pinning(rows)
+def collect_trailing_exits(rows):
+    """#539: paired daily-return tests of each trailing exit mode against the fixed bracket."""
+    name = "trailing_vs_bracket.json"
+    path = STRATEGY_RESULTS_DIR / name
+    if not path.exists():
+        print(f"  missing: {name}")
+        return
+    with open(path) as f:
+        data = json.load(f)
+    for r in data["paired_tests"]:
+        t = r.get("return_test")
+        if t and not all(math.isfinite(t[k]) for k in ("t_statistic", "p_value")):
+            print(f"  skipped a non-finite test: {r['comparison']} {r['period']}")
+            continue
+        if t:
+            rows.append(
+                _row(
+                    f"#539 {r['comparison']} ({r['variant']})",
+                    name,
+                    f"{r['period']} {r['cost_bps']:g} bps daily return (NW)",
+                    t["t_statistic"],
+                    t["p_value"],
+                    t["mean_daily_diff"],
+                )
+            )
+
+
+def _correct(rows):
+    """Holm, Benjamini-Hochberg and |t| > 3 over one family: (tests, summary, by_study)."""
     df = pd.DataFrame(rows)
     n = len(df)
-    print(f"  Tests in family: {n}")
-
     p = df["p_value"].clip(lower=1e-12).to_numpy()
     df["holm_reject"], df["holm_p"], _, _ = multipletests(p, alpha=ALPHA, method="holm")
     df["bh_reject"], df["bh_q"], _, _ = multipletests(p, alpha=ALPHA, method="fdr_bh")
@@ -317,6 +345,54 @@ def main():
         )
         .reset_index()
     )
+    return df, summary, by_study
+
+
+def exit_rule_family(exit_rows, gex_rows):
+    """The #539 tests as a family of their own, and pooled with the GEX family."""
+    df, summary, by_study = _correct(exit_rows)
+    pooled, _, _ = _correct(gex_rows + exit_rows)
+    ours = pooled[pooled["study"].str.startswith("#539")]
+    summary["pooled_with_gex_family"] = {
+        "n_tests": len(pooled),
+        "exit_tests_holm_rejections": int(ours["holm_reject"].sum()),
+        "exit_tests_bh_rejections": int(ours["bh_reject"].sum()),
+    }
+    print("\n  #539 exit-rule family (corrected on its own, and pooled with the GEX family):")
+    print(f"  {summary}")
+    print(by_study.to_string(index=False))
+    keep = ["study", "test", "t_statistic", "p_value", "holm_p", "bh_q"]
+    print("\n  Smallest p-values:")
+    print(df[keep].head(5).to_string(index=False))
+    for col in ("holm_p", "bh_q"):
+        df[col] = df[col].round(4)
+    return {
+        "issue": "#539",
+        "description": "Trailing exits against the fixed bracket (live-rules simulator)",
+        "family": "every comparison in paired_tests of trailing_vs_bracket.json (Newey-West test "
+        "of the mean daily return difference); its morning-raise sensitivity repeats the same "
+        "hypotheses under another assumption and is not in the family",
+        "dependence_note": "the comparisons share signals and overlap in periods, costs and "
+        "sizings; Holm valid, BH approximate",
+        "summary": summary,
+        "by_study": by_study.to_dict(orient="records"),
+        "tests": df.to_dict(orient="records"),
+    }
+
+
+def main():
+    print("=" * 60)
+    print("  MULTIPLE-TESTING AUDIT, LAG-1 GEX TESTS (#576)")
+    print("=" * 60)
+    rows = []
+    collect_macd(rows)
+    collect_overlays(rows)
+    collect_volatility(rows)
+    collect_panel(rows)
+    collect_intraday(rows)
+    collect_pinning(rows)
+    print(f"  Tests in family: {len(rows)}")
+    df, summary, by_study = _correct(rows)
 
     print(f"\n  {summary}")
     print("\n  By study:")
@@ -342,6 +418,10 @@ def main():
         "by_study": by_study.to_dict(orient="records"),
         "tests": df.to_dict(orient="records"),
     }
+    exit_rows = []
+    collect_trailing_exits(exit_rows)
+    if exit_rows:
+        output["exit_rules"] = exit_rule_family(exit_rows, rows)
     path = RESULTS_DIR / "multiple_testing_audit.yaml"
     with open(path, "w") as f:
         yaml.dump(
