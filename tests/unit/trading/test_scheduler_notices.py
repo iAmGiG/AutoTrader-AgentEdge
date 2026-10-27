@@ -596,7 +596,7 @@ def test_a_scheduler_switched_on_after_the_window_excuses_the_miss(make_schedule
 def test_a_scheduler_switched_on_before_the_window_ended_does_not(make_scheduler):
     scheduler = make_scheduler()
     _both(scheduler, "2026-10-14")
-    _switched_on(scheduler, _et(2026, 10, 15, 10, 19))
+    _switched_on(scheduler, _et(2026, 10, 15, 9, 24))  # inside the 09:25 window
 
     scheduler.check_routine_outcomes(now=_et(2026, 10, 15, 10, 26))
 
@@ -798,8 +798,8 @@ def test_the_previous_trading_day_skips_holidays_and_weekends(make_scheduler):
 @pytest.mark.parametrize(
     "saved, expected",
     [
-        (_et(2026, 11, 27, 12, 58), ["routine_missed:evening:2026-11-27"]),
-        (_et(2026, 11, 27, 13, 0), []),  # after the early-close evening deadline (12:59)
+        (_et(2026, 11, 27, 12, 52), ["routine_missed:evening:2026-11-27"]),
+        (_et(2026, 11, 27, 13, 0), []),  # after the early-close evening window (12:55)
     ],
 )
 def test_the_previous_days_early_close_moves_its_evening_window(make_scheduler, saved, expected):

@@ -113,10 +113,10 @@ def test_a_hung_routine_is_cut_off_recorded_failed_and_noticed_once(run_due, tmp
     [run] = scheduler.state_manager.executions_on([scheduler._market_now().date().isoformat()])[
         ("morning", scheduler._market_now().date().isoformat())
     ]
-    assert run.status == "failed"
+    assert run.status == "timed_out"
     assert "timed out after 1 s" in run.error_message
     [log] = scheduler.execution_log
-    assert (log.status, "timed out after 1 s" in log.error_message) == ("failed", True)
+    assert (log.status, "timed out after 1 s" in log.error_message) == ("timed_out", True)
     [notice] = scheduler.notice_store.all_notices()
     assert notice.kind == "routine_failed" and notice.severity == "CRITICAL"
     assert "timed out after 1 s" in notice.detail
@@ -396,13 +396,11 @@ def test_a_missed_evening_is_reported_only_after_the_deadline_and_grace(make_sch
 @pytest.mark.parametrize(
     "switched_on, missed",
     [
-        (_et(2026, 10, 14, 10, 0), True),  # past 09:25 but before the 10:20 deadline
-        (_et(2026, 10, 14, 10, 21), False),  # after the deadline: nothing it could have caught
+        (_et(2026, 10, 14, 9, 22), True),  # within the window: the catch-up applies
+        (_et(2026, 10, 14, 10, 0), False),  # after 09:25: it never started late, so no miss
     ],
 )
-def test_a_miss_is_excused_only_by_a_switch_on_after_the_deadline(
-    make_scheduler, switched_on, missed
-):
+def test_a_miss_is_excused_by_a_switch_on_after_the_window(make_scheduler, switched_on, missed):
     scheduler = make_scheduler()
     scheduler.save_flags(enabled=True)
     _record(scheduler, "morning", "2026-10-13")
@@ -502,3 +500,82 @@ def test_a_sync_with_another_expiration_uses_it(gtt):
     )
 
     assert (synced.id, round(_days_left(synced))) == (trigger.id, 30)
+
+
+# --- Review fixes -----------------------------------------------------------------------
+
+
+def test_switching_a_routine_on_late_does_not_start_a_late_run(make_scheduler):
+    scheduler = make_scheduler()
+    scheduler.save_flags(enabled=True)
+    stamp = _et(2026, 10, 14, 10, 0).astimezone().replace(tzinfo=None).isoformat()
+    with sqlite3.connect(scheduler.state_manager._db_path) as conn:
+        conn.execute("UPDATE scheduler_state SET morning_enabled_at = ?", (stamp,))
+    task = _task(scheduler, "morning_routine")
+
+    assert _can_run(scheduler, "morning_routine", _et(2026, 10, 14, 10, 1)) is False
+    assert scheduler.run_deadline(task, date(2026, 10, 14)) == _et(2026, 10, 14, 9, 25)
+
+
+def test_a_timed_out_run_does_not_settle_the_day_but_two_do(make_scheduler):
+    scheduler = make_scheduler()
+    now = _et(2026, 10, 14, 9, 40)
+
+    _record(scheduler, "morning", "2026-10-14", status="timed_out")
+    assert _can_run(scheduler, "morning_routine", now) is True  # one more try
+    _record(scheduler, "morning", "2026-10-14", status="timed_out")
+    assert _can_run(scheduler, "morning_routine", now) is False
+    assert scheduler.next_run(now=now)[0].name == "evening_routine"
+
+
+def test_a_timed_out_run_is_noticed_as_failed(make_scheduler):
+    scheduler = make_scheduler()
+    scheduler.save_flags(enabled=True)
+    _record(scheduler, "morning", "2026-10-13")
+    _record(scheduler, "evening", "2026-10-13")
+    _record(scheduler, "morning", "2026-10-14", status="timed_out")
+
+    scheduler.check_routine_outcomes(now=_et(2026, 10, 14, 9, 40))
+
+    assert [n.key for n in scheduler.notice_store.all_notices()] == [
+        "routine_failed:morning:2026-10-14"
+    ]
+
+
+def test_a_timeout_after_the_routine_finished_keeps_its_result(run_due):
+    scheduler = run_due(limit=1)
+    manager = scheduler.state_manager
+    real = manager.record_execution_complete
+
+    def complete_then_alarm(*args, **kwargs):
+        real(*args, **kwargs)
+        manager.record_execution_complete = real
+        raise RunDueTimeoutError(1)  # lands in the code after the completed record
+
+    manager.record_execution_complete = complete_then_alarm
+
+    main._run_due_mode()
+
+    day = scheduler._market_now().date().isoformat()
+    [run] = manager.executions_on([day])[("morning", day)]
+    assert run.status == "completed"
+    assert scheduler.notice_store.all_notices() == []
+
+
+def test_a_late_completion_cannot_be_overwritten(make_scheduler):
+    manager = make_scheduler().state_manager
+    run_id = manager.record_execution_start("morning", market_date="2026-10-14")
+    manager.record_execution_complete(run_id, status="completed")
+
+    manager.record_execution_complete(run_id, status="timed_out", only_if_running=True)
+
+    assert manager.executions_on(["2026-10-14"])[("morning", "2026-10-14")][0].status == "completed"
+
+
+def test_next_run_is_never_in_the_past(make_scheduler):
+    scheduler = make_scheduler()
+    now = _et(2026, 10, 14, 10, 5)
+
+    task, when = scheduler.next_run(now=now)
+
+    assert (task.name, when) == ("morning_routine", now)

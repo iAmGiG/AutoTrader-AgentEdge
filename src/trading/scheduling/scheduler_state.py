@@ -68,7 +68,7 @@ class SchedulerExecution:
     routine_type: str = ""  # 'morning', 'evening', 'recovery'
     started_at: str = ""
     completed_at: Optional[str] = None
-    status: str = "pending"  # pending, running, completed, failed, retrying
+    status: str = "pending"  # pending, running, completed, failed, timed_out, retrying
     attempt: int = 1
     error_message: Optional[str] = None
     report_path: Optional[str] = None
@@ -401,16 +401,19 @@ class SchedulerStateManager:
         report_path: Optional[str] = None,
         api_calls_used: int = 0,
         error_message: Optional[str] = None,
+        only_if_running: bool = False,
     ) -> bool:
         """
         Record execution completion or failure.
 
         Args:
             execution_id: ID from record_execution_start
-            status: Final status (completed, failed, retrying)
+            status: Final status (completed, failed, timed_out, retrying)
             report_path: Path to generated report
             api_calls_used: Number of API calls made
             error_message: Error message if failed
+            only_if_running: Leave a run that already finished as it is (the watchdog's
+                timeout can land after a routine recorded its own result)
 
         Returns:
             True if successful
@@ -424,7 +427,8 @@ class SchedulerStateManager:
                 SET completed_at = ?, status = ?, report_path = ?,
                     api_calls_used = ?, error_message = ?
                 WHERE id = ?
-            """,
+            """
+                + (" AND status IN ('running', 'retrying')" if only_if_running else ""),
                 (now_iso(), status, report_path, api_calls_used, error_message, execution_id),
             )
             conn.commit()
@@ -578,6 +582,24 @@ class SchedulerStateManager:
             logger.error(f"Failed to check if routine finished today: {e}")
             return False
 
+    def count_timeouts(self, routine_type: str, market_date: Optional[str] = None) -> int:
+        """How many runs of a routine the cron watchdog cut off on a trading day."""
+        try:
+            with closing(self._get_connection()) as conn:
+                row = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM scheduler_history
+                    WHERE routine_type = ?
+                    AND coalesce(market_date, date(started_at)) = ?
+                    AND status = 'timed_out'
+                """,
+                    (routine_type, market_date or market_today()),
+                ).fetchone()
+            return row[0]
+        except Exception as e:
+            logger.error(f"Failed to count routine timeouts: {e}")
+            return 0
+
     def executions_on(
         self, market_dates: Sequence[str]
     ) -> Dict[Tuple[str, str], List[SchedulerExecution]]:
@@ -625,7 +647,7 @@ class SchedulerStateManager:
         stats: Dict[str, Any] = {
             "total": len(history),
             "completed": sum(1 for e in history if e.status == "completed"),
-            "failed": sum(1 for e in history if e.status == "failed"),
+            "failed": sum(1 for e in history if e.status in ("failed", "timed_out")),
             "by_routine": {},
         }
 

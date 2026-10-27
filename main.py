@@ -282,7 +282,7 @@ def _run_due_checks(limit_seconds: int) -> int:
     """The cron check itself (see _run_due_mode). Returns the exit code."""
     configure_scheduler_logging()
     scheduler = DailyScheduler()
-    scheduler.warn_if_retries_exceed(limit_seconds)
+    scheduler.run_limit_seconds = limit_seconds
     ran = scheduler.run_scheduled_tasks()
     return 1 if any(entry.status == "failed" for entry in ran) else 0
 

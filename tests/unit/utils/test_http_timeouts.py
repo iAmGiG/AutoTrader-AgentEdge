@@ -1,5 +1,6 @@
 """Requests to a broker or data vendor that stops answering fail instead of hanging forever."""
 
+import signal
 import socket
 import time
 from unittest.mock import Mock
@@ -13,6 +14,20 @@ from src.market_data import alpha_vantage_market
 from src.market_data.alpha_vantage_market import AlphaVantageMarketTool
 from src.utils import http_timeouts
 from src.utils.http_timeouts import set_default_timeout, with_default_timeout
+
+
+@pytest.fixture(autouse=True)
+def bounded():
+    """Fail a test that blocks (a dropped default timeout) instead of hanging the suite."""
+
+    def give_up(signum, frame):
+        raise AssertionError("blocked past 20 s: the request has no timeout")
+
+    previous = signal.signal(signal.SIGALRM, give_up)
+    signal.alarm(20)
+    yield
+    signal.alarm(0)
+    signal.signal(signal.SIGALRM, previous)
 
 
 @pytest.fixture

@@ -154,19 +154,24 @@ their sleeps included, or `run_due_timeout_seconds` in the scheduler config. Whe
 SIGALRM raises `RunDueTimeoutError`, which derives from `BaseException` so that the retry loop
 and the routines' contained steps cannot retry or swallow it. Then:
 
-- A routine in progress is recorded `failed` ("timed out after N s") in `scheduler_history`
-  and the execution log, its `routine_failed` notice is raised, and the process exits 1. Being
-  `failed`, it is not run again that day.
+- A routine in progress is recorded `timed_out` ("timed out after N s") in `scheduler_history`
+  and the execution log, its `routine_failed` notice is raised, and the process exits 1. Unlike
+  `failed`, a timeout does not settle the day: while the catch-up window is open the next tick
+  runs the routine again, up to `MAX_TIMEOUTS_PER_DAY` = 2 timeouts. A run that had already
+  recorded `completed` when the alarm landed keeps that result and raises no failure notice.
 - A timeout anywhere else (the outcome check, say) leaves one `run_due_error` notice and exits 1.
 - The run lock is released as the process ends, and the alarm and the previous handler are
   restored on the way out. Without `SIGALRM` (Windows) there is no limit.
 
-The scheduler logs a warning when a routine's retry sleeps alone (60 + 120 + 240 s with the
-defaults) could pass the limit.
+The 900 s is the real bound on a check: the request timeouts are per read, not per call (a server
+that dribbles bytes, or alpaca-py's own 429/504 retries, can take longer), so a degraded broker
+can use all of it inside the first attempt. When a routine starts, the scheduler logs a warning
+if its retry sleeps alone (60 + 120 + 240 s with the defaults) could pass the limit.
 
 #### Catch-up window
 
-A routine that has no `completed` or `failed` row today may start late, until its *run
+A routine that has no `completed` or `failed` row today (`timed_out` rows do not count) may
+start late, until its *run
 deadline* (`DailyScheduler.run_deadline`), never earlier than 5 minutes after its time:
 
 | Routine | Deadline |
@@ -176,7 +181,9 @@ deadline* (`DailyScheduler.run_deadline`), never earlier than 5 minutes after it
 
 So the 15:55 tick catches a lost 15:50 tick, and the evening routine still starts before the
 close. A late start is logged at INFO. `scheduler_history` still guarantees one run a day, and
-a dry run keeps the 5-minute window, since it never counts as the day's run. `next_run` and the
+a dry run keeps the 5-minute window, since it never counts as the day's run. So does a routine
+that was switched on (or the scheduler enabled) after its 5-minute window: enabling it late
+does not start a late run on the paper broker. `next_run` (never earlier than now) and the
 missed-routine notice use the same deadline: a missed morning is reported after 10:25 ET, an
 evening after 16:04 ET, and a miss is excused only if the routine was switched on after the
 deadline.

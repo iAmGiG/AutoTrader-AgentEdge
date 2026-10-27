@@ -97,6 +97,8 @@ RUN_WINDOW = timedelta(minutes=5)
 # routine ran long): the morning up to this long after its time; the evening until a minute
 # before the close, so it still starts while the market is open (see run_deadline)
 MORNING_CATCH_UP = timedelta(minutes=60)
+# Runs the watchdog may cut off per routine and day before it stays off until tomorrow
+MAX_TIMEOUTS_PER_DAY = 2
 EVENING_CLOSE_MARGIN = timedelta(minutes=1)
 
 # A routine counts as missed this long after its run deadline passed: a slow cron tick or a
@@ -229,6 +231,7 @@ class ScheduleStatus(Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    TIMED_OUT = "timed_out"  # cut off by the cron watchdog; may run again (MAX_TIMEOUTS_PER_DAY)
     RETRYING = "retrying"
     DRY_RUN = "dry_run"  # ran without sending orders; not the day's routine (#601)
 
@@ -292,7 +295,7 @@ def run_outcome(
     """
     for outcome, statuses in (
         (RunOutcome.OK, ("completed", "dry_run")),
-        (RunOutcome.FAILED, ("failed",)),
+        (RunOutcome.FAILED, ("failed", "timed_out")),
     ):
         match = next((run for run in reversed(runs) if run.status in statuses), None)
         if match is not None:
@@ -368,6 +371,7 @@ class DailyScheduler:
         if trading_cycle is not None:
             self._share_notice_store(trading_cycle)
         self.execution_log: List[ExecutionLog] = []
+        self.run_limit_seconds: Optional[int] = None  # the cron watchdog's limit, when armed
         # The market calendar's answers during one check, so the lookup should_run_task makes
         # is reused by check_routine_outcomes (see run_scheduled_tasks)
         self._hours_memo: Dict[date, Tuple[dt_time, dt_time, bool]] = {}
@@ -518,13 +522,30 @@ class DailyScheduler:
     def _record_timeout(
         self, log_entry: ExecutionLog, execution_id: int, timeout: RunDueTimeoutError
     ) -> None:
-        """Record a run cut off by the cron watchdog as failed (see watchdog.py)."""
+        """
+        Record a run cut off by the cron watchdog as timed out (see watchdog.py). Unlike a
+        failure, a timeout does not settle the day: the routine may start again on a later
+        tick (MAX_TIMEOUTS_PER_DAY). A run that had already finished keeps its result.
+        """
+        finished = (ScheduleStatus.COMPLETED.value, ScheduleStatus.DRY_RUN.value)
+        if log_entry.status in finished:  # the alarm landed after the routine's last step
+            self.state_manager.record_execution_complete(
+                execution_id,
+                status=log_entry.status,
+                report_path=log_entry.report_path,
+                api_calls_used=log_entry.api_calls_used,
+                only_if_running=True,
+            )
+            return
         log_entry.error_message = f"Attempt {log_entry.attempt} {timeout}"
-        log_entry.status = ScheduleStatus.FAILED.value
+        log_entry.status = ScheduleStatus.TIMED_OUT.value
         log_entry.actual_end_time = now_iso()
         logger.error("❌ %s - %s", log_entry.task_name, log_entry.error_message)
         self.state_manager.record_execution_complete(
-            execution_id, status="failed", error_message=log_entry.error_message
+            execution_id,
+            status=ScheduleStatus.TIMED_OUT.value,
+            error_message=log_entry.error_message,
+            only_if_running=True,
         )
 
     def _run_attempts(self, task: ScheduledTask, log_entry: ExecutionLog, execution_id: int):
@@ -658,7 +679,8 @@ class DailyScheduler:
         is closed. At least RUN_WINDOW after its time. A routine that has not run yet may
         start late: the morning until MORNING_CATCH_UP after its time, the evening until
         EVENING_CLOSE_MARGIN before the close (12:59 on a 13:00 early close). A dry run
-        keeps RUN_WINDOW, since it never counts as the day's run.
+        keeps RUN_WINDOW, since it never counts as the day's run. So does a routine
+        switched on after its window: turning it on late does not start a late run.
 
         Args:
             rules_only: Take the close from the NYSE rules, with no calendar call (the
@@ -671,7 +693,7 @@ class DailyScheduler:
         if when is None:
             return None
         deadline = when + RUN_WINDOW
-        if self.dry_run:
+        if self.dry_run or self._enabled_after(task, deadline):
             return deadline
         if task.routine_type == RoutineType.MORNING:
             deadline = max(deadline, when + MORNING_CATCH_UP)
@@ -680,6 +702,14 @@ class DailyScheduler:
             closing = datetime.combine(day, close, tzinfo=ZoneInfo(task.timezone))
             deadline = max(deadline, closing - EVENING_CLOSE_MARGIN)
         return deadline
+
+    def _enabled_after(self, task: ScheduledTask, moment: datetime) -> bool:
+        """Was the routine last switched on after a moment (an unreadable state: no)?"""
+        try:
+            enabled_at = self._routines_enabled_at().get(task.name)
+        except Exception:
+            return False
+        return enabled_at is not None and enabled_at > moment
 
     def _close_time(self, day: date, rules_only: bool) -> dt_time:
         """The close on a trading day: the calendar's, or the NYSE rules'."""
@@ -720,11 +750,17 @@ class DailyScheduler:
         if scheduled is None:
             logger.debug("Skipping %s: %s is not a trading day", task.name, now.date())
             return False
-        if now < scheduled or now > self.run_deadline(task, now.date()):
+        deadline = self.run_deadline(task, now.date())
+        if now < scheduled or deadline is None or now > deadline:
             return False
 
         if self.state_manager.was_routine_finished_today(routine_type, now.date().isoformat()):
             logger.debug("Task %s already completed or failed today (from DB)", task.name)
+            return False
+        if self.state_manager.count_timeouts(routine_type, now.date().isoformat()) >= (
+            MAX_TIMEOUTS_PER_DAY
+        ):
+            logger.debug("Task %s timed out %d times today", task.name, MAX_TIMEOUTS_PER_DAY)
             return False
 
         if now - scheduled > RUN_WINDOW:
@@ -751,11 +787,14 @@ class DailyScheduler:
             day = (now + timedelta(days=offset)).date()
             runs = [(self.scheduled_at(task, day), task) for task in tasks]
             for when, task in sorted((r for r in runs if r[0] is not None), key=lambda r: r[0]):
-                done = self.state_manager.was_routine_finished_today(
-                    task.name.replace("_routine", ""), day.isoformat()
+                routine = task.name.replace("_routine", "")
+                done = self.state_manager.was_routine_finished_today(routine, day.isoformat()) or (
+                    self.state_manager.count_timeouts(routine, day.isoformat())
+                    >= (MAX_TIMEOUTS_PER_DAY)
                 )
-                if self.run_deadline(task, day) >= now and not done:
-                    return task, when
+                deadline = self.run_deadline(task, day)
+                if deadline is not None and deadline >= now and not done:
+                    return task, max(when, now)  # not in the past while it may still start late
         return None
 
     @contextmanager
@@ -783,6 +822,8 @@ class DailyScheduler:
 
     def _run_task(self, task: ScheduledTask) -> ExecutionLog:
         """Execute a task with retries, then log and save the result and note its outcome."""
+        if self.run_limit_seconds:
+            self.warn_if_retries_exceed(self.run_limit_seconds)  # only when a routine starts
         try:
             log_entry = self._execute_task_with_retry(task)
         except RunDueTimeoutError as timeout:
@@ -838,7 +879,7 @@ class DailyScheduler:
             routine = task.name.replace("_routine", "")
             market_date = log_entry.market_date or self._market_now().date().isoformat()
             completed = log_entry.status == ScheduleStatus.COMPLETED.value
-            if log_entry.status == ScheduleStatus.FAILED.value:
+            if log_entry.status in (ScheduleStatus.FAILED.value, ScheduleStatus.TIMED_OUT.value):
                 self._notice_failure(routine, market_date, log_entry)
             elif completed or log_entry.status == ScheduleStatus.DRY_RUN.value:
                 self.notice_store.resolve_kinds(routine, market_date)
@@ -1066,6 +1107,7 @@ class DailyScheduler:
         status_emoji = {
             ScheduleStatus.COMPLETED.value: "✅",
             ScheduleStatus.FAILED.value: "❌",
+            ScheduleStatus.TIMED_OUT.value: "⏱",
             ScheduleStatus.RETRYING.value: "🔄",
             ScheduleStatus.DRY_RUN.value: "🧪",
         }.get(log_entry.status, "⚠️")
@@ -1202,7 +1244,11 @@ class DailyScheduler:
             lines.append(f"Total executions: {len(entries)}")
 
             completed = sum(1 for e in entries if e.status == ScheduleStatus.COMPLETED.value)
-            failed = sum(1 for e in entries if e.status == ScheduleStatus.FAILED.value)
+            failed = sum(
+                1
+                for e in entries
+                if e.status in (ScheduleStatus.FAILED.value, ScheduleStatus.TIMED_OUT.value)
+            )
 
             lines.append(f"✅ Completed: {completed}")
             lines.append(f"❌ Failed: {failed}")
