@@ -77,3 +77,21 @@ def test_too_few_days_give_no_interval():
 
     assert np.isnan(out["diff"]) and np.isnan(out["p_value"])
     assert all(np.isnan(out["ci95"])) and out["n_days"] == 30
+
+
+def test_a_series_without_variance_gives_no_p_value_rather_than_a_false_one():
+    flat = pd.Series(0.0, index=_returns(1).index)
+
+    out = paired_sharpe_diff_ci(flat, _returns(2))
+
+    assert np.isnan(out["p_value"]) and all(np.isnan(out["ci95"]))
+
+
+def test_replications_without_variance_are_left_out_and_counted():
+    mostly_flat = pd.Series(0.0, index=pd.bdate_range("2015-01-01", periods=200))
+    mostly_flat.iloc[[3, 150]] = [0.01, -0.01]  # many 20-day resamples miss both days
+
+    out = paired_sharpe_diff_ci(mostly_flat, _returns(2, n=200), reps=300)
+
+    assert 0 < out["dropped_reps"] < 300
+    assert np.isfinite(out["p_value"]) and all(np.isfinite(out["ci95"]))

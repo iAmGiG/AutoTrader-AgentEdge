@@ -42,11 +42,13 @@ Usage:
 """
 
 import argparse
+import atexit
 import dataclasses
 import datetime
 import json
 import logging
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -58,9 +60,24 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # live_rules_baseline sits beside this
 
-# Research never touches the user's state: the voter's ranking manager opens state/user.db
-if "AUTOTRADER_STATE_DIR" not in os.environ:
-    os.environ["AUTOTRADER_STATE_DIR"] = tempfile.mkdtemp(prefix="trailing_state_")
+# Research never touches the user's state or cache: the voter's ranking manager opens
+# state/user.db, and the trading package builds its market-data cache on first use. The
+# scratch directories made here are removed at exit.
+_SCRATCH_DIRS = []
+for _var, _prefix in (
+    ("AUTOTRADER_STATE_DIR", "trailing_state_"),
+    ("AUTOTRADER_CACHE_DIR", "trailing_cache_"),
+):
+    if _var not in os.environ:
+        os.environ[_var] = tempfile.mkdtemp(prefix=_prefix)
+        _SCRATCH_DIRS.append(os.environ[_var])
+
+
+@atexit.register
+def _remove_scratch_dirs() -> None:
+    for path in _SCRATCH_DIRS:
+        shutil.rmtree(path, ignore_errors=True)
+
 
 import live_rules_baseline as baseline  # noqa: E402
 

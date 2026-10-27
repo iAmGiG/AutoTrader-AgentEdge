@@ -284,3 +284,33 @@ def test_the_reading_quotes_the_loss_and_counts_the_negative_effects(runner):
     )
     assert "by 0.09 to 0.11 at 5 bps" in text
     assert "negative in 2 of 3 comparisons" in text  # the out-of-sample row is positive
+
+
+def test_the_runner_points_state_and_cache_at_scratch_dirs_and_removes_them(tmp_path):
+    """Run without the test suite's isolation: the module itself must keep off real state."""
+    import os
+    import subprocess
+    import sys
+
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("AUTOTRADER_STATE_DIR", "AUTOTRADER_CACHE_DIR")
+    }
+    code = (
+        "import os, sys; sys.path[:0] = [sys.argv[1], sys.argv[2]];"
+        "import trailing_vs_bracket;"
+        "print(os.environ['AUTOTRADER_STATE_DIR']); print(os.environ['AUTOTRADER_CACHE_DIR'])"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", code, str(REPO / "scripts" / "research"), str(REPO)],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=tmp_path,
+        check=True,
+    )
+
+    state, cache = out.stdout.split()[-2:]
+    assert "trailing_state_" in state and "trailing_cache_" in cache
+    assert not Path(state).exists() and not Path(cache).exists()  # removed at exit

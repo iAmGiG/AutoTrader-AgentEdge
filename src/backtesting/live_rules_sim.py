@@ -454,7 +454,8 @@ def paired_sharpe_diff_ci(
     Both strategies trade the same signals on the same days, so every replication
     resamples the same blocks of days from both return series: what they share (the
     market, most entries) cancels in the difference. Blocks, replications and seed are
-    those of ``sharpe_ci``, so each Sharpe's own interval is drawn from the same days.
+    those of ``sharpe_ci``, so when both series cover the same days (as the runner's
+    equity curves do) each Sharpe's own interval is drawn from the same days.
 
     Args:
         returns_a, returns_b: Daily returns indexed by date; only dates in both are used
@@ -462,7 +463,8 @@ def paired_sharpe_diff_ci(
     Returns:
         ``diff`` (observed Sharpe difference), ``ci95`` ([low, high]), ``p_value`` (two-sided
         bootstrap, twice the smaller share of replications on one side of zero, at least
-        1 / reps) and ``n_days``.
+        1 / reps) and ``n_days``; plus ``dropped_reps`` when a replication had no finite
+        difference (a resample with zero variance), which is left out rather than counted.
     """
     both = pd.concat([returns_a, returns_b], axis=1).dropna().to_numpy()
     n = len(both)
@@ -481,12 +483,24 @@ def paired_sharpe_diff_ci(
     def sharpe(samples):
         return np.sqrt(252) * samples.mean(axis=-1) / samples.std(axis=-1, ddof=1)
 
-    diffs = sharpe(a[picks]) - sharpe(b[picks])
-    low, high = np.percentile(diffs, [2.5, 97.5])
-    p_value = max(2 * min(float((diffs <= 0).mean()), float((diffs >= 0).mean())), 1 / reps)
-    return {
+    with np.errstate(divide="ignore", invalid="ignore"):
+        diffs = sharpe(a[picks]) - sharpe(b[picks])
+    finite = diffs[np.isfinite(diffs)]
+    if not len(finite):
+        return {
+            "diff": float("nan"),
+            "ci95": [float("nan")] * 2,
+            "p_value": float("nan"),
+            "n_days": n,
+        }
+    low, high = np.percentile(finite, [2.5, 97.5])
+    shares = (float((finite <= 0).mean()), float((finite >= 0).mean()))
+    result = {
         "diff": float(sharpe(a) - sharpe(b)),
         "ci95": [float(low), float(high)],
-        "p_value": min(p_value, 1.0),
+        "p_value": min(max(2 * min(shares), 1 / len(finite)), 1.0),
         "n_days": n,
     }
+    if len(finite) < reps:
+        result["dropped_reps"] = reps - len(finite)
+    return result

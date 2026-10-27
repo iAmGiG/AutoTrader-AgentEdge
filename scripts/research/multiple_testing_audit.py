@@ -31,6 +31,7 @@ Usage:
 
 import datetime
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -298,6 +299,9 @@ def collect_trailing_exits(rows):
         data = json.load(f)
     for r in data["paired_tests"]:
         t = r.get("return_test")
+        if t and not all(math.isfinite(t[k]) for k in ("t_statistic", "p_value")):
+            print(f"  skipped a non-finite test: {r['comparison']} {r['period']}")
+            continue
         if t:
             rows.append(
                 _row(

@@ -115,3 +115,14 @@ def test_gex_family_is_corrected_as_before(audit):
     assert by_study.to_dict(orient="records") == [
         {"study": "s", "n": 4, "raw": 2, "holm": 2, "bh": 2, "t3": 0}
     ]
+
+
+def test_collector_skips_a_test_without_a_finite_statistic(audit, monkeypatch, tmp_path):
+    path = tmp_path / "trailing_vs_bracket.json"
+    _exit_json(path, [0.5, float("nan"), 0.9])
+    monkeypatch.setattr(audit, "STRATEGY_RESULTS_DIR", tmp_path)
+    rows = []
+
+    audit.collect_trailing_exits(rows)
+
+    assert [r["p_value"] for r in rows] == [0.5, 0.9]  # a NaN would poison the family's correction
