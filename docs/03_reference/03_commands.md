@@ -127,7 +127,7 @@ Many commands support short aliases for faster typing:
 
 ## Current Development Commands
 
-### AutoGen Agent Testing ✅
+### Agent Testing ✅
 
 ```bash
 # VoterAgent (MACD+RSI voting)
@@ -173,13 +173,13 @@ python -m unittest discover tests
 
 ```bash
 # Check cache status and statistics
-python scripts/cache_manager.py stats
+python scripts/utilities/cache_manager.py stats
 
 # List cached symbols
-python scripts/cache_manager.py symbols
+python scripts/utilities/cache_manager.py symbols
 
 # Query specific symbol data
-python scripts/cache_manager.py query SPY --start 2024-01-01 --end 2024-12-31
+python scripts/utilities/cache_manager.py query SPY --start 2024-01-01 --end 2024-12-31
 
 # Check database size
 ls -lh .cache/trading_data.db
@@ -275,12 +275,12 @@ python scripts/analysis/generate_results_summary.py --advanced
 python --version
 conda info --envs
 
-# Verify AutoGen imports work
-python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent import successful')"
-python -c "from src.autogen_agents.base_agent import BaseAgent; print('BaseAgent import successful')"
+# Verify the agent imports work
+python -c "from src.autogen_agents.agents.voter_agent import VoterAgent; print('VoterAgent import successful')"
+python -c "from src.autogen_agents.core.base_agent import BaseAgent; print('BaseAgent import successful')"
 
 # Test cache data loading (SQLite)
-python scripts/cache_manager.py query AAPL --start 2024-01-01 --end 2024-12-31
+python scripts/utilities/cache_manager.py query AAPL --start 2024-01-01 --end 2024-12-31
 
 # Check SQLite cache database
 sqlite3 .cache/trading_data.db "SELECT COUNT(*) FROM market_cache;"

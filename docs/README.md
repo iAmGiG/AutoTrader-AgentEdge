@@ -1,6 +1,6 @@
 # OptionsCommander Documentation
 
-Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`), a Microsoft AutoGen-based trading platform with a MACD+RSI voting strategy and a multi-agent architecture.
+Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`), a trading platform built on Microsoft Agent Framework (AutoGen until #606), with a MACD+RSI voting strategy and a multi-agent architecture.
 
 ## Documentation Structure
 
@@ -56,16 +56,16 @@ Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/A
 
 ## Key Features
 
-### ✅ **AutoGen Multi-Agent System**
+### ✅ **Multi-Agent System**
 
 - **VoterAgent**: MACD+RSI voting, the live CLI's signal (no backtested edge over buy-and-hold; see the [live-rules baseline](08_research/03_strategy_research/live_rules_baseline.md))
-- **Agent Architecture**: Microsoft AutoGen framework for agent coordination
+- **Agent Architecture**: Microsoft Agent Framework for LLM calls and tool calling (AutoGen was removed in #606)
 - **Multi-Agent Trading**: Scanner, Risk, Executor, and Orchestrator agents (in development)
 - **Tool Integration**: Market data and trading tools accessible to all agents
 
 ### ✅ **Professional Architecture**
 
-- **Agent Communication**: Structured message passing between AutoGen agents
+- **Agent Communication**: Structured message passing between agents
 - **Unified Tools**: Single source of truth accessible to all agents
 - **Error Handling**: Comprehensive error recovery and logging
 - **State Management**: Persistent trade state across restarts and agent coordination
@@ -101,7 +101,7 @@ Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/A
 
 ### ✅ **Components in Use**
 
-- **VoterAgent**: AutoGen agent with MACD+RSI voting
+- **VoterAgent**: MACD+RSI voting (the rules live in `VotingSignal`, `src/trading/instruments/voting_signal.py`)
 - **CLI Trade Assistant** (#308): Human-in-loop interactive trading interface ✅ NEW
   - Natural language parsing with OpenAI (gpt-4o-mini + o4-mini)
   - Real MACD+RSI analysis with market data fetching
@@ -109,7 +109,7 @@ Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/A
   - Interactive REPL with confirm/auto autonomy modes
   - Usage: `python main.py`
 - **Position Manager**: Unified position and account tracking accessible to agents
-- **Order Manager**: Complete order placement and monitoring via AutoGen tools
+- **Order Manager**: Complete order placement and monitoring via the CLI's Agent Framework tools
 - **Trading Cycle**: Comprehensive position monitoring and stop management
 - **Daily Scheduler**: Morning and evening routines run from cron ([quick start](06_features/02_gtc_scheduler_quickstart.md))
 
@@ -141,6 +141,6 @@ For academic research and citations informing the system architecture:
 
 ---
 
-*Documentation follows professional standards with clear organization, consistent naming, and comprehensive coverage of all AutoGen agents and system components.*
+*Documentation follows professional standards with clear organization, consistent naming, and comprehensive coverage of all agents and system components.*
 
 Last updated: October 2026 (performance figures from #574; scheduler, naming and links corrected).

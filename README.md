@@ -8,7 +8,7 @@ Formerly RH2MAS (Reflective Hybrid Head Multi-Agent System). The GitHub reposito
 ## Powered by AgentEdge - AI-assisted trading with human oversight
 
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![AutoGen](https://img.shields.io/badge/AutoGen-0.7.x-green.svg)](https://github.com/microsoft/autogen)
+[![Agent Framework](https://img.shields.io/badge/Agent%20Framework-1.x-green.svg)](https://github.com/microsoft/agent-framework)
 [![Alpaca](https://img.shields.io/badge/Broker-Alpaca-yellow.svg)](https://github.com/alpacahq/alpaca-py)
 [![Code Style](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
@@ -28,7 +28,7 @@ Formerly RH2MAS (Reflective Hybrid Head Multi-Agent System). The GitHub reposito
 
 ## Overview
 
-**OptionsCommander** is a research-driven trading platform with a multi-agent AI architecture built on Microsoft AutoGen. It trades a MACD+RSI voting strategy through Alpaca Markets with human oversight, and its research tests strategies out-of-sample, with transaction costs and look-ahead checks.
+**OptionsCommander** is a research-driven trading platform with a multi-agent AI architecture built on Microsoft Agent Framework (it was AutoGen until #606). It trades a MACD+RSI voting strategy through Alpaca Markets with human oversight, and its research tests strategies out-of-sample, with transaction costs and look-ahead checks.
 
 **Core Philosophy**: simple rules + human decision making, tested out-of-sample with costs > curve-fit technical indicators
 
@@ -202,7 +202,7 @@ The morning (9:20 AM ET) and evening (3:50 PM ET) routines run on NYSE trading d
 ```text
 AutoTrader-AgentEdge/       # repository root (project: OptionsCommander)
 ├── src/
-│   ├── autogen_agents/     # AI agents (AutoGen framework)
+│   ├── autogen_agents/     # AI agents (Microsoft Agent Framework; the name predates #606)
 │   │   ├── agents/         # VoterAgent (MACD+RSI voting); other agents in development
 │   │   ├── core/           # Base agent class
 │   │   └── ...             # Orchestration, tools, workflow

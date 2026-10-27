@@ -7,14 +7,14 @@
 
 ## Overview
 
-Complete integration with Alpaca Markets providing both market data acquisition and order execution capabilities. Built on the official alpaca-py SDK with intelligent caching, comprehensive error handling, and AutoGen agent integration.
+Complete integration with Alpaca Markets providing both market data acquisition and order execution capabilities. Built on the official alpaca-py SDK with intelligent caching, comprehensive error handling, and tools for the agents and the CLI (Microsoft Agent Framework; AutoGen until #606).
 
 **Integrated Capabilities**:
 
 1. **Market Data**: Real-time and historical OHLCV bars, quotes, trades, snapshots
 2. **Order Management**: All order types with advanced risk management
 3. **Account Monitoring**: Real-time account status and position tracking
-4. **AutoGen Tools**: Agent-ready tool wrappers for all functionality
+4. **Agent Framework Tools**: `FunctionTool` wrappers for the agents and the CLI
 
 ---
 
@@ -109,10 +109,10 @@ trade = alpaca.get_latest_trade("AAPL")
 print(f"Price: ${trade['trade']['p']}, Size: {trade['trade']['s']}")
 ```
 
-#### AutoGen Agent Usage - Market Data
+#### Agent Usage - Market Data
 
 ```python
-from src.data_sources.sources.market.alpaca_market_data import create_alpaca_market_data_tool
+from src.market_data.alpaca_market_data import create_alpaca_market_data_tool
 
 # Create tool for agents (SDK-powered)
 tool = create_alpaca_market_data_tool()
@@ -153,14 +153,14 @@ count = result['count']     # Number of bars retrieved
 
 - **File**: `src/trading/broker/alpaca_trading_client.py`
 - **Tests**: 29/29 passing
-- **AutoGen Integration**: `src/trading/alpaca_autogen_tools.py`
+- **Agent and CLI tools**: `src/cli/tools/` (Agent Framework `FunctionTool`s)
 
 ### Architecture
 
 ```bash
-src/trading/
-├── alpaca_trading_client.py     # Core order management classes
-└── alpaca_autogen_tools.py      # AutoGen agent integration
+src/trading/broker/
+└── alpaca_trading_client.py     # Core order management classes
+src/cli/tools/                   # FunctionTool wrappers (orders, account, stops, ...)
 
 Classes:
 ├── AlpacaTradingClient          # Base client with unified live/paper support
@@ -260,19 +260,17 @@ result = manager.cancel_all_orders(symbol="AAPL")
 result = manager.cancel_all_orders()
 ```
 
-### AutoGen Integration - Orders
+### Agent Framework Tools - Orders
 
 ```python
-from src.trading.alpaca_autogen_tools import AlpacaOrderTool, AlpacaAccountTool
+from src.cli.tools import get_cli_tool, get_cli_tools_by_category
 
-# For agents - read-only account access
-account_tool = AlpacaAccountTool(mode="paper")
-status = account_tool.get_account_status()
-positions = account_tool.get_positions()
+# Read-only: runs without asking
+show_orders = get_cli_tool("show_orders")
 
-# For agents - full order management
-order_tool = AlpacaOrderTool(mode="paper")
-result = order_tool.place_market_order("AAPL", 100, "buy")
+# State-changing (cancel_order, cancel_all_orders, ...): approval_mode "always_require",
+# so an agent must get approval before it runs them (REQUIRES_APPROVAL in src/cli/tools/__init__.py)
+order_tools = get_cli_tools_by_category("order")
 ```
 
 ### Configuration
@@ -388,61 +386,35 @@ python tests/test_alpaca_advanced_orders.py
 
 ---
 
-## Integration with AutoGen Agents
+## Integration with Agents
 
-### Complete Tool Suite
+Agents (`src/autogen_agents/`) run on Microsoft Agent Framework (AutoGen until #606). Tools are `FunctionTool`s; `BaseAgent` gets the market tools by default and passes its tools to an Agent Framework `Agent` when it makes an LLM call (`process_with_tools`).
 
-**Market Data Tool** (All agents):
-
-```python
-from src.data_sources.sources.market.alpaca_market_data import create_alpaca_market_data_tool
-
-market_tool = create_alpaca_market_data_tool()
-# Available to: VoterAgent, Scanner, Risk, Executor, Orchestrator
-```
-
-**Account Tool** (Read-only for most agents):
+**Market Data Tools** (all agents, `src/autogen_agents/tools/market_tools.py`):
 
 ```python
-from src.trading.alpaca_autogen_tools import AlpacaAccountTool
+from src.autogen_agents.tools import ALL_TOOLS
 
-account_tool = AlpacaAccountTool(mode="paper")
-# Available to: VoterAgent, Scanner, Risk agents
+print([tool.name for tool in ALL_TOOLS])
+# fetch_unified_market_data (cache, then Alpaca, then Alpha Vantage), fetch_vxx_volatility_data,
+# fetch_market_context_data
 ```
 
-**Order Tool** (Executor agent only):
-
-```python
-from src.trading.alpaca_autogen_tools import AlpacaOrderTool
-
-order_tool = AlpacaOrderTool(mode="paper")
-# Available to: Executor agent only (restricted access)
-```
+**Account and Order Tools** (the CLI, `src/cli/tools/`): read-only tools run without asking; tools that change state (orders, stops, account switch) require approval.
 
 ### Agent Integration Pattern
 
 ```python
-class VoterAgent(ConversableAgent):
-    def __init__(self):
-        super().__init__(name="VoterAgent")
+from src.autogen_agents.core.base_agent import BaseAgent
 
-        # Register market data tool
-        self.market_tool = create_alpaca_market_data_tool()
-        self.register_function(self.market_tool.get_bars)
 
-        # Register account tool (read-only)
-        self.account_tool = AlpacaAccountTool(mode="paper")
-        self.register_function(self.account_tool.get_account)
+class MyAgent(BaseAgent):
+    def generate_reply(self, messages, context=None) -> str:
+        # Plain Python first; call the LLM (with the agent's tools) only for free text
+        return self.process_with_tools(messages[-1]["content"], system_prompt="You review trades.")
 
-    def make_decision(self, symbol, date):
-        # Get market data
-        data = self.market_tool.get_bars([symbol], date, date, "1Day")
 
-        # Check account status
-        account = self.account_tool.get_account()
-
-        # Make trading decision
-        return self.voting_logic(data, account)
+agent = MyAgent(name="reviewer")  # the OpenAI client is created on the first LLM call
 ```
 
 ---
@@ -460,10 +432,10 @@ class VoterAgent(ConversableAgent):
 ## Next Steps
 
 1. **Implement WebSocket Streaming** (#316 Event Bus integration)
-2. **Real-time Agent Integration** (#310 Complete AutoGen agents)
+2. **Real-time Agent Integration** (#310 Complete the agents)
 3. **Paper Trading Deployment** (#315 Paper Trading Enhancement)
 4. **Live Trading Validation** (Post-paper trading success)
 
 ---
 
-*Complete Alpaca Markets integration providing market data acquisition and order execution with safety checks, validation, and AutoGen agent compatibility.*
+*Complete Alpaca Markets integration providing market data acquisition and order execution with safety checks, validation, and Agent Framework tools.*

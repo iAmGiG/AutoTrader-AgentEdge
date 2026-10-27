@@ -1,6 +1,6 @@
 # Multi-Agent Ensemble Architecture
 
-**Foundation**: Microsoft AutoGen Framework
+**Foundation**: Microsoft Agent Framework (AutoGen until #606)
 **Approach**: Democratic voting with specialized agent roles
 **Status**: VoterAgent in use on paper, ensemble expansion in development
 
@@ -59,26 +59,18 @@ Market Data ────────┼─ Bollinger Signal ───┼──�
 - Coordinate MACD+RSI voting logic
 - Generate trading signals with confidence scoring
 - Recommend position sizing based on signal strength
-- Integrate with AutoGen message passing
+- Answer JSON requests from the orchestrator (`generate_reply`)
 
 **Implementation**:
 
+The voting rules live in `VotingSignal` (`src/trading/instruments/voting_signal.py`, #606 step 1), plain Python with no agent framework, so the live CLI and research use them directly. `VoterAgent` (`src/autogen_agents/agents/voter_agent.py`) wraps a `VotingSignal`.
+
 ```python
-class VoterAgent(ConversableAgent):
-    def __init__(self, name="VoterAgent", **kwargs):
-        # Initialize with MACD+RSI voting tools
-        self.macd_config = {"fast": 13, "slow": 34, "signal": 8}
-        self.rsi_config = {"period": 14, "oversold": 30, "overbought": 70}
+from src.trading.instruments.voting_signal import VotingSignal
 
-    def make_decision(self, symbol, date, market_data):
-        # Calculate MACD signal
-        macd_signal = self.calculate_macd(market_data)
-
-        # Calculate RSI signal
-        rsi_signal = self.calculate_rsi(market_data)
-
-        # Vote: both agree = strong, one agrees = weak, conflict = hold
-        return self.voting_logic(macd_signal, rsi_signal)
+signal = VotingSignal()  # MACD 13/34/8, RSI 14 with 30/70
+result = signal.evaluate_voting("AAPL", price_data)  # price_data: DataFrame with a close column
+# Vote: both agree = strong, one agrees = weak, conflict = hold
 ```
 
 **Configuration**:
@@ -104,32 +96,25 @@ class VoterAgent(ConversableAgent):
 
 **Responsibilities**:
 
-- Provide common AutoGen integration
-- Handle tool registration and execution
-- Manage message passing and state
+- Hold the agent's name, tools and optional memory
+- Run LLM conversations with tool calling (`process_with_tools`) on Agent Framework
+- Create the OpenAI client on first use, so agents that never call the LLM need no key
 - Standardize error handling
 
 **Implementation**:
 
 ```python
-class BaseAgent(ConversableAgent):
-    def __init__(self, name, tools=None, **kwargs):
-        super().__init__(name=name, **kwargs)
-        self.tools = tools or []
-        self.register_tools()
+from agent_framework import Agent
 
-    def register_tools(self):
-        # Register tools for AutoGen function calling
-        for tool in self.tools:
-            self.register_function(tool)
 
-    def execute_tool(self, tool_name, **kwargs):
-        # Execute registered tool with error handling
-        try:
-            result = self.tools[tool_name](**kwargs)
-            return {"success": True, "data": result}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+class BaseAgent(ABC):  # src/autogen_agents/core/base_agent.py, simplified
+    def __init__(self, name, tools=None, memory_system=None, llm_config=None, use_dual_models=False):
+        self.tools = ALL_TOOLS if tools is None else tools  # Agent Framework FunctionTools
+        self.max_tool_rounds = 2  # tool-calling round trips before the model must answer in text
+
+    async def process_with_tools_async(self, prompt, system_prompt=None) -> str:
+        agent = Agent(client=self.model_client, instructions=system_prompt, tools=self.tools)
+        return (await agent.run(prompt)).text  # errors come back as "Error processing with LLM: ..."
 ```
 
 **Benefits**:

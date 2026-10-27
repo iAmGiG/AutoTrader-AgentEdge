@@ -2,11 +2,11 @@
 
 **Last Updated**: October 2026 (status, performance and GEX resolution; the roadmap below is from December 2025)
 **Version**: v1.0 - VoterAgent in use on paper
-**Framework**: Microsoft AutoGen 0.7.x
+**Framework**: Microsoft Agent Framework 1.x (AutoGen 0.7.x until #606)
 
 ## Project Overview
 
-OptionsCommander (formerly RH2MAS) is a human-in-loop algorithmic trading platform using the Microsoft AutoGen framework with a pure-math MACD+RSI voting strategy. Backtested with the live rules and timing, the strategy has no edge over buy-and-hold of the same symbols (#574).
+OptionsCommander (formerly RH2MAS) is a human-in-loop algorithmic trading platform using Microsoft Agent Framework (AutoGen until #606) with a pure-math MACD+RSI voting strategy. Backtested with the live rules and timing, the strategy has no edge over buy-and-hold of the same symbols (#574).
 
 **Core Philosophy**: Pure mathematical indicators + human oversight > complex LLM sentiment analysis
 
