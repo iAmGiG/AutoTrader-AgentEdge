@@ -7,8 +7,9 @@ LLM agent or client (#606). VoterAgent wraps this class and adds the agent parts
 (LLM replies, publishing results to the agent bus).
 """
 
+import copy
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import pandas as pd
 
@@ -19,6 +20,17 @@ from src.trading.instruments.indicator_registry import get_indicator_registry
 from src.trading.instruments.indicators import calculate_macd, calculate_rsi
 
 logger = logging.getLogger(__name__)
+
+VALID_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
+DEFAULT_TIMEFRAME = "1d"
+DEFAULT_MACD = {"fast": 13, "slow": 34, "signal": 8}
+DEFAULT_RSI = {"period": 14, "oversold": 30, "overbought": 70}
+DEFAULT_THRESHOLDS = {
+    "macd_threshold": 0.1,  # Histogram threshold for signal
+    "consensus_boost": 0.15,  # Confidence boost for consensus
+    "weak_signal_boost": 0.1,  # Confidence boost for weak signals
+    "min_data_points": 42,  # Minimum data for reliable signals
+}
 
 
 class VotingSignal:
@@ -46,57 +58,41 @@ class VotingSignal:
             voting_thresholds: Override decision thresholds {"macd_threshold": 0.1, ...}
             use_config_file: Whether to load defaults from the trading config
         """
-        # Load from config file if requested
-        if use_config_file:
-            self.config = TradingConfig()
-            default_macd = self.config.get_macd_config()
-            default_rsi = self.config.get_rsi_config()
+        self.config = TradingConfig() if use_config_file else None
+        default_timeframe, default_macd, default_rsi = self._defaults()
 
-            # Load timeframe from config or use provided
-            timeframe_config = self.config.get_timeframe_config()
-            config_timeframe = timeframe_config.default
-            self.timeframe = timeframe or config_timeframe
-
-            # Convert config objects to dicts
-            self.macd_params = macd_params or {
-                "fast": default_macd.fast,
-                "slow": default_macd.slow,
-                "signal": default_macd.signal,
-            }
-            self.rsi_params = rsi_params or {
-                "period": default_rsi.period,
-                "oversold": default_rsi.oversold,
-                "overbought": default_rsi.overbought,
-            }
-        else:
-            # Use provided params or hardcoded defaults
-            self.timeframe = timeframe or "1d"
-            self.macd_params = macd_params or {"fast": 13, "slow": 34, "signal": 8}
-            self.rsi_params = rsi_params or {"period": 14, "oversold": 30, "overbought": 70}
-
-        # Validate timeframe
-        valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
-        if self.timeframe not in valid_timeframes:
+        self.timeframe = timeframe or default_timeframe
+        if self.timeframe not in VALID_TIMEFRAMES:
             logger.warning(
-                f"Invalid timeframe '{self.timeframe}', defaulting to '1d'. "
-                f"Valid options: {valid_timeframes}"
+                f"Invalid timeframe '{self.timeframe}', defaulting to '{DEFAULT_TIMEFRAME}'. "
+                f"Valid options: {VALID_TIMEFRAMES}"
             )
-            self.timeframe = "1d"
+            self.timeframe = DEFAULT_TIMEFRAME
 
-        # Voting thresholds (can be tuned for optimization)
-        self.voting_thresholds = voting_thresholds or {
-            "macd_threshold": 0.1,  # Histogram threshold for signal
-            "consensus_boost": 0.15,  # Confidence boost for consensus
-            "weak_signal_boost": 0.1,  # Confidence boost for weak signals
-            "min_data_points": 42,  # Minimum data for reliable signals
-        }
+        # Copies: reconfigure() updates these in place, which must not reach a caller's dict
+        self.macd_params = dict(macd_params or default_macd)
+        self.rsi_params = dict(rsi_params or default_rsi)
+        self.voting_thresholds = dict(voting_thresholds or DEFAULT_THRESHOLDS)
+        self._sync_config()
 
-        # Track configuration for logging
+    def _defaults(self) -> Tuple[str, Dict[str, int], Dict[str, int]]:
+        """(timeframe, MACD, RSI) defaults: the trading config's when loaded, else built in."""
+        if self.config is None:
+            return DEFAULT_TIMEFRAME, dict(DEFAULT_MACD), dict(DEFAULT_RSI)
+        macd, rsi = self.config.get_macd_config(), self.config.get_rsi_config()
+        return (
+            self.config.get_timeframe_config().default,
+            {"fast": macd.fast, "slow": macd.slow, "signal": macd.signal},
+            {"period": rsi.period, "oversold": rsi.oversold, "overbought": rsi.overbought},
+        )
+
+    def _sync_config(self) -> None:
+        """Record the parameters in force (reported with each decision as parameters_used)."""
         self.current_config = {
             "timeframe": self.timeframe,
-            "macd": self.macd_params.copy(),
-            "rsi": self.rsi_params.copy(),
-            "thresholds": self.voting_thresholds.copy(),
+            "macd": dict(self.macd_params),
+            "rsi": dict(self.rsi_params),
+            "thresholds": dict(self.voting_thresholds),
         }
 
     def reconfigure(
@@ -118,61 +114,35 @@ class VotingSignal:
             voting_thresholds: New voting thresholds
         """
         if timeframe:
-            valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
-            if timeframe in valid_timeframes:
+            if timeframe in VALID_TIMEFRAMES:
                 self.timeframe = timeframe
-                self.current_config["timeframe"] = self.timeframe
             else:
                 logger.warning(
-                    f"Invalid timeframe '{timeframe}' ignored. Valid options: {valid_timeframes}"
+                    f"Invalid timeframe '{timeframe}' ignored. Valid options: {VALID_TIMEFRAMES}"
                 )
-
         if macd_params:
             self.macd_params.update(macd_params)
-            self.current_config["macd"] = self.macd_params.copy()
-
         if rsi_params:
             self.rsi_params.update(rsi_params)
-            self.current_config["rsi"] = self.rsi_params.copy()
-
         if voting_thresholds:
             self.voting_thresholds.update(voting_thresholds)
-            self.current_config["thresholds"] = self.voting_thresholds.copy()
+        self._sync_config()
 
         logger.info(f"VotingSignal reconfigured: {self.current_config}")
 
+    def get_current_configuration(self) -> Dict[str, Any]:
+        """Return current parameter configuration."""
+        return copy.deepcopy(self.current_config)
+
     def reset_to_defaults(self, use_config_file: bool = True) -> None:
-        """Reset parameters to defaults."""
-        if use_config_file and hasattr(self, "config"):
-            default_macd = self.config.get_macd_config()
-            default_rsi = self.config.get_rsi_config()
-
-            self.macd_params = {
-                "fast": default_macd.fast,
-                "slow": default_macd.slow,
-                "signal": default_macd.signal,
-            }
-            self.rsi_params = {
-                "period": default_rsi.period,
-                "oversold": default_rsi.oversold,
-                "overbought": default_rsi.overbought,
-            }
+        """Reset the timeframe, MACD, RSI and thresholds to their defaults."""
+        if use_config_file and self.config is not None:
+            self.timeframe, self.macd_params, self.rsi_params = self._defaults()
         else:
-            self.macd_params = {"fast": 13, "slow": 34, "signal": 8}
-            self.rsi_params = {"period": 14, "oversold": 30, "overbought": 70}
-
-        self.voting_thresholds = {
-            "macd_threshold": 0.1,
-            "consensus_boost": 0.15,
-            "weak_signal_boost": 0.1,
-            "min_data_points": 42,
-        }
-
-        self.current_config = {
-            "macd": self.macd_params.copy(),
-            "rsi": self.rsi_params.copy(),
-            "thresholds": self.voting_thresholds.copy(),
-        }
+            self.timeframe = DEFAULT_TIMEFRAME
+            self.macd_params, self.rsi_params = dict(DEFAULT_MACD), dict(DEFAULT_RSI)
+        self.voting_thresholds = dict(DEFAULT_THRESHOLDS)
+        self._sync_config()
 
         logger.info(f"VotingSignal reset to defaults: {self.current_config}")
 
@@ -199,7 +169,7 @@ class VotingSignal:
                     "confidence": 0.0,
                     "position_size": 0.0,
                     "reasoning": f"Insufficient data ({len(price_data)} < {self.voting_thresholds['min_data_points']})",
-                    "parameters_used": self.current_config,
+                    "parameters_used": copy.deepcopy(self.current_config),
                 }
 
             # Extract price series
@@ -306,7 +276,7 @@ class VotingSignal:
                 "signal_type": signal_type,
                 "timeframe": self.timeframe,  # Issue #365: Explicit timeframe in results
                 "current_price": float(prices.iloc[-1]),
-                "parameters_used": self.current_config,
+                "parameters_used": copy.deepcopy(self.current_config),
             }
 
             # Add component details if requested
@@ -341,7 +311,7 @@ class VotingSignal:
                 "position_size": 0.0,
                 "reasoning": f"Analysis error: {str(e)}",
                 "error": str(e),
-                "parameters_used": self.current_config,
+                "parameters_used": copy.deepcopy(self.current_config),
             }
 
     def evaluate_ranked_voting(  # noqa: C901
@@ -349,6 +319,9 @@ class VotingSignal:
     ) -> Dict[str, Any]:
         """
         Evaluate voting using the indicator registry and ranked voter config.
+
+        It reads its voters and thresholds from the ranked-voter config
+        (get_ranked_voter_manager), not from this object's MACD/RSI/threshold parameters.
 
         Issue #364: Ranked Voter System for Technical Indicators
 

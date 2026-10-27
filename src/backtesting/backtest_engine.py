@@ -1,11 +1,11 @@
 """
 Backtest Engine
 
-Lightweight backtesting engine wrapping validated VoterAgent logic.
+Lightweight backtesting engine for the MACD+RSI voting signal (VotingSignal).
 Refactored from experiment_293_macd_vs_voting.py simulate_trading() function.
 
 Design Philosophy:
-- Reuses existing VoterAgent without modification
+- Reuses VoterAgent's signal (VotingSignal) without modification
 - Integrates with TradingCacheManager for data
 - Zero learning curve - same logic as experiment_293
 - Checked by reproducing experiment 293 (0.856 Sharpe, in-sample on AAPL 2024; the live
@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 class BacktestEngine:
     """
-    Lightweight backtesting engine for VoterAgent strategies.
+    Lightweight backtesting engine for voting-signal strategies.
 
     Refactored from experiment_293 simulate_trading() function (lines 216-298).
     Reproduces experiment 293's metrics (0.856 Sharpe, in-sample on AAPL 2024).
@@ -143,7 +143,7 @@ class BacktestEngine:
                 continue
 
             # Generate signal using provided signal generator
-            # For VoterAgent: signal_generator = voter.evaluate_voting
+            # For the voting signal: signal_generator = VotingSignal().evaluate_voting
             kwargs = signal_kwargs or {}
             decision = signal_generator(symbol, data.iloc[: i + 1], **kwargs)
 

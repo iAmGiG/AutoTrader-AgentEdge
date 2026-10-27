@@ -7,6 +7,7 @@ The golden values below come from VoterAgent before the signal was moved out of 
 
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -14,7 +15,10 @@ import pandas as pd
 import pytest
 
 from src.autogen_agents.agents.voter_agent import VoterAgent
+from src.autogen_agents.core import base_agent
 from src.trading.instruments.voting_signal import VotingSignal
+
+REPO = Path(__file__).resolve().parents[3]
 
 
 def _series(seed):
@@ -64,7 +68,9 @@ def test_the_signal_loads_no_agent_framework_or_llm_client():
         "print(sorted({m.split('.')[0] for m in sys.modules "
         "if m.startswith(('autogen', 'openai', 'agent_framework'))}))"
     )
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=REPO
+    )
 
     assert out.stdout.strip() == "[]"
 
@@ -109,3 +115,50 @@ def test_agent_parameters_are_the_signals():
     assert agent.signal.macd_params["fast"] == 8
     assert agent.signal.rsi_params["period"] == 7
     assert agent.current_config["timeframe"] == "4h"
+
+
+def test_a_decision_keeps_the_parameters_it_was_computed_with():
+    signal = VotingSignal()
+    result = signal.evaluate_voting("S0", _series(0))
+
+    signal.reconfigure(timeframe="4h", macd_params={"fast": 8})
+
+    assert result["parameters_used"]["timeframe"] == "1d"
+    assert result["parameters_used"]["macd"]["fast"] == 13
+
+
+def test_a_callers_parameter_dict_is_not_changed():
+    shared = {"fast": 13, "slow": 34, "signal": 8}
+    first, second = VotingSignal(macd_params=shared), VotingSignal(macd_params=shared)
+
+    first.reconfigure(macd_params={"fast": 8})
+
+    assert shared["fast"] == 13
+    assert second.macd_params["fast"] == 13
+
+
+def test_reset_restores_every_parameter_including_the_timeframe():
+    signal = VotingSignal(use_config_file=False)
+    signal.reconfigure(timeframe="4h", rsi_params={"period": 7})
+
+    signal.reset_to_defaults(use_config_file=False)
+
+    assert signal.timeframe == "1d"
+    assert signal.rsi_params["period"] == 14
+    assert signal.current_config["timeframe"] == "1d"
+
+
+@pytest.mark.parametrize("use_config_file", [True, False])
+def test_the_agent_constructor_wires_its_signal(monkeypatch, use_config_file):
+    """The real VoterAgent.__init__, with only BaseAgent's LLM client set-up skipped."""
+    monkeypatch.setattr(base_agent.BaseAgent, "__init__", lambda self, *args, **kwargs: None)
+
+    agent = VoterAgent(name="voter", timeframe="4h", use_config_file=use_config_file)
+
+    assert isinstance(agent.signal, VotingSignal)
+    assert agent.timeframe == "4h" and agent.current_config["timeframe"] == "4h"
+    if use_config_file:
+        assert agent.config is agent.signal.config is not None
+    else:
+        assert agent.signal.config is None and not hasattr(agent, "config")
+    assert agent.evaluate_voting("S0", _series(0))["action"] == "BUY"

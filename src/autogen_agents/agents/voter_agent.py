@@ -25,6 +25,15 @@ from src.utils.agent_utils import load_agent_config
 logger = logging.getLogger(__name__)
 
 
+def _signal_attribute(name: str) -> property:
+    """An agent attribute stored on its VotingSignal (self.signal)."""
+    return property(
+        lambda self: getattr(self.signal, name),
+        lambda self, value: setattr(self.signal, name, value),
+        doc=f"VotingSignal.{name}",
+    )
+
+
 class VoterAgent(BaseAgent):
     """
     Fully parameterizable trading decision agent using MACD+RSI voting.
@@ -86,45 +95,11 @@ class VoterAgent(BaseAgent):
         )
 
     # Signal parameters live on self.signal; these keep the agent's attributes working
-    @property
-    def timeframe(self) -> str:
-        return self.signal.timeframe
-
-    @timeframe.setter
-    def timeframe(self, value: str) -> None:
-        self.signal.timeframe = value
-
-    @property
-    def macd_params(self) -> Dict[str, int]:
-        return self.signal.macd_params
-
-    @macd_params.setter
-    def macd_params(self, value: Dict[str, int]) -> None:
-        self.signal.macd_params = value
-
-    @property
-    def rsi_params(self) -> Dict[str, int]:
-        return self.signal.rsi_params
-
-    @rsi_params.setter
-    def rsi_params(self, value: Dict[str, int]) -> None:
-        self.signal.rsi_params = value
-
-    @property
-    def voting_thresholds(self) -> Dict[str, float]:
-        return self.signal.voting_thresholds
-
-    @voting_thresholds.setter
-    def voting_thresholds(self, value: Dict[str, float]) -> None:
-        self.signal.voting_thresholds = value
-
-    @property
-    def current_config(self) -> Dict[str, Any]:
-        return self.signal.current_config
-
-    @current_config.setter
-    def current_config(self, value: Dict[str, Any]) -> None:
-        self.signal.current_config = value
+    timeframe = _signal_attribute("timeframe")
+    macd_params = _signal_attribute("macd_params")
+    rsi_params = _signal_attribute("rsi_params")
+    voting_thresholds = _signal_attribute("voting_thresholds")
+    current_config = _signal_attribute("current_config")
 
     def reconfigure(
         self,
@@ -311,7 +286,7 @@ Always return results in JSON format with action, confidence, and reasoning."""
 
     def get_current_configuration(self) -> Dict[str, Any]:
         """Return current parameter configuration."""
-        return self.current_config.copy()
+        return self.signal.get_current_configuration()
 
     def reset_to_defaults(self, use_config_file: bool = True) -> None:
         """Reset parameters to defaults."""
