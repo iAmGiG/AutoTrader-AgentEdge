@@ -1,9 +1,9 @@
 """
-Multi-provider options data fetcher with automatic fallback.
+Multi-provider options data fetcher with fallback, data quality tracking and caching.
 
-This module provides a unified interface for fetching options data from multiple
-providers (Alpaca, Alpha Vantage) with automatic failover,
-data quality tracking, and intelligent caching.
+The Alpaca and Alpha Vantage fetchers are placeholders that return nothing yet, so a
+cache miss finds no data. The gex DB (read-only, #572) holds the options data. Polygon
+was removed in Oct 2026 (#607).
 
 Part of Issue #373: Enhanced Database Storage for Multi-Provider Support
 """

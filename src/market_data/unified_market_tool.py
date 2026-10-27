@@ -49,14 +49,22 @@ def fetch_unified_market_data(
         symbol: Stock symbol
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
-        source: Data source ("auto", "alpaca", "alpha_vantage")
+        source: Data source ("auto", "alpaca", "alpha_vantage"); "polygon" reads only
+            rows cached before Polygon was removed (#607)
         timeframe: Bar timeframe (e.g., "1Min", "5Min", "1Hour", "1Day")
 
     Returns:
         DataFrame with OHLCV data
     """
     if source == "polygon":
-        raise ValueError("Polygon was removed as a data source (#607); use 'auto' or 'alpaca'")
+        # Removed as a live source (#607); rows cached from it earlier are still served
+        cached_data = cache_adapter.get_market_data(symbol, start_date, end_date, source, timeframe)
+        if cached_data is not None:
+            return cached_data
+        raise ValueError(
+            "Polygon was removed as a data source (#607) and nothing is cached from it for "
+            f"{symbol}; use 'auto', 'alpaca' or 'alpha_vantage'"
+        )
 
     # Check if requesting current trading day - skip cache during market hours
     from src.utils.date_utils import get_datetime_now

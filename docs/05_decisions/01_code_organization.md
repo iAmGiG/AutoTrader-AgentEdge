@@ -28,7 +28,7 @@ src/
 │   └── position_manager.py # Position tracking
 ├── data_sources/       # Market data providers
 │   ├── cache/          # SQLite caching layer
-│   └── sources/market/ # Alpaca, Polygon, Alpha Vantage
+│   └── sources/market/ # Alpaca, Alpha Vantage (Polygon removed, #607)
 ├── risk/               # Risk management
 ├── execution/          # Execution layer (bracket orders)
 ├── cli/                # CLI presentation layer

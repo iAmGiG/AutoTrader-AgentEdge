@@ -44,8 +44,23 @@ def test_alpha_vantage_is_the_only_fallback(sources):
 
 
 def test_asking_for_polygon_says_it_was_removed(sources):
-    with pytest.raises(ValueError, match="Polygon was removed"):
+    _, alpaca, alpha_vantage = sources
+
+    with pytest.raises(ValueError, match="Polygon was removed.*alpha_vantage"):
         tool.fetch_unified_market_data("SPY", "2024-01-02", "2024-01-31", source="polygon")
+    alpaca.assert_not_called()  # no live source stands in for it
+    alpha_vantage.assert_not_called()
+
+
+def test_rows_cached_from_polygon_are_still_served(sources):
+    cache, alpaca, _ = sources
+    cache.get_market_data.return_value = BARS
+
+    data = tool.fetch_unified_market_data("SPY", "2023-01-03", "2023-12-29", source="polygon")
+
+    assert data is BARS
+    assert cache.get_market_data.call_args.args[3] == "polygon"
+    alpaca.assert_not_called()
 
 
 def test_no_polygon_tool_is_exported():

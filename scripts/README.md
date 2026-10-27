@@ -197,7 +197,7 @@ These scripts completed their purpose and were removed in Issue #435:
 - **backtest.py** - Continuous backtesting for V0-V4 sentiment agents
 - **obfuscation_test.py** - V4 date obfuscation validation testing
 - **collect_benchmark_data.py** - VXX/SPY/QQQ data collector
-- **polygon_data_collector.py** - MAG 7 + leveraged ETFs collector
+- **polygon_data_collector.py** - MAG 7 + leveraged ETFs collector (Polygon was removed in Oct 2026, #607)
 
 **Status**: V0-V4 sentiment framework deprecated in favor of simpler MACD+RSI voting strategy. Gitignored.
 

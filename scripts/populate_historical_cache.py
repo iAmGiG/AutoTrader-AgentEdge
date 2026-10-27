@@ -249,7 +249,9 @@ class MultiProviderDataFetcher:
                     continue
 
             source = df["source"].iloc[0] if "source" in df.columns else "unknown"
-            self.stats[source]["cached"] = self.stats.get(source, {}).get("cached", 0) + stored
+            self.stats.setdefault(source, {})["cached"] = (
+                self.stats[source].get("cached", 0) + stored
+            )
 
             logger.info(f"Stored {stored} options bars from {source}")
             return stored
@@ -282,7 +284,9 @@ class MultiProviderDataFetcher:
                 asset_type="stock",
             )
 
-            self.stats[source]["cached"] = self.stats.get(source, {}).get("cached", 0) + len(df)
+            self.stats.setdefault(source, {})["cached"] = self.stats[source].get("cached", 0) + len(
+                df
+            )
 
             logger.info(f"Stored {len(df)} stock bars from {source}")
             return len(df)
@@ -311,7 +315,6 @@ def populate_options_cache(
     start_date: str = "2024-02-01",
     end_date: str = None,
     providers: List[str] = ["alpaca"],
-    multi_provider: bool = False,
 ):
     """
     Populate options cache from multiple providers.
@@ -321,7 +324,6 @@ def populate_options_cache(
         start_date: Start date (default: Feb 1, 2024 - Alpaca options availability)
         end_date: End date (default: today)
         providers: List of providers to use (default: ["alpaca"])
-        multi_provider: If True, fetch from all providers and cross-validate
     """
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
@@ -337,7 +339,7 @@ def populate_options_cache(
         logger.info(f"Processing {symbol}")
         logger.info(f"{'=' * 60}")
 
-        if "alpaca" in providers or multi_provider:
+        if "alpaca" in providers:
             df_alpaca = fetcher.fetch_alpaca_options_bars(symbol, start_date, end_date)
 
             if df_alpaca is not None:
@@ -404,11 +406,6 @@ def main():
         help="Providers to use (default: alpaca)",
     )
     parser.add_argument(
-        "--multi-provider",
-        action="store_true",
-        help="Fetch from all providers (only Alpaca since Polygon was removed, #607)",
-    )
-    parser.add_argument(
         "--background", action="store_true", help="Run in background mode (minimal logging)"
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
@@ -445,7 +442,6 @@ def main():
                 start_date=options_start,
                 end_date=args.end,
                 providers=args.providers,
-                multi_provider=args.multi_provider,
             )
 
         logger.info("\n✅ Cache population complete!")
