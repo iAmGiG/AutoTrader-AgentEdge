@@ -1,8 +1,9 @@
 """
 Position Tracking - Pure Functions and Classes
 
-Track positions with validated exit parameters (8% TP / 5% SL).
-Enhanced with exit alerts and dynamic stop integration.
+Track open positions against their stop and, where one exists, their target, and raise
+alerts when the price nears or crosses either. The routines keep one entry per open
+symbol, synced to the live levels on every run (#599).
 """
 
 import logging
@@ -36,6 +37,38 @@ class AlertType(Enum):
     LOSS_THRESHOLD_REACHED = "loss_threshold_reached"
 
 
+# Alert when the price is within this fraction of a stop or target, measured from the price
+WARNING_DISTANCE = 0.02
+# Alerts kept per position, so the saved state stays small
+MAX_ALERT_HISTORY = 50
+SEVERITY_EMOJI = {"INFO": "📊", "WARNING": "⚠️", "CRITICAL": "🚨"}
+
+
+def position_key(ticker: str) -> str:
+    """The tracker's key for a position: one entry per open symbol."""
+    return ticker.upper()
+
+
+def alert_text(ticker: str, alert_type: AlertType, price: float, details: Dict[str, Any]) -> str:
+    """One line describing an alert, without its severity marker."""
+    distance = details.get("distance_pct", 0)
+    stop = details.get("stop_price", 0)
+    target = details.get("target_price", 0)
+    if alert_type == AlertType.APPROACHING_STOP_LOSS:
+        return f"{ticker} is {distance:.2f}% above its stop ${stop:.2f} (price ${price:.2f})"
+    if alert_type == AlertType.LOSS_THRESHOLD_REACHED:
+        return f"{ticker} is at or below its stop ${stop:.2f} (price ${price:.2f}), still open"
+    if alert_type == AlertType.APPROACHING_TAKE_PROFIT:
+        return f"{ticker} is {distance:.2f}% below its target ${target:.2f} (price ${price:.2f})"
+    if alert_type == AlertType.PROFIT_TARGET_REACHED:
+        return f"{ticker} is at or above its target ${target:.2f} (price ${price:.2f}), still open"
+    if alert_type == AlertType.STOP_ADJUSTED:
+        old_stop = details.get("old_stop", 0)
+        new_stop = details.get("new_stop", 0)
+        return f"{ticker} stop adjusted: ${old_stop:.2f} → ${new_stop:.2f}"
+    return f"{ticker} alert: {alert_type.value}"
+
+
 @dataclass
 class PositionAlert:
     """Alert for position monitoring."""
@@ -64,43 +97,10 @@ class PositionAlert:
 
     def format_message(self) -> str:
         """Format alert as human-readable message."""
-        severity_emoji = {"INFO": "📊", "WARNING": "⚠️", "CRITICAL": "🚨"}
-        emoji = severity_emoji.get(self.severity, "📊")
-
-        if self.alert_type == AlertType.APPROACHING_TAKE_PROFIT:
-            distance = self.details.get("distance_pct", 0)
-            return (
-                f"{emoji} {self.ticker} approaching take profit! "
-                f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%"
-            )
-
-        elif self.alert_type == AlertType.APPROACHING_STOP_LOSS:
-            distance = self.details.get("distance_pct", 0)
-            return (
-                f"{emoji} {self.ticker} approaching stop loss! "
-                f"Current: ${self.current_price:.2f}, Distance: {distance:.2f}%"
-            )
-
-        elif self.alert_type == AlertType.STOP_ADJUSTED:
-            old_stop = self.details.get("old_stop", 0)
-            new_stop = self.details.get("new_stop", 0)
-            return f"{emoji} {self.ticker} stop adjusted: ${old_stop:.2f} → ${new_stop:.2f}"
-
-        elif self.alert_type == AlertType.PROFIT_TARGET_REACHED:
-            profit_pct = self.details.get("profit_pct", 0)
-            return (
-                f"{emoji} {self.ticker} profit target reached! "
-                f"Current: ${self.current_price:.2f}, Profit: {profit_pct:.1f}%"
-            )
-
-        elif self.alert_type == AlertType.LOSS_THRESHOLD_REACHED:
-            loss_pct = self.details.get("loss_pct", 0)
-            return (
-                f"{emoji} {self.ticker} loss threshold reached! "
-                f"Current: ${self.current_price:.2f}, Loss: {loss_pct:.1f}%"
-            )
-
-        return f"{emoji} {self.ticker} alert: {self.alert_type.value}"
+        emoji = SEVERITY_EMOJI.get(self.severity, "📊")
+        return (
+            f"{emoji} {alert_text(self.ticker, self.alert_type, self.current_price, self.details)}"
+        )
 
 
 @dataclass
@@ -112,7 +112,7 @@ class Position:
     entry_date: datetime
     entry_price: float
     quantity: int
-    take_profit_price: float
+    take_profit_price: Optional[float]  # None: no target (trailing-stop-only exits)
     stop_loss_price: float
     status: str = "ACTIVE"
     exit_date: Optional[datetime] = None
@@ -168,6 +168,7 @@ class PositionTracker:
         take_profit_pct: Optional[float] = None,
         stop_loss_pct: Optional[float] = None,
         alert_cooldown_seconds: int = 300,
+        warning_pct: float = WARNING_DISTANCE,
     ):
         """
         Initialize with validated exit parameters.
@@ -176,13 +177,17 @@ class PositionTracker:
             take_profit_pct: Take profit percentage (default 8%)
             stop_loss_pct: Stop loss percentage (default 5%)
             alert_cooldown_seconds: Minimum seconds between repeated alerts (default 300 = 5 minutes)
+            warning_pct: Alert when the price is this close to a level, as a fraction of
+                the price (default 2%)
         """
-        config = ConfigLoader()
+        # Config is only read for a percentage not passed in
+        config = ConfigLoader() if not (take_profit_pct and stop_loss_pct) else None
         self.take_profit_pct = take_profit_pct or config.get(
             "trading.default_take_profit_pct", 0.08
         )
         self.stop_loss_pct = stop_loss_pct or config.get("trading.default_stop_loss_pct", 0.05)
         self.alert_cooldown_seconds = alert_cooldown_seconds
+        self.warning_pct = warning_pct
         self.positions: Dict[str, Position] = {}
         self.alert_counter = 0
 
@@ -198,7 +203,7 @@ class PositionTracker:
         Returns:
             Created position
         """
-        position_id = f"{ticker}_{get_datetime_now().strftime('%Y%m%d_%H%M%S')}"
+        position_id = position_key(ticker)
 
         # Calculate exit levels using validated parameters
         take_profit_price = entry_price * (1 + self.take_profit_pct)
@@ -206,7 +211,7 @@ class PositionTracker:
 
         position = Position(
             position_id=position_id,
-            ticker=ticker,
+            ticker=position_id,
             entry_date=get_datetime_now(),
             entry_price=entry_price,
             quantity=quantity,
@@ -216,6 +221,59 @@ class PositionTracker:
 
         self.positions[position_id] = position
         return position
+
+    def sync_position(
+        self,
+        ticker: str,
+        entry_price: float,
+        quantity: int,
+        stop_loss_price: float,
+        take_profit_price: Optional[float] = None,
+    ) -> Position:
+        """
+        The entry for an open position, created or updated with the levels in force now
+        (the live stop after any raise, and the target if there is one).
+
+        Returns:
+            The position, keyed by position_key(ticker)
+        """
+        key = position_key(ticker)
+        position = self.positions.get(key)
+        if position is None:
+            position = Position(
+                position_id=key,
+                ticker=key,
+                entry_date=get_datetime_now(),
+                entry_price=entry_price,
+                quantity=quantity,
+                take_profit_price=take_profit_price,
+                stop_loss_price=stop_loss_price,
+            )
+            self.positions[key] = position
+            return position
+        position.entry_price = entry_price
+        position.quantity = quantity
+        position.stop_loss_price = stop_loss_price
+        position.take_profit_price = take_profit_price
+        position.status = "ACTIVE"
+        position.exit_date = position.exit_price = position.exit_reason = None
+        return position
+
+    def prune(self, open_tickers) -> List[str]:
+        """
+        Drop every entry that isn't keyed to an open position: closed positions, and
+        entries saved under the old timestamp keys.
+
+        Returns:
+            The keys dropped
+        """
+        keep = {position_key(ticker) for ticker in open_tickers}
+        dropped = [key for key in self.positions if key not in keep]
+        for key in dropped:
+            del self.positions[key]
+        if dropped:
+            logger.info("Dropped %d tracker entries with no open position", len(dropped))
+        return dropped
 
     def _should_send_alert(self, position: Position) -> bool:
         """
@@ -268,6 +326,7 @@ class PositionTracker:
 
         # Add to position history
         position.alert_history.append(alert)
+        del position.alert_history[:-MAX_ALERT_HISTORY]
         position.last_alert_time = alert.timestamp
 
         # Log the alert
@@ -283,107 +342,127 @@ class PositionTracker:
 
     def check_exit_conditions(self, position_id: str, current_price: float) -> Optional[Dict]:
         """
-        Check if position should be exited with enhanced alert generation.
+        A position's alert condition at this price: through or near its stop, or its
+        target if it has one. Distances are fractions of the price, the fall (or rise)
+        from here that reaches the level.
+
+        The condition is returned on every call. It is added to the position's alert
+        history (and logged) when it differs from the last one recorded, or when the
+        cooldown has passed since then.
 
         Args:
             position_id: Position ID
             current_price: Current market price
 
         Returns:
-            Exit recommendation or None
+            None, or a dict with recommendation ("EXIT" when the price is through a level
+            while the position is still open, else "ALERT"), reason, alert_type, severity,
+            message, details, and alert (the history entry this call added, or None); plus
+            exit_price and pnl_pct for EXIT, distance_pct and distance_dollars for ALERT
         """
         position = self.positions.get(position_id)
         if not position or position.status != "ACTIVE":
             return None
 
-        # Check take profit
-        if current_price >= position.take_profit_price:
-            pnl_pct = ((current_price - position.entry_price) / position.entry_price) * 100
+        found = [
+            condition
+            for condition in (
+                self._stop_condition(position, current_price),
+                self._target_condition(position, current_price),
+            )
+            if condition
+        ]
+        if not found:
+            return None
+        # The more severe one; the stop's on a tie
+        condition = max(found, key=lambda c: c["severity"] == "CRITICAL")
+        details = condition["details"]
+        # The keys earlier versions returned
+        if condition["recommendation"] == "EXIT":
+            condition.update(exit_price=current_price, pnl_pct=details["profit_pct"])
+        else:
+            condition.update(
+                distance_pct=details["distance_pct"], distance_dollars=details["distance_dollars"]
+            )
 
-            # Generate critical alert
-            if self._should_send_alert(position):
-                self._create_alert(
-                    position,
-                    AlertType.PROFIT_TARGET_REACHED,
-                    current_price,
-                    {"profit_pct": pnl_pct, "target_price": position.take_profit_price},
-                    severity="CRITICAL",
-                )
+        # A new kind of condition (say, near the stop, then through it) is always recorded;
+        # the cooldown only spaces out repeats of the same one
+        history = position.alert_history
+        changed = not history or history[-1].alert_type != condition["alert_type"]
+        alert = None
+        if changed or self._should_send_alert(position):
+            alert = self._create_alert(
+                position,
+                condition["alert_type"],
+                current_price,
+                condition["details"],
+                severity=condition["severity"],
+            )
+        text = alert_text(
+            position.ticker, condition["alert_type"], current_price, condition["details"]
+        )
+        condition["message"] = f"{SEVERITY_EMOJI[condition['severity']]} {text}"
+        condition["alert"] = alert
+        return condition
 
-            return {
-                "recommendation": "EXIT",
-                "reason": ExitReason.TAKE_PROFIT,
-                "exit_price": current_price,
-                "pnl_pct": pnl_pct,
-            }
-
-        # Check stop loss
-        if current_price <= position.stop_loss_price:
-            pnl_pct = ((current_price - position.entry_price) / position.entry_price) * 100
-
-            # Generate critical alert
-            if self._should_send_alert(position):
-                self._create_alert(
-                    position,
-                    AlertType.LOSS_THRESHOLD_REACHED,
-                    current_price,
-                    {"loss_pct": pnl_pct, "stop_price": position.stop_loss_price},
-                    severity="CRITICAL",
-                )
-
+    def _stop_condition(self, position: Position, price: float) -> Optional[Dict]:
+        """Through or near the stop; None without a stop, or with the price well clear."""
+        stop = position.stop_loss_price
+        if not stop:
+            return None
+        distance = (price - stop) / price
+        details = {
+            "stop_price": stop,
+            "distance_pct": distance * 100,
+            "distance_dollars": price - stop,
+            "profit_pct": (price - position.entry_price) / position.entry_price * 100,
+        }
+        if price <= stop:
             return {
                 "recommendation": "EXIT",
                 "reason": ExitReason.STOP_LOSS,
-                "exit_price": current_price,
-                "pnl_pct": pnl_pct,
+                "alert_type": AlertType.LOSS_THRESHOLD_REACHED,
+                "severity": "CRITICAL",
+                "details": details,
             }
-
-        # Check approaching levels (for alerts)
-        tp_distance = (position.take_profit_price - current_price) / position.entry_price
-        sl_distance = (current_price - position.stop_loss_price) / position.entry_price
-
-        if tp_distance < 0.02:  # Within 2% of take profit
-            if self._should_send_alert(position):
-                self._create_alert(
-                    position,
-                    AlertType.APPROACHING_TAKE_PROFIT,
-                    current_price,
-                    {
-                        "distance_pct": tp_distance * 100,
-                        "target_price": position.take_profit_price,
-                        "distance_dollars": position.take_profit_price - current_price,
-                    },
-                    severity="WARNING",
-                )
-
-            return {
-                "recommendation": "ALERT",
-                "reason": "APPROACHING_TP",
-                "distance_pct": tp_distance * 100,
-                "distance_dollars": position.take_profit_price - current_price,
-            }
-
-        if sl_distance < 0.02:  # Within 2% of stop loss
-            if self._should_send_alert(position):
-                self._create_alert(
-                    position,
-                    AlertType.APPROACHING_STOP_LOSS,
-                    current_price,
-                    {
-                        "distance_pct": sl_distance * 100,
-                        "stop_price": position.stop_loss_price,
-                        "distance_dollars": current_price - position.stop_loss_price,
-                    },
-                    severity="WARNING",
-                )
-
+        if distance < self.warning_pct:
             return {
                 "recommendation": "ALERT",
                 "reason": "APPROACHING_SL",
-                "distance_pct": sl_distance * 100,
-                "distance_dollars": current_price - position.stop_loss_price,
+                "alert_type": AlertType.APPROACHING_STOP_LOSS,
+                "severity": "WARNING",
+                "details": details,
             }
+        return None
 
+    def _target_condition(self, position: Position, price: float) -> Optional[Dict]:
+        """Through or near the target; None without a target, or with the price well clear."""
+        target = position.take_profit_price
+        if not target:
+            return None
+        distance = (target - price) / price
+        details = {
+            "target_price": target,
+            "distance_pct": distance * 100,
+            "distance_dollars": target - price,
+            "profit_pct": (price - position.entry_price) / position.entry_price * 100,
+        }
+        if price >= target:
+            return {
+                "recommendation": "EXIT",
+                "reason": ExitReason.TAKE_PROFIT,
+                "alert_type": AlertType.PROFIT_TARGET_REACHED,
+                "severity": "CRITICAL",
+                "details": details,
+            }
+        if distance < self.warning_pct:
+            return {
+                "recommendation": "ALERT",
+                "reason": "APPROACHING_TP",
+                "alert_type": AlertType.APPROACHING_TAKE_PROFIT,
+                "severity": "WARNING",
+                "details": details,
+            }
         return None
 
     def close_position(
@@ -451,47 +530,6 @@ class PositionTracker:
         if not position:
             return []
         return position.alert_history
-
-    def check_alerts(self, broker_state: Dict[str, Any]) -> List[PositionAlert]:
-        """
-        Check all positions for alerts based on current broker state.
-
-        This is the main method for CLI alert checking. It iterates through
-        all tracked positions, checks their exit conditions against current
-        market prices, and returns any new alerts generated.
-
-        Args:
-            broker_state: Dictionary containing positions with current prices
-                         Format: {'positions': {'TICKER': {'current_price': float, ...}}}
-
-        Returns:
-            List of newly generated alerts (since last check)
-        """
-        new_alerts = []
-        positions_dict = broker_state.get("positions", {})
-
-        for position in self.get_active_positions():
-            # Get current price from broker state
-            ticker_data = positions_dict.get(position.ticker)
-            if not ticker_data:
-                logger.warning(f"No price data for {position.ticker} in broker state")
-                continue
-
-            current_price = ticker_data.get("current_price")
-            if not current_price:
-                logger.warning(f"No current_price for {position.ticker}")
-                continue
-
-            # Check exit conditions (this generates alerts internally)
-            alerts_before = len(position.alert_history)
-            self.check_exit_conditions(position.position_id, current_price)
-            alerts_after = len(position.alert_history)
-
-            # Collect newly generated alerts
-            if alerts_after > alerts_before:
-                new_alerts.extend(position.alert_history[alerts_before:])
-
-        return new_alerts
 
     def get_alert_history(self, limit: int = 10) -> List[PositionAlert]:
         """
@@ -601,7 +639,10 @@ class PositionTracker:
 
     def restore_from_dict(self, data: Dict[str, Any]) -> None:
         """
-        Restore tracker state from serialized data.
+        Restore tracker state from serialized data, replacing what the tracker holds.
+
+        Alert types this version doesn't know are skipped, and each position keeps its
+        latest MAX_ALERT_HISTORY alerts.
 
         Args:
             data: Dictionary from to_dict()
@@ -610,15 +651,20 @@ class PositionTracker:
         self.alert_counter = data.get("alert_counter", 0)
 
         # Restore positions
+        positions: Dict[str, Position] = {}
         for position_id, pos_data in data.get("positions", {}).items():
             # Reconstruct PositionAlert objects
             alert_history = []
-            for alert_data in pos_data.get("alert_history", []):
+            for alert_data in pos_data.get("alert_history", [])[-MAX_ALERT_HISTORY:]:
+                try:
+                    alert_type = AlertType(alert_data["alert_type"])
+                except ValueError:
+                    continue
                 alert = PositionAlert(
                     alert_id=alert_data["alert_id"],
                     position_id=alert_data["position_id"],
                     ticker=alert_data["ticker"],
-                    alert_type=AlertType(alert_data["alert_type"]),
+                    alert_type=alert_type,
                     timestamp=parse_date_string(alert_data["timestamp"]),
                     current_price=alert_data["current_price"],
                     details=alert_data["details"],
@@ -633,7 +679,7 @@ class PositionTracker:
                 entry_date=parse_date_string(pos_data["entry_date"]),
                 entry_price=pos_data["entry_price"],
                 quantity=pos_data["quantity"],
-                take_profit_price=pos_data["take_profit_price"],
+                take_profit_price=pos_data.get("take_profit_price"),
                 stop_loss_price=pos_data["stop_loss_price"],
                 status=pos_data["status"],
                 exit_date=(
@@ -651,6 +697,7 @@ class PositionTracker:
                 ),
             )
 
-            self.positions[position_id] = position
+            positions[position_id] = position
 
+        self.positions = positions
         logger.info(f"Restored {len(self.positions)} positions with alert history from state")
