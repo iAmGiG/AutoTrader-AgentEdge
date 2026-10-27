@@ -34,7 +34,7 @@ class OptionsCacheMixin:
         trading_date: str,
         options_df: pd.DataFrame,
         underlying_price: float = None,
-        source: str = "polygon",
+        source: str = "unknown",
         data_quality_score: float = 1.0,
         provider_metadata: dict = None,
     ) -> int:
@@ -46,7 +46,8 @@ class OptionsCacheMixin:
             trading_date: Trading date in YYYY-MM-DD format
             options_df: DataFrame with raw options data
             underlying_price: Spot price of underlying (optional)
-            source: Data source ("polygon", "alpha_vantage", "alpaca", etc.)
+            source: Data source ("alpaca", "alpha_vantage", ...; "polygon" on rows cached
+                before #607)
             data_quality_score: Data quality score 0.0-1.0 (default: 1.0)
             provider_metadata: Optional dict with provider-specific metadata
 

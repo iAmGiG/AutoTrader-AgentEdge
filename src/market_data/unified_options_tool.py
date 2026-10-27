@@ -1,15 +1,14 @@
 """
-Multi-provider options data fetcher with automatic fallback.
+Multi-provider options data fetcher with fallback, data quality tracking and caching.
 
-This module provides a unified interface for fetching options data from multiple
-providers (Polygon, Alpha Vantage, Alpaca, etc.) with automatic failover,
-data quality tracking, and intelligent caching.
+The Alpaca and Alpha Vantage fetchers are placeholders that return nothing yet, so a
+cache miss finds no data. The gex DB (read-only, #572) holds the options data. Polygon
+was removed in Oct 2026 (#607).
 
 Part of Issue #373: Enhanced Database Storage for Multi-Provider Support
 """
 
 import logging
-import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -18,15 +17,7 @@ from src.cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import now_iso
 
-# Lazy imports for providers
-try:
-    from polygon import RESTClient as PolygonClient
-
-    POLYGON_AVAILABLE = True
-except ImportError:
-    PolygonClient = None
-    POLYGON_AVAILABLE = False
-
+# Lazy imports for providers (Polygon was removed in Oct 2026, #607)
 try:
     from alpaca.data import OptionHistoricalDataClient
     from alpaca.data.requests import OptionChainRequest
@@ -43,7 +34,7 @@ class UnifiedOptionsDataTool:
     Provider-agnostic options data fetcher with intelligent fallback.
 
     Features:
-    - Automatic provider fallback (Polygon → Alpaca → Alpha Vantage)
+    - Automatic provider fallback (Alpaca → Alpha Vantage)
     - Data quality scoring and tracking
     - Intelligent caching with provider metadata
     - Seamless integration with existing data normalization system
@@ -58,8 +49,7 @@ class UnifiedOptionsDataTool:
     # Provider priority order (higher = try first)
     PROVIDER_PRIORITY = {
         "alpaca": 100,  # Primary: Main broker with live trading data
-        "polygon": 90,  # Secondary: Best data quality, real-time (paid tier)
-        "alpha_vantage": 80,  # Tertiary: Historical backup
+        "alpha_vantage": 80,  # Secondary: Historical backup
     }
 
     # TODO: Future multi-broker/multi-account routing (Issue #373 extension)
@@ -84,7 +74,6 @@ class UnifiedOptionsDataTool:
         self.cache = cache_manager or TradingCacheManager()
 
         # Provider instances (lazy-loaded)
-        self._polygon_client = None
         self._alpaca_client = None
         self._config = ConfigLoader()
 
@@ -190,65 +179,19 @@ class UnifiedOptionsDataTool:
         Fetch options data from a specific provider.
 
         Args:
-            provider: Provider name ("polygon", "alpha_vantage", "alpaca")
+            provider: Provider name ("alpha_vantage", "alpaca")
             symbol: Stock symbol
             trading_date: Trading date
 
         Returns:
             Tuple of (options_df, underlying_price, metadata)
         """
-        if provider == "polygon":
-            return self._fetch_polygon(symbol, trading_date)
-        elif provider == "alpha_vantage":
+        if provider == "alpha_vantage":
             return self._fetch_alpha_vantage(symbol, trading_date)
         elif provider == "alpaca":
             return self._fetch_alpaca(symbol, trading_date)
         else:
             raise ValueError(f"Unknown provider: {provider}")
-
-    def _fetch_polygon(
-        self, symbol: str, trading_date: str
-    ) -> Tuple[Optional[pd.DataFrame], Optional[float], Dict[str, Any]]:
-        """
-        Fetch options data from Polygon.io
-
-        Uses Polygon's options snapshot and contract endpoints to fetch
-        complete options chain data.
-        """
-        metadata = {
-            "provider": "polygon",
-            "attempted_at": now_iso(),
-            "status": "attempted",
-        }
-
-        try:
-            if not POLYGON_AVAILABLE:
-                raise ImportError("polygon-api-client not installed")
-
-            # Initialize Polygon client (lazy)
-            if self._polygon_client is None:
-                api_key = os.getenv("POLYGON_API_KEY") or self._config.get("POLYGON_IO")
-                if not api_key:
-                    raise ValueError("Polygon API key not configured")
-                self._polygon_client = PolygonClient(api_key)
-
-            # Polygon options snapshot endpoint
-            # Note: This is a placeholder - actual implementation depends on Polygon API version
-            # and subscription tier. Free tier may not have options data.
-
-            metadata["status"] = "not_available_free_tier"
-            metadata["note"] = "Polygon options require paid subscription"
-
-            self.logger.warning(
-                "Polygon options data requires paid subscription. Falling back to next provider."
-            )
-            return None, None, metadata
-
-        except Exception as e:
-            metadata["status"] = "error"
-            metadata["error"] = str(e)
-            self.logger.error(f"Polygon fetch failed: {e}")
-            return None, None, metadata
 
     def _fetch_alpha_vantage(
         self, symbol: str, trading_date: str
@@ -365,9 +308,7 @@ class UnifiedOptionsDataTool:
 
         # Provider-specific adjustments
         provider = metadata.get("provider", "")
-        if provider == "polygon":
-            score += 0.05  # Polygon typically has best data
-        elif provider == "alpha_vantage":
+        if provider == "alpha_vantage":
             score -= 0.05  # Alpha Vantage may have delays
 
         # Ensure score stays in valid range

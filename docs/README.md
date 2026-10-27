@@ -116,7 +116,7 @@ Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/A
 ### ✅ **Integration Complete**
 
 - **Alpaca Markets**: Full paper and live trading support
-- **Market Data**: Real-time and historical data feeds (Alpaca, Polygon, Alpha Vantage)
+- **Market Data**: Real-time and historical data feeds (Alpaca, Alpha Vantage; Polygon removed in Oct 2026, #607)
 - **Order Types**: Market, limit, stop, and bracket orders
 - **Fill Monitoring**: Automatic state transitions
 - **OpenAI API**: Natural language parsing and tool calling ✅ NEW

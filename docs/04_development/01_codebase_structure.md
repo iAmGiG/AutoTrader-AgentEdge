@@ -46,7 +46,6 @@ AutoGen-TradingSystem/
 │   │   ├── sources/market/          # Market data providers
 │   │   │   ├── alpaca_market_data.py      # Primary real-time data
 │   │   │   ├── unified_market_tool.py     # Unified interface
-│   │   │   ├── polygon_historical_tool.py # Polygon.io
 │   │   │   └── alpha_vantage_market.py    # Fallback source
 │   │   │
 │   │   └── processors/              # Data processing
@@ -207,7 +206,7 @@ AutoGen-TradingSystem/
   - `sqlite_cache.py`: Production TradingCacheManager (ACID, thread-safe, futures-ready)
   - `cache_adapter.py`: Transparent upgrade layer
   - `unified_cache.py`, `market_data_cache.py`: Deprecated file-based caches
-- `sources/market/`: Multiple provider support (Alpaca, Polygon, Alpha Vantage)
+- `sources/market/`: Multiple provider support (Alpaca, Alpha Vantage)
 - `processors/`: Data normalization and format standardization
 
 ### src/voting/ - Voting Strategy Framework
@@ -294,7 +293,7 @@ python main.py analysis                 # Generate analysis reports
 ```bash
 ┌────────────────────────────────────┐
 │  Market Data Acquisition            │
-│  (Alpaca → Polygon → Alpha Vantage) │
+│  (Alpaca → Alpha Vantage)           │
 └────────────┬───────────────────────┘
              ↓
 ┌────────────────────────────────────┐
@@ -338,7 +337,6 @@ python main.py analysis                 # Generate analysis reports
 
 ```json
 {
-  "POLYGON_API_KEY": "...",
   "ALPHA_VANTAGE_KEY": "...",
   "OPENAI_API_KEY": "sk-...",
   "ALPACA_PAPER_API_KEY": "...",
@@ -434,7 +432,6 @@ autogen-ext>=0.7.2            # AutoGen extensions
 
 ```text
 alpaca-py                     # Alpaca trading
-polygon-api-client>=1.15.0    # Market data
 pandas>=2.2.0                 # Data manipulation
 numpy>=2.0.0                  # Numerical computing
 ```

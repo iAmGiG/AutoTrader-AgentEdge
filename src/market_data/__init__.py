@@ -3,7 +3,9 @@ Market data sources package.
 
 This package contains tools for retrieving market data from:
 - Alpaca (primary market data source, via unified_market_tool)
-- Polygon.io and Alpha Vantage (fallback sources, in that order)
+- Alpha Vantage (fallback source)
+
+Polygon.io was removed in Oct 2026 (#607).
 """
 
 # Lazy imports to avoid import errors when optional dependencies are missing
@@ -15,14 +17,6 @@ def __getattr__(name):
         from .alpha_vantage_market import AlphaVantageMarketTool
 
         return AlphaVantageMarketTool
-    elif name == "PolygonHistoricalTool":
-        from .polygon_historical_tool import PolygonHistoricalTool
-
-        return PolygonHistoricalTool
-    elif name == "create_polygon_tool":
-        from .polygon_historical_tool import create_polygon_tool
-
-        return create_polygon_tool
     else:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
@@ -35,6 +29,4 @@ def __dir__():
 # pylint: disable=undefined-all-variable  # Names are lazy-loaded via __getattr__
 __all__ = [
     "AlphaVantageMarketTool",
-    "PolygonHistoricalTool",
-    "create_polygon_tool",
 ]

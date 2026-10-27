@@ -22,7 +22,7 @@ class OHLCVCacheManager(BaseSQLiteCache):
 
     Features:
     - Efficient range queries for price data
-    - Multi-source support (Alpaca, Polygon, Alpha Vantage)
+    - Multi-source support (Alpaca, Alpha Vantage; rows cached from Polygon before #607 stay readable)
     - Smart expiration (historical data never expires)
     - Futures-ready (asset_type column)
 

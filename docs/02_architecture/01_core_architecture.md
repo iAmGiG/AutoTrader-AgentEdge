@@ -114,7 +114,7 @@ src/
 **Components**:
 
 - **Alpaca Market Data**: Real-time bars, quotes, trades, snapshots
-- **Multi-provider Support**: Polygon, Alpha Vantage fallbacks
+- **Fallback**: Alpha Vantage (Polygon removed, #607)
 - **Intelligent Caching**: >90% API call reduction
 
 **Responsibilities**:
@@ -246,7 +246,6 @@ voting:
     "ALPACA_PAPER_SECRET": "your_paper_secret",
     "ALPACA_LIVE_API_KEY": "your_live_key",
     "ALPACA_LIVE_SECRET": "your_live_secret",
-    "POLYGON_API_KEY": "your_polygon_key",
     "ALPHA_VANTAGE_API_KEY": "your_alpha_vantage_key"
 }
 ```

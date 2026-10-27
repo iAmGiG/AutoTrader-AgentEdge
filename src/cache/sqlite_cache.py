@@ -213,7 +213,7 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                     -- Metadata
                     contract_symbol TEXT,
                     underlying_price REAL,
-                    source TEXT NOT NULL DEFAULT 'polygon',
+                    source TEXT NOT NULL DEFAULT 'unknown',
                     cached_at TEXT NOT NULL,
                     modified_at TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,

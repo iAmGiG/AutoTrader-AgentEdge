@@ -1,6 +1,6 @@
 """
 Clean Tools Configuration for RH2MAS
-Active tools: unified market data (Alpaca primary; Polygon.io, then Alpha Vantage fallback)
+Active tools: unified market data (Alpaca primary, Alpha Vantage fallback; Polygon removed, #607)
 
 Note: News/sentiment tools removed - deprecated V0-V4 sentiment analysis.
 """
@@ -61,8 +61,7 @@ def _get_tool_description(tool_key: str, fallback: str) -> str:
 # Note: Individual Alpha Vantage and hierarchical market data tools removed
 # All market data access now handled by unified_market_tool for consistency
 
-# Note: Direct Polygon.io tool removed - functionality handled by unified_market_tool
-# with proper caching and fallback management
+# Note: Polygon.io was removed as a data source in Oct 2026 (#607)
 
 
 # Unified market data tool using cache adapter
@@ -71,7 +70,7 @@ unified_market_tool = FunctionTool(
     name="fetch_unified_market_data",
     description=_get_tool_description(
         "unified_market_data",
-        "Fetch market data using unified cache system. Checks the cache first, then Alpaca (primary), with Polygon and Alpha Vantage as fallbacks.",
+        "Fetch market data using unified cache system. Checks the cache first, then Alpaca (primary), with Alpha Vantage as the fallback.",
     ),
 )
 unified_market_tool.agent_types = [TECH_AGENT]

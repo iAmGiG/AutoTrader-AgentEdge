@@ -299,8 +299,8 @@ cache.set("SPY", df2, source="alpaca")  # Updates existing record
    - Company fundamentals
    - Format: `source="alpha_vantage"`
 
-3. **Polygon.io** (Historical)
-   - Legacy data support
+3. **Polygon.io** (removed Oct 2026, #607)
+   - Rows cached from it earlier are still read
    - Format: `source="polygon"`
 
 ### Integration Pattern

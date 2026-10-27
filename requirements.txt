@@ -9,9 +9,6 @@ autogen-ext[openai]>=0.7.5  # OpenAIChatCompletionClient; brings openai, tiktoke
 # Trading APIs
 alpaca-py>=0.43.2
 
-# Market data sources
-polygon-api-client>=1.16.3  # Requires separate Polygon.io API key
-
 # Data processing (pandas 3 reproduces the research results; Python 3.15 needs it)
 pandas>=2.2.0,<4
 numpy>=2.0.0

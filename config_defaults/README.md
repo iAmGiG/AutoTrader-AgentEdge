@@ -250,7 +250,6 @@ The `config/` directory contains sensitive API keys and credentials:
   "ALPACA_API_KEY": "...",
   "ALPACA_SECRET_KEY": "...",
   "OPENAI_API_KEY": "...",
-  "POLYGON_API_KEY": "...",
   "ALPHA_VANTAGE_KEY": "..."
 }
 ```

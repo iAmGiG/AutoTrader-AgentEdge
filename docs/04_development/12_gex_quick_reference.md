@@ -167,7 +167,7 @@ class VoterAgent:
 ### 3. Options Data Integration ✅
 
 - Uses existing UnifiedOptionsDataTool
-- Multi-provider fallback (Polygon → Alpaca → Alpha Vantage)
+- Provider fallback (Alpaca → Alpha Vantage)
 - Built-in caching via TradingCacheManager
 
 ### 4. Graceful Degradation ✅

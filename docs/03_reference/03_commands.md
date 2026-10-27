@@ -195,7 +195,6 @@ ls -la .cache/market_data/ 2>/dev/null || echo "No legacy cache found"
 mkdir -p config
 cat > config/config.json << EOF
 {
-  "POLYGON_API_KEY": "your_key_here",
   "ALPHA_VANTAGE_KEY": "your_key_here"
 }
 EOF
