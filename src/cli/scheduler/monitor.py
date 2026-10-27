@@ -83,7 +83,10 @@ class SchedulerMonitor:
                 print("   To start automatic execution, exit this CLI and either:")
                 print("   - add the cron entry: ./scripts/deployment/setup_cron.sh (recommended)")
                 print("   - or run the daemon: python main.py --daemon")
-                print("\n   Or use 'test morning/evening' to run now (acts on the broker)")
+                print(
+                    "\n   Or use 'test morning/evening' to run now (acts on the broker), "
+                    "or 'test morning dry' to send no orders"
+                )
 
         # Configuration details
         print(f"\n{get_emoji('gear', '⚙️')} Configuration:")
@@ -91,7 +94,9 @@ class SchedulerMonitor:
         print(f"   Evening: {self.scheduler.config.get('evening_routine_time', 'N/A')} ET")
         print(f"   Timezone: {self.scheduler.config.get('market_timezone', 'N/A')}")
         print(f"   Max Retries: {self.scheduler.config.get('max_retries', 3)}")
-        print(f"   Dry Run: {self.scheduler.config.get('dry_run', False)}")
+        dry_run = bool(self.scheduler.config.get("dry_run", False))
+        note = " (no orders are sent: stops are not placed, renewed or raised)" if dry_run else ""
+        print(f"   Dry Run: {dry_run}{note}")
 
         # Recent executions
         recent = self.scheduler.get_execution_history(days=1)

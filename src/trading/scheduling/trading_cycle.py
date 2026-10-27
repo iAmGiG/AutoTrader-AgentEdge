@@ -15,10 +15,12 @@ Refactored in #439 to use extracted components:
 - ReportGenerator: Report formatting
 """
 
+import copy
 import logging
 import os
+from contextlib import contextmanager
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 import yaml
@@ -29,6 +31,7 @@ from config_defaults.trading_config import TradingConfig
 
 from src.market_data.alpaca_market_data import AlpacaMarketData
 from src.trading.broker.alpaca_trading_client import AlpacaAccountMonitor, AlpacaOrderManager
+from src.trading.orders.dry_run import DRY_RUN_STATUS, DryRunOrderManager
 from src.trading.orders.trailing_stop_manager import TrailingStopManager
 from src.trading.positions.position_tracker import PositionTracker
 from src.trading.scheduling.scheduler_state import market_today
@@ -72,6 +75,14 @@ __all__ = [
 # Discrepancy types of protective-stop repairs (StopRepair.kind)
 STOP_REPAIR_TYPES = ("MISSING_STOP", "STOP_EXPIRING")
 
+# Discrepancy action of a stop repair a dry run did not send (#601)
+DRY_RUN_ACTION = "DRY_RUN_NOT_SENT"
+
+DRY_RUN_BANNER = (
+    "> 🧪 **DRY RUN**: no orders were sent, and local state, daily records and GTT "
+    "triggers were not changed. Stop changes below are what the routine would have made.\n\n"
+)
+
 
 def _free_shares(symbol: str, broker_state: Dict[str, Any]) -> int:
     """
@@ -91,6 +102,34 @@ def _free_shares(symbol: str, broker_state: Dict[str, Any]) -> int:
         if "sell" in str(order.get("side", "")).lower()
     )
     return int(position.get("quantity", 0)) - held_by_orders
+
+
+def _position_prices(broker_state: Dict[str, Any]) -> Dict[str, float]:
+    """Current price of each position (from market value when no price is given)."""
+    prices = {}
+    for symbol, pos in broker_state.get("positions", {}).items():
+        if "current_price" in pos:
+            prices[symbol] = pos["current_price"]
+        elif "market_value" in pos and "quantity" in pos and pos["quantity"] > 0:
+            prices[symbol] = pos["market_value"] / pos["quantity"]
+    return prices
+
+
+def _not_executed(triggered: List[Any]) -> List[Any]:
+    """Results for GTT triggers a dry run did not execute (#601)."""
+    results = []
+    for trigger in triggered:
+        logger.info(f"DRY RUN: GTT {trigger.id} ({trigger.symbol}) would fire")
+        results.append(
+            ActionResult(
+                trigger_id=trigger.id,
+                success=False,
+                action_type=trigger.action_type,
+                message=f"dry run: {trigger.symbol} {trigger.action_type} not executed",
+                details={"symbol": trigger.symbol, "dry_run": True},
+            )
+        )
+    return results
 
 
 def _within_free_shares(
@@ -184,7 +223,11 @@ class CostEfficientTradeCycle:
     - ReportGenerator: Human-readable reports
     """
 
-    def __init__(self, state_file: str = None):
+    # Class defaults, so a cycle built without __init__ (tests) has them too
+    dry_run = False
+    _dry_run_active = False
+
+    def __init__(self, state_file: str = None, dry_run: bool = False):
         # Load path configuration from config_defaults/paths_config.yaml
         config_path = os.path.join("config_defaults", "paths_config.yaml")
         try:
@@ -259,8 +302,36 @@ class CostEfficientTradeCycle:
         self.report_generator = ReportGenerator()
         self.last_report_path: Optional[str] = None  # report of the latest routine
         self._daily_records: Optional[DailyRecords] = None
+        # Dry run (#601): the routines' default; a routine call can override it
+        self.dry_run = dry_run
 
         logger.info("CostEfficientTradeCycle initialized with extracted components")
+
+    @contextmanager
+    def _dry_run_mode(self, dry_run: bool) -> Iterator[None]:
+        """
+        For a dry run: order calls go to a DryRunOrderManager (reads pass, nothing is
+        sent), and the local state and trailing-stop states in memory are restored
+        afterwards. The routines also skip the daily records, GTT actions and syncs, and
+        saving local state while it is active.
+        """
+        if not dry_run:
+            yield
+            return
+        real_order_manager = self.order_manager
+        saved_state = copy.deepcopy(self.local_state_manager.state)
+        trailing = self.trailing_stop_manager
+        saved_stops = copy.deepcopy(trailing.stop_states) if trailing is not None else None
+        self.order_manager = DryRunOrderManager(real_order_manager)
+        self._dry_run_active = True
+        try:
+            yield
+        finally:
+            self.order_manager = real_order_manager
+            self.local_state_manager.state = saved_state
+            if trailing is not None:
+                trailing.stop_states = saved_stops
+            self._dry_run_active = False
 
     # -------------------------------------------------------------------------
     # Backward-compatible property accessors
@@ -375,7 +446,7 @@ class CostEfficientTradeCycle:
 
         logger.info(f"Executing {len(adjustments)} stop order modifications...")
 
-        results = {"success": True, "modifications": 0, "errors": [], "details": []}
+        results = {"success": True, "modifications": 0, "errors": [], "details": [], "dry_run": []}
 
         for i, adjustment in enumerate(adjustments, 1):
             try:
@@ -390,7 +461,14 @@ class CostEfficientTradeCycle:
                     order_id=adjustment.order_id, stop_price=adjustment.new_stop
                 )
 
-                if result.get("status") == "submitted":
+                if result.get("status") == DRY_RUN_STATUS:
+                    line = (
+                        f"{adjustment.symbol}: would raise stop "
+                        f"${adjustment.current_stop:.2f} -> ${adjustment.new_stop:.2f}"
+                    )
+                    results["dry_run"].append(line)
+                    logger.info(f"DRY RUN: {line}")
+                elif result.get("status") == "submitted":
                     results["modifications"] += 1
                     # Recorded only now: a refused raise is computed again next run
                     self._remember_stop(
@@ -522,8 +600,13 @@ class CostEfficientTradeCycle:
                 )
 
             ok = result.get("status") == "submitted"
+            not_sent = result.get("status") == DRY_RUN_STATUS
             verb = "renewed" if repair.replaces_order_id else "placed"
-            if ok:
+            if not_sent:
+                logger.info(
+                    f"DRY RUN: {repair.symbol}: stop would be {verb} at ${repair.stop_price:.2f}"
+                )
+            elif ok:
                 logger.info(f"{repair.symbol}: stop {verb} at ${repair.stop_price:.2f}")
                 self._remember_stop(repair.symbol, repair.stop_price, result.get("order_id"))
             else:
@@ -540,10 +623,14 @@ class CostEfficientTradeCycle:
                         "reason": repair.reason,
                         "replaced_order_id": repair.replaces_order_id,
                         "order_id": result.get("order_id"),
-                        "error": None if ok else result.get("message", "unknown error"),
+                        "error": None if ok or not_sent else result.get("message", "unknown error"),
                     },
-                    action="AUTO_FIXED" if ok else "NEEDS_HUMAN_REVIEW",
-                    severity="MEDIUM" if ok and repair.kind == "STOP_EXPIRING" else "HIGH",
+                    action=(
+                        DRY_RUN_ACTION if not_sent else "AUTO_FIXED" if ok else "NEEDS_HUMAN_REVIEW"
+                    ),
+                    severity="MEDIUM"
+                    if (ok or not_sent) and repair.kind == "STOP_EXPIRING"
+                    else "HIGH",
                 )
             )
 
@@ -584,26 +671,18 @@ class CostEfficientTradeCycle:
             return []
 
         try:
-            # Get current prices from broker state
-            prices = {}
-            for symbol, pos in broker_state.get("positions", {}).items():
-                if "current_price" in pos:
-                    prices[symbol] = pos["current_price"]
-                elif "market_value" in pos and "quantity" in pos:
-                    # Calculate from market value
-                    qty = pos["quantity"]
-                    if qty > 0:
-                        prices[symbol] = pos["market_value"] / qty
-
+            prices = _position_prices(broker_state)
             if not prices:
                 logger.debug("No prices available for GTT check")
                 return []
 
             # Evaluate triggers; sells are kept within the shares free to sell
             evaluator = get_trigger_evaluator()
-            triggered, skipped = _within_free_shares(
-                evaluator.evaluate_triggers_batch(prices), broker_state
-            )
+            if self._dry_run_active:  # trailing highs are not saved
+                fired = evaluator.evaluate_triggers_batch(prices, persist=False)
+            else:
+                fired = evaluator.evaluate_triggers_batch(prices)
+            triggered, skipped = _within_free_shares(fired, broker_state)
             results = []
             for trigger, reason in skipped:
                 logger.info(f"GTT {trigger.id} ({trigger.symbol}) {reason}")
@@ -620,6 +699,9 @@ class CostEfficientTradeCycle:
             if not triggered:
                 logger.debug("No GTT triggers to execute")
                 return results
+
+            if self._dry_run_active:
+                return results + _not_executed(triggered)
 
             # Execute actions for triggered GTTs
             executor = get_action_executor()
@@ -657,6 +739,8 @@ class CostEfficientTradeCycle:
             Report lines (equity and day P&L, fills since the previous run, the day's
             realized P&L)
         """
+        if self._dry_run_active:
+            return ["", "🧪 Dry run: daily records not saved"]
         try:
             records = self.daily_records
             market_date = market_today()
@@ -679,6 +763,35 @@ class CostEfficientTradeCycle:
         except Exception as e:
             logger.warning(f"Daily records not saved: {e}", exc_info=True)
             return ["", f"⚠️ Daily records not saved: {e}"]
+
+    def _sync_trailing_stops_to_gtt(self) -> None:
+        """Save the trailing stops' state to GTT for the next run (not in a dry run)."""
+        if not GTT_AVAILABLE or self._dry_run_active:
+            return
+        try:
+            sync_result = sync_all_trailing_stops(self.trailing_stop_manager)
+            if sync_result["synced"] > 0:
+                logger.info(f"Synced {sync_result['synced']} trailing stops to GTT")
+        except Exception as e:
+            logger.warning(f"Failed to sync trailing stops to GTT: {e}")
+
+    def _save_report(self, routine: str, report: str) -> Tuple[str, str]:
+        """
+        Write a routine's report to reports/daily/. A dry run's report starts with a
+        banner and has its own name (<date>_<routine>_dry_run.md).
+
+        Returns:
+            (the report as saved, its path)
+        """
+        if self._dry_run_active:
+            report = DRY_RUN_BANNER + report
+            routine = f"{routine}_dry_run"
+        report_file = self._get_report_file_path(routine)
+        os.makedirs(os.path.dirname(report_file), exist_ok=True)
+        with open(report_file, "w", encoding="utf-8") as f:
+            f.write(report)
+        self.last_report_path = report_file
+        return report, report_file
 
     def _append_report_sections(
         self, report: str, gtt_results: List[Any], record_lines: List[str]
@@ -719,7 +832,7 @@ class CostEfficientTradeCycle:
     # Trading routines
     # -------------------------------------------------------------------------
 
-    def morning_routine(self, raise_errors: bool = False) -> str:
+    def morning_routine(self, raise_errors: bool = False, dry_run: Optional[bool] = None) -> str:
         """
         Run once at 9:20 AM ET - before market open.
         Minimal API calls, maximum insight.
@@ -728,8 +841,29 @@ class CostEfficientTradeCycle:
             raise_errors: Raise RoutineError on failure, including protective stops that
                 couldn't be checked, placed or renewed (the report is still saved), instead
                 of returning an error message. The scheduler uses this to retry.
+            dry_run: Send no orders and change no saved state; the report shows what the
+                routine would have done (#601). Default: the cycle's dry_run setting.
         """
-        logger.info("Starting morning routine...")
+        dry_run = self.dry_run if dry_run is None else dry_run
+        with self._dry_run_mode(dry_run):
+            return self._morning_routine(raise_errors)
+
+    def evening_routine(self, raise_errors: bool = False, dry_run: Optional[bool] = None) -> str:
+        """
+        Run once at 3:50 PM ET - before market close.
+        Focus on EOD position review and preparation for next day. Stops are raised on
+        the day's gains here, before the close, rather than at the next morning run.
+
+        Args:
+            raise_errors, dry_run: As for morning_routine()
+        """
+        dry_run = self.dry_run if dry_run is None else dry_run
+        with self._dry_run_mode(dry_run):
+            return self._evening_routine(raise_errors)
+
+    def _morning_routine(self, raise_errors: bool) -> str:
+        """The morning routine's steps (see morning_routine)."""
+        logger.info("Starting morning routine%s...", " (dry run)" if self._dry_run_active else "")
 
         try:
             # Step 1: Single API call to get all positions/orders
@@ -759,17 +893,12 @@ class CostEfficientTradeCycle:
             adjustments, modification_results = self.raise_stops(broker_state)
 
             # Step 5.5: Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
-            if GTT_AVAILABLE:
-                try:
-                    sync_result = sync_all_trailing_stops(self.trailing_stop_manager)
-                    if sync_result["synced"] > 0:
-                        logger.info(f"Synced {sync_result['synced']} trailing stops to GTT")
-                except Exception as e:
-                    logger.warning(f"Failed to sync trailing stops to GTT: {e}")
+            self._sync_trailing_stops_to_gtt()
 
-            # Step 6: Save updated local state
+            # Step 6: Save updated local state (not in a dry run)
             self.local_state_manager.state["discrepancies"] = [asdict(d) for d in discrepancies]
-            self.local_state_manager.save()
+            if not self._dry_run_active:
+                self.local_state_manager.save()
 
             # Step 7: Generate human report with alerts
             report = self.generate_routine_report(
@@ -782,14 +911,7 @@ class CostEfficientTradeCycle:
             )
 
             report = self._append_report_sections(report, gtt_results, record_lines)
-
-            # Save report to file
-            report_file = self._get_report_file_path("morning")
-            os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, "w", encoding="utf-8") as f:
-                f.write(report)
-            self.last_report_path = report_file
-
+            report, report_file = self._save_report("morning", report)
             logger.info(f"Morning routine complete. Report saved to {report_file}")
             if raise_errors:
                 _check_stops_secured(discrepancies)
@@ -802,16 +924,9 @@ class CostEfficientTradeCycle:
                 raise RoutineError(error_msg) from e
             return f"❌ {error_msg}"
 
-    def evening_routine(self, raise_errors: bool = False) -> str:
-        """
-        Run once at 3:50 PM ET - before market close.
-        Focus on EOD position review and preparation for next day. Stops are raised on
-        the day's gains here, before the close, rather than at the next morning run.
-
-        Args:
-            raise_errors: As for morning_routine()
-        """
-        logger.info("Starting evening routine...")
+    def _evening_routine(self, raise_errors: bool) -> str:
+        """The evening routine's steps (see evening_routine)."""
+        logger.info("Starting evening routine%s...", " (dry run)" if self._dry_run_active else "")
 
         try:
             # Similar structure to morning, but focus on EOD analysis
@@ -844,15 +959,10 @@ class CostEfficientTradeCycle:
                 logger.info("Market closed: the stop raise is left to the morning routine")
 
             # Sync trailing stops to GTT for multi-day persistence (Phase 3, Issue #340)
-            if GTT_AVAILABLE:
-                try:
-                    sync_result = sync_all_trailing_stops(self.trailing_stop_manager)
-                    if sync_result["synced"] > 0:
-                        logger.info(f"Synced {sync_result['synced']} trailing stops to GTT")
-                except Exception as e:
-                    logger.warning(f"Failed to sync trailing stops to GTT: {e}")
+            self._sync_trailing_stops_to_gtt()
 
-            self.local_state_manager.save()
+            if not self._dry_run_active:
+                self.local_state_manager.save()
 
             report = self.generate_routine_report(
                 RoutineType.EVENING,
@@ -864,14 +974,7 @@ class CostEfficientTradeCycle:
             )
 
             report = self._append_report_sections(report, gtt_results, record_lines)
-
-            # Save report to file
-            report_file = self._get_report_file_path("evening")
-            os.makedirs(os.path.dirname(report_file), exist_ok=True)
-            with open(report_file, "w", encoding="utf-8") as f:
-                f.write(report)
-            self.last_report_path = report_file
-
+            report, report_file = self._save_report("evening", report)
             logger.info(f"Evening routine complete. Report saved to {report_file}")
             if raise_errors:
                 _check_stops_secured(discrepancies)

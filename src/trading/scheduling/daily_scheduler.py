@@ -61,8 +61,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "evening_routine_enabled": True,
     "max_retries": 3,
     "retry_delay_seconds": 60,
-    "timeout_seconds": 300,
     "enable_notifications": False,
+    # Routines send no orders and change no saved state; reports show what they would do (#601)
     "dry_run": False,
 }
 
@@ -204,7 +204,6 @@ class ScheduledTask:
     timezone: str = "America/New_York"  # ET timezone for market hours
     retry_count: int = 3
     retry_delay_seconds: int = 60
-    timeout_seconds: int = 300  # 5 minutes max per routine
 
 
 @dataclass
@@ -285,8 +284,13 @@ class DailyScheduler:
     def trading_cycle(self) -> CostEfficientTradeCycle:
         """The trading cycle, created on first use: a check with nothing due needs none."""
         if self._trading_cycle is None:
-            self._trading_cycle = CostEfficientTradeCycle()
+            self._trading_cycle = CostEfficientTradeCycle(dry_run=self.dry_run)
         return self._trading_cycle
+
+    @property
+    def dry_run(self) -> bool:
+        """The config's dry_run: routines send no orders and change no saved state (#601)."""
+        return bool(self.config.get("dry_run", False))
 
     @trading_cycle.setter
     def trading_cycle(self, value: CostEfficientTradeCycle) -> None:
@@ -306,7 +310,6 @@ class DailyScheduler:
                 timezone=self.config["market_timezone"],
                 retry_count=self.config["max_retries"],
                 retry_delay_seconds=self.config["retry_delay_seconds"],
-                timeout_seconds=self.config["timeout_seconds"],
             ),
             ScheduledTask(
                 name="evening_routine",
@@ -315,7 +318,6 @@ class DailyScheduler:
                 timezone=self.config["market_timezone"],
                 retry_count=self.config["max_retries"],
                 retry_delay_seconds=self.config["retry_delay_seconds"],
-                timeout_seconds=self.config["timeout_seconds"],
             ),
         ]
 
@@ -380,10 +382,12 @@ class DailyScheduler:
 
                 # Execute the appropriate routine; failures raise RoutineError, including
                 # protective stops that couldn't be checked, placed or renewed
+                if self.dry_run:
+                    logger.info("DRY RUN: %s sends no orders and changes no saved state", task.name)
                 if task.routine_type == RoutineType.MORNING:
-                    self.trading_cycle.morning_routine(raise_errors=True)
+                    self.trading_cycle.morning_routine(raise_errors=True, dry_run=self.dry_run)
                 elif task.routine_type == RoutineType.EVENING:
-                    self.trading_cycle.evening_routine(raise_errors=True)
+                    self.trading_cycle.evening_routine(raise_errors=True, dry_run=self.dry_run)
                 elif task.routine_type == RoutineType.RECOVERY:
                     self.trading_cycle.recover_from_crash(raise_errors=True)
                 else:

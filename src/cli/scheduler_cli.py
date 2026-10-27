@@ -236,17 +236,22 @@ class SchedulerCLI:
         """Disable scheduler."""
         self.config_editor.set_enabled(False, self.scheduler)
 
-    async def _test_routine(self, routine_type: str = ""):
-        """Test a scheduler routine."""
-        if routine_type not in ["morning", "evening"]:
-            print("Usage: test [morning|evening]")
+    async def _test_routine(self, routine_type: str = "", mode: str = ""):
+        """
+        Run a routine now. With 'dry' (or the dry_run setting on) it sends no orders and
+        changes no saved state; otherwise it acts on the broker (#601).
+        """
+        if routine_type not in ["morning", "evening"] or mode not in ("", "dry"):
+            print("Usage: test [morning|evening] [dry]")
             return
-
-        print(f"\n{get_emoji('test', '🧪')} Testing {routine_type} routine...")
 
         if not self.scheduler:
             print(f"{get_emoji('cross_red', '❌')} Scheduler not initialized")
             return
+
+        dry_run = mode == "dry" or self.scheduler.dry_run
+        label = "dry run: no orders are sent" if dry_run else "acts on the broker"
+        print(f"\n{get_emoji('test', '🧪')} Testing {routine_type} routine ({label})...")
 
         try:
             # The scheduler's lock: a test run never overlaps the daemon, cron or a retry
@@ -258,9 +263,9 @@ class SchedulerCLI:
                     )
                     return
                 if routine_type == "morning":
-                    report = self.scheduler.trading_cycle.morning_routine()
+                    report = self.scheduler.trading_cycle.morning_routine(dry_run=dry_run)
                 else:
-                    report = self.scheduler.trading_cycle.evening_routine()
+                    report = self.scheduler.trading_cycle.evening_routine(dry_run=dry_run)
 
             print(
                 f"\n{get_emoji('check_green', '✅')} {routine_type.capitalize()} routine completed"

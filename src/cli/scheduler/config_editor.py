@@ -42,7 +42,6 @@ class SchedulerConfigEditor:
         "evening_routine_time": "15:50:00",
         "max_retries": 3,
         "retry_delay_seconds": 60,
-        "timeout_seconds": 300,
         "enable_notifications": False,
         "dry_run": False,
     }

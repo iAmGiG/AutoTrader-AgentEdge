@@ -5,7 +5,6 @@
   "evening_routine_time": "15:50:00",
   "max_retries": 3,
   "retry_delay_seconds": 60,
-  "timeout_seconds": 300,
   "enable_notifications": false,
   "dry_run": false,
   "description": "Daily GTC Order Scheduler Configuration",
@@ -14,7 +13,7 @@
     "Evening routine runs at 3:50 PM ET (before market close at 4:00)",
     "Max retries: Number of retry attempts for failed executions",
     "Retry delay: Initial delay in seconds, uses exponential backoff",
-    "Timeout: Maximum seconds per routine execution",
+    "Dry run: routines send no orders and change no saved state; reports show what they would do",
     "Set enabled=false to pause automated trading"
   ],
   "monitoring": {
