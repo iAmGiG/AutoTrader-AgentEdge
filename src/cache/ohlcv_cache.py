@@ -134,7 +134,7 @@ class OHLCVCacheManager(BaseSQLiteCache):
                     return None
 
                 # Set trading_date as index
-                df.set_index("trading_date", inplace=True)
+                df = df.set_index("trading_date")
 
                 # Capitalize column names for consistency
                 df.columns = [col.capitalize() for col in df.columns]
@@ -190,7 +190,7 @@ class OHLCVCacheManager(BaseSQLiteCache):
             data_copy = data.copy()
 
             # Rename columns to lowercase
-            data_copy.rename(columns=column_mapping, inplace=True)
+            data_copy = data_copy.rename(columns=column_mapping)
 
             # Extract date range for expiration calculation
             if not isinstance(data_copy.index, pd.DatetimeIndex):

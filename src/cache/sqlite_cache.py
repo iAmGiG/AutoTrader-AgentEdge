@@ -415,7 +415,7 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
 
             # Convert date column to datetime and set as index
             df["trading_date"] = pd.to_datetime(df["trading_date"])
-            df.set_index("trading_date", inplace=True)
+            df = df.set_index("trading_date")
             df.index.name = "date"  # Rename index to match expected format
 
             # Drop columns that are all NULL (e.g., vwap/transactions from Alpha Vantage)
@@ -473,11 +473,13 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
             # Prepare DataFrame
             df = data.copy()
 
-            # Ensure we have a date column
-            if isinstance(df.index, pd.DatetimeIndex):
-                df.reset_index(inplace=True)
-                if "index" in df.columns:
-                    df.rename(columns={"index": "date"}, inplace=True)
+            # Ensure we have a date column: an explicit one wins, else the DatetimeIndex
+            # (whatever its name) becomes it
+            if isinstance(df.index, pd.DatetimeIndex) and "date" not in df.columns:
+                index_name = df.index.name or "index"
+                df = df.reset_index().rename(columns={index_name: "date"})
+            elif isinstance(df.index, pd.DatetimeIndex):
+                df = df.reset_index(drop=True)
             elif "date" not in df.columns:
                 raise ValueError("Data must have 'date' column or DatetimeIndex")
 
@@ -508,7 +510,7 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
                 )
 
             # Rename date column to trading_date for DB
-            df.rename(columns={"date": "trading_date"}, inplace=True)
+            df = df.rename(columns={"date": "trading_date"})
 
             # Select columns that exist in schema
             base_columns = [

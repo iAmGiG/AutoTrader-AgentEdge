@@ -72,7 +72,9 @@ max_line_length = 100
 line-length = 100
 target-version = "py312"
 # *.md: ruff 0.16+ would also format Python code blocks inside Markdown
-extend-exclude = [".cache", "reports", "*.md"]  # on top of ruff's defaults (venv, build, ...)
+# On top of ruff's defaults (venv, build, ...). docs/archived holds old experiment code,
+# kept for reference and not maintained.
+extend-exclude = [".cache", "reports", "*.md", "docs/archived"]
 
 [tool.ruff.lint]
 # E402: module level import not at top of file

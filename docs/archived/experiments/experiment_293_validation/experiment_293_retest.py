@@ -144,8 +144,8 @@ def load_cached_data(symbol: str, start_date: str, end_date: str) -> pd.DataFram
         # Convert to DataFrame (new format has 'data' key)
         df = pd.DataFrame(data["data"])
         df["date"] = pd.to_datetime(df["date"])
-        df.set_index("date", inplace=True)
-        df.rename(
+        df = df.set_index("date")
+        df = df.rename(
             columns={
                 "close": "Close",
                 "open": "Open",
@@ -153,7 +153,6 @@ def load_cached_data(symbol: str, start_date: str, end_date: str) -> pd.DataFram
                 "low": "Low",
                 "volume": "Volume",
             },
-            inplace=True,
         )
         return df[["Open", "High", "Low", "Close", "Volume"]]
 
