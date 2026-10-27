@@ -20,7 +20,7 @@ from agent_framework import FunctionTool
 
 from src.utils.date_utils import format_for_filename, get_datetime_now
 from src.utils.safe_print import get_symbol
-from src.utils.state_paths import get_state_dir
+from src.utils.state_paths import get_cache_db_path, get_state_dir, get_user_db_path
 
 # Default database names (for DBBackupManager)
 # DBBackupManager maps these to actual paths: user -> state/user.db, cache -> .cache/trading_data.db
@@ -63,7 +63,11 @@ def _backup_dir(manager) -> Path:
 def _db_file(manager, db_name: str) -> Path:
     if manager:
         return Path(manager.get_db_path(db_name))
-    return Path(DB_FILES.get(db_name, db_name))
+    if db_name == STATE_DB:
+        return Path(get_user_db_path())
+    if db_name == CACHE_DB:
+        return Path(get_cache_db_path())
+    return Path(db_name)
 
 
 def _backup_db_name(backup_name: str):

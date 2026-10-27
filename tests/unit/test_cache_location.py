@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from src.cache import cache_adapter, unified_broker_cache
 from src.cache.lazy import LazyInstance
 from src.cache.sqlite_cache import TradingCacheManager
@@ -89,3 +91,37 @@ def test_a_lazy_instance_is_built_once_and_not_by_repr():
 
     assert lazy.value == 7 and lazy.value == 7
     assert len(built) == 1 and lazy.get() is built[0]
+
+
+def test_attribute_writes_reach_the_instance(monkeypatch):
+    class Thing:
+        value = 7
+
+    lazy = LazyInstance(Thing)
+
+    monkeypatch.setattr(lazy, "value", 9)
+    assert lazy.get().value == 9 and lazy.value == 9
+    lazy.extra = "x"
+    assert lazy.get().extra == "x"
+    del lazy.extra
+    assert not hasattr(lazy.get(), "extra")
+
+
+def test_an_uninitialised_stand_in_raises_instead_of_recursing():
+    bare = object.__new__(LazyInstance)  # what copy/pickle reconstruction starts from
+
+    with pytest.raises(AttributeError):
+        bare.anything
+
+
+def test_legacy_file_caches_and_the_backup_fallback_follow_the_cache_dir(tmp_path):
+    from src.cache.cache_adapter import CacheAdapter
+    from src.cli.tools import backup_tools
+
+    cache_dir = tmp_path / "cache"  # set by the conftest
+
+    assert CacheAdapter().legacy_locations == [
+        cache_dir / "polygon" / "prices",
+        cache_dir / "market_data",
+    ]
+    assert backup_tools._db_file(None, backup_tools.CACHE_DB) == cache_dir / "trading_data.db"

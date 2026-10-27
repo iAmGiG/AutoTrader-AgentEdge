@@ -92,10 +92,9 @@ def isolated_cache_dir(tmp_path, monkeypatch):
     """Point the market-data and broker cache at a temp dir (#600).
 
     The shared cache instances are built on first use; dropping them per test makes
-    each test build its own in its temp dir.
+    each test build its own in its temp dir. A module not loaded yet has none to drop.
     """
-    import importlib
-
+    from src.cache.lazy import LazyInstance
     from src.utils.state_paths import CACHE_DIR_ENV
 
     monkeypatch.setenv(CACHE_DIR_ENV, str(tmp_path / "cache"))
@@ -103,8 +102,9 @@ def isolated_cache_dir(tmp_path, monkeypatch):
         ("src.cache.cache_adapter", "cache_adapter"),
         ("src.cache.unified_broker_cache", "unified_broker_cache"),
     ):
-        shared = getattr(importlib.import_module(module_name), name)
-        monkeypatch.setattr(shared, "_instance", None)
+        shared = getattr(sys.modules.get(module_name), name, None)
+        if isinstance(shared, LazyInstance):  # not a test's stub
+            monkeypatch.setattr(shared, "_instance", None)
 
 
 # =============================================================================
