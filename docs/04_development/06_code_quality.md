@@ -418,7 +418,7 @@ import json
 
 # Third-party
 import pandas as pd
-from autogen_agentchat import AssistantAgent
+from agent_framework import FunctionTool
 
 # Local
 from src.trading.position_manager import PositionManager

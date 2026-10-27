@@ -6,14 +6,17 @@ Note: News/sentiment tools removed - deprecated V0-V4 sentiment analysis.
 """
 
 # Standard library imports
+import json
 import logging
 import os
 
 # Load tool descriptions from YAML
 import sys
+from typing import Any
 
 # Third-party imports
-from autogen_core.tools import FunctionTool
+import pandas as pd
+from agent_framework import FunctionTool
 
 from src.market_data.market_context_tool import market_context_tool
 
@@ -64,6 +67,24 @@ def _get_tool_description(tool_key: str, fallback: str) -> str:
 # Note: Polygon.io was removed as a data source in Oct 2026 (#607)
 
 
+def market_data_result(result: Any) -> str:
+    """
+    A market data result as the model sees it: a DataFrame becomes JSON records with
+    the date index as a column and dates as ISO strings.
+
+    Agent Framework's default serializer fails on a date-indexed DataFrame (its
+    Timestamp keys are not JSON keys).
+    """
+    if not isinstance(result, pd.DataFrame):
+        return json.dumps(result, default=str)
+    if result.empty:
+        return json.dumps(
+            {"data": [], "message": f"No data found. Columns: {list(result.columns)}"}
+        )
+    frame = result if isinstance(result.index, pd.RangeIndex) else result.reset_index()
+    return frame.to_json(orient="records", date_format="iso")
+
+
 # Unified market data tool using cache adapter
 unified_market_tool = FunctionTool(
     func=fetch_unified_market_data,
@@ -72,6 +93,7 @@ unified_market_tool = FunctionTool(
         "unified_market_data",
         "Fetch market data using unified cache system. Checks the cache first, then Alpaca (primary), with Alpha Vantage as the fallback.",
     ),
+    result_parser=market_data_result,
 )
 unified_market_tool.agent_types = [TECH_AGENT]
 

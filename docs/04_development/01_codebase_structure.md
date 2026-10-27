@@ -7,10 +7,10 @@
 ## Project Structure
 
 ```bash
-AutoGen-TradingSystem/
+AutoTrader-AgentEdge/                 # repository root (project: OptionsCommander)
 ├── src/                              # Core implementation
-│   ├── autogen_agents/              # AutoGen multi-agent system
-│   │   ├── core/base_agent.py       # Base AutoGen agent foundation
+│   ├── autogen_agents/              # Agents (Microsoft Agent Framework; AutoGen until #606)
+│   │   ├── core/base_agent.py       # Base agent: tools, LLM tool calling
 │   │   ├── agents/voter_agent.py    # ✅ In use (the live signal)
 │   │   ├── agents/scanner_agent.py  # 🚧 In development
 │   │   ├── agents/risk_agent.py     # 🚧 In development
@@ -22,7 +22,6 @@ AutoGen-TradingSystem/
 │   │
 │   ├── trading/                     # Trading execution & lifecycle
 │   │   ├── alpaca_trading_client.py # Alpaca API integration
-│   │   ├── alpaca_autogen_tools.py  # AutoGen tool wrappers
 │   │   ├── order_manager.py         # Order placement & tracking
 │   │   ├── position_manager.py      # Position management
 │   │   ├── trading_cycle.py         # Cost-efficient trade cycle
@@ -121,13 +120,14 @@ AutoGen-TradingSystem/
 
 ## Directory Responsibilities
 
-### src/autogen_agents/ - AutoGen Multi-Agent System
+### src/autogen_agents/ - Multi-Agent System
 
-**Purpose**: Microsoft AutoGen agent implementations for trading decisions
+**Purpose**: Agent implementations for trading decisions, on Microsoft Agent Framework (AutoGen until #606; the directory keeps its name)
 
 **Files**:
 
-- `core/base_agent.py`: Foundation class extending AutoGen AssistantAgent
+- `core/base_agent.py`: Foundation class; `process_with_tools()` runs an Agent Framework `Agent` with the agent's tools (OpenAI client created on first use)
+- `tools/market_tools.py`: Market data `FunctionTool`s every agent gets by default
 - `agents/voter_agent.py`: MACD+RSI voting agent, in use on the paper account
 - `scanner_agent.py`: Market scanning (in development)
 - `risk_agent.py`: Risk management (in development)
@@ -144,7 +144,6 @@ AutoGen-TradingSystem/
 
 - `alpaca_trading_client.py`: Alpaca API integration (paper + live trading)
 - `alpaca_execution_manager.py`: AlpacaExecutionManager implementing ExecutionManager interface
-- `alpaca_autogen_tools.py`: AutoGen tool wrappers for agents
 - `validators/`: Order validation, response parsing, error handling
 
 #### orders/ - Order Lifecycle
@@ -423,31 +422,29 @@ tests/
 ### Core Framework
 
 ```text
-autogen-agentchat>=0.7.2      # AutoGen agents
-autogen-core>=0.7.2           # AutoGen core
-autogen-ext>=0.7.2            # AutoGen extensions
+agent-framework-core>=1.23,<2     # Microsoft Agent Framework: agents, FunctionTool (#606)
+agent-framework-openai>=1.17,<2   # OpenAI chat clients; brings openai
 ```
 
 ### Trading & Data
 
 ```text
-alpaca-py                     # Alpaca trading
-pandas>=2.2.0                 # Data manipulation
+alpaca-py>=0.43.2             # Alpaca trading
+pandas>=2.2.0,<4              # Data manipulation (pandas 3 supported)
 numpy>=2.0.0                  # Numerical computing
 ```
 
 ### AI & LLM
 
 ```text
-openai>=1.71.0                # LLM integration
-tiktoken                      # Token counting
+openai                        # LLM integration (installed by agent-framework-openai)
 ```
 
 ## Architecture Principles
 
 ### 1. Separation of Concerns
 
-- **Agents**: Decision making (AutoGen agents)
+- **Agents**: Decision making (Agent Framework agents)
 - **Tools**: Data access and calculations (pure functions)
 - **Trading**: Broker integration and execution
 - **Data Sources**: Data acquisition and caching

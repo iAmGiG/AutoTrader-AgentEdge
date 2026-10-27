@@ -1,38 +1,35 @@
 # Troubleshooting Guide
 
-## AutoGen Framework Issues
+## Agent Framework Issues
 
-### `ImportError for autogen_ext` or `autogen_agentchat`
+The agents run on Microsoft Agent Framework (`agent-framework-core`, `agent-framework-openai`). AutoGen was removed in #606 and is no longer a dependency.
 
-- **Solution**: Ensure you're using the AutoGen conda environment
-- **Command**: `conda activate AutoTrader-AgentEdge`
-- **Verify**: `python -c "import autogen_agentchat; print('AutoGen available')"`
+### `ImportError` for `agent_framework`
 
-### `AttributeError for model_client` in AutoGen Agents
+- **Solution**: Use this project's environment (`~/miniconda3/envs/OptionsCommander/bin/python`) or reinstall: `pip install -e .`
+- **Verify**: `python -c "import agent_framework; print('Agent Framework available')"`
 
-- **Issue**: model_client not properly initialized in BaseAgent
-- **Solution**: Check `src/autogen_agents/base_agent.py` initialization
-- **Verify**: Ensure OpenAI client is properly configured for agents
+### `ImportError` for `autogen_agentchat` or `autogen_ext`
 
-## AutoGen Tool Integration Errors
+- **Issue**: Old code or a local script still imports AutoGen
+- **Solution**: Use `from agent_framework import FunctionTool` for tools and `BaseAgent` (`src/autogen_agents/core/base_agent.py`) for agents. The package directory keeps its `autogen_agents` name
 
-### `'FunctionTool' object is not callable`
+### "OpenAI API key not found"
 
-- **Issue**: Incorrect tool usage in AutoGen agents
-- **Solution**: Use proper AutoGen tool registration in BaseAgent
-- **Example**: Check `src/autogen_agents/base_agent.py` tool setup
+- **Issue**: An agent made an LLM call (`process_with_tools`) without a key
+- **Solution**: Set `OPEN_AI_KEY` in the environment or in `config/config.json`
+- **Note**: Agents build their OpenAI client on first use, so voting, scanning and risk checks need no key
+
+### `FunctionTool.__init__() takes 1 positional argument`
+
+- **Issue**: Agent Framework's `FunctionTool` takes keyword arguments only
+- **Solution**: `FunctionTool(func=..., name="...", description="...")`
 
 ### VoterAgent MACD/RSI Calculation Errors
 
-- **Issue**: Missing trading_tools imports or data format issues
-- **Solution**: Verify `src/trading_tools/indicators.py` imports work
-- **Test**: `python -c "from src.trading_tools.indicators import calculate_macd, calculate_rsi; print('Indicators available')"`
-
-### AutoGen Agent Communication Failures
-
-- **Issue**: Agents not properly inheriting from BaseAgent
-- **Solution**: Ensure all agents extend `src/autogen_agents/base_agent.py`
-- **Check**: Agent initialization and tool registration
+- **Issue**: Indicator imports or data format issues
+- **Solution**: Verify `src/trading/instruments/indicators.py` imports work
+- **Test**: `python -c "from src.trading.instruments.indicators import calculate_macd, calculate_rsi; print('Indicators available')"`
 
 ## Data Type Errors
 
@@ -51,23 +48,23 @@
 
 - **Issue**: Cache misses or incomplete data
 - **Symptoms**: VoterAgent backtests showing date jumps, missing trading days
-- **Solution**: Use TradingCacheManager (SQLite) for all AutoGen agent market data access
-- **Prevention**: Ensure agents use `src/data_sources/tools.py` for data fetching
-- **Check Cache**: Run `python scripts/cache_manager.py stats` to verify cache health
+- **Solution**: Use TradingCacheManager (SQLite) for all agent market data access
+- **Prevention**: Ensure agents fetch through `fetch_unified_market_data` (`src/market_data/unified_market_tool.py`)
+- **Check Cache**: Run `python scripts/utilities/cache_manager.py stats` to verify cache health
 
 ### VoterAgent Data Access Issues
 
 - **Issue**: VoterAgent not finding market data for MACD/RSI calculations
 - **Symptoms**: "No market data available" despite cache containing data
 - **Solution**: Verify TradingCacheManager integration and cache hits
-- **Debug**: Check `python scripts/cache_manager.py query SYMBOL --start DATE --end DATE`
-- **Code**: Check `src/autogen_agents/voter_agent.py` data fetching logic
+- **Debug**: Check `python scripts/utilities/cache_manager.py query SYMBOL --start DATE --end DATE`
+- **Code**: Check `src/autogen_agents/agents/voter_agent.py` data fetching logic
 
 ### Market Data Format Issues
 
 - **Issue**: MACD/RSI calculations failing due to data format mismatches
 - **Symptoms**: Pandas DataFrame issues, column name mismatches
-- **Solution**: Ensure data normalization through `src/trading_tools/indicators.py`
+- **Solution**: Ensure data normalization through `src/trading/instruments/indicators.py`
 - **Verification**: Test individual indicator functions before agent integration
 
 ## API and Data Issues
@@ -84,33 +81,26 @@
 
 ### Module Import Issues
 
-- **Solution**: Run AutoGen agent tests from project root directory
-- **Verification**: `python -c "from src.autogen_agents.voter_agent import VoterAgent; print('VoterAgent import successful')"`
-- **Environment**: Ensure `conda activate AutoTrader-AgentEdge`
+- **Solution**: Run commands and tests from the project root directory
+- **Verification**: `python -c "from src.autogen_agents.agents.voter_agent import VoterAgent; print('VoterAgent import successful')"`
+- **Environment**: Call the env's Python directly (`~/miniconda3/envs/OptionsCommander/bin/python`); `conda activate` is broken on this host
 
 ## Package and Environment Issues
 
-### AutoGen Package Conflicts
+### Missing Dependencies
 
-- **Solution**: Ensure using autogen-agentchat and autogen-ext packages
-- **Required packages**: autogen-agentchat 0.6.x, autogen-ext, openai
-- **Install**: `pip install autogen-agentchat autogen-ext openai`
-
-### Missing AutoGen Dependencies
-
-- **Solution**: Install complete AutoGen stack
-- **Install**: Use `pip install -e .` to install all dependencies
-- **Verify**: `python -c "from autogen_agentchat.agents import AssistantAgent; print('AutoGen working')"`
+- **Install**: `pip install -e .` installs all dependencies, including `agent-framework-core` and `agent-framework-openai` (which brings `openai`)
+- **Verify**: `python -c "from agent_framework import Agent, FunctionTool; print('Agent Framework working')"`
 
 ## Tool-Specific Issues
 
-### AutoGen Agent Market Data Sources
+### Agent Market Data Sources
 
 - **Primary**: Alpaca Markets (official SDK, real-time and historical)
 - **Fallback**: Alpha Vantage (25 calls/day limit). Polygon.io was removed in Oct 2026 (#607)
 - **Cache**: TradingCacheManager (SQLite) reduces API calls by 90%+ with 8-10x query performance
 
-### AutoGen Agent Date/Time Issues
+### Agent Date/Time Issues
 
 - **VoterAgent**: Ensure proper date range formatting for market data requests
 - **General**: Use consistent YYYY-MM-DD format across all agents
@@ -118,20 +108,20 @@
 
 ## Performance Issues
 
-### AutoGen Agent Performance
+### Agent Performance
 
 - **VoterAgent**: Optimized MACD+RSI calculations with SQLite caching
 - **Cache Hit Rate**: Should achieve 90%+ with TradingCacheManager (8-10x faster than file-based)
 - **Parallel Processing**: Multiple agents can run concurrently via TradingOrchestrator
-- **Cache Maintenance**: Run `python scripts/cache_manager.py cleanup` weekly to remove expired data
+- **Cache Maintenance**: Run `python scripts/utilities/cache_manager.py cleanup` weekly to remove expired data
 
 ### API Rate Limits (Current System)
 
 - **Alpaca API**: 200 requests/minute (for live trading integration)
 - **Cache Strategy**: Intelligent caching reduces API usage by 90%+
-- **Solution**: Use cache-first approach in all AutoGen agents
+- **Solution**: Use cache-first approach in all agents
 
-### AutoGen Agent Memory Usage
+### Agent Memory Usage
 
 - **VoterAgent**: Lightweight, only loads necessary market data
 - **BaseAgent**: Efficient tool registration and memory management

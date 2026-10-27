@@ -1,12 +1,12 @@
 # OptionsCommander Overview
 
 **Status**: Multi-agent trading platform; VoterAgent runs on a paper account
-**Foundation**: Microsoft AutoGen Framework
+**Foundation**: Microsoft Agent Framework (AutoGen until #606)
 **Backtested Performance**: Sharpe 0.69 at 5 bps a side with the live rules, no edge over buy-and-hold ([live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
 
 ## What Is This System?
 
-OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`) is an algorithmic trading platform built on Microsoft's AutoGen multi-agent framework. It uses ensemble voting (MACD+RSI), an approach motivated by academic research; backtested with the live rules and timing, it has no edge over buy-and-hold of the same symbols (#574).
+OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`) is an algorithmic trading platform whose agents run on Microsoft Agent Framework (they ran on AutoGen until #606). It uses ensemble voting (MACD+RSI), an approach motivated by academic research; backtested with the live rules and timing, it has no edge over buy-and-hold of the same symbols (#574).
 
 ### Core Purpose
 
@@ -66,7 +66,7 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 - Real-time data via Alpaca SDK
 - Intelligent caching (>90% API call reduction)
 - Multi-provider normalization (Alpha Vantage fallback)
-- AutoGen tool wrappers for agent access
+- Agent Framework `FunctionTool` wrappers for agent access
 
 **Order Types**:
 
@@ -89,7 +89,7 @@ This is a **human-guided trade management system**, not an autonomous trading bo
 
 ### Multi-Agent Framework
 
-The system leverages Microsoft AutoGen for agent coordination:
+The agents use Microsoft Agent Framework for LLM calls and tool calling:
 
 - **Agent Communication**: Structured message passing between agents
 - **Unified Tools**: Single source of truth accessible to all agents
@@ -110,8 +110,8 @@ Clean architectural boundaries:
    - **accounts/**: Multi-account management
    - **instruments/**: Tickers, timeframes, indicators
    - **utils/**: Trading utilities
-2. **AutoGen Agent Layer** (`src/autogen_agents/`): Multi-agent trading coordination
-3. **Data Layer** (`src/data_sources/`): Market data acquisition and normalization
+2. **Agent Layer** (`src/autogen_agents/`): Multi-agent trading coordination
+3. **Data Layer** (`src/market_data/`, `src/cache/`): Market data acquisition, caching and normalization
 4. **CLI Layer** (`src/cli/`): Human-in-loop interfaces with FunctionTool architecture
 
 ### Key Design Principles
@@ -119,7 +119,7 @@ Clean architectural boundaries:
 1. **Separation of Concerns**: Integration ≠ Business Logic ≠ Decisions
 2. **Unified Architecture**: Single codebase for paper and live trading
 3. **Production Safety**: Multi-level confirmations, comprehensive validation
-4. **Agent-Ready Design**: AutoGen tool wrappers for all functionality
+4. **Agent-Ready Design**: Agent Framework tool wrappers for all functionality
 
 ## Backtested Performance
 
@@ -173,8 +173,8 @@ See the [research documentation](../08_research/README.md) for what this project
 
 **Core Framework**:
 
-- Microsoft AutoGen (multi-agent coordination)
-- Python 3.8+ (primary language)
+- Microsoft Agent Framework (agents, tool calling)
+- Python 3.12+ (primary language; CI also runs 3.14 and 3.15)
 
 **Trading Integration**:
 
@@ -224,4 +224,4 @@ For detailed information about specific aspects of the system:
 
 ---
 
-*AutoGen multi-agent trading platform with ensemble voting and safety controls.*
+*Multi-agent trading platform with ensemble voting and safety controls.*

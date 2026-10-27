@@ -3,6 +3,8 @@
 **Issue**: #406
 **Date**: November 2025
 
+> **Update (Oct 2026, #606):** AutoGen is archived and was replaced by Microsoft Agent Framework. The parser described here is now `src/parsers/llm_parser.py` (`LLMParser`; `AutoGenLLMParser` remains an alias) and uses Agent Framework's OpenAI chat client. The analysis below is kept as written.
+
 ## Executive Summary
 
 The codebase has **redundant LLM integrations** that should be consolidated. AutoGen already provides all the functionality we need via `OpenAIChatCompletionClient`. The custom `OpenAIService` is unnecessary overhead.

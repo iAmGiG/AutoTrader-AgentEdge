@@ -3,7 +3,7 @@ OrchestratorFactory - Creates fully wired TradingOrchestrator.
 
 MVP: Hardcoded component creation (YAML config deferred to later iteration).
 Issue #400: Trading modes integration.
-Issue #406: Uses AutoGen's native LLM client instead of custom OpenAIService.
+Issue #406: one LLM integration path (LLMParser, on Microsoft Agent Framework since #606).
 """
 
 import json
@@ -12,7 +12,7 @@ from typing import Optional
 
 from src.core.trading_modes import TradingMode, get_mode_manager
 from src.core.trading_orchestrator import TradingOrchestrator
-from src.parsers import AutoGenLLMParser
+from src.parsers import LLMParser
 from src.strategies import RealVoterStrategy, VoterStrategy
 from src.trading.broker.alpaca_execution_manager import AlpacaExecutionManager
 from src.trading.risk.broker_account_service import BrokerAccountService
@@ -100,12 +100,12 @@ class OrchestratorFactory:
             f"Creating TradingOrchestrator (mode: {mode_params.mode.value}) from config.json..."
         )
 
-        # Load API key and model from config (used by AutoGenLLMParser)
+        # Load API key and model from config (used by LLMParser)
         tool_model = self.config.get("OPENAI_TOOL_MODEL", "gpt-4o-mini")
 
-        # 1. Create Input Parser using AutoGen's native LLM client (#406)
-        logger.info(f"  - Creating AutoGenLLMParser (model: {tool_model})...")
-        input_parser = AutoGenLLMParser(model=tool_model)
+        # 1. Create Input Parser (an LLM tool call, Microsoft Agent Framework #606)
+        logger.info(f"  - Creating LLMParser (model: {tool_model})...")
+        input_parser = LLMParser(model=tool_model)
 
         # 2. Create Strategy Analyzer (with trading mode parameters - Issue #400)
         if use_real_voter:

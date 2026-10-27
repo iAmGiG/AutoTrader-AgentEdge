@@ -1,34 +1,32 @@
 # Core System Architecture
 
 **Foundation**: Multi-layer separation with clean boundaries
-**Framework**: Microsoft AutoGen for agent coordination
+**Framework**: Microsoft Agent Framework for LLM calls and tool calling (AutoGen until #606)
 **Status**: Infrastructure complete and in use on a paper account
 
 ## Directory Structure
 
-```bash
+```text
 src/
-├── trading/                    # Trading Operations & Integrations
-│   ├── alpaca_trading_client.py    # Order management, account monitoring
-│   └── alpaca_autogen_tools.py     # AutoGen agent integration
+├── trading/
+│   ├── broker/                     # alpaca_trading_client.py (AlpacaAccountMonitor, AlpacaOrderManager), market_hours.py
+│   ├── instruments/                # indicators.py (MACD, RSI), voting_signal.py, data_fetch.py
+│   ├── positions/                  # position_tracker.py, position_manager.py, position_sizer.py
+│   ├── risk/                       # risk_calculator.py
+│   ├── orders/, state/, gtt/       # stops, reconciliation, GTT triggers
+│   └── scheduling/                 # morning/evening routines run from cron
 │
-├── trading_tools/             # Pure Trading Functions
-│   ├── data_fetch.py               # Market data utilities
-│   ├── indicators.py               # MACD, RSI calculations
-│   ├── position_tracker.py         # Position management utilities
-│   └── risk_calculator.py          # Risk assessment functions
+├── autogen_agents/                 # Agents (Microsoft Agent Framework; the name predates #606)
+│   ├── core/base_agent.py          # BaseAgent: tools, process_with_tools (LLM + tool calling)
+│   ├── agents/voter_agent.py       # MACD+RSI voting agent (the live CLI signal)
+│   ├── agents/                     # scanner, risk, executor agents (in development)
+│   ├── orchestration/              # TradingOrchestrator, AgentBus, AgentFactory (in development)
+│   └── tools/market_tools.py       # Agent Framework FunctionTools for market data
 │
-├── autogen_agents/            # Microsoft AutoGen Agent Implementations
-│   ├── voter_agent.py              # MACD+RSI voting agent (the live signal)
-│   ├── base_agent.py               # Base AutoGen agent with tool integration
-│   ├── scanner_agent.py            # Market scanning agent (in development)
-│   ├── risk_agent.py               # Risk management agent (in development)
-│   ├── executor_agent.py           # Trade execution agent (in development)
-│   └── trading_orchestrator.py     # Multi-agent coordination (in development)
+├── cli/tools/                      # CLI tools (FunctionTools); state-changing ones need approval
 │
-└── data_sources/              # Market Data Infrastructure
-    └── sources/market/
-        └── alpaca_market_data.py   # Real-time data integration
+├── market_data/                    # alpaca_market_data.py, unified_market_tool.py, market_context_tool.py
+└── cache/                          # SQLite cache (TradingCacheManager)
 ```
 
 ## Layer Separation
@@ -40,7 +38,6 @@ src/
 **Components**:
 
 - **Alpaca Trading Client**: Order placement, account management, position monitoring
-- **AutoGen Tool Wrappers**: Agent-to-trading-system bridge
 - **API Integrations**: External service connections
 - **State Management**: Account state, order tracking
 
@@ -53,10 +50,9 @@ src/
 
 **Key Files**:
 
-- `alpaca_trading_client.py`: Main trading client implementation
-- `alpaca_autogen_tools.py`: AutoGen tool wrappers for agents
+- `broker/alpaca_trading_client.py`: Main trading client implementation
 
-### 2. Business Logic Layer (`src/trading_tools/`)
+### 2. Business Logic Layer (`src/trading/instruments/`, `positions/`, `risk/`)
 
 **Purpose**: Pure functions, calculations, utilities
 
@@ -76,19 +72,20 @@ src/
 
 **Key Files**:
 
-- `indicators.py`: Technical indicator calculations
-- `risk_calculator.py`: Position sizing and risk metrics
-- `data_fetch.py`: Market data retrieval utilities
-- `position_tracker.py`: Portfolio tracking functions
+- `instruments/indicators.py`: Technical indicator calculations
+- `instruments/voting_signal.py`: The MACD+RSI voting rules (`VotingSignal`)
+- `risk/risk_calculator.py`: Position sizing and risk metrics
+- `instruments/data_fetch.py`: Market data retrieval utilities
+- `positions/position_tracker.py`: Portfolio tracking functions
 
-### 3. AutoGen Agent Layer (`src/autogen_agents/`)
+### 3. Agent Layer (`src/autogen_agents/`)
 
-**Purpose**: Multi-agent trading system using Microsoft AutoGen framework
+**Purpose**: Multi-agent trading system on Microsoft Agent Framework. An agent's own work (voting, scanning, risk checks) is plain Python; `BaseAgent.process_with_tools()` runs an Agent Framework `Agent` for free-text requests, with up to two tool-calling rounds before the model must answer in text
 
 **Components**:
 
 - **VoterAgent**: ✅ MACD+RSI voting logic (backtest: no edge over buy-and-hold, [live-rules baseline](../08_research/03_strategy_research/live_rules_baseline.md))
-- **BaseAgent**: ✅ Foundation class with tool integration and message handling
+- **BaseAgent**: ✅ Foundation class with tools and LLM tool calling; the OpenAI client is created on first use
 - **ScannerAgent**: 🚧 Market opportunity identification (in development)
 - **RiskAgent**: 🚧 Portfolio risk management (in development)
 - **ExecutorAgent**: 🚧 Trade execution coordination (in development)
@@ -103,11 +100,11 @@ src/
 
 **Key Files**:
 
-- `voter_agent.py`: Production MACD+RSI voting agent
-- `base_agent.py`: Common agent functionality
-- `trading_orchestrator.py`: Multi-agent coordination
+- `agents/voter_agent.py`: MACD+RSI voting agent
+- `core/base_agent.py`: Common agent functionality
+- `orchestration/trading_orchestrator.py`: Multi-agent coordination
 
-### 4. Data Layer (`src/data_sources/`)
+### 4. Data Layer (`src/market_data/`, `src/cache/`)
 
 **Purpose**: Market data acquisition and normalization
 
@@ -126,9 +123,9 @@ src/
 
 **Key Files**:
 
-- `sources/market/alpaca_market_data.py`: Primary data source
-- `cache/unified_cache.py`: Caching layer
-- `processors/data_normalizer.py`: Data format standardization
+- `market_data/alpaca_market_data.py`: Primary data source
+- `market_data/unified_market_tool.py`: Cache, then Alpaca, then Alpha Vantage
+- `cache/sqlite_cache.py`: Caching layer (`TradingCacheManager`)
 
 ## Key Design Principles
 
@@ -186,7 +183,7 @@ manager = AlpacaOrderManager(mode="live")   # Live trading (with confirmations)
 
 ### 4. Agent-Ready Design
 
-#### AutoGen tool wrappers for all functionality
+#### Agent Framework tools for all functionality
 
 - Standardized response formats
 - Agent-friendly error handling
@@ -195,13 +192,13 @@ manager = AlpacaOrderManager(mode="live")   # Live trading (with confirmations)
 **Tool Integration**:
 
 ```python
-from src.trading.alpaca_autogen_tools import AlpacaAccountTool, AlpacaOrderTool
+from src.cli.tools import get_cli_tool, get_cli_tools_by_category
 
-# Read-only account access for all agents
-account_tool = AlpacaAccountTool(mode="paper")
+# Read-only tools run without asking
+orders = get_cli_tool("show_orders")
 
-# Order placement for executor agents
-order_tool = AlpacaOrderTool(mode="paper")
+# State-changing tools (cancel, switch account, ...) have approval_mode "always_require"
+cancel_tools = get_cli_tools_by_category("order")
 ```
 
 ## Configuration Management
@@ -281,7 +278,7 @@ tests/
 
 1. **Unit Tests**: Pure functions in business logic layer
 2. **Integration Tests**: API connections and data retrieval
-3. **Agent Tests**: AutoGen agent behavior and coordination
+3. **Agent Tests**: agent behavior and LLM tool calling against a fake model server (no network, no key)
 4. **End-to-End Tests**: Complete trading workflows
 
 ### Validation Approach
@@ -336,20 +333,15 @@ tests/
 
 ## Integration Points
 
-### AutoGen Agents
+### Agents
 
-**Tool Access**:
+**Tool Access**: agents get the market tools by default (`src/autogen_agents/tools/`); pass `tools=[...]` to `BaseAgent` to choose others.
 
 ```python
-from src.trading.alpaca_autogen_tools import AlpacaAccountTool, AlpacaOrderTool
+from src.autogen_agents.agents.voter_agent import VoterAgent
 
-# VoterAgent, Scanner, Risk agents use account tool
-account_tool = AlpacaAccountTool(mode="paper")
-account_data = account_tool.get_account()
-
-# Executor agent uses order tool
-order_tool = AlpacaOrderTool(mode="paper")
-order_result = order_tool.place_market_order("AAPL", 10, "buy")
+voter = VoterAgent(name="voter")  # no API key needed until an LLM call
+print([tool.name for tool in voter.tools])
 ```
 
 ### Direct Usage
@@ -357,11 +349,11 @@ order_result = order_tool.place_market_order("AAPL", 10, "buy")
 **Programmatic Access**:
 
 ```python
-from src.trading.alpaca_trading_client import AlpacaOrderManager
+from src.trading.broker.alpaca_trading_client import AlpacaOrderManager
 
-# Full programmatic access for advanced use cases
+# Full programmatic access for advanced use cases (paper account)
 manager = AlpacaOrderManager(mode="paper")
-order = manager.submit_market_order("AAPL", 10, "buy")
+order = manager.place_market_order("AAPL", 10, "buy")
 ```
 
 ## Production Readiness
@@ -403,7 +395,7 @@ order = manager.submit_market_order("AAPL", 10, "buy")
 - Real-time market data via Alpaca SDK
 - Intelligent caching system (>90% improvement)
 - Multi-provider data normalization
-- AutoGen tool wrappers
+- Agent Framework tool wrappers
 
 ### ✅ Order Management (#313)
 
@@ -412,7 +404,7 @@ order = manager.submit_market_order("AAPL", 10, "buy")
 - Unified live/paper architecture
 - Comprehensive safety features
 
-### ✅ AutoGen Agent System Foundation
+### ✅ Agent System Foundation
 
 - VoterAgent with MACD+RSI voting logic
 - BaseAgent foundation with tool integration

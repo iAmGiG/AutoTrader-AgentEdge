@@ -335,6 +335,7 @@ Consolidated `src/human_interface/` into `src/cli/`:
 - ✅ **src/services/llm/** - **REMOVED** (Issue #406)
   - Replaced by AutoGen's native `OpenAIChatCompletionClient`
   - New parser: `src/parsers/autogen_llm_parser.py`
+    (renamed `src/parsers/llm_parser.py`, `LLMParser`, when AutoGen was replaced by Microsoft Agent Framework in #606)
   - 500+ lines of code removed
   - See `docs/04_development/llm_consolidation_analysis.md` for details
 
@@ -351,7 +352,7 @@ src/
 │   └── timeframe_commands.py
 ├── autogen_agents/         # AutoGen agent implementations
 ├── parsers/
-│   └── autogen_llm_parser.py # ✅ NL parsing using AutoGen's native client (#406)
+│   └── llm_parser.py       # ✅ NL parsing with an LLM tool call (#406; Agent Framework since #606)
 ├── ...
 ```
 

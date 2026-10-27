@@ -1,11 +1,11 @@
 """
-AutoGen-based natural language parser.
+Natural language parser for trade requests, on Microsoft Agent Framework (#606).
 
-Uses AutoGen's native LLM client (OpenAIChatCompletionClient) and FunctionTool
-instead of a custom OpenAI wrapper. This consolidates LLM usage to a single
-integration path.
+One LLM call offers the parse_trade_request tool, and the arguments of the model's
+tool call are the parsed request. The raw chat client returns tool calls without
+running them (the standard client would run the tool and ask the model again).
 
-Issue #406: Consolidate LLM services
+Issue #406: Consolidate LLM services (this was the AutoGen-based parser)
 """
 
 import json
@@ -16,9 +16,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Literal, Optional
 
-from autogen_core.models import UserMessage
-from autogen_core.tools import FunctionTool
-from autogen_ext.models.openai import OpenAIChatCompletionClient
+from agent_framework import FunctionTool, Message
+from agent_framework.openai import RawOpenAIChatCompletionClient
 
 from core.interfaces import InputParser
 from core.models import AssetType, TradeRequest
@@ -59,7 +58,7 @@ class ParsedTradeRequest:
     Structured output from parsing user input.
 
     This dataclass defines the schema that the LLM will extract.
-    AutoGen's FunctionTool generates the JSON schema from these type hints.
+    FunctionTool generates the JSON schema from these type hints.
     """
 
     request_type: Literal["trade", "status_query"]
@@ -84,7 +83,7 @@ def _parse_trade_request(
     """
     Parse user's trade request into structured format.
 
-    This function is wrapped by AutoGen's FunctionTool to create a tool
+    This function is wrapped in a FunctionTool to create a tool
     that the LLM can call. The type hints define the JSON schema.
 
     Args:
@@ -110,7 +109,7 @@ def _parse_trade_request(
     }
 
 
-# Create the AutoGen FunctionTool - schema auto-generated from type hints
+# The parse tool - schema auto-generated from type hints
 PARSE_TOOL = FunctionTool(
     func=_parse_trade_request,
     name="parse_trade_request",
@@ -118,12 +117,9 @@ PARSE_TOOL = FunctionTool(
 )
 
 
-class AutoGenLLMParser(InputParser):
+class LLMParser(InputParser):
     """
-    Parse natural language input using AutoGen's native LLM client.
-
-    This replaces the custom OpenAIService with AutoGen's OpenAIChatCompletionClient,
-    consolidating LLM usage to a single integration path.
+    Parse natural language input with an LLM tool call (Microsoft Agent Framework).
 
     Examples:
     - "is SPY at 600 good?" -> TradeRequest(ticker="SPY", action="review", price=600)
@@ -133,12 +129,12 @@ class AutoGenLLMParser(InputParser):
 
     def __init__(
         self,
-        model_client: Optional[OpenAIChatCompletionClient] = None,
+        model_client: Optional[RawOpenAIChatCompletionClient] = None,
         model: str = None,
         api_key: str = None,
     ):
         """
-        Initialize with AutoGen's OpenAI client.
+        Initialize with an OpenAI chat client.
 
         Args:
             model_client: Pre-configured client (optional)
@@ -156,19 +152,16 @@ class AutoGenLLMParser(InputParser):
                     "or update config.json"
                 )
 
-            self.client = OpenAIChatCompletionClient(
-                model=model or _tool_model,
-                api_key=key,
-                temperature=0.0,  # Deterministic for parsing
-                max_tokens=1024,
-            )
+            self.client = RawOpenAIChatCompletionClient(model=model or _tool_model, api_key=key)
 
         self._tool = PARSE_TOOL
-        logger.info(f"AutoGenLLMParser initialized with model: {model or _tool_model}")
+        # Deterministic for parsing; the tool is offered, never run
+        self._options = {"temperature": 0.0, "max_tokens": 1024, "tools": [self._tool]}
+        logger.info(f"LLMParser initialized with model: {model or _tool_model}")
 
     async def parse(self, user_input: str, user_id: Optional[str] = None) -> TradeRequest:
         """
-        Parse user input into TradeRequest using AutoGen's LLM client.
+        Parse user input into TradeRequest with one LLM tool call.
 
         Args:
             user_input: Raw user input
@@ -187,28 +180,25 @@ class AutoGenLLMParser(InputParser):
         prompt = self._build_prompt(corrected_input)
 
         try:
-            # Call LLM with tool
-            messages = [UserMessage(content=prompt, source="user")]
-            response = await self.client.create(
-                messages=messages,
-                tools=[self._tool],
+            # Call the LLM, offering the parse tool
+            response = await self.client.get_response(
+                [Message("user", [prompt])], options=self._options
             )
 
-            # Extract tool call from response
-            if not hasattr(response, "content") or not isinstance(response.content, list):
-                raise ValueError(f"Unexpected response format: {response}")
-
-            # Find the tool call in the response
-            tool_call = None
-            for item in response.content:
-                if hasattr(item, "name") and item.name == "parse_trade_request":
-                    tool_call = item
-                    break
-
+            # Find the model's parse_trade_request call
+            tool_call = next(
+                (
+                    content
+                    for message in response.messages
+                    for content in message.contents
+                    if content.type == "function_call" and content.name == "parse_trade_request"
+                ),
+                None,
+            )
             if tool_call is None:
                 raise ValueError(f"No tool call in response for: {user_input}")
 
-            # Parse arguments (already a dict from AutoGen)
+            # Its arguments are the parsed request
             args = tool_call.arguments
             if isinstance(args, str):
                 args = json.loads(args)
@@ -336,3 +326,7 @@ Use the parse_trade_request function."""
             logger.info(f"Auto-corrected: '{user_input}' -> '{corrected}'")
 
         return corrected
+
+
+# The name before #606 (AutoGen); kept so existing imports work
+AutoGenLLMParser = LLMParser
