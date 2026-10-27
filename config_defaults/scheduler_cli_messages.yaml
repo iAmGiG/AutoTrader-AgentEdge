@@ -97,8 +97,8 @@ commands:
     aliases: []
     requires_scheduler: true
     category: testing
-    description: "Test morning/evening routine"
-    usage: "test [morning|evening]"
+    description: "Run the morning/evening routine now ('dry': send no orders)"
+    usage: "test [morning|evening] [dry]"
 
   history:
     enabled: true
@@ -251,13 +251,13 @@ config_info:
 
     dry_run:
       name: "dry_run (boolean)"
-      purpose: "Test mode - simulates actions without placing orders"
+      purpose: "Routines send no orders and change no saved state; reports show what they would do"
       values:
-        - "true = simulation only (NO real orders)"
-        - "false = normal operation (places orders)"
-      warning: "dry_run enforcement is NOT YET IMPLEMENTED"
-      status: "Currently logs but doesn't prevent order execution"
-      tip: "Always use paper trading account for testing"
+        - "true = dry run (no orders; local state, daily records and GTT triggers unchanged)"
+        - "false = normal operation (places, renews and raises stops)"
+      warning: "While true, the scheduled routines do not protect positions: no stop is placed, renewed or raised"
+      status: "Dry-run reports are saved as reports/daily/<date>_<routine>_dry_run.md"
+      tip: "'test morning dry' runs one dry run without changing the setting"
 
   readonly_header: "READ-ONLY SETTINGS (edit config file directly)"
 
@@ -269,10 +269,6 @@ config_info:
     - name: "retry_delay_seconds"
       value: "60"
       description: "Initial wait time between retries (uses exponential backoff)"
-
-    - name: "timeout_seconds"
-      value: "300"
-      description: "Maximum time (5 minutes) for a single routine execution"
 
     - name: "monitoring.alert_threshold_consecutive_failures"
       value: "2"
@@ -289,15 +285,15 @@ config_info:
       title: "Paper Trading vs Dry Run:"
       items:
         - "Paper Trading (mode='paper'): Places real test orders on Alpaca paper account"
-        - "Dry Run (dry_run=true): Simulates logic without any orders [NOT IMPLEMENTED]"
+        - "Dry Run (dry_run=true, or 'test morning dry'): no orders, no saved state; the report shows what would happen"
         - "Current system uses: Paper trading account (hardcoded in trading_cycle.py)"
 
     safety_levels:
-      title: "Safety Levels (intended design):"
+      title: "Safety Levels:"
       items:
-        - "1. Live mode + dry_run=false  -> Real money, real orders"
-        - "2. Paper mode + dry_run=false -> Paper account, test orders (current)"
-        - "3. Paper mode + dry_run=true  -> No orders, just logging (not implemented)"
+        - "1. Paper mode + dry_run=false -> Paper account, real paper orders (current)"
+        - "2. Paper mode + dry_run=true  -> No orders, report only"
+        - "Live trading is not used"
 
     related_issues:
       title: "Related Issues:"
@@ -459,7 +455,7 @@ common:
   init_hint: "Try running: python main.py --daemon"
   unknown_command: "Unknown command: {command}"
   help_hint: "Type 'help' for available commands"
-  usage_test: "Usage: test [morning|evening]"
+  usage_test: "Usage: test [morning|evening] [dry]"
 
 # ============================================================================
 # EMOJIS (can be customized for different terminals)

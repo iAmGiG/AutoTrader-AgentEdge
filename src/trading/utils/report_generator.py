@@ -253,6 +253,10 @@ class ReportGenerator:
                 report_lines.append("❌ Errors:")
                 for error in modification_results["errors"]:
                     report_lines.append(f"   {error}")
+            if modification_results.get("dry_run"):
+                report_lines.append("🧪 Not sent (dry run):")
+                for line in modification_results["dry_run"]:
+                    report_lines.append(f"   {line}")
             report_lines.append("")
 
         # Footer

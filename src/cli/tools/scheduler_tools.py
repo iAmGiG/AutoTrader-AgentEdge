@@ -104,7 +104,6 @@ def get_scheduler_status() -> Dict[str, Any]:
             "evening_time": config.get("evening_routine_time", "15:50:00")[:5],
             "max_retries": config.get("max_retries", 3),
             "retry_delay_seconds": config.get("retry_delay_seconds", 60),
-            "timeout_seconds": config.get("timeout_seconds", 300),
             "timezone": config.get("market_timezone", "America/New_York"),
             "dry_run": config.get("dry_run", False),
         }
@@ -367,7 +366,6 @@ def get_scheduler_db_state() -> Dict[str, Any]:
                 "evening_time": state.evening_time,
                 "max_retries": state.max_retries,
                 "retry_delay_seconds": state.retry_delay_seconds,
-                "timeout_seconds": state.timeout_seconds,
                 "updated_at": state.updated_at,
             },
             "last_runs": {
@@ -497,8 +495,8 @@ def show_scheduler() -> str:
     if history.get("history"):
         lines.extend(["", f"{get_symbol('INFO')} Recent Executions"])
         for entry in history["history"][:3]:
-            status_emoji = (
-                get_symbol("SUCCESS") if entry["status"] == "completed" else get_symbol("ERROR")
+            status_emoji = {"completed": get_symbol("SUCCESS"), "dry_run": "🧪"}.get(
+                entry["status"], get_symbol("ERROR")
             )
             lines.append(f"   {status_emoji} {entry['task_name']}")
 

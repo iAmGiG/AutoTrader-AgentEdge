@@ -105,6 +105,7 @@ class TriggerEvaluator:
         reference_prices: Optional[Dict[str, float]] = None,
         volumes: Optional[Dict[str, float]] = None,
         average_volumes: Optional[Dict[str, float]] = None,
+        persist: bool = True,
     ) -> List[GTTTrigger]:
         """
         Evaluate all active triggers against current prices.
@@ -114,6 +115,7 @@ class TriggerEvaluator:
             reference_prices: Dict mapping symbol -> reference price (for pct conditions)
             volumes: Dict mapping symbol -> current volume
             average_volumes: Dict mapping symbol -> average volume
+            persist: Save new trailing-stop highs (False for a dry run, #601)
 
         Returns:
             List of triggers that should fire
@@ -134,7 +136,7 @@ class TriggerEvaluator:
             avg_vol = average_volumes.get(trigger.symbol) if average_volumes else None
 
             # Update trailing stops (track highest price)
-            if trigger.condition_type == ConditionType.TRAILING_STOP.value:
+            if persist and trigger.condition_type == ConditionType.TRAILING_STOP.value:
                 self._update_trailing_highest(trigger, current_price)
 
             # Evaluate condition

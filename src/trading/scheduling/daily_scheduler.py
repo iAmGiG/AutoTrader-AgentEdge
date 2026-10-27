@@ -61,8 +61,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "evening_routine_enabled": True,
     "max_retries": 3,
     "retry_delay_seconds": 60,
-    "timeout_seconds": 300,
     "enable_notifications": False,
+    # Routines send no orders and change no saved state; reports show what they would do (#601)
     "dry_run": False,
 }
 
@@ -192,6 +192,7 @@ class ScheduleStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     RETRYING = "retrying"
+    DRY_RUN = "dry_run"  # ran without sending orders; not the day's routine (#601)
 
 
 @dataclass
@@ -204,7 +205,6 @@ class ScheduledTask:
     timezone: str = "America/New_York"  # ET timezone for market hours
     retry_count: int = 3
     retry_delay_seconds: int = 60
-    timeout_seconds: int = 300  # 5 minutes max per routine
 
 
 @dataclass
@@ -288,6 +288,11 @@ class DailyScheduler:
             self._trading_cycle = CostEfficientTradeCycle()
         return self._trading_cycle
 
+    @property
+    def dry_run(self) -> bool:
+        """The config's dry_run: routines send no orders and change no saved state (#601)."""
+        return bool(self.config.get("dry_run", False))
+
     @trading_cycle.setter
     def trading_cycle(self, value: CostEfficientTradeCycle) -> None:
         self._trading_cycle = value
@@ -306,7 +311,6 @@ class DailyScheduler:
                 timezone=self.config["market_timezone"],
                 retry_count=self.config["max_retries"],
                 retry_delay_seconds=self.config["retry_delay_seconds"],
-                timeout_seconds=self.config["timeout_seconds"],
             ),
             ScheduledTask(
                 name="evening_routine",
@@ -315,7 +319,6 @@ class DailyScheduler:
                 timezone=self.config["market_timezone"],
                 retry_count=self.config["max_retries"],
                 retry_delay_seconds=self.config["retry_delay_seconds"],
-                timeout_seconds=self.config["timeout_seconds"],
             ),
         ]
 
@@ -380,17 +383,21 @@ class DailyScheduler:
 
                 # Execute the appropriate routine; failures raise RoutineError, including
                 # protective stops that couldn't be checked, placed or renewed
+                if self.dry_run:
+                    logger.info("DRY RUN: %s sends no orders and changes no saved state", task.name)
                 if task.routine_type == RoutineType.MORNING:
-                    self.trading_cycle.morning_routine(raise_errors=True)
+                    self.trading_cycle.morning_routine(raise_errors=True, dry_run=self.dry_run)
                 elif task.routine_type == RoutineType.EVENING:
-                    self.trading_cycle.evening_routine(raise_errors=True)
+                    self.trading_cycle.evening_routine(raise_errors=True, dry_run=self.dry_run)
                 elif task.routine_type == RoutineType.RECOVERY:
-                    self.trading_cycle.recover_from_crash(raise_errors=True)
+                    self.trading_cycle.recover_from_crash(raise_errors=True, dry_run=self.dry_run)
                 else:
                     raise ValueError(f"Unknown routine type: {task.routine_type}")
 
-                # Success!
-                log_entry.status = ScheduleStatus.COMPLETED.value
+                # Success! A dry run is recorded as such, so it doesn't count as the
+                # day's routine: switched off within the window, the routine still runs
+                status = ScheduleStatus.DRY_RUN if self.dry_run else ScheduleStatus.COMPLETED
+                log_entry.status = status.value
                 log_entry.actual_end_time = now_iso()
                 log_entry.api_calls_used = 3  # Typical API calls per routine
 
@@ -400,12 +407,16 @@ class DailyScheduler:
                 # Record completion in SQLite (#478)
                 self.state_manager.record_execution_complete(
                     execution_id,
-                    status="completed",
+                    status=status.value,
                     report_path=report_path,
                     api_calls_used=log_entry.api_calls_used,
                 )
 
-                logger.info("✅ %s completed successfully", task.name)
+                logger.info(
+                    "✅ %s completed successfully%s",
+                    task.name,
+                    " (dry run)" if self.dry_run else "",
+                )
                 break
 
             except Exception as e:
@@ -581,6 +592,7 @@ class DailyScheduler:
             ScheduleStatus.COMPLETED.value: "✅",
             ScheduleStatus.FAILED.value: "❌",
             ScheduleStatus.RETRYING.value: "🔄",
+            ScheduleStatus.DRY_RUN.value: "🧪",
         }.get(log_entry.status, "⚠️")
 
         logger.info(

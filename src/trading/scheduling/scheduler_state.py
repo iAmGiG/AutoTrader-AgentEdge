@@ -43,7 +43,6 @@ class SchedulerState:
     evening_time: str = "15:50:00"
     max_retries: int = 3
     retry_delay_seconds: int = 60
-    timeout_seconds: int = 300
     updated_at: Optional[str] = None
 
 
@@ -104,7 +103,7 @@ class SchedulerStateManager:
                     evening_time TEXT DEFAULT '15:50:00',
                     max_retries INTEGER DEFAULT 3,
                     retry_delay_seconds INTEGER DEFAULT 60,
-                    timeout_seconds INTEGER DEFAULT 300,
+                    -- databases made before #601 also have an unused timeout_seconds column
                     updated_at TEXT
                 )
             """)
@@ -174,7 +173,6 @@ class SchedulerStateManager:
                     evening_time=row["evening_time"],
                     max_retries=row["max_retries"],
                     retry_delay_seconds=row["retry_delay_seconds"],
-                    timeout_seconds=row["timeout_seconds"],
                     updated_at=row["updated_at"],
                 )
             else:
@@ -203,8 +201,8 @@ class SchedulerStateManager:
                 """
                 INSERT OR REPLACE INTO scheduler_state
                 (id, enabled, morning_enabled, evening_enabled, morning_time,
-                 evening_time, max_retries, retry_delay_seconds, timeout_seconds, updated_at)
-                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 evening_time, max_retries, retry_delay_seconds, updated_at)
+                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     state.enabled,
@@ -214,7 +212,6 @@ class SchedulerStateManager:
                     state.evening_time,
                     state.max_retries,
                     state.retry_delay_seconds,
-                    state.timeout_seconds,
                     now_iso(),
                 ),
             )

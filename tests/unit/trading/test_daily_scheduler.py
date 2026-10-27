@@ -147,7 +147,7 @@ def test_failures_are_retried_on_fresh_broker_state_then_recorded_as_failed(make
 
     assert scheduler.trading_cycle.morning_routine.call_count == 3
     assert scheduler.trading_cycle.invalidate_broker_cache.call_count == 3
-    scheduler.trading_cycle.morning_routine.assert_called_with(raise_errors=True)
+    scheduler.trading_cycle.morning_routine.assert_called_with(raise_errors=True, dry_run=False)
     assert log.status == "failed"
     assert scheduler.state_manager.get_last_execution("morning").status == "failed"
     assert not scheduler.state_manager.was_routine_run_today("morning")

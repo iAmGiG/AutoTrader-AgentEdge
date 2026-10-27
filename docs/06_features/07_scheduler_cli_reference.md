@@ -60,7 +60,7 @@ Scheduler> status
    - add the cron entry: ./scripts/deployment/setup_cron.sh (recommended)
    - or run the daemon: python main.py --daemon
 
-   Or use 'test morning/evening' to run now (acts on the broker)
+   Or use 'test morning/evening' to run now (acts on the broker), or 'test morning dry' to send no orders
 
 ⚙️  Configuration:
    Morning: 09:20:00 ET
@@ -236,14 +236,17 @@ Scheduler> disable
 #### `test morning`
 
 Run the morning routine now instead of waiting for its scheduled time. It is the real
-routine, run against the broker: it can place, renew and raise stops.
+routine, run against the broker: it can place, renew and raise stops. Add `dry`
+(`test morning dry`) to send no orders and save nothing: the report, saved as
+`reports/daily/<date>_morning_dry_run.md`, shows what the routine would have done. With
+`dry_run: true` in the config, `test morning` is a dry run too.
 
 **Example:**
 
 ```text
 Scheduler> test morning
 
-🧪 Testing morning routine...
+🧪 Testing morning routine (acts on the broker)...
 
 ✅ Morning routine completed
 
@@ -271,12 +274,13 @@ Full report saved to: reports/daily/
 #### `test evening`
 
 Run the evening routine now. As with `test morning`, it acts on the broker: it can
-place and renew stops, and raises them only while the market is open.
+place and renew stops, and raises them only while the market is open. `test evening dry`
+sends no orders and saves nothing.
 
 ```text
 Scheduler> test evening
 
-🧪 Testing evening routine...
+🧪 Testing evening routine (acts on the broker)...
 
 ✅ Evening routine completed
 
@@ -355,13 +359,12 @@ Editable via `edit` command:
 | `morning_routine_time` | time | Morning execution time (ET) | `09:20:00` |
 | `evening_routine_time` | time | Evening execution time (ET) | `15:50:00` |
 | `max_retries` | integer (1-10) | Retry attempts on failure | `3` |
-| `dry_run` | boolean | Not enforced yet: routines still act on the broker | `false` |
+| `dry_run` | boolean | Routines send no orders and change no saved state; reports show what they would do. While on, stops are not maintained | `false` |
 
 **Read-only fields** (edit config file directly):
 
 - `market_timezone`: Always `America/New_York`
 - `retry_delay_seconds`: Initial retry delay (exponential backoff)
-- `timeout_seconds`: Max seconds per routine (not enforced yet)
 - `enable_notifications`: Future feature
 
 ## Use Cases
@@ -410,8 +413,8 @@ Scheduler> enable
    ```text
    Scheduler> edit
    # Make changes
-   Scheduler> test morning
-   Scheduler> test evening
+   Scheduler> test morning dry
+   Scheduler> test evening dry
    ```
 
 2. **Check history before troubleshooting**
@@ -421,10 +424,10 @@ Scheduler> enable
    # Look for patterns in failures
    ```
 
-3. **Remember that tests are real runs**
+3. **Remember that tests without `dry` are real runs**
 
-   `dry_run` is not enforced yet: `test morning` and `test evening` place, renew and raise
-   stops on the broker, as the scheduled routines do.
+   `test morning` and `test evening` place, renew and raise stops on the broker, as the
+   scheduled routines do. Add `dry` to see what they would do without sending anything.
 
 4. **Monitor next run before leaving**
 
