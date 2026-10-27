@@ -78,6 +78,9 @@ STOP_REPAIR_TYPES = ("MISSING_STOP", "STOP_EXPIRING")
 # Discrepancy action of a stop repair a dry run did not send (#601)
 DRY_RUN_ACTION = "DRY_RUN_NOT_SENT"
 
+# Open notices listed in a routine report (the latest); the scheduler CLI's `notices` has all
+REPORT_NOTICES = 10
+
 DRY_RUN_BANNER = (
     "> 🧪 **DRY RUN**: no orders were sent, and local state, daily records and GTT "
     "triggers were not changed. Stop changes below are what the routine would have made.\n\n"
@@ -227,7 +230,10 @@ class CostEfficientTradeCycle:
     dry_run = False
     _dry_run_active = False
     position_tracker = None
-    last_alerts: Tuple[PositionAlertSummary, ...] = ()  # the latest routine's alerts
+    # The latest routine's alerts and discrepancies, read by the scheduler for its notices
+    last_alerts: Tuple[PositionAlertSummary, ...] = ()
+    last_discrepancies: Tuple[Discrepancy, ...] = ()
+    notice_store = None  # set by the DailyScheduler; the reports list its open notices
 
     def __init__(self, state_file: str = None, dry_run: bool = False):
         # Load path configuration from config_defaults/paths_config.yaml
@@ -341,6 +347,12 @@ class CostEfficientTradeCycle:
             if tracker is not None:
                 tracker.positions, tracker.alert_counter = saved_tracker
             self._dry_run_active = False
+
+    def _start_routine(self) -> None:
+        """Forget the previous routine's results, so a routine that fails early leaves none."""
+        self.last_alerts = ()
+        self.last_discrepancies = ()
+        self.last_report_path = None
 
     # -------------------------------------------------------------------------
     # Backward-compatible property accessors
@@ -821,12 +833,37 @@ class CostEfficientTradeCycle:
     def _append_report_sections(
         self, report: str, gtt_results: List[Any], record_lines: List[str]
     ) -> str:
-        """The routine report with its GTT results and daily records, where there are any."""
+        """The routine report with its GTT results, daily records and open notices, if any."""
         if gtt_results:
             report += "\n" + "\n".join(self._format_gtt_results_for_report(gtt_results))
         if record_lines:
             report += "\n" + "\n".join(record_lines)
+        notice_lines = self._open_notice_lines()
+        if notice_lines:
+            report += "\n" + "\n".join(notice_lines)
         return report
+
+    def _open_notice_lines(self) -> List[str]:
+        """
+        Report lines for the notices nobody has acknowledged (resolved ones are marked), the
+        latest REPORT_NOTICES of them, or none. Contained: notices never make a routine fail.
+        """
+        if self.notice_store is None:
+            return []
+        try:
+            notices = list(self.notice_store.open_notices())
+            lines = [f"- {notice.line()}" for notice in notices[-REPORT_NOTICES:]]
+        except Exception as e:
+            logger.warning(f"Open notices not listed in the report: {e}")
+            return []
+        if not lines:
+            return []
+        older = len(notices) - len(lines)
+        if older:
+            lines.append(
+                f"- ... and {older} older ones (`notices` in the scheduler CLI lists them all)"
+            )
+        return ["", "## Open Notices", ""] + lines
 
     def _format_gtt_results_for_report(self, gtt_results: List[Any]) -> List[str]:
         """Format GTT results for inclusion in routine report."""
@@ -888,6 +925,7 @@ class CostEfficientTradeCycle:
 
     def _morning_routine(self, raise_errors: bool) -> str:
         """The morning routine's steps (see morning_routine)."""
+        self._start_routine()
         logger.info("Starting morning routine%s...", " (dry run)" if self._dry_run_active else "")
 
         try:
@@ -903,6 +941,7 @@ class CostEfficientTradeCycle:
             # Step 2.5: Re-place missing stops, renew aging GTC ones (Issue #586)
             stop_discrepancies = self.check_and_repair_stops(broker_state)
             discrepancies.extend(stop_discrepancies)
+            self.last_discrepancies = tuple(discrepancies)
             if any(d.action == "AUTO_FIXED" for d in stop_discrepancies):
                 # Later steps (stop adjustments) must see the new stop orders
                 broker_state = self.fetch_broker_state(force_refresh=True)
@@ -951,6 +990,7 @@ class CostEfficientTradeCycle:
 
     def _evening_routine(self, raise_errors: bool) -> str:
         """The evening routine's steps (see evening_routine)."""
+        self._start_routine()
         logger.info("Starting evening routine%s...", " (dry run)" if self._dry_run_active else "")
 
         try:
@@ -962,6 +1002,7 @@ class CostEfficientTradeCycle:
             # Re-place missing stops, renew aging GTC ones (Issue #586)
             stop_discrepancies = self.check_and_repair_stops(broker_state)
             discrepancies.extend(stop_discrepancies)
+            self.last_discrepancies = tuple(discrepancies)
             if any(d.action == "AUTO_FIXED" for d in stop_discrepancies):
                 # Later steps (the GTT check counts shares held by stops) see the new stops
                 broker_state = self.fetch_broker_state(force_refresh=True)
@@ -1028,6 +1069,7 @@ class CostEfficientTradeCycle:
 
     def _recover_from_crash(self, raise_errors: bool) -> str:
         """The crash recovery's steps (see recover_from_crash)."""
+        self._start_routine()
         logger.info("Starting crash recovery%s...", " (dry run)" if self._dry_run_active else "")
 
         try:

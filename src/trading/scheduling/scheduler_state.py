@@ -14,9 +14,10 @@ Uses the same state/user.db as trading_modes.py for consistency.
 
 import logging
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
 from src.utils.date_utils import get_datetime_now, now_iso
@@ -44,6 +45,19 @@ class SchedulerState:
     max_retries: int = 3
     retry_delay_seconds: int = 60
     updated_at: Optional[str] = None
+    # When each routine last went from off to on (the scheduler and the routine enabled);
+    # save_state() sets them from the saved row, whatever the state passed in holds
+    morning_enabled_at: Optional[str] = None
+    evening_enabled_at: Optional[str] = None
+
+
+# Columns added to scheduler_state after it was first made (#342)
+_ENABLED_AT_COLUMNS = ("morning_enabled_at", "evening_enabled_at")
+
+
+def _turned_on_at(on: bool, was_on: bool, since: Optional[str], now: str) -> Optional[str]:
+    """A routine's enabled_at stamp after a save: now if the save turned it on."""
+    return now if on and not was_on else since
 
 
 @dataclass
@@ -59,6 +73,21 @@ class SchedulerExecution:
     error_message: Optional[str] = None
     report_path: Optional[str] = None
     api_calls_used: int = 0
+
+
+def _execution_from_row(row: sqlite3.Row) -> SchedulerExecution:
+    """A scheduler_history row as a SchedulerExecution."""
+    return SchedulerExecution(
+        id=row["id"],
+        routine_type=row["routine_type"],
+        started_at=row["started_at"],
+        completed_at=row["completed_at"],
+        status=row["status"],
+        attempt=row["attempt"],
+        error_message=row["error_message"],
+        report_path=row["report_path"],
+        api_calls_used=row["api_calls_used"],
+    )
 
 
 class SchedulerStateManager:
@@ -104,9 +133,15 @@ class SchedulerStateManager:
                     max_retries INTEGER DEFAULT 3,
                     retry_delay_seconds INTEGER DEFAULT 60,
                     -- databases made before #601 also have an unused timeout_seconds column
-                    updated_at TEXT
+                    updated_at TEXT,
+                    morning_enabled_at TEXT,
+                    evening_enabled_at TEXT
                 )
             """)
+            columns = {row[1] for row in cursor.execute("PRAGMA table_info(scheduler_state)")}
+            for column in _ENABLED_AT_COLUMNS:
+                if column not in columns:
+                    cursor.execute(f"ALTER TABLE scheduler_state ADD COLUMN {column} TEXT")
 
             # Scheduler execution history (replaces JSON log)
             cursor.execute("""
@@ -174,6 +209,11 @@ class SchedulerStateManager:
                     max_retries=row["max_retries"],
                     retry_delay_seconds=row["retry_delay_seconds"],
                     updated_at=row["updated_at"],
+                    **{
+                        column: row[column]
+                        for column in _ENABLED_AT_COLUMNS
+                        if column in row.keys()
+                    },
                 )
             else:
                 # Return defaults if no state exists
@@ -184,7 +224,9 @@ class SchedulerStateManager:
 
     def save_state(self, state: SchedulerState) -> bool:
         """
-        Save scheduler state.
+        Save scheduler state. A routine that this save turns on (the scheduler and the
+        routine both enabled, where before they weren't) gets enabled_at = now; any other
+        save keeps its stamp, so changing a time doesn't look like switching it on.
 
         Args:
             state: SchedulerState to persist
@@ -193,6 +235,17 @@ class SchedulerStateManager:
             True if successful
         """
         try:
+            before = self.get_state() if self.has_saved_state() else None
+            now = now_iso()
+            stamps = [
+                _turned_on_at(
+                    state.enabled and getattr(state, f"{routine}_enabled"),
+                    bool(before and before.enabled and getattr(before, f"{routine}_enabled")),
+                    getattr(before, f"{routine}_enabled_at", None),
+                    now,
+                )
+                for routine in ("morning", "evening")
+            ]
             conn = self._get_connection()
             cursor = conn.cursor()
 
@@ -201,8 +254,9 @@ class SchedulerStateManager:
                 """
                 INSERT OR REPLACE INTO scheduler_state
                 (id, enabled, morning_enabled, evening_enabled, morning_time,
-                 evening_time, max_retries, retry_delay_seconds, updated_at)
-                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+                 evening_time, max_retries, retry_delay_seconds, updated_at,
+                 morning_enabled_at, evening_enabled_at)
+                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     state.enabled,
@@ -212,7 +266,8 @@ class SchedulerStateManager:
                     state.evening_time,
                     state.max_retries,
                     state.retry_delay_seconds,
-                    now_iso(),
+                    now,
+                    *stamps,
                 ),
             )
 
@@ -424,20 +479,7 @@ class SchedulerStateManager:
             rows = cursor.fetchall()
             conn.close()
 
-            return [
-                SchedulerExecution(
-                    id=row["id"],
-                    routine_type=row["routine_type"],
-                    started_at=row["started_at"],
-                    completed_at=row["completed_at"],
-                    status=row["status"],
-                    attempt=row["attempt"],
-                    error_message=row["error_message"],
-                    report_path=row["report_path"],
-                    api_calls_used=row["api_calls_used"],
-                )
-                for row in rows
-            ]
+            return [_execution_from_row(row) for row in rows]
         except Exception as e:
             logger.error(f"Failed to get execution history: {e}")
             return []
@@ -467,19 +509,7 @@ class SchedulerStateManager:
             row = cursor.fetchone()
             conn.close()
 
-            if row:
-                return SchedulerExecution(
-                    id=row["id"],
-                    routine_type=row["routine_type"],
-                    started_at=row["started_at"],
-                    completed_at=row["completed_at"],
-                    status=row["status"],
-                    attempt=row["attempt"],
-                    error_message=row["error_message"],
-                    report_path=row["report_path"],
-                    api_calls_used=row["api_calls_used"],
-                )
-            return None
+            return _execution_from_row(row) if row else None
         except Exception as e:
             logger.error(f"Failed to get last execution: {e}")
             return None
@@ -547,6 +577,35 @@ class SchedulerStateManager:
         except Exception as e:
             logger.error(f"Failed to check if routine finished today: {e}")
             return False
+
+    def executions_on(
+        self, market_dates: Sequence[str]
+    ) -> Dict[Tuple[str, str], List[SchedulerExecution]]:
+        """
+        The runs recorded for trading days, by (routine type, day), oldest first. A run
+        belongs to its market date, or to its start date where none was saved (as in
+        was_routine_finished_today).
+
+        Unlike the other readers this raises on a database error, so the caller can tell
+        an unreadable history from an empty one.
+
+        Args:
+            market_dates: Trading days (YYYY-MM-DD, ET)
+        """
+        runs: Dict[Tuple[str, str], List[SchedulerExecution]] = {}
+        with closing(self._get_connection()) as conn:
+            for day in market_dates:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM scheduler_history
+                    WHERE coalesce(market_date, date(started_at)) = ?
+                    ORDER BY started_at, id
+                """,
+                    (day,),
+                ).fetchall()
+                for row in rows:
+                    runs.setdefault((row["routine_type"], day), []).append(_execution_from_row(row))
+        return runs
 
     def get_stats(self, days: int = 7) -> Dict[str, Any]:
         """

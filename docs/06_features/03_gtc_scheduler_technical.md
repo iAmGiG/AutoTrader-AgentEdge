@@ -52,6 +52,7 @@ src/trading/
 ├── scheduling/
 │   ├── daily_scheduler.py     # Main scheduler with retry logic, run window and lock
 │   ├── scheduler_state.py     # Saved flags and run history (state/user.db)
+│   ├── notices.py             # Local notices: failures visible without reading logs
 │   └── trading_cycle.py       # Morning/evening routines (Issue #313)
 ├── state/
 │   ├── state_reconciler.py    # Broker-as-truth reconcile, stop checks and raises
@@ -262,6 +263,7 @@ Success rate: 100.0%
 - **Scheduler log**: `state/scheduler.log` (rotated at 5 MB, five kept; written by the daemon and cron runs)
 - **Daemon crashes**: `state/scheduler-daemon.err`
 - **Execution log**: `state/scheduler_execution_log.json` and `scheduler_history` in `state/user.db`
+- **Notices**: `state/notices.json` (with `notices.lock` beside it), see [Notices](#notices)
 - **Daily records**: `account_daily`, `position_daily` and `fills` in `state/user.db` (see `src/trading/state/daily_records.py`)
 - **Broker snapshots**: `position_snapshots` and `order_snapshots` in `.cache/trading_data.db`
 - **Morning reports**: `reports/daily/*_morning.md`
@@ -269,11 +271,61 @@ Success rate: 100.0%
 - **systemd logs**: `journalctl -u autogen-trading-scheduler` (start and stop only; output goes to `state/scheduler.log`)
 - **Cron errors**: `state/scheduler-cron.err` (cron's stdout repeats `state/scheduler.log`, so it is dropped)
 
+### Notices
+
+A failure in the unattended loop leaves a *notice* in `state/notices.json`, so it is visible
+without reading logs (#342). Notices are local: they involve no network call (email and a
+heartbeat are a later change). There is one notice per condition per day, so a condition seen
+again only updates the notice's count and last-seen time.
+
+| Key | Severity | Raised when |
+|-----|----------|-------------|
+| `routine_failed:<routine>:<date>` | CRITICAL | the routine failed after its retries |
+| `routine_missed:<routine>:<date>` | CRITICAL | no run is recorded 10 minutes after the routine's time |
+| `routine_stuck:<routine>:<date>` | CRITICAL | a run started over 30 minutes ago and never finished |
+| `run_due_error:<date>:<Exception>` | CRITICAL | `main.py --run-due` crashed (the traceback still goes to `state/scheduler-cron.err`) |
+| `stop_breach:<SYM>:<date>` | CRITICAL | a position is at or below its stop and still open |
+| `target_breach:<SYM>:<date>` | WARNING | a position is at or above its target and still open |
+| `unprotected:<SYM>` | CRITICAL | a position was left without a protective stop (until a run finds it protected) |
+| `state_db_error:<date>` | CRITICAL | the saved flags or run history in `state/user.db` can't be read |
+| `notices_file_reset:<date>` | WARNING | `notices.json` was unreadable; it was moved aside as `notices.json.corrupt-<time>` |
+
+How they are found:
+
+- **A run's own outcome** (`DailyScheduler._run_task`): a failure after the retries, the day's
+  failed, missed and stuck notices resolved once a run completes, and, for a real run, the
+  position notices from the routine's `last_alerts` (CRITICAL alerts only) and
+  `last_discrepancies` (a missing stop left for review, or one that could not be placed). A dry
+  run raises only the failure. The CLI's `test morning|evening` calls the routine directly, so it
+  raises none.
+- **The history, on every cron tick** (`DailyScheduler.check_routine_outcomes()`, run at the end
+  of each `run_scheduled_tasks()`, lock or not): for today, once a routine's 5-minute run window
+  and 5 more minutes have passed, and for the previous trading day, a completed or dry-run row
+  is fine, a failed row is a failure, a row still `running` after 30 minutes is stuck, and no row
+  is a miss. It skips a disabled scheduler or routine, excuses a miss when the routine was
+  switched on only after its window (`morning_enabled_at` / `evening_enabled_at` in
+  `scheduler_state`; a save that changes a time or the other routine doesn't count), and makes no broker or calendar call of its own: today's calendar
+  lookup is the one `should_run_task` made, and the previous day is read from the NYSE rules (a
+  one-off closure that neither the rules nor `config_defaults/market_hours.yaml` list would show
+  as a miss the next day). An unreadable history is a `state_db_error` notice; the check never
+  raises into the tick.
+
+Notices stay open until a person runs `ack` in the scheduler CLI (`notices` lists them, `status`
+shows the latest, each routine report ends with an "Open Notices" section, and
+`get_scheduler_status` carries the count). A resolved notice is marked `resolved` but is not
+acknowledged for you. If its condition returns, it opens again. Notices are dropped 30 days after
+they were acknowledged or resolved, unless the condition was seen again since, and a report
+lists the latest 10. A notices file that can't be read (no access, an I/O error) is left alone
+and reported as unavailable; only a broken one is set aside. Titles and details are cleaned of API keys, account numbers, ids and equity and
+cut to 300 characters; the file is replaced whole on every write, under a lock, so a cron run and
+the CLI can use it together.
+
 ## Testing
 
 ```bash
 # Run tests
 python -m pytest tests/unit/trading/test_daily_scheduler.py -v
+python -m pytest tests/unit/trading/test_notices.py tests/unit/trading/test_scheduler_notices.py -v
 ```
 
 ## Performance
@@ -388,7 +440,8 @@ python -m src.trading.scheduling.daily_scheduler --mode once --task morning_rout
 
 ### Planned (Future Issues)
 
-- [ ] Email/SMS notifications on failures
+- [x] Local notices for failures (done, see [Notices](#notices))
+- [ ] Email/SMS notifications on failures, and a dead-man heartbeat for a cron that stops
 - [ ] Telegram bot integration
 - [x] Skip weekends and NYSE holidays; move the evening routine on early closes (done)
 - [ ] Multi-account support

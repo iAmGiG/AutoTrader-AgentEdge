@@ -7,6 +7,7 @@ Automates daily trading execution with:
 - Comprehensive retry logic
 - Robust error handling
 - "Set it and forget it" automation
+- Local notices for failed, missed and stuck routines (#342, see notices.py)
 
 Foundation: Built on Issue #313 (Order Management System)
 Issue #478: State persistence via SQLite (state/user.db)
@@ -18,21 +19,42 @@ import datetime as datetime_module
 import json
 import logging
 import os
+import re
 import sys
 import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from enum import Enum
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
-from .scheduler_state import SchedulerStateManager, get_scheduler_state_manager
+from .notices import (
+    CRITICAL,
+    ROUTINE_FAILED,
+    ROUTINE_MISSED,
+    ROUTINE_STUCK,
+    STATE_DB_ERROR,
+    STOP_BREACH,
+    TARGET_BREACH,
+    UNPROTECTED,
+    WARNING,
+    NoticeStore,
+    routine_key,
+)
+from .scheduler_state import SchedulerExecution, SchedulerStateManager, get_scheduler_state_manager
 from .trading_cycle import CostEfficientTradeCycle, RoutineType
-from src.utils.date_utils import get_datetime_now, now_iso, parse_date_string
-from src.utils.market_hours import DEFAULT_MARKET_CLOSE, get_market_hours_for_date
+from src.trading.positions.position_tracker import AlertType
+from src.utils.date_utils import add_business_days, get_datetime_now, now_iso, parse_date_string
+from src.utils.market_hours import (
+    DEFAULT_MARKET_CLOSE,
+    EARLY_MARKET_CLOSE,
+    get_market_hours_for_date,
+    is_nyse_trading_day,
+    nyse_early_closes,
+)
 from src.utils.state_paths import get_state_dir
 
 try:
@@ -68,6 +90,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
 # A task runs if a check happens within this long after its scheduled time
 RUN_WINDOW = timedelta(minutes=5)
+
+# A routine counts as missed this long after its run window ended: a slow cron tick or a
+# routine still in its retries is not a miss
+OUTCOME_GRACE = timedelta(minutes=5)
+
+# A run recorded as started and never finished this long ago is stuck (a routine with its
+# retries takes under ten minutes)
+STUCK_AFTER = timedelta(minutes=30)
 
 
 def load_scheduler_config(config_file: Optional[str] = None) -> Dict[str, Any]:
@@ -220,6 +250,67 @@ class ExecutionLog:
     error_message: Optional[str] = None
     report_path: Optional[str] = None
     api_calls_used: int = 0
+    market_date: Optional[str] = None  # the trading day (ET) the run is for
+
+
+class RunOutcome(Enum):
+    """How a routine's recorded runs for a trading day stand."""
+
+    OK = "ok"  # a run completed (or ran dry)
+    FAILED = "failed"  # no run completed, and one failed after its retries
+    STUCK = "stuck"  # a run started, never finished, and is too old to be still running
+    RUNNING = "running"  # a run started and hasn't finished, recently
+    MISSED = "missed"  # no run is recorded
+
+
+def _local_time(stamp: str) -> datetime:
+    """A time saved by now_iso() (the host's local time, no zone) as an aware datetime."""
+    moment = datetime.fromisoformat(stamp)
+    return moment if moment.tzinfo else moment.astimezone()
+
+
+def run_outcome(
+    runs: Sequence[SchedulerExecution], now: datetime
+) -> Tuple[RunOutcome, Optional[SchedulerExecution]]:
+    """
+    How a routine's runs for a trading day stand, and the run that says so.
+
+    A completed run (or a dry run) settles it, then a failure; a run that started and never
+    finished is stuck once it is STUCK_AFTER old; with no runs the routine was missed.
+
+    Args:
+        runs: The day's runs of one routine, oldest first (SchedulerStateManager.executions_on)
+        now: The current time (aware)
+    """
+    for outcome, statuses in (
+        (RunOutcome.OK, ("completed", "dry_run")),
+        (RunOutcome.FAILED, ("failed",)),
+    ):
+        match = next((run for run in reversed(runs) if run.status in statuses), None)
+        if match is not None:
+            return outcome, match
+    if not runs:
+        return RunOutcome.MISSED, None
+    oldest = runs[0]
+    stuck = now - _local_time(oldest.started_at) >= STUCK_AFTER
+    return (RunOutcome.STUCK if stuck else RunOutcome.RUNNING), oldest
+
+
+# What a position alert becomes: (notice kind, severity, what the price did)
+_BREACH_NOTICES = {
+    AlertType.LOSS_THRESHOLD_REACHED.value: (STOP_BREACH, CRITICAL, "at or below its stop"),
+    AlertType.PROFIT_TARGET_REACHED.value: (TARGET_BREACH, WARNING, "at or above its target"),
+}
+
+
+def _items(value: Any) -> Tuple[Any, ...]:
+    """A routine's list of alerts or discrepancies as a tuple; anything else is none."""
+    return tuple(value) if isinstance(value, (list, tuple)) else ()
+
+
+def _text_or_none(value: Any) -> Optional[str]:
+    """A string as it is, anything else (say, a mock's attribute) as None."""
+    return value if isinstance(value, str) else None
 
 
 class DailyScheduler:
@@ -234,7 +325,9 @@ class DailyScheduler:
     - Minimal API calls (3-5 per routine)
     """
 
-    def __init__(self, config_file: str = None, trading_cycle=None, state_manager=None):
+    def __init__(
+        self, config_file: str = None, trading_cycle=None, state_manager=None, notice_store=None
+    ):
         """
         Initialize the daily scheduler.
 
@@ -243,6 +336,7 @@ class DailyScheduler:
             trading_cycle: Optional CostEfficientTradeCycle instance to reuse
                 (reduces client instantiation)
             state_manager: Optional SchedulerStateManager (default: the shared one)
+            notice_store: Optional NoticeStore (default: state/notices.json, opened on first use)
         """
         # Load paths configuration
         paths_config_file = "config_defaults/paths_config.yaml"
@@ -260,9 +354,15 @@ class DailyScheduler:
             }
 
         self.config = load_scheduler_config(config_file)
+        self._notice_store = notice_store
         # Reuse provided trading_cycle, else create one when a routine first needs it
         self._trading_cycle = trading_cycle
+        if trading_cycle is not None:
+            self._share_notice_store(trading_cycle)
         self.execution_log: List[ExecutionLog] = []
+        # The market calendar's answers during one check, so the lookup should_run_task makes
+        # is reused by check_routine_outcomes (see run_scheduled_tasks)
+        self._hours_memo: Dict[date, Tuple[dt_time, dt_time, bool]] = {}
 
         # Execution log file name from config, kept in the state directory
         log_file_path = self.paths.get("state_files", {}).get(
@@ -286,7 +386,25 @@ class DailyScheduler:
         """The trading cycle, created on first use: a check with nothing due needs none."""
         if self._trading_cycle is None:
             self._trading_cycle = CostEfficientTradeCycle()
+            self._share_notice_store(self._trading_cycle)
         return self._trading_cycle
+
+    @property
+    def notice_store(self) -> NoticeStore:
+        """The notices (state/notices.json), opened on first use."""
+        if self._notice_store is None:
+            self._notice_store = NoticeStore()
+        return self._notice_store
+
+    @notice_store.setter
+    def notice_store(self, value: NoticeStore) -> None:
+        self._notice_store = value
+        if self._trading_cycle is not None:
+            self._share_notice_store(self._trading_cycle)
+
+    def _share_notice_store(self, cycle) -> None:
+        """Give the trading cycle the notices, so its reports list the open ones."""
+        cycle.notice_store = self.notice_store
 
     @property
     def dry_run(self) -> bool:
@@ -296,6 +414,7 @@ class DailyScheduler:
     @trading_cycle.setter
     def trading_cycle(self, value: CostEfficientTradeCycle) -> None:
         self._trading_cycle = value
+        self._share_notice_store(value)
 
     def _create_default_tasks(self) -> List[ScheduledTask]:
         """Create default morning and evening tasks"""
@@ -366,6 +485,7 @@ class DailyScheduler:
         # Record execution start in SQLite (#478), under the trading day it runs for
         routine_type = task.name.replace("_routine", "")
         market_date = self._market_now().date().isoformat()
+        log_entry.market_date = market_date
         execution_id = self.state_manager.record_execution_start(
             routine_type, attempt=1, market_date=market_date
         )
@@ -467,10 +587,32 @@ class DailyScheduler:
 
         On an early close the evening routine moves back as far as the close does
         (15:50 becomes 12:50 for a 13:00 close), so it still runs before the close.
+
+        The calendar is asked once per day until the next run_scheduled_tasks(), however
+        many times a check needs the time.
         """
-        _, close, trading_day = get_market_hours_for_date(day)
-        if not trading_day:
+        _, close, trading_day = self._market_hours(day)
+        return self._run_time(task, day, close) if trading_day else None
+
+    def _market_hours(self, day: date) -> Tuple[dt_time, dt_time, bool]:
+        """(open, close, is a trading day) for a day, from the calendar once per check."""
+        if day not in self._hours_memo:
+            self._hours_memo[day] = get_market_hours_for_date(day)
+        return self._hours_memo[day]
+
+    def _nyse_scheduled_at(self, task: ScheduledTask, day: date) -> Optional[datetime]:
+        """
+        When a task runs on a day, from the NYSE rules alone (no calendar call):
+        scheduled_at() without the one-off closures only the calendar knows.
+        """
+        if not is_nyse_trading_day(day):
             return None
+        early = day in nyse_early_closes(day.year)
+        return self._run_time(task, day, EARLY_MARKET_CLOSE if early else DEFAULT_MARKET_CLOSE)
+
+    @staticmethod
+    def _run_time(task: ScheduledTask, day: date, close: dt_time) -> datetime:
+        """A task's time on a trading day that closes at `close` (see scheduled_at)."""
         when = datetime.combine(day, task.scheduled_time, tzinfo=ZoneInfo(task.timezone))
         if task.routine_type == RoutineType.EVENING and close < DEFAULT_MARKET_CLOSE:
             when -= datetime.combine(day, DEFAULT_MARKET_CLOSE) - datetime.combine(day, close)
@@ -554,31 +696,263 @@ class DailyScheduler:
                 fcntl.flock(handle, fcntl.LOCK_UN)
 
     def _run_task(self, task: ScheduledTask) -> ExecutionLog:
-        """Execute a task with retries, then log and save the result."""
+        """Execute a task with retries, then log and save the result and note its outcome."""
         log_entry = self._execute_task_with_retry(task)
         self.execution_log.append(log_entry)
         self._save_execution_log()
         self._log_execution_summary(log_entry)
+        self._record_notices(task, log_entry)
         return log_entry
 
     def run_scheduled_tasks(self) -> List[ExecutionLog]:
         """
-        Run any tasks that are due now.
+        Run any tasks that are due now, then check the routines' outcomes (notices).
         This should be called periodically (e.g., every minute).
 
         Returns:
             Log entries of the tasks run (none if another run holds the lock)
         """
         ran: List[ExecutionLog] = []
+        self._hours_memo.clear()
         with self.run_lock() as acquired:
-            if not acquired:
+            if acquired:
+                for task in self.tasks:
+                    if self.should_run_task(task):
+                        logger.info("🚀 Starting scheduled task: %s", task.name)
+                        ran.append(self._run_task(task))
+            else:
                 logger.info("Another scheduler run is in progress; skipping this check")
-                return ran
-            for task in self.tasks:
-                if self.should_run_task(task):
-                    logger.info("🚀 Starting scheduled task: %s", task.name)
-                    ran.append(self._run_task(task))
+        # Lock or not: a run that never finishes is one that keeps others from getting it
+        self.check_routine_outcomes()
         return ran
+
+    # -------------------------------------------------------------------------
+    # Notices: what a person should look at (#342)
+    # -------------------------------------------------------------------------
+
+    def _record_notices(self, task: ScheduledTask, log_entry: ExecutionLog) -> None:
+        """
+        Notices for a run's outcome: a routine that failed after its retries; a completed
+        run clears its routine's earlier notices for the day; and, for a real run, the
+        positions it found through their stop or target or without a protective stop.
+
+        Contained: a notice problem never fails a routine or hides its result.
+        """
+        try:
+            routine = task.name.replace("_routine", "")
+            market_date = log_entry.market_date or self._market_now().date().isoformat()
+            completed = log_entry.status == ScheduleStatus.COMPLETED.value
+            if log_entry.status == ScheduleStatus.FAILED.value:
+                self._notice_failure(routine, market_date, log_entry)
+            elif completed or log_entry.status == ScheduleStatus.DRY_RUN.value:
+                self.notice_store.resolve_kinds(routine, market_date)
+            if not self.dry_run and task.routine_type in (RoutineType.MORNING, RoutineType.EVENING):
+                self._notice_positions(market_date, completed)
+        except Exception as e:
+            logger.warning("Notices not recorded for %s: %s", task.name, e, exc_info=True)
+
+    def _notice_failure(self, routine: str, market_date: str, log_entry: ExecutionLog) -> None:
+        """The notice for a routine that failed on every attempt."""
+        report_path = _text_or_none(log_entry.report_path) or _text_or_none(
+            getattr(self._trading_cycle, "last_report_path", None)
+        )
+        attempts = f"{log_entry.attempt} attempt" + ("s" if log_entry.attempt != 1 else "")
+        self.notice_store.raise_notice(
+            key=routine_key(ROUTINE_FAILED, routine, market_date),
+            kind=ROUTINE_FAILED,
+            severity=CRITICAL,
+            title=f"{routine.title()} routine failed after {attempts}",
+            detail=log_entry.error_message or "",
+            market_date=market_date,
+            report_path=report_path,
+        )
+
+    def _notice_positions(self, market_date: str, run_completed: bool) -> None:
+        """
+        Notices for what the latest routine found: positions through their stop or target
+        while still open, and positions left without a protective stop. A completed run
+        that finds a position protected again clears its "unprotected" notice.
+        """
+        cycle = self._trading_cycle
+        report_path = _text_or_none(getattr(cycle, "last_report_path", None))
+        for alert in _items(getattr(cycle, "last_alerts", ())):
+            self._notice_breach(alert, market_date, report_path)
+        unprotected = {
+            d.symbol: d
+            for d in _items(getattr(cycle, "last_discrepancies", ()))
+            if d.type == "MISSING_STOP" and d.action == "NEEDS_HUMAN_REVIEW"
+        }
+        for symbol, discrepancy in unprotected.items():
+            details = discrepancy.details or {}
+            self.notice_store.raise_notice(
+                key=f"{UNPROTECTED}:{symbol}",
+                kind=UNPROTECTED,
+                severity=CRITICAL,
+                title=f"{symbol} has no protective stop",
+                detail=details.get("error") or details.get("reason") or "",
+                market_date=market_date,
+                symbol=symbol,
+                report_path=report_path,
+            )
+        if run_completed:
+            self.notice_store.resolve_cleared(UNPROTECTED, unprotected)
+
+    def _notice_breach(self, alert, market_date: str, report_path: Optional[str]) -> None:
+        """A notice for a CRITICAL alert: the price is through the stop or target, position open."""
+        spec = _BREACH_NOTICES.get(alert.alert_type)
+        if spec is None or alert.severity != "CRITICAL":
+            return
+        kind, severity, what = spec
+        self.notice_store.raise_notice(
+            key=f"{kind}:{alert.symbol}:{market_date}",
+            kind=kind,
+            severity=severity,
+            title=f"{alert.symbol} is {what}, still open",
+            detail=re.sub(r"^[^\w$]+", "", alert.message),  # without the severity emoji
+            market_date=market_date,
+            symbol=alert.symbol,
+            report_path=report_path,
+        )
+
+    def check_routine_outcomes(self, now: Optional[datetime] = None) -> None:
+        """
+        Notices for routines that failed, got stuck or never ran, found from the saved
+        history: today's once the run window and a grace period have passed, and the
+        previous trading day's.
+
+        Cron runs this on every tick, so it makes no broker call and no calendar call of
+        its own: today's time comes from the calendar answer should_run_task got, or from
+        the NYSE rules when the tick didn't get the lock, and the previous day's from the
+        NYSE rules. It never calls should_run_task and never raises: a problem here must
+        not stop the tick.
+
+        Args:
+            now: Current time (default: now in the market timezone)
+        """
+        try:
+            if now is None:
+                now = self._market_now()
+            else:
+                zone = ZoneInfo(self.config["market_timezone"])
+                now = now.astimezone(zone) if now.tzinfo else now.replace(tzinfo=zone)
+            self._check_outcomes(now)
+        except Exception as e:
+            logger.warning("Routine outcomes not checked: %s", e, exc_info=True)
+
+    def _check_outcomes(self, now: datetime) -> None:
+        """The outcome check for the previous trading day and today (see check_routine_outcomes)."""
+        today = now.date()
+        days = [date.fromisoformat(add_business_days(today.isoformat(), -1)), today]
+        try:
+            settings = self.effective_settings()
+            if not settings["enabled"]:
+                return
+            enabled_at = self._routines_enabled_at()
+            runs = self.state_manager.executions_on([day.isoformat() for day in days])
+        except Exception as e:
+            self._note_state_db_error(now, e)
+            return
+        for task in self.tasks:
+            if settings.get(task.name.replace("_routine", ""), True):
+                for day in days:
+                    self._check_day(task, day, runs, enabled_at.get(task.name), now)
+        self.notice_store.resolve(f"{STATE_DB_ERROR}:{today}")
+
+    def _check_day(
+        self,
+        task: ScheduledTask,
+        day: date,
+        runs: Dict[Tuple[str, str], List[SchedulerExecution]],
+        enabled_at: Optional[datetime],
+        now: datetime,
+    ) -> None:
+        """
+        One routine's notice, or the clearing of its notices, for one trading day. A miss is
+        excused when the routine was switched on (enabled_at) only after its window.
+        """
+        is_today = day == now.date()
+        if is_today and day in self._hours_memo:
+            when = self.scheduled_at(task, day)  # the calendar answer should_run_task got
+        else:  # the previous day, or a tick that didn't get the lock: no calendar call
+            when = self._nyse_scheduled_at(task, day)
+        if when is None or (is_today and now < when + RUN_WINDOW + OUTCOME_GRACE):
+            return  # no session today, or the routine isn't overdue yet
+        routine = task.name.replace("_routine", "")
+        market_date = day.isoformat()
+        outcome, run = run_outcome(runs.get((routine, market_date), []), now)
+        if outcome is RunOutcome.OK:
+            self.notice_store.resolve_kinds(routine, market_date)
+        elif outcome is RunOutcome.FAILED:
+            self._ensure_notice(
+                ROUTINE_FAILED, routine, market_date, "failed", run.error_message, run.report_path
+            )
+        elif outcome is RunOutcome.STUCK:
+            started = _local_time(run.started_at).astimezone(now.tzinfo)
+            detail = (
+                f"A run started at {started:%H:%M} ET and never finished; a hung or crashed "
+                "process may be holding state/scheduler.lock."
+            )
+            self._ensure_notice(
+                ROUTINE_STUCK, routine, market_date, "started and never finished", detail
+            )
+        elif outcome is RunOutcome.MISSED and not (enabled_at and enabled_at > when + RUN_WINDOW):
+            detail = (
+                f"No run is recorded for the {when:%H:%M} ET {routine} routine on {market_date}. "
+                "Is cron running? See state/scheduler.log and state/scheduler-cron.err."
+            )
+            self._ensure_notice(
+                ROUTINE_MISSED, routine, market_date, f"did not run on {market_date}", detail
+            )
+
+    def _ensure_notice(
+        self,
+        kind: str,
+        routine: str,
+        market_date: str,
+        what: str,
+        detail: Optional[str],
+        report_path: Optional[str] = None,
+    ) -> None:
+        """
+        Raise a routine's notice unless it is already open: the history is read on every
+        tick, so a condition that lasts is one notice, not one per tick.
+        """
+        self.notice_store.raise_notice(
+            key=routine_key(kind, routine, market_date),
+            kind=kind,
+            severity=CRITICAL,
+            title=f"{routine.title()} routine {what}",
+            detail=detail or "",
+            market_date=market_date,
+            report_path=_text_or_none(report_path),
+            update_existing=False,
+        )
+
+    def _routines_enabled_at(self) -> Dict[str, datetime]:
+        """
+        When each routine was last switched on, by task name (state/user.db). Saves that
+        change nothing else (a time, the other routine) don't count; empty while the config
+        file's flags apply, or for a database saved before the stamps existed.
+        """
+        if not self.state_manager.has_saved_state():
+            return {}
+        state = self.state_manager.get_state()
+        stamps = {f"{r}_routine": getattr(state, f"{r}_enabled_at") for r in ("morning", "evening")}
+        return {name: _local_time(stamp) for name, stamp in stamps.items() if stamp}
+
+    def _note_state_db_error(self, now: datetime, error: Exception) -> None:
+        """A notice that the scheduler's saved flags or history can't be read."""
+        logger.error("Scheduler state unreadable: %s", error, exc_info=True)
+        today = now.date().isoformat()
+        self.notice_store.raise_notice(
+            key=f"{STATE_DB_ERROR}:{today}",
+            kind=STATE_DB_ERROR,
+            severity=CRITICAL,
+            title="Scheduler state database unreadable",
+            detail=f"{type(error).__name__}: {error}",
+            market_date=today,
+            update_existing=False,
+        )
 
     def _log_execution_summary(self, log_entry: ExecutionLog):
         """Log execution summary for monitoring"""

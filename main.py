@@ -248,10 +248,27 @@ def _run_interactive_cli(account_id: str = None) -> None:
         sys.exit(1)
 
 
+def _note_run_due_error(error: Exception) -> None:
+    """
+    Leave a notice that the cron check crashed (see notices.py). Best effort: if even that
+    fails, say nothing, so the original error is the one that surfaces.
+    """
+    try:
+        from src.trading.scheduling.notices import record_run_due_error
+
+        record_run_due_error(error)
+    except Exception:
+        pass  # the caller re-raises the original error
+
+
 def _run_due_mode() -> int:
     """Run any scheduled routine that is due now (for cron). Returns the exit code."""
-    configure_scheduler_logging()
-    ran = DailyScheduler().run_scheduled_tasks()
+    try:
+        configure_scheduler_logging()
+        ran = DailyScheduler().run_scheduled_tasks()
+    except Exception as error:
+        _note_run_due_error(error)
+        raise  # the traceback still reaches cron's stderr (state/scheduler-cron.err)
     return 1 if any(entry.status == "failed" for entry in ran) else 0
 
 

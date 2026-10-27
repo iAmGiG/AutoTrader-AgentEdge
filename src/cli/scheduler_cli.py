@@ -26,6 +26,7 @@ from .scheduler import (
 )
 from .scheduler.message_loader import get_messages
 from src.trading.scheduling.daily_scheduler import DailyScheduler
+from src.trading.scheduling.notices import NoticeStore, is_notice_number
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class SchedulerCLI:
             scheduler: Optional existing DailyScheduler instance
         """
         self.scheduler = scheduler
+        self._notice_store: Optional[NoticeStore] = None
         self._running = True
 
         # Initialize extracted components
@@ -91,6 +93,15 @@ class SchedulerCLI:
                 registry[alias] = registry[cmd_name]
 
         return registry
+
+    @property
+    def notice_store(self) -> NoticeStore:
+        """The notices: the scheduler's, or state/notices.json before there is a scheduler."""
+        if self.scheduler is not None:
+            return self.scheduler.notice_store
+        if self._notice_store is None:
+            self._notice_store = NoticeStore()
+        return self._notice_store
 
     async def run(self):
         """Main scheduler CLI loop."""
@@ -279,6 +290,40 @@ class SchedulerCLI:
         except Exception as e:
             print(f"{get_emoji('cross_red', '❌')} Test failed: {e}")
             logger.error(f"Routine test error: {e}", exc_info=True)
+
+    def _show_notices(self, which: str = ""):
+        """List the open notices (failures and warnings from the loop); 'all' adds the acknowledged."""
+        if which not in ("", "all"):
+            print("Usage: notices [all]")
+            return
+        try:
+            notices = self.notice_store.all_notices() if which else self.notice_store.open_notices()
+        except Exception as e:
+            print(f"{get_emoji('warning', '⚠️')} Notices unavailable: {e}")
+            return
+        print(f"\n{get_emoji('warning', '⚠️')} Notices" + (" (all)" if which else " (open)"))
+        print("=" * 70)
+        if not notices:
+            print(f"{get_emoji('check_green', '✅')} None")
+            return
+        for notice in notices:
+            print(f"\n{notice.line()}" + (" [acknowledged]" if notice.acked_at else ""))
+            if notice.detail:
+                print(f"     {notice.detail}")
+            if notice.report_path:
+                print(f"     Report: {notice.report_path}")
+        print("\n'ack <number>' or 'ack all' acknowledges; a condition that returns reopens it")
+
+    def _ack_notice(self, target: str):
+        """Acknowledge a notice by its number, or every open one with 'all'."""
+        if target != "all" and not is_notice_number(target):
+            print("Usage: ack <number|all>")
+            return
+        count = self.notice_store.ack(target)
+        if count:
+            print(f"{get_emoji('check_green', '✅')} Acknowledged {count} notice(s)")
+        else:
+            print(f"{get_emoji('info', 'ℹ️')} No open notice to acknowledge for '{target}'")
 
     def _show_history(self):
         """Show execution history."""

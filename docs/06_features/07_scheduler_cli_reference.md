@@ -32,6 +32,7 @@ Show detailed scheduler status including:
 - Configuration summary (times, retries, timezone)
 - Today's execution count
 - Recent execution results
+- **Open notices**: the count and the latest five, or `No open notices` (see [`notices`](#notices))
 
 **IMPORTANT:** "Config: ENABLED" does NOT mean the scheduler is running automatically!
 Automatic execution needs the cron entry (recommended, see the
@@ -71,6 +72,8 @@ Scheduler> status
 
 📋 No executions today
    (Neither cron nor the daemon is running - no automatic executions)
+
+✅ No open notices
 ```
 
 **Example (config enabled, daemon RUNNING):**
@@ -94,6 +97,8 @@ Scheduler> status
 📋 Today's Executions: 2
    ✅ morning_routine - completed
    ✅ evening_routine - completed
+
+✅ No open notices
 ```
 
 #### `history`
@@ -138,6 +143,36 @@ Scheduler> next
 #### `logs`
 
 Show the last lines of `state/scheduler.log` (default 50; `logs 100` for more). Alias: `log`.
+
+#### `notices`
+
+List the open notices: the failures and warnings the unattended loop raised, so they are visible
+without reading logs (see [Notices](03_gtc_scheduler_technical.md#notices)). `notices all` adds
+the acknowledged ones. A notice stays open until it is acknowledged; one whose condition has
+cleared is marked `resolved` but still listed.
+
+```text
+Scheduler> notices
+
+⚠️ Notices (open)
+======================================================================
+
+#1 CRITICAL Morning routine failed after 4 attempts (first seen 2026-10-27 13:25 UTC)
+     Attempt 4 failed: Morning routine failed: protective stops not secured (SPY)
+     Report: reports/daily/2026-10-27_morning.md
+
+#2 CRITICAL SPY has no protective stop (first seen 2026-10-27 13:25 UTC, seen 2 times, resolved 2026-10-27 19:50 UTC)
+     no stop level below the current price to place
+
+'ack <number>' or 'ack all' acknowledges; a condition that returns reopens it
+```
+
+#### `ack`
+
+`ack <number>` acknowledges one notice, `ack all` every open one. An acknowledged notice leaves
+`status`, `notices` and the routine reports; `notices all` still shows it for 30 days. Only a
+person acknowledges: the agent can read the open-notice count (`get_scheduler_status`), and no
+agent tool acknowledges.
 
 ### Configuration Management
 
@@ -337,6 +372,10 @@ Reports are saved to `reports/daily/` with human-readable filenames, named by th
    - Positions approaching take profit (only positions with a target price)
    - Unusual P&L movements
 
+6. **Open Notices** (both routines, when there are any)
+   - Number, severity, title and when first seen; resolved ones are marked `resolved`
+   - The latest 10; `notices` in the scheduler CLI lists them all
+
 **Note**: Stop and target prices are extracted from your actual GTC orders on Alpaca (bracket legs included). The routines re-place missing stops but not take-profit orders: a GTC take-profit lapses after Alpaca's 90-day limit, so a position held that long shows no target and exits by its trailing stop.
 
 ### Other Commands
@@ -365,7 +404,7 @@ Editable via `edit` command:
 
 - `market_timezone`: Always `America/New_York`
 - `retry_delay_seconds`: Initial retry delay (exponential backoff)
-- `enable_notifications`: Future feature
+- `enable_notifications`: Not used yet (reserved for email). Local [notices](#notices) are always on
 
 ## Use Cases
 
@@ -390,6 +429,8 @@ Scheduler> edit
 ### Troubleshoot Failed Execution
 
 ```bash
+Scheduler> notices
+# What the loop flagged: failures, missed or stuck runs, positions without a stop
 Scheduler> history
 # Check error messages
 Scheduler> test morning
