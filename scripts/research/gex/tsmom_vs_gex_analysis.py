@@ -66,7 +66,7 @@ def get_price_data(conn: sqlite3.Connection, symbol: str) -> pd.DataFrame:
     """
     df = pd.read_sql_query(query, conn, params=(symbol,))
     df["trading_date"] = pd.to_datetime(df["trading_date"])
-    df.set_index("trading_date", inplace=True)
+    df = df.set_index("trading_date")
     return df
 
 

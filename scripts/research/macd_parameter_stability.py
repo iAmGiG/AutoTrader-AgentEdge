@@ -234,7 +234,7 @@ def get_price_data(conn: sqlite3.Connection, symbol: str) -> Optional[pd.DataFra
         return None
 
     df["trading_date"] = pd.to_datetime(df["trading_date"])
-    df.set_index("trading_date", inplace=True)
+    df = df.set_index("trading_date")
     df.columns = ["close"]
 
     return df
