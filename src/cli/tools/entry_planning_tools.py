@@ -11,15 +11,67 @@ Original Implementation: src/trading/instruments/entry_planning.py
 Pattern: Pure function wrappers → FunctionTool → Registry
 """
 
+from datetime import date, timedelta
+from typing import Optional, Tuple
+
+import pandas as pd
 from agent_framework import FunctionTool
 
+from src.trading.instruments.data_fetch import fetch_market_data
 from src.trading.instruments.entry_planning import (
     calculate_atr,
     calculate_entry_plan,
     calculate_volume_confirmation,
     find_support_resistance,
 )
+from src.trading.scheduling.scheduler_state import market_today
+from src.utils.date_utils import add_business_days
+from src.utils.market_hours import is_market_hours
 from src.utils.safe_print import get_symbol
+
+# Fewest completed daily bars the levels and volume averages are worked out from
+MIN_BARS = 20
+
+
+def _daily_bars(symbol: str, lookback_days: int) -> Tuple[Optional[pd.DataFrame], Optional[float]]:
+    """
+    The latest lookback_days completed daily bars (capitalized OHLCV) and the latest price.
+
+    During the session the last row is today's bar so far, or one made from the last
+    trade with volume 0: its close is the latest price, and it is left out of the bars
+    so it can't skew ATR, ranges or volume averages.
+
+    Args:
+        symbol: Stock ticker
+        lookback_days: Trading days of completed bars wanted
+
+    Returns:
+        (bars, latest price), or (None, None) when no data came back
+    """
+    today = market_today()
+    start = add_business_days(today, -(lookback_days + 5))
+    # The request leaves out the end date's own bar, so it runs through tomorrow
+    end = (date.fromisoformat(today) + timedelta(days=1)).isoformat()
+    ohlcv = fetch_market_data(symbol.upper(), start, end, timeframe="1Day")
+    if ohlcv is None or ohlcv.empty:
+        return None, None
+    latest_price = float(ohlcv["Close"].iloc[-1])
+    if is_market_hours():
+        dates = _bar_dates(ohlcv)
+        if dates is not None:
+            ohlcv = ohlcv[dates < date.fromisoformat(today)]
+    return ohlcv.tail(lookback_days), latest_price
+
+
+def _bar_dates(ohlcv: pd.DataFrame):
+    """Each bar's date in ET, or None when the index isn't a datetime index."""
+    index = ohlcv.index
+    if not isinstance(index, pd.DatetimeIndex):
+        return None
+    if index.tz is not None:
+        index = index.tz_convert("America/New_York")
+    return index.date
+
 
 # ============================================================================
 # Pure Function Wrappers
@@ -42,7 +94,8 @@ def get_entry_plan(
     Args:
         symbol: Stock ticker (e.g., 'AAPL', 'MSFT')
         direction: Trade direction - 'BUY' or 'SELL'
-        lookback_days: Days of historical data to analyze (default 60)
+        lookback_days: Trading days of completed daily bars to analyze (default 60,
+            at least 20)
         atr_multiplier: ATR multiplier for stop distance (default 2.0)
         risk_reward_ratio: Target/risk ratio (default 2.0)
 
@@ -56,16 +109,12 @@ def get_entry_plan(
         ATR: $2.15  Quality: STRONG'
     """
     try:
-        # Fetch market data
-        from src.market_data.unified_market_tool import fetch_historical
+        if lookback_days < MIN_BARS:
+            return f"{get_symbol('ERROR')} lookback_days must be at least {MIN_BARS}."
+        ohlcv, current_price = _daily_bars(symbol, lookback_days)
 
-        ohlcv = fetch_historical(symbol, lookback_days)
-
-        if ohlcv is None or len(ohlcv) < 20:
+        if ohlcv is None or len(ohlcv) < MIN_BARS:
             return f"{get_symbol('ERROR')} Insufficient data for {symbol}. Need at least 20 days."
-
-        # Get current price from last close
-        current_price = float(ohlcv["Close"].iloc[-1])
 
         # Generate entry plan
         plan = calculate_entry_plan(
@@ -118,7 +167,7 @@ def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
 
     Args:
         symbol: Stock ticker
-        lookback_days: Days of data to analyze (default 60)
+        lookback_days: Trading days of completed daily bars (default 60, at least 20)
 
     Returns:
         Formatted string with S/R levels
@@ -131,16 +180,14 @@ def get_support_resistance(symbol: str, lookback_days: int = 60) -> str:
         Range: $13.80'
     """
     try:
-        from src.market_data.unified_market_tool import fetch_historical
+        if lookback_days < MIN_BARS:
+            return f"{get_symbol('ERROR')} lookback_days must be at least {MIN_BARS}."
+        ohlcv, current_price = _daily_bars(symbol, lookback_days)
 
-        ohlcv = fetch_historical(symbol, lookback_days)
-
-        if ohlcv is None or len(ohlcv) < 20:
+        if ohlcv is None or len(ohlcv) < MIN_BARS:
             return f"{get_symbol('ERROR')} Insufficient data for {symbol}. Need at least 20 days."
 
         levels = find_support_resistance(ohlcv["High"], ohlcv["Low"], lookback=20)
-
-        current_price = float(ohlcv["Close"].iloc[-1])
 
         output = f"{get_symbol('CHART')} Support/Resistance for {symbol}\n"
         output += "=" * 40 + "\n"
@@ -172,7 +219,7 @@ def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
 
     Args:
         symbol: Stock ticker
-        lookback_days: Days of data to analyze
+        lookback_days: Trading days of completed daily bars (default 60, at least 20)
 
     Returns:
         Formatted string with volume analysis
@@ -185,18 +232,19 @@ def get_volume_analysis(symbol: str, lookback_days: int = 60) -> str:
         Ratio: 1.37x (Above Average)'
     """
     try:
-        from src.market_data.unified_market_tool import fetch_historical
+        if lookback_days < MIN_BARS:
+            return f"{get_symbol('ERROR')} lookback_days must be at least {MIN_BARS}."
+        ohlcv, _ = _daily_bars(symbol, lookback_days)
 
-        ohlcv = fetch_historical(symbol, lookback_days)
-
-        if ohlcv is None or len(ohlcv) < 20:
+        if ohlcv is None or len(ohlcv) < MIN_BARS:
             return f"{get_symbol('ERROR')} Insufficient data for {symbol}."
 
+        # Completed sessions only: today's volume so far would read as a collapse
         vol_data = calculate_volume_confirmation(ohlcv["Volume"], lookback=20)
 
         output = f"{get_symbol('INFO')} Volume Analysis for {symbol}\n"
         output += "=" * 40 + "\n"
-        output += f"  Current Volume: {vol_data['current_volume']:,.0f}\n"
+        output += f"  Last Session:   {vol_data['current_volume']:,.0f}\n"
         output += f"  20-Day Average: {vol_data['avg_volume']:,.0f}\n"
         output += f"  Volume Ratio:   {vol_data['volume_ratio']:.2f}x\n"
         output += "-" * 40 + "\n"
@@ -229,7 +277,7 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
     Args:
         symbol: Stock ticker
         period: ATR calculation period (default 14)
-        lookback_days: Days of data to fetch
+        lookback_days: Trading days of completed daily bars (at least period + 1)
 
     Returns:
         Formatted string with ATR analysis
@@ -242,16 +290,17 @@ def get_atr(symbol: str, period: int = 14, lookback_days: int = 60) -> str:
         → Low volatility environment'
     """
     try:
-        from src.market_data.unified_market_tool import fetch_historical
-
-        ohlcv = fetch_historical(symbol, lookback_days)
+        if lookback_days < period + 1:
+            return (
+                f"{get_symbol('ERROR')} lookback_days must be at least period + 1 ({period + 1})."
+            )
+        ohlcv, current_price = _daily_bars(symbol, lookback_days)
 
         if ohlcv is None or len(ohlcv) < period + 1:
             return f"{get_symbol('ERROR')} Insufficient data for {symbol}."
 
         atr_series = calculate_atr(ohlcv["High"], ohlcv["Low"], ohlcv["Close"], period=period)
         current_atr = float(atr_series.iloc[-1])
-        current_price = float(ohlcv["Close"].iloc[-1])
         atr_pct = (current_atr / current_price) * 100
 
         output = f"{get_symbol('INFO')} ATR Analysis for {symbol}\n"
