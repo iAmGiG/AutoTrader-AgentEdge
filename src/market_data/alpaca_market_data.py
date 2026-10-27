@@ -47,6 +47,7 @@ except ImportError:
 
 from src.cache.sqlite_cache import TradingCacheManager
 from src.utils.config_loader import ConfigLoader
+from src.utils.http_timeouts import with_default_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -117,10 +118,12 @@ class AlpacaMarketData:
             )
 
         # Initialize the official SDK client
-        self.client = StockHistoricalDataClient(
-            api_key=api_key,
-            secret_key=secret_key,
-            raw_data=False,  # Get parsed models instead of raw dicts
+        self.client = with_default_timeout(
+            StockHistoricalDataClient(
+                api_key=api_key,
+                secret_key=secret_key,
+                raw_data=False,  # Get parsed models instead of raw dicts
+            )
         )
 
         self.cache = cache_manager or TradingCacheManager()

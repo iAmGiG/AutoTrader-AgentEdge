@@ -31,6 +31,7 @@ except ImportError:
 
 from src.utils.config_loader import ConfigLoader
 from src.utils.date_utils import get_datetime_now
+from src.utils.http_timeouts import with_default_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,9 @@ def _get_alpaca_calendar():
             )
             _CALENDAR_CLIENT = None
             return None
-        _CALENDAR_CLIENT = TradingClient(api_key=api_key, secret_key=secret, paper=True)
+        _CALENDAR_CLIENT = with_default_timeout(
+            TradingClient(api_key=api_key, secret_key=secret, paper=True)
+        )
     except Exception as e:
         _calendar_failed(e)  # built again after the back-off
         return None
@@ -284,6 +287,12 @@ def get_market_hours_for_date(
 
     if not calendar:
         # Market is closed (holiday or weekend)
+        if _rule_based_hours(day)[2]:
+            logger.warning(
+                "Alpaca calendar returned nothing for %s, a trading day by the NYSE rules; "
+                "treating it as closed",
+                day,
+            )
         hours = (DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False)
     else:
         cal_day = calendar[0]

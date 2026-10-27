@@ -31,6 +31,12 @@ from src.trading.accounts.account_manager import get_account_manager
 from src.trading.scheduling.daily_scheduler import (
     DailyScheduler,
     configure_scheduler_logging,
+    load_scheduler_config,
+)
+from src.trading.scheduling.watchdog import (
+    RunDueTimeoutError,
+    run_due_timeout_seconds,
+    watchdog,
 )
 from src.utils.safe_print import get_symbol, safe_print
 
@@ -78,19 +84,30 @@ def _load_cli_help() -> str:
     return "\n".join(lines)
 
 
-# CLI imports (may not be available in all environments)
-try:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-    from cli import CLISession
-    from core.factory import OrchestratorFactory
-    from core.trading_modes import get_mode_manager
+# The CLI (src/cli, its tools and the agent framework) loads only on the interactive and
+# --account paths: cron runs --run-due every 5 minutes and needs none of it. Set by
+# _load_cli(); None until then.
+CLI_AVAILABLE = None
+CLISession = None
+OrchestratorFactory = None
+get_mode_manager = None
 
-    CLI_AVAILABLE = True
-except ImportError:
-    CLI_AVAILABLE = False
-    CLISession = None
-    OrchestratorFactory = None
-    get_mode_manager = None
+
+def _load_cli() -> bool:
+    """Import the CLI components (they may not be available in all environments)."""
+    global CLI_AVAILABLE, CLISession, OrchestratorFactory, get_mode_manager
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+        import cli as cli_package
+        from core import factory, trading_modes
+
+        CLISession = cli_package.CLISession
+        OrchestratorFactory = factory.OrchestratorFactory
+        get_mode_manager = trading_modes.get_mode_manager
+        CLI_AVAILABLE = True
+    except ImportError:
+        CLI_AVAILABLE = False
+    return CLI_AVAILABLE
 
 
 def list_accounts():
@@ -156,7 +173,7 @@ def trade_assist(account_id: str = None):
     Args:
         account_id: Optional account ID to use (#401)
     """
-    if not CLI_AVAILABLE:
+    if not _load_cli():
         safe_print(f"{get_symbol('ERROR')} CLI components not available")
         sys.exit(1)
 
@@ -248,7 +265,7 @@ def _run_interactive_cli(account_id: str = None) -> None:
         sys.exit(1)
 
 
-def _note_run_due_error(error: Exception) -> None:
+def _note_run_due_error(error: BaseException) -> None:
     """
     Leave a notice that the cron check crashed (see notices.py). Best effort: if even that
     fails, say nothing, so the original error is the one that surfaces.
@@ -261,15 +278,38 @@ def _note_run_due_error(error: Exception) -> None:
         pass  # the caller re-raises the original error
 
 
+def _run_due_checks(limit_seconds: int) -> int:
+    """The cron check itself (see _run_due_mode). Returns the exit code."""
+    configure_scheduler_logging()
+    scheduler = DailyScheduler()
+    scheduler.warn_if_retries_exceed(limit_seconds)
+    ran = scheduler.run_scheduled_tasks()
+    return 1 if any(entry.status == "failed" for entry in ran) else 0
+
+
 def _run_due_mode() -> int:
-    """Run any scheduled routine that is due now (for cron). Returns the exit code."""
+    """
+    Run any scheduled routine that is due now (for cron). Returns the exit code.
+
+    A wall-clock limit (watchdog.py) ends a check that hangs: a routine cut off is
+    recorded as failed with its own notice; a timeout anywhere else leaves a run_due_error
+    notice. Either way the exit code is 1.
+    """
     try:
-        configure_scheduler_logging()
-        ran = DailyScheduler().run_scheduled_tasks()
+        limit = run_due_timeout_seconds(load_scheduler_config())
+    except Exception:
+        limit = run_due_timeout_seconds()  # unreadable config: the scheduler reports that
+    try:
+        with watchdog(limit):
+            return _run_due_checks(limit)
+    except RunDueTimeoutError as timeout:
+        if not timeout.routine_recorded:  # a routine's timeout already has its notice
+            _note_run_due_error(timeout)
+        traceback.print_exc()  # cron's stderr (state/scheduler-cron.err)
+        return 1
     except Exception as error:
         _note_run_due_error(error)
         raise  # the traceback still reaches cron's stderr (state/scheduler-cron.err)
-    return 1 if any(entry.status == "failed" for entry in ran) else 0
 
 
 def _run_daemon_mode() -> None:

@@ -14,3 +14,5 @@ enable_notifications: false
 # true: routines send no orders and change no saved state (local state, daily records,
 # GTT triggers); reports, named <date>_<routine>_dry_run.md, show what they would do
 dry_run: false
+# Wall-clock limit for one cron check (main.py --run-due), retries included; default 900
+# run_due_timeout_seconds: 900

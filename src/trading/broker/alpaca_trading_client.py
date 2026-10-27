@@ -61,6 +61,7 @@ except ImportError:
     )
 
 from src.utils.config_loader import ConfigLoader
+from src.utils.http_timeouts import with_default_timeout
 
 ALPACA_PAPER_URL = "https://paper-api.alpaca.markets"
 ALPACA_LIVE_URL = "https://api.alpaca.markets"
@@ -195,8 +196,8 @@ class AlpacaTradingClient:
             )
 
         # Initialize the official SDK client
-        self.trading_client = TradingClient(
-            api_key=api_key, secret_key=secret, paper=(mode == "paper")
+        self.trading_client = with_default_timeout(
+            TradingClient(api_key=api_key, secret_key=secret, paper=(mode == "paper"))
         )
 
         # Log the mode prominently for safety

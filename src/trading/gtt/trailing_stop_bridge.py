@@ -100,6 +100,11 @@ def sync_trailing_stop_to_gtt(
             new_stop=stop_state.current_stop,
         )
 
+        # A trigger synced twice a day never lapses; otherwise it expires on the day it
+        # was created plus expiration_days, and restore skips it from then on
+        if expiration_days:
+            gtt_manager.extend_expiration(existing.id, expiration_days)
+
         return gtt_manager.get_trigger(existing.id)
 
     # Create new GTT trailing stop trigger

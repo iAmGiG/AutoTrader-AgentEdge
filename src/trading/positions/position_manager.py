@@ -10,6 +10,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
+from src.trading.state.local_state_manager import write_json_atomic
 from src.utils.date_utils import get_datetime_now, now_iso
 from src.utils.state_paths import get_state_dir
 
@@ -177,8 +178,7 @@ class PositionManager:
     def _save_positions_backup(self, positions: Dict[str, Any]):
         """Save positions to backup file."""
         try:
-            with open(self.state_file, "w") as f:
-                json.dump({"positions": positions, "saved_at": now_iso()}, f, indent=2)
+            write_json_atomic(str(self.state_file), {"positions": positions, "saved_at": now_iso()})
         except Exception as e:
             logger.error(f"Failed to save positions backup: {e}")
 
