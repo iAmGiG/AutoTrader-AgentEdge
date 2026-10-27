@@ -108,6 +108,24 @@ commands:
     category: testing
     description: "View execution history"
 
+  notices:
+    enabled: true
+    handler: show_notices
+    aliases: []
+    requires_scheduler: false
+    category: testing
+    description: "List open notices ('all': with acknowledged ones)"
+    usage: "notices [all]"
+
+  ack:
+    enabled: true
+    handler: ack_notice
+    aliases: []
+    requires_scheduler: false
+    category: testing
+    description: "Acknowledge a notice by number, or all"
+    usage: "ack <number|all>"
+
   next:
     enabled: true
     handler: show_next_run

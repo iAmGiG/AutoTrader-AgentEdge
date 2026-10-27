@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Notices listed in the status (the latest ones; 'notices' lists them all)
+STATUS_NOTICES = 5
+
 
 class SchedulerMonitor:
     """
@@ -115,6 +118,26 @@ class SchedulerMonitor:
             print(f"\n{get_emoji('clipboard', '📋')} No executions today")
             if enabled and not (daemon_running or cron_running):
                 print("   (Neither cron nor the daemon is running - no automatic executions)")
+
+        self._show_open_notices()
+
+    def _show_open_notices(self) -> None:
+        """The notices nobody has acknowledged (the latest few), or that there are none."""
+        try:
+            notices = list(self.scheduler.notice_store.open_notices())
+            lines = [notice.line() for notice in notices[-STATUS_NOTICES:]]
+        except Exception as e:
+            print(f"\n{get_emoji('warning', '⚠️')} Open notices unavailable: {e}")
+            return
+        if not notices:
+            print(f"\n{get_emoji('check_green', '✅')} No open notices")
+            return
+        print(f"\n{get_emoji('warning', '⚠️')} Open notices: {len(notices)}")
+        for line in lines:
+            print(f"   {line}")
+        if len(notices) > STATUS_NOTICES:
+            print(f"   ... and {len(notices) - STATUS_NOTICES} older ones")
+        print("   'notices' lists them with details; 'ack <number|all>' acknowledges")
 
     def show_config(self, config_file: str = None) -> None:
         """

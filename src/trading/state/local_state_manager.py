@@ -21,7 +21,7 @@ from src.utils.date_utils import now_iso
 logger = logging.getLogger(__name__)
 
 
-def _write_json_atomic(path: str, data: Dict[str, Any]) -> None:
+def write_json_atomic(path: str, data: Dict[str, Any]) -> None:
     """Write JSON to a temp file beside path, then rename it over path, so a crash or a
     full disk mid-write leaves the old file whole. An existing file keeps its mode."""
     directory = os.path.dirname(path) or "."
@@ -152,7 +152,7 @@ class LocalStateManager:
                 logger.error(f"State file not backed up before dropping old tracker entries: {e}")
 
         try:
-            _write_json_atomic(self.state_file, self._state)
+            write_json_atomic(self.state_file, self._state)
 
             position_count = len(self.position_tracker.positions) if self.position_tracker else 0
             logger.debug(f"Saved local state with {position_count} tracked positions")

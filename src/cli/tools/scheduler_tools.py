@@ -42,6 +42,15 @@ def _get_scheduler():
         return None
 
 
+def _open_notice_count(scheduler) -> Optional[int]:
+    """Notices nobody has acknowledged (read-only); None if they can't be read."""
+    try:
+        return len(scheduler.notice_store.open_notices())
+    except Exception as e:
+        logger.warning("Open notices not counted: %s", e)
+        return None
+
+
 def load_scheduler_config():
     """Scheduler config file settings (light: no trading clients)."""
     from src.trading.scheduling.daily_scheduler import load_scheduler_config as load
@@ -85,6 +94,8 @@ def get_scheduler_status() -> Dict[str, Any]:
         - evening_time: Evening routine time (e.g., "15:50")
         - max_retries: Maximum retry attempts
         - timezone: Market timezone
+        - open_notices: Failures and warnings from the unattended loop nobody has
+          acknowledged (a person does that, in the scheduler CLI); None if unreadable
     """
     try:
         scheduler = _get_scheduler()
@@ -106,6 +117,7 @@ def get_scheduler_status() -> Dict[str, Any]:
             "retry_delay_seconds": config.get("retry_delay_seconds", 60),
             "timezone": config.get("market_timezone", "America/New_York"),
             "dry_run": config.get("dry_run", False),
+            "open_notices": _open_notice_count(scheduler),
         }
 
     except Exception as e:
@@ -519,7 +531,7 @@ get_scheduler_status_tool = FunctionTool(
     name="get_scheduler_status",
     description=(
         "Get scheduler status and configuration including enabled state, "
-        "routine times, and retry settings."
+        "routine times, retry settings, and how many failure notices are open."
     ),
 )
 
