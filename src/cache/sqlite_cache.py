@@ -473,11 +473,13 @@ class TradingCacheManager(OptionsCacheMixin, TradeCacheMixin):
             # Prepare DataFrame
             df = data.copy()
 
-            # Ensure we have a date column
-            if isinstance(df.index, pd.DatetimeIndex):
-                df = df.reset_index()
-                if "index" in df.columns:
-                    df = df.rename(columns={"index": "date"})
+            # Ensure we have a date column: an explicit one wins, else the DatetimeIndex
+            # (whatever its name) becomes it
+            if isinstance(df.index, pd.DatetimeIndex) and "date" not in df.columns:
+                index_name = df.index.name or "index"
+                df = df.reset_index().rename(columns={index_name: "date"})
+            elif isinstance(df.index, pd.DatetimeIndex):
+                df = df.reset_index(drop=True)
             elif "date" not in df.columns:
                 raise ValueError("Data must have 'date' column or DatetimeIndex")
 

@@ -130,6 +130,27 @@ class TestSetOperation(TestTradingCacheManager):
         assert result is not None
         assert len(result) == 5
 
+    @pytest.mark.parametrize("index_name", ["timestamp", "trading_date", "date"])
+    def test_a_named_datetime_index_becomes_the_date(self, cache_manager, index_name):
+        dates = pd.date_range(start="2024-01-01", periods=3, freq="D", name=index_name)
+        df = pd.DataFrame({"close": [100.0, 101.0, 102.0]}, index=dates)
+
+        cache_manager.set("AAPL", df, source="alpaca")
+
+        result = cache_manager.get("AAPL", "2024-01-01", "2024-01-03", source="alpaca")
+        assert result is not None and list(result["close"]) == [100.0, 101.0, 102.0]
+
+    def test_a_date_column_next_to_a_date_index_is_used(self, cache_manager):
+        """A frame read back from get() (index named "date") with a date column added."""
+        dates = pd.date_range(start="2024-01-01", periods=2, freq="D", name="date")
+        df = pd.DataFrame({"close": [100.0, 101.0]}, index=dates)
+        df["date"] = ["2024-01-01", "2024-01-02"]
+
+        cache_manager.set("AAPL", df, source="alpaca")
+
+        result = cache_manager.get("AAPL", "2024-01-01", "2024-01-02", source="alpaca")
+        assert result is not None and list(result["close"]) == [100.0, 101.0]
+
     def test_set_dataframe_with_datetime_index(self, cache_manager):
         """Test caching DataFrame with DatetimeIndex."""
         dates = pd.date_range(start="2024-01-01", periods=3, freq="D")
