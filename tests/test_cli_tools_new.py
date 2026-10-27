@@ -217,7 +217,6 @@ class TestEnhancedTimeframeToolsFunctions:
     def timeframe_helpers(self, module_sandbox, monkeypatch):
         """Load just the helper functions from timeframe_tools."""
 
-        # Mock all dependencies
         # Create a mock timeframe commands
         mock_tf_commands = MagicMock()
         mock_tf_commands.manager.get_current_timeframe.return_value = "1d"
