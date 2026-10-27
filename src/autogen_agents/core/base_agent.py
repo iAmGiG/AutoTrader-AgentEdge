@@ -31,13 +31,9 @@ config_loader = ConfigLoader()
 model_name = os.getenv("OPEN_MODEL", config_loader.get("OPEN_MODEL"))
 open_ai_key = os.getenv("OPEN_AI_KEY", config_loader.get("OPEN_AI_KEY"))
 
-# Dual model configuration for cost optimization
-# Tool calling: Use gpt-4o-mini (fast, cheap, efficient for structured outputs)
-# Prompt/Reasoning: Use o4-mini (enhanced reasoning for trading decisions)
+# Tool-calling model for agents built with use_dual_models=True (e.g. gpt-4o-mini:
+# fast, cheap, efficient for structured outputs)
 tool_model_name = os.getenv("OPENAI_TOOL_MODEL", config_loader.get("OPENAI_TOOL_MODEL", model_name))
-prompt_model_name = os.getenv(
-    "OPENAI_PROMPT_MODEL", config_loader.get("OPENAI_PROMPT_MODEL", model_name)
-)
 
 # Default LLM parameters
 DEFAULT_LLM_CONFIG = {
@@ -86,12 +82,12 @@ class BaseAgent(ABC):
         self.llm_config = llm_params
 
         self.tools: List[Any] = [tool for tool in (ALL_TOOLS if tools is None else tools) if tool]
-        self._tools_dict = {tool.name: tool for tool in self.tools}
 
         self.memory_system = memory_system
         self.use_dual_models = use_dual_models
         self.max_tool_rounds = DEFAULT_MAX_TOOL_ROUNDS
         self._model_client: Optional[OpenAIChatCompletionClient] = None
+        self._model_client_loop: Optional[asyncio.AbstractEventLoop] = None
 
     @property
     def name(self) -> str:
@@ -100,9 +96,21 @@ class BaseAgent(ABC):
 
     @property
     def model_client(self) -> OpenAIChatCompletionClient:
-        """The OpenAI chat client, created on first use (needs an API key then)."""
-        if self._model_client is None:
+        """
+        The OpenAI chat client for the running event loop, created on first use (needs
+        an API key then).
+
+        The client's pooled connections belong to the loop it was used in, and each
+        synchronous process_with_tools() call runs in a new loop (asyncio.run), so a
+        new loop gets a new client.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if self._model_client is None or self._model_client_loop is not loop:
             self._model_client = self._create_model_client()
+            self._model_client_loop = loop
         return self._model_client
 
     def _create_model_client(self) -> OpenAIChatCompletionClient:
@@ -120,7 +128,10 @@ class BaseAgent(ABC):
             model=tool_model_name if self.use_dual_models else model_name,
             async_client=async_client,
             function_invocation_configuration=FunctionInvocationConfiguration(
-                max_iterations=self.max_tool_rounds
+                max_iterations=self.max_tool_rounds,
+                # The model sees why a tool failed (as the AutoGen loop told it), so it
+                # can retry with other arguments
+                include_detailed_errors=True,
             ),
         )
 
@@ -177,8 +188,10 @@ class BaseAgent(ABC):
         :return: The LLM's response text, or an error message.
         """
         try:
+            client = self.model_client
+            client.function_invocation_configuration["max_iterations"] = self.max_tool_rounds
             agent = Agent(
-                client=self.model_client,
+                client=client,
                 instructions=system_prompt,
                 name=self.name,
                 tools=self.tools,
