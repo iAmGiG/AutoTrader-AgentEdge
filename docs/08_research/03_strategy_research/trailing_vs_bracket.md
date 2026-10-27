@@ -54,7 +54,7 @@ Moderate sizing (2% of equity), SELL-signal exits off, 5 bps a side, evening rai
 | trailing_target | 2009-2019 | 0.904 [0.379, 1.453] | 2.35% | -3.6% | 2,380 | 43.2% | 10.7 | +0.34% (+0.57) |
 | trailing_target | 2020 on | 0.651 [-0.175, 1.502] | 2.13% | -9.0% | 2,133 | 42.2% | 7.4 | -0.02% (-0.02) |
 
-Trailing exits more trades per year than the bracket (3,709 against 3,376 closed trades) and wins less often. Its edge, if any, comes from smaller losers and longer-held winners. Trailing has the better out-of-sample Sharpe and trailing_target the worse (0.823 and 0.651 against 0.771 for the bracket), but the intervals overlap heavily and the order reverses in-sample, so this is noise.
+Trailing makes more trades than the bracket (3,709 against 3,376 closed trades), holds them for less time and wins less often. Trailing has the better out-of-sample Sharpe and trailing_target the worse (0.823 and 0.651 against 0.771 for the bracket), but the intervals overlap heavily and the order reverses in-sample, so this is noise.
 
 ### Paired differences against the bracket
 
@@ -82,7 +82,7 @@ The #574 baseline sells on a SELL signal; the live system has no such exit. Mode
 
 - **Costs:** 0 and 10 bps give the same picture, and every paired interval includes zero. At 10 bps trailing's full-period alpha is -0.11% (t = -0.18) and trailing_target's is -0.24% (t = -0.44). At 0 bps trailing's is +0.73% (t = +1.19), which is still not significant.
 - **Sizing:** conservative sizing (1% of equity) is in the results file and does not change the conclusion.
-- **Morning-raise sensitivity** (`LiveRules.morning_raise`, default off): stops are raised from the day's open before the day's range is checked. The open is an upper bound on the 09:20 pre-market price (it assumes the gap is fully priced), so this is the largest plausible effect. Full period, 5 bps, SELL exits off: trailing 0.808 to 0.720 (paired change -0.088 [-0.211, +0.040]); trailing_target 0.791 to 0.681 (-0.110 [-0.196, -0.023], excludes zero). These comparisons repeat the same hypotheses under another assumption, so they are kept out of the paired tests and the multiple-testing audit.
+- **Morning-raise sensitivity** (`LiveRules.morning_raise`, default off): stops are raised from the day's open before the day's range is checked. The open stands in for the 09:20 pre-market price and assumes the overnight gap is fully priced by then, so this is likely near the largest plausible effect, not a measurement. The live 09:20 price is recorded each morning in `position_daily` (`current_price` of the morning rows), so the effect can be measured on live data as it accumulates. Full period, 5 bps, SELL exits off: trailing 0.808 to 0.720 (paired change -0.088 [-0.211, +0.040]); trailing_target 0.791 to 0.681 (-0.110 [-0.196, -0.023], excludes zero). These comparisons repeat the same hypotheses under another assumption, so they are kept out of the paired tests and the multiple-testing audit.
 
 ## Conclusion
 
