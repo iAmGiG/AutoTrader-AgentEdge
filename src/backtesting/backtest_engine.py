@@ -37,11 +37,11 @@ class BacktestEngine:
 
     Usage:
         ```python
-        from src.autogen_agents.agents.voter_agent import VoterAgent
+        from src.trading.instruments.voting_signal import VotingSignal
         from src.backtesting import BacktestEngine
 
-        # Initialize
-        voter = VoterAgent()
+        # Initialize (VotingSignal is VoterAgent's signal without the LLM agent)
+        voter = VotingSignal()
         engine = BacktestEngine(initial_capital=10000)
 
         # Run backtest
@@ -245,7 +245,7 @@ def run_validation_test():
     as the original experiment_293_macd_vs_voting.py script.
     """
     # Import here since validation test is only run via if __name__ == "__main__"
-    from src.autogen_agents.agents.voter_agent import VoterAgent  # noqa: C0415
+    from src.trading.instruments.voting_signal import VotingSignal  # noqa: C0415
 
     print("\n" + "=" * 70)
     print("VALIDATION TEST: Match Experiment #293 Results")
@@ -276,8 +276,8 @@ def run_validation_test():
 
     print(f"Loaded {len(df)} data points from cache")
 
-    # Create voter agent for signal generation
-    voter = VoterAgent()
+    # VoterAgent's signal, without the LLM agent (#606)
+    voter = VotingSignal()
 
     # Initialize BacktestEngine with no commission (matching experiment_293)
     engine = BacktestEngine(initial_capital=10000, commission_per_share=0.0)
