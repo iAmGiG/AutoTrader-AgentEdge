@@ -4,8 +4,9 @@ Simulation of the live CLI trading rules, for the #574 paper-validation baseline
 The live path (RealVoterStrategy -> SimpleRiskManager -> AlpacaExecutionManager) is
 reproduced as closely as daily bars allow:
 
-- Signal: the live ``VoterAgent.evaluate_ranked_voting`` (MACD 13/34/8 histogram beyond
-  +/-0.1, RSI 14 at 30/70) on a 90-calendar-day window, as RealVoterStrategy fetches.
+- Signal: the live ``VoterAgent.evaluate_ranked_voting``, computed by ``VotingSignal``
+  (MACD 13/34/8 histogram beyond +/-0.1, RSI 14 at 30/70) on a 90-calendar-day window,
+  as RealVoterStrategy fetches.
 - Timing: the signal for day *d* uses bars through *d - 1*, as a pre-market routine
   would; trades fill at day *d*'s open. The window is rescaled to the split level of
   day *d*, because the MACD threshold is in dollars and live bars are split-adjusted

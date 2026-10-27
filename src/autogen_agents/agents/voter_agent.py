@@ -14,18 +14,24 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from config_defaults.trading_config import TradingConfig
 
 from ..core.base_agent import BaseAgent
 
 # Agent Bus for event publishing (Issue #390)
 from ..orchestration.agent_bus import EventType, create_message, get_agent_bus
-from src.core.ranked_voter_config import get_ranked_voter_manager
-from src.trading.instruments.indicator_registry import get_indicator_registry
-from src.trading.instruments.indicators import calculate_macd, calculate_rsi
+from src.trading.instruments.voting_signal import VotingSignal
 from src.utils.agent_utils import load_agent_config
 
 logger = logging.getLogger(__name__)
+
+
+def _signal_attribute(name: str) -> property:
+    """An agent attribute stored on its VotingSignal (self.signal)."""
+    return property(
+        lambda self: getattr(self.signal, name),
+        lambda self, value: setattr(self.signal, name, value),
+        doc=f"VotingSignal.{name}",
+    )
 
 
 class VoterAgent(BaseAgent):
@@ -63,58 +69,17 @@ class VoterAgent(BaseAgent):
         """
         super().__init__(name=name, **kwargs)
 
-        # Load from config file if requested
+        # The signal maths (parameters, both voting methods) lives in VotingSignal,
+        # free of the agent framework (#606); this agent adds LLM replies and events
+        self.signal = VotingSignal(
+            timeframe=timeframe,
+            macd_params=macd_params,
+            rsi_params=rsi_params,
+            voting_thresholds=voting_thresholds,
+            use_config_file=use_config_file,
+        )
         if use_config_file:
-            self.config = TradingConfig()
-            default_macd = self.config.get_macd_config()
-            default_rsi = self.config.get_rsi_config()
-
-            # Load timeframe from config or use provided
-            timeframe_config = self.config.get_timeframe_config()
-            config_timeframe = timeframe_config.default
-            self.timeframe = timeframe or config_timeframe
-
-            # Convert config objects to dicts
-            self.macd_params = macd_params or {
-                "fast": default_macd.fast,
-                "slow": default_macd.slow,
-                "signal": default_macd.signal,
-            }
-            self.rsi_params = rsi_params or {
-                "period": default_rsi.period,
-                "oversold": default_rsi.oversold,
-                "overbought": default_rsi.overbought,
-            }
-        else:
-            # Use provided params or hardcoded defaults
-            self.timeframe = timeframe or "1d"
-            self.macd_params = macd_params or {"fast": 13, "slow": 34, "signal": 8}
-            self.rsi_params = rsi_params or {"period": 14, "oversold": 30, "overbought": 70}
-
-        # Validate timeframe
-        valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
-        if self.timeframe not in valid_timeframes:
-            logger.warning(
-                f"Invalid timeframe '{self.timeframe}', defaulting to '1d'. "
-                f"Valid options: {valid_timeframes}"
-            )
-            self.timeframe = "1d"
-
-        # Voting thresholds (can be tuned for optimization)
-        self.voting_thresholds = voting_thresholds or {
-            "macd_threshold": 0.1,  # Histogram threshold for signal
-            "consensus_boost": 0.15,  # Confidence boost for consensus
-            "weak_signal_boost": 0.1,  # Confidence boost for weak signals
-            "min_data_points": 42,  # Minimum data for reliable signals
-        }
-
-        # Track configuration for logging
-        self.current_config = {
-            "timeframe": self.timeframe,
-            "macd": self.macd_params.copy(),
-            "rsi": self.rsi_params.copy(),
-            "thresholds": self.voting_thresholds.copy(),
-        }
+            self.config = self.signal.config
 
         # Agent Bus for event publishing
         self._bus = get_agent_bus()
@@ -128,6 +93,13 @@ class VoterAgent(BaseAgent):
         logger.info(
             f"  RSI({self.rsi_params['period']}) [{self.rsi_params['oversold']}/{self.rsi_params['overbought']}]"
         )
+
+    # Signal parameters live on self.signal; these keep the agent's attributes working
+    timeframe = _signal_attribute("timeframe")
+    macd_params = _signal_attribute("macd_params")
+    rsi_params = _signal_attribute("rsi_params")
+    voting_thresholds = _signal_attribute("voting_thresholds")
+    current_config = _signal_attribute("current_config")
 
     def reconfigure(
         self,
@@ -147,31 +119,14 @@ class VoterAgent(BaseAgent):
             rsi_params: New RSI parameters
             voting_thresholds: New voting thresholds
         """
-        if timeframe:
-            valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "1d", "1w", "1M"]
-            if timeframe in valid_timeframes:
-                self.timeframe = timeframe
-                self.current_config["timeframe"] = self.timeframe
-            else:
-                logger.warning(
-                    f"Invalid timeframe '{timeframe}' ignored. Valid options: {valid_timeframes}"
-                )
+        self.signal.reconfigure(
+            timeframe=timeframe,
+            macd_params=macd_params,
+            rsi_params=rsi_params,
+            voting_thresholds=voting_thresholds,
+        )
 
-        if macd_params:
-            self.macd_params.update(macd_params)
-            self.current_config["macd"] = self.macd_params.copy()
-
-        if rsi_params:
-            self.rsi_params.update(rsi_params)
-            self.current_config["rsi"] = self.rsi_params.copy()
-
-        if voting_thresholds:
-            self.voting_thresholds.update(voting_thresholds)
-            self.current_config["thresholds"] = self.voting_thresholds.copy()
-
-        logger.info(f"VoterAgent reconfigured: {self.current_config}")
-
-    def evaluate_voting(  # noqa: C901  # noqa: C901
+    def evaluate_voting(
         self, symbol: str, price_data: pd.DataFrame, return_components: bool = False
     ) -> Dict[str, Any]:
         """
@@ -185,163 +140,9 @@ class VoterAgent(BaseAgent):
         Returns:
             Trading decision with confidence and reasoning
         """
-        try:
-            # Validate data sufficiency
-            if len(price_data) < self.voting_thresholds["min_data_points"]:
-                return {
-                    "symbol": symbol,
-                    "action": "HOLD",
-                    "confidence": 0.0,
-                    "position_size": 0.0,
-                    "reasoning": f"Insufficient data ({len(price_data)} < {self.voting_thresholds['min_data_points']})",
-                    "parameters_used": self.current_config,
-                }
-
-            # Extract price series
-            prices = price_data["Close"] if "Close" in price_data.columns else price_data["close"]
-
-            # Calculate MACD with current parameters
-            macd_data = calculate_macd(
-                prices,
-                fast=self.macd_params["fast"],
-                slow=self.macd_params["slow"],
-                signal=self.macd_params["signal"],
-            )
-
-            # Calculate RSI with current parameters
-            rsi_data = calculate_rsi(
-                prices,
-                period=self.rsi_params["period"],
-                oversold=self.rsi_params["oversold"],
-                overbought=self.rsi_params["overbought"],
-            )
-
-            # Determine MACD signal
-            latest_histogram = macd_data["histogram"].iloc[-1]
-            macd_threshold = self.voting_thresholds["macd_threshold"]
-
-            if latest_histogram > macd_threshold:
-                macd_action = "BUY"
-                macd_conf = 0.6
-                macd_strength = min(50.0, abs(latest_histogram) * 10)
-            elif latest_histogram < -macd_threshold:
-                macd_action = "SELL"
-                macd_conf = 0.6
-                macd_strength = -min(50.0, abs(latest_histogram) * 10)
-            else:
-                macd_action = "HOLD"
-                macd_conf = 0.3
-                macd_strength = 0.0
-
-            # Determine RSI signal
-            current_rsi = rsi_data["rsi"].iloc[-1]
-
-            if current_rsi < self.rsi_params["oversold"]:
-                rsi_action = "BUY"
-                rsi_conf = 0.6
-                rsi_strength = (self.rsi_params["oversold"] - current_rsi) * 3.33
-            elif current_rsi > self.rsi_params["overbought"]:
-                rsi_action = "SELL"
-                rsi_conf = 0.6
-                rsi_strength = (current_rsi - self.rsi_params["overbought"]) * 3.33
-            else:
-                rsi_action = "HOLD"
-                rsi_conf = 0.3
-                rsi_strength = 0.0
-
-            # VOTING LOGIC (preserved from validated system)
-            consensus_boost = self.voting_thresholds["consensus_boost"]
-            weak_boost = self.voting_thresholds["weak_signal_boost"]
-
-            if macd_action == rsi_action and macd_action != "HOLD":
-                # Strong consensus
-                action = macd_action
-                confidence = min(0.85, (macd_conf + rsi_conf) / 2 + consensus_boost)
-                position_size = 1.0
-                reasoning = f"Strong consensus: Both MACD and RSI signal {action}"
-                signal_type = "STRONG"
-
-            elif (macd_action != "HOLD" and rsi_action == "HOLD") or (
-                rsi_action != "HOLD" and macd_action == "HOLD"
-            ):
-                # Weak signal - use indicator strength to modulate confidence
-                active_action = macd_action if macd_action != "HOLD" else rsi_action
-                active_conf = macd_conf if macd_action != "HOLD" else rsi_conf
-                active_strength = macd_strength if macd_action != "HOLD" else rsi_strength
-                active_indicator = "MACD" if macd_action != "HOLD" else "RSI"
-
-                action = active_action
-                # Confidence scales with indicator strength (0-100% range)
-                # Base: active_conf (0.6) + weak_boost (0.1) = 0.7 baseline
-                # Strength adds 0-0.10 based on how strongly indicator triggered
-                strength_bonus = min(0.10, active_strength / 100)
-                confidence = min(0.80, active_conf + weak_boost + strength_bonus)
-                position_size = 0.5
-                reasoning = f"Weak signal: Only {active_indicator} signals {active_action}"
-                signal_type = "WEAK"
-
-            else:
-                # Conflicting or neutral
-                action = "HOLD"
-                confidence = 0.2
-                position_size = 0.0
-                if macd_action != rsi_action and macd_action != "HOLD" and rsi_action != "HOLD":
-                    reasoning = f"Conflicting signals: MACD={macd_action}, RSI={rsi_action}"
-                    signal_type = "CONFLICT"
-                else:
-                    reasoning = "Both indicators neutral"
-                    signal_type = "NEUTRAL"
-
-            result = {
-                "symbol": symbol,
-                "action": action,
-                "confidence": confidence,
-                "position_size": position_size,
-                "reasoning": reasoning,
-                "signal_type": signal_type,
-                "timeframe": self.timeframe,  # Issue #365: Explicit timeframe in results
-                "current_price": float(prices.iloc[-1]),
-                "parameters_used": self.current_config,
-            }
-
-            # Publish voting complete event via bus
-            if self._publish_events and action != "HOLD":
-                self._publish_voting_result(symbol, result)
-
-            # Add component details if requested
-            if return_components:
-                result["components"] = {
-                    "macd": {
-                        "action": macd_action,
-                        "confidence": macd_conf,
-                        "strength": macd_strength,
-                        "histogram": float(latest_histogram),
-                        "macd_line": float(macd_data["macd"].iloc[-1]),
-                        "signal_line": float(macd_data["signal"].iloc[-1]),
-                    },
-                    "rsi": {
-                        "action": rsi_action,
-                        "confidence": rsi_conf,
-                        "strength": rsi_strength,
-                        "value": float(current_rsi),
-                        "oversold": self.rsi_params["oversold"],
-                        "overbought": self.rsi_params["overbought"],
-                    },
-                }
-
-            return result
-
-        except Exception as e:
-            logger.error(f"Error in evaluate_voting for {symbol}: {e}")
-            return {
-                "symbol": symbol,
-                "action": "HOLD",
-                "confidence": 0.0,
-                "position_size": 0.0,
-                "reasoning": f"Analysis error: {str(e)}",
-                "error": str(e),
-                "parameters_used": self.current_config,
-            }
+        result = self.signal.evaluate_voting(symbol, price_data, return_components)
+        self._publish_if_actionable(symbol, result)
+        return result
 
     def _publish_voting_result(self, symbol: str, result: dict) -> None:
         """Publish voting result to the agent bus."""
@@ -362,6 +163,11 @@ class VoterAgent(BaseAgent):
             logger.debug(f"Published voting result for {symbol}: {result['action']}")
         except Exception as e:
             logger.warning(f"Failed to publish voting result: {e}")
+
+    def _publish_if_actionable(self, symbol: str, result: dict) -> None:
+        """Publish a BUY/SELL decision to the agent bus, when events are on."""
+        if self._publish_events and result.get("action") != "HOLD":
+            self._publish_voting_result(symbol, result)
 
     def set_publish_events(self, enabled: bool) -> None:
         """Enable or disable event publishing (useful for backtesting)."""
@@ -480,44 +286,13 @@ Always return results in JSON format with action, confidence, and reasoning."""
 
     def get_current_configuration(self) -> Dict[str, Any]:
         """Return current parameter configuration."""
-        return self.current_config.copy()
+        return self.signal.get_current_configuration()
 
     def reset_to_defaults(self, use_config_file: bool = True) -> None:
         """Reset parameters to defaults."""
-        if use_config_file and hasattr(self, "config"):
-            default_macd = self.config.get_macd_config()
-            default_rsi = self.config.get_rsi_config()
+        self.signal.reset_to_defaults(use_config_file=use_config_file)
 
-            self.macd_params = {
-                "fast": default_macd.fast,
-                "slow": default_macd.slow,
-                "signal": default_macd.signal,
-            }
-            self.rsi_params = {
-                "period": default_rsi.period,
-                "oversold": default_rsi.oversold,
-                "overbought": default_rsi.overbought,
-            }
-        else:
-            self.macd_params = {"fast": 13, "slow": 34, "signal": 8}
-            self.rsi_params = {"period": 14, "oversold": 30, "overbought": 70}
-
-        self.voting_thresholds = {
-            "macd_threshold": 0.1,
-            "consensus_boost": 0.15,
-            "weak_signal_boost": 0.1,
-            "min_data_points": 42,
-        }
-
-        self.current_config = {
-            "macd": self.macd_params.copy(),
-            "rsi": self.rsi_params.copy(),
-            "thresholds": self.voting_thresholds.copy(),
-        }
-
-        logger.info(f"VoterAgent reset to defaults: {self.current_config}")
-
-    def evaluate_ranked_voting(  # noqa: C901
+    def evaluate_ranked_voting(
         self, symbol: str, price_data: pd.DataFrame, return_components: bool = True
     ) -> Dict[str, Any]:
         """
@@ -537,161 +312,9 @@ Always return results in JSON format with action, confidence, and reasoning."""
         Returns:
             Trading decision with confidence, reasoning, and all voter signals
         """
-        try:
-            # Get ranked voter manager
-            voter_manager = get_ranked_voter_manager()
-            voting_config = voter_manager.get_voting_config()
-
-            # Validate data sufficiency
-            if len(price_data) < voting_config.min_data_points:
-                return {
-                    "symbol": symbol,
-                    "action": "HOLD",
-                    "confidence": 0.0,
-                    "position_size": 0.0,
-                    "reasoning": f"Insufficient data ({len(price_data)} < {voting_config.min_data_points})",
-                    "voters": [],
-                }
-
-            # Extract price series
-            prices = price_data["Close"] if "Close" in price_data.columns else price_data["close"]
-
-            # Get indicator registry and create indicators from ranking
-            registry = get_indicator_registry()
-            registry.clear()  # Clear any previous indicators
-
-            # Create indicators from ranked config
-            ranking = voter_manager.get_ranking()
-            for voter_cfg in ranking:
-                indicator_config = voter_manager.get_indicator_config(voter_cfg.name)
-                if indicator_config:
-                    # Merge default params with custom params
-                    params = indicator_config.get("default_params", {}).copy()
-                    params.update(voter_cfg.params)
-                    registry.create_indicator(
-                        voter_cfg.name, f"{voter_cfg.name}_rank{voter_cfg.rank}", params
-                    )
-
-            # Get all signals
-            all_signals = registry.get_all_signals(prices)
-
-            # Separate active and review signals
-            active_voters = voter_manager.get_active_voters()
-            active_names = {f"{v.name}_rank{v.rank}" for v in active_voters}
-
-            active_signals = {k: v for k, v in all_signals.items() if k in active_names}
-            review_signals = {k: v for k, v in all_signals.items() if k not in active_names}
-
-            # Voting logic for active voters
-            buy_votes = sum(1 for s in active_signals.values() if s.action == "BUY")
-            sell_votes = sum(1 for s in active_signals.values() if s.action == "SELL")
-            hold_votes = sum(1 for s in active_signals.values() if s.action == "HOLD")
-            total_active = len(active_signals)
-
-            # Determine consensus
-            if total_active == 0:
-                action = "HOLD"
-                confidence = 0.0
-                position_size = 0.0
-                reasoning = "No active voters configured"
-                signal_type = "ERROR"
-            elif buy_votes == total_active:
-                action = "BUY"
-                avg_conf = sum(s.confidence for s in active_signals.values()) / total_active
-                confidence = min(0.85, avg_conf + voting_config.consensus_boost)
-                position_size = voting_config.strong_signal_size
-                reasoning = f"Strong consensus: All {total_active} active voters signal BUY"
-                signal_type = "STRONG"
-            elif sell_votes == total_active:
-                action = "SELL"
-                avg_conf = sum(s.confidence for s in active_signals.values()) / total_active
-                confidence = min(0.85, avg_conf + voting_config.consensus_boost)
-                position_size = voting_config.strong_signal_size
-                reasoning = f"Strong consensus: All {total_active} active voters signal SELL"
-                signal_type = "STRONG"
-            elif buy_votes > 0 and sell_votes == 0:
-                action = "BUY"
-                buy_sigs = [s for s in active_signals.values() if s.action == "BUY"]
-                avg_conf = sum(s.confidence for s in buy_sigs) / len(buy_sigs)
-                confidence = min(0.80, avg_conf + voting_config.weak_signal_boost)
-                position_size = voting_config.weak_signal_size
-                reasoning = f"Weak signal: {buy_votes}/{total_active} voters signal BUY"
-                signal_type = "WEAK"
-            elif sell_votes > 0 and buy_votes == 0:
-                action = "SELL"
-                sell_sigs = [s for s in active_signals.values() if s.action == "SELL"]
-                avg_conf = sum(s.confidence for s in sell_sigs) / len(sell_sigs)
-                confidence = min(0.80, avg_conf + voting_config.weak_signal_boost)
-                position_size = voting_config.weak_signal_size
-                reasoning = f"Weak signal: {sell_votes}/{total_active} voters signal SELL"
-                signal_type = "WEAK"
-            elif buy_votes > 0 and sell_votes > 0:
-                action = "HOLD"
-                confidence = 0.2 - voting_config.conflict_penalty
-                position_size = voting_config.conflict_size
-                reasoning = f"Conflicting signals: {buy_votes} BUY, {sell_votes} SELL"
-                signal_type = "CONFLICT"
-            else:
-                action = "HOLD"
-                confidence = 0.2
-                position_size = 0.0
-                reasoning = "All voters neutral"
-                signal_type = "NEUTRAL"
-
-            result = {
-                "symbol": symbol,
-                "action": action,
-                "confidence": max(0.0, confidence),
-                "position_size": position_size,
-                "reasoning": reasoning,
-                "signal_type": signal_type,
-                "timeframe": self.timeframe,
-                "current_price": float(prices.iloc[-1]),
-                "ranked_voting": True,
-                "active_voter_count": total_active,
-                "vote_breakdown": {"buy": buy_votes, "sell": sell_votes, "hold": hold_votes},
-            }
-
-            # Publish voting complete event via bus
-            if self._publish_events and action != "HOLD":
-                self._publish_voting_result(symbol, result)
-
-            # Add voter details if requested
-            if return_components:
-                result["active_voters"] = [
-                    {
-                        "name": name,
-                        "action": sig.action,
-                        "confidence": sig.confidence,
-                        "strength": sig.strength,
-                        "value": sig.value,
-                    }
-                    for name, sig in active_signals.items()
-                ]
-                result["review_voters"] = [
-                    {
-                        "name": name,
-                        "action": sig.action,
-                        "confidence": sig.confidence,
-                        "strength": sig.strength,
-                        "value": sig.value,
-                    }
-                    for name, sig in review_signals.items()
-                ]
-
-            return result
-
-        except Exception as e:
-            logger.error(f"Error in evaluate_ranked_voting for {symbol}: {e}")
-            return {
-                "symbol": symbol,
-                "action": "HOLD",
-                "confidence": 0.0,
-                "position_size": 0.0,
-                "reasoning": f"Analysis error: {str(e)}",
-                "error": str(e),
-                "ranked_voting": True,
-            }
+        result = self.signal.evaluate_ranked_voting(symbol, price_data, return_components)
+        self._publish_if_actionable(symbol, result)
+        return result
 
 
 def create_voter_agent(name: str = "voter_agent", **kwargs) -> VoterAgent:

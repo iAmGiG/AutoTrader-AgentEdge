@@ -84,12 +84,13 @@ def load_prices(symbols: list):
 
 
 def live_signal_fn():
-    """The live CLI's signal: VoterAgent.evaluate_ranked_voting with events off."""
-    from src.autogen_agents.agents.voter_agent import VoterAgent
+    """
+    The live CLI's signal: VoterAgent.evaluate_ranked_voting, computed by VotingSignal
+    (no LLM agent or client, no events; #606).
+    """
+    from src.trading.instruments.voting_signal import VotingSignal
 
-    voter = VoterAgent(name="live_rules_baseline")
-    voter._publish_events = False
-    return voter.evaluate_ranked_voting
+    return VotingSignal().evaluate_ranked_voting
 
 
 def trade_stats(trades: pd.DataFrame, start=None, end=None) -> dict:

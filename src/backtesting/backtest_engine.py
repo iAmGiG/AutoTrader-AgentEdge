@@ -1,11 +1,11 @@
 """
 Backtest Engine
 
-Lightweight backtesting engine wrapping validated VoterAgent logic.
+Lightweight backtesting engine for the MACD+RSI voting signal (VotingSignal).
 Refactored from experiment_293_macd_vs_voting.py simulate_trading() function.
 
 Design Philosophy:
-- Reuses existing VoterAgent without modification
+- Reuses VoterAgent's signal (VotingSignal) without modification
 - Integrates with TradingCacheManager for data
 - Zero learning curve - same logic as experiment_293
 - Checked by reproducing experiment 293 (0.856 Sharpe, in-sample on AAPL 2024; the live
@@ -30,18 +30,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 class BacktestEngine:
     """
-    Lightweight backtesting engine for VoterAgent strategies.
+    Lightweight backtesting engine for voting-signal strategies.
 
     Refactored from experiment_293 simulate_trading() function (lines 216-298).
     Reproduces experiment 293's metrics (0.856 Sharpe, in-sample on AAPL 2024).
 
     Usage:
         ```python
-        from src.autogen_agents.agents.voter_agent import VoterAgent
+        from src.trading.instruments.voting_signal import VotingSignal
         from src.backtesting import BacktestEngine
 
-        # Initialize
-        voter = VoterAgent()
+        # Initialize (VotingSignal is VoterAgent's signal without the LLM agent)
+        voter = VotingSignal()
         engine = BacktestEngine(initial_capital=10000)
 
         # Run backtest
@@ -143,7 +143,7 @@ class BacktestEngine:
                 continue
 
             # Generate signal using provided signal generator
-            # For VoterAgent: signal_generator = voter.evaluate_voting
+            # For the voting signal: signal_generator = VotingSignal().evaluate_voting
             kwargs = signal_kwargs or {}
             decision = signal_generator(symbol, data.iloc[: i + 1], **kwargs)
 
@@ -245,7 +245,7 @@ def run_validation_test():
     as the original experiment_293_macd_vs_voting.py script.
     """
     # Import here since validation test is only run via if __name__ == "__main__"
-    from src.autogen_agents.agents.voter_agent import VoterAgent  # noqa: C0415
+    from src.trading.instruments.voting_signal import VotingSignal  # noqa: C0415
 
     print("\n" + "=" * 70)
     print("VALIDATION TEST: Match Experiment #293 Results")
@@ -276,8 +276,8 @@ def run_validation_test():
 
     print(f"Loaded {len(df)} data points from cache")
 
-    # Create voter agent for signal generation
-    voter = VoterAgent()
+    # VoterAgent's signal, without the LLM agent (#606)
+    voter = VotingSignal()
 
     # Initialize BacktestEngine with no commission (matching experiment_293)
     engine = BacktestEngine(initial_capital=10000, commission_per_share=0.0)
