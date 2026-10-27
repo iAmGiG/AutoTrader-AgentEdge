@@ -6,8 +6,9 @@ Issue #455: Create FunctionTool infrastructure with registry.
 Issue #457: Portfolio and account display tools extraction (Phase 1C).
 Issue #458: Order, scheduler, and alert tools extraction (Phase 1D).
 
-This module contains all CLI command implementations as FunctionTool objects,
-following the same pattern as src/data_sources/tools.py and base_agent.py.
+This module contains all CLI command implementations as FunctionTool objects
+(Microsoft Agent Framework's, since #606; they were AutoGen's). The CLI calls the
+functions directly; the tool objects carry the name, description and schema for agents.
 
 Architecture Benefits:
 - Type hints auto-generate schemas
@@ -20,7 +21,7 @@ Architecture Benefits:
 import logging
 from typing import Dict, List, Optional
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +248,50 @@ def _discover_and_register_tools() -> None:
 
 
 # Auto-discover tools on import
+# Tools that change orders or GTT triggers (which can place orders), the scheduler, the
+# execution or trading mode or account, portfolio overrides or the live voter config, or
+# that restore or delete data. An agent given one must get a human's approval before it
+# runs (Agent Framework's approval_mode, #606); the CLI calls the functions directly.
+REQUIRES_APPROVAL = frozenset(
+    {
+        "cancel_all_orders",
+        "cancel_order",
+        "cancel_symbol_orders",
+        "create_gtt_trigger",
+        "create_gtt_oco_pair",
+        "delete_gtt_trigger",
+        "enable_gtt_trigger",
+        "disable_gtt_trigger",
+        "enable_scheduler",
+        "set_routine_enabled",
+        "set_execution_mode",
+        "set_trading_mode",
+        "switch_account",
+        "set_portfolio_override",
+        "clear_portfolio_override",
+        "clear_all_portfolio_overrides",
+        "apply_voter_preset",
+        "promote_voter",
+        "demote_voter",
+        "set_voter_role",
+        "restore_backup",
+        "cleanup_old_backups",
+    }
+)
+
+
+def _require_approval() -> None:
+    """Mark the REQUIRES_APPROVAL tools as needing approval before an agent runs them."""
+    for name in REQUIRES_APPROVAL:
+        tool = _registry.get_tool(name)
+        if tool is None:
+            logger.warning("Tool %s needs approval but is not registered", name)
+        else:
+            tool.approval_mode = "always_require"
+
+
 _discover_and_register_tools()
+_require_approval()
 
 # Export registry for direct access if needed
 CLI_TOOL_REGISTRY = _registry

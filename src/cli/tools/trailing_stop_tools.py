@@ -11,7 +11,7 @@ Original Implementation: src/trading/orders/trailing_stop_manager.py
 Pattern: Pure function wrappers → FunctionTool → Registry
 """
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from config_defaults.trading_config import ClimbRate, TrailingStopConfig
 
@@ -281,7 +281,8 @@ def calculate_stop_example(
 # ============================================================================
 
 show_trailing_stop_config_tool = FunctionTool(
-    show_trailing_stop_config,
+    func=show_trailing_stop_config,
+    name="show_trailing_stop_config",
     description=(
         "Display current trailing stop configuration including climb rate, "
         "profit zone thresholds, and volatility awareness settings."
@@ -289,7 +290,8 @@ show_trailing_stop_config_tool = FunctionTool(
 )
 
 explain_climb_rate_tool = FunctionTool(
-    explain_climb_rate,
+    func=explain_climb_rate,
+    name="explain_climb_rate",
     description=(
         "Explain what a specific climb rate (slow/medium/fast) means "
         "for trailing stop behavior and when to use it."
@@ -297,7 +299,8 @@ explain_climb_rate_tool = FunctionTool(
 )
 
 compare_climb_rates_tool = FunctionTool(
-    compare_climb_rates,
+    func=compare_climb_rates,
+    name="compare_climb_rates",
     description=(
         "Compare all climb rates side by side showing how each "
         "locks gains at different profit levels."
@@ -305,7 +308,8 @@ compare_climb_rates_tool = FunctionTool(
 )
 
 calculate_stop_example_tool = FunctionTool(
-    calculate_stop_example,
+    func=calculate_stop_example,
+    name="calculate_stop_example",
     description=(
         "Calculate where the trailing stop would be for a specific "
         "position based on entry, current price, and climb rate."

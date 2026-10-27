@@ -84,17 +84,7 @@ def voter_tools_module(module_sandbox, monkeypatch):
 
     monkeypatch.setattr(trading_config_module, "TradingConfig", MockTradingConfig)
 
-    # Mock autogen_core.tools
-    class MockFunctionTool:
-        def __init__(self, func, description="", name=None):
-            self.func = func
-            self.description = description
-            self.name = name or func.__name__
-
-    class MockAutoGenTools:
-        FunctionTool = MockFunctionTool
-
-    monkeypatch.setitem(sys.modules, "autogen_core.tools", MockAutoGenTools())
+    # The tool modules use Agent Framework's FunctionTool (#606), which is installed
 
     module_path = project_root / "src" / "cli" / "tools" / "voter_tools.py"
     return import_module_directly(str(module_path), "voter_tools_test")
@@ -104,17 +94,7 @@ def voter_tools_module(module_sandbox, monkeypatch):
 def backup_tools_module(module_sandbox, monkeypatch):
     """Load backup_tools module directly."""
 
-    # Mock autogen_core.tools
-    class MockFunctionTool:
-        def __init__(self, func, description="", name=None):
-            self.func = func
-            self.description = description
-            self.name = name or func.__name__
-
-    class MockAutoGenTools:
-        FunctionTool = MockFunctionTool
-
-    monkeypatch.setitem(sys.modules, "autogen_core.tools", MockAutoGenTools())
+    # The tool modules use Agent Framework's FunctionTool (#606), which is installed
 
     module_path = project_root / "src" / "cli" / "tools" / "backup_tools.py"
     return import_module_directly(str(module_path), "backup_tools_test")
@@ -236,17 +216,6 @@ class TestEnhancedTimeframeToolsFunctions:
     @pytest.fixture
     def timeframe_helpers(self, module_sandbox, monkeypatch):
         """Load just the helper functions from timeframe_tools."""
-
-        # Mock all dependencies
-        class MockFunctionTool:
-            def __init__(self, func=None, description="", name=None):
-                self.func = func
-                self.description = description
-                self.name = name
-
-        tools_mock = MagicMock()
-        tools_mock.FunctionTool = MockFunctionTool
-        monkeypatch.setitem(sys.modules, "autogen_core.tools", tools_mock)
 
         # Create a mock timeframe commands
         mock_tf_commands = MagicMock()

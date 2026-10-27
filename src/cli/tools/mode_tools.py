@@ -13,7 +13,7 @@ Pattern: Pure function wrappers → FunctionTool → Registry
 
 from typing import Any, Dict
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.core.trading_modes import (
     TradingMode,

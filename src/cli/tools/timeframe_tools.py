@@ -13,7 +13,7 @@ Pattern: Pure function wrappers → FunctionTool → Registry
 
 from typing import Dict, Optional
 
-from autogen_core.tools import FunctionTool
+from agent_framework import FunctionTool
 
 from src.cli.commands.timeframe_commands import get_timeframe_commands
 from src.utils.safe_print import get_symbol

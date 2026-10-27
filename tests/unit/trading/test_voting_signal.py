@@ -5,6 +5,7 @@ The golden values below come from VoterAgent before the signal was moved out of 
 (development at f9fc63a); the move must not change a single number.
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -62,17 +63,24 @@ def test_too_little_data_is_a_hold():
     assert "Insufficient data (38 < 42)" in result["reasoning"]
 
 
-def test_the_signal_loads_no_agent_framework_or_llm_client():
+def test_the_signal_loads_no_agent_framework_or_llm_client(tmp_path):
+    """Run from a temp dir: importing src.trading creates .cache/ in the working dir (#600)."""
     code = (
         "import sys; import src.trading.instruments.voting_signal; "
-        "print(sorted({m.split('.')[0] for m in sys.modules "
-        "if m.startswith(('autogen', 'openai', 'agent_framework'))}))"
+        "print('LOADED=' + ','.join(sorted({m.split('.')[0] for m in sys.modules "
+        "if m.startswith(('autogen', 'openai', 'agent_framework'))})))"
     )
+    env = {**os.environ, "PYTHONPATH": str(REPO), "AUTOTRADER_STATE_DIR": str(tmp_path)}
     out = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=REPO
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=tmp_path,
+        env=env,
     )
 
-    assert out.stdout.strip() == "[]"
+    assert [line for line in out.stdout.splitlines() if line.startswith("LOADED=")] == ["LOADED="]
 
 
 def _agent():
