@@ -1,5 +1,6 @@
-AutoTrader: Multi-Agent Trading System
-Copyright (C) 2024-2025 Chris R. (iAmGiG)
+OptionsCommander: Multi-Agent Trading System
+(formerly AutoTrader-AgentEdge, and RH2MAS before that)
+Copyright (C) 2024-2026 Chris R. (iAmGiG)
 
 This product is licensed under the GNU Affero General Public License v3.0.
 See the LICENSE file for the full license text.
@@ -23,18 +24,20 @@ accept full responsibility for any outcomes resulting from its use.
 THIRD-PARTY COMPONENTS
 ================================================================================
 
-This software incorporates or depends on the following third-party components:
+This software depends on the following third-party packages. They are installed
+from their own distributions (see pyproject.toml), not bundled here, and each
+keeps its own license:
 
-Microsoft AutoGen
+Microsoft Agent Framework (agent-framework-core, agent-framework-openai)
   License: MIT License
-  https://github.com/microsoft/autogen
+  https://github.com/microsoft/agent-framework
 
 Alpaca-py (Alpaca Markets SDK)
   License: Apache License 2.0
   https://github.com/alpacahq/alpaca-py
 
-OpenAI Python SDK
-  License: MIT License
+OpenAI Python SDK (installed with agent-framework-openai)
+  License: Apache License 2.0
   https://github.com/openai/openai-python
 
 pandas
@@ -42,20 +45,33 @@ pandas
   https://github.com/pandas-dev/pandas
 
 NumPy
-  License: BSD 3-Clause License
+  License: BSD 3-Clause License (bundled parts under 0BSD, MIT, Zlib, CC0-1.0)
   https://github.com/numpy/numpy
 
-Additional dependencies are listed in pyproject.toml with their respective
-licenses. Most are MIT, BSD, or Apache 2.0 licensed.
+SciPy, statsmodels
+  License: BSD 3-Clause License
+
+requests
+  License: Apache License 2.0
+
+PyYAML, pytz
+  License: MIT License
+
+psycopg2-binary (PostgreSQL driver for the research backtester)
+  License: GNU Lesser General Public License v3 or later, with exceptions
+  https://www.psycopg.org/
+
+Each package's own license is in its installed metadata (pip show <package>).
 
 ================================================================================
 TRADEMARKS
 ================================================================================
 
-- "AutoTrader" and "AgentEdge" are project names, not registered trademarks.
+- "OptionsCommander" (formerly "AutoTrader-AgentEdge") is a project name, not a
+  registered trademark.
 - "Alpaca" is a trademark of AlpacaDB, Inc.
 - "OpenAI" is a trademark of OpenAI, Inc.
-- "Microsoft" and "AutoGen" are trademarks of Microsoft Corporation.
+- "Microsoft" is a trademark of Microsoft Corporation.
 
 Use of these names is for identification purposes only and does not imply
 endorsement by the respective trademark holders.
