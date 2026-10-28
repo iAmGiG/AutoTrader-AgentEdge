@@ -30,6 +30,7 @@ def offline_market_calendar(monkeypatch):
     monkeypatch.setattr(market_hours, "_CALENDAR_CLIENT", None)
     monkeypatch.setattr(market_hours, "_CALENDAR_CACHE", {})
     monkeypatch.setattr(market_hours, "_CALENDAR_DOWN_UNTIL", 0.0)
+    monkeypatch.setattr(market_hours, "_CALENDAR_DISAGREEMENTS", {})
 
 
 @pytest.fixture(autouse=True)

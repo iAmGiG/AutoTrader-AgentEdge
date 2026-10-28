@@ -429,14 +429,15 @@ def empty_calendar(monkeypatch):
     monkeypatch.setattr(mh, "_CALENDAR_CACHE", {})
 
 
-def test_an_empty_calendar_answer_on_a_rules_trading_day_is_a_warning(empty_calendar, caplog):
+def test_an_empty_calendar_answer_on_a_rules_trading_day_follows_the_rules(empty_calendar, caplog):
     with caplog.at_level(logging.WARNING, logger=mh.logger.name):
         hours = mh.get_market_hours_for_date(date(2026, 10, 14))
 
-    assert hours[2] is False  # behaviour unchanged: closed, and cached
-    assert mh.get_market_hours_for_date(date(2026, 10, 14))[2] is False
-    assert caplog.text.count("2026-10-14") == 1  # the repeat came from the cache
-    assert "trading day by the NYSE rules" in caplog.text
+    assert hours == (mh.DEFAULT_MARKET_OPEN, mh.DEFAULT_MARKET_CLOSE, True)  # the rules win
+    assert mh._CALENDAR_CACHE[date(2026, 10, 14)][2] is True  # the rules' answer, this process
+    assert mh.get_market_hours_for_date(date(2026, 10, 14))[2] is True
+    assert caplog.text.count("2026-10-14") == 1  # warned once per process
+    assert "returned nothing for a trading day" in mh.calendar_disagreement(date(2026, 10, 14))
 
 
 @pytest.mark.parametrize("day", [date(2026, 10, 17), date(2026, 11, 26)])  # Saturday, Thanksgiving
@@ -579,3 +580,29 @@ def test_next_run_is_never_in_the_past(make_scheduler):
     task, when = scheduler.next_run(now=now)
 
     assert (task.name, when) == ("morning_routine", now)
+
+
+def test_a_calendar_disagreement_is_one_warning_notice_over_ticks(
+    make_scheduler, empty_calendar, monkeypatch
+):
+    scheduler = make_scheduler()
+    # the real lookup, answered by the empty fake calendar
+    monkeypatch.setattr(daily_scheduler, "get_market_hours_for_date", mh.get_market_hours_for_date)
+    task = next(t for t in scheduler.tasks if t.name == "morning_routine")
+    for _tick in range(2):  # two cron ticks
+        scheduler._hours_memo.clear()
+        assert scheduler.scheduled_at(task, date(2026, 10, 14)) is not None  # rules: trading day
+
+    [notice] = scheduler.notice_store.all_notices()
+    assert notice.key == "calendar_disagrees:2026-10-14"
+    assert (notice.severity, notice.count) == ("WARNING", 1)
+    assert "market_hours.yaml" in notice.detail
+
+
+def test_agreeing_calendar_answers_raise_no_notice(make_scheduler):
+    scheduler = make_scheduler()  # the autouse fixture answers from the rules
+    task = next(t for t in scheduler.tasks if t.name == "morning_routine")
+
+    scheduler.scheduled_at(task, date(2026, 10, 14))
+
+    assert scheduler.notice_store.all_notices() == []

@@ -68,9 +68,11 @@ class _FakeCalendarClient:
         return [day] if day else []
 
 
-def _session(day, close_hour=16):
+def _session(day, close_hour=16, listed_as=None):
     return SimpleNamespace(
-        open=datetime.combine(day, time(9, 30)), close=datetime.combine(day, time(close_hour, 0))
+        date=listed_as or day,
+        open=datetime.combine(day, time(9, 30)),
+        close=datetime.combine(day, time(close_hour, 0)),
     )
 
 
@@ -146,3 +148,83 @@ def test_client_build_failure_is_retried_after_back_off(monkeypatch):
     clock["now"] += mh._CALENDAR_RETRY_SECONDS + 1
     assert mh._get_alpaca_calendar() == "client"
     assert len(attempts) == 2
+
+
+# --- NYSE's own published calendar: an oracle independent of Alpaca's -------------------
+# From NYSE Group's release of 2025-12-23 ("2026, 2027 and 2028 Holiday and Early Closings
+# Calendar"). 2028-01-01 is a Saturday and no holiday is observed for it.
+NYSE_HOLIDAYS = {
+    2026: "01-01 01-19 02-16 04-03 05-25 06-19 07-03 09-07 11-26 12-25",
+    2027: "01-01 01-18 02-15 03-26 05-31 06-18 07-05 09-06 11-25 12-24",
+    2028: "01-17 02-21 04-14 05-29 06-19 07-04 09-04 11-23 12-25",
+}
+NYSE_EARLY_CLOSES = {2026: "11-27 12-24", 2027: "11-26", 2028: "07-03 11-24"}
+
+
+@pytest.mark.parametrize("year", sorted(NYSE_HOLIDAYS))
+def test_rules_match_nyse_published_holidays_and_early_closes(year):
+    assert mh.nyse_holidays(year) == _dates(year, NYSE_HOLIDAYS[year])
+    assert mh.nyse_early_closes(year) == _dates(year, NYSE_EARLY_CLOSES[year])
+
+
+# --- Guards on the calendar's answer ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "day",
+    [date(2026, 10, 31), date(2029, 12, 26), date(2030, 1, 2)],  # Saturday; past the data
+)
+def test_weekends_and_days_past_the_calendar_data_make_no_request(monkeypatch, day):
+    client = _FakeCalendarClient()
+    monkeypatch.setattr(mh, "_CALENDAR_CLIENT", client)
+
+    hours = mh.get_market_hours_for_date(day)
+
+    assert client.requests == []
+    assert hours == mh._rule_based_hours(day)
+    assert mh.calendar_disagreement(day) is None
+
+
+def test_a_row_for_another_day_is_not_trusted(monkeypatch):
+    day = date(2026, 11, 26)  # Thanksgiving; an out-of-range answer once came back as 1970
+    client = _FakeCalendarClient({day: _session(day, listed_as=date(1970, 1, 2))})
+    monkeypatch.setattr(mh, "_CALENDAR_CLIENT", client)
+
+    assert mh.get_market_hours_for_date(day)[2] is False  # the rules: closed
+    assert "1970-01-02" in mh.calendar_disagreement(day)
+    assert mh.get_market_hours_for_date(day)[2] is False
+    assert len(client.requests) == 1  # the rules' answer is cached for the process
+
+
+def test_an_early_close_day_listed_until_16_00_closes_at_13_00(monkeypatch):
+    day = date(2026, 11, 27)
+    monkeypatch.setattr(mh, "_CALENDAR_CLIENT", _FakeCalendarClient({day: _session(day)}))
+
+    assert mh.get_market_hours_for_date(day) == (time(9, 30), time(13, 0), True)
+    assert "16:00" in mh.calendar_disagreement(day)
+
+
+def test_a_session_the_rules_call_closed_is_trusted_but_noted(monkeypatch):
+    day = date(2026, 11, 26)  # as if NYSE had opened on Thanksgiving
+    monkeypatch.setattr(mh, "_CALENDAR_CLIENT", _FakeCalendarClient({day: _session(day)}))
+
+    assert mh.get_market_hours_for_date(day)[2] is True
+    assert "call closed" in mh.calendar_disagreement(day)
+
+
+def test_agreeing_answers_note_nothing(monkeypatch):
+    day = date(2026, 10, 28)
+    monkeypatch.setattr(mh, "_CALENDAR_CLIENT", _FakeCalendarClient({day: _session(day)}))
+
+    assert mh.get_market_hours_for_date(day)[2] is True
+    assert mh.calendar_disagreement(day) is None
+
+
+def test_an_earlier_calendar_close_on_a_full_rules_day_is_used_and_noted(monkeypatch):
+    day = date(2026, 10, 28)  # as if NYSE had announced an unscheduled 13:00 close
+    monkeypatch.setattr(
+        mh, "_CALENDAR_CLIENT", _FakeCalendarClient({day: _session(day, close_hour=13)})
+    )
+
+    assert mh.get_market_hours_for_date(day) == (time(9, 30), time(13, 0), True)
+    assert "13:00" in mh.calendar_disagreement(day)

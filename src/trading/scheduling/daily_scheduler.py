@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
 from .notices import (
+    CALENDAR_DISAGREES,
     CRITICAL,
     ROUTINE_FAILED,
     ROUTINE_MISSED,
@@ -53,6 +54,7 @@ from src.utils.date_utils import add_business_days, get_datetime_now, now_iso, p
 from src.utils.market_hours import (
     DEFAULT_MARKET_CLOSE,
     EARLY_MARKET_CLOSE,
+    calendar_disagreement,
     get_market_hours_for_date,
     is_nyse_trading_day,
     nyse_early_closes,
@@ -659,7 +661,32 @@ class DailyScheduler:
         """(open, close, is a trading day) for a day, from the calendar once per check."""
         if day not in self._hours_memo:
             self._hours_memo[day] = get_market_hours_for_date(day)
+            self._note_calendar_disagreement(day)
         return self._hours_memo[day]
+
+    def _note_calendar_disagreement(self, day: date) -> None:
+        """
+        A WARNING notice when Alpaca's calendar and the NYSE rules disagreed on a day (the
+        rules' answer was used). One notice per day, however many ticks see it. Contained.
+        """
+        try:
+            why = calendar_disagreement(day)
+            if why is None:
+                return
+            self.notice_store.raise_notice(
+                key=f"{CALENDAR_DISAGREES}:{day.isoformat()}",
+                kind=CALENDAR_DISAGREES,
+                severity=WARNING,
+                title=f"Market calendar disagrees with the NYSE rules on {day.isoformat()}",
+                detail=(
+                    f"{why}. If NYSE announced a closure or a change of hours, add it to "
+                    "config_defaults/market_hours.yaml or the NYSE rules."
+                ),
+                market_date=day.isoformat(),
+                update_existing=False,
+            )
+        except Exception as e:
+            logger.warning("Calendar notice not recorded for %s: %s", day, e)
 
     def _nyse_scheduled_at(self, task: ScheduledTask, day: date) -> Optional[datetime]:
         """
