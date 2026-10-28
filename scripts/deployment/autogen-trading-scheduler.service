@@ -1,6 +1,6 @@
 [Unit]
 Description=OptionsCommander - daily routine scheduler (paper account)
-Documentation=https://github.com/iAmGiG/AutoTrader-AgentEdge
+Documentation=https://github.com/iAmGiG/OptionsCommander
 After=network-online.target
 Wants=network-online.target
 
@@ -9,8 +9,8 @@ Type=simple
 User=trader
 Group=trader
 # Edit the project path (here and below) and the python path for your install
-WorkingDirectory=/home/trader/AutoTrader-AgentEdge
-Environment="PYTHONPATH=/home/trader/AutoTrader-AgentEdge"
+WorkingDirectory=/home/trader/OptionsCommander
+Environment="PYTHONPATH=/home/trader/OptionsCommander"
 
 # The same entry point as the CLI scheduler's "start", so the CLI sees it as running.
 # Routine times are in ET whatever the host timezone, on NYSE trading days only, and a
@@ -25,7 +25,7 @@ StartLimitIntervalSec=600
 
 # Logging: the daemon writes state/scheduler.log itself (rotated); stderr keeps crashes
 StandardOutput=null
-StandardError=append:/home/trader/AutoTrader-AgentEdge/state/scheduler-daemon.err
+StandardError=append:/home/trader/OptionsCommander/state/scheduler-daemon.err
 SyslogIdentifier=optionscommander-scheduler
 
 # Security hardening
@@ -33,7 +33,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/trader/AutoTrader-AgentEdge/state /home/trader/AutoTrader-AgentEdge/reports /home/trader/AutoTrader-AgentEdge/logs /home/trader/AutoTrader-AgentEdge/.cache
+ReadWritePaths=/home/trader/OptionsCommander/state /home/trader/OptionsCommander/reports /home/trader/OptionsCommander/logs /home/trader/OptionsCommander/.cache
 
 # Resource limits
 CPUQuota=50%

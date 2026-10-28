@@ -1,8 +1,8 @@
 # System Phases of Operation
 
-**Purpose**: Detailed breakdown of how the AutoTrader-AgentEdge operates from market data acquisition through trade execution.
+**Purpose**: Detailed breakdown of how OptionsCommander operates from market data acquisition through trade execution.
 
-This document outlines the five sequential phases that comprise a complete trading cycle in the AutoTrader-AgentEdge.
+This document outlines the five sequential phases that comprise a complete trading cycle in OptionsCommander.
 
 ## Phase 1: Market Data Acquisition
 

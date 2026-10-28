@@ -1,6 +1,6 @@
 # OptionsCommander Documentation
 
-Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`), a trading platform built on Microsoft Agent Framework (AutoGen until #606), with a MACD+RSI voting strategy and a multi-agent architecture.
+Documentation for OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/OptionsCommander`, formerly AutoTrader-AgentEdge), a trading platform built on Microsoft Agent Framework (AutoGen until #606), with a MACD+RSI voting strategy and a multi-agent architecture.
 
 ## Documentation Structure
 

@@ -1,6 +1,6 @@
 # Trade History Database
 
-**Issues**: [#373 Extension](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/373), [#444 Analysis Tracking](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/444)
+**Issues**: [#373 Extension](https://github.com/iAmGiG/OptionsCommander/issues/373), [#444 Analysis Tracking](https://github.com/iAmGiG/OptionsCommander/issues/444)
 **Commits**: 776e1d0 (trade_history), 782f8f2 (analysis_history)
 
 ## Overview
@@ -546,8 +546,8 @@ With this foundation, future features can include:
 
 ## Related Documentation
 
-- [Issue #373](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/373): Multi-Provider Database Storage
-- [Issue #444](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/444): Track Voter Component Details
+- [Issue #373](https://github.com/iAmGiG/OptionsCommander/issues/373): Multi-Provider Database Storage
+- [Issue #444](https://github.com/iAmGiG/OptionsCommander/issues/444): Track Voter Component Details
 - [sqlite_cache.py](../../src/data_sources/cache/sqlite_cache.py): Trade history database implementation
 - [analysis_history_manager.py](../../src/data_sources/database/analysis_history_manager.py): Analysis history implementation
 - [trade_lifecycle.py](../../src/trading/trade_lifecycle.py): TradeCycle integration

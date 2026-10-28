@@ -310,7 +310,7 @@ A: That's the point! Consensus-based approach reduces false signals. Only trade 
 ## Resources
 
 - **Full Implementation Guide**: [docs/04_development/gex_voter_integration_guide.md](gex_voter_integration_guide.md)
-- **GitHub Issue**: [#419 Add GEX as VoterAgent Signal Source](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/419)
+- **GitHub Issue**: [#419 Add GEX as VoterAgent Signal Source](https://github.com/iAmGiG/OptionsCommander/issues/419)
 - **VoterAgent Code**: [src/autogen_agents/voter_agent.py](../../src/autogen_agents/voter_agent.py)
 - **Options Tools**: [src/data_sources/sources/market/unified_options_tool.py](../../src/data_sources/sources/market/unified_options_tool.py)
 

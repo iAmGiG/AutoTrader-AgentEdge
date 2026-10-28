@@ -7,7 +7,7 @@
 ## Project Structure
 
 ```bash
-AutoTrader-AgentEdge/                 # repository root (project: OptionsCommander)
+OptionsCommander/                     # repository root
 ├── src/                              # Core implementation
 │   ├── autogen_agents/              # Agents (Microsoft Agent Framework; AutoGen until #606)
 │   │   ├── core/base_agent.py       # Base agent: tools, LLM tool calling

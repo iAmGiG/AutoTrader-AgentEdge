@@ -1,6 +1,6 @@
 # Scripts Directory
 
-Production utilities, deployment tools, data collection, and research scripts for the AutoTrader-AgentEdge system.
+Production utilities, deployment tools, data collection, and research scripts for the OptionsCommander system.
 
 ## Directory Structure
 

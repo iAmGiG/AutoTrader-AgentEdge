@@ -314,7 +314,7 @@ When holding too much inventory (Long):
 - **Summary**: Comprehensive comparison of Value at Risk (VaR) and Conditional Value at Risk (CVaR/Expected Shortfall). VaR = max expected loss at confidence level; CVaR = average loss in tail beyond VaR. CVaR is coherent, convex, and better for optimization. Basel IV shifting from VaR to ES.
 - **Relevance**: **High** - directly applicable to RiskAgent position sizing and portfolio risk limits
 - **Priority**: High
-- **GH Potential**: **Issue created** - [#543](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/543)
+- **GH Potential**: **Issue created** - [#543](https://github.com/iAmGiG/OptionsCommander/issues/543)
 - **Revisit When**: Implementing RiskAgent or portfolio-level risk management
 
 #### Key Takeaways
