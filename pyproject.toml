@@ -3,6 +3,8 @@ name = "AutoTrader-AgentEdge"
 version = "1.0.0"
 description = "Multi-agent AI trading platform powered by AgentEdge architecture"
 authors = [{name = "iAmGiG"}]
+license = "AGPL-3.0-only"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 dependencies = [
     # Microsoft Agent Framework (#606; replaced AutoGen): agents, tools, OpenAI client
