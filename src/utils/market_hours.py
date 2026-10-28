@@ -296,10 +296,10 @@ def get_market_hours_for_date(
         return rules
 
     hours = _hours_from_calendar(day, calendar, rules)
-    if hours is None:
-        return rules  # not cached: the next check asks again
-    _CALENDAR_CACHE[day] = hours
-    return hours
+    # A disagreement caches the rules' answer for this process: cron starts a new process
+    # every tick, so the next tick asks the calendar again
+    _CALENDAR_CACHE[day] = rules if hours is None else hours
+    return _CALENDAR_CACHE[day]
 
 
 def _hours_from_calendar(
@@ -310,29 +310,42 @@ def _hours_from_calendar(
 
     When they disagree on whether the market trades, the rules win (running on a closed
     market costs less than skipping a trading day: stops stay managed) and the day is
-    recorded for calendar_disagreement(); None then means "use the rules, don't cache".
+    recorded for calendar_disagreement(); None then means "use the rules".
     """
     if not calendar:
         if rules[2]:
-            return _disagree(day, "the Alpaca calendar returned nothing for a trading day")
+            _note_disagreement(
+                day,
+                "the Alpaca calendar returned nothing for a trading day; the routines followed the NYSE rules and ran",
+            )
+            return None
         return DEFAULT_MARKET_OPEN, DEFAULT_MARKET_CLOSE, False
     cal_day = calendar[0]
     cal_date = getattr(cal_day, "date", day)
     cal_date = cal_date.date() if isinstance(cal_date, datetime) else cal_date
     if cal_date != day:
-        return _disagree(day, f"the Alpaca calendar answered for {cal_date} instead")
+        _note_disagreement(
+            day, f"the Alpaca calendar answered for {cal_date} instead; the NYSE rules were used"
+        )
+        return None
     if not rules[2]:
         # Listed by the calendar, closed by the rules: trust the calendar (it knows new
         # sessions), but say so
-        _note_disagreement(day, "the Alpaca calendar lists a day the NYSE rules call closed")
+        _note_disagreement(
+            day,
+            "the Alpaca calendar lists a day the NYSE rules call closed; the calendar was followed, so check the NYSE rules",
+        )
     # Alpaca returns ET open/close as naive datetimes
     open_time = cal_day.open.time() if hasattr(cal_day.open, "time") else DEFAULT_MARKET_OPEN
     close_time = cal_day.close.time() if hasattr(cal_day.close, "time") else DEFAULT_MARKET_CLOSE
-    if rules[2] and rules[1] < close_time:
+    if rules[2] and rules[1] != close_time:
+        earlier = min(rules[1], close_time)  # so the evening routine runs before the close
         _note_disagreement(
-            day, f"the Alpaca calendar closes at {close_time:%H:%M}, an early-close day"
+            day,
+            f"the Alpaca calendar closes at {close_time:%H:%M} and the NYSE rules at "
+            f"{rules[1]:%H:%M}; the earlier close ({earlier:%H:%M}) was used",
         )
-        close_time = rules[1]  # the earlier close, so the evening routine runs before it
+        close_time = earlier
     return open_time, close_time, True
 
 
@@ -343,12 +356,6 @@ def _note_disagreement(day: date, why: str) -> None:
             "Market calendar for %s: %s; using the NYSE rules where they differ", day, why
         )
     _CALENDAR_DISAGREEMENTS[day] = why
-
-
-def _disagree(day: date, why: str) -> None:
-    """Note a disagreement where the rules' answer replaces the calendar's (returns None)."""
-    _note_disagreement(day, why)
-    return None
 
 
 def calendar_disagreement(day: date) -> Optional[str]:

@@ -679,8 +679,8 @@ class DailyScheduler:
                 severity=WARNING,
                 title=f"Market calendar disagrees with the NYSE rules on {day.isoformat()}",
                 detail=(
-                    f"{why}. The routines followed the NYSE rules. If NYSE announced a "
-                    "closure, add the date to config_defaults/market_hours.yaml."
+                    f"{why}. If NYSE announced a closure or a change of hours, add it to "
+                    "config_defaults/market_hours.yaml or the NYSE rules."
                 ),
                 market_date=day.isoformat(),
                 update_existing=False,

@@ -434,7 +434,7 @@ def test_an_empty_calendar_answer_on_a_rules_trading_day_follows_the_rules(empty
         hours = mh.get_market_hours_for_date(date(2026, 10, 14))
 
     assert hours == (mh.DEFAULT_MARKET_OPEN, mh.DEFAULT_MARKET_CLOSE, True)  # the rules win
-    assert date(2026, 10, 14) not in mh._CALENDAR_CACHE  # not cached: asked again next time
+    assert mh._CALENDAR_CACHE[date(2026, 10, 14)][2] is True  # the rules' answer, this process
     assert mh.get_market_hours_for_date(date(2026, 10, 14))[2] is True
     assert caplog.text.count("2026-10-14") == 1  # warned once per process
     assert "returned nothing for a trading day" in mh.calendar_disagreement(date(2026, 10, 14))

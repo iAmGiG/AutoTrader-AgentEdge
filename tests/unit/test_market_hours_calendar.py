@@ -192,7 +192,8 @@ def test_a_row_for_another_day_is_not_trusted(monkeypatch):
 
     assert mh.get_market_hours_for_date(day)[2] is False  # the rules: closed
     assert "1970-01-02" in mh.calendar_disagreement(day)
-    assert day not in mh._CALENDAR_CACHE
+    assert mh.get_market_hours_for_date(day)[2] is False
+    assert len(client.requests) == 1  # the rules' answer is cached for the process
 
 
 def test_an_early_close_day_listed_until_16_00_closes_at_13_00(monkeypatch):
@@ -217,3 +218,13 @@ def test_agreeing_answers_note_nothing(monkeypatch):
 
     assert mh.get_market_hours_for_date(day)[2] is True
     assert mh.calendar_disagreement(day) is None
+
+
+def test_an_earlier_calendar_close_on_a_full_rules_day_is_used_and_noted(monkeypatch):
+    day = date(2026, 10, 28)  # as if NYSE had announced an unscheduled 13:00 close
+    monkeypatch.setattr(
+        mh, "_CALENDAR_CLIENT", _FakeCalendarClient({day: _session(day, close_hour=13)})
+    )
+
+    assert mh.get_market_hours_for_date(day) == (time(9, 30), time(13, 0), True)
+    assert "13:00" in mh.calendar_disagreement(day)
