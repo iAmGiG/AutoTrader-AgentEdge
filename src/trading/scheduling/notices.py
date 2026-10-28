@@ -66,6 +66,7 @@ TARGET_BREACH = "target_breach"
 UNPROTECTED = "unprotected"
 STATE_DB_ERROR = "state_db_error"
 NOTICES_FILE_RESET = "notices_file_reset"
+CALENDAR_DISAGREES = "calendar_disagrees"
 # What a completed run clears for its routine and day
 ROUTINE_KINDS = (ROUTINE_FAILED, ROUTINE_MISSED, ROUTINE_STUCK)
 
