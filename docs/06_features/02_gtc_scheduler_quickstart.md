@@ -19,7 +19,7 @@ up on one of them can still fire). They:
 
 ```bash
 # Navigate to project root
-cd ~/AutoTrader-AgentEdge
+cd ~/OptionsCommander
 
 # Activate environment
 conda activate AutoTrader
@@ -311,7 +311,7 @@ positions only.
 
 Issues or questions:
 
-- GitHub Issues: <https://github.com/iAmGiG/AutoTrader-AgentEdge/issues>
+- GitHub Issues: <https://github.com/iAmGiG/OptionsCommander/issues>
 - Documentation: [03_gtc_scheduler_technical.md](03_gtc_scheduler_technical.md)
 - Examples: `scripts/deployment/`
 

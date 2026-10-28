@@ -1,6 +1,6 @@
 # Configuration System
 
-This directory contains **non-sensitive default configuration files** for OptionsCommander (formerly RH2MAS; repository `iAmGiG/AutoTrader-AgentEdge`).
+This directory contains **non-sensitive default configuration files** for OptionsCommander (formerly RH2MAS; repository `iAmGiG/OptionsCommander`, formerly AutoTrader-AgentEdge).
 
 ## Directory Structure
 

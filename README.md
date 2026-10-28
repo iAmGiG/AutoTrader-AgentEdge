@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD060 -->
 # OptionsCommander: Multi-Agent Trading System
 
-Formerly RH2MAS (Reflective Hybrid Head Multi-Agent System). The GitHub repository is still `iAmGiG/AutoTrader-AgentEdge`.
+Formerly RH2MAS (Reflective Hybrid Head Multi-Agent System). The GitHub repository `iAmGiG/OptionsCommander` was renamed from `AutoTrader-AgentEdge` on 2026-10-28 (#549); old links redirect.
 
 **Copyright (C) 2024-2025 Chris R. (iAmGiG)** | Licensed under [AGPL-3.0](LICENSE) | See [NOTICE](NOTICE)
 
@@ -200,7 +200,7 @@ The morning (9:20 AM ET) and evening (3:50 PM ET) routines run on NYSE trading d
 ## Project Structure
 
 ```text
-AutoTrader-AgentEdge/       # repository root (project: OptionsCommander)
+OptionsCommander/           # repository root
 ├── src/
 │   ├── autogen_agents/     # AI agents (Microsoft Agent Framework; the name predates #606)
 │   │   ├── agents/         # VoterAgent (MACD+RSI voting); other agents in development
@@ -253,7 +253,7 @@ python -c "from src.autogen_agents.agents.voter_agent import VoterAgent; print('
 
 ### Contributing
 
-1. Pick an issue from [GitHub Issues](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues)
+1. Pick an issue from [GitHub Issues](https://github.com/iAmGiG/OptionsCommander/issues)
 2. Create a feature branch
 3. Make changes following [docs/05_decisions/](docs/05_decisions/)
 4. Submit PR to `development` branch

@@ -267,7 +267,7 @@ Single symbol with multiple order structures:
 
 ## Related Issues
 
-- [Issue #371](https://github.com/iAmGiG/AutoTrader-AgentEdge/issues/371) - Implementation tracking
+- [Issue #371](https://github.com/iAmGiG/OptionsCommander/issues/371) - Implementation tracking
 
 ---
 

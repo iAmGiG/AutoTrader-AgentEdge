@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-This section documents key architecture and design decisions for the OptionsCommander platform (formerly RH2MAS; repository `iAmGiG/AutoTrader-AgentEdge`).
+This section documents key architecture and design decisions for the OptionsCommander platform (formerly RH2MAS; repository `iAmGiG/OptionsCommander`, formerly AutoTrader-AgentEdge).
 
 ## Decision Index
 

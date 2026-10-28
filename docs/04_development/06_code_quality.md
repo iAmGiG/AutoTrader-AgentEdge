@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document tracks ongoing code quality improvements, linting standards, and technical debt reduction efforts across the AutoTrader-AgentEdge codebase.
+This document tracks ongoing code quality improvements, linting standards, and technical debt reduction efforts across the OptionsCommander codebase.
 
 ---
 
@@ -512,4 +512,4 @@ mypy src/autogen_agents/voter_agent.py --strict
 
 ---
 
-*This document tracks code quality improvements and provides guidelines for maintaining high code standards across the AutoTrader-AgentEdge codebase.*
+*This document tracks code quality improvements and provides guidelines for maintaining high code standards across the OptionsCommander codebase.*

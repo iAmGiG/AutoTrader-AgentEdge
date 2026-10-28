@@ -17,7 +17,7 @@ fi
 SERVICE_NAME="autogen-trading-scheduler"
 SERVICE_FILE="$SERVICE_NAME.service"
 SYSTEMD_PATH="/etc/systemd/system/$SERVICE_FILE"
-PROJECT_ROOT="/home/trader/AutoTrader-AgentEdge"  # must match the .service file
+PROJECT_ROOT="/home/trader/OptionsCommander"  # must match the .service file
 USER="trader"
 GROUP="trader"
 

@@ -6,7 +6,7 @@
 
 ## What Is This System?
 
-OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/AutoTrader-AgentEdge`) is an algorithmic trading platform whose agents run on Microsoft Agent Framework (they ran on AutoGen until #606). It uses ensemble voting (MACD+RSI), an approach motivated by academic research; backtested with the live rules and timing, it has no edge over buy-and-hold of the same symbols (#574).
+OptionsCommander (formerly RH2MAS; GitHub repository `iAmGiG/OptionsCommander`, formerly AutoTrader-AgentEdge) is an algorithmic trading platform whose agents run on Microsoft Agent Framework (they ran on AutoGen until #606). It uses ensemble voting (MACD+RSI), an approach motivated by academic research; backtested with the live rules and timing, it has no edge over buy-and-hold of the same symbols (#574).
 
 ### Core Purpose
 
