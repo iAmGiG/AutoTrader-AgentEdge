@@ -3,7 +3,7 @@
 
 Formerly RH2MAS (Reflective Hybrid Head Multi-Agent System). The GitHub repository `iAmGiG/OptionsCommander` was renamed from `AutoTrader-AgentEdge` on 2026-10-28 (#549); old links redirect.
 
-**Copyright (C) 2024-2025 Chris R. (iAmGiG)** | Licensed under [AGPL-3.0](LICENSE) | See [NOTICE](NOTICE)
+**Copyright (C) 2024-2026 Chris R. (iAmGiG)** | Licensed under [AGPL-3.0](LICENSE) | See [NOTICE](NOTICE)
 
 ## Powered by AgentEdge - AI-assisted trading with human oversight
 
